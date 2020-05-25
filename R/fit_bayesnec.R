@@ -140,7 +140,7 @@ fit_bayesnec <- function(data,
   #link <- attributes(init.fun)$link    
   fit <- fit_bayesMod(mod.dat, bform, priors, family.type, iter, chains, cores)
 
-  out <- c(fit, list(mod.dat=mod.dat, y.type = y.type, x.type = x.type, model = model))
+  out <- list(fit=fit, mod.dat=mod.dat, y.type = y.type, x.type = x.type, model = model)
   
   # extract the relevant model parameters
   extract.params <- c("top", "beta", "nec", "alpha", "bot", "d", "slope", "ec50")
