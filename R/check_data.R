@@ -1,46 +1,32 @@
-#    Copyright 2020 Australian Institute of Marine Science
-#
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
-
 #' check_data
 #'
 #' Check data input for a bayesian nec model fit
 #'
 #' @param  data a data.frame containing the data to use for the model
 #' 
-#' @param x.var the column heading indicating the concentration (x) variable
+#' @param x_var the column heading indicating the concentration (x) variable
 #' 
-#' @param y.var the column heading indicating the response (y) variable
+#' @param y_var the column heading indicating the response (y) variable
 #' 
-#' @param trials.var the column heading indicating the column for the number of "trials" for binomial response data. 
+#' @param trials_var the column heading indicating the column for the number of "trials" for binomial response data. 
 #' If not supplied, the model may run but will not be the model you intended!
 #' 
-#' @param x.type the statistical distribution to use for the x (concentration) data. This will be guess based on the 
+#' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the 
 #' characteristic of the input data if not supplied.
 #'
-#' @param y.type the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 
+#' @param y_type the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 
 #' 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer. 
 #' If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.
 #'
-#' @param over.disp. If an overdispersed model should be used. Only changes the model fit for poisson and binomial y.type 
+#' @param over_disp If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type 
 #' data. For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.
 #'
 #' @param model The type of model to be fit. Currently takes values of "nec3param",  
 #' "nec4param", "necsigmoidal", "nechorme", "ecx4param", "ecxwb1", or "ecxwb2".
 #' 
 #' @param  params A vector of names indicating the parameters that to trace during the jags fit. For the NEC jags model 
-#' this is typically 'NEC','top' and 'beta'. If left out, fit.jagsNEC will supply this based on the selected y.type and 
-#' x.type.
+#' this is typically 'NEC','top' and 'beta'. If left out, fit.jagsNEC will supply this based on the selected y_type and 
+#' x_type.
 #' 
 #' @details   
 #' 
@@ -50,167 +36,149 @@
 #' @return Modified elements of the bayesnec input data.
 
 check_data <- function(data,
-            x.var,
-            y.var,
-            trials.var,
-            x.type, 
-            y.type,
+            x_var,
+            y_var,
+            trials_var,
+            x_type = NA, 
+            y_type = NA,
             params,
-            over.disp,
+            over_disp,
             model){
   
-  if(is.na(y.type)==F){
-    if(over.disp==TRUE & y.type=="beta"){y.type=NA}
+  if (!is.na(y_type)) {
+    if (over_disp & y_type == "beta") {
+      y_type <- NA
+    }
   }
-
   
   # check the specified columns exist in data
-  use.vars <- na.omit(c(y.var=y.var, x.var=x.var, trials.var))
-  var.colms <- match(use.vars, colnames(data))
-  missing.colms <- data.frame(val=use.vars[which(is.na(var.colms))], stringsAsFactors = FALSE)
-  missing.colms$element <- rownames(missing.colms)
-  if(length(na.omit(var.colms))<length(use.vars)){
-    stop(paste("Your indicated ", paste(paste(missing.colms$element, " '", missing.colms$val,"'", sep=""),
+  use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var))
+  var_colms <- match(use_vars, colnames(data))
+  missing_colms <- data.frame(val = use_vars[which(is.na(var_colms))], stringsAsFactors = FALSE)
+  missing_colms$element <- rownames(missing_colms)
+  if (length(na.omit(var_colms)) < length(use_vars)) {
+    stop(paste0("Your indicated ", paste(paste0(missing_colms$element, " '", missing_colms$val,"'"),
                                         collapse = ", "),
-               " is not present in your input data. Has this been mispecified?", sep=""))
+               " is not present in your input data. Has this been mispecified?"))
   }
   
   # extract the data
-  y.dat <- data[, y.var]
-  x.dat <- data[, x.var]
+  y_dat <- data[, y_var]
+  x_dat <- data[, x_var]
   
   # check the x data are numeric
-  if(class(x.dat)!="numeric"){
-    stop(paste("Your indicated x.var column ", x.var," contains data that is class ", class(x.dat),".
-                 The function bayesnec requires the concentration data (argument x.var) to be numeric.",sep=""))
+  if (!inherits(x_dat, "numeric")) {
+    stop(paste0("Your indicated x_var column ", x_var," contains data that is class ", class(x_dat),".
+                 The function bayesnec requires the concentration data (argument x_var) to be numeric."))
   }
   
   # check data contains only finite values
-  test.x <- mean(x.dat)
-  test.y <- mean(y.dat)
-  if(is.finite(test.x)!=TRUE){
-    stop("Your x.var column contains values that are not finite.")
+  test_x <- mean(x_dat)
+  test_y <- mean(y_dat)
+  if (!is.finite(test_x)) {
+    stop("Your x_var column contains values that are not finite.")
   }
-  if(is.finite(test.y)!=TRUE){
-    stop("Your y.var column contains values that are not finite.")
+  if (!is.finite(test_y)) {
+    stop("Your y_var column contains values that are not finite.")
   }
   
   # check the data are lower at high x compared to low x (ie the response variable declines within increase in the x)
-  if(mean(y.dat[which(x.dat<mean(x.dat))])< mean(y.dat[which(x.dat>mean(x.dat))]) & model != "nechorme"){
+  resp_check <- mean(y_dat[which(x_dat < mean(x_dat))]) < mean(y_dat[which(x_dat > mean(x_dat))])
+  if (resp_check & model != "nechorme") {
     stop("The mean value of the response for the lower half of the
            concentration data are lower than that of the upper half of the concentration data.
            bayesnec only fits concentration response data where the
            response declines with increasing values of concentration.")
   }
   
-  # check variable type x.var
-  if(is.na(x.type)==TRUE){ # if the x.var is not specified, then guess
-    if(class(x.dat)=="integer"){
-      stop("bayesnec does not currently support integer concentration data. Please provide
-           a numeric x.var")}
-    if(class(x.dat)=="numeric" & max(x.dat)>1 & min(x.dat)>=0){x.type="gamma"}
-    if(class(x.dat)=="numeric" & max(x.dat)<=1 & min(x.dat)>=0){x.type="beta"}
-    if(class(x.dat)=="numeric" & min(x.dat)<0){x.type="gaussian"}
+  # check variable type x_var
+  if (is.na(x_type)) {
+    x_type <- set_distribution(x_dat)
   }
-  
-  # check variable type y.var
-  if(is.na(y.type)==T){ # if the y.var is not specified, then guess
-    if(class(y.dat)=="numeric" & max(y.dat)>1 & min(y.dat)>=0){y.type="gamma"}
-    if(class(y.dat)=="numeric" & max(y.dat)<=1 & min(y.dat)>=0){y.type="beta"}
-    if(class(y.dat)=="numeric" & min(y.dat)<0){y.type="gaussian"}
-    if(class(y.dat)=="integer" & min(y.dat)>=0 & is.na(trials.var) == TRUE){
-      y.type="poisson"}
-    if(is.na(trials.var)!= TRUE & class(y.dat)!="integer"){
-      stop("You have supplied a trials.var argument, suggesting you wish to model a binomial.
-             Please ensure y.var is an integer representing the number of successes.")}
-    
-    if(class(y.dat)=="integer" & min(y.dat)>=0 & is.na(trials.var)!= TRUE){
-      y.type="binomial"}
+  if (is.na(y_type)) {
+    y_type <- set_distribution(y_dat, support_integer = TRUE,
+                               trials = data[, trials_var])
   }
   
   # check there is a valid model type
-  if(is.na(match(model, c("nec3param", "necsigmoidal", "nec4param", "nechorme",
-                          "ecx4param", "ecxwb1", "ecxwb2", "ecxlin", "ecxexp", "ecxsigm")
-  ))){
-    stop("The model type you have specified does not extist.")
+  if (!model %in% c("nec3param", "necsigmoidal", "nec4param", "nechorme",
+                    "ecx4param", "ecxwb1", "ecxwb2", "ecxlin", "ecxexp", "ecxsigm")) {
+    stop("The model type you have specified does not exist.")
   }
   
-  if(y.type=="poisson" & over.disp==TRUE){
-    y.type="negbin"}
-  if(y.type=="binomial" & over.disp==TRUE){
-    y.type <- "beta"
-    data[,y.var] <-  data[,y.var]/data[,trials.var]
-    
+  if (y_type == "poisson" & over_disp) {
+    y_type <- "negbin"
+  }
+  if (y_type == "binomial" & over_disp) {
+    y_type <- "beta"
+    data[,y_var] <-  data[, y_var] / data[, trials_var]
   }
   
-  if(y.type=="gamma"){params=c(params,"shape")}
-  if(y.type=="gaussian"){params=c(params,"alpha","sigma")}
-  if(y.type=="negbin"){params=c(params,"size")}
+  if (y_type=="gamma"){params=c(params,"shape")}
+  if (y_type=="gaussian"){params=c(params,"alpha","sigma")}
+  if (y_type=="negbin"){params=c(params,"size")}
   
   # error catching for 0 for gamma by adding very small value
-  if(min(data[,x.var])==0 & x.type=="gamma"){
-    tt <- data[,x.var]
+  if (min(data[,x_var])==0 & x_type=="gamma"){
+    tt <- data[,x_var]
     min.val <- min(tt[which(tt>0)])
-    data[which(tt==0),x.var] <- tt[which(tt==0)]+(min.val/10)
+    data[which(tt==0),x_var] <- tt[which(tt==0)]+(min.val/10)
   }
   
-  if(min(data[,y.var])==0 & y.type=="gamma"){
-    tt <- data[,y.var]
+  if (min(data[,y_var])==0 & y_type=="gamma"){
+    tt <- data[,y_var]
     min.val <- min(tt[which(tt>0)])
-    data[which(tt==0),y.var] <- tt[which(tt==0)]+(min.val/10)
+    data[which(tt==0),y_var] <- tt[which(tt==0)]+(min.val/10)
   }
   # error catching for 0 for beta by adding very small value (beta does not take zero)
-  if(min(data[,x.var])==0 & x.type=="beta"){
-    tt <- data[,x.var]
+  if (min(data[,x_var])==0 & x_type=="beta"){
+    tt <- data[,x_var]
     min.val <- min(tt[which(tt>0)])
-    data[which(tt==0),x.var] <- tt[which(tt==0)]+(min.val/10)
+    data[which(tt==0),x_var] <- tt[which(tt==0)]+(min.val/10)
   }
   
-  if(min(data[,y.var])==0 & y.type=="beta"){
-    tt <- data[,y.var]
+  if (min(data[,y_var])==0 & y_type=="beta"){
+    tt <- data[,y_var]
     min.val <- min(tt[which(tt>0)])
-    data[which(tt==0),y.var] <- tt[which(tt==0)]+(min.val/10)
+    data[which(tt==0),y_var] <- tt[which(tt==0)]+(min.val/10)
   }
   
   # error catching for 1 for beta by subtracting very small value (beta does not take 1)
-  if(max(data[,x.var])==1 & x.type=="beta"){
-    tt <- data[,x.var]
-    data[which(tt==1),x.var] <- tt[which(tt==1)]-0.001
+  if (max(data[,x_var])==1 & x_type=="beta"){
+    tt <- data[,x_var]
+    data[which(tt==1),x_var] <- tt[which(tt==1)]-0.001
   }
   
-  if(max(data[,y.var])==1 & y.type=="beta"){
-    tt <- data[,y.var]
-    data[which(tt==1),y.var] <- tt[which(tt==1)]-0.001
+  if (max(data[,y_var])==1 & y_type=="beta"){
+    tt <- data[,y_var]
+    data[which(tt==1),y_var] <- tt[which(tt==1)]-0.001
   }
   
   # create brms model data
-  mod.dat <<- data.frame(
-    x = data[,x.var],   # concentration
-    y = data[,y.var], # response (successes)
-    
-    N = nrow(data))  # Sample size
+  mod_dat <<- data.frame(x = data[,x_var],   # concentration
+                         y = data[,y_var], # response (successes)
+                         N = nrow(data))  # Sample size
   
+  response <- data[, y_var]
   
-  response = data[,y.var]
-  
-  if(y.type=="binomial"){
-    mod.dat$trials = data[, trials.var] # number of "trials"
-    response = data[, y.var]/data[,trials.var]
+  if (y_type == "binomial") {
+    mod_dat$trials <- data[, trials_var] # number of "trials"
+    response <- data[, y_var] / data[, trials_var]
   }
-  
- mod.file <- define_model(model=model, x.type=x.type, y.type=y.type, mod.dat=mod.dat)
- bform <- mod.file$bform
- priors <- mod.file$priors
- family.type <- mod.file$family.type
+
+  mod_file <- define_model(model=model, x_type=x_type, y_type=y_type, mod_dat=mod_dat)
+  bform <- mod_file$bform
+  priors <- mod_file$priors
+  mod_family <- mod_file$mod_family
     
- return(list(priors=priors,
-            response=response,
-            mod.dat=mod.dat,
-            data=data,
-            y.type=y.type,
-            x.type=x.type,
-            x.dat=x.dat,
-            y.dat=y.dat,
-            bform=bform,
-            family.type=family.type))  
+  list(priors = priors,
+       response = response,
+       mod_dat = mod_dat,
+       data = data,
+       y_type = y_type,
+       x_type = x_type,
+       x_dat = x_dat,
+       y_dat = y_dat,
+       bform = bform,
+       mod_family = mod_family)
 }
