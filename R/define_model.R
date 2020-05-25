@@ -16,48 +16,48 @@
 #'
 #' Writes an NEC model file for a three parameter model (top, beta and NEC) and generates a function for initial values to pass to jags
 #' 
-#' @param x.type the statistical distribution to use for the x (concentration) data. This may currently be one of  'beta', 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
+#' @param x_type the statistical distribution to use for the x (concentration) data. This may currently be one of  'beta', 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
 #' 
-#' @param y.type the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 'beta', 'poisson', 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
+#' @param y_type the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 'beta', 'poisson', 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
 #'
 #' @param model a character string indicating the model to fit
 #'
-#' @param mod.dat the model data to use for the NEC model fit
+#' @param mod_dat the model data to use for the NEC model fit
 #'
 #' @export
 #' @return a model formula, priors and the family to use
 #' @importFrom brms prior bf
 #' @importFrom base qlogis
 
-define_model <- function(model, x.type, y.type, mod.dat){
+define_model <- function(model, x_type, y_type, mod_dat){
  
   # Set prior for beta - decay slope. Currently the same prior for all models.
   priors <- brms::prior(gamma(0.0001, 0.0001), nlpar = "beta")
   
-  # Set the y.type family and prior for 'top'
-  if(y.type=="binomial"){
-    family.type <- binomial()
-    prior_top <- quantile(qlogis(mod.dat$y/mod.dat$trials), probs = 0.8)
+  # Set the y_type family and prior for 'top'
+  if(y_type=="binomial"){
+    mod_family <- binomial()
+    prior_top <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.8)
     }
-  if(y.type=="gamma"){
-    family.type <- Gamma()
-    prior_top <- quantile(log(mod.dat$y), probs = 0.8)
+  if(y_type=="gamma"){
+    mod_family <- Gamma()
+    prior_top <- quantile(log(mod_dat$y), probs = 0.8)
     }
-  if(y.type=="poisson"){
-    family.type <- poisson()
-    prior_top <- quantile(log(mod.dat$y), probs = 0.8)
+  if(y_type=="poisson"){
+    mod_family <- poisson()
+    prior_top <- quantile(log(mod_dat$y), probs = 0.8)
     }
-  if(y.type=="gaussian"){
-    family.type <- gaussian()
-    prior_top <- quantile(mod.dat$y, probs = 0.8)
+  if(y_type=="gaussian"){
+    mod_family <- gaussian()
+    prior_top <- quantile(mod_dat$y, probs = 0.8)
     }
-  if(y.type=="beta"){
-    family.type <- Beta()
-    prior_top <- quantile(qlogis(mod.dat$y/mod.dat$trials), probs = 0.8)
+  if(y_type=="beta"){
+    mod_family <- Beta()
+    prior_top <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.8)
     }
-  if(y.type=="negbin"){
-    family.type <- negbinomial()
-    prior_top <- quantile(log(mod.dat$y), probs = 0.8)
+  if(y_type=="negbin"){
+    mod_family <- negbinomial()
+    prior_top <- quantile(log(mod_dat$y), probs = 0.8)
     }
   
   priors <- c(priors, 
@@ -65,7 +65,7 @@ define_model <- function(model, x.type, y.type, mod.dat){
        
   # nec3param - as per Fox 2010 ----
   if(model=="nec3param"){
-    if(y.type=="binomial"){
+    if(y_type=="binomial"){
            bform <- brms::bf(y | trials(trials) ~ top *
                            exp(-beta * (x - nec) *
                                  step(x - nec)),
@@ -79,15 +79,15 @@ define_model <- function(model, x.type, y.type, mod.dat){
                         nl = TRUE)
     }
 
-     if(x.type=="beta"){
+     if(x_type=="beta"){
        priors <- c(priors, 
          brms::prior(uniform(0.0001, 0.9999), nlpar = "nec"))   
      }
-     if(x.type=="gamma"){
+     if(x_type=="gamma"){
        priors <- c(priors,
          brms::prior(normal(0, 100), nlpar = "nec", lb = 0)) 
      }
-     if(x.type=="gaussian"){
+     if(x_type=="gaussian"){
        priors <- priors + 
          brms::prior(normal(3, 100), nlpar = "nec") 
      }     
@@ -95,7 +95,7 @@ define_model <- function(model, x.type, y.type, mod.dat){
 
   # Simple exponential decay ----
   if(model=="ecxexp"){
-    if(y.type=="binomial"){
+    if(y_type=="binomial"){
       bform <- brms::bf(y | trials(trials) ~ top * exp(-beta * x),
                         top + beta ~ 1,
                         nl = TRUE)
@@ -110,7 +110,7 @@ define_model <- function(model, x.type, y.type, mod.dat){
   
   # Return outcomes ---- 
   #the model formula, priors and family to use in the model fit
-  return(list(bform=bform, priors=priors, family.type=family.type))
+  return(list(bform=bform, priors=priors, mod_family=mod_family))
   
   
 }
