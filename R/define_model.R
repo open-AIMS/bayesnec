@@ -34,46 +34,36 @@ define_model <- function(model, x.type, y.type, mod.dat){
   # Set prior for beta - decay slope. Currently the same prior for all models.
   priors <- brms::prior(gamma(0.0001, 0.0001), nlpar = "beta")
   
-  
   # Set the y.type family and prior for 'top'
   if(y.type=="binomial"){
     family.type <- binomial()
     prior_top <- quantile(qlogis(mod.dat$y/mod.dat$trials), probs = 0.8)
-    priors <- c(priors, 
-                brms::prior(normal(prior_top, 10), nlpar = "top"))
     }
   if(y.type=="gamma"){
     family.type <- Gamma()
-    priors <- c(priors, 
-                brms::prior(normal(quantile(log(mod.dat$y), 
-                                            probs = 0.8), 10), nlpar = "top"))
+    prior_top <- quantile(log(mod.dat$y), probs = 0.8)
     }
   if(y.type=="poisson"){
     family.type <- poisson()
     prior_top <- quantile(log(mod.dat$y), probs = 0.8)
-    priors <- c(priors, 
-                brms::prior(paste0("prior(normal(", prior_top, ", 10), nlpar = 'top')")))   
     }
   if(y.type=="gaussian"){
     family.type <- gaussian()
-    priors <- c(priors, 
-                brms::prior(normal(quantile(mod.dat$y, 
-                                            probs = 0.8), 10), nlpar = "top"))   
+    prior_top <- quantile(mod.dat$y, probs = 0.8)
     }
   if(y.type=="beta"){
     family.type <- Beta()
-    priors <- c(priors, 
-                brms::prior(normal(quantile(qlogis(mod.dat$y/mod.dat$trials), 
-                                            probs = 0.8), 10), nlpar = "top"))    
+    prior_top <- quantile(qlogis(mod.dat$y/mod.dat$trials), probs = 0.8)
     }
   if(y.type=="negbin"){
     family.type <- negbinomial()
-    priors <- c(priors, 
-                brms::prior(normal(quantile(log(mod.dat$y), 
-                                            probs = 0.8), 10), nlpar = "top"))  
+    prior_top <- quantile(log(mod.dat$y), probs = 0.8)
     }
   
-   # nec3param - as per Fox 2010
+  priors <- c(priors, 
+                brms::prior_string(paste0("normal(", prior_top, ", 100)"), nlpar = "top")) 
+       
+  # nec3param - as per Fox 2010
   if(model=="nec3param"){
     if(y.type=="binomial"){
            bform <- brms::bf(y | trials(trials) ~ top *
@@ -90,12 +80,12 @@ define_model <- function(model, x.type, y.type, mod.dat){
     }
 
      if(x.type=="beta"){
-       priors <- priors + 
-         brms::prior(uniform(0.0001, 0.9999), nlpar = "nec")   
+       priors <- c(priors, 
+         brms::prior(uniform(0.0001, 0.9999), nlpar = "nec"))   
      }
      if(x.type=="gamma"){
-       priors <- priors + 
-         brms::prior(normal(3, 100), nlpar = "nec", lb = 0) 
+       priors <- c(priors,
+         brms::prior(normal(0, 100), nlpar = "nec", lb = 0)) 
      }
      if(x.type=="gaussian"){
        priors <- priors + 
