@@ -174,16 +174,25 @@ fit_bayesnec <- function(data,
   y.pred.m <- predict(fit, newdata = new.dat, robust = TRUE, re_formula = NA)
   predicted.y <- predict(fit, robust = TRUE, re_formula = NA)
 
+  if(y.type=="binomial"){
+    top <- top/10^3
+    predicted.y <- predicted.y/10^3
+    y.pred.m <-  y.pred.m/10^3
+  }
+  
   # calculate the residuals
   residuals <-  response - predicted.y 
   
   # entire posterior
   pred.posterior <- t(predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE))
+  if(y.type=="binomial"){
+    pred.posterior <- pred.posterior/10^3
+  }
   
   # calculate the predicted values using the entire posterior
   pred.vals <- c(list(x=x.seq, y=y.pred.m[,"Estimate"], up=y.pred.m[,"Q97.5"], lw=y.pred.m[,"Q2.5"],
                       posterior=pred.posterior), list(y.pred.m=y.pred.m[,"Estimate"]))  
-  
+
   
   # Extract the overdispersion estimate
   od <- NA#mean(out$sims.list$SS > out$sims.list$SSsim)
@@ -198,10 +207,13 @@ fit_bayesnec <- function(data,
       }, 
       pred.vals = pred.vals, reference = reference)
     
-    nec <- quantile(nec.posterior, c(0.025, 0.5, 0.975))  
+    nec <- quantile(nec.posterior, c(0.5, 0.025,  0.975))  
+    names(nec) <- c("Estimate", "Q2.5", "Q97.5")
   }else{
     nec.posterior <- unlist(posterior_samples(fit, pars="nec_Intercept"))
   }
+  
+
   
   # Put everyting in a list for output
   if(class(out)!="try-error"){
@@ -214,7 +226,7 @@ fit_bayesnec <- function(data,
       bot = bot,
       d = d,
       ec50 = ec50,
-      params = params,
+      #params = params,
       over.disp=od,
       predicted.y = predicted.y,
       residuals = residuals,
