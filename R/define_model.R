@@ -25,7 +25,7 @@
 #' @param mod.dat the model data to use for the NEC model fit
 #'
 #' @export
-#' @return a model formula and list or priors
+#' @return a model formula, priors and the family to use
 #' @importFrom brms prior bf
 #' @importFrom base qlogis
 
@@ -63,7 +63,7 @@ define_model <- function(model, x.type, y.type, mod.dat){
   priors <- c(priors, 
                 brms::prior_string(paste0("normal(", prior_top, ", 100)"), nlpar = "top")) 
        
-  # nec3param - as per Fox 2010
+  # nec3param - as per Fox 2010 ----
   if(model=="nec3param"){
     if(y.type=="binomial"){
            bform <- brms::bf(y | trials(trials) ~ top *
@@ -93,6 +93,23 @@ define_model <- function(model, x.type, y.type, mod.dat){
      }     
   }
 
+  # Simple exponential decay ----
+  if(model=="ecxexp"){
+    if(y.type=="binomial"){
+      bform <- brms::bf(y | trials(trials) ~ top * exp(-beta * x),
+                        top + beta ~ 1,
+                        nl = TRUE)
+    }else{
+      bform <- brms::bf(y ~ top * exp(-beta * x),
+                        top + beta ~ 1,
+                        nl = TRUE)
+    }
+ 
+  
+  }  
+  
+  # Return outcomes ---- 
+  #the model formula, priors and family to use in the model fit
   return(list(bform=bform, priors=priors, family.type=family.type))
   
   
