@@ -162,7 +162,7 @@ fit_bayesnec <- function(data,
   ec50 <- extracted.params$ec50 
   
 
-  if(is.na(extracted.params$nec["Estimate"])){mod.class <- "ecx"}else{ mod.class <- "nec"}
+  if(is.na(extracted.params$nec["Estimate"])){mod.class <- "ecx"}else{mod.class <- "nec"}
   
   if(is.na(x.seq)){
       x.seq <- seq(min(mod.dat$x), max(mod.dat$x), length=precision)
@@ -178,7 +178,7 @@ fit_bayesnec <- function(data,
   residuals <-  response - predicted.y 
   
   # entire posterior
-  pred.posterior <- predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE)
+  pred.posterior <- t(predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE))
   
   # calculate the predicted values using the entire posterior
   pred.vals <- c(list(x=x.seq, y=y.pred.m[,"Estimate"], up=y.pred.m[,"Q97.5"], lw=y.pred.m[,"Q2.5"],
@@ -194,7 +194,8 @@ fit_bayesnec <- function(data,
   if(mod.class=="ecx"){
     reference <-  quantile(pred.vals$posterior[1, ], sig.val)
     nec.posterior  <-  sapply(1:ncol(pred.vals$posterior), function (x, pred.vals, reference) {
-      pred.vals$x[which.min(abs(pred.vals$posterior[, x] - reference))]}, 
+      pred.vals$x[which.min(abs(pred.vals$posterior[, x] - reference))]
+      }, 
       pred.vals = pred.vals, reference = reference)
     
     nec <- quantile(nec.posterior, c(0.025, 0.5, 0.975))  
