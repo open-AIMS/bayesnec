@@ -117,27 +117,27 @@ extract_ecx.bayesnecfit <- function(X, ecx.val=10, precision=1000, posterior = F
   
   
   if(X$model=="necHormesis" & hormesis.def=="max"){ # remove values prior to the nec for the hormesis model
-    posterior.sample <- do.call("cbind",
-                                lapply(1:length(X$sims.list$nec), FUN=function(x){
-                                  nec.x <- X$sims.list$nec[x]
-                                  posterior.x <- posterior.sample[,x]
+    posterior.sample <- do.call("rbind",
+                                lapply(1:nrow(posterior.sample), FUN=function(x){
+                                  nec.x <- X$nec.posterior[x]
+                                  posterior.x <- posterior.sample[x,]
                                   posterior.x[which(x.vec<nec.x)] <- NA
                                   return(posterior.x)
                                 }))
   }
   
   if(X$model=="necHormesis"& hormesis.def=="control"){ # remove values greater than the control for the hormesis model
-    posterior.sample <- do.call("cbind", 
-                                lapply(1:ncol(posterior.sample), FUN=function(x){
-                                  control.x <- posterior.sample[1,x]                                    
-                                  posterior.x <- posterior.sample[,x] 
+    posterior.sample <- do.call("rbind", 
+                                lapply(1:nrow(posterior.sample), FUN=function(x){
+                                  control.x <- posterior.sample[x, 1]                                    
+                                  posterior.x <- posterior.sample[x, ] 
                                   posterior.x[which(posterior.x>=control.x)] <- NA
                                   return(posterior.x)
                                 }))
   }   
   
   if(type=="relative"){
-    ecx.out <- apply(posterior.sample, MARGIN=2, FUN=function(y){
+    ecx.out <- apply(posterior.sample, MARGIN=1, FUN=function(y){
       range.y <- range(y, na.rm=T)
       ecx.y <- max(range.y)-diff(range.y)*(ecx.val/100)
       ecx.x <- x.vec[which.min(abs(y-ecx.y))]
@@ -147,7 +147,7 @@ extract_ecx.bayesnecfit <- function(X, ecx.val=10, precision=1000, posterior = F
   
   
   if(type=="absolute"){
-    ecx.out <- apply(posterior.sample, MARGIN=2, FUN=function(y){
+    ecx.out <- apply(posterior.sample, MARGIN=1, FUN=function(y){
       range.y <- c(0, max(y, na.rm=T))
       ecx.y <- max(range.y)-diff(range.y)*(ecx.val/100)
       ecx.x <- x.vec[which.min(abs(y-ecx.y))]
@@ -156,7 +156,7 @@ extract_ecx.bayesnecfit <- function(X, ecx.val=10, precision=1000, posterior = F
   }
   
   if(type=="direct"){
-    ecx.out <- apply(posterior.sample, MARGIN=2, FUN=function(y){
+    ecx.out <- apply(posterior.sample, MARGIN=1, FUN=function(y){
       ecx.y <- ecx.val
       ecx.x <- x.vec[which.min(abs(y-ecx.y))]
       return(ecx.x)
