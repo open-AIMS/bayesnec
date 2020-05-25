@@ -36,7 +36,7 @@ predict.bayesnec <- function(X, precision=100, x.range=NA){
   
   fit <- X$fit
   
-  if(is.na(x.range)){
+  if(is.na(x.range[1])){
     x.seq <- seq(min.x, max.x, length=precision)
   }else{
     x.seq <- seq(min(x.range), max(x.range), length=precision)}
@@ -45,14 +45,14 @@ predict.bayesnec <- function(X, precision=100, x.range=NA){
   if(y.type=="binomial"){new.dat$trials=10^3}
   
   # entire posterior
-  pred.vals.out <- t(predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE))
+  pred.vals.out <- predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE)
   if(y.type=="binomial"){
     pred.vals.out <- pred.vals.out/10^3
   }
   
-  m.vals <- apply(pred.vals.out, MARGIN=1, FUN=quantile, probs=0.5)
-  up.vals <- apply(pred.vals.out, MARGIN=1, FUN=quantile, probs=0.975)
-  lw.vals <- apply(pred.vals.out, MARGIN=1, FUN=quantile, probs=0.025)
+  m.vals <- apply(pred.vals.out, MARGIN=2, FUN=quantile, probs=0.5)
+  up.vals <- apply(pred.vals.out, MARGIN=2, FUN=quantile, probs=0.975)
+  lw.vals <- apply(pred.vals.out, MARGIN=2, FUN=quantile, probs=0.025)
   
   return(list(
     x=x.seq,
