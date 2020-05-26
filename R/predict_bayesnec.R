@@ -20,32 +20,29 @@
 #' 
 #' @param precision the number of x values over which to predict values
 #' 
-#' @param x.range The range of x values over which to make predictions
+#' @param x_range The range of x values over which to make predictions
 #'
 #' @export
 #' @return A list containing x and fitted y, with up and lw values
 
-predict.bayesnec <- function(X, precision=100, x.range=NA){
+predict.bayesnec <- function(X, precision=100, x_range=NA){
   mod_dat <- X$mod_dat
-  min.x <- min(mod_dat$x)
-  max.x <- max(mod_dat$x)
-  
-  
+
   y_type <- X$y_type
   x_type <- X$x_type
   
   fit <- X$fit
   
-  if(is.na(x.range[1])){
-    x.seq <- seq(min.x, max.x, length=precision)
+  if(is.na(x_range[1])){
+    x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length=precision)
   }else{
-    x.seq <- seq(min(x.range), max(x.range), length=precision)}
+    x_seq <- seq(min(x_range), max(x_range), length=precision)}
 
-  new.dat <- data.frame(x=x.seq)
+  new.dat <- data.frame(x=x_seq)
   if(y_type=="binomial"){new.dat$trials=10^3}
   
   # entire posterior
-  pred.vals.out <- predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE)
+  pred.vals.out <- posterior_predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE)
   if(y_type=="binomial"){
     pred.vals.out <- pred.vals.out/10^3
   }
@@ -55,7 +52,7 @@ predict.bayesnec <- function(X, precision=100, x.range=NA){
   lw.vals <- apply(pred.vals.out, MARGIN=2, FUN=quantile, probs=0.025)
   
   return(list(
-    x=x.seq,
+    x=x_seq,
     y=m.vals,
     up=up.vals,
     lw=lw.vals,
