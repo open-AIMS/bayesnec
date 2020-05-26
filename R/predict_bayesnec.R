@@ -26,13 +26,13 @@
 #' @return A list containing x and fitted y, with up and lw values
 
 predict.bayesnec <- function(X, precision=100, x.range=NA){
-  mod.dat <- X$mod.dat
-  min.x <- min(mod.dat$x)
-  max.x <- max(mod.dat$x)
+  mod_dat <- X$mod_dat
+  min.x <- min(mod_dat$x)
+  max.x <- max(mod_dat$x)
   
   
-  y.type <- X$y.type
-  x.type <- X$x.type
+  y_type <- X$y_type
+  x_type <- X$x_type
   
   fit <- X$fit
   
@@ -42,11 +42,11 @@ predict.bayesnec <- function(X, precision=100, x.range=NA){
     x.seq <- seq(min(x.range), max(x.range), length=precision)}
 
   new.dat <- data.frame(x=x.seq)
-  if(y.type=="binomial"){new.dat$trials=10^3}
+  if(y_type=="binomial"){new.dat$trials=10^3}
   
   # entire posterior
   pred.vals.out <- predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE)
-  if(y.type=="binomial"){
+  if(y_type=="binomial"){
     pred.vals.out <- pred.vals.out/10^3
   }
   

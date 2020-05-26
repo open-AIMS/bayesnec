@@ -61,48 +61,48 @@ plot.bayesnecfit <- function(X,  CI=TRUE,  posterior.median=TRUE,  median.model=
     add.nec=FALSE; add.ec10=TRUE
   }
   
-  # check if y.type is binomial
-  y.type <- X$y.type
-  if(y.type=="binomial"){
-    y.dat <- X$mod.dat$y/X$mod.dat$trials}else{
-      y.dat <- X$mod.dat$y}
+  # check if y_type is binomial
+  y_type <- X$y_type
+  if(y_type=="binomial"){
+    y_dat <- X$mod_dat$y/X$mod_dat$trials}else{
+      y_dat <- X$mod_dat$y}
   
   ec10 <- c(NA, NA, NA)
-  if(add.ec10==TRUE & X$y.type!="gaussian"){
+  if(add.ec10==TRUE & X$y_type!="gaussian"){
     ec10 <- extract_ecx.bayesnecfit(X)
   }
-  if(add.ec10==TRUE & X$y.type=="gaussian"){
+  if(add.ec10==TRUE & X$y_type=="gaussian"){
     ec10 <- extract_ecx.bayesnecfit(X, type="relative")
   }  
   
   # check if a transformation is required for x
   if(class(xform)=="function"){
-    x.dat <- xform(X$mod.dat$x)
+    x_dat <- xform(X$mod_dat$x)
     nec <- xform(X$nec)
     x.vec <- xform(X$pred.vals$x)
     ec10 <- xform(ec10)
   }else{
-    x.dat <- X$mod.dat$x
+    x_dat <- X$mod_dat$x
     nec <- X$nec
     x.vec <- X$pred.vals$x
   }
   
-  if(jitter.x==TRUE){x.dat <- jitter(x.dat)}
-  if(jitter.y==TRUE){y.dat <- jitter(y.dat)}  
+  if(jitter.x==TRUE){x_dat <- jitter(x_dat)}
+  if(jitter.y==TRUE){y_dat <- jitter(y_dat)}  
   
   # check if a range for the x axis has been specified
   if(max(is.na(xlim))==1){
-    x.lim <- range(x.dat)}else{
+    x.lim <- range(x_dat)}else{
       x.lim <- xlim
     }
   # Check if x axis tick marks have been specified
   if(max(is.na(xticks))==1){
-    x.ticks <- seq(min(x.dat), max(x.dat), length=7)
+    x.ticks <- seq(min(x_dat), max(x_dat), length=7)
   }else{
     x.ticks <- xticks
   }
   
-  plot(x.dat, y.dat, 
+  plot(x_dat, y_dat, 
        ylab=ylab, 
        xlab=xlab,        
        pch=16, xaxt="n", xlim = x.lim,
@@ -204,52 +204,52 @@ plot.bayesmanecfit <- function(X,  CI=TRUE,
                               xticks = NA,  ...){
   
   
-  # check if y.type is binomial
-  y.type <- X$y.type
-  if(y.type=="binomial"){
-    y.dat <- X$mod.dat$y/X$mod.dat$trials}else{
-      y.dat <- X$mod.dat$y}
+  # check if y_type is binomial
+  y_type <- X$y_type
+  if(y_type=="binomial"){
+    y_dat <- X$mod_dat$y/X$mod_dat$trials}else{
+      y_dat <- X$mod_dat$y}
   
   ## extract ec10
   ec10 <- c(NA, NA, NA)
-  if(add.ec10==TRUE & X$y.type!="gaussian"){
+  if(add.ec10==TRUE & X$y_type!="gaussian"){
     ec10 <- extract_ecx.bayesmanecfit(X)
   }
-  if(add.ec10==TRUE & X$y.type=="gaussian"){
+  if(add.ec10==TRUE & X$y_type=="gaussian"){
     ec10 <- extract_ecx.bayesmanecfit(X, type="relative")
   }
   
   # check if a transformation is required for x
   if(class(xform)=="function"){
-    x.dat <- xform(X$mod.dat$x)
+    x_dat <- xform(X$mod_dat$x)
     nec <- xform(X$nec)
     x.vec <- xform(X$pred.vals$x)
     ec10 <- xform(ec10)
   }else{
-    x.dat <- X$mod.dat$x
+    x_dat <- X$mod_dat$x
     nec <- X$nec
     x.vec <- X$pred.vals$x
   }
   
-  if(jitter.x==TRUE){x.dat <- jitter(x.dat)}
-  if(jitter.y==TRUE){y.dat <- jitter(y.dat)}  
+  if(jitter.x==TRUE){x_dat <- jitter(x_dat)}
+  if(jitter.y==TRUE){y_dat <- jitter(y_dat)}  
   
   # check if a range for the x axis has been specified
   if(max(is.na(xlim))==1){
-    x.lim <- range(x.dat)}else{
+    x.lim <- range(x_dat)}else{
       x.lim <- xlim
     }
   # Check if x axis tick marks have been specified
   if(max(is.na(xticks))==1){
-    x.ticks <- seq(min(x.dat), max(x.dat), length=7)
+    x.ticks <- seq(min(x_dat), max(x_dat), length=7)
   }else{
     x.ticks <- xticks
   }
   
-  if(is.na(xlim)==TRUE){xlim=range(x.dat)}
-  if(is.na(ylim)==TRUE){ylim=range(y.dat)}
+  if(is.na(xlim)==TRUE){xlim=range(x_dat)}
+  if(is.na(ylim)==TRUE){ylim=range(y_dat)}
   
-  plot(x.dat, y.dat, 
+  plot(x_dat, y_dat, 
        ylab=ylab, 
        xlab=xlab,        
        pch=16, xaxt="n", 
