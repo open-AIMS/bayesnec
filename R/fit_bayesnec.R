@@ -22,8 +22,8 @@
 #' @param added_model Logical. something
 #' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values
 #' against the control, to estimate nec as an interpolated NOEC value from smooth ecx curves.
-#' @param x_seq something
-#' @param precision something
+#' @param x_range The range of x values over which to obtained posterior predictions. Used for plot.bayesnecfit and to calculate nec for ecx models.
+#' @param precision The length of the x_seq to pass to posterior_predict as new data. Used for plot.bayesnecfit and to calculate nec for ecx models.
 #' @param ... further arguments to be passed to \code{\link[brms]{brm}}.
 #' 
 #' @details   
@@ -57,7 +57,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          params = c("top", "beta", "nec", "SS", "SSsim"),
                          over_disp = FALSE, model = "nec3param",
                          added_model = FALSE, sig_val = 0.025,
-                         x_seq = NA, precision = 1000, iter=2e4, ...) {
+                         x_range = NA, precision = 1000, iter=2e4, ...) {
   
   if (!added_model) {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
@@ -124,7 +124,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
 
   if(is.na(extracted_params$nec["Estimate"])){mod.class <- "ecx"}else{mod.class <- "nec"}
   
-  if(is.na(x_seq)){
+  if(is.na(x_range)){
       x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length=precision)
   }
 
