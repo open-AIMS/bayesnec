@@ -21,6 +21,7 @@
 #' against the control, to estimate nec as an interpolated NOEC value from smooth ecx curves.
 #' @param x_range The range of x values over which to obtained posterior predictions. Used for plot.bayesnecfit and to calculate nec for ecx models.
 #' @param precision The length of the x_seq to pass to posterior_predict as new data. Used for plot.bayesnecfit and to calculate nec for ecx models.
+#' @param iter the number of interations to for the brms fit. Defaults to 2e4.
 #' @param ... further arguments to be passed to \code{\link[brms]{brm}}.
 #' 
 #' @details   
