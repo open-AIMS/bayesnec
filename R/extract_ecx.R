@@ -35,15 +35,15 @@
 #' 
 #' @param xform A function to apply to the returned estimated concentration values
 #' 
-#' @param x.range A range of x values over which to consider extracting ecx
+#' @param x_range A range of x values over which to consider extracting ecx
 #' 
 #' @param prob.vals A vector indicating the probability values over which to return the estimated ecx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals). 
 #' 
 #' @export
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 #' 
-extract_ecx <- function(X, ecx.val=10, precision=10000, posterior = FALSE, type="absolute", 
-                        hormesis.def = "control", xform=NA, x.range=NA,
+extract_ecx <- function(X, ecx.val=10, precision=1000, posterior = FALSE, type="absolute", 
+                        hormesis.def = "control", xform=NA, x_range=NA,
                         prob.vals=c(0.5, 0.025, 0.975), link="identity"){
   
   if(class(X)=="bayesnecfit"){
@@ -54,7 +54,7 @@ extract_ecx <- function(X, ecx.val=10, precision=10000, posterior = FALSE, type=
   }
   if(class(X)== "bayesmanecfit"){
     ecx <- extract_ecx.bayesmanecfit(X, ecx.val=ecx.val, precision=precision, 
-                                    posterior = posterior, type=type, xform=xform, x.range=x.range,
+                                    posterior = posterior, type=type, xform=xform, x_range=x_range,
                                     prob.vals=prob.vals) 
   }
   
@@ -89,7 +89,7 @@ extract_ecx <- function(X, ecx.val=10, precision=10000, posterior = FALSE, type=
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 
 extract_ecx.bayesnecfit <- function(X, ecx.val=10, precision=1000, posterior = FALSE, type="absolute", 
-                                   hormesis.def = "control", x.range=NA,
+                                   hormesis.def = "control", x_range=NA,
                                    xform=NA, prob.vals=c(0.5, 0.025, 0.975)){
 
   if(type!="direct"){
@@ -111,7 +111,7 @@ extract_ecx.bayesnecfit <- function(X, ecx.val=10, precision=1000, posterior = F
   
   label <- paste("ec", ecx.val, sep="_")
   
-  pred.vals <- predict.bayesnec(X, precision=precision, x.range=x.range)
+  pred.vals <- predict.bayesnec(X, precision=precision, x_range=x_range)
   posterior.sample <- pred.vals$posterior
   x.vec <- pred.vals$'x' 
   
@@ -206,7 +206,7 @@ extract_ecx.bayesnecfit <- function(X, ecx.val=10, precision=1000, posterior = F
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 
 extract_ecx.bayesmanecfit <- function(X, ecx.val=10, precision=1000, posterior = FALSE, type="absolute", 
-                                     hormesis.def="control", xform=NA, x.range=NA,
+                                     hormesis.def="control", xform=NA, x_range=NA,
                                      prob.vals=c(0.5, 0.025, 0.975)){
   
   ecx.out <- unlist(sapply(X$success.models, FUN=function(x){
@@ -214,7 +214,7 @@ extract_ecx.bayesmanecfit <- function(X, ecx.val=10, precision=1000, posterior =
                                         ecx.val=ecx.val, 
                                         precision=100,#precision, 
                                         posterior = TRUE, 
-                                        x.range = x.range,
+                                        x_range = x_range,
                                         type=type), round(X$n.sims*X$mod.stats[x, "wi"]))
   }))
   
