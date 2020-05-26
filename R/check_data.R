@@ -24,10 +24,6 @@
 #' @param model The type of model to be fit. Currently takes values of "nec3param",  
 #' "nec4param", "necsigmoidal", "nechorme", "ecx4param", "ecxwb1", or "ecxwb2".
 #' 
-#' @param  params A vector of names indicating the parameters that to trace during the jags fit. For the NEC jags model 
-#' this is typically 'NEC','top' and 'beta'. If left out, fit.jagsNEC will supply this based on the selected y_type and 
-#' x_type.
-#' 
 #' @details   
 #' 
 #' This is a wrapper function to test input data criteria and write the brms model file for use in a bayesnec model fit
@@ -41,7 +37,6 @@ check_data <- function(data,
             trials_var,
             x_type = NA, 
             y_type = NA,
-            params,
             over_disp,
             model){
   
@@ -113,10 +108,6 @@ check_data <- function(data,
     y_type <- "beta"
     data[,y_var] <-  data[, y_var] / data[, trials_var]
   }
-  
-  if (y_type=="gamma"){params=c(params,"shape")}
-  if (y_type=="gaussian"){params=c(params,"alpha","sigma")}
-  if (y_type=="negbin"){params=c(params,"size")}
   
   # error catching for 0 for gamma by adding very small value
   if (min(data[,x_var])==0 & x_type=="gamma"){

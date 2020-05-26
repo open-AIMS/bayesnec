@@ -12,9 +12,6 @@
 #' @param y_type the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 
 #' 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer. 
 #' If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.
-#' @param  params A vector of names indicating the parameters that to trace during the bayes fit. For the nec bayes model 
-#' this is typically 'nec','top' and 'beta'. If left out, fit_bayesnec will supply this based on the selected y_type and 
-#' x_type.
 #' @param over_disp If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type 
 #' data. For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.
 #' @param model The type of model to be fit. Currently takes values of "nec3param",  
@@ -54,7 +51,6 @@
 #' A posterior sample of the nec is also available under $sims.list.
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          x_type = NA, y_type = NA,
-                         params = c("top", "beta", "nec", "SS", "SSsim"),
                          over_disp = FALSE, model = "nec3param",
                          added_model = FALSE, sig_val = 0.025,
                          x_range = NA, precision = 1000, iter=2e4, ...) {
@@ -62,7 +58,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   if (!added_model) {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
                              trials_var = trials_var, x_type = x_type,
-                             y_type = y_type, params = params,
+                             y_type = y_type,
                              over_disp = over_disp, model = model)
     mod_dat <- data_check$mod_dat
     y_type <- data_check$y_type
@@ -71,7 +67,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     data <- data_check$data
     x_dat <- data_check$x_dat
     y_dat <- data_check$y_dat 
-    params <- data_check$params 
     init_fun <- data_check$init_fun
     bform <- data_check$bform
     priors <- data_check$priors  
@@ -186,7 +181,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
       bot = bot,
       d = d,
       ec50 = ec50,
-      params = params,
       over_disp=od,
       predicted.y = predicted.y,
       residuals = residuals,
