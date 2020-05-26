@@ -101,10 +101,10 @@ extract_ecx.bayesnecfit <- function(X, ecx.val=10, precision=1000, posterior = F
   if(length(grep("ecx", X$model))>0){mod.class <- "ecx"}else{mod.class <- "nec"}
   if(is.null(X$bot)==FALSE){m4param <- 1}else{m4param <- 0}
   
-  if(X$y.type=="gaussian"  &  type=="absolute"){
+  if(X$y_type=="gaussian"  &  type=="absolute"){
     stop("Absolute ecx values are not valid for a gaussian response variable unless a 4 parameter model is fit") 
   }
-  if(X$x.type=="gaussian" &  X$model == "ecxLinear"  & type=="absolute"){
+  if(X$x_type=="gaussian" &  X$model == "ecxLinear"  & type=="absolute"){
     stop("Absolute ecx values are not valid for a linear model when
          x-values are gaussian, because 'top' merely indicates the y-intercept. Use type 'relative'.") 
   }  

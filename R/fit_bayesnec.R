@@ -57,7 +57,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          params = c("top", "beta", "nec", "SS", "SSsim"),
                          over_disp = FALSE, model = "nec3param",
                          added_model = FALSE, sig_val = 0.025,
-                         x_seq = NA, precision = 1000, ...) {
+                         x_seq = NA, precision = 1000, iter=2e4, ...) {
   
   if (!added_model) {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
@@ -93,7 +93,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     mod_family <- mod_file$mod_family
   }
   
-  fit <- brms::brm(bform, data = mod_dat, prior = priors,
+  fit <- brms::brm(bform, data = mod_dat, prior = priors, warmup = floor(iter/5)*4, iter=iter,
                        family = mod_family, ...)
 
   out <- list(fit = fit, mod_dat = mod_dat,
@@ -134,7 +134,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   y.pred.m <- predict(fit, newdata = new.dat, robust = TRUE, re_formula = NA)
   predicted.y <- predict(fit, robust = TRUE, re_formula = NA)
 
-  if(y.type=="binomial"){
+  if(y_type=="binomial"){
     top <- top/10^3
     predicted.y <- predicted.y/10^3
     y.pred.m <-  y.pred.m/10^3
@@ -145,7 +145,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   
   # entire posterior
   pred.posterior <- t(predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE))
-  if(y.type=="binomial"){
+  if(y_type=="binomial"){
     pred.posterior <- pred.posterior/10^3
   }
   
