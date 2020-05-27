@@ -38,14 +38,17 @@ define_model <- function(model, x_type, y_type, mod_dat){
   if(y_type=="binomial"){
     mod_family <- binomial()
     prior_top <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.8)
+    prior_bot <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.2)
     }
   if(y_type=="gamma"){
     mod_family <- Gamma()
     prior_top <- quantile(log(mod_dat$y), probs = 0.8)
+    prior_bot <- quantile(log(mod_dat$y), probs = 0.2)
     }
   if(y_type=="poisson"){
     mod_family <- poisson()
     prior_top <- quantile(log(mod_dat$y), probs = 0.8)
+    prior_bot <- quantile(log(mod_dat$y), probs = 0.2)
     }
   if(y_type=="gaussian"){
     mod_family <- gaussian()
@@ -54,10 +57,12 @@ define_model <- function(model, x_type, y_type, mod_dat){
   if(y_type=="beta"){
     mod_family <- Beta()
     prior_top <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.8)
+    prior_bot <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.2)
     }
   if(y_type=="negbin"){
     mod_family <- negbinomial()
     prior_top <- quantile(log(mod_dat$y), probs = 0.8)
+    prior_bot <- quantile(log(mod_dat$y), probs = 0.2)
     }
   
   priors <- c(priors, 
@@ -104,9 +109,40 @@ define_model <- function(model, x_type, y_type, mod_dat){
                         top + beta ~ 1,
                         nl = TRUE)
     }
- 
+  } 
   
-  }  
+  # nec4param - as per Fox 2010 but with an estimate for the lower plateau ----
+  if(model=="nec4param"){
+    if(y_type=="binomial"){
+      bform <- brms::bf(y | trials(trials) ~ bot + (bot-top) *
+                          exp(-beta * (x - nec) *
+                                step(x - nec)),
+                        bot + top + beta + nec ~ 1,
+                        nl = TRUE)
+    }else{
+      bform <- brms::bf(y ~ bot + (bot-top) *
+                          exp(-beta * (x - nec) *
+                                step(x - nec)),
+                        bot + top + beta + nec ~ 1,
+                        nl = TRUE)
+    }
+    
+    priors <- c(priors, 
+                brms::prior_string(paste0("normal(", prior_bot, ", 100)"), nlpar = "bot"))    
+    
+    if(x_type=="beta"){
+      priors <- c(priors, 
+                  brms::prior(uniform(0.0001, 0.9999), nlpar = "nec"))   
+    }
+    if(x_type=="gamma"){
+      priors <- c(priors,
+                  brms::prior(normal(0, 100), nlpar = "nec", lb = 0)) 
+    }
+    if(x_type=="gaussian"){
+      priors <- priors + 
+        brms::prior(normal(3, 100), nlpar = "nec") 
+    }     
+  }
   
   # Return outcomes ---- 
   #the model formula, priors and family to use in the model fit
