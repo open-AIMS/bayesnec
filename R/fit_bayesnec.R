@@ -51,12 +51,32 @@
 #' @return The $BUGSoutput element of fitted bayes model, including an estimate of the nec value. 
 #' A posterior sample of the nec is also available under $sims.list.
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
-                         x_type = NA, y_type = NA,
-                         over_disp = FALSE, model = "nec3param",
-                         added_model = FALSE, sig_val = 0.025, iter = 2e4,
-                         x_range = NA, precision = 1000, ...) {
+                         x_type = NA, y_type = NA, x_range = NA, precision = 1000,
+                         over_disp = FALSE, model = "nec3param", sig_val = 0.025, iter = 2e4,
+                         warmup = floor(iter/5)*4, 
+                          ...) {
+  if(class(data)== "bayesmanecfit"){
+    response <- data$data[, y_var]
+    mod_dat <- data$mod_dat
+    #data <- data$data
+       
+    y_dat <- data$y_dat
+    x_dat <- data$x_dat   
+    y_type <- data$y_type
+    x_type <- data$x_type
+  
+    if (y_type == "binomial") {
+      response <- response / data$data[, trials_var]
+
+    }
+
+    mod_file <- define_model(model = model, x_type = x_type,
+                             y_type = y_type, mod_dat = mod_dat)
+    bform <- mod_file$bform
+    priors <- mod_file$priors
+    mod_family <- mod_file$mod_family
     
-  if (!added_model) {
+  } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
                              trials_var = trials_var, x_type = x_type,
                              y_type = y_type,
@@ -72,24 +92,10 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     bform <- data_check$bform
     priors <- data_check$priors  
     mod_family <- data_check$mod_family
-  } else {
-    response <- data[, y_var]
-    if (y_type == "binomial") {
-      response <- response / data[, trials_var]
-    }
-    
-    y_dat <- data[, y_var]
-    x_dat <- data[, x_var]
-    
-    mod_file <- define_model(model = model, x_type = x_type,
-                             y_type = y_type, ...)
-    bform <- mod_file$bform
-    priors <- mod_file$priors
-    mod_family <- mod_file$mod_family
   }
   
-  fit <- brms::brm(bform, data = mod_dat, prior = priors, warmup = floor(iter/5)*4, iter=iter,
-                       family = mod_family, ...)
+  fit <- brms::brm(bform, data = mod_dat, prior = priors, iter=iter,
+                       family = mod_family, warmup = warmup)
   
   fit$loo <- brms::loo(fit)
   fit$waic <- brms::waic(fit)
