@@ -30,7 +30,7 @@
 modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, add_models=NA, ...) {
   
   # if the model set is NA 
-  if(is.na(model_set)){
+  if(is.na(model_set[1])){
     model_set <- names(bayesmanecfit$mod_fits)
   }
   
@@ -42,14 +42,17 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
   )}
   
   # if drop_models is not NA 
-  if(is.na(drop_models)==F){
+  if(is.na(drop_models[1])==F){
     model_set <- model_set[is.na(match(model_set, drop_models))]
   }
   
   # if add_models is not NA 
-  if(is.na(add_models)==F){
+  if(is.na(add_models[1])==F){
     model_set <- unique(c(model_set,add_models))
   }
+  
+  # Get the original model simulation attributes
+  simdat <- extract_simdat(bayesmanecfit$mod_fits[[1]])
   
   # Fit each of the models
   mod_fits <- vector(mode = 'list', length = length(model_set))
@@ -61,7 +64,7 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
     mod.m <- try(bayesmanecfit$mod_fits[[model]], silent=T)
     if(class(mod.m)!="bayesnecfit"){
       fit.m <- try(
-        fit_bayesnec(data = bayesmanecfit$data,
+        fit_bayesnec(data = bayesmanecfit,
                      x_var = bayesmanecfit$x_var,
                      y_var = bayesmanecfit$y_var,
                      trials_var = bayesmanecfit$trials_var,
@@ -69,8 +72,10 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
                      y_type = bayesmanecfit$y_type,
                      over_disp = bayesmanecfit$over_disp,
                      model = model,
-                     added_model = TRUE,
-                     mod_dat = bayesmanecfit$mod_dat),
+                     iter = simdat$iter,
+                     thin = simdat$thin,
+                     warmup = simdat$warmup,
+                     chains = simdat$chains),
         silent = TRUE)
       if (!inherits(fit.m, 'try-error')) {
         mod_fits[[model]] <- fit.m  
@@ -84,7 +89,7 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
     }
   
   }
-  
+
   # collate all the elements
   export.list <- c(extract_modstats(mod_fits), 
                    list(data=bayesmanecfit$data, 

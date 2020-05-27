@@ -72,7 +72,8 @@ fit_bayesmanec <- function(data,
                   iter = iter,
                   over_disp=over_disp,
                   model=model,
-                  x_range=x_range), 
+                  x_range=x_range,
+                  open_progress = FALSE), 
       silent = TRUE)
     if (!inherits(fit_m, 'try-error')) {
       mod_fits[[m]] <- fit_m  
