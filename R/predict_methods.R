@@ -25,7 +25,7 @@
 #' @export
 #' @return A list containing x and fitted y, with up and lw values
 
-predict.bayesnec <- function(X, precision=100, x_range=NA){
+predict.bayesnecfit <- function(X, precision=100, x_range=NA){
   mod_dat <- X$mod_dat
 
   y_type <- X$y_type
