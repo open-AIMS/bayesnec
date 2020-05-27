@@ -1,8 +1,8 @@
 #' fit_bayesnec
 #'
-#' Fits an nec model as per Fox 2010, using bayes and R2bayes
+#' Fits a concentration(dose)-response model using brms
 #'
-#' @param data a data.frame containing the data to use for the model
+#' @param data a data.frame containing the data to use for the model fit
 #' @param x_var the column heading indicating the concentration (x) variable
 #' @param y_var the column heading indicating the response (y) variable
 #' @param trials_var the column heading indicating the column for the number of "trials" for binomial response data. 
@@ -13,43 +13,33 @@
 #' 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer. 
 #' If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.
 #' @param over_disp If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type 
-#' data. For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.
+#' data. For poisson, a negative binomial model is used. For binomial a beta model is used.
 #' @param model The type of model to be fit. Currently takes values of "nec3param",  
 #' "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxexp", "ecxlin", or "ecxwb2".
-#' @param added_model Logical. something
 #' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values
 #' against the control, to estimate nec as an interpolated NOEC value from smooth ecx curves.
-#' @param x_range The range of x values over which to obtained posterior predictions. Used for plot.bayesnecfit and to calculate nec for ecx models.
+#' @param x_range The range of x values over which to obtain posterior predictions. Used for plot.bayesnecfit and to calculate nec for ecx models.
 #' @param precision The length of the x_seq to pass to posterior_predict as new data. Used for plot.bayesnecfit and to calculate nec for ecx models.
-#' @param iter the number of interations to for the brms fit. Defaults to 2e4.
+#' @param iter the number of interations for the brms fit. Defaults to 2e4.
+#' @param warmup the number of warmup iterations. Defaults to 4/5ths of iter.
 #' @param ... further arguments to be passed to \code{\link[brms]{brm}}.
 #' 
 #' @details   
 #' 
-#' As some concentration-response data will use zero concentration, 
-#' and there is no distribution on the continuous scale from 0 to in (ie tweedie) available in bayes, a small offset 
-#' is added (1/10^3 of the next lowest value) to zero values of concentration where x_var are gamma distributed.
-#' 
-#' If the initial model fit fails because it cannot be fit by bayes (miss-specified priors, invalid 
-#' initial values), or because there is poor chain mixing fit_bayesnec will try n.tries many times using the init_fun 
-#' defined by the write model function. If all those attempts fail, fit_bayesnec will then try using default values 
-#' provided by bayes. The function will only return an error if all n.tries fail.
-#' 
-#' All models other than "nec3param" (which is that defined by Fox 2010) are currently undergoing beta testing and are 
-#' experimental. These should not yet be used for nec reporting for official purposes. Comments and feedback are welcome, 
-#' especially reproducible examples of issues, as well as example test cases.
+#' As some concentration-response data will use zero concentration which can cause numerical estimation issues, a small offset 
+#' is added (1/10th of the next lowest value) to zero values of concentration where x_var are gamma distributed.
 #' 
 #' All models provide an estimate for nec. For model types with "nec" as a prefix, nec is directly estimated as a paremeter 
-#' in the model. Models with "ecx" as a prefix are continuos curve models, tyipically used for extracting ecx values 
+#' in the model. Models with "ecx" as a prefix are continuous curve models, tyipically used for extracting ecx values 
 #' from concentration response data. In this instance the nec value is defined as the concentration at which there is 
-#' 90 percent certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of
+#' a user supplied (see sig_val) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of
 #' the upper assymptote (top) of the response (i.e the response value is significantly lower than that expected in the case of
 #' no exposure).
 #'
 #' @export
 #' @importFrom brms fixef brm
-#' @return The $BUGSoutput element of fitted bayes model, including an estimate of the nec value. 
-#' A posterior sample of the nec is also available under $sims.list.
+#' @return The fitted brms model, including an estimate of the nec value and predicted posterior values.
+#' A posterior sample of the nec is also available under $nec.posterior
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          x_type = NA, y_type = NA, x_range = NA, precision = 1000,
                          over_disp = FALSE, model = "nec3param", sig_val = 0.025, iter = 2e4,
@@ -157,7 +147,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   pred.vals <- c(list(x=x_seq, y=y.pred.m[,"Estimate"], up=y.pred.m[,"Q97.5"], lw=y.pred.m[,"Q2.5"],
                       posterior=pred.posterior), list(y.pred.m=y.pred.m[,"Estimate"]))  
 
-  
   # Extract the overdispersion estimate
   od <- NA#mean(out$sims.list$SS > out$sims.list$SSsim)
   
@@ -176,8 +165,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   }else{
     nec.posterior <- unlist(posterior_samples(fit, pars="nec_Intercept"))
   }
-  
-
   
   # Put everyting in a list for output
   if(class(out)!="try-error"){
