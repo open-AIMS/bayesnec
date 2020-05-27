@@ -31,10 +31,11 @@
 
 define_model <- function(model, x_type, y_type, mod_dat){
  
-  # Set prior for beta - decay slope. Currently the same prior for all models.
-  priors <- brms::prior(gamma(0.0001, 0.0001), nlpar = "beta")
+  # Prior for beta - decay slope ---------
+  # Currently the same prior for all models.
+  priors <- brms::prior(normal(0, 10), nlpar = "beta", lb = 0)
   
-  # Set the y_type family and prior for 'top'
+  # y_type family and prior for 'top' and 'bot' ------------
   if(y_type=="binomial"){
     mod_family <- binomial()
     prior_top <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.8)
@@ -53,11 +54,12 @@ define_model <- function(model, x_type, y_type, mod_dat){
   if(y_type=="gaussian"){
     mod_family <- gaussian()
     prior_top <- quantile(mod_dat$y, probs = 0.8)
+    prior_bot <- quantile(mod_dat$y, probs = 0.2)    
     }
   if(y_type=="beta"){
     mod_family <- Beta()
-    prior_top <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.8)
-    prior_bot <- quantile(qlogis(mod_dat$y/mod_dat$trials), probs = 0.2)
+    prior_top <- quantile(qlogis(mod_dat$y), probs = 0.8)
+    prior_bot <- quantile(qlogis(mod_dat$y), probs = 0.2)
     }
   if(y_type=="negbin"){
     mod_family <- negbinomial()
@@ -66,9 +68,20 @@ define_model <- function(model, x_type, y_type, mod_dat){
     }
   
   priors <- c(priors, 
-                brms::prior_string(paste0("normal(", prior_top, ", 100)"), nlpar = "top")) 
+                brms::prior_string(paste0("normal(", prior_top, ", 5)"), nlpar = "top")) 
+  
+  # x_type and prior for 'nec' --------------
+     if(x_type=="beta"){
+       prior_nec <- brms::prior(uniform(0.0001, 0.9999), nlpar = "nec")   
+     }
+     if(x_type=="gamma"){
+       prior_nec <- brms::prior(normal(0, 100), nlpar = "nec", lb = 0)
+     }
+     if(x_type=="gaussian"){
+       prior_nec <- brms::prior(normal(3, 100), nlpar = "nec") 
+     }   
        
-  # nec3param - as per Fox 2010 ----
+  # nec3param - as per Fox 2010 ------
   if(model=="nec3param"){
     if(y_type=="binomial"){
            bform <- brms::bf(y | trials(trials) ~ top *
@@ -83,22 +96,11 @@ define_model <- function(model, x_type, y_type, mod_dat){
                         top + beta + nec ~ 1,
                         nl = TRUE)
     }
-
-     if(x_type=="beta"){
-       priors <- c(priors, 
-         brms::prior(uniform(0.0001, 0.9999), nlpar = "nec"))   
-     }
-     if(x_type=="gamma"){
-       priors <- c(priors,
-         brms::prior(normal(0, 100), nlpar = "nec", lb = 0)) 
-     }
-     if(x_type=="gaussian"){
-       priors <- priors + 
-         brms::prior(normal(3, 100), nlpar = "nec") 
-     }     
+  priors <- priors + prior_nec
+    
   }
 
-  # Simple exponential decay ----
+  # Exponential decay ----
   if(model=="ecxexp"){
     if(y_type=="binomial"){
       bform <- brms::bf(y | trials(trials) ~ top * exp(-beta * x),
@@ -111,6 +113,34 @@ define_model <- function(model, x_type, y_type, mod_dat){
     }
   } 
   
+  # Simple linear decay ----
+  if(model=="ecxlin"){
+    if(y_type=="binomial"){
+      bform <- brms::bf(y | trials(trials) ~ top - beta * x,
+                        top + beta ~ 1,
+                        nl = TRUE)
+    }else{
+      bform <- brms::bf(y ~ top - beta * x,
+                        top + beta ~ 1,
+                        nl = TRUE)
+    }
+  } 
+  
+  # Sigmoidal decay ----
+  if(model=="ecxsigm"){
+    if(y_type=="binomial"){
+      bform <- brms::bf(y | trials(trials) ~ top * exp(-beta * x)^d,
+                        d + top + beta ~ 1,
+                        nl = TRUE)
+    }else{
+      bform <- brms::bf(y ~ top * exp(-beta * x)^d,
+                        top + beta ~ 1,
+                        nl = TRUE)
+    }
+  priors <- priors + 
+      brms::prior(normal(0, 100), nlpar = "d")   
+  } 
+
   # nec4param - as per Fox 2010 but with an estimate for the lower plateau ----
   if(model=="nec4param"){
     if(y_type=="binomial"){
@@ -128,20 +158,9 @@ define_model <- function(model, x_type, y_type, mod_dat){
     }
     
     priors <- c(priors, 
-                brms::prior_string(paste0("normal(", prior_bot, ", 100)"), nlpar = "bot"))    
+                brms::prior_string(paste0("normal(", prior_bot, ", 100)"), nlpar = "bot"),
+                prior_nec)    
     
-    if(x_type=="beta"){
-      priors <- c(priors, 
-                  brms::prior(uniform(0.0001, 0.9999), nlpar = "nec"))   
-    }
-    if(x_type=="gamma"){
-      priors <- c(priors,
-                  brms::prior(normal(0, 100), nlpar = "nec", lb = 0)) 
-    }
-    if(x_type=="gaussian"){
-      priors <- priors + 
-        brms::prior(normal(3, 100), nlpar = "nec") 
-    }     
   }
   
   # Return outcomes ---- 
