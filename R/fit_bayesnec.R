@@ -53,12 +53,9 @@
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          x_type = NA, y_type = NA,
                          over_disp = FALSE, model = "nec3param",
-                         added_model = FALSE, sig_val = 0.025, 
+                         added_model = FALSE, sig_val = 0.025, iter = 2e4,
                          x_range = NA, precision = 1000, ...) {
-  
-  args <- list(...)
-  
-  
+    
   if (!added_model) {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
                              trials_var = trials_var, x_type = x_type,
@@ -77,8 +74,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     mod_family <- data_check$mod_family
   } else {
     response <- data[, y_var]
-    
-    
     if (y_type == "binomial") {
       response <- response / data[, trials_var]
     }
@@ -87,7 +82,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     x_dat <- data[, x_var]
     
     mod_file <- define_model(model = model, x_type = x_type,
-                             y_type = y_type, )
+                             y_type = y_type, ...)
     bform <- mod_file$bform
     priors <- mod_file$priors
     mod_family <- mod_file$mod_family

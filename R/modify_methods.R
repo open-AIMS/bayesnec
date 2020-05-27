@@ -27,7 +27,7 @@
 #' @export
 #' @return All successully fitted bayesmanecfit model fit.
 
-modify.bayesmanec <- function(bayesmanecfit, model_set=NA, drop_models=NA, add_models=NA, iter=2e4, ...){
+modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, add_models=NA, ...) {
   
   # if the model set is NA 
   if(is.na(model_set)){
@@ -61,16 +61,16 @@ modify.bayesmanec <- function(bayesmanecfit, model_set=NA, drop_models=NA, add_m
     mod.m <- try(bayesmanecfit$mod_fits[[model]], silent=T)
     if(class(mod.m)!="bayesnecfit"){
       fit.m <- try(
-        fit_bayesnec(data=bayesmanecfit$data,
-                    x_var=bayesmanecfit$x_var,
-                    y_var=bayesmanecfit$y_var,
-                    trials_var = bayesmanecfit$trials_var,
-                    x_type = bayesmanecfit$x_type, 
-                    y_type = bayesmanecfit$y_type,
-                    over_disp=bayesmanecfit$over_disp,
-                    model=model,
-                    added_model=TRUE, 
-                    mod_dat=bayesmanecfit$mod_dat), 
+        fit_bayesnec(data = bayesmanecfit$data,
+                     x_var = bayesmanecfit$x_var,
+                     y_var = bayesmanecfit$y_var,
+                     trials_var = bayesmanecfit$trials_var,
+                     x_type = bayesmanecfit$x_type, 
+                     y_type = bayesmanecfit$y_type,
+                     over_disp = bayesmanecfit$over_disp,
+                     model = model,
+                     added_model = TRUE,
+                     mod_dat = bayesmanecfit$mod_dat),
         silent = TRUE)
       if (!inherits(fit.m, 'try-error')) {
         mod_fits[[model]] <- fit.m  

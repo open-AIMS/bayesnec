@@ -29,7 +29,7 @@
 #' @importFrom brms prior bf
 #' @importFrom base qlogis
 
-define_model <- function(model, x_type, y_type, mod_dat){
+define_model <- function(model, x_type, y_type, mod_dat, ...) {
  
   # Prior for beta - decay slope ---------
   # Currently the same prior for all models.
