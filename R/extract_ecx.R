@@ -208,14 +208,15 @@ extract_ecx.bayesnecfit <- function(X, ecx.val=10, precision=1000, posterior = F
 extract_ecx.bayesmanecfit <- function(X, ecx.val=10, precision=1000, posterior = FALSE, type="absolute", 
                                      hormesis.def="control", xform=NA, x_range=NA,
                                      prob.vals=c(0.5, 0.025, 0.975)){
-  
-  ecx.out <- unlist(sapply(X$success.models, FUN=function(x){
-    base::sample(extract_ecx.bayesnecfit(X$mod.fits[[x]], 
+  sample.size <- X$sample.size
+  ecx.out <- unlist(sapply(1:length(X$success_models), FUN=function(x){
+    base::sample(extract_ecx.bayesnecfit(X$mod_fits[[x]], 
                                         ecx.val=ecx.val, 
-                                        precision=100,#precision, 
+                                        precision=precision, 
                                         posterior = TRUE, 
                                         x_range = x_range,
-                                        type=type), round(X$n.sims*X$mod.stats[x, "wi"]))
+                                        type=type), 
+                 as.integer(round(sample.size*X$mod_stats[x, "wi"])))
   }))
   
   label <- paste("ec", ecx.val, sep="_")
