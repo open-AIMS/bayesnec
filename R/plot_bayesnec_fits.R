@@ -20,10 +20,6 @@
 #' 
 #' @param CI a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples
 #'
-#' @param posterior.median a logical value indicating if the posterior median of the model fit should be plotted, calculated as the median of the individual predicted values from all posterior samples
-#'
-#' @param median.model a logical value indicating if the fitted model calculated from the median estimates of the nec, top and beta parameters should be plotted. This is the fitted model as shown in Fox 2010.
-#'
 #' @param add.nec a logical value indicating if the estimated nec value and 95\% credible intervals should be added to the plot.
 #' 
 #' @param add.ec10 a logical value indicating if an estimated ec10 value and 95\% credible intervals should be added to the plot.
@@ -49,7 +45,7 @@
 #' @export
 #' @return a plot of the fitted model
 
-plot.bayesnecfit <- function(X,  CI=TRUE,  posterior.median=TRUE,  median.model=FALSE,  
+plot.bayesnecfit <- function(X,  CI=TRUE,
                             add.nec=TRUE, legend.loc="topright",  add.ec10=FALSE,
                             xform=NA, lxform=NA,
                             jitter.x=FALSE, jitter.y=FALSE, 
@@ -130,12 +126,9 @@ plot.bayesnecfit <- function(X,  CI=TRUE,  posterior.median=TRUE,  median.model=
     lines(x.vec, X$pred.vals$up, lty=2) 
     lines(x.vec, X$pred.vals$lw, lty=2)  
   }
-  if(posterior.median==TRUE){
+
     lines(x.vec, X$pred.vals$y)
-  }
-  if(median.model==TRUE){
-    lines(x.vec, X$pred.vals$y.m, col="red")  
-  }
+  
   if(add.nec==TRUE & add.ec10==FALSE){
     abline(v=nec, col = "red", lty=c(1,3,3))   
     legend(legend.loc, bty="n",
@@ -163,10 +156,6 @@ plot.bayesnecfit <- function(X,  CI=TRUE,  posterior.median=TRUE,  median.model=
 #' @param X the bayes nec model fit as returned by fit.bayesnec.
 #' 
 #' @param CI a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples
-#'
-#' @param posterior.median a logical value indicating if the posterior median of the model fit should be plotted, calculated as the median of the individual predicted values from all posterior samples
-#'
-#' @param median.model a logical value indicating if the fitted model calculated from the median estimates of the nec, top and beta parameters should be plotted. This is the fitted model as shown in Fox 2010.
 #'
 #' @param add.nec a logical value indicating if the estimated nec value and 95\% credible intervals should be added to the plot.
 #' 
@@ -280,12 +269,9 @@ plot.bayesmanecfit <- function(X,  CI=TRUE,
     lines(x.vec, X$pred.vals$up, lty=2) 
     lines(x.vec, X$pred.vals$lw, lty=2)  
   }
-  if(posterior.median==TRUE){
+
     lines(x.vec, X$pred.vals$y)
-  }
-  if(median.model==TRUE){
-    lines(x.vec, X$pred.vals$y.m, col="red")  
-  }
+
   if(add.nec==TRUE & add.ec10==FALSE){
     abline(v=nec, col = "red", lty=c(1,1,3))   
     legend(legend.loc, bty="n",

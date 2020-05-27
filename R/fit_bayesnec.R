@@ -91,6 +91,9 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   
   fit <- brms::brm(bform, data = mod_dat, prior = priors, warmup = floor(iter/5)*4, iter=iter,
                        family = mod_family, ...)
+  
+  fit$loo <- brms::loo(fit)
+  fit$waic <- brms::waic(fit)
 
   out <- list(fit = fit, mod_dat = mod_dat,
               y_type = y_type, x_type = x_type, model = model)
