@@ -27,120 +27,61 @@
 #' @param jitter_y a logical value indicating if the y data points on the plot should be jittered.
 #' @param xlab a character vector to use for the x-axis label
 #' @param ylab a character vector to use for the y-axis label
-#' @param xlim a numeric vector of length two to use for the lower and uper limits of the x-axis range
+#' @param x_lim a numeric vector of length two to use for the lower and uper limits of the x-axis range
+#' @param y_lim a numeric vector of length two to use for the lower and uper limits of the y-axis range
 #' @param xticks a numeric vector indicate where to place the tick marks of the x-axis
 #'
 #' @export
 #' @return a plot of the fitted model
 
 plot.bayesmanecfit <- function(X,  CI=TRUE, 
-                               add_nec=TRUE, position_legend="topright",  add_ec10=FALSE,
-                               xform=NA, lxform=NA,
-                               jitter_x=FALSE, jitter_y=FALSE, 
+                               add_nec=TRUE, 
+                               position_legend="topright",  
+                               add_ec10=FALSE,
+                               xform=NA, 
+                               lxform=NA,
+                               jitter_x=FALSE, 
+                               jitter_y=FALSE, 
                                ylab="response", 
                                xlab="concentration", 
-                               xlim = NA, 
-                               ylim = NA,
-                               xticks = NA,  ...){
+                               x_lim = NA, 
+                               y_lim = NA,
+                               xticks = NA, 
+                               all_models = FALSE, ...){
   
-  
-  # check if y_type is binomial
-  y_type <- X$y_type
-  if(y_type=="binomial"){
-    y_dat <- X$mod_dat$y/X$mod_dat$trials}else{
-      y_dat <- X$mod_dat$y}
-  
-  ## extract ec10
-  ec10 <- c(NA, NA, NA)
-  if(add_ec10==TRUE & X$y_type!="gaussian"){
-    ec10 <- extract_ecx(X)
-  }
-  if(add_ec10==TRUE & X$y_type=="gaussian"){
-    ec10 <- extract_ecx(X, type="relative")
-  }
-  
-  # check if a transformation is required for x
-  if(class(xform)=="function"){
-    x_dat <- xform(X$mod_dat$x)
-    nec <- xform(X$nec)
-    x_vec <- xform(X$pred_vals$x)
-    ec10 <- xform(ec10)
-  }else{
-    x_dat <- X$mod_dat$x
-    nec <- X$nec
-    x_vec <- X$pred_vals$x
-  }
-  
-  if(jitter_x==TRUE){x_dat <- jitter(x_dat)}
-  if(jitter_y==TRUE){y_dat <- jitter(y_dat)}  
-  
-  # check if a range for the x axis has been specified
-  if(max(is.na(xlim))==1){
-    x_lim <- range(x_dat)}else{
-      x_lim <- xlim
+   if(all_models){
+    mod_fits <- X$mod_fits 
+    par(mfrow=c(ceiling(length(mod_fits)/2), 2), mar=c(1.5, 1.5, 1.5, 1.5), oma=c(3, 3, 0, 0)) 
+    for(m in 1:length(mod_fits)){
+      plot(X = mod_fits[[m]],
+           CI = CI, add_nec = add_nec, 
+           position_legend = position_legend,  
+           add_ec10 = add_ec10,
+           xform = xform, lxform = lxform,
+           jitter_x = jitter_x, jitter_y = jitter_y, 
+           ylab = "", xlab = "", 
+           x_lim = x_lim, 
+           xticks = xticks,  ...)   
+      mtext(xlab, side=1, outer=T, line=2)
+      mtext(ylab, side=2, outer=T, line=2)      
     }
-  # Check if x axis tick marks have been specified
-  if(max(is.na(xticks))==1){
-    xticks <- seq(min(x_dat), max(x_dat), length=7)
-  }else{
-    xticks <- xticks
-  }
-  
-  if(is.na(xlim)==TRUE){xlim=range(x_dat)}
-  if(is.na(ylim)==TRUE){ylim=range(y_dat)}
-  
-  plot(x_dat, y_dat, 
-       ylab=ylab, 
-       xlab=xlab,        
-       pch=16, xaxt="n", 
-       xlim = xlim, ylim=ylim,
-       col=adjustcolor(1, alpha=0.25), 
-       cex=1.5) 
-  
-  if(class(lxform)!="function"){
-    if(max(is.na(xticks))==1){axis(side=1)}else{axis(side=1, at=xticks)}  
-    legend_nec <- paste("nec: ", signif(nec["Estimate"],2), 
-                        " (", signif(nec["Q2.5"],2),"-", 
-                        signif(nec["Q97.5"],2),")",sep="")
-    legend_ec10 <- paste("ec10: ", signif(ec10[1],2), 
-                         " (", signif(ec10[2],2),"-", 
-                         signif(ec10[3],2),")",sep="")
-  }else{
-    x_labs <- signif(lxform(xticks),2)
-    axis(side=1, at=xticks, labels = x_labs)
-    legend_nec <- paste("nec: ", signif(lxform(nec["Estimate"]),2), 
-                        " (",    signif(lxform(nec["Q2.5"]),2),"-", 
-                        signif(lxform(nec["Q97.5"]),2),")",sep="")    
-    legend_ec10 <- paste("ec10: ", signif(lxform(ec10[1]),2), 
-                         " (",    signif(lxform(ec10[2]),2),"-", 
-                         signif(lxform(ec10[3]),2),")",sep="")  
-  }
-  
-  if(CI==TRUE){
-    lines(x_vec, X$pred_vals$up, lty=2) 
-    lines(x_vec, X$pred_vals$lw, lty=2)  
-  }
-  
-  lines(x_vec, X$pred_vals$y)
-  
-  if(add_nec==TRUE & add_ec10==FALSE){
-    abline(v=nec, col = "red", lty=c(1,1,3))   
-    legend(position_legend, bty="n",
-           legend=legend_nec, lty=1, col="red")
-  }
-  if(add_ec10==TRUE & add_nec==FALSE){
-    abline(v=ec10, col = "red", lty=c(1,3,3))  
-    legend(position_legend, bty="n",
-           legend=legend_ec10, lty=1, col="red")
-  }
-  if(add_ec10==TRUE & add_nec==TRUE){
-    abline(v=nec, col = "red", lty=c(1,3,3))  
-    abline(v=ec10, col = "orange", lty=c(1,3,3)) 
     
-    legend(position_legend, bty="n",
-           legend=c(legend_nec, legend_ec10), 
-           lty=1, col=c("red", "orange"))
-  }
+     
+   }else{
+    plot.bayesnecfit(X = X, CI = CI, add_nec = add_nec, 
+                    position_legend = position_legend,  
+                    add_ec10 = add_ec10,
+                    xform = xform, lxform = lxform,
+                    jitter_x = jitter_x, jitter_y = jitter_y, 
+                    ylab = ylab, xlab = xlab, 
+                    x_lim = x_lim, 
+                    xticks = xticks,  ...)     
+   }
+
+  
+
+  
+  
 }
 
 #'modify.bayesmanec
@@ -148,13 +89,9 @@ plot.bayesmanecfit <- function(X,  CI=TRUE,
 #' Modifys an existing bayesmanecfit, for example, but adding or removing fitted models.
 #'
 #' @param  bayesmanecfit a bayesmanecfit output list, as returned by fit.bayesmanec
-#'
 #' @param model_set A character vector containing the of names of model types to be included in the modified fit.
-#' 
 #' @param drop_models A character vector containing the names of model types you which to drop for the modified fit.
-#' 
 #' @param add_models A character vector containing the names of model types to add to the modified fit.
-#'
 #' @export
 #' @return All successully fitted bayesmanecfit model fit.
 
@@ -169,8 +106,10 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
   if(model_set[1]=="ecx"){model_set=c("ecx4param", "ecxwb1", "ecxwb2")}
   if(model_set[1]=="all"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm", 
                                       "ecxlin", "ecxexp", "ecxsigm",
-                                      "ecx4param", "ecxwb1", "ecxwb2"
-  )}
+                                      "ecx4param", "ecxwb1", "ecxwb2")}
+  
+  if(model_set[1]=="bot_free"){model_set=c("nec3param", "nechorme", "necsigm", 
+                                           "ecxlin", "ecxexp", "ecxsigm")}
   
   # if drop_models is not NA 
   if(is.na(drop_models[1])==F){

@@ -53,8 +53,12 @@ fit_bayesmanec <- function(data,
   if(model_set[1]=="ecx"){model_set=c("ecx4param", "ecxlin", "ecxexp", "ecxsimg","ecxwb1", "ecxwb2")}
   if(model_set[1]=="all"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm", 
                                       "ecxlin", "ecxexp", "ecxsigm",
-                                      "ecx4param", "ecxwb1", "ecxwb2"
-  )}
+                                      "ecx4param", "ecxwb1", "ecxwb2")}
+  if(model_set[1]=="all"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm", 
+                                      "ecxlin", "ecxexp", "ecxsigm",
+                                      "ecx4param", "ecxwb1", "ecxwb2")}
+  if(model_set[1]=="bot_free"){model_set=c("nec3param", "nechorme", "necsigm", 
+                                      "ecxlin", "ecxexp", "ecxsigm")}
   
   # Fit each of the models
   mod_fits <- vector(mode = 'list', length = length(model_set))
