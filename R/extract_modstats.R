@@ -42,35 +42,35 @@ extract_modstats <- function(mod_fits){
   mod_stats$wi <- brms::loo_model_weights(lapply(mod_fits, FUN=function(x){x$fit$loo}))
   mod_stats$over_disp <- unlist(lapply(mod_fits, FUN=function(x){x$over_disp}))
   
-  sample.size <- nrow(predict(mod_fits[[1]]$fit, summary=FALSE)) 
+  sample_size <- nrow(predict(mod_fits[[1]]$fit, summary=FALSE)) 
   
   # model averaged nec posterior
-  nec.posterior <- unlist(lapply(1:length(success_models), FUN=function(x){
-      base::sample(mod_fits[[x]]$nec.posterior, size=as.integer(round(sample.size*mod_stats[x, "wi"])))})
+  nec_posterior <- unlist(lapply(1:length(success_models), FUN=function(x){
+      base::sample(mod_fits[[x]]$nec_posterior, size=as.integer(round(sample_size*mod_stats[x, "wi"])))})
   )
 
   # model averaged predicted y
-  predicted.y <- rowSums(do.call("cbind", lapply(1:length(success_models), FUN=function(x){
-    mod_fits[[x]]$predicted.y*mod_stats[x, "wi"]
+  predicted_y <- rowSums(do.call("cbind", lapply(1:length(success_models), FUN=function(x){
+    mod_fits[[x]]$predicted_y*mod_stats[x, "wi"]
   })))
   
-  # model averaged pred.vals
-  x <- mod_fits[[success_models[1]]]$pred.vals$x
+  # model averaged pred_vals
+  x <- mod_fits[[success_models[1]]]$pred_vals$x
   
-  y.m <- rowSums(do.call("cbind", lapply(success_models, FUN=function(x){
-    mod_fits[[x]]$pred.vals$y.m*mod_stats[x, "wi"]
+  y_m <- rowSums(do.call("cbind", lapply(success_models, FUN=function(x){
+    mod_fits[[x]]$pred_vals$y_m*mod_stats[x, "wi"]
   })))
   
   # model weighted posterior
-  posterior.predicted <- do.call("cbind", lapply(1:length(success_models), FUN=function(x){
-    mod_fits[[x]]$pred.vals$posterior[, base::sample(1:sample.size, round(sample.size*mod_stats[x, "wi"]))] 
+  posterior_predicted <- do.call("cbind", lapply(1:length(success_models), FUN=function(x){
+    mod_fits[[x]]$pred_vals$posterior[, base::sample(1:sample_size, round(sample_size*mod_stats[x, "wi"]))] 
   }))
   
-  y <- apply(posterior.predicted, MARGIN=1, FUN=median)
-  up <- apply(posterior.predicted, MARGIN=1, FUN=quantile, probs=0.975)
-  lw <- apply(posterior.predicted, MARGIN=1, FUN=quantile, probs=0.025)
+  y <- apply(posterior_predicted, MARGIN=1, FUN=median)
+  up <- apply(posterior_predicted, MARGIN=1, FUN=quantile, probs=0.975)
+  lw <- apply(posterior_predicted, MARGIN=1, FUN=quantile, probs=0.025)
   
-  nec <- quantile(nec.posterior, c(0.5, 0.025,  0.975))  
+  nec <- quantile(nec_posterior, c(0.5, 0.025,  0.975))  
   names(nec) <- c("Estimate", "Q2.5", "Q97.5")
   
   # collate all the elements
@@ -81,11 +81,11 @@ extract_modstats <- function(mod_fits){
            y_type=y_type,
            x_type=x_type,
            mod_stats=mod_stats,
-           sample.size=sample.size,
-           nec.posterior=nec.posterior,
-           predicted.y=predicted.y,
-           residuals=mod_dat$y-predicted.y,
-           pred.vals=list(x=x, y=y, up=up, lw=lw, posterior=posterior.predicted, y.m=y.m),
+           sample_size=sample_size,
+           nec_posterior=nec_posterior,
+           predicted_y=predicted_y,
+           residuals=mod_dat$y-predicted_y,
+           pred_vals=list(x=x, y=y, up=up, lw=lw, posterior=posterior_predicted, y_m=y_m),
            nec=nec)
   return(export.list)
   

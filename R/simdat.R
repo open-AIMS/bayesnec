@@ -16,7 +16,7 @@
 #'
 #' Extracts a range of statistics from a list of bayesnecfit model fits.
 #'
-#' @param  modfit a bayesnecfit, as returned by fit.bayesnec
+#' @param  modfit a bayesnecfit, as returned by fit_bayesnec
 #'
 #' @export
 #' @return A list of model simulation statistics including iter, thin, warmup and chains

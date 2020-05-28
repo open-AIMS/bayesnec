@@ -15,10 +15,13 @@
 #' define_model
 #'
 #' Writes an NEC model file for a three parameter model (top, beta and NEC) and generates a function for initial values to pass to jags
+#' @param x_type the statistical distribution to use for the x (concentration) data. 
+#' This may currently be one of  'beta', 'gaussian', or 'gamma'. 
+#' Others can be added as required, please contact the package maintainer.
 #' 
-#' @param x_type the statistical distribution to use for the x (concentration) data. This may currently be one of  'beta', 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
-#' 
-#' @param y_type the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 'beta', 'poisson', 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
+#' @param y_type the statistical distribution to use for the y (response) data. 
+#' This may currently be one of  'binomial', 'beta', 'poisson', 'gaussian', 'negbin' or 'gamma'. 
+#' Others can be added as required, please contact the package maintainer.
 #'
 #' @param model a character string indicating the model to fit
 #'
