@@ -27,22 +27,26 @@
 #' @param jitter_y a logical value indicating if the y data points on the plot should be jittered.
 #' @param xlab a character vector to use for the x-axis label
 #' @param ylab a character vector to use for the y-axis label
-#' @param xlim a numeric vector of length two to use for the lower and uper limits of the x-axis range
+#' @param x_lim a numeric vector of length two to use for the lower and uper limits of the x-axis range
+#' @param y_lim a numeric vector of length two to use for the lower and uper limits of the y-axis range
 #' @param xticks a numeric vector indicate where to place the tick marks of the x-axis
 #' @export
 #' @return a plot of the fitted model
 
-plot.bayesnecfit <- function(X,  CI=TRUE,
-                             add_nec=TRUE, position_legend="topright",  add_ec10=FALSE,
-                             xform=NA, lxform=NA,
-                             jitter_x=FALSE, jitter_y=FALSE, 
+plot.bayesnecfit <- function(X,  
+                             CI=TRUE,
+                             add_nec=TRUE, 
+                             position_legend="topright",  
+                             add_ec10=FALSE,
+                             xform=NA, 
+                             lxform=NA,
+                             jitter_x=FALSE, 
+                             jitter_y=FALSE, 
                              ylab="response", 
                              xlab="concentration", 
-                             xlim = NA, xticks = NA,  ...){
-  
-  if(X$model=="ecx4param" & add_nec==TRUE){
-    add_nec=FALSE; add_ec10=TRUE
-  }
+                             x_lim = NA, 
+                             y_lim = NA,
+                             xticks = NA,  ...){
   
   # check if y_type is binomial
   y_type <- X$y_type
@@ -73,34 +77,42 @@ plot.bayesnecfit <- function(X,  CI=TRUE,
   if(jitter_x==TRUE){x_dat <- jitter(x_dat)}
   if(jitter_y==TRUE){y_dat <- jitter(y_dat)}  
   
-  # check if a range for the x axis has been specified
-  if(max(is.na(xlim))==1){
+  # check if a range for the x or y axis has been specified
+  if(length(x_lim)==1){
     x_lim <- range(x_dat)}else{
-      x_lim <- xlim
+      x_lim <- x_lim
     }
+  if(length(y_lim)==1){
+    y_lim <- range(y_dat)}else{
+      y_lim <- y_lim
+    }
+  
   # Check if x axis tick marks have been specified
-  if(max(is.na(xticks))==1){
-    xticks <- seq(min(x_dat), max(x_dat), length=7)
+  if(length(xticks)==1){
+    x_ticks <- seq(min(x_dat), max(x_dat), length=7)
   }else{
-    xticks <- xticks
+    x_ticks <- xticks
   }
   
   plot(x_dat, y_dat, 
        ylab=ylab, 
        xlab=xlab,        
-       pch=16, xaxt="n", xlim = x_lim,
+       pch=16, xaxt="n", 
+       xlim = x_lim, ylim = y_lim,
        col=adjustcolor(1, alpha=0.25), 
        cex=1.5) 
   
   if(class(lxform)!="function"){
-    if(max(is.na(xticks))==1){axis(side=1)}else{axis(side=1, at=xticks)}  
+    if(length(xticks)==1){
+      axis(side=1)}else{
+      axis(side=1, at=signif(xticks, 2))}  
     legend_nec <- paste("nec: ", signif(nec["Estimate"],2), 
                         " (", signif(nec["Q2.5"],2),"-", signif(nec["Q97.5"],2),")",sep="")
     legend_ec10 <- paste("ec10: ", signif(ec10[1],2), 
                          " (", signif(ec10[2],2),"-", signif(ec10[3],2),")",sep="")
   }else{
-    x_labs <- signif(lxform(xticks),2)
-    axis(side=1, at=xticks, labels = x_labs)
+    x_labs <- signif(lxform(x_ticks),2)
+    axis(side=1, at=x_ticks, labels = x_labs)
     legend_nec <- paste("nec: ", signif(lxform(nec["Estimate"]),2), 
                         " (",    signif(lxform(nec["Q2.5"]),2),"-", 
                         signif(lxform(nec["Q97.5"]),2),")",sep="")    
