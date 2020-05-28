@@ -12,15 +12,15 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-#'extract_simdat
+#'simdat
 #'
 #' Extracts a range of statistics from a list of bayesnecfit model fits.
 #'
 #' @param  modfit a bayesnecfit, as returned by fit.bayesnec
 #'
 #' @export
-#' @return A list of model statistical output derived from the input model list 
-extract_simdat <- function(modfit){
+#' @return A list of model simulation statistics including iter, thin, warmup and chains
+simdat <- function(modfit){
   outlist <- list(iter = modfit$fit$fit@sim$iter,
                   thin = modfit$fit$fit@sim$thin,
                   warmup = modfit$fit$fit@sim$warmup, 
