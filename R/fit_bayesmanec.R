@@ -52,8 +52,8 @@ fit_bayesmanec <- function(data,
   if(model_set[1]=="nec"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm")}
   if(model_set[1]=="ecx"){model_set=c("ecx4param", "ecxwb1", "ecxwb2")}#, "ecxlin"
   if(model_set[1]=="all"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm", 
-                                   #"ecxlin",
-                                   "ecx4param", "ecxwb1", "ecxwb2"
+                                      "ecxlin", "excexp", "excsimg",
+                                      "ecx4param", "ecxwb1", "ecxwb2"
   )}
   
   # Fit each of the models
