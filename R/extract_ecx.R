@@ -73,6 +73,7 @@ extract_ecx <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="
 #' @param prob_vals A vector indicating the probability values over which to return the estimated ecx value. 
 #' 
 #' @export
+#' @importFrom brms posterior_predict
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 
 extract_ecx.bayesnecfit <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 

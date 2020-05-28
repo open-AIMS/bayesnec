@@ -37,9 +37,10 @@
 #' no exposure).
 #'
 #' @export
-#' @importFrom brms fixef brm
+#' @importFrom brms fixef brm posterior_predict
 #' @return The fitted brms model, including an estimate of the nec value and predicted posterior values.
 #' A posterior sample of the nec is also available under $nec_posterior
+
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          x_type = NA, y_type = NA, x_range = NA, precision = 1000,
                          over_disp = FALSE, model = "nec3param", sig_val = 0.025, iter = 2e4,
@@ -186,7 +187,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     class(out) <- "bayesnecfit"
   }
   
-  message(paste("Response variable ", y_var, " modelled using a ", y_type, " distribution.", sep=""))
+  message(paste("Response variable ", y_var, " modelled as a ", model ," model using a ", y_type, " distribution.", sep=""))
   return(out)    
 }
 

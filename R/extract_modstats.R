@@ -32,7 +32,7 @@ extract_modstats <- function(mod_fits){
   if(length(success_models)==0){
     stop("None of the models fit successfully, 
      try using fit.bayesnec instead using the default settings as a starting point for trouble shooting.")}else{
-       warning(paste("successfully fitted the models: ", paste(success_models, collapse=" ")))
+       message(paste("successfully fitted the models: ", paste(success_models, collapse=" ")))
      }
   
   mod_fits <- mod_fits[success_models] 

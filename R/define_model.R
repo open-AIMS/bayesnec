@@ -111,7 +111,8 @@ define_model <- function(model, x_type, y_type, mod_dat) {
     
   }
 
-  # Exponential decay ----
+  # ecxexp ----
+  # Exponential decay
   if(model=="ecxexp"){
     if(y_type=="binomial"){
       bform <- brms::bf(y | trials(trials) ~ top * exp(-beta * x),
@@ -124,7 +125,8 @@ define_model <- function(model, x_type, y_type, mod_dat) {
     }
   } 
   
-  # Simple linear decay ----
+  # ecxlin ----
+  # Simple linear decay 
   if(model=="ecxlin"){
     if(y_type=="binomial"){
       bform <- brms::bf(y | trials(trials) ~ top - beta * x,
@@ -137,7 +139,8 @@ define_model <- function(model, x_type, y_type, mod_dat) {
     }
   } 
   
-  # Sigmoidal decay ----
+  # ecxsigm ----
+  # Sigmoidal decay
   if(model=="ecxsigm"){
     if(y_type=="binomial"){
       bform <- brms::bf(y | trials(trials) ~ top * exp(-beta * x)^d,
@@ -151,7 +154,25 @@ define_model <- function(model, x_type, y_type, mod_dat) {
   priors <- priors + 
       brms::prior(normal(0, 100), nlpar = "d")   
   } 
-
+  
+ 
+  # ecx4param --------------
+  if(model=="ecx4param"){
+    if(y_type=="binomial"){
+      bform <- brms::bf(y | trials(trials) ~  top + (bot-top)/(1+exp((ec50-x)*beta)),
+                        bot + ec50 + top + beta ~ 1,
+                        nl = TRUE)
+    }else{
+      bform <- brms::bf(y ~  top + (bot-top)/(1+exp((ec50-x)*beta)),
+                        bot + ec50 + top + beta ~ 1,
+                        nl = TRUE)
+    }
+    priors <- c(priors, 
+                brms::prior_string(paste0("normal(", prior_bot, ", 100)"), nlpar = "bot"),
+                brms::prior_string(paste0("normal(", prior_ec50, ", 100)"), nlpar = "ec50"))  
+  } 
+  
+ 
   # nec4param ----
   # as per Fox 2010 but with an estimate for the lower plateau 
   if(model=="nec4param"){
@@ -179,11 +200,11 @@ define_model <- function(model, x_type, y_type, mod_dat) {
   if(model=="ecxwb1"){
     if(y_type=="binomial"){
       bform <- brms::bf(y | trials(trials) ~ bot + (top-bot) * exp(-exp(beta*(x - ec50))),
-                        ec50 + top + beta ~ 1,
+                        bot + ec50 + top + beta ~ 1,
                         nl = TRUE)
     }else{
       bform <- brms::bf(y ~ bot + (top-bot) * exp(-exp(beta*(x - ec50))),
-                        ec50 + top + beta ~ 1,
+                        bot + ec50 + top + beta ~ 1,
                         nl = TRUE)
     }
     priors <- c(priors, 
@@ -195,11 +216,11 @@ define_model <- function(model, x_type, y_type, mod_dat) {
   if(model=="ecxwb2"){
     if(y_type=="binomial"){
       bform <- brms::bf(y | trials(trials) ~ bot + (top-bot) * (1-exp(-exp(beta*(x - ec50)))),
-                        ec50 + top + beta ~ 1,
+                        bot + ec50 + top + beta ~ 1,
                         nl = TRUE)
     }else{
       bform <- brms::bf(y ~ bot + (top-bot) * (1-exp(-exp(beta*(x - ec50)))),
-                        ec50 + top + beta ~ 1,
+                        bot + ec50 + top + beta ~ 1,
                         nl = TRUE)
     }
     priors <- c(priors, 
@@ -228,9 +249,9 @@ define_model <- function(model, x_type, y_type, mod_dat) {
    
    }
 
-  # necsigmoidal ------
+  # necsigm ------
   # as per Fox 2010 but with a sigmoidal decay function
-  if(model=="necsigmoidal"){
+  if(model=="necsigm"){
     if(y_type=="binomial"){
       bform <- brms::bf(y | trials(trials) ~ top *
                           exp(-beta * (x - nec)^d *

@@ -50,9 +50,9 @@ fit_bayesmanec <- function(data,
                           ...){
   
   if(model_set[1]=="nec"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm")}
-  if(model_set[1]=="ecx"){model_set=c("ecx4param", "ecxwb1", "ecxwb2")}#, "ecxlin"
+  if(model_set[1]=="ecx"){model_set=c("ecx4param", "ecxlin", "ecxexp", "ecxsimg","ecxwb1", "ecxwb2")}
   if(model_set[1]=="all"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm", 
-                                      "ecxlin", "excexp", "excsimg",
+                                      "ecxlin", "ecxexp", "ecxsigm",
                                       "ecx4param", "ecxwb1", "ecxwb2"
   )}
   
@@ -62,7 +62,7 @@ fit_bayesmanec <- function(data,
   
   for(m in seq_along(model_set)){
     model <- model_set[m] 
-    fit_m <- try(
+    fit_m <- #try(
       fit_bayesnec(data=data,
                   x_var=x_var,
                   y_var=y_var,
@@ -73,8 +73,8 @@ fit_bayesmanec <- function(data,
                   over_disp=over_disp,
                   model=model,
                   x_range=x_range,
-                  open_progress = FALSE), 
-      silent = TRUE)
+                  open_progress = FALSE)#, 
+     # silent = TRUE)
     if (!inherits(fit_m, 'try-error')) {
       mod_fits[[m]] <- fit_m  
     } else {

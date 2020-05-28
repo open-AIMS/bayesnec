@@ -24,6 +24,7 @@
 #'
 #' @export
 #' @return A list containing x and fitted y, with up and lw values
+#' @importFrom brms posterior_predict
 
 predict.bayesnecfit <- function(X, precision=100, x_range=NA){
   mod_dat <- X$mod_dat
@@ -42,7 +43,7 @@ predict.bayesnecfit <- function(X, precision=100, x_range=NA){
   if(y_type=="binomial"){new_dat$trials=10^3}
   
   # entire posterior
-  pred_out <- posterior_predict(fit, newdata = new_dat, re_formula = NA, summary = FALSE)
+  pred_out <- brms::posterior_predict(fit, newdata = new_dat, re_formula = NA, summary = FALSE)
   if(y_type=="binomial"){
     pred_out <- pred_out/10^3
   }
