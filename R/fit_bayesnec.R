@@ -39,7 +39,7 @@
 #' @export
 #' @importFrom brms fixef brm
 #' @return The fitted brms model, including an estimate of the nec value and predicted posterior values.
-#' A posterior sample of the nec is also available under $nec.posterior
+#' A posterior sample of the nec is also available under $nec_posterior
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          x_type = NA, y_type = NA, x_range = NA, precision = 1000,
                          over_disp = FALSE, model = "nec3param", sig_val = 0.025, iter = 2e4,
@@ -85,7 +85,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   }
   
   fit <- brms::brm(bform, data = mod_dat, prior = priors, iter=iter,
-                       family = mod_family, warmup = warmup)
+                       family = mod_family, warmup = warmup, refresh=0)
   
   fit$loo <- brms::loo(fit)
   fit$waic <- brms::waic(fit)
@@ -116,36 +116,36 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   ec50 <- extracted_params$ec50 
   
 
-  if(is.na(extracted_params$nec["Estimate"])){mod.class <- "ecx"}else{mod.class <- "nec"}
+  if(is.na(extracted_params$nec["Estimate"])){mod_class <- "ecx"}else{mod_class <- "nec"}
   
   if(is.na(x_range)){
       x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length=precision)
   }
 
-  new.dat <- data.frame(x=x_seq)
-  if(y_type=="binomial"){new.dat$trials=10^3}
+  new_dat <- data.frame(x=x_seq)
+  if(y_type=="binomial"){new_dat$trials=10^3}
   
-  y.pred.m <- predict(fit, newdata = new.dat, robust = TRUE, re_formula = NA)
-  predicted.y <- predict(fit, robust = TRUE, re_formula = NA)
+  y_pred_m <- predict(fit, newdata = new_dat, robust = TRUE, re_formula = NA)
+  predicted_y <- predict(fit, robust = TRUE, re_formula = NA)
 
   if(y_type=="binomial"){
     top <- top/10^3
-    predicted.y <- predicted.y/10^3
-    y.pred.m <-  y.pred.m/10^3
+    predicted_y <- predicted_y/10^3
+    y_pred_m <-  y_pred_m/10^3
   }
   
   # calculate the residuals
-  residuals <-  response - predicted.y 
+  residuals <-  response - predicted_y 
   
   # entire posterior
-  pred.posterior <- t(predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE))
+  pred_posterior <- t(predict(fit, newdata = new_dat, re_formula = NA, summary = FALSE))
   if(y_type=="binomial"){
-    pred.posterior <- pred.posterior/10^3
+    pred_posterior <- pred_posterior/10^3
   }
   
   # calculate the predicted values using the entire posterior
-  pred.vals <- c(list(x=x_seq, y=y.pred.m[,"Estimate"], up=y.pred.m[,"Q97.5"], lw=y.pred.m[,"Q2.5"],
-                      posterior=pred.posterior), list(y.pred.m=y.pred.m[,"Estimate"]))  
+  pred_vals <- c(list(x=x_seq, y=y_pred_m[,"Estimate"], up=y_pred_m[,"Q97.5"], lw=y_pred_m[,"Q2.5"],
+                      posterior=pred_posterior), list(y_pred_m=y_pred_m[,"Estimate"]))  
 
   # Extract the overdispersion estimate
   od <- NA#mean(out$sims.list$SS > out$sims.list$SSsim)
@@ -153,23 +153,23 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   # get the posterior nec 
   
   # calculate the nec from the predicted values for the ecx model
-  if(mod.class=="ecx"){
-    reference <-  quantile(pred.vals$posterior[1, ], sig_val)
-    nec.posterior  <-  sapply(1:ncol(pred.vals$posterior), function (x, pred.vals, reference) {
-      pred.vals$x[which.min(abs(pred.vals$posterior[, x] - reference))]
+  if(mod_class=="ecx"){
+    reference <-  quantile(pred_vals$posterior[1, ], sig_val)
+    nec_posterior  <-  sapply(1:ncol(pred_vals$posterior), function (x, pred_vals, reference) {
+      pred_vals$x[which.min(abs(pred_vals$posterior[, x] - reference))]
       }, 
-      pred.vals = pred.vals, reference = reference)
+      pred_vals = pred_vals, reference = reference)
     
-    nec <- quantile(nec.posterior, c(0.5, 0.025,  0.975))  
+    nec <- quantile(nec_posterior, c(0.5, 0.025,  0.975))  
     names(nec) <- c("Estimate", "Q2.5", "Q97.5")
   }else{
-    nec.posterior <- unlist(posterior_samples(fit, pars="nec_Intercept"))
+    nec_posterior <- unlist(posterior_samples(fit, pars="nec_Intercept"))
   }
   
   # Put everyting in a list for output
   if(class(out)!="try-error"){
     out <- c(out, list(
-      pred.vals = pred.vals,
+      pred_vals = pred_vals,
       nec = nec,
       top = top,
       beta = beta,
@@ -178,9 +178,9 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
       d = d,
       ec50 = ec50,
       over_disp=od,
-      predicted.y = predicted.y,
+      predicted_y = predicted_y,
       residuals = residuals,
-      nec.posterior = nec.posterior))
+      nec_posterior = nec_posterior))
     
     # assign a class to the output
     class(out) <- "bayesnecfit"

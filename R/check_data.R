@@ -112,26 +112,26 @@ check_data <- function(data,
   # error catching for 0 for gamma by adding very small value
   if (min(data[,x_var])==0 & x_type=="gamma"){
     tt <- data[,x_var]
-    min.val <- min(tt[which(tt>0)])
-    data[which(tt==0),x_var] <- tt[which(tt==0)]+(min.val/10)
+    min_val <- min(tt[which(tt>0)])
+    data[which(tt==0),x_var] <- tt[which(tt==0)]+(min_val/10)
   }
   
   if (min(data[,y_var])==0 & y_type=="gamma"){
     tt <- data[,y_var]
-    min.val <- min(tt[which(tt>0)])
-    data[which(tt==0),y_var] <- tt[which(tt==0)]+(min.val/10)
+    min_val <- min(tt[which(tt>0)])
+    data[which(tt==0),y_var] <- tt[which(tt==0)]+(min_val/10)
   }
   # error catching for 0 for beta by adding very small value (beta does not take zero)
   if (min(data[,x_var])==0 & x_type=="beta"){
     tt <- data[,x_var]
-    min.val <- min(tt[which(tt>0)])
-    data[which(tt==0),x_var] <- tt[which(tt==0)]+(min.val/10)
+    min_val <- min(tt[which(tt>0)])
+    data[which(tt==0),x_var] <- tt[which(tt==0)]+(min_val/10)
   }
   
   if (min(data[,y_var])==0 & y_type=="beta"){
     tt <- data[,y_var]
-    min.val <- min(tt[which(tt>0)])
-    data[which(tt==0),y_var] <- tt[which(tt==0)]+(min.val/10)
+    min_val <- min(tt[which(tt>0)])
+    data[which(tt==0),y_var] <- tt[which(tt==0)]+(min_val/10)
   }
   
   # error catching for 1 for beta by subtracting very small value (beta does not take 1)

@@ -91,17 +91,17 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
   }
 
   # collate all the elements
-  export.list <- c(extract_modstats(mod_fits), 
+  export_list <- c(extract_modstats(mod_fits), 
                    list(data=bayesmanecfit$data, 
                         x_var=bayesmanecfit$x_var, 
                         y_var=bayesmanecfit$y_var, 
                         trials_var=bayesmanecfit$trials_var, 
                         over_disp=bayesmanecfit$over_disp))
   # assign a class to the output
-  class(export.list) <- "bayesmanecfit"
+  class(export_list) <- "bayesmanecfit"
   
   # return the collated output
-  return(export.list) 
+  return(export_list) 
   
   
   

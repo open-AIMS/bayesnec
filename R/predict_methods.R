@@ -38,24 +38,24 @@ predict.bayesnecfit <- function(X, precision=100, x_range=NA){
   }else{
     x_seq <- seq(min(x_range), max(x_range), length=precision)}
 
-  new.dat <- data.frame(x=x_seq)
-  if(y_type=="binomial"){new.dat$trials=10^3}
+  new_dat <- data.frame(x=x_seq)
+  if(y_type=="binomial"){new_dat$trials=10^3}
   
   # entire posterior
-  pred.vals.out <- posterior_predict(fit, newdata = new.dat, re_formula = NA, summary = FALSE)
+  pred_out <- posterior_predict(fit, newdata = new_dat, re_formula = NA, summary = FALSE)
   if(y_type=="binomial"){
-    pred.vals.out <- pred.vals.out/10^3
+    pred_out <- pred_out/10^3
   }
   
-  m.vals <- apply(pred.vals.out, MARGIN=2, FUN=quantile, probs=0.5)
-  up.vals <- apply(pred.vals.out, MARGIN=2, FUN=quantile, probs=0.975)
-  lw.vals <- apply(pred.vals.out, MARGIN=2, FUN=quantile, probs=0.025)
+  m.vals <- apply(pred_out, MARGIN=2, FUN=quantile, probs=0.5)
+  up.vals <- apply(pred_out, MARGIN=2, FUN=quantile, probs=0.975)
+  lw.vals <- apply(pred_out, MARGIN=2, FUN=quantile, probs=0.025)
   
   return(list(
     x=x_seq,
     y=m.vals,
     up=up.vals,
     lw=lw.vals,
-    posterior=pred.vals.out
+    posterior=pred_out
   ))
 }
