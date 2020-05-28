@@ -64,7 +64,8 @@ plot.bayesmanecfit <- function(X,  CI=TRUE,
            x_lim = x_lim, 
            xticks = xticks,  ...)   
       mtext(xlab, side=1, outer=T, line=2)
-      mtext(ylab, side=2, outer=T, line=2)      
+      mtext(ylab, side=2, outer=T, line=2)    
+      legend("top", legend=names(mod_fits[m]), bty="n")
     }
     
      
