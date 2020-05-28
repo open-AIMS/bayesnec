@@ -96,7 +96,7 @@ check_data <- function(data,
   }
   
   # check there is a valid model type
-  if (!model %in% c("nec3param", "necsigmoidal", "nec4param", "nechorme",
+  if (!model %in% c("nec3param", "necsigm", "nec4param", "nechorme",
                     "ecx4param", "ecxwb1", "ecxwb2", "ecxlin", "ecxexp", "ecxsigm")) {
     stop("The model type you have specified does not exist.")
   }

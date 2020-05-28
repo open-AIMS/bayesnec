@@ -37,7 +37,7 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
   if(model_set[1]=="nec"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm")}
   if(model_set[1]=="ecx"){model_set=c("ecx4param", "ecxwb1", "ecxwb2")}
   if(model_set[1]=="all"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm", 
-                                      "ecxlin", "ecxexp", "ecxsimg",
+                                      "ecxlin", "ecxexp", "ecxsigm",
                                       "ecx4param", "ecxwb1", "ecxwb2"
   )}
   
@@ -60,10 +60,10 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
   
   for(m in 1:length(model_set)){
     model <- model_set[m] 
-    mod.m <- NULL
-    mod.m <- try(bayesmanecfit$mod_fits[[model]], silent=T)
-    if(class(mod.m)!="bayesnecfit"){
-      fit.m <- try(
+    mod_m <- NULL
+    mod_m <- try(bayesmanecfit$mod_fits[[model]], silent=T)
+    if(class(mod_m)!="bayesnecfit"){
+      fit_m <- try(
         fit_bayesnec(data = bayesmanecfit,
                      x_var = bayesmanecfit$x_var,
                      y_var = bayesmanecfit$y_var,
@@ -77,15 +77,15 @@ modify.bayesmanecfit <- function(bayesmanecfit, model_set=NA, drop_models=NA, ad
                      warmup = simdat$warmup,
                      chains = simdat$chains),
         silent = TRUE)
-      if (!inherits(fit.m, 'try-error')) {
-        mod_fits[[model]] <- fit.m  
+      if (!inherits(fit_m, 'try-error')) {
+        mod_fits[[model]] <- fit_m  
       } else {
         mod_fits[[model]] <- NA 
       }   
  
     
     }else{
-      mod_fits[[m]] <- mod.m
+      mod_fits[[m]] <- mod_m
     }
   
   }
