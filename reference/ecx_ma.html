@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Function reference • bayesnec</title>
+<title>ecx_ma — ecx_ma • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,7 +46,8 @@
 
 
 
-<meta property="og:title" content="Function reference" />
+<meta property="og:title" content="ecx_ma — ecx_ma" />
+<meta property="og:description" content="Extracts the predicted ecx value as desired from a bayesmanec model object" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -66,7 +67,7 @@
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    <div class="container template-reference-index">
+    <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -125,126 +126,79 @@
       </header>
 
 <div class="row">
-  <div class="contents col-md-9">
+  <div class="col-md-9 contents">
     <div class="page-header">
-      <h1>Reference</h1>
+    <h1>ecx_ma</h1>
+    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/ecx.R'><code>R/ecx.R</code></a></small>
+    <div class="hidden name"><code>ecx_ma.Rd</code></div>
     </div>
 
-    <table class="ref-index">
+    <div class="ref-description">
+    <p>Extracts the predicted ecx value as desired from a bayesmanec model object</p>
+    </div>
 
-    <colgroup>
-      
-      <col class="alias" />
-      <col class="title" />
-    </colgroup>
+    <pre class="usage"><span class='fu'>ecx_ma</span>(
+  <span class='no'>object</span>,
+  <span class='kw'>ecx_val</span> <span class='kw'>=</span> <span class='fl'>10</span>,
+  <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
+  <span class='kw'>posterior</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
+  <span class='kw'>type</span> <span class='kw'>=</span> <span class='st'>"absolute"</span>,
+  <span class='kw'>hormesis_def</span> <span class='kw'>=</span> <span class='st'>"control"</span>,
+  <span class='kw'>xform</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>prob_vals</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span>)
+)</pre>
 
-    <tbody>
-      <tr>
-        <th colspan="2">
-          <h2 id="section-all-functions" class="hasAnchor"><a href="#section-all-functions" class="anchor"></a>All functions</h2>
-          <p class="section-desc"></p>
-        </th>
-      </tr>
-      
-      
-    </tbody><tbody>
-      
-      
-      <tr>
-        
-        <td>
-          <p><code><a href="bayesnec.html">bayesnec()</a></code> </p>
-        </td>
-        <td><p>bayesnec</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="check_data.html">check_data()</a></code> </p>
-        </td>
-        <td><p>check_data</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="define_model.html">define_model()</a></code> </p>
-        </td>
-        <td><p>define_model</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="dispersion.html">dispersion()</a></code> </p>
-        </td>
-        <td><p>Posterior dispersion</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="ecx.html">ecx()</a></code> </p>
-        </td>
-        <td><p>ecx</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="ecx_1fit.html">ecx_1fit()</a></code> </p>
-        </td>
-        <td><p>ecx_1fit</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="ecx_ma.html">ecx_ma()</a></code> </p>
-        </td>
-        <td><p>ecx_ma</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="extract_modstats.html">extract_modstats()</a></code> </p>
-        </td>
-        <td><p>extract_modstats</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="extract_simdat.html">extract_simdat()</a></code> </p>
-        </td>
-        <td><p>extract_simdat</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="fit_bayesnec.html">fit_bayesnec()</a></code> </p>
-        </td>
-        <td><p>fit_bayesnec</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="modify.html">modify()</a></code> </p>
-        </td>
-        <td><p>modify</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="plot.bayesmanecfit.html">plot(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>plot.bayesmanecfit</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="plot.bayesnecfit.html">plot(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>plot.bayesnecfit</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="predict.bayesnecfit.html">predict(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>predict.bayesnecfit</p></td>
-      </tr><tr>
-        
-        <td>
-          <p><code><a href="set_distribution.html">set_distribution()</a></code> </p>
-        </td>
-        <td><p>Sets distribution based on vector</p></td>
-      </tr>
-    </tbody>
+    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
+    <table class="ref-arguments">
+    <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>object</th>
+      <td><p>a fitted bayesmanec model object, containing a list of jag model fit as returned by a call to bayes from
+fit_bayesnec</p></td>
+    </tr>
+    <tr>
+      <th>ecx_val</th>
+      <td><p>the desired percentage effect value.</p></td>
+    </tr>
+    <tr>
+      <th>precision</th>
+      <td><p>The number of unique x values over which to find ecx.</p></td>
+    </tr>
+    <tr>
+      <th>posterior</th>
+      <td><p>A logical value indicating if the full posterior sample of calculated ecx values
+should be returned instead of just the median and 95 credible intervals.</p></td>
+    </tr>
+    <tr>
+      <th>type</th>
+      <td><p>a character vector indicating if relative or absolute values for the ecx should be calculated.</p></td>
+    </tr>
+    <tr>
+      <th>hormesis_def</th>
+      <td><p>takces values of 'max' or 'control'.
+If 'max' ecx values are calculated as a decline from the maximum estimates (ie the peak at nec).
+If 'control' ecx values are calculated relative to the control, which is assumed to be the lowest observed concentrartion.</p></td>
+    </tr>
+    <tr>
+      <th>xform</th>
+      <td><p>A function to apply to the returned estimated concentration values</p></td>
+    </tr>
+    <tr>
+      <th>x_range</th>
+      <td><p>A range of x values over which to consider extracting ecx</p></td>
+    </tr>
+    <tr>
+      <th>prob_vals</th>
+      <td><p>A vector indicating the probability values over which to return the estimated ecx value.</p></td>
+    </tr>
     </table>
-  </div>
 
+    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+
+    <p>A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds</p>
+
+  </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
       <h2 data-toc-skip>Contents</h2>
