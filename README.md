@@ -11,4 +11,4 @@ if (!library("devtools")) {
   install.packages("devtools")
 }
 
-devtools::install_github("https://github.com/AIMS/bayesnec", dependencies = TRUE)
+devtools::install_github("https://github.com/AIMS/bayesnec", ref = "pkg_build_v1", dependencies = TRUE)
