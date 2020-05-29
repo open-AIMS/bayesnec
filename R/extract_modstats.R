@@ -19,7 +19,8 @@
 #' @param  mod_fits a bayesMAnecfit mod_fits output list, as returned by fit.bayesMAnec
 #'
 #' @export
-#' @return A list of model statistical output derived from the input model list 
+#' @return A list of model statistical output derived from the input model list
+#' @importFrom brms loo_model_weights waic
 
 extract_modstats <- function(mod_fits){
   model_set <- names(mod_fits)
