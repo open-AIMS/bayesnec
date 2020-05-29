@@ -8,3 +8,4 @@ README.Rmd
 ^\.github$
 ^.*Rcheck$
 ^LICENSE\.md$
+^\.travis\.yml$
