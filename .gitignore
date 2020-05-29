@@ -1,2 +1,18 @@
-*tmp*
+.Rproj*
+.Rapp*
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
 .Rproj.user
+
+TODO.md
+*tmp*
+docs/
+ignore/
+
+# package development
+gisaimsr.Rcheck/
+gisaimsr*tar.gz
+inst/doc
+inst/web

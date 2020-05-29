@@ -1,0 +1,24 @@
+Package: bayesnec
+Title: A Bayesian No-Effect- Concentration (NEC) package. R package
+        version 1. https://github.com/AIMS/bayesnec
+Version: 1.0
+Authors@R: c(person("Rebecca", "Fisher", email = "r.fisher@aims.gov.au", role = c("aut", "cre")), person("Diego","Barneche",role="aut"), person("Gerard","Ricardo",role="aut"), person("David","Fox",role="aut"))
+Description: bayesnec is a No-Effect-Concentration estimation package that uses brms to fit concentration(dose)-response data using bayesiam methods for the purpose of estimating both ecx values, but more particularly nec. Please see ?bayesnec for more details.
+Depends: R (>= 3.6.0)
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.0
+Imports: brms, HDInterval
+Suggests: knitr, rmarkdown, plyr, dplyr, ggplot2
+VignetteBuilder: knitr
+URL: https://aims.github.io/bayesnec
+BugReports: https://github.com/aims/bayesnec/issues
+Roxygen: list(markdown = TRUE)
+NeedsCompilation: no
+Packaged: 2020-05-29 02:57:56 UTC; dbarneche
+Author: Rebecca Fisher [aut, cre],
+  Diego Barneche [aut],
+  Gerard Ricardo [aut],
+  David Fox [aut]
+Maintainer: Rebecca Fisher <r.fisher@aims.gov.au>

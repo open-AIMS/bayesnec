@@ -1,0 +1,175 @@
+* using log directory ‘/Users/dbarneche/OneDrive - Australian Institute of Marine Science/repos/bayesnec/bayesnec.Rcheck’
+* using R version 3.6.3 (2020-02-29)
+* using platform: x86_64-apple-darwin15.6.0 (64-bit)
+* using session charset: UTF-8
+* using option ‘--as-cran’
+* checking for file ‘bayesnec/DESCRIPTION’ ... OK
+* this is package ‘bayesnec’ version ‘1.0’
+* package encoding: UTF-8
+* checking CRAN incoming feasibility ... NOTE
+Maintainer: ‘Rebecca Fisher <r.fisher@aims.gov.au>’
+
+New submission
+
+Found the following (possibly) invalid URLs:
+  URL: https://aims.github.io/bayesnec
+    From: DESCRIPTION
+          README.md
+    Status: 404
+    Message: Not Found
+  URL: https://cran.r-project.org/web/packages/ggmap/
+    From: README.md
+    Status: 200
+    Message: OK
+    CRAN URL not in canonical form
+  The canonical URL of the CRAN page for a package is 
+    https://CRAN.R-project.org/package=pkgname
+
+The Title field should be in title case. Current version is:
+‘A Bayesian No-Effect- Concentration (NEC) package. R package version 1. https://github.com/AIMS/bayesnec’
+In title case that is:
+‘A Bayesian No-Effect- Concentration (NEC) Package. R Package Version 1. Https://Github.com/AIMS/Bayesnec’
+
+The Description field should not start with the package name,
+  'This package' or similar.
+* checking package namespace information ... OK
+* checking package dependencies ... OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for executable files ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking for sufficient/correct file permissions ... OK
+* checking whether package ‘bayesnec’ can be installed ... OK
+* checking installed package size ... OK
+* checking package directory ... OK
+* checking for future file timestamps ... OK
+* checking ‘build’ directory ... OK
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... NOTE
+Non-standard file/directory found at top level:
+  ‘LICENSE.md’
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking R files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking use of S3 registration ... OK
+* checking dependencies in R code ... OK
+* checking S3 generic/method consistency ... WARNING
+plot:
+  function(x, ...)
+plot.bayesmanecfit:
+  function(X, CI, add_nec, position_legend, add_ec10, xform, lxform,
+           jitter_x, jitter_y, ylab, xlab, x_lim, y_lim, xticks,
+           all_models, ...)
+
+plot:
+  function(x, ...)
+plot.bayesnecfit:
+  function(X, CI, add_nec, position_legend, add_ec10, xform, lxform,
+           jitter_x, jitter_y, ylab, xlab, x_lim, y_lim, xticks, ...)
+
+predict:
+  function(object, ...)
+predict.bayesnecfit:
+  function(X, precision, x_range)
+
+See section ‘Generic functions and methods’ in the ‘Writing R Extensions’ manual.
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... NOTE
+check_data: no visible global function definition for ‘na.omit’
+define_model: no visible global function definition for ‘normal’
+define_model: no visible global function definition for ‘binomial’
+define_model: no visible global function definition for ‘quantile’
+define_model: no visible global function definition for ‘Gamma’
+define_model: no visible global function definition for ‘poisson’
+define_model: no visible global function definition for ‘gaussian’
+define_model: no visible global function definition for ‘Beta’
+define_model: no visible global function definition for ‘negbinomial’
+define_model: no visible global function definition for ‘uniform’
+extract_ecx.bayesmanecfit: no visible global function definition for
+  ‘quantile’
+extract_ecx.bayesnecfit: no visible global function definition for
+  ‘predict’
+extract_ecx.bayesnecfit: no visible global function definition for
+  ‘quantile’
+extract_modstats: no visible global function definition for ‘predict’
+extract_modstats: no visible binding for global variable ‘quantile’
+extract_modstats: no visible global function definition for ‘quantile’
+fit_bayesnec: no visible global function definition for ‘predict’
+fit_bayesnec: no visible global function definition for ‘quantile’
+fit_bayesnec: no visible global function definition for
+  ‘posterior_samples’
+plot.bayesmanecfit: no visible global function definition for ‘par’
+plot.bayesmanecfit: no visible global function definition for ‘plot’
+plot.bayesmanecfit: no visible global function definition for ‘mtext’
+plot.bayesmanecfit: no visible global function definition for ‘legend’
+plot.bayesnecfit: no visible global function definition for ‘plot’
+plot.bayesnecfit: no visible global function definition for
+  ‘adjustcolor’
+plot.bayesnecfit: no visible global function definition for ‘axis’
+plot.bayesnecfit: no visible global function definition for ‘lines’
+plot.bayesnecfit: no visible global function definition for ‘abline’
+plot.bayesnecfit: no visible global function definition for ‘legend’
+predict.bayesnecfit: no visible binding for global variable ‘quantile’
+Undefined global functions or variables:
+  Beta Gamma abline adjustcolor axis binomial gaussian legend lines
+  mtext na.omit negbinomial normal par plot poisson posterior_samples
+  predict quantile uniform
+Consider adding
+  importFrom("grDevices", "adjustcolor")
+  importFrom("graphics", "abline", "axis", "legend", "lines", "mtext",
+             "par", "plot")
+  importFrom("stats", "Gamma", "binomial", "gaussian", "na.omit",
+             "poisson", "predict", "quantile")
+to your NAMESPACE file.
+* checking Rd files ... OK
+* checking Rd metadata ... OK
+* checking Rd line widths ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... OK
+* checking Rd \usage sections ... WARNING
+Undocumented arguments in documentation object 'extract_ecx'
+  ‘hormesis_def’ ‘link’
+
+Undocumented arguments in documentation object 'extract_ecx.bayesmanecfit'
+  ‘hormesis_def’ ‘x_range’
+
+Undocumented arguments in documentation object 'extract_ecx.bayesnecfit'
+  ‘hormesis_def’ ‘x_range’
+
+Undocumented arguments in documentation object 'fit_bayesmanec'
+  ‘x_range’ ‘...’
+
+Undocumented arguments in documentation object 'fit_bayesnec'
+  ‘x_type’
+
+Undocumented arguments in documentation object 'plot.bayesmanecfit'
+  ‘...’
+
+Undocumented arguments in documentation object 'plot.bayesnecfit'
+  ‘...’
+
+Functions with \usage entries need to have the appropriate \alias entries, and all their arguments documented.
+The \usage entries must correspond to syntactically valid R code.
+See chapter ‘Writing R documentation files’ in the ‘Writing R Extensions’ manual.
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking installed files from ‘inst/doc’ ... OK
+* checking files in ‘vignettes’ ... OK
+* checking examples ... OK
+* checking for unstated dependencies in vignettes ... OK
+* checking package vignettes in ‘inst/doc’ ... OK
+* checking re-building of vignette outputs ... OK
+* checking PDF version of manual ... OK
+* checking for detritus in the temp directory ... OK
+* DONE
+Status: 2 WARNINGs, 3 NOTEs

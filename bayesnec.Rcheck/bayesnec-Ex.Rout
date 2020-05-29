@@ -1,0 +1,121 @@
+
+R version 3.6.3 (2020-02-29) -- "Holding the Windsock"
+Copyright (C) 2020 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> pkgname <- "bayesnec"
+> source(file.path(R.home("share"), "R", "examples-header.R"))
+> options(warn = 1)
+> base::assign(".ExTimings", "bayesnec-Ex.timings", pos = 'CheckExEnv')
+> base::cat("name\tuser\tsystem\telapsed\n", file=base::get(".ExTimings", pos = 'CheckExEnv'))
+> base::assign(".format_ptime",
++ function(x) {
++   if(!is.na(x[4L])) x[1L] <- x[1L] + x[4L]
++   if(!is.na(x[5L])) x[2L] <- x[2L] + x[5L]
++   options(OutDec = '.')
++   format(x[1L:3L], digits = 7L)
++ },
++ pos = 'CheckExEnv')
+> 
+> ### * </HEADER>
+> library('bayesnec')
+> 
+> base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
+> base::assign(".old_wd", base::getwd(), pos = 'CheckExEnv')
+> cleanEx()
+> nameEx("dispersion")
+> ### * dispersion
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: dispersion
+> ### Title: Posterior dispersion
+> ### Aliases: dispersion
+> 
+> ### ** Examples
+> 
+> ## Not run: 
+> ##D library(brms)
+> ##D set.seed(10)
+> ##D 
+> ##D dt <- data.frame(predictor = rpois(60, lambda = 15))
+> ##D dt$response <- dt$predictor + round(rnorm(nrow(dt), 0, 1))
+> ##D # mimic overdispersion
+> ##D dt$response_od <- abs(dt$predictor + round(rnorm(nrow(dt), 0, 10)))
+> ##D mod_pois <- brm(response ~ predictor, dt, family = poisson())
+> ##D mod_pois_od <- brm(response_od~predictor, dt, family = poisson())
+> ##D 
+> ##D dispersion(mod_pois)
+> ##D dispersion(mod_pois_od)
+> ##D 
+> ##D # compare with regular dispersion parameter
+> ##D # from quasipoisson glm 
+> ##D dispersion(mod_pois, summary = TRUE)
+> ##D summary(glm(response ~ predictor, data = dt, family = quasipoisson))
+> ##D dispersion(mod_pois_od, summary = TRUE)
+> ##D summary(glm(response_od ~ predictor, data = dt, family = quasipoisson))
+> ## End(Not run)
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("dispersion", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> cleanEx()
+> nameEx("set_distribution")
+> ### * set_distribution
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: set_distribution
+> ### Title: Sets distribution based on vector
+> ### Aliases: set_distribution
+> 
+> ### ** Examples
+> 
+> library(bayesnec)
+> set_distribution(rpois(1000, lambda=10), support_integer = TRUE)
+[1] "poisson"
+> set_distribution(rnorm(1000))
+[1] "gaussian"
+> set_distribution(x <- rgamma(1000, 2))
+[1] "gamma"
+> set_distribution(ifelse(x < 1, x, 1))
+[1] "beta"
+> set_distribution(rbinom(1000, 10, 0.5), support_integer = TRUE, 10)
+[1] "binomial"
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("set_distribution", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> ### * <FOOTER>
+> ###
+> cleanEx()
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  1.909 0.115 2.121 0.003 0.005 
+> grDevices::dev.off()
+null device 
+          1 
+> ###
+> ### Local variables: ***
+> ### mode: outline-minor ***
+> ### outline-regexp: "\\(> \\)?### [*]+" ***
+> ### End: ***
+> quit('no')
