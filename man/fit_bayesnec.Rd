@@ -15,7 +15,7 @@ fit_bayesnec(
   precision = 1000,
   over_disp = FALSE,
   model = "nec3param",
-  sig_val = 0.025,
+  sig_val = 0.01,
   iter = 20000,
   warmup = floor(iter/5) * 4,
   ...
@@ -29,25 +29,24 @@ fit_bayesnec(
 \item{y_var}{the column heading indicating the response (y) variable}
 
 \item{trials_var}{the column heading indicating the column for the number of "trials" for binomial response data.
-If not supplied, the model may run but will not be the model you intended!
-#' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the
-characteristic of the input data if not supplied.}
+If not supplied, the model may run but will not be the model you intended!}
 
 \item{x_type}{tbw}
 
-\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial',
-'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
+\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 'beta', 'negbin',
+'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please open an issue at the packge site on github.
 If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.}
 
 \item{x_range}{The range of x values over which to obtain posterior predictions. Used for plot.bayesnecfit and to calculate nec for ecx models.}
 
 \item{precision}{The length of the x_seq to pass to posterior_predict as new data. Used for plot.bayesnecfit and to calculate nec for ecx models.}
 
-\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type
-data. For poisson, a negative binomial model is used. For binomial a beta model is used.}
+\item{over_disp}{Logical. Indicates if an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type
+data. For poisson a negative binomial model is used. For binomial a beta model is used.}
 
-\item{model}{The type of model to be fit. Currently takes values of "nec3param",
-"nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxexp", "ecxlin", or "ecxwb2".}
+\item{model}{the of model to fit. Currently takes values of "nec3param",
+"nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxexp", "ecxlin", or "ecxwb2".
+Others can be added as required, please open an issue at the packge site on github.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
 against the control, to estimate nec as an interpolated NOEC value from smooth ecx curves.}
