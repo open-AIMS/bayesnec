@@ -45,10 +45,10 @@ plot.bayesnecfit <- function(x, ...,
   
   ec10 <- c(NA, NA, NA)
   if(add_ec10==TRUE & x$y_type!="gaussian"){
-    ec10 <- extract_ecx(x)
+    ec10 <- ecx(x)
   }
   if(add_ec10==TRUE & x$y_type=="gaussian"){
-    ec10 <- extract_ecx(x, type="relative")
+    ec10 <- ecx(x, type="relative")
   }  
   
   # check if a transformation is required for x
