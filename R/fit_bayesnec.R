@@ -8,7 +8,7 @@
 #' @importFrom brms fixef brm posterior_predict posterior_samples loo waic
 #' @importFrom stats quantile predict
 #' @return The fitted brms model, including an estimate of the nec value and predicted posterior values.
-#' A posterior sample of the nec is also available under $nec_posterior
+#' A posterior sample of the nec is also available under \code{nec_posterior}
 
 fit_bayesnec <- function(data, 
                          x_var, 

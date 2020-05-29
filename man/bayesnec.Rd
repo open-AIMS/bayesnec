@@ -68,7 +68,7 @@ If a vector of two or more of the available models is supplied, bayesnec returns
 model averaged predictions for the supplied models, providing they were successfully fitted.
 
 Model averaging is acheived through a weighted sample of each fitted models posterior predictions, with weights derived using the \code{\link{loo_model_weights}} from \code{\link{brms}}
-Individual model fits can be extracted from the $mod_fits element and can be examined individually.
+Individual model fits can be extracted from the \code{mod_fits} element and can be examined individually.
 
 \code{model} may also be one of "all", meaning all of the available models will be fit;
 "ecx" meaning only models excluding a specific nec step parameter fill be fit; "nec" meaning only models with a specific nec step parameter will be fit;
