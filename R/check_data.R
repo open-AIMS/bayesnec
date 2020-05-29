@@ -147,7 +147,7 @@ check_data <- function(data,
   }
   
   # create brms model data
-  mod_dat <<- data.frame(x = data[,x_var],   # concentration
+  mod_dat <- data.frame(x = data[,x_var],   # concentration
                          y = data[,y_var], # response (successes)
                          N = nrow(data))  # Sample size
   

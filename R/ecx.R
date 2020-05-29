@@ -184,12 +184,12 @@ ecx_1fit <- function(object, ecx_val=10, precision=1000, posterior = FALSE, type
 #' @export
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 #' @importFrom stats quantile
-extract_ecx_manec <- function(object, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
+ecx_ma <- function(object, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
                                      hormesis_def="control", xform=NA, x_range=NA,
                                      prob_vals=c(0.5, 0.025, 0.975)){
   sample_size <- object$sample_size
   ecx_out <- unlist(sapply(1:length(object$success_models), FUN=function(x){
-    base::sample(extract_ecx_nec(object$mod_fits[[x]], 
+    base::sample(ecx(object$mod_fits[[x]], 
                                         ecx_val=ecx_val, 
                                         precision=precision, 
                                         posterior = TRUE, 

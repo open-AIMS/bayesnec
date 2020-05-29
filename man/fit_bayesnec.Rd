@@ -14,49 +14,41 @@ fit_bayesnec(
   x_range = NA,
   precision = 1000,
   over_disp = FALSE,
-  model = "nec3param",
-  sig_val = 0.025,
-  iter = 20000,
+  model = NA,
+  sig_val = 0.01,
+  iter = 2000,
   warmup = floor(iter/5) * 4,
   ...
 )
 }
 \arguments{
-\item{data}{a data.frame containing the data to use for the model fit}
+\item{data}{A data.frame containing the data to use for the model}
 
-\item{x_var}{the column heading indicating the concentration (x) variable}
+\item{x_var}{The column heading indicating the concentration (x) variable}
 
-\item{y_var}{the column heading indicating the response (y) variable}
+\item{y_var}{The column heading indicating the response (y) variable}
 
-\item{trials_var}{the column heading indicating the column for the number of "trials" for binomial response data.
-If not supplied, the model may run but will not be the model you intended!
-#' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the
-characteristic of the input data if not supplied.}
+\item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data. If not supplied, the model may run but will not be the model you intended!}
 
-\item{x_type}{tbw}
+\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guess based on the characteristic of the input data if not supplied. As some concentration-response data will use zero concentration, and there is no distribution on the continuous scale from 0 to in (ie tweedie) available in bayes,
+a small offset is added (1/10^3 of the next lowest value) to zero values of concentration where these are gamma distributed.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial',
-'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
+\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
 If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.}
 
-\item{x_range}{The range of x values over which to obtain posterior predictions. Used for plot.bayesnecfit and to calculate nec for ecx models.}
+\item{x_range}{A range of x values over which to consider extracting ecx.}
 
-\item{precision}{The length of the x_seq to pass to posterior_predict as new data. Used for plot.bayesnecfit and to calculate nec for ecx models.}
+\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type data.
+For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.}
 
-\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type
-data. For poisson, a negative binomial model is used. For binomial a beta model is used.}
+\item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See details for more information.}
 
-\item{model}{The type of model to be fit. Currently takes values of "nec3param",
-"nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxexp", "ecxlin", or "ecxwb2".}
+\item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values against the lowest observed concentration.
+against the control, to estimate nec as an interpolated NOec value from smooth ecx curves.}
 
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the control, to estimate nec as an interpolated NOEC value from smooth ecx curves.}
+\item{iter}{the number of interations to for the brms fit. Defaults to 2e4.}
 
-\item{iter}{the number of interations for the brms fit. Defaults to 2e4.}
-
-\item{warmup}{the number of warmup iterations. Defaults to 4/5ths of iter.}
-
-\item{...}{further arguments to be passed to \code{\link[brms]{brm}}.}
+\item{...}{Further arguments to \code{\link{fit_bayesnec}}}
 }
 \value{
 The fitted brms model, including an estimate of the nec value and predicted posterior values.
@@ -64,15 +56,4 @@ A posterior sample of the nec is also available under $nec_posterior
 }
 \description{
 Fits a concentration(dose)-response model using brms
-}
-\details{
-As some concentration-response data will use zero concentration which can cause numerical estimation issues, a small offset
-is added (1/10th of the next lowest value) to zero values of concentration where x_var are gamma distributed.
-
-All models provide an estimate for nec. For model types with "nec" as a prefix, nec is directly estimated as a paremeter
-in the model. Models with "ecx" as a prefix are continuous curve models, tyipically used for extracting ecx values
-from concentration response data. In this instance the nec value is defined as the concentration at which there is
-a user supplied (see sig_val) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of
-the upper assymptote (top) of the response (i.e the response value is significantly lower than that expected in the case of
-no exposure).
 }
