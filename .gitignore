@@ -12,7 +12,7 @@ docs/
 ignore/
 
 # package development
-gisaimsr.Rcheck/
-gisaimsr*tar.gz
+bayesnec.Rcheck/
+bayesnec*tar.gz
 inst/doc
 inst/web
