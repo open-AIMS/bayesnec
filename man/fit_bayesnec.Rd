@@ -28,20 +28,20 @@ fit_bayesnec(
 
 \item{y_var}{the column heading indicating the response (y) variable}
 
-\item{trials_var}{the column heading indicating the column for the number of "trials" for binomial response data. 
+\item{trials_var}{the column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!
-#' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the 
+#' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the
 characteristic of the input data if not supplied.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 
-'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer. 
+\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial',
+'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
 If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.}
 
 \item{x_range}{The range of x values over which to obtain posterior predictions. Used for plot.bayesnecfit and to calculate nec for ecx models.}
 
 \item{precision}{The length of the x_seq to pass to posterior_predict as new data. Used for plot.bayesnecfit and to calculate nec for ecx models.}
 
-\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type 
+\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type
 data. For poisson, a negative binomial model is used. For binomial a beta model is used.}
 
 \item{model}{The type of model to be fit. Currently takes values of "nec3param",
@@ -64,12 +64,12 @@ A posterior sample of the nec is also available under $nec_posterior
 Fits a concentration(dose)-response model using brms
 }
 \details{
-As some concentration-response data will use zero concentration which can cause numerical estimation issues, a small offset 
+As some concentration-response data will use zero concentration which can cause numerical estimation issues, a small offset
 is added (1/10th of the next lowest value) to zero values of concentration where x_var are gamma distributed.
 
-All models provide an estimate for nec. For model types with "nec" as a prefix, nec is directly estimated as a paremeter 
-in the model. Models with "ecx" as a prefix are continuous curve models, tyipically used for extracting ecx values 
-from concentration response data. In this instance the nec value is defined as the concentration at which there is 
+All models provide an estimate for nec. For model types with "nec" as a prefix, nec is directly estimated as a paremeter
+in the model. Models with "ecx" as a prefix are continuous curve models, tyipically used for extracting ecx values
+from concentration response data. In this instance the nec value is defined as the concentration at which there is
 a user supplied (see sig_val) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of
 the upper assymptote (top) of the response (i.e the response value is significantly lower than that expected in the case of
 no exposure).

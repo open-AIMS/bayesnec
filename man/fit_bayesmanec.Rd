@@ -28,20 +28,20 @@ fit_bayesmanec(
 
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data. If not supplied, the model may run but will not be the model you intended!}
 
-\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guess based on the characteristic of the input data if not supplied. As some concentration-response data will use zero concentration, and there is no distribution on the continuous scale from 0 to in (ie tweedie) available in bayes, 
+\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guess based on the characteristic of the input data if not supplied. As some concentration-response data will use zero concentration, and there is no distribution on the continuous scale from 0 to in (ie tweedie) available in bayes,
 a small offset is added (1/10^3 of the next lowest value) to zero values of concentration where these are gamma distributed.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer. 
+\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
 If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.}
 
 \item{iter}{the number of interations to for the brms fit. Defaults to 2e4.}
 
-\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type data. 
+\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type data.
 For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.}
 
-\item{model_set}{A vector of the names of model types to be fit. Currently defaults to 
+\item{model_set}{A vector of the names of model types to be fit. Currently defaults to
 all available model types. If "nec" is supplied, only the nec models will be fit. If "ecx" is supplied,
- only continuous curve models will be fit.}
+only continuous curve models will be fit.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
 against the control, to estimate nec as an interpolated NOec value from smooth ecx curves.}

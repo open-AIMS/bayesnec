@@ -7,10 +7,16 @@
 dispersion(model, summary = FALSE)
 }
 \arguments{
+\item{model}{An object of class \code{\link[brms]{brmsfit}} whose distribution family
+is either \code{\link[stats]{gaussian}}, \code{\link[stats]{poisson}} or \code{\link[stats]{binomial}}.}
+
 \item{summary}{Logical. Should summary stats be returned instead of full vector? Defaults to FALSE.}
 }
 \value{
-
+If \code{summary} is FALSE, an n-long \code{\link[base]{numeric}} vector containing the dispersion metric,
+where n is the number of post warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If TRUE, then a
+\code{\link[base]{data.frame}} containing the summary stats (mean, median, 95\% highest density intervals).
+of the dispersion metric.
 }
 \description{
 Calculates posterior dispersion metric

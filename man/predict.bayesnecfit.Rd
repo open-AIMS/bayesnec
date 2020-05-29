@@ -2,7 +2,7 @@
 % Please edit documentation in R/bayesnecfit_methods.R
 \name{predict.bayesnecfit}
 \alias{predict.bayesnecfit}
-\title{predict.bayesnec}
+\title{predict.bayesnecfit}
 \usage{
 \method{predict}{bayesnecfit}(X, precision = 100, x_range = NA)
 }
@@ -17,5 +17,5 @@
 A list containing x and fitted y, with up and lw values
 }
 \description{
-predict.bayesnec
+predict.bayesnecfit
 }

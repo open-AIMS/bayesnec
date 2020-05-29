@@ -23,7 +23,7 @@ extract_ecx.bayesnecfit(
 
 \item{precision}{The number of unique x values over which to find ecx.}
 
-\item{posterior}{A logical value indicating if the full posterior sample of calculated ecx values should be returned 
+\item{posterior}{A logical value indicating if the full posterior sample of calculated ecx values should be returned
 instead of just the median and 95 credible intervals.}
 
 \item{type}{a character vector indicating if relative or absolute values for the ecx should be calculated.}

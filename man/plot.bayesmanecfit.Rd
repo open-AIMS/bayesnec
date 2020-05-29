@@ -2,7 +2,7 @@
 % Please edit documentation in R/bayesmanecfit_methods.R
 \name{plot.bayesmanecfit}
 \alias{plot.bayesmanecfit}
-\title{plot.bayesmanec}
+\title{plot.bayesmanecfit}
 \usage{
 \method{plot}{bayesmanecfit}(
   X,

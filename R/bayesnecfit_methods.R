@@ -1,25 +1,11 @@
-#    Copyright 2020 Australian Institute of Marine Science
-#
-#    Licensed under the Apache License, Version 2.0 (the "License");
-#    you may not use this file except in compliance with the License.
-#    You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS,
-#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#    See the License for the specific language governing permissions and
-#    limitations under the License.
-
 #' plot.bayesnecfit
 #'
 #' Generates a plot of a fitted bayes nec model, as returned by fit.bayesnec.
 #' 
 #' @param X the bayes nec model fit as returned by fit.bayesnec.
 #' @param CI a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples
-#' @param add_nec a logical value indicating if the estimated nec value and 95\% credible intervals should be added to the plot.
-#' @param add_ec10 a logical value indicating if an estimated ec10 value and 95\% credible intervals should be added to the plot.
+#' @param add_nec a logical value indicating if the estimated nec value and 95% credible intervals should be added to the plot.
+#' @param add_ec10 a logical value indicating if an estimated ec10 value and 95% credible intervals should be added to the plot.
 #' @param position_legend a vector indicating the location of the nec or ec10 legend, as per a call to legend.
 #' @param xform a function to be applied as a transformation of the x data.
 #' @param lxform a function to be applied as a transformation only to axis labels and the annoted nec/ec10 values.
@@ -148,7 +134,7 @@ plot.bayesnecfit <- function(X,
   }
 }
 
-#' predict.bayesnec
+#' predict.bayesnecfit
 #'
 #' 
 #' @param X the bayesnec model fit (as returned by fit_bayesnec)

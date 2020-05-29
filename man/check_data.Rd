@@ -22,17 +22,17 @@ check_data(
 
 \item{y_var}{the column heading indicating the response (y) variable}
 
-\item{trials_var}{the column heading indicating the column for the number of "trials" for binomial response data. 
+\item{trials_var}{the column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
 
-\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guess based on the 
+\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guess based on the
 characteristic of the input data if not supplied.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 
-'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer. 
+\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial',
+'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
 If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.}
 
-\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type 
+\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type
 data. For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.}
 
 \item{model}{The type of model to be fit. Currently takes values of "nec3param",
