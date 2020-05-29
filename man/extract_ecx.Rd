@@ -35,11 +35,15 @@ of the response. Type "absolute" (the default) is calculated as the percentage d
 to 0 (or bot for a 4 parameter model fit). Type "direct" provides a direct estimate of the x value for a given y.
 Note that for the current version, ecx for an necHormesis model is estimated at a percent decline from the control}
 
+\item{hormesis_def}{to complete}
+
 \item{xform}{A function to apply to the returned estimated concentration values}
 
 \item{x_range}{A range of x values over which to consider extracting ecx}
 
 \item{prob_vals}{A vector indicating the probability values over which to return the estimated ecx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).}
+
+\item{link}{to complete}
 }
 \value{
 A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds

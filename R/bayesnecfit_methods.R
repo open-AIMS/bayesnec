@@ -2,7 +2,8 @@
 #'
 #' Generates a plot of a fitted bayes nec model, as returned by fit.bayesnec.
 #' 
-#' @param X the bayes nec model fit as returned by fit.bayesnec.
+#' @param x the bayes nec model fit as returned by fit.bayesnec.
+#' @param ... Additional arguments to \code{\link[graphics]{plot}}.
 #' @param CI a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples
 #' @param add_nec a logical value indicating if the estimated nec value and 95% credible intervals should be added to the plot.
 #' @param add_ec10 a logical value indicating if an estimated ec10 value and 95% credible intervals should be added to the plot.
@@ -18,8 +19,10 @@
 #' @param xticks a numeric vector indicate where to place the tick marks of the x-axis
 #' @export
 #' @return a plot of the fitted model
-
-plot.bayesnecfit <- function(X,  
+#' @importFrom graphics plot axis lines abline legend
+#' @importFrom stats quantile
+#' @importFrom grDevices adjustcolor
+plot.bayesnecfit <- function(x, ...,
                              CI=TRUE,
                              add_nec=TRUE, 
                              position_legend="topright",  
@@ -32,32 +35,32 @@ plot.bayesnecfit <- function(X,
                              xlab="concentration", 
                              x_lim = NA, 
                              y_lim = NA,
-                             xticks = NA,  ...){
+                             xticks = NA){
   
   # check if y_type is binomial
-  y_type <- X$y_type
+  y_type <- x$y_type
   if(y_type=="binomial"){
-    y_dat <- X$mod_dat$y/X$mod_dat$trials}else{
-      y_dat <- X$mod_dat$y}
+    y_dat <- x$mod_dat$y/x$mod_dat$trials}else{
+      y_dat <- x$mod_dat$y}
   
   ec10 <- c(NA, NA, NA)
-  if(add_ec10==TRUE & X$y_type!="gaussian"){
-    ec10 <- extract_ecx(X)
+  if(add_ec10==TRUE & x$y_type!="gaussian"){
+    ec10 <- extract_ecx(x)
   }
-  if(add_ec10==TRUE & X$y_type=="gaussian"){
-    ec10 <- extract_ecx(X, type="relative")
+  if(add_ec10==TRUE & x$y_type=="gaussian"){
+    ec10 <- extract_ecx(x, type="relative")
   }  
   
   # check if a transformation is required for x
   if(class(xform)=="function"){
-    x_dat <- xform(X$mod_dat$x)
-    nec <- xform(X$nec)
-    x_vec <- xform(X$pred_vals$x)
+    x_dat <- xform(x$mod_dat$x)
+    nec <- xform(x$nec)
+    x_vec <- xform(x$pred_vals$x)
     ec10 <- xform(ec10)
   }else{
-    x_dat <- X$mod_dat$x
-    nec <- X$nec
-    x_vec <- X$pred_vals$x
+    x_dat <- x$mod_dat$x
+    nec <- x$nec
+    x_vec <- x$pred_vals$x
   }
   
   if(jitter_x==TRUE){x_dat <- jitter(x_dat)}
@@ -85,8 +88,8 @@ plot.bayesnecfit <- function(X,
        xlab=xlab,        
        pch=16, xaxt="n", 
        xlim = x_lim, ylim = y_lim,
-       col=adjustcolor(1, alpha=0.25), 
-       cex=1.5) 
+       col=adjustcolor(1, alpha.f=0.25), 
+       cex=1.5, ...)
   
   if(class(lxform)!="function"){
     if(length(xticks)==1){
@@ -108,11 +111,11 @@ plot.bayesnecfit <- function(X,
   }
   
   if(CI==TRUE){
-    lines(x_vec, X$pred_vals$up, lty=2) 
-    lines(x_vec, X$pred_vals$lw, lty=2)  
+    lines(x_vec, x$pred_vals$up, lty=2) 
+    lines(x_vec, x$pred_vals$lw, lty=2)  
   }
   
-  lines(x_vec, X$pred_vals$y)
+  lines(x_vec, x$pred_vals$y)
   
   if(add_nec==TRUE & add_ec10==FALSE){
     abline(v=nec, col = "red", lty=c(1,3,3))   
@@ -137,23 +140,25 @@ plot.bayesnecfit <- function(X,
 #' predict.bayesnecfit
 #'
 #' 
-#' @param X the bayesnec model fit (as returned by fit_bayesnec)
+#' @param object the bayesnec model fit (as returned by fit_bayesnec).
 #' 
-#' @param precision the number of x values over which to predict values
+#' @param precision the number of x values over which to predict values.
 #' 
-#' @param x_range The range of x values over which to make predictions
+#' @param x_range The range of x values over which to make predictions.
+#' 
+#' @param ... unused. 
 #'
 #' @export
 #' @return A list containing x and fitted y, with up and lw values
 #' @importFrom brms posterior_predict
 
-predict.bayesnecfit <- function(X, precision=100, x_range=NA){
-  mod_dat <- X$mod_dat
+predict.bayesnecfit <- function(object, ..., precision=100, x_range=NA){
+  mod_dat <- object$mod_dat
   
-  y_type <- X$y_type
-  x_type <- X$x_type
+  y_type <- object$y_type
+  x_type <- object$x_type
   
-  fit <- X$fit
+  fit <- object$fit
   
   if(is.na(x_range[1])){
     x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length=precision)

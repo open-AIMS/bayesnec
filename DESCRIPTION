@@ -1,8 +1,8 @@
 Package: bayesnec
-Title: A Bayesian No-Effect- Concentration (NEC) Algorithm.
+Title: A Bayesian No-Effect- Concentration (NEC) Algorithm
 Version: 1.0
 Authors@R: c(person("Rebecca", "Fisher", email = "r.fisher@aims.gov.au", role = c("aut", "cre")), person("Diego","Barneche",role="aut"), person("Gerard","Ricardo",role="aut"), person("David","Fox",role="aut"))
-Description: bayesnec is a No-Effect-Concentration estimation package that uses brms to fit concentration(dose)-response data using bayesiam methods for the purpose of estimating both ecx values, but more particularly nec. Please see ?bayesnec for more details.
+Description: Implementation of No-Effect-Concentration estimation that uses brms to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating both ECX values, but more particularly NEC.
 Depends:
     R (>= 3.6.0)
 License: MIT + file LICENSE
