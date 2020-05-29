@@ -1,8 +1,8 @@
-#' extract_ecx
+#' ecx
 #'
 #' Extracts the predicted ecx value as desired from a bayesnec or a bayesmanec model fit.
 #'
-#' @param  X a jag model fit as returned by a call to bayes from fit_bayesnec
+#' @param  object a jag model fit as returned by a call to bayes from fit_bayesnec
 #' @param ecx_val the desired percentage effect value. This must be a value between 1 and 99 (for type = "relative" 
 #' and "absolute"), defaults to 10.
 #' @param type a character vector, taking values of "relative",  "absolute" (the default) or "direct". 
@@ -14,8 +14,9 @@
 #' precise.
 #' @param posterior A logical value indicating if the full posterior sample of calculated ecx values should be returned 
 #' instead of just the median and 95 credible intervals
-#' @param hormesis_def to complete
-#' @param link to complete
+#' @param hormesis_def takces values of 'max' or 'control'. 
+#' If 'max' ecx values are calculated as a decline from the maximum estimates (ie the peak at nec). 
+#' If 'control' ecx values are calculated relative to the control, which is assumed to be the lowest observed concentrartion.
 #' @param xform A function to apply to the returned estimated concentration values
 #' @param x_range A range of x values over which to consider extracting ecx
 #' @param prob_vals A vector indicating the probability values over which to return the estimated ecx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals). 
@@ -23,18 +24,18 @@
 #' @export
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 #' 
-extract_ecx <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
+ecx <- function(object, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
                         hormesis_def = "control", xform=NA, x_range=NA,
-                        prob_vals=c(0.5, 0.025, 0.975), link="identity"){
+                        prob_vals=c(0.5, 0.025, 0.975)){
   
-  if(class(X)=="bayesnecfit"){
-    ecx <- extract_ecx_nec(X, ecx_val=ecx_val, precision=precision, 
+  if(class(object)=="bayesnecfit"){
+    ecx <- ecx_1fit(object, ecx_val=ecx_val, precision=precision, 
                                   posterior = posterior, type=type, hormesis_def=hormesis_def, 
                                   xform=xform, 
                                   prob_vals=prob_vals)
   }
-  if(class(X)== "bayesmanecfit"){
-    ecx <- extract_ecx_manec(X, ecx_val=ecx_val, precision=precision, 
+  if(class(object)== "bayesmanecfit"){
+    ecx <- ecx_ma(object, ecx_val=ecx_val, precision=precision, 
                                     posterior = posterior, type=type, xform=xform, x_range=x_range,
                                     prob_vals=prob_vals) 
   }
@@ -47,11 +48,11 @@ extract_ecx <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="
   
 }
 
-#' extract_ecx_nec
+#' ecx_1fit
 #'
-#' Extracts the predicted ecx value as desired from a bayesnec model fit obeject
+#' Extracts the predicted ecx value as desired from a bayesnec model obeject
 #'
-#' @param  X a jag model fit as returned by a call to bayes from fit_bayesnec
+#' @param  object a jag model fit as returned by a call to bayes from fit_bayesnec
 #' @param ecx_val the desired percentage effect value.
 #' @param type a character vector indicating if relative or absolute values for the ecx should be calculated.
 #' @param precision The number of unique x values over which to find ecx.
@@ -59,15 +60,16 @@ extract_ecx <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="
 #' instead of just the median and 95 credible intervals.
 #' @param xform A function to apply to the returned estimated concentration values
 #' @param prob_vals A vector indicating the probability values over which to return the estimated ecx value. 
-#' @param hormesis_def to complete
-#' @param x_range A range of x values over which to consider extracting ecx
-#' 
+#' @param hormesis_def takces values of 'max' or 'control'. 
+#' If 'max' ecx values are calculated as a decline from the maximum estimates (ie the peak at nec). 
+#' If 'control' ecx values are calculated relative to the control, which is assumed to be the lowest observed concentrartion.
+#' @param x_range A range of x values over which to consider extracting ecx.
 #' @export
 #' @importFrom brms posterior_predict
 #' @importFrom stats quantile
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 
-extract_ecx_nec <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
+ecx_1fit <- function(object, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
                                    hormesis_def = "control", x_range=NA,
                                    xform=NA, prob_vals=c(0.5, 0.025, 0.975)){
 
@@ -77,35 +79,35 @@ extract_ecx_nec <- function(X, ecx_val=10, precision=1000, posterior = FALSE, ty
     }   
   }
   
-  if(length(grep("ecx", X$model))>0){mod_class <- "ecx"}else{mod_class <- "nec"}
-  if(is.null(X$bot)==FALSE){m4param <- 1}else{m4param <- 0}
+  if(length(grep("ecx", object$model))>0){mod_class <- "ecx"}else{mod_class <- "nec"}
+  if(is.null(object$bot)==FALSE){m4param <- 1}else{m4param <- 0}
   
-  if(X$y_type=="gaussian"  &  type=="absolute"){
+  if(object$y_type=="gaussian"  &  type=="absolute"){
     stop("Absolute ecx values are not valid for a gaussian response variable unless a 4 parameter model is fit") 
   }
-  if(X$x_type=="gaussian" &  X$model == "ecxLinear"  & type=="absolute"){
+  if(object$x_type=="gaussian" &  object$model == "ecxLinear"  & type=="absolute"){
     stop("Absolute ecx values are not valid for a linear model when
          x-values are gaussian, because 'top' merely indicates the y-intercept. Use type 'relative'.") 
   }  
   
   label <- paste("ec", ecx_val, sep="_")
   
-  pred_vals <- predict(X, precision=precision, x_range=x_range)
+  pred_vals <- predict(object, precision=precision, x_range=x_range)
   posterior_sample <- pred_vals$posterior
   x_vec <- pred_vals$'x' 
   
   
-  if(X$model=="necHormesis" & hormesis_def=="max"){ # remove values prior to the nec for the hormesis model
+  if(object$model=="necHormesis" & hormesis_def=="max"){ # remove values prior to the nec for the hormesis model
     posterior_sample <- do.call("rbind",
                                 lapply(1:nrow(posterior_sample), FUN=function(x){
-                                  nec_x <- X$nec_posterior[x]
+                                  nec_x <- object$nec_posterior[x]
                                   posterior_x <- posterior_sample[x,]
                                   posterior_x[which(x_vec<nec_x)] <- NA
                                   return(posterior_x)
                                 }))
   }
   
-  if(X$model=="necHormesis"& hormesis_def=="control"){ # remove values greater than the control for the hormesis model
+  if(object$model=="necHormesis"& hormesis_def=="control"){ # remove values greater than the control for the hormesis model
     posterior_sample <- do.call("rbind", 
                                 lapply(1:nrow(posterior_sample), FUN=function(x){
                                   control_x <- posterior_sample[x, 1]                                    
@@ -161,11 +163,11 @@ extract_ecx_nec <- function(X, ecx_val=10, precision=1000, posterior = FALSE, ty
   
 }
 
-#' extract_ecx_manec
+#' ecx_ma
 #'
-#' Extracts the predicted ecx value as desired from a bayesnec model fit obeject
+#' Extracts the predicted ecx value as desired from a bayesmanec model object
 #'
-#' @param  X a fitted bayesmanec model object, containing a list of jag model fit as returned by a call to bayes from 
+#' @param  object a fitted bayesmanec model object, containing a list of jag model fit as returned by a call to bayes from 
 #' fit_bayesnec
 #' @param ecx_val the desired percentage effect value.
 #' @param type a character vector indicating if relative or absolute values for the ecx should be calculated. 
@@ -174,24 +176,26 @@ extract_ecx_nec <- function(X, ecx_val=10, precision=1000, posterior = FALSE, ty
 #' should be returned instead of just the median and 95 credible intervals.
 #' @param xform A function to apply to the returned estimated concentration values
 #' @param prob_vals A vector indicating the probability values over which to return the estimated ecx value. 
-#' @param hormesis_def to complete
+#' @param hormesis_def takces values of 'max' or 'control'. 
+#' If 'max' ecx values are calculated as a decline from the maximum estimates (ie the peak at nec). 
+#' If 'control' ecx values are calculated relative to the control, which is assumed to be the lowest observed concentrartion.
 #' @param x_range A range of x values over which to consider extracting ecx
 #' 
 #' @export
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 #' @importFrom stats quantile
-extract_ecx_manec <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
+extract_ecx_manec <- function(object, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
                                      hormesis_def="control", xform=NA, x_range=NA,
                                      prob_vals=c(0.5, 0.025, 0.975)){
-  sample_size <- X$sample_size
-  ecx_out <- unlist(sapply(1:length(X$success_models), FUN=function(x){
-    base::sample(extract_ecx_nec(X$mod_fits[[x]], 
+  sample_size <- object$sample_size
+  ecx_out <- unlist(sapply(1:length(object$success_models), FUN=function(x){
+    base::sample(extract_ecx_nec(object$mod_fits[[x]], 
                                         ecx_val=ecx_val, 
                                         precision=precision, 
                                         posterior = TRUE, 
                                         x_range = x_range,
                                         type=type), 
-                 as.integer(round(sample_size*X$mod_stats[x, "wi"])))
+                 as.integer(round(sample_size*object$mod_stats[x, "wi"])))
   }))
   
   label <- paste("ec", ecx_val, sep="_")

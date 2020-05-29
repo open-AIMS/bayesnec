@@ -2,6 +2,7 @@
 #'
 #' Fits a variety of nec models using bayes and provides a model averaged predictions based on DIC model weights
 #'
+#' @inheritParams fit_bayesnec
 #' @param data A data.frame containing the data to use for the model
 #' @param x_var The column heading indicating the concentration (x) variable
 #' @param y_var The column heading indicating the response (y) variable
@@ -16,7 +17,7 @@
 #' @param model_set A vector of the names of model types to be fit. Currently defaults to 
 #' all available model types. If "nec" is supplied, only the nec models will be fit. If "ecx" is supplied,
 #'  only continuous curve models will be fit. 
-#' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values
+#' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values against the lowest observed concentration.
 #' against the control, to estimate nec as an interpolated NOec value from smooth ecx curves.
 #' @param x_range A range of x values over which to consider extracting ecx
 #' @param ... Further arguments to \code{\link{fit_bayesnec}}
@@ -30,11 +31,13 @@ fit_bayesmanec <- function(data,
                           trials_var = NA,
                           x_type = NA, 
                           y_type = NA,
-                          iter = 2e4,
+                          x_range=NA, 
+                          precision = 1000,
                           over_disp=FALSE,
                           model_set="all",
-                          sig_val=0.025,
-                          x_range=NA,
+                          sig_val=0.01,
+                          iter = 2e4,                          
+                          warmup = floor(iter/5)*4, 
                           ...){
   
   if(model_set[1]=="nec"){model_set=c("nec3param", "nec4param", "nechorme", "necsigm")}
@@ -65,6 +68,7 @@ fit_bayesmanec <- function(data,
                   over_disp=over_disp,
                   model=model,
                   x_range=x_range,
+                  precision=precision,
                   open_progress = FALSE), 
       silent = TRUE)
     if (!inherits(fit_m, 'try-error')) {
