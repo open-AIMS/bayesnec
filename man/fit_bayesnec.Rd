@@ -52,7 +52,7 @@ against the control, to estimate nec as an interpolated NOec value from smooth e
 }
 \value{
 The fitted brms model, including an estimate of the nec value and predicted posterior values.
-A posterior sample of the nec is also available under $nec_posterior
+A posterior sample of the nec is also available under \code{nec_posterior}
 }
 \description{
 Fits a concentration(dose)-response model using brms
