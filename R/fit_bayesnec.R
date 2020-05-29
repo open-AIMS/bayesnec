@@ -23,6 +23,7 @@
 #' @param iter the number of interations for the brms fit. Defaults to 2e4.
 #' @param warmup the number of warmup iterations. Defaults to 4/5ths of iter.
 #' @param ... further arguments to be passed to \code{\link[brms]{brm}}.
+#' @param x_type tbw
 #' 
 #' @details   
 #' 
@@ -37,7 +38,8 @@
 #' no exposure).
 #'
 #' @export
-#' @importFrom brms fixef brm posterior_predict loo waic
+#' @importFrom brms fixef brm posterior_predict posterior_samples loo waic
+#' @importFrom stats quantile
 #' @return The fitted brms model, including an estimate of the nec value and predicted posterior values.
 #' A posterior sample of the nec is also available under $nec_posterior
 

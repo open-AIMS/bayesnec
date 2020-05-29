@@ -33,6 +33,8 @@ If not supplied, the model may run but will not be the model you intended!
 #' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the
 characteristic of the input data if not supplied.}
 
+\item{x_type}{tbw}
+
 \item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial',
 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
 If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.}

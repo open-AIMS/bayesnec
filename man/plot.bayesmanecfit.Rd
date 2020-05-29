@@ -5,7 +5,8 @@
 \title{plot.bayesmanecfit}
 \usage{
 \method{plot}{bayesmanecfit}(
-  X,
+  x,
+  ...,
   CI = TRUE,
   add_nec = TRUE,
   position_legend = "topright",
@@ -19,12 +20,13 @@
   x_lim = NA,
   y_lim = NA,
   xticks = NA,
-  all_models = FALSE,
-  ...
+  all_models = FALSE
 )
 }
 \arguments{
-\item{X}{the bayes nec model fit as returned by fit.bayesnec.}
+\item{x}{the bayes nec model fit as returned by fit.bayesnec.}
+
+\item{...}{Additional arguments to \code{\link[graphics]{plot}}.}
 
 \item{CI}{a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples}
 

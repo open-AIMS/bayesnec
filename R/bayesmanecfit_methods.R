@@ -2,7 +2,8 @@
 #'
 #' Generates a plot of a fitted bayes nec model, as returned by fit.bayesnec.
 #' 
-#' @param X the bayes nec model fit as returned by fit.bayesnec.
+#' @param x the bayes nec model fit as returned by fit.bayesnec.
+#' @param ... Additional arguments to \code{\link[graphics]{plot}}.
 #' @param CI a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples
 #' @param add_nec a logical value indicating if the estimated nec value and 95% credible intervals should be added to the plot.
 #' @param add_ec10 a logical value indicating if an estimated ec10 value and 95% credible intervals should be added to the plot.
@@ -19,9 +20,10 @@
 #' @param all_models Logical indicating if all models in the model set should be plotted simultaneousl, or if a model average plot should be returned.
 #'
 #' @export
+#' @importFrom graphics par plot mtext legend
 #' @return a plot of the fitted model
 
-plot.bayesmanecfit <- function(X,  CI=TRUE, 
+plot.bayesmanecfit <- function(x, ..., CI=TRUE, 
                                add_nec=TRUE, 
                                position_legend="topright",  
                                add_ec10=FALSE,
@@ -34,13 +36,13 @@ plot.bayesmanecfit <- function(X,  CI=TRUE,
                                x_lim = NA, 
                                y_lim = NA,
                                xticks = NA, 
-                               all_models = FALSE, ...){
+                               all_models = FALSE){
   
    if(all_models){
-    mod_fits <- X$mod_fits 
+    mod_fits <- x$mod_fits 
     par(mfrow=c(ceiling(length(mod_fits)/2), 2), mar=c(1.5, 1.5, 1.5, 1.5), oma=c(3, 3, 0, 0)) 
     for(m in 1:length(mod_fits)){
-      plot(X = mod_fits[[m]],
+      plot(x = mod_fits[[m]],
            CI = CI, add_nec = add_nec, 
            position_legend = position_legend,  
            add_ec10 = add_ec10,
@@ -56,14 +58,14 @@ plot.bayesmanecfit <- function(X,  CI=TRUE,
     
      
    }else{
-    plot.bayesnecfit(X = X, CI = CI, add_nec = add_nec, 
-                    position_legend = position_legend,  
-                    add_ec10 = add_ec10,
-                    xform = xform, lxform = lxform,
-                    jitter_x = jitter_x, jitter_y = jitter_y, 
-                    ylab = ylab, xlab = xlab, 
-                    x_lim = x_lim, 
-                    xticks = xticks,  ...)     
+    plot(x = x, CI = CI, add_nec = add_nec, 
+         position_legend = position_legend,  
+         add_ec10 = add_ec10,
+         xform = xform, lxform = lxform,
+         jitter_x = jitter_x, jitter_y = jitter_y, 
+         ylab = ylab, xlab = xlab, 
+         x_lim = x_lim, 
+         xticks = xticks, ...)
    }
 
   

@@ -4,14 +4,16 @@
 \alias{predict.bayesnecfit}
 \title{predict.bayesnecfit}
 \usage{
-\method{predict}{bayesnecfit}(X, precision = 100, x_range = NA)
+\method{predict}{bayesnecfit}(object, ..., precision = 100, x_range = NA)
 }
 \arguments{
-\item{X}{the bayesnec model fit (as returned by fit_bayesnec)}
+\item{object}{the bayesnec model fit (as returned by fit_bayesnec).}
 
-\item{precision}{the number of x values over which to predict values}
+\item{...}{unused.}
 
-\item{x_range}{The range of x values over which to make predictions}
+\item{precision}{the number of x values over which to predict values.}
+
+\item{x_range}{The range of x values over which to make predictions.}
 }
 \value{
 A list containing x and fitted y, with up and lw values

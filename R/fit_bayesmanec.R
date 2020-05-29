@@ -18,6 +18,8 @@
 #'  only continuous curve models will be fit. 
 #' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values
 #' against the control, to estimate nec as an interpolated NOec value from smooth ecx curves.
+#' @param x_range A range of x values over which to consider extracting ecx
+#' @param ... Further arguments to \code{\link{fit_bayesnec}}
 #' @export
 #' @return All successully fitted bayes model fits, mod.stats a data.frame of model fit statistics, nec a model
 #' averaged posterior of the estimated nec, and pred.vals a list of model averaged predictions.

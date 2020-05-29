@@ -24,10 +24,11 @@
 #' @param model The type of model to be fit. Currently takes values of "nec3param",  
 #' "nec4param", "necsigmoidal", "nechorme", "ecx4param", "ecxwb1", or "ecxwb2".
 #' 
-#' @details   
+#' @details
 #' 
 #' This is a wrapper function to test input data criteria and write the brms model file for use in a bayesnec model fit
 #'
+#' @importFrom stats na.omit
 #' @export
 #' @return Modified elements of the bayesnec input data.
 

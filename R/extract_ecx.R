@@ -14,6 +14,8 @@
 #' precise.
 #' @param posterior A logical value indicating if the full posterior sample of calculated ecx values should be returned 
 #' instead of just the median and 95 credible intervals
+#' @param hormesis_def to complete
+#' @param link to complete
 #' @param xform A function to apply to the returned estimated concentration values
 #' @param x_range A range of x values over which to consider extracting ecx
 #' @param prob_vals A vector indicating the probability values over which to return the estimated ecx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals). 
@@ -26,13 +28,13 @@ extract_ecx <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="
                         prob_vals=c(0.5, 0.025, 0.975), link="identity"){
   
   if(class(X)=="bayesnecfit"){
-    ecx <- extract_ecx.bayesnecfit(X, ecx_val=ecx_val, precision=precision, 
+    ecx <- extract_ecx_nec(X, ecx_val=ecx_val, precision=precision, 
                                   posterior = posterior, type=type, hormesis_def=hormesis_def, 
                                   xform=xform, 
                                   prob_vals=prob_vals)
   }
   if(class(X)== "bayesmanecfit"){
-    ecx <- extract_ecx.bayesmanecfit(X, ecx_val=ecx_val, precision=precision, 
+    ecx <- extract_ecx_manec(X, ecx_val=ecx_val, precision=precision, 
                                     posterior = posterior, type=type, xform=xform, x_range=x_range,
                                     prob_vals=prob_vals) 
   }
@@ -45,7 +47,7 @@ extract_ecx <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="
   
 }
 
-#' extract_ecx.bayesnec
+#' extract_ecx_nec
 #'
 #' Extracts the predicted ecx value as desired from a bayesnec model fit obeject
 #'
@@ -57,12 +59,15 @@ extract_ecx <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="
 #' instead of just the median and 95 credible intervals.
 #' @param xform A function to apply to the returned estimated concentration values
 #' @param prob_vals A vector indicating the probability values over which to return the estimated ecx value. 
+#' @param hormesis_def to complete
+#' @param x_range A range of x values over which to consider extracting ecx
 #' 
 #' @export
 #' @importFrom brms posterior_predict
+#' @importFrom stats quantile
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 
-extract_ecx.bayesnecfit <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
+extract_ecx_nec <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
                                    hormesis_def = "control", x_range=NA,
                                    xform=NA, prob_vals=c(0.5, 0.025, 0.975)){
 
@@ -156,7 +161,7 @@ extract_ecx.bayesnecfit <- function(X, ecx_val=10, precision=1000, posterior = F
   
 }
 
-#' extract_ecx.bayesmanec
+#' extract_ecx_manec
 #'
 #' Extracts the predicted ecx value as desired from a bayesnec model fit obeject
 #'
@@ -169,16 +174,18 @@ extract_ecx.bayesnecfit <- function(X, ecx_val=10, precision=1000, posterior = F
 #' should be returned instead of just the median and 95 credible intervals.
 #' @param xform A function to apply to the returned estimated concentration values
 #' @param prob_vals A vector indicating the probability values over which to return the estimated ecx value. 
+#' @param hormesis_def to complete
+#' @param x_range A range of x values over which to consider extracting ecx
 #' 
 #' @export
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
-
-extract_ecx.bayesmanecfit <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
+#' @importFrom stats quantile
+extract_ecx_manec <- function(X, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
                                      hormesis_def="control", xform=NA, x_range=NA,
                                      prob_vals=c(0.5, 0.025, 0.975)){
   sample_size <- X$sample_size
   ecx_out <- unlist(sapply(1:length(X$success_models), FUN=function(x){
-    base::sample(extract_ecx.bayesnecfit(X$mod_fits[[x]], 
+    base::sample(extract_ecx_nec(X$mod_fits[[x]], 
                                         ecx_val=ecx_val, 
                                         precision=precision, 
                                         posterior = TRUE, 

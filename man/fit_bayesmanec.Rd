@@ -45,6 +45,10 @@ only continuous curve models will be fit.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
 against the control, to estimate nec as an interpolated NOec value from smooth ecx curves.}
+
+\item{x_range}{A range of x values over which to consider extracting ecx}
+
+\item{...}{Further arguments to \code{\link{fit_bayesnec}}}
 }
 \value{
 All successully fitted bayes model fits, mod.stats a data.frame of model fit statistics, nec a model
