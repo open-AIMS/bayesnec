@@ -66,8 +66,8 @@ AIMS R package logos
 --------------------
 
 Our R package logos use a watercolour map of Australia, obtained with
-the [ggmap](https://cran.r-project.org/web/packages/ggmap/) R package,
-which downloads original map tiles provided by [Stamen
+the [ggmap](https://CRAN.R-project.org/package=ggmap) R package, which
+downloads original map tiles provided by [Stamen
 Design](http://stamen.com), under [CC BY
 3.0](http://creativecommons.org/licenses/by/3.0), with data from
 [OpenStreetMap](http://openstreetmap.org), under [CC BY
