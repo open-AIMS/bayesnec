@@ -42,8 +42,8 @@
 dispersion <- function (model, summary = FALSE) {
   allowed_fams <- c("gaussian", "binomial", "poisson")
   fam <- model$family$family
-  fam_fcts <- get(fam)()
   if (fam %in% c(allowed_fams)) {
+   fam_fcts <- get(fam)()   
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
     prd_out <- pp_expect(model)

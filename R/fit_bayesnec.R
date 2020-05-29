@@ -37,7 +37,7 @@
 #' no exposure).
 #'
 #' @export
-#' @importFrom brms fixef brm posterior_predict
+#' @importFrom brms fixef brm posterior_predict loo waic
 #' @return The fitted brms model, including an estimate of the nec value and predicted posterior values.
 #' A posterior sample of the nec is also available under $nec_posterior
 
@@ -149,7 +149,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                       posterior=pred_posterior), list(y_pred_m=y_pred_m[,"Estimate"]))  
 
   # Extract the overdispersion estimate
-  od <- NA#mean(out$sims.list$SS > out$sims.list$SSsim)
+  od <- dispersion(fit, summary = TRUE) 
+  if(is.null(od)){od <- c(NA, NA, NA, NA)}
   
   # get the posterior nec 
   

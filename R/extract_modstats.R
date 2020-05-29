@@ -35,13 +35,15 @@ extract_modstats <- function(mod_fits){
      try using fit.bayesnec instead using the default settings as a starting point for trouble shooting.")}else{
        message(paste("successfully fitted the models: ", paste(success_models, collapse=" ")))
      }
+  disp <-  do.call("rbind", lapply(mod_fits, FUN=function(x){x$over_disp}))
+  colnames(disp) <- c("dispersion_mean", "dispersion_median", "dispersion_lw", "dispersion_up")
   
+  # extract the model statistics for each fit  
   mod_fits <- mod_fits[success_models] 
-  # extract the model statistics for each fit
   mod_stats <- data.frame(model = success_models)
   mod_stats$waic <- sapply(mod_fits, FUN=function(x){brms::waic(x$fit)$estimates["waic","Estimate"]})
   mod_stats$wi <- brms::loo_model_weights(lapply(mod_fits, FUN=function(x){x$fit$loo}))
-  mod_stats$over_disp <- unlist(lapply(mod_fits, FUN=function(x){x$over_disp}))
+  mod_stats <- cbind(mod_stats, disp) 
   
   sample_size <- nrow(predict(mod_fits[[1]]$fit, summary=FALSE)) 
   
@@ -75,7 +77,7 @@ extract_modstats <- function(mod_fits){
   names(nec) <- c("Estimate", "Q2.5", "Q97.5")
   
   # collate all the elements
-  export.list <- 
+  export_list <- 
       list(mod_fits=mod_fits,
            success_models=success_models,
            mod_dat=mod_dat,
@@ -88,7 +90,7 @@ extract_modstats <- function(mod_fits){
            residuals=mod_dat$y-predicted_y,
            pred_vals=list(x=x, y=y, up=up, lw=lw, posterior=posterior_predicted, y_m=y_m),
            nec=nec)
-  return(export.list)
+  return(export_list)
   
   
 }
