@@ -36,7 +36,7 @@ fit_bayesmanec <- function(data,
                           over_disp=FALSE,
                           model_set="all",
                           sig_val=0.01,
-                          iter = 2e4,                          
+                          iter = 2e3,                          
                           warmup = floor(iter/5)*4, 
                           ...){
   

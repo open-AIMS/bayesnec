@@ -55,7 +55,7 @@ fit_bayesnec <- function(data,
                          over_disp = FALSE, 
                          model = "nec3param", 
                          sig_val = 0.01, 
-                         iter = 2e4,
+                         iter = 2e3,
                          warmup = floor(iter/5)*4, 
                           ...) {
   if(class(data)== "bayesmanecfit"){
