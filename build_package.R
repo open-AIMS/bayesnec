@@ -12,7 +12,7 @@ library(digest)
 
 devtools::document()
 
-use_package("bmrs")
+use_package("brms")
 
 build()
 
