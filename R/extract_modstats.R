@@ -7,7 +7,7 @@
 #' @export
 #' @return A list of model statistical output derived from the input model list
 #' @importFrom brms loo_model_weights waic
-#' @importFrom stats quantile
+#' @importFrom stats quantile predict
 extract_modstats <- function(mod_fits){
   model_set <- names(mod_fits)
   # extract model parameters that do not vary across models

@@ -66,7 +66,7 @@ ecx <- function(object, ecx_val=10, precision=1000, posterior = FALSE, type="abs
 #' @param x_range A range of x values over which to consider extracting ecx.
 #' @export
 #' @importFrom brms posterior_predict
-#' @importFrom stats quantile
+#' @importFrom stats quantile predict
 #' @return A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
 
 ecx_1fit <- function(object, ecx_val=10, precision=1000, posterior = FALSE, type="absolute", 
