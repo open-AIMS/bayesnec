@@ -11,11 +11,13 @@ fit_bayesmanec(
   trials_var = NA,
   x_type = NA,
   y_type = NA,
-  iter = 20000,
+  x_range = NA,
+  precision = 1000,
   over_disp = FALSE,
   model_set = "all",
-  sig_val = 0.025,
-  x_range = NA,
+  sig_val = 0.01,
+  iter = 20000,
+  warmup = floor(iter/5) * 4,
   ...
 )
 }
@@ -34,7 +36,9 @@ a small offset is added (1/10^3 of the next lowest value) to zero values of conc
 \item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
 If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.}
 
-\item{iter}{the number of interations to for the brms fit. Defaults to 2e4.}
+\item{x_range}{A range of x values over which to consider extracting ecx}
+
+\item{precision}{The length of the x_seq to pass to posterior_predict as new data. Used for plot.bayesnecfit and to calculate nec for ecx models.}
 
 \item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type data.
 For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.}
@@ -43,10 +47,12 @@ For poisson, a negative binomial model will be fit. For binomial a beta model wi
 all available model types. If "nec" is supplied, only the nec models will be fit. If "ecx" is supplied,
 only continuous curve models will be fit.}
 
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
+\item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values against the lowest observed concentration.
 against the control, to estimate nec as an interpolated NOec value from smooth ecx curves.}
 
-\item{x_range}{A range of x values over which to consider extracting ecx}
+\item{iter}{the number of interations to for the brms fit. Defaults to 2e4.}
+
+\item{warmup}{the number of warmup iterations. Defaults to 4/5ths of iter.}
 
 \item{...}{Further arguments to \code{\link{fit_bayesnec}}}
 }
