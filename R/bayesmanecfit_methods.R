@@ -58,7 +58,7 @@ plot.bayesmanecfit <- function(x, ..., CI=TRUE,
     
      
    }else{
-    plot(x = x, CI = CI, add_nec = add_nec, 
+    plot.bayesnecfit(x = x, CI = CI, add_nec = add_nec, 
          position_legend = position_legend,  
          add_ec10 = add_ec10,
          xform = xform, lxform = lxform,
