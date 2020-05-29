@@ -66,7 +66,7 @@ fit_bayesmanec <- function(data,
   
   for(m in seq_along(model_set)){
     model <- model_set[m] 
-    fit_m <- #try(
+    fit_m <- try(
       fit_bayesnec(data=data,
                   x_var=x_var,
                   y_var=y_var,
@@ -77,8 +77,8 @@ fit_bayesmanec <- function(data,
                   over_disp=over_disp,
                   model=model,
                   x_range=x_range,
-                  open_progress = FALSE)#, 
-     # silent = TRUE)
+                  open_progress = FALSE), 
+      silent = TRUE)
     if (!inherits(fit_m, 'try-error')) {
       mod_fits[[m]] <- fit_m  
     } else {

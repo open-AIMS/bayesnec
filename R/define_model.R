@@ -30,7 +30,7 @@
 #' @export
 #' @return a model formula, priors and the family to use
 #' @importFrom brms prior bf
-#' @importFrom base qlogis
+#' @importFrom stats qlogis
 
 define_model <- function(model, x_type, y_type, mod_dat) {
  
