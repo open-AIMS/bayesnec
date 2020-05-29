@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>fit_bayesnec — fit_bayesnec • bayesnec</title>
+<title>extract_ecx_manec — extract_ecx_manec • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="fit_bayesnec — fit_bayesnec" />
-<meta property="og:description" content="Fits a concentration(dose)-response model using brms" />
+<meta property="og:title" content="extract_ecx_manec — extract_ecx_manec" />
+<meta property="og:description" content="Extracts the predicted ecx value as desired from a bayesnec model fit obeject" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -128,115 +128,73 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>fit_bayesnec</h1>
-    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/fit_bayesnec.R'><code>R/fit_bayesnec.R</code></a></small>
-    <div class="hidden name"><code>fit_bayesnec.Rd</code></div>
+    <h1>extract_ecx_manec</h1>
+    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/extract_ecx.R'><code>R/extract_ecx.R</code></a></small>
+    <div class="hidden name"><code>extract_ecx_manec.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Fits a concentration(dose)-response model using brms</p>
+    <p>Extracts the predicted ecx value as desired from a bayesnec model fit obeject</p>
     </div>
 
-    <pre class="usage"><span class='fu'>fit_bayesnec</span>(
-  <span class='no'>data</span>,
-  <span class='no'>x_var</span>,
-  <span class='no'>y_var</span>,
-  <span class='kw'>trials_var</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>x_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>y_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+    <pre class="usage"><span class='fu'>extract_ecx_manec</span>(
+  <span class='no'>X</span>,
+  <span class='kw'>ecx_val</span> <span class='kw'>=</span> <span class='fl'>10</span>,
   <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
-  <span class='kw'>over_disp</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
-  <span class='kw'>model</span> <span class='kw'>=</span> <span class='st'>"nec3param"</span>,
-  <span class='kw'>sig_val</span> <span class='kw'>=</span> <span class='fl'>0.025</span>,
-  <span class='kw'>iter</span> <span class='kw'>=</span> <span class='fl'>20000</span>,
-  <span class='kw'>warmup</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>floor</a></span>(<span class='no'>iter</span>/<span class='fl'>5</span>) * <span class='fl'>4</span>,
-  <span class='no'>...</span>
+  <span class='kw'>posterior</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
+  <span class='kw'>type</span> <span class='kw'>=</span> <span class='st'>"absolute"</span>,
+  <span class='kw'>hormesis_def</span> <span class='kw'>=</span> <span class='st'>"control"</span>,
+  <span class='kw'>xform</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>prob_vals</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span>)
 )</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>data</th>
-      <td><p>a data.frame containing the data to use for the model fit</p></td>
+      <th>X</th>
+      <td><p>a fitted bayesmanec model object, containing a list of jag model fit as returned by a call to bayes from
+fit_bayesnec</p></td>
     </tr>
     <tr>
-      <th>x_var</th>
-      <td><p>the column heading indicating the concentration (x) variable</p></td>
-    </tr>
-    <tr>
-      <th>y_var</th>
-      <td><p>the column heading indicating the response (y) variable</p></td>
-    </tr>
-    <tr>
-      <th>trials_var</th>
-      <td><p>the column heading indicating the column for the number of "trials" for binomial response data.
-If not supplied, the model may run but will not be the model you intended!
-#' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the
-characteristic of the input data if not supplied.</p></td>
-    </tr>
-    <tr>
-      <th>x_type</th>
-      <td><p>tbw</p></td>
-    </tr>
-    <tr>
-      <th>y_type</th>
-      <td><p>the statistical distribution to use for the y (response) data. This may currently be one of  'binomial',
-'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
-If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.</p></td>
-    </tr>
-    <tr>
-      <th>x_range</th>
-      <td><p>The range of x values over which to obtain posterior predictions. Used for plot.bayesnecfit and to calculate nec for ecx models.</p></td>
+      <th>ecx_val</th>
+      <td><p>the desired percentage effect value.</p></td>
     </tr>
     <tr>
       <th>precision</th>
-      <td><p>The length of the x_seq to pass to posterior_predict as new data. Used for plot.bayesnecfit and to calculate nec for ecx models.</p></td>
+      <td><p>The number of unique x values over which to find ecx.</p></td>
     </tr>
     <tr>
-      <th>over_disp</th>
-      <td><p>If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type
-data. For poisson, a negative binomial model is used. For binomial a beta model is used.</p></td>
+      <th>posterior</th>
+      <td><p>A logical value indicating if the full posterior sample of calculated ecx values
+should be returned instead of just the median and 95 credible intervals.</p></td>
     </tr>
     <tr>
-      <th>model</th>
-      <td><p>The type of model to be fit. Currently takes values of "nec3param",
-"nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxexp", "ecxlin", or "ecxwb2".</p></td>
+      <th>type</th>
+      <td><p>a character vector indicating if relative or absolute values for the ecx should be calculated.</p></td>
     </tr>
     <tr>
-      <th>sig_val</th>
-      <td><p>Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the control, to estimate nec as an interpolated NOEC value from smooth ecx curves.</p></td>
+      <th>hormesis_def</th>
+      <td><p>to complete</p></td>
     </tr>
     <tr>
-      <th>iter</th>
-      <td><p>the number of interations for the brms fit. Defaults to 2e4.</p></td>
+      <th>xform</th>
+      <td><p>A function to apply to the returned estimated concentration values</p></td>
     </tr>
     <tr>
-      <th>warmup</th>
-      <td><p>the number of warmup iterations. Defaults to 4/5ths of iter.</p></td>
+      <th>x_range</th>
+      <td><p>A range of x values over which to consider extracting ecx</p></td>
     </tr>
     <tr>
-      <th>...</th>
-      <td><p>further arguments to be passed to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>.</p></td>
+      <th>prob_vals</th>
+      <td><p>A vector indicating the probability values over which to return the estimated ecx value.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>The fitted brms model, including an estimate of the nec value and predicted posterior values.
-A posterior sample of the nec is also available under $nec_posterior</p>
-    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
-
-    <p>As some concentration-response data will use zero concentration which can cause numerical estimation issues, a small offset
-is added (1/10th of the next lowest value) to zero values of concentration where x_var are gamma distributed.</p>
-<p>All models provide an estimate for nec. For model types with "nec" as a prefix, nec is directly estimated as a paremeter
-in the model. Models with "ecx" as a prefix are continuous curve models, tyipically used for extracting ecx values
-from concentration response data. In this instance the nec value is defined as the concentration at which there is
-a user supplied (see sig_val) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of
-the upper assymptote (top) of the response (i.e the response value is significantly lower than that expected in the case of
-no exposure).</p>
+    <p>A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

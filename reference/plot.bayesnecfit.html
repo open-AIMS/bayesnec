@@ -139,7 +139,8 @@
 
     <pre class="usage"><span class='co'># S3 method for bayesnecfit</span>
 <span class='fu'><a href='https://rdrr.io/r/base/plot.html'>plot</a></span>(
-  <span class='no'>X</span>,
+  <span class='no'>x</span>,
+  <span class='no'>...</span>,
   <span class='kw'>CI</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
   <span class='kw'>add_nec</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
   <span class='kw'>position_legend</span> <span class='kw'>=</span> <span class='st'>"topright"</span>,
@@ -152,16 +153,19 @@
   <span class='kw'>xlab</span> <span class='kw'>=</span> <span class='st'>"concentration"</span>,
   <span class='kw'>x_lim</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>y_lim</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>xticks</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='no'>...</span>
+  <span class='kw'>xticks</span> <span class='kw'>=</span> <span class='fl'>NA</span>
 )</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>X</th>
+      <th>x</th>
       <td><p>the bayes nec model fit as returned by fit.bayesnec.</p></td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td><p>Additional arguments to <code><a href='https://rdrr.io/r/graphics/plot.default.html'>plot</a></code>.</p></td>
     </tr>
     <tr>
       <th>CI</th>

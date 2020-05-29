@@ -138,22 +138,26 @@
     </div>
 
     <pre class="usage"><span class='co'># S3 method for bayesnecfit</span>
-<span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span>(<span class='no'>X</span>, <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>100</span>, <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>)</pre>
+<span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span>(<span class='no'>object</span>, <span class='no'>...</span>, <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>100</span>, <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>X</th>
-      <td><p>the bayesnec model fit (as returned by fit_bayesnec)</p></td>
+      <th>object</th>
+      <td><p>the bayesnec model fit (as returned by fit_bayesnec).</p></td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td><p>unused.</p></td>
     </tr>
     <tr>
       <th>precision</th>
-      <td><p>the number of x values over which to predict values</p></td>
+      <td><p>the number of x values over which to predict values.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
-      <td><p>The range of x values over which to make predictions</p></td>
+      <td><p>The range of x values over which to make predictions.</p></td>
     </tr>
     </table>
 
