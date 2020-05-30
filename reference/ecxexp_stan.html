@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Bayesian regression with Stan — ecxexp_stan • bayesnec</title>
+<title>Fits model ECX_EXP — ecxexp_stan • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="Bayesian regression with Stan — ecxexp_stan" />
-<meta property="og:description" content="Bayesian regression with Stan" />
+<meta property="og:title" content="Fits model ECX_EXP — ecxexp_stan" />
+<meta property="og:description" content="Fits model ECX_EXP" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -128,33 +128,42 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Bayesian regression with Stan</h1>
+    <h1>Fits model ECX_EXP</h1>
     <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/ecxexp_stan.R'><code>R/ecxexp_stan.R</code></a></small>
     <div class="hidden name"><code>ecxexp_stan.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Bayesian regression with Stan</p>
+    <p>Fits model ECX_EXP</p>
     </div>
 
-    <pre class="usage"><span class='fu'>ecxexp_stan</span>(<span class='no'>data</span>, <span class='no'>...</span>)</pre>
+    <pre class="usage"><span class='fu'>ecxexp_stan</span>(<span class='kw'>new_priors</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>new_data</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>...</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>data</th>
-      <td><p>Numeric vector of input values.</p></td>
+      <th>new_priors</th>
+      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code>.</p></td>
+    </tr>
+    <tr>
+      <th>new_data</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>.</p></td>
     </tr>
     <tr>
       <th>...</th>
-      <td><p>Arguments passed to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brms::brm</a></code> (e.g. iter, chains).</p></td>
+      <td><p>Arguments passed to <code>update</code>
+(e.g. iter, chains).</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>An object of class <code>brmsfit</code> returned by <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brms::brm</a></code></p>
+    <p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code> returned
+by <code>update</code></p>
+    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
+
+    <div class='dont-index'><p><code><a href='alter_model.html'>alter_model</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
