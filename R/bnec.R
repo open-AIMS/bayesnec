@@ -67,26 +67,13 @@ bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
   if (is.na(model)) {
     stop("You need to define a model type. See ?bnec")
   }
+
   
-  if (length(model) == 1) {
-    mod_candidates <- list(nec = c("nec3param", "nec4param", "nechorme", "necsigm"),
-                           ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsimg",
-                                   "ecxwb1", "ecxwb2"),
-                           all = c("nec3param", "nec4param", "nechorme", "necsigm",
-                                   "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
-                                   "ecxwb1", "ecxwb2"),
-                           bot_free = c("nec3param", "nechorme", "necsigm",
-                                        "ecxlin", "ecxexp", "ecxsigm"))
-    if (model %in% names(mod_candidates)) {
+  if (length(model) == 1 & model %in% names(mod_candidates)) {
       model <- mod_candidates[[model]]
-    }
-    export_list <-  fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
-                                 trials_var = trials_var, x_type = x_type,
-                                 y_type = y_type, iter = iter, over_disp = over_disp,
-                                 model = model, x_range = x_range, precision = precision,
-                                 open_progress = FALSE, ...)
-    class(export_list) <- "bayesnecfit"
-  } else {
+  }
+
+  if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     for (m in seq_along(model)) {
@@ -109,5 +96,14 @@ bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
                           trials_var = trials_var, over_disp = over_disp))
     class(export_list) <- "bayesmanecfit"
   }
+  
+  if (length(model) == 1) {
+    export_list <-  fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
+                                 trials_var = trials_var, x_type = x_type,
+                                 y_type = y_type, iter = iter, over_disp = over_disp,
+                                 model = model, x_range = x_range, precision = precision,
+                                 open_progress = FALSE, ...)
+  }
+
   export_list
 }

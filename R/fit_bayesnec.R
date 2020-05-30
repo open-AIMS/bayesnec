@@ -15,7 +15,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          model = NA, sig_val = 0.01, iter = 2e3,
                          warmup = floor(iter/5)*4, ...) {
   
-  if (class(data) == "bayesmanecfit") {
+  if (inherits(data, "bayesmanecfit")) {
     response <- data$data[, y_var]
     mod_dat <- data$mod_dat
     y_dat <- data$y_dat
@@ -138,6 +138,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                        d = d, ec50 = ec50, over_disp=od, 
                        predicted_y = predicted_y, residuals = residuals,
                        nec_posterior = nec_posterior))
+    class(out) <- "bayesnecfit"
   }
   
   message(paste0("Response variable ", y_var, " modelled as a ", model ," model using a ", y_type, " distribution."))

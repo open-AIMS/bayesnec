@@ -1,5 +1,15 @@
 library(brms)
 
+# standard package model candidates
+mod_candidates <- list(nec = c("nec3param", "nec4param", "nechorme", "necsigm"),
+                       ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsimg",
+                               "ecxwb1", "ecxwb2"),
+                       all = c("nec3param", "nec4param", "nechorme", "necsigm",
+                               "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
+                               "ecxwb1", "ecxwb2"),
+                       bot_free = c("nec3param", "nechorme", "necsigm",
+                                    "ecxlin", "ecxexp", "ecxsigm"))
+
 empty_stanmodel <- function() {
 	x <- ""
 	class(x) <- "stanmodel"
@@ -22,4 +32,4 @@ ecxexp_brms <- brms::brm(bform, data = data, family = binomial(),
 
 ecxexp_brms$fit@stanmodel <- empty_stanmodel()
 
-save(ecxexp_brms, file = 'R/sysdata.rda')
+save(mod_candidates, ecxexp_brms, file = "R/sysdata.rda")
