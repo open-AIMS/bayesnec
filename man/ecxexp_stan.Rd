@@ -2,18 +2,25 @@
 % Please edit documentation in R/ecxexp_stan.R
 \name{ecxexp_stan}
 \alias{ecxexp_stan}
-\title{Bayesian regression with Stan}
+\title{Fits model ECX_EXP}
 \usage{
-ecxexp_stan(data, ...)
+ecxexp_stan(new_priors = NULL, new_data = NULL, ...)
 }
 \arguments{
-\item{data}{Numeric vector of input values.}
+\item{new_priors}{An object of class \code{\link[brms]{brmsprior}}.}
 
-\item{...}{Arguments passed to \code{brms::brm} (e.g. iter, chains).}
+\item{new_data}{A \code{\link[base]{data.frame}}.}
+
+\item{...}{Arguments passed to \code{\link[brms]{update}}
+(e.g. iter, chains).}
 }
 \value{
-An object of class \code{brmsfit} returned by \code{brms::brm}
+An object of class \code{\link[brms]{brmsfit}} returned
+by \code{\link[brms]{update}}
 }
 \description{
-Bayesian regression with Stan
+Fits model ECX_EXP
+}
+\seealso{
+\code{\link{alter_model}}
 }
