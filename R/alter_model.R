@@ -10,7 +10,7 @@
 alter_model <- function(brmodel, new_priors = NULL, new_data = NULL) {
   brpriors <- prior_summary(brmodel)
   brdata <- brmodel$data
-  if (is.null(new_priors)) {
+  if (!is.null(new_priors)) {
     match_condition <- brpriors$nlpar == new_priors$nlpar &
       brpriors$coef == new_priors$coef
     if (sum(match_condition) != 1) {
@@ -19,14 +19,14 @@ alter_model <- function(brmodel, new_priors = NULL, new_data = NULL) {
     brpriors[match_condition, ] <- new_priors
     brmodel$prior <- brpriors
   }
-  if (is.null(new_data)) {
+  if (!is.null(new_data)) {
     if (!all(names(brdata) %in% names(new_data))) {
       stop("New dataset names do not match required to run this function")
     } else {
       brdata <- new_data[, names(brdata)]
     }
   }
-  if (is.null(new_priors) | is.null(new_data)) {
+  if (!is.null(new_priors) | !is.null(new_data)) {
     brformula <- brmodel$formula
     brfamily <- brmodel$family
     new_code <- make_stancode(brformula, data = brdata,
