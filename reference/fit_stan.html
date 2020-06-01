@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>extract_simdat — extract_simdat • bayesnec</title>
+<title>Fits brm models based on model type and distribution family — fit_stan • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="extract_simdat — extract_simdat" />
-<meta property="og:description" content="Extracts a range of statistics from a list of bayesnecfit model fits." />
+<meta property="og:title" content="Fits brm models based on model type and distribution family — fit_stan" />
+<meta property="og:description" content="Fits brm models based on model type and distribution family" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -128,30 +128,51 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>extract_simdat</h1>
-    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/extract_simdat.R'><code>R/extract_simdat.R</code></a></small>
-    <div class="hidden name"><code>extract_simdat.Rd</code></div>
+    <h1>Fits brm models based on model type and distribution family</h1>
+    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/fit_stan.R'><code>R/fit_stan.R</code></a></small>
+    <div class="hidden name"><code>fit_stan.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Extracts a range of statistics from a list of bayesnecfit model fits.</p>
+    <p>Fits brm models based on model type and distribution family</p>
     </div>
 
-    <pre class="usage"><span class='fu'>extract_simdat</span>(<span class='no'>modfit</span>)</pre>
+    <pre class="usage"><span class='fu'>fit_stan</span>(<span class='no'>model</span>, <span class='no'>y_type</span>, <span class='kw'>new_priors</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>new_data</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>...</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>modfit</th>
-      <td><p>a bayesnecfit, as returned by fit_bayesnec</p></td>
+      <th>model</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
+to fit.</p></td>
+    </tr>
+    <tr>
+      <th>y_type</th>
+      <td><p>The statistical distribution to use for the y (response) data.</p></td>
+    </tr>
+    <tr>
+      <th>new_priors</th>
+      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code>.</p></td>
+    </tr>
+    <tr>
+      <th>new_data</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>.</p></td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td><p>Arguments passed to <code>update</code>
+(e.g. iter, chains).</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A list of model simulation statistics including
-iter, thin, warmup and chains</p>
+    <p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code> returned
+by <code>update</code></p>
+    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
+
+    <div class='dont-index'><p><code><a href='alter_model.html'>alter_model</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
