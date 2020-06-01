@@ -10,7 +10,8 @@ extract_simdat(modfit)
 \item{modfit}{a bayesnecfit, as returned by fit_bayesnec}
 }
 \value{
-A list of model simulation statistics including iter, thin, warmup and chains
+A list of model simulation statistics including
+iter, thin, warmup and chains
 }
 \description{
 Extracts a range of statistics from a list of bayesnecfit model fits.

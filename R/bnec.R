@@ -69,8 +69,8 @@ bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
   }
 
   
-  if (length(model) == 1 & model %in% names(mod_candidates)) {
-      model <- mod_candidates[[model]]
+  if (length(model) == 1 & model %in% names(mod_groups)) {
+      model <- mod_groups[[model]]
   }
 
   if (length(model) > 1) {
