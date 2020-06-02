@@ -13,23 +13,23 @@
 #' @param y_type the statistical distribution to use for the y (response) data.
 #' @param x_range A range of x values over which to consider extracting ECX
 #' @param precision tbw.
-#' @param over_disp If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{y_type} 
+#' @param over_disp If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{y_type}
 #' data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.
-#' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values 
+#' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values
 #' against the lowest observed concentration. Against the control, to estimate NEC as an interpolated NOEC value from smooth ECX curves.
 #' @param iter the number of iterations to be passed to \code{\link[brms]{brm}}. Defaults to 2e4.
-#' @param warmup A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number 
-#' of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup 
+#' @param warmup A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number
+#' of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup
 #' should not be larger than "iter" and the default is "floor(iter / 5) * 4".
 #' @param ... Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.
 #' 
-#' @details As some concentration-response data will use zero concentration which can cause numerical estimation issues, a 
-#' small offset is added (1 / 10th of the next lowest value) to zero values of concentration where \code{x_var} are distributed 
+#' @details As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
+#' small offset is added (1 / 10th of the next lowest value) to zero values of concentration where \code{x_var} are distributed
 #' on a continuous scale from 0 to infinity, or are bounded to 0, or 1.
 #' 
 #' The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call, 
-#' and may currently be one of "binomial", "beta", poisson", "negbin","gaussian", or "gamma". 
-#' Others can be added as required, please raise an issue on the github development site if your required familiy is not currently available. 
+#' and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
+#' Others can be added as required, please raise an issue on the GitHub development site if your required family is not currently available.
 #' If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}.
 #' 
 #' The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2", 
