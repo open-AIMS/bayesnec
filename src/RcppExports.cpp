@@ -7,20 +7,128 @@
 using namespace Rcpp;
 
 
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecx4parambeta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecx4parambinom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecx4paramgamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecx4paramgaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecx4paramnegbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecx4parampoisson_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4ecxexpbeta_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4ecxexpbinom_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4ecxexpgamma_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4ecxexpgaussian_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4ecxexpnegbin_mod();
 RcppExport SEXP _rcpp_module_boot_stan_fit4ecxexppoisson_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxlinbeta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxlinbinom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxlingamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxlingaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxlinnegbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxlinpoisson_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxsigmbeta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxsigmbinom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxsigmgamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxsigmgaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxsigmnegbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxsigmpoisson_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb1beta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb1binom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb1gamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb1gaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb1negbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb1poisson_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb2beta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb2binom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb2gamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb2gaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb2negbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4ecxwb2poisson_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec3parambeta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec3parambinom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec3paramgamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec3paramgaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec3paramnegbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec3parampoisson_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec4parambeta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec4parambinom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec4paramgamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec4paramgaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec4paramnegbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nec4parampoisson_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nechormebeta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nechormebinom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nechormegamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nechormegaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nechormenegbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4nechormepoisson_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4necsigmbeta_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4necsigmbinom_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4necsigmgamma_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4necsigmgaussian_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4necsigmnegbin_mod();
+RcppExport SEXP _rcpp_module_boot_stan_fit4necsigmpoisson_mod();
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_rcpp_module_boot_stan_fit4ecx4parambeta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecx4parambeta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecx4parambinom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecx4parambinom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecx4paramgamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecx4paramgamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecx4paramgaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecx4paramgaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecx4paramnegbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecx4paramnegbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecx4parampoisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecx4parampoisson_mod, 0},
     {"_rcpp_module_boot_stan_fit4ecxexpbeta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxexpbeta_mod, 0},
     {"_rcpp_module_boot_stan_fit4ecxexpbinom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxexpbinom_mod, 0},
     {"_rcpp_module_boot_stan_fit4ecxexpgamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxexpgamma_mod, 0},
     {"_rcpp_module_boot_stan_fit4ecxexpgaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxexpgaussian_mod, 0},
     {"_rcpp_module_boot_stan_fit4ecxexpnegbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxexpnegbin_mod, 0},
     {"_rcpp_module_boot_stan_fit4ecxexppoisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxexppoisson_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxlinbeta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxlinbeta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxlinbinom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxlinbinom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxlingamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxlingamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxlingaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxlingaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxlinnegbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxlinnegbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxlinpoisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxlinpoisson_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxsigmbeta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxsigmbeta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxsigmbinom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxsigmbinom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxsigmgamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxsigmgamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxsigmgaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxsigmgaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxsigmnegbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxsigmnegbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxsigmpoisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxsigmpoisson_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb1beta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb1beta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb1binom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb1binom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb1gamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb1gamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb1gaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb1gaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb1negbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb1negbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb1poisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb1poisson_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb2beta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb2beta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb2binom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb2binom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb2gamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb2gamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb2gaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb2gaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb2negbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb2negbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4ecxwb2poisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4ecxwb2poisson_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec3parambeta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec3parambeta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec3parambinom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec3parambinom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec3paramgamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec3paramgamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec3paramgaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec3paramgaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec3paramnegbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec3paramnegbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec3parampoisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec3parampoisson_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec4parambeta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec4parambeta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec4parambinom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec4parambinom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec4paramgamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec4paramgamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec4paramgaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec4paramgaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec4paramnegbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec4paramnegbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nec4parampoisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nec4parampoisson_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nechormebeta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nechormebeta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nechormebinom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nechormebinom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nechormegamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nechormegamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nechormegaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nechormegaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nechormenegbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nechormenegbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4nechormepoisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4nechormepoisson_mod, 0},
+    {"_rcpp_module_boot_stan_fit4necsigmbeta_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4necsigmbeta_mod, 0},
+    {"_rcpp_module_boot_stan_fit4necsigmbinom_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4necsigmbinom_mod, 0},
+    {"_rcpp_module_boot_stan_fit4necsigmgamma_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4necsigmgamma_mod, 0},
+    {"_rcpp_module_boot_stan_fit4necsigmgaussian_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4necsigmgaussian_mod, 0},
+    {"_rcpp_module_boot_stan_fit4necsigmnegbin_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4necsigmnegbin_mod, 0},
+    {"_rcpp_module_boot_stan_fit4necsigmpoisson_mod", (DL_FUNC) &_rcpp_module_boot_stan_fit4necsigmpoisson_mod, 0},
     {NULL, NULL, 0}
 };
 

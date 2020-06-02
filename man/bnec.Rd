@@ -33,14 +33,10 @@ bnec(
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
 
-\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guess based on
-the characteristic of the input data if not supplied. As some concentration-response data will use zero concentration,
-and there is no distribution on the continuous scale from 0 to infinity (i.e. Tweedie) available in \code{\link[brms]{brm}},
-a small offset is added (1/10^3 of the next lowest value) to zero values of concentration where these are gamma distributed.}
+\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guessed based on
+the characteristic of the input data if not supplied.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of "binomial", "poisson",
-"gaussian", or "gamma". Others can be added as required, please contact the package maintainer. If not supplied, the
-appropriate distribution will be guessed based on the distribution of the input data.}
+\item{y_type}{the statistical distribution to use for the y (response) data.}
 
 \item{x_range}{A range of x values over which to consider extracting ECX}
 
@@ -65,12 +61,17 @@ All successfully fitted Bayesian model fits, mod.stats a \code{\link[base]{data.
 averaged posterior of the estimated nec, and pred.vals a list of model averaged predictions.
 }
 \description{
-Fits a variety of NEC models using Bayesian analysis and provides a model averaged predictions based on DIC model weights
+Fits a variety of NEC models using Bayesian analysis and provides a model averaged predictions based on WAIC model weights
 }
 \details{
 As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
 small offset is added (1 / 10th of the next lowest value) to zero values of concentration where \code{x_var} are distributed
 on a continuous scale from 0 to infinity, or are bounded to 0, or 1.
+
+The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call,
+and may currently be one of "binomial", "beta", poisson", "negbin","gaussian", or "gamma".
+Others can be added as required, please raise an issue on the github development site if your required familiy is not currently available.
+If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}.
 
 The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
 "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type it fit, and bnec returns a model
