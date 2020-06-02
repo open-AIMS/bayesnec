@@ -31,14 +31,10 @@ fit_bayesnec(
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
 
-\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guess based on
-the characteristic of the input data if not supplied. As some concentration-response data will use zero concentration,
-and there is no distribution on the continuous scale from 0 to infinity (i.e. Tweedie) available in \code{\link[brms]{brm}},
-a small offset is added (1/10^3 of the next lowest value) to zero values of concentration where these are gamma distributed.}
+\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guessed based on
+the characteristic of the input data if not supplied.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data. This may currently be one of "binomial", "poisson",
-"gaussian", or "gamma". Others can be added as required, please contact the package maintainer. If not supplied, the
-appropriate distribution will be guessed based on the distribution of the input data.}
+\item{y_type}{the statistical distribution to use for the y (response) data.}
 
 \item{x_range}{A range of x values over which to consider extracting ECX}
 
