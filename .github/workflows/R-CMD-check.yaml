@@ -1,10 +1,4 @@
-on:
-  push:
-    branches:
-      - pkg_build_v1
-  pull_request:
-    branches:
-      - pkg_build_v1
+on: [push, pull_request]
 
 name: R-CMD-check
 
