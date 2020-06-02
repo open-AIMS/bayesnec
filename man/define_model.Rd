@@ -13,9 +13,7 @@ define_model(model, x_type, y_type, mod_dat)
 This may currently be one of  'beta', 'gaussian', or 'gamma'.
 Others can be added as required, please contact the package maintainer.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data.
-This may currently be one of  'binomial', 'beta', 'poisson', 'gaussian', 'negbin' or 'gamma'.
-Others can be added as required, please contact the package maintainer.}
+\item{y_type}{the statistical distribution to use for the y (response) data.}
 
 \item{mod_dat}{the model data to use for the NEC model fit}
 }

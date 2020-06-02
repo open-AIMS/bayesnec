@@ -54,7 +54,7 @@
 
 \item{xticks}{a numeric vector indicate where to place the tick marks of the x-axis}
 
-\item{all_models}{Logical indicating if all models in the model set should be plotted simultaneousl, or if a model average plot should be returned.}
+\item{all_models}{Logical indicating if all models in the model set should be plotted simultaneously, or if a model average plot should be returned.}
 }
 \value{
 a plot of the fitted model
