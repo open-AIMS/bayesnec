@@ -11,12 +11,18 @@ alter_model <- function(brmodel, new_priors = NULL, new_data = NULL) {
   brpriors <- prior_summary(brmodel)
   brdata <- brmodel$data
   if (!is.null(new_priors)) {
-    match_condition <- brpriors$nlpar == new_priors$nlpar &
-      brpriors$coef == new_priors$coef
-    if (sum(match_condition) != 1) {
+    match_condition <- vector(mode = "logical", length = nrow(new_priors))
+    for (i in seq_len(nrow(new_priors))) {
+      z <- intersect(which(brpriors$nlpar == new_priors$nlpar[i]),
+                     which(brpriors$coef == new_priors$coef[i]))
+      match_condition[i] <- length(z) == 1
+      if (match_condition[i]) {
+        brpriors[z, ] <- new_priors[i, ]
+      }
+    }
+    if (!all(match_condition)) {
       stop("New prior does not match any prior required to run this function")
     }
-    brpriors[match_condition, ] <- new_priors
     brmodel$prior <- brpriors
   }
   if (!is.null(new_data)) {

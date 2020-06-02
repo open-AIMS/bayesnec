@@ -160,8 +160,8 @@ check_data <- function(data, x_var, y_var,
     response <- data[, y_var] / data[, trials_var]
   }
 
-  mod_file <- define_model(model=model, x_type=x_type, y_type=y_type, mod_dat=mod_dat)
-  bform <- mod_file$bform
+  mod_file <- define_model(model = model, x_type = x_type,
+                           y_type = y_type, mod_dat = mod_dat)
   priors <- mod_file$priors
   mod_family <- mod_file$mod_family
     
@@ -173,6 +173,5 @@ check_data <- function(data, x_var, y_var,
        x_type = x_type,
        x_dat = x_dat,
        y_dat = y_dat,
-       bform = bform,
        mod_family = mod_family)
 }

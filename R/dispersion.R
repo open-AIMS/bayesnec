@@ -15,7 +15,7 @@
 #' of the dispersion metric.
 #'
 #' @export
-#' @importFrom brms standata posterior_linpred pp_expect posterior_predict
+#' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
 #' @importFrom HDInterval hdi
 #' @importFrom stats median
 #' @examples
@@ -47,7 +47,7 @@ dispersion <- function (model, summary = FALSE) {
    fam_fcts <- get(fam)()   
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
-    prd_out <- pp_expect(model)
+    prd_out <- posterior_epred(model)
     ppd_out <- posterior_predict(model)
 
     prd_sr <- matrix(0, nrow(prd_out), ncol(prd_out))

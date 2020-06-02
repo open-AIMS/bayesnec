@@ -63,13 +63,12 @@
 #' @export
 bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
                  x_type = NA, y_type = NA, x_range = NA, precision = 1000,
-                 over_disp = FALSE, sig_val = 0.01, iter = 2e3, 
+                 over_disp = FALSE, sig_val = 0.01, iter = 2e3,
                  warmup = floor(iter / 5) * 4, ...) {
   if (is.na(model)) {
     stop("You need to define a model type. See ?bnec")
   }
 
-  
   if (length(model) == 1 & model %in% names(mod_groups)) {
       model <- mod_groups[[model]]
   }
@@ -82,29 +81,29 @@ bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
       fit_m <- try(
         fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                      trials_var = trials_var, x_type = x_type, y_type = y_type,
-                     iter = iter, over_disp = over_disp, model = model_m,
-                     x_range = x_range, precision = precision,
-                     open_progress = FALSE, ...),
+                     over_disp = over_disp, model = model_m,
+                     x_range = x_range, precision = precision, iter = iter,
+                     warmup = warmup, ...),
         silent = TRUE)
       if (!inherits(fit_m, "try-error")) {
-        mod_fits[[m]] <- fit_m  
+        mod_fits[[m]] <- fit_m
       } else {
-        mod_fits[[m]] <- NA 
+        mod_fits[[m]] <- NA
       }
     }
-    export_list <- c(extract_modstats(mod_fits), 
+    export_list <- c(extract_modstats(mod_fits),
                      list(data = data, x_var = x_var, y_var = y_var,
                           trials_var = trials_var, over_disp = over_disp))
     class(export_list) <- "bayesmanecfit"
   }
-  
+
   if (length(model) == 1) {
     export_list <-  fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                                  trials_var = trials_var, x_type = x_type,
-                                 y_type = y_type, iter = iter, over_disp = over_disp,
-                                 model = model, x_range = x_range, precision = precision,
-                                 open_progress = FALSE, ...)
+                                 y_type = y_type, over_disp = over_disp,
+                                 model = model, x_range = x_range,
+                                 precision = precision, iter = iter,
+                                 warmup = warmup, ...)
   }
-
   export_list
 }
