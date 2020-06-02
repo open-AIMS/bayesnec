@@ -14,9 +14,10 @@
 #' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the 
 #' characteristic of the input data if not supplied.
 #'
-#' @param y_type the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 
-#' 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer. 
-#' If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.
+#' The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call, 
+#' and may currently be one of "binomial", "beta", poisson", "negbin","gaussian", or "gamma". 
+#' Others can be added as required, please raise an issue on the github development site if your required familiy is not currently available. 
+#' If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data.
 #'
 #' @param over_disp If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type 
 #' data. For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.
@@ -45,7 +46,14 @@ check_data <- function(data,
     if (over_disp & y_type == "beta") {
       y_type <- NA
     }
+    # check y_type is a valid family
+    if (!y_type %in% c("binomial", "beta", "poisson", "negbin","gamma", "gaussian")) {
+    stop(paste("You have specified y-type as", y_type, "which is not currently implemented."))
+  }   
+    
   }
+  
+
   
   # check the specified columns exist in data
   use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var))
