@@ -7,19 +7,19 @@
 #' @importFrom brms fixef brm posterior_predict posterior_samples loo waic
 #' @importFrom stats quantile predict
 #' @seealso \code{\link{bnec}}
-#' @return The fitted brms model, including an estimate of the nec value and predicted posterior values.
+#' @return The fitted \pkg{brms} model, including an estimate of the NEC
+#' value and predicted posterior values.
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          x_type = NA, y_type = NA, x_range = NA,
-                         precision = 1000, over_disp = FALSE, 
-                         model = NA, sig_val = 0.01, iter = 2e3,
-                         warmup = floor(iter/5)*4, ...) {
-  
+                         precision = 1000, over_disp = FALSE,
+                         model = NA, sig_val = 0.01, ...) {
+
   if (inherits(data, "bayesmanecfit")) {
     response <- data$data[, y_var]
     mod_dat <- data$mod_dat
     y_dat <- data$y_dat
-    x_dat <- data$x_dat   
+    x_dat <- data$x_dat
     y_type <- data$y_type
     x_type <- data$x_type
     if (y_type == "binomial") {
@@ -27,7 +27,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     }
     mod_file <- define_model(model = model, x_type = x_type,
                              y_type = y_type, mod_dat = mod_dat)
-    bform <- mod_file$bform
     priors <- mod_file$priors
     mod_family <- mod_file$mod_family
   } else {
@@ -41,18 +40,16 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     response <- data_check$response
     data <- data_check$data
     x_dat <- data_check$x_dat
-    y_dat <- data_check$y_dat 
-    init_fun <- data_check$init_fun
-    bform <- data_check$bform
-    priors <- data_check$priors  
+    y_dat <- data_check$y_dat
+    priors <- data_check$priors
     mod_family <- data_check$mod_family
   }
-  
-  fit <- brms::brm(bform, data = mod_dat, prior = priors, iter = iter,
-                   family = mod_family, warmup = warmup, refresh = 0, ...)
-  
-  fit$loo <- brms::loo(fit)
-  fit$waic <- brms::waic(fit)
+  y_type_name <- names(mod_fams)[mod_fams == y_type]
+  fit <- fit_stan(model = model, y_type = y_type_name,
+                  new_priors = priors, new_data = mod_dat,
+                  chains = 4, ...)
+  fit$loo <- loo(fit)
+  fit$waic <- waic(fit)
 
   out <- list(fit = fit, mod_dat = mod_dat,
               y_type = y_type, x_type = x_type, model = model)
@@ -77,15 +74,15 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   bot <- extracted_params$bot
   d <- extracted_params$d
   slope <- extracted_params$slope
-  ec50 <- extracted_params$ec50 
-  
+  ec50 <- extracted_params$ec50
+
   if (is.na(extracted_params$nec["Estimate"])) {
     mod_class <- "ecx"
   } else {
     mod_class <- "nec"
   }
-  
-  if(is.na(x_range)){
+
+  if (is.na(x_range)) {
     x_seq <- seq(min(mod_dat$x), max(mod_dat$x),
                  length = precision)
   }
@@ -94,7 +91,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   if (y_type == "binomial") {
     new_dat$trials <- 10^3
   }
-  
+
   y_pred_m <- predict(fit, newdata = new_dat, robust = TRUE, re_formula = NA)
   predicted_y <- predict(fit, robust = TRUE, re_formula = NA)
 
@@ -103,44 +100,47 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     predicted_y <- predicted_y / 10^3
     y_pred_m <-  y_pred_m / 10^3
   }
-  
+
   residuals <-  response - predicted_y
-  pred_posterior <- t(predict(fit, newdata = new_dat, re_formula = NA, summary = FALSE))
+  pred_posterior <- t(predict(fit, newdata = new_dat,
+                              re_formula = NA, summary = FALSE))
   if (y_type == "binomial") {
     pred_posterior <- pred_posterior / 10^3
   }
-  
-  pred_vals <- c(list(x = x_seq, y = y_pred_m[,"Estimate"],
-                      up = y_pred_m[,"Q97.5"], lw = y_pred_m[,"Q2.5"],
+
+  pred_vals <- c(list(x = x_seq, y = y_pred_m[, "Estimate"],
+                      up = y_pred_m[, "Q97.5"], lw = y_pred_m[, "Q2.5"],
                       posterior = pred_posterior),
-                 list(y_pred_m = y_pred_m[,"Estimate"]))
+                 list(y_pred_m = y_pred_m[, "Estimate"]))
 
   od <- dispersion(fit, summary = TRUE)
   if (is.null(od)) {
     od <- c(NA, NA, NA, NA)
   }
-  
+
   if (mod_class == "ecx") {
     reference <- quantile(pred_vals$posterior[1, ], sig_val)
-    nec_posterior <- sapply(seq_len(ncol(pred_vals$posterior)), function (x, pred_vals, reference) {
+    nec_posterior <- sapply(seq_len(ncol(pred_vals$posterior)),
+                            function(x, pred_vals, reference) {
       pred_vals$x[which.min(abs(pred_vals$posterior[, x] - reference))]
     }, pred_vals = pred_vals, reference = reference)
-    
+
     nec <- quantile(nec_posterior, c(0.5, 0.025,  0.975))
     names(nec) <- c("Estimate", "Q2.5", "Q97.5")
   } else {
     nec_posterior <- unlist(posterior_samples(fit, pars = "nec_Intercept"))
   }
-  
+
   if (!inherits(out, "try-error")) {
     out <- c(out, list(pred_vals = pred_vals, nec = nec, top = top,
                        beta = beta, alpha = alpha, bot = bot,
-                       d = d, ec50 = ec50, over_disp=od, 
+                       d = d, ec50 = ec50, over_disp = od,
                        predicted_y = predicted_y, residuals = residuals,
                        nec_posterior = nec_posterior))
     class(out) <- "bayesnecfit"
   }
-  
-  message(paste0("Response variable ", y_var, " modelled as a ", model ," model using a ", y_type, " distribution."))
+
+  message(paste0("Response variable ", y_var, " modelled as a ",
+                 model, " model using a ", y_type, " distribution."))
   out
 }

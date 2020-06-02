@@ -69,8 +69,8 @@ small offset is added (1 / 10th of the next lowest value) to zero values of conc
 on a continuous scale from 0 to infinity, or are bounded to 0, or 1.
 
 The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call,
-and may currently be one of "binomial", "beta", poisson", "negbin","gaussian", or "gamma".
-Others can be added as required, please raise an issue on the github development site if your required familiy is not currently available.
+and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
+Others can be added as required, please raise an issue on the GitHub development site if your required family is not currently available.
 If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}.
 
 The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",

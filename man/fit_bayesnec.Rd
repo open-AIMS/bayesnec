@@ -16,8 +16,6 @@ fit_bayesnec(
   over_disp = FALSE,
   model = NA,
   sig_val = 0.01,
-  iter = 2000,
-  warmup = floor(iter/5) * 4,
   ...
 )
 }
@@ -48,16 +46,11 @@ data. For "poisson", a negative binomial model will be fit. For binomial a beta 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
 against the lowest observed concentration. Against the control, to estimate NEC as an interpolated NOEC value from smooth ECX curves.}
 
-\item{iter}{the number of iterations to be passed to \code{\link[brms]{brm}}. Defaults to 2e4.}
-
-\item{warmup}{A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number
-of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup
-should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
-
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
 }
 \value{
-The fitted brms model, including an estimate of the nec value and predicted posterior values.
+The fitted \pkg{brms} model, including an estimate of the NEC
+value and predicted posterior values.
 A posterior sample of the NEC is also available under \code{nec_posterior}
 }
 \description{

@@ -7,7 +7,8 @@
 extract_modstats(mod_fits)
 }
 \arguments{
-\item{mod_fits}{a bayesmanecfit mod_fits output list, as returned by bayesnec when more than one model is supplied.}
+\item{mod_fits}{a bayesmanecfit mod_fits output list, as returned by
+bayesnec when more than one model is supplied.}
 }
 \value{
 A list of model statistical output derived from the input model list
