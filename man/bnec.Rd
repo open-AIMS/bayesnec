@@ -33,22 +33,22 @@ bnec(
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
 
-\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guessed based on
-the characteristic of the input data if not supplied.}
+\item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
+the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data.}
+\item{y_type}{The statistical distribution (family) to use for the y (response) data.}
 
-\item{x_range}{A range of x values over which to consider extracting ECX}
+\item{x_range}{A range of x values over which to consider extracting ECx.}
 
-\item{precision}{tbw.}
+\item{precision}{The length of the x vector used for posterior predictions, and over which to extract ecx values. Large values will be slower but more precise.}
 
 \item{over_disp}{If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{y_type}
 data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the lowest observed concentration. Against the control, to estimate NEC as an interpolated NOEC value from smooth ECX curves.}
+against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECX curves.}
 
-\item{iter}{the number of iterations to be passed to \code{\link[brms]{brm}}. Defaults to 2e4.}
+\item{iter}{The number of iterations to be passed to \code{\link[brms]{brm}}. Defaults to 2e3 to be consistent with brms defaults.}
 
 \item{warmup}{A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number
 of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup
@@ -57,7 +57,13 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
 }
 \value{
-All successfully fitted Bayesian model fits, mod.stats a \code{\link[base]{data.frame}} of model fit statistics, nec a model
+When only a single model is passed \code{\link{bnec}} returns a list of class bayesnecfit, containing the the fitted bayesian model,
+\code{pred_vals} a list of posterior predicted values based on the supplied \code{precision},
+\code{nec} the estimated nec incuding all estimated model paramters,
+\code{od} an estimate of dispersion; \code{predicted_y} the predicted values for the observed data;
+\code{residuals} Residual values of the observed data from the fitted model; and \code{nec_posterior} a full posterior estimate of the nec.
+Then more than one model is passed, \code{\link{bnec}} returns a list of class bayesnecfit,
+a table mod_stats a \code{\link[base]{data.frame}} of model fit statistics, nec a model
 averaged posterior of the estimated nec, and pred.vals a list of model averaged predictions.
 }
 \description{
@@ -70,7 +76,7 @@ on a continuous scale from 0 to infinity, or are bounded to 0, or 1.
 
 The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call,
 and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
-Others can be added as required, please raise an issue on the GitHub development site if your required family is not currently available.
+Others can be added as required, please raise an issue on the github development site if your required family is not currently available.
 If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}.
 
 The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
@@ -91,10 +97,11 @@ parameter will be fit; or "bot_free" meaning only models without a "bot" paramet
 Models are fit using model formula passed to \pkg{brms} You can view the model formula for each type X_HOW_X.
 Other types can be added as required, please open an issue at the package site on GitHub to request an additional model.
 
-All models provide an estimate for NEC For model types with "nec" as a prefix, NEC is directly estimated as a parameter
+All models provide an estimate for NEC. For model types with "nec" as a prefix, NEC is directly estimated as parameter nec
 in the model. Models with "ecx" as a prefix are continuous curve models, typically used for extracting ECX values
 from concentration response data. In this instance the NEC value is defined as the concentration at which there is
 a user supplied (see \code{sig_val}) percentage certainty (based on the Bayesian posterior estimate) that the response
 falls below the estimated value of the upper asymptote (top) of the response (i.e the response value is significantly
 lower than that expected in the case of no exposure).
+The default value for sig_val is 0.01, which corresponsed to an alpha value of 0.01 nfor a one-sided test of significance.
 }
