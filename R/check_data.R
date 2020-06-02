@@ -14,9 +14,10 @@
 #' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the 
 #' characteristic of the input data if not supplied.
 #'
-#' @param y_type the statistical distribution to use for the y (response) data. This may currently be one of  'binomial', 
-#' 'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer. 
-#' If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.
+#' The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call, 
+#' and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
+#' Others can be added as required, please raise an issue on the github development site if your required familiy is not currently available. 
+#' If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data.
 #'
 #' @param over_disp If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type 
 #' data. For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.
@@ -24,28 +25,30 @@
 #' @param model The type of model to be fit. Currently takes values of "nec3param",  
 #' "nec4param", "necsigmoidal", "nechorme", "ecx4param", "ecxwb1", or "ecxwb2".
 #' 
-#' @details   
+#' @details
 #' 
 #' This is a wrapper function to test input data criteria and write the brms model file for use in a bayesnec model fit
 #'
+#' @importFrom stats na.omit
 #' @export
 #' @return Modified elements of the bayesnec input data.
 
-check_data <- function(data,
-            x_var,
-            y_var,
-            trials_var,
-            x_type = NA, 
-            y_type = NA,
-            over_disp,
-            model){
+check_data <- function(data, x_var, y_var,
+                       trials_var, x_type = NA, y_type = NA,
+                       over_disp, model) {
   
   if (!is.na(y_type)) {
     if (over_disp & y_type == "beta") {
       y_type <- NA
     }
+    # check y_type is a valid family
+    if (!y_type %in% names(mod_fams)) {
+      stop(paste("You have specified y-type as",
+                 y_type,
+                "which is not currently implemented."))
+    }
   }
-  
+
   # check the specified columns exist in data
   use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var))
   var_colms <- match(use_vars, colnames(data))
@@ -54,7 +57,7 @@ check_data <- function(data,
   if (length(na.omit(var_colms)) < length(use_vars)) {
     stop(paste0("Your indicated ", paste(paste0(missing_colms$element, " '", missing_colms$val,"'"),
                                         collapse = ", "),
-               " is not present in your input data. Has this been mispecified?"))
+               " is not present in your input data. Has this been misspecified?"))
   }
   
   # extract the data
@@ -146,7 +149,7 @@ check_data <- function(data,
   }
   
   # create brms model data
-  mod_dat <<- data.frame(x = data[,x_var],   # concentration
+  mod_dat <- data.frame(x = data[,x_var],   # concentration
                          y = data[,y_var], # response (successes)
                          N = nrow(data))  # Sample size
   
@@ -157,8 +160,8 @@ check_data <- function(data,
     response <- data[, y_var] / data[, trials_var]
   }
 
-  mod_file <- define_model(model=model, x_type=x_type, y_type=y_type, mod_dat=mod_dat)
-  bform <- mod_file$bform
+  mod_file <- define_model(model = model, x_type = x_type,
+                           y_type = y_type, mod_dat = mod_dat)
   priors <- mod_file$priors
   mod_family <- mod_file$mod_family
     
@@ -170,6 +173,5 @@ check_data <- function(data,
        x_type = x_type,
        x_dat = x_dat,
        y_dat = y_dat,
-       bform = bform,
        mod_family = mod_family)
 }
