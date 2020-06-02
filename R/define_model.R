@@ -1,6 +1,7 @@
 #' define_model
 #'
-#' Writes an NEC model file for a three parameter model (top, beta and NEC) and generates a function for initial values to pass to jags
+#' Generates model formula and prior model objects to pass to brms
+#' 
 #' @param x_type the statistical distribution to use for the x (concentration) data. 
 #' This may currently be one of  'beta', 'gaussian', or 'gamma'. 
 #' Others can be added as required, please contact the package maintainer.
@@ -74,7 +75,8 @@ define_model <- function(model, x_type, y_type, mod_dat) {
      if(x_type=="gaussian"){
        prior_nec <- prior_string("normal(3, 100)", nlpar = "nec") 
      }   
-       
+  
+  # MODELS --------------------------
   # nec3param ------
   # as per Fox 2010
   if(model=="nec3param"){
@@ -253,7 +255,7 @@ define_model <- function(model, x_type, y_type, mod_dat) {
     
   }  
   
-  # Return outcomes ---- 
+  # RETURN outcomes ---- 
   #the model formula, priors and family to use in the model fit
   return(list(bform=bform, priors=priors, mod_family=mod_family))
   
