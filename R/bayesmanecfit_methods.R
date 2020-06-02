@@ -17,7 +17,7 @@
 #' @param x_lim a numeric vector of length two to use for the lower and uper limits of the x-axis range
 #' @param y_lim a numeric vector of length two to use for the lower and uper limits of the y-axis range
 #' @param xticks a numeric vector indicate where to place the tick marks of the x-axis
-#' @param all_models Logical indicating if all models in the model set should be plotted simultaneousl, or if a model average plot should be returned.
+#' @param all_models Logical indicating if all models in the model set should be plotted simultaneously, or if a model average plot should be returned.
 #'
 #' @export
 #' @importFrom graphics par plot mtext legend

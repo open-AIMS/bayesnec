@@ -5,9 +5,7 @@
 #' This may currently be one of  'beta', 'gaussian', or 'gamma'. 
 #' Others can be added as required, please contact the package maintainer.
 #' 
-#' @param y_type the statistical distribution to use for the y (response) data. 
-#' This may currently be one of  'binomial', 'beta', 'poisson', 'gaussian', 'negbin' or 'gamma'. 
-#' Others can be added as required, please contact the package maintainer.
+#' @param y_type the statistical distribution to use for the y (response) data.
 #'
 #' @param model a character string indicating the model to fit
 #'
