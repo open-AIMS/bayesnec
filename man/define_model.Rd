@@ -21,5 +21,5 @@ Others can be added as required, please contact the package maintainer.}
 a model formula, priors and the family to use
 }
 \description{
-Writes an NEC model file for a three parameter model (top, beta and NEC) and generates a function for initial values to pass to jags
+Generates model formula and prior model objects to pass to brms
 }

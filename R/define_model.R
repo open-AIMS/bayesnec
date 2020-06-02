@@ -1,6 +1,7 @@
 #' define_model
 #'
-#' Writes an NEC model file for a three parameter model (top, beta and NEC) and generates a function for initial values to pass to jags
+#' Generates model formula and prior model objects to pass to brms
+#' 
 #' @param x_type the statistical distribution to use for the x (concentration) data. 
 #' This may currently be one of  'beta', 'gaussian', or 'gamma'. 
 #' Others can be added as required, please contact the package maintainer.
@@ -56,7 +57,7 @@ define_model <- function(model, x_type, y_type, mod_dat) {
     prior_ec50 <- quantile(log(mod_dat$y), probs = 0.5)
   }
 
-  priors <- c(priors, 
+  priors <- c(priors,
               prior_string(paste0("normal(", prior_top, ", 5)"),
                            nlpar = "top"))
 
