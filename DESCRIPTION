@@ -1,17 +1,36 @@
 Package: bayesnec
-Title: A Bayesian No-Effect- Concentration (NEC) package. R package version 1. https://github.com/AIMS/bayesnec
+Title: A Bayesian No-Effect- Concentration (NEC) Algorithm
 Version: 1.0
-Authors@R: c(person("Rebecca", "Fisher", email = "r.fisher@aims.gov.au", role = c("aut", "cre")), 
-             person("Diego","Barneche",role="aut"),    
-             person("Gerard","Ricardo",role="aut"),
-             person("David","Fox",role="aut"))
-Description: bayesnec is a No-Effect-Concentration estimation package that uses brms to fit concentration(dose)-response data using bayesiam methods for the purpose of estimating both ecx values, but more particularly nec. Please see ?bayesnec for more details.
+Authors@R: c(person("Rebecca", "Fisher", email = "r.fisher@aims.gov.au", role = c("aut", "cre")), person("Diego","Barneche",role="aut"), person("Gerard","Ricardo",role="aut"), person("David","Fox",role="aut"))
+Description: Implementation of No-Effect-Concentration estimation that uses brms to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating ECX values, but more particularly NEC.
 Depends:
-    R (>= 3.3.2)
-License: Apache 2
+    R (>= 3.6.0)
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.0
-Imports: brms
-Suggests: R.rsp
-VignetteBuilder: R.rsp
+Biarch: true
+Imports:
+    brms,
+    HDInterval,
+    methods,
+    Rcpp (>= 0.12.0),
+    rstan (>= 2.18.1),
+    rstantools (>= 2.0.0)
+Suggests:
+    knitr,
+    rmarkdown,
+    plyr,
+    dplyr,
+    ggplot2
+LinkingTo: 
+    BH (>= 1.66.0),
+    Rcpp (>= 0.12.0),
+    RcppEigen (>= 0.3.3.3.0),
+    rstan (>= 2.18.1),
+    StanHeaders (>= 2.18.0)
+SystemRequirements: GNU make
+VignetteBuilder: knitr
+URL: https://aims.github.io/bayesnec
+BugReports: https://github.com/aims/bayesnec/issues
+Roxygen: list(markdown = TRUE)
