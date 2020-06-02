@@ -3,7 +3,6 @@
 #' Check data input for a bayesian nec model fit
 #'
 #' @inheritDotParams bnec data over_disp
-#'
 #' @details
 #' 
 #' This is a wrapper function to test input data criteria and write the brms model file for use in a bayesnec model fit
@@ -12,29 +11,23 @@
 #' @export
 #' @return Modified elements of the bayesnec input data.
 
-check_data <- function(data,
-            x_var,
-            y_var,
-            model,
-            trials_var,
-            x_type = NA, 
-            y_type = NA,
-            over_disp
-            ){
+
+check_data <- function(data, x_var, y_var,
+                       trials_var, x_type = NA, y_type = NA,
+                       over_disp, model) {
   
   if (!is.na(y_type)) {
     if (over_disp & y_type == "beta") {
       y_type <- NA
     }
     # check y_type is a valid family
-    if (!y_type %in% c("binomial", "beta", "poisson", "negbin","gamma", "gaussian")) {
-    stop(paste("You have specified y-type as", y_type, "which is not currently implemented."))
-  }   
-    
+    if (!y_type %in% names(mod_fams)) {
+      stop(paste("You have specified y-type as",
+                 y_type,
+                "which is not currently implemented."))
+    }
   }
-  
 
-  
   # check the specified columns exist in data
   use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var))
   var_colms <- match(use_vars, colnames(data))
@@ -43,7 +36,7 @@ check_data <- function(data,
   if (length(na.omit(var_colms)) < length(use_vars)) {
     stop(paste0("Your indicated ", paste(paste0(missing_colms$element, " '", missing_colms$val,"'"),
                                         collapse = ", "),
-               " is not present in your input data. Has this been mispecified?"))
+               " is not present in your input data. Has this been misspecified?"))
   }
   
   # extract the data
