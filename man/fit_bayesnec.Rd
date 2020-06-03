@@ -32,19 +32,19 @@ If not supplied, the model may run but will not be the model you intended!}
 \item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-\item{family}{The statistical distribution (family) to use for the y (response) data.}
+\item{family}{A \code{\link[base]{character}} string defining the statistical distribution (family) to use for the y (response) data. See details.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
-\item{precision}{The length of the x vector used for posterior predictions, and over which to extract ecx values. Large values will be slower but more precise.}
+\item{precision}{The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.}
 
-\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{family}
-data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.}
+\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit if \code{family} is "poisson" or "binomial".
+For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECX curves.}
+against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
 }
