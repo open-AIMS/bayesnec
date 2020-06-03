@@ -12,7 +12,11 @@ jobs:
         run: |
           install.packages(c("remotes", "rcmdcheck", "tidyverse", "anytime"))
           remotes::install_deps(dependencies = TRUE)
+          remove.packages("rstantools")
+          devtools::install_version("rstantools", version = "2.0.0", repos = "http://cran.us.r-project.org")
         shell: Rscript {0}
       - name: Check
-        run: rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
+        run: |
+          system("R CMD build --resave-data .")
+          system("R CMD check --no-manual --no-install bayesnec_1.0.tar.gz")
         shell: Rscript {0}

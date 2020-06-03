@@ -25,15 +25,13 @@ jobs:
           install.packages(c("ps", "remotes", "tidyverse", "anytime"))
           remotes::install_deps(dependencies = TRUE)
           remotes::install_dev("pkgdown")
+          remove.packages("rstantools")
+          devtools::install_version("rstantools", version = "2.0.0", repos = "http://cran.us.r-project.org")
         shell: Rscript {0}
 
       - name: Install package
         run: |
-          install.packages(c("Rcpp", "RcppParallel", "rstantools", "pkgbuild", "roxygen2", "devtools"))
-          pkgbuild::compile_dll()
-          roxygen2::roxygenise()
-          devtools::build()
-          devtools::install(quick = FALSE, build_vignettes = FALSE)
+          devtools::install(dependencies = FALSE, quick = TRUE, build_vignettes = FALSE)
         shell: Rscript {0}
 
       - name: Deploy package
