@@ -1,6 +1,4 @@
-on:
-  push:
-    branches: master
+on: [push, pull_request]
 
 name: pkgdown
 
@@ -22,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          install.packages(c("ps", "remotes", "tidyverse", "anytime"))
+          install.packages(c("ps", "remotes", "tidyverse", "anytime", "devtools"))
           remotes::install_deps(dependencies = TRUE)
           remotes::install_dev("pkgdown")
           remove.packages("rstantools")
