@@ -2,7 +2,7 @@
 #'
 #' Check data input for a bayesian nec model fit
 #'
-#' @inheritDotParams bnec data over_disp in the check_data
+#' @inheritParams bnec
 #' 
 #' @details
 #' 

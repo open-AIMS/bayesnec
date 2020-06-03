@@ -4,13 +4,13 @@
 \alias{fit_stan}
 \title{Fits brm models based on model type and distribution family}
 \usage{
-fit_stan(model, y_type, new_priors = NULL, new_data = NULL, ...)
+fit_stan(model, family_code, new_priors = NULL, new_data = NULL, ...)
 }
 \arguments{
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s)
 to fit.}
 
-\item{y_type}{The statistical distribution to use for the y (response) data.}
+\item{family_code}{The statistical distribution to use for the y (response) data.}
 
 \item{new_priors}{An object of class \code{\link[brms]{brmsprior}}.}
 
