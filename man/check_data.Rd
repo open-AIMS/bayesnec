@@ -10,34 +10,30 @@ check_data(
   y_var,
   trials_var,
   x_type = NA,
-  y_type = NA,
+  family = NA,
   over_disp,
   model
 )
 }
 \arguments{
-\item{data}{a data.frame containing the data to use for the model}
+\item{data}{A \code{\link[base]{data.frame}} containing the data to use for the model.}
 
-\item{x_var}{the column heading indicating the concentration (x) variable}
+\item{x_var}{A \code{\link[base]{character}} indicating the column heading indicating the concentration (x) variable.}
 
-\item{y_var}{the column heading indicating the response (y) variable}
+\item{y_var}{A \code{\link[base]{character}} indicating the column heading indicating the response (y) variable.}
 
-\item{trials_var}{the column heading indicating the column for the number of "trials" for binomial response data.
+\item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
 
-\item{x_type}{the statistical distribution to use for the x (concentration) data. This will be guess based on the
-characteristic of the input data if not supplied.
+\item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
+the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call,
-and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
-Others can be added as required, please raise an issue on the github development site if your required familiy is not currently available.
-If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data.}
+\item{family}{The statistical distribution (family) to use for the y (response) data.}
 
-\item{over_disp}{If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type
-data. For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.}
+\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{family}
+data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.}
 
-\item{model}{The type of model to be fit. Currently takes values of "nec3param",
-"nec4param", "necsigmoidal", "nechorme", "ecx4param", "ecxwb1", or "ecxwb2".}
+\item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 }
 \value{
 Modified elements of the bayesnec input data.

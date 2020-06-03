@@ -11,7 +11,7 @@ bnec(
   model = NA,
   trials_var = NA,
   x_type = NA,
-  y_type = NA,
+  family = NA,
   x_range = NA,
   precision = 1000,
   over_disp = FALSE,
@@ -36,13 +36,13 @@ If not supplied, the model may run but will not be the model you intended!}
 \item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-\item{y_type}{The statistical distribution (family) to use for the y (response) data.}
+\item{family}{The statistical distribution (family) to use for the y (response) data.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
 \item{precision}{The length of the x vector used for posterior predictions, and over which to extract ecx values. Large values will be slower but more precise.}
 
-\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{y_type}
+\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{family}
 data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
@@ -74,7 +74,7 @@ As some concentration-response data will use zero concentration which can cause 
 small offset is added (1 / 10th of the next lowest value) to zero values of concentration where \code{x_var} are distributed
 on a continuous scale from 0 to infinity, or are bounded to 0, or 1.
 
-The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call,
+The argument \code{family} is a character vector indicating the family to use for the response variable in the brms call,
 and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
 Others can be added as required, please raise an issue on the github development site if your required family is not currently available.
 If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}.

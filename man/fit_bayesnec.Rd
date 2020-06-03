@@ -10,7 +10,7 @@ fit_bayesnec(
   y_var,
   trials_var = NA,
   x_type = NA,
-  y_type = NA,
+  family = NA,
   x_range = NA,
   precision = 1000,
   over_disp = FALSE,
@@ -32,13 +32,13 @@ If not supplied, the model may run but will not be the model you intended!}
 \item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-\item{y_type}{The statistical distribution (family) to use for the y (response) data.}
+\item{family}{The statistical distribution (family) to use for the y (response) data.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
 \item{precision}{The length of the x vector used for posterior predictions, and over which to extract ecx values. Large values will be slower but more precise.}
 
-\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{y_type}
+\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{family}
 data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}

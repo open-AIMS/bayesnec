@@ -41,7 +41,7 @@ dispersion(mod_pois)
 dispersion(mod_pois_od)
 
 # compare with regular dispersion parameter
-# from quasipoisson glm 
+# from quasipoisson glm
 dispersion(mod_pois, summary = TRUE)
 summary(glm(response ~ predictor, data = dt, family = quasipoisson))
 dispersion(mod_pois_od, summary = TRUE)

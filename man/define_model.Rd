@@ -4,16 +4,16 @@
 \alias{define_model}
 \title{define_model}
 \usage{
-define_model(model, x_type, y_type, mod_dat)
+define_model(model, x_type, family, mod_dat)
 }
 \arguments{
 \item{model}{a character string indicating the model to fit}
 
 \item{x_type}{the statistical distribution to use for the x (concentration) data.
-This may currently be one of  'beta', 'gaussian', or 'gamma'.
+This may currently be one of  'Beta', 'gaussian', or 'Gamma'.
 Others can be added as required, please contact the package maintainer.}
 
-\item{y_type}{the statistical distribution to use for the y (response) data.}
+\item{family}{the statistical distribution to use for the y (response) data.}
 
 \item{mod_dat}{the model data to use for the NEC model fit}
 }
