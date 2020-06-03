@@ -25,7 +25,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     if (family == "binomial") {
       response <- response / data$data[, trials_var]
     }
-    mod_file <- define_model(model = model, x_type = x_type,
+    mod_file <- define_prior(model = model, x_type = x_type,
                              family = family, mod_dat = mod_dat)
     priors <- mod_file$priors
     mod_family <- mod_file$mod_family
