@@ -14,7 +14,7 @@ extract_modstats <- function(mod_fits) {
   success_models <- model_set[sapply(mod_fits, class) == "bayesnecfit"]
   if (length(success_models) == 0) {
     stop("None of the models fit successfully, ",
-         "try using fit_bayesnec instead using the default ",
+         "try using bnec with a single model (e.g. ecxexp) using the default ",
          "settings as a starting point for trouble shooting.")
   } else {
     message(paste("successfully fitted the models: ",
