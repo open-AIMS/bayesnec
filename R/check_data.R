@@ -93,17 +93,23 @@ check_data <- function(data, x_var, y_var,
   if (is.na(x_type)) {
     x_type <- set_distribution(x_dat)
   }
+
   if (is.na(y_type)) {
-    y_type <- set_distribution(y_dat, support_integer = TRUE,
-                               trials = data[, trials_var])
+    if (is.na(trials_var)) {
+      y_type <- set_distribution(y_dat, support_integer = TRUE)
+    } else {
+      y_type <- set_distribution(y_dat, support_integer = TRUE,
+                                 trials = data[, trials_var])
+    }
   }
-  
+
   # check there is a valid model type
   if (!model %in% c("nec3param", "necsigm", "nec4param", "nechorme",
-                    "ecx4param", "ecxwb1", "ecxwb2", "ecxlin", "ecxexp", "ecxsigm")) {
+                    "ecx4param", "ecxwb1", "ecxwb2", "ecxlin",
+                    "ecxexp", "ecxsigm")) {
     stop("The model type you have specified does not exist.")
   }
-  
+
   if (y_type == "poisson" & over_disp) {
     y_type <- "negbin"
   }
