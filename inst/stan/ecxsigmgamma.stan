@@ -35,7 +35,7 @@ model {
   vector[N] mu;
   for (n in 1:N) {
     // compute non-linear predictor values
-    mu[n] = shape * (nlp_top[n] * exp( - nlp_beta[n] * C_1[n]) ^ nlp_d[n]);
+    mu[n] = shape * exp(-(nlp_top[n] * exp( - nlp_beta[n] * C_1[n]) ^ nlp_d[n]));
   }
   // priors including all constants
   target += normal_lpdf(b_d | 0, 100);
