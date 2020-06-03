@@ -1,22 +1,17 @@
 #' define_model
 #'
 #' Generates model formula and prior model objects to pass to brms
-#' 
-#' @param x_type the statistical distribution to use for the x (concentration) data. 
-#' This may currently be one of  'Beta', 'gaussian', or 'Gamma'. 
-#' Others can be added as required, please contact the package maintainer.
-#' 
-#' @param family the statistical distribution to use for the y (response) data.
 #'
-#' @param model a character string indicating the model to fit
+#' @inheritParams bnec
 #'
-#' @param mod_dat the model data to use for the NEC model fit
+#' @param mod_dat The model data to use for the NEC model fit.
 #'
 #' @export
-#' @return a model formula, priors and the family to use
+#' @return A \code{\link[base]{list}} containing the \code{\link[brms]{prior}}
+#' and the string defining response distribution family to use.
 #' @importFrom brms bf prior_string negbinomial Beta
 #' @importFrom stats qlogis binomial quantile Gamma poisson gaussian
-define_model <- function(model, x_type, family, mod_dat) {
+define_prior <- function(model, x_type, family, mod_dat) {
   priors <- prior_string("normal(0, 10)", nlpar = "beta", lb = 0)
   prior_slope <- prior_string("normal(0, 100)", nlpar = "slope", lb = 0)
 
