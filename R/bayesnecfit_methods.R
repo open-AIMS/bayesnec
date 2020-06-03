@@ -37,17 +37,17 @@ plot.bayesnecfit <- function(x, ...,
                              y_lim = NA,
                              xticks = NA){
   
-  # check if y_type is binomial
-  y_type <- x$y_type
-  if(y_type=="binomial"){
+  # check if family is binomial
+  family <- x$family
+  if(family=="binomial"){
     y_dat <- x$mod_dat$y/x$mod_dat$trials}else{
       y_dat <- x$mod_dat$y}
   
   ec10 <- c(NA, NA, NA)
-  if(add_ec10==TRUE & x$y_type!="gaussian"){
+  if(add_ec10==TRUE & x$family!="gaussian"){
     ec10 <- ecx(x)
   }
-  if(add_ec10==TRUE & x$y_type=="gaussian"){
+  if(add_ec10==TRUE & x$family=="gaussian"){
     ec10 <- ecx(x, type="relative")
   }  
   
@@ -155,7 +155,7 @@ plot.bayesnecfit <- function(x, ...,
 predict.bayesnecfit <- function(object, ..., precision=100, x_range=NA){
   mod_dat <- object$mod_dat
   
-  y_type <- object$y_type
+  family <- object$family
   x_type <- object$x_type
   
   fit <- object$fit
@@ -166,11 +166,11 @@ predict.bayesnecfit <- function(object, ..., precision=100, x_range=NA){
     x_seq <- seq(min(x_range), max(x_range), length=precision)}
   
   new_dat <- data.frame(x=x_seq)
-  if(y_type=="binomial"){new_dat$trials=10^3}
+  if(family=="binomial"){new_dat$trials=10^3}
   
   # entire posterior
   pred_out <- brms::posterior_predict(fit, newdata = new_dat, re_formula = NA, summary = FALSE)
-  if(y_type=="binomial"){
+  if(family=="binomial"){
     pred_out <- pred_out/10^3
   }
   

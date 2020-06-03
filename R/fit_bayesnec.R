@@ -11,7 +11,7 @@
 #' value and predicted posterior values.
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
-                         x_type = NA, y_type = NA, x_range = NA,
+                         x_type = NA, family = NA, x_range = NA,
                          precision = 1000, over_disp = FALSE,
                          model = NA, sig_val = 0.01, ...) {
 
@@ -20,22 +20,22 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     mod_dat <- data$mod_dat
     y_dat <- data$y_dat
     x_dat <- data$x_dat
-    y_type <- data$y_type
+    family <- data$family
     x_type <- data$x_type
-    if (y_type == "binomial") {
+    if (family == "binomial") {
       response <- response / data$data[, trials_var]
     }
     mod_file <- define_model(model = model, x_type = x_type,
-                             y_type = y_type, mod_dat = mod_dat)
+                             family = family, mod_dat = mod_dat)
     priors <- mod_file$priors
     mod_family <- mod_file$mod_family
   } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
                              trials_var = trials_var, x_type = x_type,
-                             y_type = y_type, over_disp = over_disp,
+                             family = family, over_disp = over_disp,
                              model = model)
     mod_dat <- data_check$mod_dat
-    y_type <- data_check$y_type
+    family <- data_check$family
     x_type <- data_check$x_type
     response <- data_check$response
     data <- data_check$data
@@ -44,15 +44,15 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     priors <- data_check$priors
     mod_family <- data_check$mod_family
   }
-  y_type_name <- names(mod_fams)[mod_fams == y_type]
-  fit <- fit_stan(model = model, y_type = y_type_name,
+  family_code <- names(mod_fams)[mod_fams == family]
+  fit <- fit_stan(model = model, family_code = family_code,
                   new_priors = priors, new_data = mod_dat,
                   chains = 4, ...)
   fit$loo <- loo(fit)
   fit$waic <- waic(fit)
 
   out <- list(fit = fit, mod_dat = mod_dat,
-              y_type = y_type, x_type = x_type, model = model)
+              family = family, x_type = x_type, model = model)
 
   extract_params <- c("top", "beta", "nec", "alpha",
                       "bot", "d", "slope", "ec50")
@@ -88,14 +88,14 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   }
 
   new_dat <- data.frame(x = x_seq)
-  if (y_type == "binomial") {
+  if (family == "binomial") {
     new_dat$trials <- 10^3
   }
 
   y_pred_m <- predict(fit, newdata = new_dat, robust = TRUE, re_formula = NA)
   predicted_y <- predict(fit, robust = TRUE, re_formula = NA)
 
-  if (y_type == "binomial") {
+  if (family == "binomial") {
     top <- top / 10^3
     predicted_y <- predicted_y / 10^3
     y_pred_m <-  y_pred_m / 10^3
@@ -104,7 +104,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   residuals <-  response - predicted_y
   pred_posterior <- t(predict(fit, newdata = new_dat,
                               re_formula = NA, summary = FALSE))
-  if (y_type == "binomial") {
+  if (family == "binomial") {
     pred_posterior <- pred_posterior / 10^3
   }
 
@@ -141,6 +141,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   }
 
   message(paste0("Response variable ", y_var, " modelled as a ",
-                 model, " model using a ", y_type, " distribution."))
+                 model, " model using a ", family, " distribution."))
   out
 }

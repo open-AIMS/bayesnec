@@ -55,7 +55,7 @@ modify <- function(object, model_set=NA, drop_models=NA, add_models=NA) {
                      y_var = object$y_var,
                      trials_var = object$trials_var,
                      x_type = object$x_type, 
-                     y_type = object$y_type,
+                     family = object$family,
                      over_disp = object$over_disp,
                      model = model,
                      iter = simdat$iter,

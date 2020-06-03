@@ -25,9 +25,9 @@ set_distribution <- function(x, support_integer = FALSE, trials = NULL) {
     }
     if (min(x) >= 0) {
       if (max(x) > 1) {
-        "gamma"
+        "Gamma"
       } else {
-        "beta"
+        "Beta"
       }
     } else {
       "gaussian"
