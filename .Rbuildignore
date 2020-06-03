@@ -10,3 +10,4 @@ README.Rmd
 ^LICENSE\.md$
 ^\.travis\.yml$
 ^bayesnec\.Rproj$
+^src/stanExports*
