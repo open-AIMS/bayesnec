@@ -34,8 +34,13 @@ fams_loop <- function(mod_fams, mod_name, bf_binom, bf_deflt,
     } else {
       df_i <- data
     }
+    if (fam_i == "gamma") {
+      the_fam <- get(mod_fams[i])(link = "log")
+    } else {
+      the_fam <- get(mod_fams[i])()
+    }
     mod_i <- brms::brm(nf_i, data = df_i,
-                       family = get(mod_fams[i])(),
+                       family = the_fam,
                        prior = priors, chains = 0,
                        save_model = out_s)
     mod_i$fit@stanmodel <- empty_stanmodel()

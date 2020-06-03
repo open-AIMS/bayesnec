@@ -40,7 +40,7 @@ model {
   vector[N] mu;
   for (n in 1:N) {
     // compute non-linear predictor values
-    mu[n] = shape * (nlp_bot[n] + (nlp_top[n] - nlp_bot[n]) * (1 - exp( - exp(nlp_beta[n] * (C_1[n] - nlp_ec50[n])))));
+    mu[n] = shape * exp(-(nlp_bot[n] + (nlp_top[n] - nlp_bot[n]) * (1 - exp( - exp(nlp_beta[n] * (C_1[n] - nlp_ec50[n]))))));
   }
   // priors including all constants
   target += normal_lpdf(b_bot | 0, 100);
