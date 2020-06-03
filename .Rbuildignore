@@ -9,3 +9,4 @@ README.Rmd
 ^.*Rcheck$
 ^LICENSE\.md$
 ^\.travis\.yml$
+^bayesnec\.Rproj$
