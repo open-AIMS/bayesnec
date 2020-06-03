@@ -2,28 +2,7 @@
 #'
 #' Check data input for a bayesian nec model fit
 #'
-#' @param  data a data.frame containing the data to use for the model
-#' 
-#' @param x_var the column heading indicating the concentration (x) variable
-#' 
-#' @param y_var the column heading indicating the response (y) variable
-#' 
-#' @param trials_var the column heading indicating the column for the number of "trials" for binomial response data. 
-#' If not supplied, the model may run but will not be the model you intended!
-#' 
-#' @param x_type the statistical distribution to use for the x (concentration) data. This will be guess based on the 
-#' characteristic of the input data if not supplied.
-#'
-#' The argument \code{y_type} is a character vector indicating the family to use for the response variable in the brms call, 
-#' and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
-#' Others can be added as required, please raise an issue on the github development site if your required familiy is not currently available. 
-#' If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data.
-#'
-#' @param over_disp If an overdispersed model should be used. Only changes the model fit for poisson and binomial y_type 
-#' data. For poisson, a negative binomial model will be fit. For binomial a beta model will be fit.
-#'
-#' @param model The type of model to be fit. Currently takes values of "nec3param",  
-#' "nec4param", "necsigmoidal", "nechorme", "ecx4param", "ecxwb1", or "ecxwb2".
+#' @inheritDotParams bnec data over_disp in the check_data
 #' 
 #' @details
 #' 
