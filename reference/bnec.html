@@ -144,7 +144,7 @@
   <span class='kw'>model</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>trials_var</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>x_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>y_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>family</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
   <span class='kw'>over_disp</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
@@ -184,7 +184,7 @@ If not supplied, the model may run but will not be the model you intended!</p></
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.</p></td>
     </tr>
     <tr>
-      <th>y_type</th>
+      <th>family</th>
       <td><p>The statistical distribution (family) to use for the y (response) data.</p></td>
     </tr>
     <tr>
@@ -197,7 +197,7 @@ the characteristic of the input data if not supplied and will inform the priors 
     </tr>
     <tr>
       <th>over_disp</th>
-      <td><p>If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" <code>y_type</code>
+      <td><p>If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" <code>family</code>
 data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.</p></td>
     </tr>
     <tr>
@@ -236,7 +236,7 @@ averaged posterior of the estimated nec, and pred.vals a list of model averaged 
     <p>As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
 small offset is added (1 / 10th of the next lowest value) to zero values of concentration where <code>x_var</code> are distributed
 on a continuous scale from 0 to infinity, or are bounded to 0, or 1.</p>
-<p>The argument <code>y_type</code> is a character vector indicating the family to use for the response variable in the brms call,
+<p>The argument <code>family</code> is a character vector indicating the family to use for the response variable in the brms call,
 and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
 Others can be added as required, please raise an issue on the github development site if your required family is not currently available.
 If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>.</p>

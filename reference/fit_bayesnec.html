@@ -143,7 +143,7 @@
   <span class='no'>y_var</span>,
   <span class='kw'>trials_var</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>x_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>y_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>family</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
   <span class='kw'>over_disp</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
@@ -178,7 +178,7 @@ If not supplied, the model may run but will not be the model you intended!</p></
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.</p></td>
     </tr>
     <tr>
-      <th>y_type</th>
+      <th>family</th>
       <td><p>The statistical distribution (family) to use for the y (response) data.</p></td>
     </tr>
     <tr>
@@ -191,7 +191,7 @@ the characteristic of the input data if not supplied and will inform the priors 
     </tr>
     <tr>
       <th>over_disp</th>
-      <td><p>If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" <code>y_type</code>
+      <td><p>If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" <code>family</code>
 data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.</p></td>
     </tr>
     <tr>
