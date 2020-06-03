@@ -17,45 +17,39 @@
   jitter_y = FALSE,
   ylab = "response",
   xlab = "concentration",
-  x_lim = NA,
-  y_lim = NA,
   xticks = NA
 )
 }
 \arguments{
-\item{x}{the bayes nec model fit as returned by fit.bayesnec.}
+\item{x}{The "bayesnecfit" model fit as returned by \code{\link{bnec}}.}
 
 \item{...}{Additional arguments to \code{\link[graphics]{plot}}.}
 
-\item{CI}{a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples}
+\item{CI}{A \code{\link[base]{logical}} value indicating if credibility intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples.}
 
-\item{add_nec}{a logical value indicating if the estimated nec value and 95\% credible intervals should be added to the plot.}
+\item{add_nec}{A \code{\link[base]{logical}} value indicating if the estimated NEC value and 95\% credible intervals should be added to the plot.}
 
-\item{position_legend}{a vector indicating the location of the nec or ec10 legend, as per a call to legend.}
+\item{position_legend}{A \code{\link[base]{numeric}} vector indicating the location of the NEC or EC10 legend, as per a call to legend.}
 
-\item{add_ec10}{a logical value indicating if an estimated ec10 value and 95\% credible intervals should be added to the plot.}
+\item{add_ec10}{A \code{\link[base]{logical}} value indicating if an estimated EC10 value and 95\% credible intervals should be added to the plot.}
 
-\item{xform}{a function to be applied as a transformation of the x data.}
+\item{xform}{A function to be applied as a transformation of the x data.}
 
-\item{lxform}{a function to be applied as a transformation only to axis labels and the annoted nec/ec10 values.}
+\item{lxform}{A function to be applied as a transformation only to axis labels and the annotated NEC / EC10 values.}
 
-\item{jitter_x}{a logical value indicating if the x data points on the plot should be jittered.}
+\item{jitter_x}{A \code{\link[base]{logical}} value indicating if the x data points on the plot should be jittered.}
 
-\item{jitter_y}{a logical value indicating if the y data points on the plot should be jittered.}
+\item{jitter_y}{A \code{\link[base]{logical}} value indicating if the y data points on the plot should be jittered.}
 
-\item{ylab}{a character vector to use for the y-axis label}
+\item{ylab}{A \code{\link[base]{character}} vector to use for the y-axis label.}
 
-\item{xlab}{a character vector to use for the x-axis label}
+\item{xlab}{A \code{\link[base]{character}} vector to use for the x-axis label.}
 
-\item{x_lim}{a numeric vector of length two to use for the lower and uper limits of the x-axis range}
-
-\item{y_lim}{a numeric vector of length two to use for the lower and uper limits of the y-axis range}
-
-\item{xticks}{a numeric vector indicate where to place the tick marks of the x-axis}
+\item{xticks}{A numeric vector indicate where to place the tick marks of the x-axis.}
 }
 \value{
 a plot of the fitted model
 }
 \description{
-Generates a plot of a fitted bayes nec model, as returned by fit.bayesnec.
+Generates a plot of a fitted "bayesnecfit" model, as returned by \code{\link{bnec}}.
 }

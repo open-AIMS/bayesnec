@@ -1,20 +1,20 @@
 #' plot.bayesnecfit
 #'
-#' Generates a plot of a fitted bayes nec model, as returned by fit.bayesnec.
+#' Generates a plot of a fitted "bayesnecfit" model, as returned by \code{\link{bnec}}.
 #' 
-#' @param x the bayes nec model fit as returned by fit.bayesnec.
+#' @param x The "bayesnecfit" model fit as returned by \code{\link{bnec}}.
 #' @param ... Additional arguments to \code{\link[graphics]{plot}}.
-#' @param CI a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples
-#' @param add_nec a logical value indicating if the estimated nec value and 95% credible intervals should be added to the plot.
-#' @param add_ec10 a logical value indicating if an estimated ec10 value and 95% credible intervals should be added to the plot.
-#' @param position_legend a vector indicating the location of the nec or ec10 legend, as per a call to legend.
-#' @param xform a function to be applied as a transformation of the x data.
-#' @param lxform a function to be applied as a transformation only to axis labels and the annoted nec/ec10 values.
-#' @param jitter_x a logical value indicating if the x data points on the plot should be jittered.
-#' @param jitter_y a logical value indicating if the y data points on the plot should be jittered.
-#' @param xlab a character vector to use for the x-axis label
-#' @param ylab a character vector to use for the y-axis label
-#' @param xticks a numeric vector indicate where to place the tick marks of the x-axis
+#' @param CI A \code{\link[base]{logical}} value indicating if credibility intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples.
+#' @param add_nec A \code{\link[base]{logical}} value indicating if the estimated NEC value and 95% credible intervals should be added to the plot.
+#' @param add_ec10 A \code{\link[base]{logical}} value indicating if an estimated EC10 value and 95% credible intervals should be added to the plot.
+#' @param position_legend A \code{\link[base]{numeric}} vector indicating the location of the NEC or EC10 legend, as per a call to legend.
+#' @param xform A function to be applied as a transformation of the x data.
+#' @param lxform A function to be applied as a transformation only to axis labels and the annotated NEC / EC10 values.
+#' @param jitter_x A \code{\link[base]{logical}} value indicating if the x data points on the plot should be jittered.
+#' @param jitter_y A \code{\link[base]{logical}} value indicating if the y data points on the plot should be jittered.
+#' @param xlab A \code{\link[base]{character}} vector to use for the x-axis label.
+#' @param ylab A \code{\link[base]{character}} vector to use for the y-axis label.
+#' @param xticks A numeric vector indicate where to place the tick marks of the x-axis.
 #' @export
 #' @return a plot of the fitted model
 #' @importFrom graphics plot axis lines abline legend

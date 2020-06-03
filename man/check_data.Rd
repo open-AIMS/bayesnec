@@ -28,19 +28,21 @@ If not supplied, the model may run but will not be the model you intended!}
 \item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-\item{family}{The statistical distribution (family) to use for the y (response) data.}
+\item{family}{A \code{\link[base]{character}} string defining the statistical distribution (family) to use for the y (response) data. See details.}
 
-\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" \code{family}
-data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.}
+\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit if \code{family} is "poisson" or "binomial".
+For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 }
 \value{
-Modified elements of the bayesnec input data.
+A \code{\link[base]{list}} of modified elements
+necessary for \code{\link{fit_bayesnec}}.
 }
 \description{
-Check data input for a bayesian nec model fit
+Check data input for a Bayesian NEC model fit
 }
 \details{
-This is a wrapper function to test input data criteria and write the brms model file for use in a bayesnec model fit
+This is a wrapper function to test input data criteria and find the
+correct priors for use in \code{\link{fit_bayesnec}}.
 }
