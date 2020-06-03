@@ -13,18 +13,18 @@
 #' @return Modified elements of the bayesnec input data.
 
 check_data <- function(data, x_var, y_var,
-                       trials_var, x_type = NA, y_type = NA,
+                       trials_var, x_type = NA, family = NA,
                        over_disp, model) {
-  
-  if (!is.na(y_type)) {
-    if (over_disp & y_type == "beta") {
-      y_type <- NA
+
+  if (!is.na(family)) {
+    if (over_disp & family == "Beta") {
+      family <- NA
     }
-    # check y_type is a valid family
-    if (!y_type %in% names(mod_fams)) {
-      stop(paste("You have specified y-type as",
-                 y_type,
-                "which is not currently implemented."))
+    # check family is a valid family
+    if (!family %in% mod_fams) {
+      stop(paste("You have specified family as",
+                 family,
+                 "which is not currently implemented."))
     }
   }
 
@@ -73,11 +73,11 @@ check_data <- function(data, x_var, y_var,
     x_type <- set_distribution(x_dat)
   }
 
-  if (is.na(y_type)) {
+  if (is.na(family)) {
     if (is.na(trials_var)) {
-      y_type <- set_distribution(y_dat, support_integer = TRUE)
+      family <- set_distribution(y_dat, support_integer = TRUE)
     } else {
-      y_type <- set_distribution(y_dat, support_integer = TRUE,
+      family <- set_distribution(y_dat, support_integer = TRUE,
                                  trials = data[, trials_var])
     }
   }
@@ -89,46 +89,46 @@ check_data <- function(data, x_var, y_var,
     stop("The model type you have specified does not exist.")
   }
 
-  if (y_type == "poisson" & over_disp) {
-    y_type <- "negbin"
+  if (family == "poisson" & over_disp) {
+    family <- "negbinomial"
   }
-  if (y_type == "binomial" & over_disp) {
-    y_type <- "beta"
+  if (family == "binomial" & over_disp) {
+    family <- "Beta"
     data[,y_var] <-  data[, y_var] / data[, trials_var]
   }
   
-  # error catching for 0 for gamma by adding very small value
-  if (min(data[,x_var])==0 & x_type=="gamma"){
+  # error catching for 0 for Gamma by adding very small value
+  if (min(data[,x_var])==0 & x_type=="Gamma"){
     tt <- data[,x_var]
     min_val <- min(tt[which(tt>0)])
     data[which(tt==0),x_var] <- tt[which(tt==0)]+(min_val/10)
   }
   
-  if (min(data[,y_var])==0 & y_type=="gamma"){
+  if (min(data[,y_var])==0 & family=="Gamma"){
     tt <- data[,y_var]
     min_val <- min(tt[which(tt>0)])
     data[which(tt==0),y_var] <- tt[which(tt==0)]+(min_val/10)
   }
-  # error catching for 0 for beta by adding very small value (beta does not take zero)
-  if (min(data[,x_var])==0 & x_type=="beta"){
+  # error catching for 0 for Beta by adding very small value (Beta does not take zero)
+  if (min(data[,x_var])==0 & x_type=="Beta"){
     tt <- data[,x_var]
     min_val <- min(tt[which(tt>0)])
     data[which(tt==0),x_var] <- tt[which(tt==0)]+(min_val/10)
   }
   
-  if (min(data[,y_var])==0 & y_type=="beta"){
+  if (min(data[,y_var])==0 & family=="Beta"){
     tt <- data[,y_var]
     min_val <- min(tt[which(tt>0)])
     data[which(tt==0),y_var] <- tt[which(tt==0)]+(min_val/10)
   }
   
-  # error catching for 1 for beta by subtracting very small value (beta does not take 1)
-  if (max(data[,x_var])==1 & x_type=="beta"){
+  # error catching for 1 for Beta by subtracting very small value (Beta does not take 1)
+  if (max(data[,x_var])==1 & x_type=="Beta"){
     tt <- data[,x_var]
     data[which(tt==1),x_var] <- tt[which(tt==1)]-0.001
   }
   
-  if (max(data[,y_var])==1 & y_type=="beta"){
+  if (max(data[,y_var])==1 & family=="Beta"){
     tt <- data[,y_var]
     data[which(tt==1),y_var] <- tt[which(tt==1)]-0.001
   }
@@ -140,13 +140,13 @@ check_data <- function(data, x_var, y_var,
   
   response <- data[, y_var]
   
-  if (y_type == "binomial") {
+  if (family == "binomial") {
     mod_dat$trials <- data[, trials_var] # number of "trials"
     response <- data[, y_var] / data[, trials_var]
   }
 
   mod_file <- define_model(model = model, x_type = x_type,
-                           y_type = y_type, mod_dat = mod_dat)
+                           family = family, mod_dat = mod_dat)
   priors <- mod_file$priors
   mod_family <- mod_file$mod_family
     
@@ -154,7 +154,7 @@ check_data <- function(data, x_var, y_var,
        response = response,
        mod_dat = mod_dat,
        data = data,
-       y_type = y_type,
+       family = family,
        x_type = x_type,
        x_dat = x_dat,
        y_dat = y_dat,

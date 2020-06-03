@@ -3,10 +3,10 @@
 #' Generates model formula and prior model objects to pass to brms
 #' 
 #' @param x_type the statistical distribution to use for the x (concentration) data. 
-#' This may currently be one of  'beta', 'gaussian', or 'gamma'. 
+#' This may currently be one of  'Beta', 'gaussian', or 'Gamma'. 
 #' Others can be added as required, please contact the package maintainer.
 #' 
-#' @param y_type the statistical distribution to use for the y (response) data.
+#' @param family the statistical distribution to use for the y (response) data.
 #'
 #' @param model a character string indicating the model to fit
 #'
@@ -16,41 +16,41 @@
 #' @return a model formula, priors and the family to use
 #' @importFrom brms bf prior_string negbinomial Beta
 #' @importFrom stats qlogis binomial quantile Gamma poisson gaussian
-define_model <- function(model, x_type, y_type, mod_dat) {
+define_model <- function(model, x_type, family, mod_dat) {
   priors <- prior_string("normal(0, 10)", nlpar = "beta", lb = 0)
   prior_slope <- prior_string("normal(0, 100)", nlpar = "slope", lb = 0)
 
-  if (y_type == "binomial") {
+  if (family == "binomial") {
     mod_family <- binomial()
     prior_top <- quantile(qlogis(mod_dat$y / mod_dat$trials), probs = 0.8)
     prior_bot <- quantile(qlogis(mod_dat$y / mod_dat$trials), probs = 0.2)
     prior_ec50 <- quantile(qlogis(mod_dat$y / mod_dat$trials), probs = 0.5)
   }
-  if (y_type == "gamma") {
+  if (family == "Gamma") {
     mod_family <- Gamma()
     prior_top <- quantile(log(mod_dat$y), probs = 0.8)
     prior_bot <- quantile(log(mod_dat$y), probs = 0.2)
     prior_ec50 <- quantile(log(mod_dat$y), probs = 0.5)
   }
-  if (y_type == "poisson") {
+  if (family == "poisson") {
     mod_family <- poisson()
     prior_top <- quantile(log(mod_dat$y), probs = 0.8)
     prior_bot <- quantile(log(mod_dat$y), probs = 0.2)
     prior_ec50 <- quantile(log(mod_dat$y), probs = 0.5)
   }
-  if (y_type == "gaussian") {
+  if (family == "gaussian") {
     mod_family <- gaussian()
     prior_top <- quantile(mod_dat$y, probs = 0.8)
     prior_bot <- quantile(mod_dat$y, probs = 0.2)
     prior_ec50 <- quantile(mod_dat$y, probs = 0.5)
   }
-  if (y_type == "beta") {
+  if (family == "Beta") {
     mod_family <- Beta()
     prior_top <- quantile(qlogis(mod_dat$y), probs = 0.8)
     prior_bot <- quantile(qlogis(mod_dat$y), probs = 0.2)
     prior_ec50 <- quantile(qlogis(mod_dat$y), probs = 0.5)
   }
-  if (y_type == "negbin") {
+  if (family == "negbinomial") {
     mod_family <- negbinomial()
     prior_top <- quantile(log(mod_dat$y), probs = 0.8)
     prior_bot <- quantile(log(mod_dat$y), probs = 0.2)
@@ -61,10 +61,10 @@ define_model <- function(model, x_type, y_type, mod_dat) {
               prior_string(paste0("normal(", prior_top, ", 5)"),
                            nlpar = "top"))
 
-  if (x_type == "beta") {
+  if (x_type == "Beta") {
     prior_nec <- prior_string("uniform(0.0001, 0.9999)", nlpar = "nec")
   }
-  if (x_type == "gamma") {
+  if (x_type == "Gamma") {
     prior_nec <- prior_string("normal(0, 100)", nlpar = "nec", lb = 0)
   }
   if (x_type == "gaussian") {

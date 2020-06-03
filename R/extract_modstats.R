@@ -21,7 +21,7 @@ extract_modstats <- function(mod_fits) {
                   paste(success_models, collapse = " ")))
   }
   mod_fits <- mod_fits[success_models]
-  y_type <- mod_fits[[1]]$y_type
+  family <- mod_fits[[1]]$family
   x_type <- mod_fits[[1]]$x_type
   mod_dat <- mod_fits[[1]]$mod_dat
   disp <-  do.call("rbind", lapply(mod_fits, function(x) x$over_disp))
@@ -78,7 +78,7 @@ extract_modstats <- function(mod_fits) {
   list(mod_fits = mod_fits,
        success_models = success_models,
        mod_dat = mod_dat,
-       y_type = y_type,
+       family = family,
        x_type = x_type,
        mod_stats = mod_stats,
        sample_size = sample_size,

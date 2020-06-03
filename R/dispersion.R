@@ -22,29 +22,29 @@
 #' \dontrun{
 #' library(brms)
 #' set.seed(10)
-#' 
+#'
 #' dt <- data.frame(predictor = rpois(60, lambda = 15))
 #' dt$response <- dt$predictor + round(rnorm(nrow(dt), 0, 1))
 #' # mimic overdispersion
 #' dt$response_od <- abs(dt$predictor + round(rnorm(nrow(dt), 0, 10)))
 #' mod_pois <- brm(response ~ predictor, dt, family = poisson())
 #' mod_pois_od <- brm(response_od~predictor, dt, family = poisson())
-#' 
+#'
 #' dispersion(mod_pois)
 #' dispersion(mod_pois_od)
-#' 
+#'
 #' # compare with regular dispersion parameter
-#' # from quasipoisson glm 
+#' # from quasipoisson glm
 #' dispersion(mod_pois, summary = TRUE)
 #' summary(glm(response ~ predictor, data = dt, family = quasipoisson))
 #' dispersion(mod_pois_od, summary = TRUE)
 #' summary(glm(response_od ~ predictor, data = dt, family = quasipoisson))
 #' }
-dispersion <- function (model, summary = FALSE) {
+dispersion <- function(model, summary = FALSE) {
   allowed_fams <- c("gaussian", "binomial", "poisson")
   fam <- model$family$family
   if (fam %in% c(allowed_fams)) {
-   fam_fcts <- get(fam)()   
+   fam_fcts <- get(fam)()
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
     prd_out <- posterior_epred(model)
@@ -67,7 +67,7 @@ dispersion <- function (model, summary = FALSE) {
       qts <- hdi(disp, cred_mass = 0.95)
       data.frame(mean = mean(disp), median = median(disp),
                  lower = qts["lower"], upper = qts["upper"],
-                 stringsAsFactors = FALSE, row.names = NULL)      
+                 stringsAsFactors = FALSE, row.names = NULL)
     } else {
       disp
     }
