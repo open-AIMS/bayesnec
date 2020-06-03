@@ -47,7 +47,7 @@
 
 
 <meta property="og:title" content="define_model — define_model" />
-<meta property="og:description" content="Writes an NEC model file for a three parameter model (top, beta and NEC) and generates a function for initial values to pass to jags" />
+<meta property="og:description" content="Generates model formula and prior model objects to pass to brms" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -134,7 +134,7 @@
     </div>
 
     <div class="ref-description">
-    <p>Writes an NEC model file for a three parameter model (top, beta and NEC) and generates a function for initial values to pass to jags</p>
+    <p>Generates model formula and prior model objects to pass to brms</p>
     </div>
 
     <pre class="usage"><span class='fu'>define_model</span>(<span class='no'>model</span>, <span class='no'>x_type</span>, <span class='no'>y_type</span>, <span class='no'>mod_dat</span>)</pre>
@@ -154,9 +154,7 @@ Others can be added as required, please contact the package maintainer.</p></td>
     </tr>
     <tr>
       <th>y_type</th>
-      <td><p>the statistical distribution to use for the y (response) data.
-This may currently be one of  'binomial', 'beta', 'poisson', 'gaussian', 'negbin' or 'gamma'.
-Others can be added as required, please contact the package maintainer.</p></td>
+      <td><p>the statistical distribution to use for the y (response) data.</p></td>
     </tr>
     <tr>
       <th>mod_dat</th>

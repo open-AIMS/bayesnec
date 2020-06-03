@@ -149,8 +149,6 @@
   <span class='kw'>over_disp</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
   <span class='kw'>model</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>sig_val</span> <span class='kw'>=</span> <span class='fl'>0.01</span>,
-  <span class='kw'>iter</span> <span class='kw'>=</span> <span class='fl'>2000</span>,
-  <span class='kw'>warmup</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>floor</a></span>(<span class='no'>iter</span>/<span class='fl'>5</span>) * <span class='fl'>4</span>,
   <span class='no'>...</span>
 )</pre>
 
@@ -176,24 +174,20 @@ If not supplied, the model may run but will not be the model you intended!</p></
     </tr>
     <tr>
       <th>x_type</th>
-      <td><p>the statistical distribution to use for the x (concentration) data. This will be guess based on
-the characteristic of the input data if not supplied. As some concentration-response data will use zero concentration,
-and there is no distribution on the continuous scale from 0 to infinity (i.e. Tweedie) available in <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>,
-a small offset is added (1/10^3 of the next lowest value) to zero values of concentration where these are gamma distributed.</p></td>
+      <td><p>The statistical distribution of the x (concentration) data. This will be guessed based on
+the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.</p></td>
     </tr>
     <tr>
       <th>y_type</th>
-      <td><p>the statistical distribution to use for the y (response) data. This may currently be one of "binomial", "poisson",
-"gaussian", or "gamma". Others can be added as required, please contact the package maintainer. If not supplied, the
-appropriate distribution will be guessed based on the distribution of the input data.</p></td>
+      <td><p>The statistical distribution (family) to use for the y (response) data.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
-      <td><p>A range of x values over which to consider extracting ECX</p></td>
+      <td><p>A range of x values over which to consider extracting ECx.</p></td>
     </tr>
     <tr>
       <th>precision</th>
-      <td><p>tbw.</p></td>
+      <td><p>The length of the x vector used for posterior predictions, and over which to extract ecx values. Large values will be slower but more precise.</p></td>
     </tr>
     <tr>
       <th>over_disp</th>
@@ -207,17 +201,7 @@ data. For "poisson", a negative binomial model will be fit. For binomial a beta 
     <tr>
       <th>sig_val</th>
       <td><p>Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the lowest observed concentration. Against the control, to estimate NEC as an interpolated NOEC value from smooth ECX curves.</p></td>
-    </tr>
-    <tr>
-      <th>iter</th>
-      <td><p>the number of iterations to be passed to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>. Defaults to 2e4.</p></td>
-    </tr>
-    <tr>
-      <th>warmup</th>
-      <td><p>A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number
-of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup
-should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></td>
+against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECX curves.</p></td>
     </tr>
     <tr>
       <th>...</th>
@@ -227,7 +211,8 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>The fitted brms model, including an estimate of the nec value and predicted posterior values.
+    <p>The fitted <span class="pkg">brms</span> model, including an estimate of the NEC
+value and predicted posterior values.
 A posterior sample of the NEC is also available under <code>nec_posterior</code></p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 

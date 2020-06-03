@@ -171,13 +171,11 @@ If not supplied, the model may run but will not be the model you intended!</p></
     <tr>
       <th>x_type</th>
       <td><p>the statistical distribution to use for the x (concentration) data. This will be guess based on the
-characteristic of the input data if not supplied.</p></td>
-    </tr>
-    <tr>
-      <th>y_type</th>
-      <td><p>the statistical distribution to use for the y (response) data. This may currently be one of  'binomial',
-'poisson',' 'gaussian', or 'gamma'. Others can be added as required, please contact the package maintainer.
-If not supplied, the appropriate distribution will be guessed based on the distribution of the input data.</p></td>
+characteristic of the input data if not supplied.</p>
+<p>The argument <code>y_type</code> is a character vector indicating the family to use for the response variable in the brms call,
+and may currently be one of "binomial", "beta", "poisson", "negbin", "gaussian", or "gamma".
+Others can be added as required, please raise an issue on the github development site if your required familiy is not currently available.
+If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data.</p></td>
     </tr>
     <tr>
       <th>over_disp</th>
