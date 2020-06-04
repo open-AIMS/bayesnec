@@ -17,36 +17,41 @@ ecx(
 )
 }
 \arguments{
-\item{object}{a jag model fit as returned by a call to bayes from fit_bayesnec}
+\item{object}{An object of class "bayesnecfit" or "bayesmanecfit" returned by \code{\link{bnec}}.}
 
-\item{ecx_val}{the desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
+\item{ecx_val}{The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
 and "absolute"), defaults to 10.}
 
-\item{precision}{The number of unique x values over which to find ecx - large values will make the ecx estimate more
+\item{precision}{The number of unique x values over which to find ECx - large values will make the ECx estimate more
 precise.}
 
-\item{posterior}{A logical value indicating if the full posterior sample of calculated ecx values should be returned
+\item{posterior}{A \code{\link[base]{logical}} value indicating if the full posterior sample of calculated ECx values should be returned
 instead of just the median and 95 credible intervals}
 
-\item{type}{a character vector, taking values of "relative",  "absolute" (the default) or "direct".
-Type "relative" is calculated as the percentage decrease from the maximum predicted value of the response (top) to the minimum predicted value
-of the response. Type "absolute" (the default) is calculated as the percentage decrease from the maximum value of the response (top)
-to 0 (or bot for a 4 parameter model fit). Type "direct" provides a direct estimate of the x value for a given y.
-Note that for the current version, ecx for an necHormesis model is estimated at a percent decline from the control}
+\item{type}{A \code{\link[base]{character}} vector, taking values of "relative", "absolute" (the default) or "direct". See Details.}
 
-\item{hormesis_def}{takces values of 'max' or 'control'.
-If 'max' ecx values are calculated as a decline from the maximum estimates (ie the peak at nec).
-If 'control' ecx values are calculated relative to the control, which is assumed to be the lowest observed concentrartion.}
+\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values of "max" or "control". See Details.}
 
 \item{xform}{A function to apply to the returned estimated concentration values}
 
-\item{x_range}{A range of x values over which to consider extracting ecx}
+\item{x_range}{A range of x values over which to consider extracting ECx}
 
-\item{prob_vals}{A vector indicating the probability values over which to return the estimated ecx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).}
+\item{prob_vals}{A vector indicating the probability values over which to return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).}
 }
 \value{
-A vector containing the estimated ecx value, including upper and lower 95 percent Credible Interval bounds
+A vector containing the estimated ECx value, including upper and lower 95\% credible interval bounds.
 }
 \description{
-Extracts the predicted ecx value as desired from a bayesnec or a bayesmanec model fit.
+Extracts the predicted ECx value as desired from a "bayesnecfit" or a "bayesmanecfit" object.
+}
+\details{
+\code{type} "relative" is calculated as the percentage decrease from the maximum predicted value of the response (top) to the minimum predicted value
+of the response. Type "absolute" (the default) is calculated as the percentage decrease from the maximum value of the response (top)
+to 0 (or bot for a 4 parameter model fit). Type "direct" provides a direct estimate of the x value for a given y.
+Note that for the current version, ECx for an "nechorme" (NEC Hormesis) model is estimated at a percent decline from the control.
+For \code{hormesis_def}, if "max", then ECx values are calculated as a decline from the maximum estimates (i.e. the peak at nec);
+if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.
+}
+\seealso{
+\code{\link{bnec}}
 }

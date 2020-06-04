@@ -12,7 +12,8 @@
 #' @seealso \code{\link{alter_model}}
 #' @importFrom stats update
 #' @importFrom brms prior_summary
-fit_stan <- function(model, family_code, new_priors = NULL, new_data = NULL, ...) {
+fit_stan <- function(model, family_code, new_priors = NULL,
+                     new_data = NULL, ...) {
   brms_fit <- get(paste0(model, "_brms_", family_code))
   stan_mod <- paste0(model, family_code)
   brms_fit$fit@stanmodel <- stanmodels[[stan_mod]]
