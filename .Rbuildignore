@@ -12,3 +12,4 @@ README.Rmd
 ^bayesnec\.Rproj$
 ^src/stanExports*
 ^.*\.gitattributes$
+^src/bayesnec\.dll$
