@@ -48,7 +48,7 @@ ecx <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
 #'
 #' @inheritParams ecx
 #' @inherit ecx return details seealso
-#' @importFrom brms posterior_predict
+#' @importFrom brms posterior_epred fitted
 #' @importFrom stats quantile predict
 ecx_1fit <- function(object, ecx_val = 10, precision = 1000,
                      posterior = FALSE, type = "absolute",
@@ -72,7 +72,7 @@ ecx_1fit <- function(object, ecx_val = 10, precision = 1000,
     m4param <- 0
   }
 
-  if (object$y_type == "gaussian" & type == "absolute") {
+  if (object$family == "gaussian" & type == "absolute") {
     stop("Absolute ECx values are not valid for a gaussian ",
          "response variable unless a 4 parameter model is fit")
   }
