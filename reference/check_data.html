@@ -47,7 +47,7 @@
 
 
 <meta property="og:title" content="check_data — check_data" />
-<meta property="og:description" content="Check data input for a bayesian nec model fit" />
+<meta property="og:description" content="Check data input for a Bayesian NEC model fit" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -134,7 +134,7 @@
     </div>
 
     <div class="ref-description">
-    <p>Check data input for a bayesian nec model fit</p>
+    <p>Check data input for a Bayesian NEC model fit</p>
     </div>
 
     <pre class="usage"><span class='fu'>check_data</span>(
@@ -175,12 +175,12 @@ the characteristic of the input data if not supplied and will inform the priors 
     </tr>
     <tr>
       <th>family</th>
-      <td><p>The statistical distribution (family) to use for the y (response) data.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
     </tr>
     <tr>
       <th>over_disp</th>
-      <td><p>If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" <code>family</code>
-data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.</p></td>
+      <td><p>If an over-dispersed model should be used. Only changes the model fit if <code>family</code> is "poisson" or "binomial".
+For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.</p></td>
     </tr>
     <tr>
       <th>model</th>
@@ -190,10 +190,12 @@ data. For "poisson", a negative binomial model will be fit. For binomial a beta 
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>Modified elements of the bayesnec input data.</p>
+    <p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of modified elements
+necessary for <code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>This is a wrapper function to test input data criteria and write the brms model file for use in a bayesnec model fit</p>
+    <p>This is a wrapper function to test input data criteria and find the
+correct priors for use in <code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

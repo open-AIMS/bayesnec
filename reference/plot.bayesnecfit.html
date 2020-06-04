@@ -47,7 +47,7 @@
 
 
 <meta property="og:title" content="plot.bayesnecfit — plot.bayesnecfit" />
-<meta property="og:description" content="Generates a plot of a fitted bayes nec model, as returned by fit.bayesnec." />
+<meta property="og:description" content="Generates a plot of a fitted &quot;bayesnecfit&quot; model, as returned by bnec." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -134,7 +134,7 @@
     </div>
 
     <div class="ref-description">
-    <p>Generates a plot of a fitted bayes nec model, as returned by fit.bayesnec.</p>
+    <p>Generates a plot of a fitted "bayesnecfit" model, as returned by <code><a href='bnec.html'>bnec</a></code>.</p>
     </div>
 
     <pre class="usage"><span class='co'># S3 method for bayesnecfit</span>
@@ -151,8 +151,6 @@
   <span class='kw'>jitter_y</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
   <span class='kw'>ylab</span> <span class='kw'>=</span> <span class='st'>"response"</span>,
   <span class='kw'>xlab</span> <span class='kw'>=</span> <span class='st'>"concentration"</span>,
-  <span class='kw'>x_lim</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>y_lim</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>xticks</span> <span class='kw'>=</span> <span class='fl'>NA</span>
 )</pre>
 
@@ -161,7 +159,7 @@
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>x</th>
-      <td><p>the bayes nec model fit as returned by fit.bayesnec.</p></td>
+      <td><p>The "bayesnecfit" model fit as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
       <th>...</th>
@@ -169,55 +167,47 @@
     </tr>
     <tr>
       <th>CI</th>
-      <td><p>a logical value indicating if confidence intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if credibility intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples.</p></td>
     </tr>
     <tr>
       <th>add_nec</th>
-      <td><p>a logical value indicating if the estimated nec value and 95% credible intervals should be added to the plot.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if the estimated NEC value and 95% credible intervals should be added to the plot.</p></td>
     </tr>
     <tr>
       <th>position_legend</th>
-      <td><p>a vector indicating the location of the nec or ec10 legend, as per a call to legend.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the location of the NEC or EC10 legend, as per a call to legend.</p></td>
     </tr>
     <tr>
       <th>add_ec10</th>
-      <td><p>a logical value indicating if an estimated ec10 value and 95% credible intervals should be added to the plot.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if an estimated EC10 value and 95% credible intervals should be added to the plot.</p></td>
     </tr>
     <tr>
       <th>xform</th>
-      <td><p>a function to be applied as a transformation of the x data.</p></td>
+      <td><p>A function to be applied as a transformation of the x data.</p></td>
     </tr>
     <tr>
       <th>lxform</th>
-      <td><p>a function to be applied as a transformation only to axis labels and the annoted nec/ec10 values.</p></td>
+      <td><p>A function to be applied as a transformation only to axis labels and the annotated NEC / EC10 values.</p></td>
     </tr>
     <tr>
       <th>jitter_x</th>
-      <td><p>a logical value indicating if the x data points on the plot should be jittered.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if the x data points on the plot should be jittered.</p></td>
     </tr>
     <tr>
       <th>jitter_y</th>
-      <td><p>a logical value indicating if the y data points on the plot should be jittered.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if the y data points on the plot should be jittered.</p></td>
     </tr>
     <tr>
       <th>ylab</th>
-      <td><p>a character vector to use for the y-axis label</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector to use for the y-axis label.</p></td>
     </tr>
     <tr>
       <th>xlab</th>
-      <td><p>a character vector to use for the x-axis label</p></td>
-    </tr>
-    <tr>
-      <th>x_lim</th>
-      <td><p>a numeric vector of length two to use for the lower and uper limits of the x-axis range</p></td>
-    </tr>
-    <tr>
-      <th>y_lim</th>
-      <td><p>a numeric vector of length two to use for the lower and uper limits of the y-axis range</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector to use for the x-axis label.</p></td>
     </tr>
     <tr>
       <th>xticks</th>
-      <td><p>a numeric vector indicate where to place the tick marks of the x-axis</p></td>
+      <td><p>A numeric vector indicate where to place the tick marks of the x-axis.</p></td>
     </tr>
     </table>
 

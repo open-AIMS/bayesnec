@@ -179,7 +179,7 @@ the characteristic of the input data if not supplied and will inform the priors 
     </tr>
     <tr>
       <th>family</th>
-      <td><p>The statistical distribution (family) to use for the y (response) data.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -187,12 +187,12 @@ the characteristic of the input data if not supplied and will inform the priors 
     </tr>
     <tr>
       <th>precision</th>
-      <td><p>The length of the x vector used for posterior predictions, and over which to extract ecx values. Large values will be slower but more precise.</p></td>
+      <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
     </tr>
     <tr>
       <th>over_disp</th>
-      <td><p>If an over-dispersed model should be used. Only changes the model fit for "poisson" and "binomial" <code>family</code>
-data. For "poisson", a negative binomial model will be fit. For binomial a beta model will be fit.</p></td>
+      <td><p>If an over-dispersed model should be used. Only changes the model fit if <code>family</code> is "poisson" or "binomial".
+For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.</p></td>
     </tr>
     <tr>
       <th>model</th>
@@ -201,7 +201,7 @@ data. For "poisson", a negative binomial model will be fit. For binomial a beta 
     <tr>
       <th>sig_val</th>
       <td><p>Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECX curves.</p></td>
+against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
       <th>...</th>
