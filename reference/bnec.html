@@ -145,6 +145,7 @@
   <span class='kw'>trials_var</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>x_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>family</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='no'>priors</span>,
   <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
   <span class='kw'>over_disp</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
@@ -163,11 +164,11 @@
     </tr>
     <tr>
       <th>x_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading indicating the concentration (x) variable.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the concentration (x) variable.</p></td>
     </tr>
     <tr>
       <th>y_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading indicating the response (y) variable.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the response (y) variable.</p></td>
     </tr>
     <tr>
       <th>model</th>
@@ -186,6 +187,11 @@ the characteristic of the input data if not supplied and will inform the priors 
     <tr>
       <th>family</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
+    </tr>
+    <tr>
+      <th>priors</th>
+      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which specifies user-desired prior distributions of model parameters.
+If missing, <code>bnec</code> will figure out a baseline prior for each parameter.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -225,17 +231,40 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></
 
     <p>When only a single model is passed <code>bnec</code> returns a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of class "bayesnecfit", containing:</p><ul>
 <li><p>"fit": the the fitted Bayesian model of class <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code>;</p></li>
-<li><p>"pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of posterior predicted values based on the supplied <code>precision</code>;</p></li>
-<li><p>"nec" the estimated NEC including all estimated model parameters;</p></li>
-<li><p>"od" an estimate of dispersion;</p></li>
+<li><p>"mod_dat" the data used for the model fit;</p></li>
+<li><p>"family" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution used for the y (response) data;</p></li>
+<li><p>"x_type" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the statistical distribution for the x (concentration) data;</p></li>
+<li><p>"model" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the name of the fitted model;</p></li>
+<li><p>"pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of posterior predicted values based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
+<li><p>"nec" the estimated NEC;</p></li>
+<li><p>"top" the estimate for parameter "top" in the fitted model;</p></li>
+<li><p>"beta" the estimate for parameter "beta" in the fitted model;</p></li>
+<li><p>"alpha" the estimate for parameter "alpha" in the fitted model, NA if absent for the fitted model type;</p></li>
+<li><p>"bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;</p></li>
+<li><p>"d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;</p></li>
+<li><p>"ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;</p></li>
+<li><p>"over_disp" an estimate of dispersion;</p></li>
 <li><p>"predicted_y" the predicted values for the observed data;</p></li>
 <li><p>"residuals" residual values of the observed data from the fitted model;</p></li>
 <li><p>"nec_posterior" a full posterior estimate of the nec.</p></li>
 </ul><p>When more than one model is passed, <code>bnec</code> returns a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of class "bayesmanecfit" containing:</p><ul>
-<li><p>a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of class "bayesnecfit";</p></li>
+<li><p>mod_fits a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of fitted model outputs of class "bayesnecfit" for each of the fitted models,
+each containing all the elements of class bayesnecfit above;</p></li>
+<li><p>"success_models" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the name of the successfully fitted models</p></li>
+<li><p>"mod_dat" the data used for the model fit;</p></li>
+<li><p>"family" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution used for the y (response) data;</p></li>
+<li><p>"x_type" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the statistical distribution for the x (concentration) data;</p></li>
 <li><p>"mod_stats" a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of model fit statistics;</p></li>
+<li><p>"sample_size" the size of the posterior sample;</p></li>
+<li><p>"nec_posterior" a full model weighted posterior estimate of the nec;</p></li>
+<li><p>"predicted_y" the predicted values for the observed data;</p></li>
+<li><p>"residuals" residual values of the observed data from the fitted model;</p></li>
+<li><p>"pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of posterior predicted values based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
 <li><p>"nec" a model averaged posterior of the estimated NEC;</p></li>
-<li><p>"pred.vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of model averaged predictions.</p></li>
+<li><p>"data" the original supplied data</p></li>
+<li><p>"x_var" the supplied <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the concentration (x) variable.</p></li>
+<li><p>"y_var" the supplied A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the response (y) variable.</p></li>
+<li><p>"over_disp" the supplied <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> inidcating if an over-dispersed model was required.</p></li>
 </ul>
 
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
