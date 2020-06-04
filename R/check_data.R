@@ -10,7 +10,6 @@
 #' correct priors for use in \code{\link{fit_bayesnec}}.
 #'
 #' @importFrom stats na.omit
-#' @export
 #' @return A \code{\link[base]{list}} of modified elements
 #' necessary for \code{\link{fit_bayesnec}}.
 check_data <- function(data, x_var, y_var,

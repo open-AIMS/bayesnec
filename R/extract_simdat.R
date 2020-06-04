@@ -4,7 +4,6 @@
 #'
 #' @param modfit a bayesnecfit, as returned by fit_bayesnec
 #'
-#' @export
 #' @return A list of model simulation statistics including
 #' iter, thin, warmup and chains
 extract_simdat <- function(modfit) {
