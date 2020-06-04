@@ -16,7 +16,6 @@
 #' set_distribution(x <- rgamma(1000, 2))
 #' set_distribution(ifelse(x < 1, x, 1))
 #' set_distribution(rbinom(1000, 10, 0.5), support_integer = TRUE, 10)
-#' @export
 set_distribution <- function(x, support_integer = FALSE, trials = NULL) {
   if (inherits(x, "numeric")) {
     if (!is.null(trials)) {
