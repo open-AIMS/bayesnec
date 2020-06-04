@@ -98,8 +98,6 @@
 #'    \item "x_var" the supplied \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.  
 #'    \item "y_var" the supplied A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.
 #'    \item "over_disp" the supplied \code{\link[base]{logical}} inidcating if an over-dispersed model was required.
-trials_var = trials_var, 
-over_disp = over_disp
 #'    
 #' }
 #' @export
