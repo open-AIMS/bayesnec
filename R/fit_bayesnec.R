@@ -4,7 +4,7 @@
 #'
 #' @inheritParams bnec
 #'
-#' @importFrom brms fixef brm posterior_predict posterior_samples loo waic
+#' @importFrom brms fixef brm posterior_epred posterior_samples loo waic fitted
 #' @importFrom stats quantile predict
 #' @seealso \code{\link{bnec}}
 #' @return The fitted \pkg{brms} model, including an estimate of the NEC
@@ -92,8 +92,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     new_dat$trials <- 10^3
   }
 
-  y_pred_m <- predict(fit, newdata = new_dat, robust = TRUE, re_formula = NA)
-  predicted_y <- predict(fit, robust = TRUE, re_formula = NA)
+  y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA, scale = "response")
+  predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
 
   if (family == "binomial") {
     top <- top / 10^3
@@ -102,8 +102,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   }
 
   residuals <-  response - predicted_y
-  pred_posterior <- t(predict(fit, newdata = new_dat,
-                              re_formula = NA, summary = FALSE))
+  pred_posterior <- t(posterior_epred(fit, newdata = new_dat,
+                              re_formula = NA))
   if (family == "binomial") {
     pred_posterior <- pred_posterior / 10^3
   }

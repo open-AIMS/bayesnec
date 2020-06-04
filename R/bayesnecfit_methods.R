@@ -131,7 +131,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @export
 #' @return A list containing x and fitted y, with up and lw values
-#' @importFrom brms posterior_predict
+#' @importFrom brms posterior_epred
 predict.bayesnecfit <- function(object, ..., precision = 100,
                                 x_range = NA) {
   mod_dat <- object$mod_dat
@@ -149,8 +149,8 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
     new_dat$trials <- 10^3
   }
 
-  pred_out <- brms::posterior_predict(fit, newdata = new_dat,
-                                      re_formula = NA, summary = FALSE)
+  pred_out <- brms::posterior_epred(fit, newdata = new_dat,
+                                      re_formula = NA)
   if (family == "binomial") {
     pred_out <- pred_out / 10^3
   }
