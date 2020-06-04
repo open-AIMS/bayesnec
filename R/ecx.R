@@ -48,7 +48,7 @@ ecx <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
 #'
 #' @inheritParams ecx
 #' @inherit ecx return details seealso
-#' @importFrom brms posterior_epred fitted
+#' @importFrom brms posterior_epred
 #' @importFrom stats quantile predict
 ecx_1fit <- function(object, ecx_val = 10, precision = 1000,
                      posterior = FALSE, type = "absolute",

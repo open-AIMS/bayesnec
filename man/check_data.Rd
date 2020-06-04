@@ -18,9 +18,9 @@ check_data(
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for the model.}
 
-\item{x_var}{A \code{\link[base]{character}} indicating the column heading indicating the concentration (x) variable.}
+\item{x_var}{A \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.}
 
-\item{y_var}{A \code{\link[base]{character}} indicating the column heading indicating the response (y) variable.}
+\item{y_var}{A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.}
 
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}

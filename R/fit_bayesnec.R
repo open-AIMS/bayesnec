@@ -4,16 +4,17 @@
 #'
 #' @inheritParams bnec
 #'
-#' @importFrom brms fixef brm posterior_epred posterior_samples loo waic fitted
-#' @importFrom stats quantile predict
+#' @importFrom brms fixef brm posterior_epred posterior_samples loo waic
+#' @importFrom stats quantile predict fitted
 #' @seealso \code{\link{bnec}}
 #' @return The fitted \pkg{brms} model, including an estimate of the NEC
 #' value and predicted posterior values.
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
-                         x_type = NA, family = NA, x_range = NA,
-                         precision = 1000, over_disp = FALSE,
-                         model = NA, sig_val = 0.01, ...) {
+                         x_type = NA, family = NA, priors,
+                         x_range = NA, precision = 1000,
+                         over_disp = FALSE, model = NA,
+                         sig_val = 0.01, ...) {
 
   if (inherits(data, "bayesmanecfit")) {
     response <- data$data[, y_var]
@@ -27,7 +28,9 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     }
     mod_file <- define_prior(model = model, x_type = x_type,
                              family = family, mod_dat = mod_dat)
-    priors <- mod_file$priors
+    if (missing(priors)) {
+      priors <- mod_file$priors
+    }
     mod_family <- mod_file$mod_family
   } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
@@ -41,7 +44,9 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     data <- data_check$data
     x_dat <- data_check$x_dat
     y_dat <- data_check$y_dat
-    priors <- data_check$priors
+    if (missing(priors)) {
+      priors <- data_check$priors
+    }
     mod_family <- data_check$mod_family
   }
   family_code <- names(mod_fams)[mod_fams == family]
@@ -92,7 +97,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     new_dat$trials <- 10^3
   }
 
-  y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA, scale = "response")
+  y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
+                     scale = "response")
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
 
   if (family == "binomial") {

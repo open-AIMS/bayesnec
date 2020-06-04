@@ -11,6 +11,7 @@ fit_bayesnec(
   trials_var = NA,
   x_type = NA,
   family = NA,
+  priors,
   x_range = NA,
   precision = 1000,
   over_disp = FALSE,
@@ -22,9 +23,9 @@ fit_bayesnec(
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for the model.}
 
-\item{x_var}{A \code{\link[base]{character}} indicating the column heading indicating the concentration (x) variable.}
+\item{x_var}{A \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.}
 
-\item{y_var}{A \code{\link[base]{character}} indicating the column heading indicating the response (y) variable.}
+\item{y_var}{A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.}
 
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
@@ -33,6 +34,9 @@ If not supplied, the model may run but will not be the model you intended!}
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
 \item{family}{A \code{\link[base]{character}} string defining the statistical distribution (family) to use for the y (response) data. See details.}
+
+\item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
+If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
