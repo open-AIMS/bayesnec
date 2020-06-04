@@ -6,7 +6,6 @@
 #'
 #' @param mod_dat The model data to use for the NEC model fit.
 #'
-#' @export
 #' @return A \code{\link[base]{list}} containing the \code{\link[brms]{prior}}
 #' and the string defining response distribution family to use.
 #' @importFrom brms bf prior_string negbinomial Beta

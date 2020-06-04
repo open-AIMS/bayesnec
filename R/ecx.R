@@ -22,8 +22,8 @@
 #' For \code{hormesis_def}, if "max", then ECx values are calculated as a decline from the maximum estimates (i.e. the peak at nec);
 #' if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.
 #' @seealso \code{\link{bnec}}
-#' @export
 #' @return A vector containing the estimated ECx value, including upper and lower 95% credible interval bounds.
+#' @export
 ecx <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
                 type = "absolute", hormesis_def = "control", xform = NA,
                 x_range = NA, prob_vals = c(0.5, 0.025, 0.975)) {
@@ -48,7 +48,6 @@ ecx <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
 #'
 #' @inheritParams ecx
 #' @inherit ecx return details seealso
-#' @export
 #' @importFrom brms posterior_predict
 #' @importFrom stats quantile predict
 ecx_1fit <- function(object, ecx_val = 10, precision = 1000,
@@ -157,7 +156,6 @@ ecx_1fit <- function(object, ecx_val = 10, precision = 1000,
 #'
 #' @inheritParams ecx
 #' @inherit ecx return details seealso
-#' @export
 #' @importFrom stats quantile
 ecx_ma <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
                    type = "absolute", hormesis_def = "control", xform = NA,

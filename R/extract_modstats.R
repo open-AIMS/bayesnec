@@ -5,7 +5,6 @@
 #' @param mod_fits a bayesmanecfit mod_fits output list, as returned by
 #' \code{\link{bnec}} when more than one model is supplied.
 #'
-#' @export
 #' @return A list of model statistical output derived from the input model list
 #' @importFrom brms loo_model_weights waic
 #' @importFrom stats quantile predict
