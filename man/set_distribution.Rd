@@ -7,14 +7,14 @@
 set_distribution(x, support_integer = FALSE, trials = NULL)
 }
 \arguments{
-\item{x}{a \code{\link[base]{numeric}} vector.}
+\item{x}{A \code{\link[base]{numeric}} vector.}
 
 \item{support_integer}{Logical. Should \code{\link[base]{integer}} vectors be supported? Defaults to FALSE.}
 
-\item{trials}{a \code{\link[base]{numeric}} vector containing the number of trials. Defaults to NULL.}
+\item{trials}{A \code{\link[base]{numeric}} vector containing the number of trials. Defaults to NULL.}
 }
 \value{
-a \code{\link[base]{character}} vector.
+A \code{\link[base]{character}} vector.
 }
 \description{
 Sets distribution based on vector

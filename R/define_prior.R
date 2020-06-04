@@ -67,7 +67,7 @@ define_prior <- function(model, x_type, family, mod_dat) {
   }
 
   if (model == "nec3param") {
-    priors <- priors + prior_nec  
+    priors <- priors + prior_nec
   }
   if (model == "ecxsigm") {
     priors <- priors + prior_string("normal(0, 100)", nlpar = "d")
@@ -84,7 +84,7 @@ define_prior <- function(model, x_type, family, mod_dat) {
                              nlpar = "ec50"))
   }
   if (model == "nec4param") {
-    priors <- c(priors, 
+    priors <- c(priors,
                 prior_string(paste0("normal(",
                                     prior_bot,
                                     ", 100)"),
