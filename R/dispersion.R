@@ -14,7 +14,6 @@
 #' \code{\link[base]{data.frame}} containing the summary stats (mean, median, 95% highest density intervals).
 #' of the dispersion metric.
 #'
-#' @export
 #' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
 #' @importFrom HDInterval hdi
 #' @importFrom stats median

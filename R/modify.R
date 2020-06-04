@@ -10,7 +10,6 @@
 #' @param add_models A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
 #' 
 #' @return All successfully fitted "bayesmanecfit" model fits.
-#' @export
 modify <- function(object, model_set = NA, drop_models = NA,
                    add_models = NA) {
   if (is.na(model_set[1])) {
