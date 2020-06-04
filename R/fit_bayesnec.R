@@ -93,19 +93,10 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   }
 
   new_dat <- data.frame(x = x_seq)
-  if (family == "binomial") {
-    new_dat$trials <- 10^3
-  }
 
   y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
                      scale = "response")
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
-
-  if (family == "binomial") {
-    top <- top / 10^3
-    predicted_y <- predicted_y / 10^3
-    y_pred_m <-  y_pred_m / 10^3
-  }
 
   residuals <-  response - predicted_y
   pred_posterior <- t(posterior_epred(fit, newdata = new_dat,

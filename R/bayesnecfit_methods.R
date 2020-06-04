@@ -145,15 +145,9 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
   }
 
   new_dat <- data.frame(x = x_seq)
-  if (family == "binomial") {
-    new_dat$trials <- 10^3
-  }
 
   pred_out <- brms::posterior_epred(fit, newdata = new_dat,
                                       re_formula = NA)
-  if (family == "binomial") {
-    pred_out <- pred_out / 10^3
-  }
 
   m_vals <- apply(pred_out, 2, quantile, probs = 0.5)
   up_vals <- apply(pred_out, 2, quantile, probs = 0.975)
