@@ -12,6 +12,7 @@ bnec(
   trials_var = NA,
   x_type = NA,
   family = NA,
+  priors,
   x_range = NA,
   precision = 1000,
   over_disp = FALSE,
@@ -24,9 +25,9 @@ bnec(
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for the model.}
 
-\item{x_var}{A \code{\link[base]{character}} indicating the column heading indicating the concentration (x) variable.}
+\item{x_var}{A \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.}
 
-\item{y_var}{A \code{\link[base]{character}} indicating the column heading indicating the response (y) variable.}
+\item{y_var}{A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 
@@ -37,6 +38,9 @@ If not supplied, the model may run but will not be the model you intended!}
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
 \item{family}{A \code{\link[base]{character}} string defining the statistical distribution (family) to use for the y (response) data. See details.}
+
+\item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
+If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -60,19 +64,43 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
 When only a single model is passed \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesnecfit", containing:
 \itemize{
 \item "fit": the the fitted Bayesian model of class \code{\link[brms]{brmsfit}};
-\item "pred_vals" a \code{\link[base]{list}} of posterior predicted values based on the supplied \code{precision};
-\item "nec" the estimated NEC including all estimated model parameters;
-\item "od" an estimate of dispersion;
+\item "mod_dat" the data used for the model fit;
+\item "family" \code{\link[base]{character}} string defining the statistical distribution used for the y (response) data;
+\item "x_type" \code{\link[base]{character}} string indicating the statistical distribution for the x (concentration) data;
+\item "model" \code{\link[base]{character}} string indicating the name of the fitted model;
+\item "pred_vals" a \code{\link[base]{list}} of posterior predicted values based on the supplied \code{precision} and \code{x_range};
+\item "nec" the estimated NEC;
+\item "top" the estimate for parameter "top" in the fitted model;
+\item "beta" the estimate for parameter "beta" in the fitted model;
+\item "alpha" the estimate for parameter "alpha" in the fitted model, NA if absent for the fitted model type;
+\item "bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;
+\item "d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;
+\item "ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;
+\item "over_disp" an estimate of dispersion;
 \item "predicted_y" the predicted values for the observed data;
 \item "residuals" residual values of the observed data from the fitted model;
 \item "nec_posterior" a full posterior estimate of the nec.
 }
 When more than one model is passed, \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesmanecfit" containing:
 \itemize{
-\item a \code{\link[base]{list}} of class "bayesnecfit";
+\item mod_fits a \code{\link[base]{list}} of fitted model outputs of class "bayesnecfit" for each of the fitted models,
+each containing all the elements of class bayesnecfit above;
+\item "success_models" \code{\link[base]{character}} vector indicating the name of the successfully fitted models
+\item "mod_dat" the data used for the model fit;
+\item "family" \code{\link[base]{character}} string defining the statistical distribution used for the y (response) data;
+\item "x_type" \code{\link[base]{character}} string indicating the statistical distribution for the x (concentration) data;
 \item "mod_stats" a \code{\link[base]{data.frame}} of model fit statistics;
+\item "sample_size" the size of the posterior sample;
+\item "nec_posterior" a full model weighted posterior estimate of the nec;
+\item "predicted_y" the predicted values for the observed data;
+\item "residuals" residual values of the observed data from the fitted model;
+\item "pred_vals" a \code{\link[base]{list}} of posterior predicted values based on the supplied \code{precision} and \code{x_range};
 \item "nec" a model averaged posterior of the estimated NEC;
-\item "pred.vals" a \code{\link[base]{list}} of model averaged predictions.
+\item "data" the original supplied data
+\item "x_var" the supplied \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.
+\item "y_var" the supplied A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.
+\item "over_disp" the supplied \code{\link[base]{logical}} inidcating if an over-dispersed model was required.
+
 }
 }
 \description{

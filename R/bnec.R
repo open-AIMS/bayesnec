@@ -11,6 +11,8 @@
 #' @param x_type The statistical distribution of the x (concentration) data. This will be guessed based on 
 #' the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.
 #' @param family A \code{\link[base]{character}} string defining the statistical distribution (family) to use for the y (response) data. See details.
+#' @param priors An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
+#' If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.
 #' @param x_range A range of x values over which to consider extracting ECx.
 #' @param over_disp If an over-dispersed model should be used. Only changes the model fit if \code{family} is "poisson" or "binomial".
 #' For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.
@@ -102,9 +104,9 @@
 #' }
 #' @export
 bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
-                 x_type = NA, family = NA, x_range = NA, precision = 1000,
-                 over_disp = FALSE, sig_val = 0.01, iter = 2e3,
-                 warmup = floor(iter / 5) * 4, ...) {
+                 x_type = NA, family = NA, priors, x_range = NA,
+                 precision = 1000, over_disp = FALSE, sig_val = 0.01,
+                 iter = 2e3, warmup = floor(iter / 5) * 4, ...) {
   if (is.na(model)) {
     stop("You need to define a model type. See ?bnec")
   }
@@ -121,7 +123,7 @@ bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
       fit_m <- try(
         fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                      trials_var = trials_var, x_type = x_type, family = family,
-                     over_disp = over_disp, model = model_m,
+                     priors = priors, over_disp = over_disp, model = model_m,
                      x_range = x_range, precision = precision, iter = iter,
                      warmup = warmup, ...),
         silent = TRUE)
@@ -140,7 +142,8 @@ bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
   if (length(model) == 1) {
     export_list <-  fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                                  trials_var = trials_var, x_type = x_type,
-                                 family = family, over_disp = over_disp,
+                                 family = family, priors = priors,
+                                 over_disp = over_disp,
                                  model = model, x_range = x_range,
                                  precision = precision, iter = iter,
                                  warmup = warmup, ...)
