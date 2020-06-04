@@ -135,10 +135,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 predict.bayesnecfit <- function(object, ..., precision = 100,
                                 x_range = NA) {
   mod_dat <- object$mod_dat
-
   family <- object$family
-  x_type <- object$x_type
-
   fit <- object$fit
 
   if (is.na(x_range[1])) {

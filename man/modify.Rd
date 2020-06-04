@@ -7,16 +7,16 @@
 modify(object, model_set = NA, drop_models = NA, add_models = NA)
 }
 \arguments{
-\item{object}{a bayesmanecfit output list, as returned by fit.bayesmanec}
+\item{object}{An object of class "bayesmanecfit" output list, as returned by \code{\link{bnec}}.}
 
-\item{model_set}{A character vector containing the of names of model types to be included in the modified fit.}
+\item{model_set}{A \code{\link[base]{character}} vector containing the of names of model types to be included in the modified fit.}
 
-\item{drop_models}{A character vector containing the names of model types you which to drop for the modified fit.}
+\item{drop_models}{A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.}
 
-\item{add_models}{A character vector containing the names of model types to add to the modified fit.}
+\item{add_models}{A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.}
 }
 \value{
-All successully fitted bayesmanecfit model fit.
+All successfully fitted "bayesmanecfit" model fits.
 }
 \description{
 Modifies an existing bayesmanecfit object, for example, but adding or removing fitted models.
