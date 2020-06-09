@@ -1,10 +1,10 @@
-.Rproj*
-.Rapp*
-.Rhistory
-.RData
-.Ruserdata
-.DS_Store
-.Rproj.user
+*.Rproj
+*.Rapp
+*.Rhistory
+*.RData
+*.Ruserdata
+*.DS_Store
+*.Rproj.user
 
 TODO.md
 *tmp*
