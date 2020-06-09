@@ -9,5 +9,7 @@
 A DESCRIPTION OF THE PACKAGE
 }
 \references{
-Stan Development Team (2020). RStan: the R interface to Stan. R package version 2.19.3. https://mc-stan.org
+Paul-Christian Bürkner (2018). Advanced Bayesian Multilevel
+Modeling with the R Package brms. The R Journal, 10(1), 395-411.
+doi:10.32614/RJ-2018-017; https://mc-stan.org/users/interfaces/brms
 }
