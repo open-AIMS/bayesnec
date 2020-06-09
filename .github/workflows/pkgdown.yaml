@@ -20,17 +20,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          install.packages(c("ps", "remotes", "tidyverse", "anytime", "devtools"))
+          install.packages(c("ps", "remotes", "tidyverse", "anytime"))
           remotes::install_deps(dependencies = TRUE)
           remotes::install_dev("pkgdown")
-          remove.packages("rstantools")
-          devtools::install_version("rstantools", version = "2.0.0", repos = "http://cran.us.r-project.org")
         shell: Rscript {0}
 
       - name: Install package
-        run: |
-          devtools::install(dependencies = FALSE, quick = TRUE, build_vignettes = FALSE)
-        shell: Rscript {0}
+        run: R CMD INSTALL .
 
       - name: Deploy package
         run: pkgdown::deploy_to_branch(new_process = FALSE)

@@ -8,8 +8,5 @@ README.Rmd
 ^\.github$
 ^.*Rcheck$
 ^LICENSE\.md$
-^\.travis\.yml$
 ^bayesnec\.Rproj$
-^src/stanExports*
 ^.*\.gitattributes$
-^src/bayesnec\.dll$

@@ -50,7 +50,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     mod_family <- data_check$mod_family
   }
   family_code <- names(mod_fams)[mod_fams == family]
-  fit <- fit_stan(model = model, family_code = family_code,
+  fit <- fit_brms(model = model, family_code = family_code,
                   new_priors = priors, new_data = mod_dat,
                   chains = 4, ...)
   fit$loo <- loo(fit)
