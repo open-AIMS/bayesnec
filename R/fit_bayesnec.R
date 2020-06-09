@@ -13,8 +13,7 @@
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          x_type = NA, family = NA, priors,
                          x_range = NA, precision = 1000,
-                         over_disp = FALSE, model = NA,
-                         sig_val = 0.01, ...) {
+                         model = NA, sig_val = 0.01, ...) {
 
   if (inherits(data, "bayesmanecfit")) {
     response <- data$data[, y_var]
@@ -23,19 +22,17 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     x_dat <- data$x_dat
     family <- data$family
     x_type <- data$x_type
-    if (family == "binomial") {
+    if (family$family == "binomial") {
       response <- response / data$data[, trials_var]
     }
-    mod_file <- define_prior(model = model, x_type = x_type,
-                             family = family, mod_dat = mod_dat)
     if (missing(priors)) {
-      priors <- mod_file$priors
+      priors <- define_prior(model = model, x_type = x_type,
+                             family = family, response = response)
     }
-    mod_family <- mod_file$mod_family
   } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
                              trials_var = trials_var, x_type = x_type,
-                             family = family, over_disp = over_disp,
+                             family = family,
                              model = model)
     mod_dat <- data_check$mod_dat
     family <- data_check$family
@@ -47,12 +44,11 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     if (missing(priors)) {
       priors <- data_check$priors
     }
-    mod_family <- data_check$mod_family
   }
-  family_code <- names(mod_fams)[mod_fams == family]
-  fit <- fit_brms(model = model, family_code = family_code,
-                  new_priors = priors, new_data = mod_dat,
-                  chains = 4, ...)
+  suffix <- ifelse(family$family == "binomial", "_binom", "_deflt")
+  brms_bf <- get(paste0("bf_", model, suffix))
+  fit <- brm(formula = brms_bf, data = mod_dat, family = family,
+             prior = priors, ...)
   fit$loo <- loo(fit)
   fit$waic <- waic(fit)
 
@@ -101,7 +97,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   residuals <-  response - predicted_y
   pred_posterior <- t(posterior_epred(fit, newdata = new_dat,
                               re_formula = NA))
-  if (family == "binomial") {
+  if (family$family == "binomial") {
     pred_posterior <- pred_posterior / 10^3
   }
 
@@ -131,13 +127,13 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   if (!inherits(out, "try-error")) {
     out <- c(out, list(pred_vals = pred_vals, nec = nec, top = top,
                        beta = beta, alpha = alpha, bot = bot,
-                       d = d, ec50 = ec50, over_disp = od,
+                       d = d, ec50 = ec50, dispersion = od,
                        predicted_y = predicted_y, residuals = residuals,
                        nec_posterior = nec_posterior))
     class(out) <- "bayesnecfit"
   }
 
   message(paste0("Response variable ", y_var, " modelled as a ",
-                 model, " model using a ", family, " distribution."))
+                 model, " model using a ", family$family, " distribution."))
   out
 }

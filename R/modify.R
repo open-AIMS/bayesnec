@@ -73,8 +73,7 @@ modify <- function(object, model_set = NA, drop_models = NA,
                    list(data = object$data,
                         x_var = object$x_var,
                         y_var = object$y_var,
-                        trials_var = object$trials_var,
-                        over_disp = object$over_disp))
+                        trials_var = object$trials_var))
   class(export_list) <- "bayesmanecfit"
   export_list
 }

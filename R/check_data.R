@@ -14,19 +14,7 @@
 #' necessary for \code{\link{fit_bayesnec}}.
 check_data <- function(data, x_var, y_var,
                        trials_var, x_type = NA, family = NA,
-                       over_disp, model) {
-
-  if (!is.na(family)) {
-    if (over_disp & family == "Beta") {
-      family <- NA
-    }
-    if (!family %in% mod_fams) {
-      stop(paste("You have specified family as",
-                 family,
-                 "which is not currently implemented."))
-    }
-  }
-
+                       model) {
   use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var))
   var_colms <- match(use_vars, colnames(data))
   missing_colms <- data.frame(val = use_vars[which(is.na(var_colms))],
@@ -70,32 +58,24 @@ check_data <- function(data, x_var, y_var,
          "values of concentration.")
   }
 
-  if (is.na(x_type)) {
-    x_type <- set_distribution(x_dat)
-  }
-
-  if (is.na(family)) {
-    if (is.na(trials_var)) {
-      family <- set_distribution(y_dat, support_integer = TRUE)
-    } else {
-      family <- set_distribution(y_dat, support_integer = TRUE,
-                                 trials = data[, trials_var])
-    }
-  }
-
   if (!model %in% c("nec3param", "necsigm", "nec4param", "nechorme",
                     "ecx4param", "ecxwb1", "ecxwb2", "ecxlin",
                     "ecxexp", "ecxsigm")) {
     stop("The model type you have specified does not exist.")
   }
 
-  if (family == "poisson" & over_disp) {
-    family <- "negbinomial"
+  if (is.na(x_type)) {
+    x_type <- set_distribution(x_dat)
   }
-  if (family == "binomial" & over_disp) {
-    family <- "Beta"
-    data[, y_var] <-  data[, y_var] / data[, trials_var]
+
+  if (is.na(family)) {
+    m_trials <- ifelse(is.na(trials_var), NULL, data[, trials_var])
+    family <- set_distribution(y_dat, support_integer = TRUE,
+                               trials = m_trials)
+  } else {
+    family <- validate_family(family)
   }
+  fam_tag <- family$family
 
   if (min(data[, x_var]) == 0 & x_type == "Gamma") {
     tt <- data[, x_var]
@@ -103,30 +83,30 @@ check_data <- function(data, x_var, y_var,
     data[which(tt == 0), x_var] <- tt[which(tt == 0)] + (min_val / 10)
   }
 
-  if (min(data[, y_var]) == 0 & family == "Gamma") {
+  if (min(data[, y_var]) == 0 & fam_tag == "Gamma") {
     tt <- data[, y_var]
     min_val <- min(tt[which(tt > 0)])
     data[which(tt == 0), y_var] <- tt[which(tt == 0)] + (min_val / 10)
   }
 
-  if (min(data[, x_var]) == 0 & x_type == "Beta") {
+  if (min(data[, x_var]) == 0 & x_type == "beta") {
     tt <- data[, x_var]
     min_val <- min(tt[which(tt > 0)])
     data[which(tt == 0), x_var] <- tt[which(tt == 0)] + (min_val / 10)
   }
 
-  if (min(data[, y_var]) == 0 & family == "Beta") {
+  if (min(data[, y_var]) == 0 & fam_tag == "beta") {
     tt <- data[, y_var]
     min_val <- min(tt[which(tt > 0)])
     data[which(tt == 0), y_var] <- tt[which(tt == 0)] + (min_val / 10)
   }
 
-  if (max(data[, x_var]) == 1 & x_type == "Beta") {
+  if (max(data[, x_var]) == 1 & x_type == "beta") {
     tt <- data[, x_var]
     data[which(tt == 1), x_var] <- tt[which(tt == 1)] - 0.001
   }
 
-  if (max(data[, y_var]) == 1 & family == "Beta") {
+  if (max(data[, y_var]) == 1 & fam_tag == "beta") {
     tt <- data[, y_var]
     data[which(tt == 1), y_var] <- tt[which(tt == 1)] - 0.001
   }
@@ -137,15 +117,13 @@ check_data <- function(data, x_var, y_var,
 
   response <- data[, y_var]
 
-  if (family == "binomial") {
+  if (fam_tag == "binomial") {
     mod_dat$trials <- data[, trials_var] # number of "trials"
     response <- data[, y_var] / data[, trials_var]
   }
 
-  mod_file <- define_prior(model = model, x_type = x_type,
-                           family = family, mod_dat = mod_dat)
-  priors <- mod_file$priors
-  mod_family <- mod_file$mod_family
+  priors <- define_prior(model = model, x_type = x_type,
+                         family = family, response = response)
 
   list(priors = priors,
        response = response,
@@ -154,6 +132,5 @@ check_data <- function(data, x_var, y_var,
        family = family,
        x_type = x_type,
        x_dat = x_dat,
-       y_dat = y_dat,
-       mod_family = mod_family)
+       y_dat = y_dat)
 }
