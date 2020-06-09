@@ -14,13 +14,4 @@ ignore/
 # package development
 bayesnec.Rcheck/
 bayesnec*tar.gz
-inst/doc
-inst/web
-src/bayesnec.so
 ..Rcheck/
-src/bayesnec.dll
-
-# cpp files
-src/*.o
-src/*.cc
-src/*.h
