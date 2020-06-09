@@ -4,16 +4,7 @@
 \alias{check_data}
 \title{check_data}
 \usage{
-check_data(
-  data,
-  x_var,
-  y_var,
-  trials_var,
-  x_type = NA,
-  family = NA,
-  over_disp,
-  model
-)
+check_data(data, x_var, y_var, trials_var, x_type = NA, family = NA, model)
 }
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for the model.}
@@ -28,10 +19,7 @@ If not supplied, the model may run but will not be the model you intended!}
 \item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-\item{family}{A \code{\link[base]{character}} string defining the statistical distribution (family) to use for the y (response) data. See details.}
-
-\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit if \code{family} is "poisson" or "binomial".
-For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.}
+\item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 }

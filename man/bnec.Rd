@@ -15,7 +15,6 @@ bnec(
   priors,
   x_range = NA,
   precision = 1000,
-  over_disp = FALSE,
   sig_val = 0.01,
   iter = 2000,
   warmup = floor(iter/5) * 4,
@@ -37,7 +36,7 @@ If not supplied, the model may run but will not be the model you intended!}
 \item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-\item{family}{A \code{\link[base]{character}} string defining the statistical distribution (family) to use for the y (response) data. See details.}
+\item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
 If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
@@ -45,9 +44,6 @@ If missing, \code{\link{bnec}} will figure out a baseline prior for each paramet
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
 \item{precision}{The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.}
-
-\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit if \code{family} is "poisson" or "binomial".
-For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
 against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
@@ -76,7 +72,7 @@ When only a single model is passed \code{\link{bnec}} returns a \code{\link[base
 \item "bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;
 \item "d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;
 \item "ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;
-\item "over_disp" an estimate of dispersion;
+\item "dispersion" an estimate of dispersion;
 \item "predicted_y" the predicted values for the observed data;
 \item "residuals" residual values of the observed data from the fitted model;
 \item "nec_posterior" a full posterior estimate of the nec.
@@ -99,7 +95,6 @@ each containing all the elements of class bayesnecfit above;
 \item "data" the original supplied data
 \item "x_var" the supplied \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.
 \item "y_var" the supplied A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.
-\item "over_disp" the supplied \code{\link[base]{logical}} inidcating if an over-dispersed model was required.
 
 }
 }
@@ -111,12 +106,15 @@ As some concentration-response data will use zero concentration which can cause 
 small offset is added (1 / 10th of the next lowest value) to zero values of concentration where \code{x_var} are distributed
 on a continuous scale from 0 to infinity, or are bounded to 0, or 1.
 
-The argument \code{family} is a character vector indicating the family to use for the response variable in the \code{\link[brms]{brm}} call,
-and may currently be "Beta" (logit link), "binomial" (logit link), "Gamma" (log link), "gaussian" (identity link),
-"negbinomial" (log link), or "poisson" (log link).
-Others can be added as required, please raise an \href{https://github.com/AIMS/bayesnec/issues}{issue} on the GitHub development site if your
+The argument \code{family} indicates the family to use for the response variable in the \code{\link[brms]{brm}} call,
+and may currently be "Beta" / Beta / Beta(), "binomial" / binomial / binomial(), "Gamma" / Gamma / Gamma(), "gaussian" / gaussian / gaussian(),
+"negbinomial" / negbinomial / negbinomial(), or "poisson" / poisson / poisson(). Notice that families Beta and negbinomial are exported objects
+of package \pkg{brms}, so the user needs to load \pkg{brms} before calling these families.
+Other families can be added as required, please raise an \href{https://github.com/AIMS/bayesnec/issues}{issue} on the GitHub development site if your
 required family is not currently available.
-If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}.
+If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}. Guesses
+include all of the above families but negbinomial because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
+Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the negbinomial family.
 
 The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
 "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type it fit, and \code{\link{bnec}} returns a model

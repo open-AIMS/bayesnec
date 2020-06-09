@@ -14,7 +14,6 @@ fit_bayesnec(
   priors,
   x_range = NA,
   precision = 1000,
-  over_disp = FALSE,
   model = NA,
   sig_val = 0.01,
   ...
@@ -33,7 +32,7 @@ If not supplied, the model may run but will not be the model you intended!}
 \item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
 the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
-\item{family}{A \code{\link[base]{character}} string defining the statistical distribution (family) to use for the y (response) data. See details.}
+\item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
 If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
@@ -41,9 +40,6 @@ If missing, \code{\link{bnec}} will figure out a baseline prior for each paramet
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
 \item{precision}{The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.}
-
-\item{over_disp}{If an over-dispersed model should be used. Only changes the model fit if \code{family} is "poisson" or "binomial".
-For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 
