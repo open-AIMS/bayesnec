@@ -16,7 +16,7 @@ to fit.}
 
 \item{new_data}{A \code{\link[base]{data.frame}}.}
 
-\item{...}{Arguments passed to \code{\link[brms]{update}}
+\item{...}{Arguments passed to \code{\link[stats]{update}}
 (e.g. iter, chains).}
 }
 \value{
