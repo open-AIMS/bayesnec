@@ -5,7 +5,7 @@
 #' @param family_code The statistical distribution to use for the y (response) data.
 #' @param new_priors An object of class \code{\link[brms]{brmsprior}}.
 #' @param new_data A \code{\link[base]{data.frame}}.
-#' @param ... Arguments passed to \code{\link[brms]{update}}
+#' @param ... Arguments passed to \code{\link[stats]{update}}
 #' (e.g. iter, chains).
 #' @return An object of class \code{\link[brms]{brmsfit}} returned
 #' by \code{\link[brms]{update}}
