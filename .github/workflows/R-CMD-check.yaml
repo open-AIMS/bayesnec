@@ -32,7 +32,7 @@ jobs:
 
       - name: Query dependencies
         run: |
-          install.packages('remotes')
+          install.packages("remotes")
           saveRDS(remotes::dev_package_deps(dependencies = TRUE), ".github/depends.Rds", version = 2)
           writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version")
         shell: Rscript {0}
@@ -56,16 +56,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          install.packages(c("remotes", "rcmdcheck", "tidyverse", "anytime", "devtools"))
+          install.packages(c("remotes", "rcmdcheck", "tidyverse", "anytime"))
           remotes::install_deps(dependencies = TRUE)
-          remove.packages("rstantools")
-          devtools::install_version("rstantools", version = "2.0.0", repos = "http://cran.us.r-project.org")
         shell: Rscript {0}
 
       - name: Check
-        run: |
-          system("R CMD build --resave-data .")
-          system("R CMD check --no-manual --no-install bayesnec_1.0.tar.gz")
+        run: rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
         shell: Rscript {0}
 
       # - name: Check

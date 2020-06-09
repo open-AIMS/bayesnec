@@ -35,10 +35,6 @@ alter_model <- function(brmodel, new_priors = NULL, new_data = NULL) {
   if (!is.null(new_priors) | !is.null(new_data)) {
     brformula <- brmodel$formula
     brfamily <- brmodel$family
-    new_code <- make_stancode(brformula, data = brdata,
-      family = brfamily, prior = brpriors)
-    brmodel$model <- new_code
-    brmodel$fit@stanmodel@model_code[[1]] <- new_code[[1]]
   }
   list(brmodel = brmodel,
        brdata = brdata,

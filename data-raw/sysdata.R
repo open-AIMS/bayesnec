@@ -22,8 +22,6 @@ fams_loop <- function(mod_fams, mod_name, bf_binom, bf_deflt,
                       priors, data_beta, data, ...) {
   for (i in seq_along(mod_fams)) {
     fam_i <- names(mod_fams)[i]
-    out_s <- paste0("inst/stan/", mod_name, fam_i,
-                    ".stan")
     if (fam_i == "binom") {
       nf_i <- bf_binom
     } else {
@@ -41,8 +39,7 @@ fams_loop <- function(mod_fams, mod_name, bf_binom, bf_deflt,
     }
     mod_i <- brms::brm(nf_i, data = df_i,
                        family = the_fam,
-                       prior = priors, chains = 0,
-                       save_model = out_s)
+                       prior = priors, chains = 0)
     mod_i$fit@stanmodel <- empty_stanmodel()
     assign(paste0(mod_name, "_brms_", fam_i), mod_i, ...)
   }

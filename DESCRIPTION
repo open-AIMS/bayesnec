@@ -12,23 +12,13 @@ RoxygenNote: 7.1.0
 Biarch: true
 Imports:
     brms,
-    HDInterval,
-    methods,
-    Rcpp (>= 0.12.0),
-    rstan (>= 2.18.1)
+    HDInterval
 Suggests:
     knitr,
     rmarkdown,
     plyr,
     dplyr,
     ggplot2
-LinkingTo: 
-    BH (>= 1.66.0),
-    Rcpp (>= 0.12.0),
-    RcppEigen (>= 0.3.3.3.0),
-    rstan (>= 2.18.1),
-    StanHeaders (>= 2.18.0)
-SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://aims.github.io/bayesnec
 BugReports: https://github.com/aims/bayesnec/issues

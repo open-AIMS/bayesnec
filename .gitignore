@@ -1,10 +1,10 @@
-.Rproj*
-.Rapp*
-.Rhistory
-.RData
-.Ruserdata
-.DS_Store
-.Rproj.user
+*.Rproj
+*.Rapp
+*.Rhistory
+*.RData
+*.Ruserdata
+*.DS_Store
+*.Rproj.user
 
 TODO.md
 *tmp*
@@ -14,13 +14,4 @@ ignore/
 # package development
 bayesnec.Rcheck/
 bayesnec*tar.gz
-inst/doc
-inst/web
-src/bayesnec.so
 ..Rcheck/
-src/bayesnec.dll
-
-# cpp files
-src/*.o
-src/*.cc
-src/*.h
