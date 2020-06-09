@@ -147,7 +147,6 @@
   <span class='no'>priors</span>,
   <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
-  <span class='kw'>over_disp</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
   <span class='kw'>model</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>sig_val</span> <span class='kw'>=</span> <span class='fl'>0.01</span>,
   <span class='no'>...</span>
@@ -180,7 +179,7 @@ the characteristic of the input data if not supplied and will inform the priors 
     </tr>
     <tr>
       <th>family</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
+      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
     </tr>
     <tr>
       <th>priors</th>
@@ -194,11 +193,6 @@ If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline
     <tr>
       <th>precision</th>
       <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
-    </tr>
-    <tr>
-      <th>over_disp</th>
-      <td><p>If an over-dispersed model should be used. Only changes the model fit if <code>family</code> is "poisson" or "binomial".
-For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.</p></td>
     </tr>
     <tr>
       <th>model</th>

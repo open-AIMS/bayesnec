@@ -148,7 +148,6 @@
   <span class='no'>priors</span>,
   <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
-  <span class='kw'>over_disp</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
   <span class='kw'>sig_val</span> <span class='kw'>=</span> <span class='fl'>0.01</span>,
   <span class='kw'>iter</span> <span class='kw'>=</span> <span class='fl'>2000</span>,
   <span class='kw'>warmup</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>floor</a></span>(<span class='no'>iter</span>/<span class='fl'>5</span>) * <span class='fl'>4</span>,
@@ -186,7 +185,7 @@ the characteristic of the input data if not supplied and will inform the priors 
     </tr>
     <tr>
       <th>family</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
+      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
     </tr>
     <tr>
       <th>priors</th>
@@ -200,11 +199,6 @@ If missing, <code>bnec</code> will figure out a baseline prior for each paramete
     <tr>
       <th>precision</th>
       <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
-    </tr>
-    <tr>
-      <th>over_disp</th>
-      <td><p>If an over-dispersed model should be used. Only changes the model fit if <code>family</code> is "poisson" or "binomial".
-For "poisson", a "negbinomial" model will be fit. For "binomial", a "Beta" model will be fit.</p></td>
     </tr>
     <tr>
       <th>sig_val</th>
@@ -243,7 +237,7 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></
 <li><p>"bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;</p></li>
 <li><p>"d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;</p></li>
 <li><p>"ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;</p></li>
-<li><p>"over_disp" an estimate of dispersion;</p></li>
+<li><p>"dispersion" an estimate of dispersion;</p></li>
 <li><p>"predicted_y" the predicted values for the observed data;</p></li>
 <li><p>"residuals" residual values of the observed data from the fitted model;</p></li>
 <li><p>"nec_posterior" a full posterior estimate of the nec.</p></li>
@@ -264,7 +258,6 @@ each containing all the elements of class bayesnecfit above;</p></li>
 <li><p>"data" the original supplied data</p></li>
 <li><p>"x_var" the supplied <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the concentration (x) variable.</p></li>
 <li><p>"y_var" the supplied A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the response (y) variable.</p></li>
-<li><p>"over_disp" the supplied <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> inidcating if an over-dispersed model was required.</p></li>
 </ul>
 
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
@@ -272,12 +265,15 @@ each containing all the elements of class bayesnecfit above;</p></li>
     <p>As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
 small offset is added (1 / 10th of the next lowest value) to zero values of concentration where <code>x_var</code> are distributed
 on a continuous scale from 0 to infinity, or are bounded to 0, or 1.</p>
-<p>The argument <code>family</code> is a character vector indicating the family to use for the response variable in the <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> call,
-and may currently be "Beta" (logit link), "binomial" (logit link), "Gamma" (log link), "gaussian" (identity link),
-"negbinomial" (log link), or "poisson" (log link).
-Others can be added as required, please raise an <a href='https://github.com/AIMS/bayesnec/issues'>issue</a> on the GitHub development site if your
+<p>The argument <code>family</code> indicates the family to use for the response variable in the <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> call,
+and may currently be "Beta" / Beta / Beta(), "binomial" / binomial / binomial(), "Gamma" / Gamma / Gamma(), "gaussian" / gaussian / gaussian(),
+"negbinomial" / negbinomial / negbinomial(), or "poisson" / poisson / poisson(). Notice that families Beta and negbinomial are exported objects
+of package <span class="pkg">brms</span>, so the user needs to load <span class="pkg">brms</span> before calling these families.
+Other families can be added as required, please raise an <a href='https://github.com/AIMS/bayesnec/issues'>issue</a> on the GitHub development site if your
 required family is not currently available.
-If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>.</p>
+If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>. Guesses
+include all of the above families but negbinomial because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
+Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the negbinomial family.</p>
 <p>The argument <code>model</code> may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
 "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type it fit, and <code>bnec</code> returns a model
 object of class "bayesnecfit".</p>
