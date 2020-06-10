@@ -1,6 +1,6 @@
 #' modify
 #'
-#' Modifies an existing bayesmanecfit object, for example, but adding or removing fitted models.
+#' Modifies an existing bayesmanecfit object, for example, by adding or removing fitted models.
 #'
 #' @aliases modify
 #' 
@@ -10,6 +10,7 @@
 #' @param add_models A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
 #' 
 #' @return All successfully fitted "bayesmanecfit" model fits.
+#' @export
 modify <- function(object, model_set = NA, drop_models = NA,
                    add_models = NA) {
   if (is.na(model_set[1])) {
@@ -68,11 +69,14 @@ modify <- function(object, model_set = NA, drop_models = NA,
       mod_fits[[m]] <- mod_m
     }
   }
-  export_list <- c(extract_modstats(mod_fits),
-                   list(data = object$data,
-                        x_var = object$x_var,
-                        y_var = object$y_var,
-                        trials_var = object$trials_var))
-  class(export_list) <- "bayesmanecfit"
+  mod_fits <- extract_modstats(mod_fits)
+  if (inherits(mod_fits, "bayesnecfit")) {
+    export_list <- mod_fits
+  } else {
+    export_list <- c(mod_fits,
+                     list(data = data, x_var = x_var, y_var = y_var,
+                          trials_var = trials_var))
+    class(export_list) <- "bayesmanecfit"
+  }
   export_list
 }
