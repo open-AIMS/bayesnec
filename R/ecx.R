@@ -28,12 +28,12 @@ ecx <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
                 type = "absolute", hormesis_def = "control", xform = NA,
                 x_range = NA, prob_vals = c(0.5, 0.025, 0.975)) {
   if (inherits(object, "bayesnecfit")) {
-    ecx_1fit(object, ecx_val = ecx_val, precision = precision,
+    ecx_nec(object, ecx_val = ecx_val, precision = precision,
              posterior = posterior, type = type,
              hormesis_def = hormesis_def, xform = xform,
              prob_vals = prob_vals)
   } else if (inherits(object, "bayesmanecfit")) {
-    ecx_ma(object, ecx_val = ecx_val, precision = precision,
+    ecx_manec(object, ecx_val = ecx_val, precision = precision,
            posterior = posterior, type = type, xform = xform,
            x_range = x_range, prob_vals = prob_vals)
   } else {
@@ -42,7 +42,7 @@ ecx <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
   }
 }
 
-#' ecx_1fit
+#' ecx_nec
 #'
 #' Extracts the predicted ECx value as desired from a "bayesnecfit" object.
 #'
@@ -50,7 +50,7 @@ ecx <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
 #' @inherit ecx return details seealso
 #' @importFrom brms posterior_epred
 #' @importFrom stats quantile predict
-ecx_1fit <- function(object, ecx_val = 10, precision = 1000,
+ecx_nec <- function(object, ecx_val = 10, precision = 1000,
                      posterior = FALSE, type = "absolute",
                      hormesis_def = "control", x_range = NA,
                      xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
@@ -72,76 +72,33 @@ ecx_1fit <- function(object, ecx_val = 10, precision = 1000,
     m4param <- 0
   }
 
-  if (object$family == "gaussian" & type == "absolute") {
+  if (object$family$family == "gaussian" & type == "absolute") {
     stop("Absolute ECx values are not valid for a gaussian ",
          "response variable unless a 4 parameter model is fit")
   }
   if (object$x_type == "gaussian" & object$model == "ecxlin" &
-    type == "absolute") {
+        type == "absolute") {
     stop("Absolute ECx values are not valid for a linear model when ",
          "x-values are gaussian, because \"top\" merely indicates the ",
          "y-intercept. Use type \"relative\".")
   }
 
-  label <- paste("ec", ecx_val, sep = "_")
-
   pred_vals <- predict(object, precision = precision, x_range = x_range)
-  posterior_sample <- pred_vals$posterior
-  x_vec <- pred_vals$"x"
-  if (object$model == "nechorme" & hormesis_def == "max") {
-    posterior_sample <- do.call("rbind",
-                                lapply(seq_len(nrow(posterior_sample)),
-                                       function(x) {
-                                  nec_x <- object$nec_posterior[x]
-                                  posterior_x <- posterior_sample[x, ]
-                                  posterior_x[which(x_vec < nec_x)] <- NA
-                                  posterior_x
-                                }))
+  p_samples <- pred_vals$posterior
+  x_vec <- pred_vals$data$x
+  if (object$model == "nechorme") {
+    n <- seq_len(nrow(p_samples))
+    p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
+                            p_samples, hormesis_def, fct = "rbind")
   }
-
-  if (object$model == "nechorme" & hormesis_def == "control") {
-    posterior_sample <- do.call("rbind",
-                                lapply(seq_len(nrow(posterior_sample)),
-                                       function(x) {
-                                  control_x <- posterior_sample[x, 1]
-                                  posterior_x <- posterior_sample[x, ]
-                                  posterior_x[which(posterior_x >= control_x)] <- NA
-                                  posterior_x
-                                }))
-  }
-
-  if (type == "relative") {
-    ecx_out <- apply(posterior_sample, 1, function(y) {
-      range_y <- range(y, na.rm = TRUE)
-      ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
-      ecx_x <- x_vec[which.min(abs(y - ecx_y))]
-      ecx_x
-    })
-  }
-  if (type == "absolute") {
-    ecx_out <- apply(posterior_sample, 1, function(y) {
-      range_y <- c(0, max(y, na.rm = TRUE))
-      ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
-      ecx_x <- x_vec[which.min(abs(y - ecx_y))]
-      ecx_x
-    })
-  }
-  if (type == "direct") {
-    ecx_out <- apply(posterior_sample, 1, function(y) {
-      ecx_y <- ecx_val
-      ecx_x <- x_vec[which.min(abs(y - ecx_y))]
-      ecx_x
-    })
-  }
-
-  ecx_estimate <- quantile(unlist(ecx_out), probs = prob_vals)
-  names(ecx_estimate) <- c(label, paste(label, "lw", sep = "_"),
-                           paste(label, "up", sep = "_"))
-
+  ecx_fct <- get(paste0("ecx_x_", type))
+  ecx_out <- apply(p_samples, 1, ecx_fct, ecx_val, x_vec)
   if (inherits(xform, "function")) {
-    ecx_estimate <- xform(ecx_estimate)
     ecx_out <- xform(ecx_out)
   }
+  label <- paste("ec", ecx_val, sep = "_")
+  ecx_estimate <- quantile(ecx_out, probs = prob_vals)
+  names(ecx_estimate) <- paste(label, clean_names(ecx_estimate), sep = "_")
 
   if (!posterior) {
     ecx_estimate
@@ -150,19 +107,19 @@ ecx_1fit <- function(object, ecx_val = 10, precision = 1000,
   }
 }
 
-#' ecx_ma
+#' ecx_manec
 #'
 #' Extracts the predicted ECx value as desired from a "bayesmanecfit" object.
 #'
 #' @inheritParams ecx
 #' @inherit ecx return details seealso
 #' @importFrom stats quantile
-ecx_ma <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
+ecx_manec <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
                    type = "absolute", hormesis_def = "control", xform = NA,
                    x_range = NA, prob_vals = c(0.5, 0.025, 0.975)) {
   sample_size <- object$sample_size
   ecx_out <- unlist(sapply(seq_len(length(object$success_models)), function(x) {
-    sample(ecx_1fit(object$mod_fits[[x]], ecx_val = ecx_val,
+    sample(ecx_nec(object$mod_fits[[x]], ecx_val = ecx_val,
                     precision = precision, posterior = TRUE,
                     x_range = x_range, type = type),
            as.integer(round(sample_size * object$mod_stats[x, "wi"])))
@@ -182,4 +139,38 @@ ecx_ma <- function(object, ecx_val = 10, precision = 1000, posterior = FALSE,
   } else {
     ecx_out
   }
+}
+
+modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
+  posterior_sample <- p_samples[n, ]
+  if (hormesis_def == "max") {
+    target <- object$nec_posterior[n]
+    change <- x_vec < target
+  } else if (hormesis_def == "control") {
+    target <- posterior_sample[n, 1]
+    change <- posterior_sample >= target
+  }
+  posterior_sample[change] <- NA
+  posterior_sample
+}
+
+ecx_x_absolute <- function(y, ecx_val, x_vec) {
+  range_y <- range(y, na.rm = TRUE)
+  ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
+  x_vec[min_abs(y - ecx_y)]
+}
+
+ecx_x_relative <- function(y, ecx_val, x_vec) {
+  range_y <- c(0, max(y, na.rm = TRUE))
+  ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
+  x_vec[min_abs(y - ecx_y)]
+}
+
+ecx_x_direct <- function(y, ecx_val, x_vec) {
+  ecx_y <- ecx_val
+  x_vec[min_abs(y - ecx_y)]
+}
+
+clean_names <- function(x) {
+  paste0("Q", gsub("%", "", names(x), fixed = TRUE))
 }

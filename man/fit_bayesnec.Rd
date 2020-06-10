@@ -10,7 +10,7 @@ fit_bayesnec(
   y_var,
   trials_var = NA,
   x_type = NA,
-  family = NA,
+  family = NULL,
   priors,
   x_range = NA,
   precision = 1000,

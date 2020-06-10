@@ -7,8 +7,11 @@
 #' @return A list of model simulation statistics including
 #' iter, thin, warmup and chains
 extract_simdat <- function(modfit) {
-  list(iter = modfit$fit$fit@sim$iter,
-       thin = modfit$fit$fit@sim$thin,
-       warmup = modfit$fit$fit@sim$warmup,
-       chains = modfit$fit$fit@sim$chains)
+  x <- modfit$fit$fit@sim
+  list(iter = x$iter,
+       thin = x$thin,
+       warmup = x$warmup,
+       chains = x$chains,
+       n_samples = ceiling((x$iter - x$warmup) /
+                             x$thin * x$chains))
 }

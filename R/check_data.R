@@ -13,7 +13,7 @@
 #' @return A \code{\link[base]{list}} of modified elements
 #' necessary for \code{\link{fit_bayesnec}}.
 check_data <- function(data, x_var, y_var,
-                       trials_var, x_type = NA, family = NA,
+                       trials_var, x_type = NA, family = NULL,
                        model) {
   use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var))
   var_colms <- match(use_vars, colnames(data))
@@ -68,13 +68,16 @@ check_data <- function(data, x_var, y_var,
     x_type <- set_distribution(x_dat)
   }
 
-  if (is.na(family)) {
-    m_trials <- ifelse(is.na(trials_var), NULL, data[, trials_var])
+  if (is.null(family)) {
+    if (is.na(trials_var)) {
+      m_trials <- NULL
+    } else {
+      m_trials <- data[, trials_var]
+    }
     family <- set_distribution(y_dat, support_integer = TRUE,
                                trials = m_trials)
-  } else {
-    family <- validate_family(family)
   }
+  family <- validate_family(family)
   fam_tag <- family$family
 
   if (min(data[, x_var]) == 0 & x_type == "Gamma") {

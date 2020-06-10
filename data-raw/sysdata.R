@@ -36,14 +36,16 @@ bf_nec3param_deflt <- brms::bf(y ~ top *
                                nl = TRUE)
 
 # nec4param
-bf_nec4param_binom <- brms::bf(y | trials(trials) ~ top +
-                                 (bot - top) / (1 + exp((ec50 - x) * beta)),
-                               bot + ec50 + top + beta ~ 1,
+bf_nec4param_binom <- brms::bf(y | trials(trials) ~ bot + (bot - top) *
+                                 exp(-beta * (x - nec) *
+                                   step(x - nec)),
+                               bot + top + beta + nec ~ 1,
                                nl = TRUE)
 
-bf_nec4param_deflt <- brms::bf(y ~ top +
-                                 (bot - top) / (1 + exp((ec50 - x) * beta)),
-                               bot + ec50 + top + beta ~ 1,
+bf_nec4param_deflt <- brms::bf(y ~ bot + (bot - top) *
+                                 exp(-beta * (x - nec) *
+                                   step(x - nec)),
+                               bot + top + beta + nec ~ 1,
                                nl = TRUE)
 
 # nechorme

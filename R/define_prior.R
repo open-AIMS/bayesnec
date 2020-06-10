@@ -53,20 +53,3 @@ define_prior <- function(model, x_type, family, response) {
   }
   priors
 }
-
-#' paste_normal_prior
-#'
-#' Creates prior string given a number
-#'
-#' @param x A \code{\link[base]{numeric}} vector.
-#' @param param A \code{\link[base]{character}} vector indicating the
-#' target non-linear parameter.
-#' @param sd A \code{\link[base]{numeric}} vector indicating the
-#' standard deviation.
-#' @param ... Additional arguments of \code{\link[brms]{prior_string}}.
-#'
-#' @return A \code{\link[base]{character}} vector.
-#' @importFrom brms prior_string
-paste_normal_prior <- function(mean, param, sd = 100, ...) {
-    prior_string(paste0("normal(", mean, ", ", sd, ")"), nlpar = param, ...)
-}

@@ -16,14 +16,13 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                lxform = NA, jitter_x = FALSE,
                                jitter_y = FALSE, ylab = "response",
                                xlab = "concentration", xticks = NA,
-                               all_models = FALSE) {
-
+                               all_models = TRUE) {
   if (all_models) {
     mod_fits <- x$mod_fits
     par(mfrow = c(ceiling(length(mod_fits) / 2), 2),
         mar = c(1.5, 1.5, 1.5, 1.5), oma = c(3, 3, 0, 0))
 
-    for (m in seq_len(length(mod_fits))) {
+    for (m in seq_along(mod_fits)) {
       plot(x = mod_fits[[m]],
            CI = CI, add_nec = add_nec,
            position_legend = position_legend,
@@ -31,7 +30,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
            xform = xform, lxform = lxform,
            jitter_x = jitter_x, jitter_y = jitter_y,
            ylab = "", xlab = "",
-           xticks = xticks,  ...)
+           xticks = xticks, ...)
       mtext(xlab, side = 1, outer = TRUE, line = 2)
       mtext(ylab, side = 2, outer = TRUE, line = 2)
       legend("top", legend = names(mod_fits[m]), bty = "n")
