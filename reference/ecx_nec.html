@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>check_data — check_data • bayesnec</title>
+<title>ecx_nec — ecx_nec • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="check_data — check_data" />
-<meta property="og:description" content="Check data input for a Bayesian NEC model fit" />
+<meta property="og:title" content="ecx_nec — ecx_nec" />
+<meta property="og:description" content="Extracts the predicted ECx value as desired from a &quot;bayesnecfit&quot; object." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -128,60 +128,85 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>check_data</h1>
-    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/check_data.R'><code>R/check_data.R</code></a></small>
-    <div class="hidden name"><code>check_data.Rd</code></div>
+    <h1>ecx_nec</h1>
+    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/ecx.R'><code>R/ecx.R</code></a></small>
+    <div class="hidden name"><code>ecx_nec.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Check data input for a Bayesian NEC model fit</p>
+    <p>Extracts the predicted ECx value as desired from a "bayesnecfit" object.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>check_data</span>(<span class='no'>data</span>, <span class='no'>x_var</span>, <span class='no'>y_var</span>, <span class='no'>trials_var</span>, <span class='kw'>x_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>, <span class='kw'>family</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>model</span>)</pre>
+    <pre class="usage"><span class='fu'>ecx_nec</span>(
+  <span class='no'>object</span>,
+  <span class='kw'>ecx_val</span> <span class='kw'>=</span> <span class='fl'>10</span>,
+  <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
+  <span class='kw'>posterior</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
+  <span class='kw'>type</span> <span class='kw'>=</span> <span class='st'>"absolute"</span>,
+  <span class='kw'>hormesis_def</span> <span class='kw'>=</span> <span class='st'>"control"</span>,
+  <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>xform</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>prob_vals</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span>)
+)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>data</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for the model.</p></td>
+      <th>object</th>
+      <td><p>An object of class "bayesnecfit" or "bayesmanecfit" returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>x_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the concentration (x) variable.</p></td>
+      <th>ecx_val</th>
+      <td><p>The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
+and "absolute"), defaults to 10.</p></td>
     </tr>
     <tr>
-      <th>y_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the response (y) variable.</p></td>
+      <th>precision</th>
+      <td><p>The number of unique x values over which to find ECx - large values will make the ECx estimate more
+precise.</p></td>
     </tr>
     <tr>
-      <th>trials_var</th>
-      <td><p>The column heading indicating the column for the number of "trials" for binomial response data.
-If not supplied, the model may run but will not be the model you intended!</p></td>
+      <th>posterior</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if the full posterior sample of calculated ECx values should be returned
+instead of just the median and 95 credible intervals</p></td>
     </tr>
     <tr>
-      <th>x_type</th>
-      <td><p>The statistical distribution of the x (concentration) data. This will be guessed based on
-the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.</p></td>
+      <th>type</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "relative", "absolute" (the default) or "direct". See Details.</p></td>
     </tr>
     <tr>
-      <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
+      <th>hormesis_def</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "max" or "control". See Details.</p></td>
     </tr>
     <tr>
-      <th>model</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s) to fit. See Details for more information.</p></td>
+      <th>x_range</th>
+      <td><p>A range of x values over which to consider extracting ECx</p></td>
+    </tr>
+    <tr>
+      <th>xform</th>
+      <td><p>A function to apply to the returned estimated concentration values</p></td>
+    </tr>
+    <tr>
+      <th>prob_vals</th>
+      <td><p>A vector indicating the probability values over which to return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of modified elements
-necessary for <code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p>
+    <p>A vector containing the estimated ECx value, including upper and lower 95% credible interval bounds.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>This is a wrapper function to test input data criteria and find the
-correct priors for use in <code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p>
+    <p><code>type</code> "relative" is calculated as the percentage decrease from the maximum predicted value of the response (top) to the minimum predicted value
+of the response. Type "absolute" (the default) is calculated as the percentage decrease from the maximum value of the response (top)
+to 0 (or bot for a 4 parameter model fit). Type "direct" provides a direct estimate of the x value for a given y.
+Note that for the current version, ECx for an "nechorme" (NEC Hormesis) model is estimated at a percent decline from the control.
+For <code>hormesis_def</code>, if "max", then ECx values are calculated as a decline from the maximum estimates (i.e. the peak at nec);
+if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.</p>
+    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
+
+    <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

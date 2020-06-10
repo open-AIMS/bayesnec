@@ -144,7 +144,7 @@
   <span class='kw'>model</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>trials_var</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>x_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>family</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='kw'>family</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
   <span class='no'>priors</span>,
   <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
@@ -229,32 +229,31 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></
 <li><p>"family" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution used for the y (response) data;</p></li>
 <li><p>"x_type" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the statistical distribution for the x (concentration) data;</p></li>
 <li><p>"model" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the name of the fitted model;</p></li>
-<li><p>"pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of posterior predicted values based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
+<li><p>"pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of summary posterior predicted values
+and a vector containing based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
 <li><p>"nec" the estimated NEC;</p></li>
 <li><p>"top" the estimate for parameter "top" in the fitted model;</p></li>
 <li><p>"beta" the estimate for parameter "beta" in the fitted model;</p></li>
 <li><p>"alpha" the estimate for parameter "alpha" in the fitted model, NA if absent for the fitted model type;</p></li>
 <li><p>"bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;</p></li>
 <li><p>"d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;</p></li>
+<li><p>"slope" the estimate for parameter "slope" in the fitted model, NA if absent for the fitted model type;</p></li>
 <li><p>"ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;</p></li>
 <li><p>"dispersion" an estimate of dispersion;</p></li>
 <li><p>"predicted_y" the predicted values for the observed data;</p></li>
 <li><p>"residuals" residual values of the observed data from the fitted model;</p></li>
-<li><p>"nec_posterior" a full posterior estimate of the nec.</p></li>
+<li><p>"nec_posterior" a full posterior estimate of the NEC.</p></li>
 </ul><p>When more than one model is passed, <code>bnec</code> returns a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of class "bayesmanecfit" containing:</p><ul>
 <li><p>mod_fits a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of fitted model outputs of class "bayesnecfit" for each of the fitted models,
 each containing all the elements of class bayesnecfit above;</p></li>
 <li><p>"success_models" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the name of the successfully fitted models</p></li>
-<li><p>"mod_dat" the data used for the model fit;</p></li>
-<li><p>"family" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution used for the y (response) data;</p></li>
-<li><p>"x_type" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the statistical distribution for the x (concentration) data;</p></li>
 <li><p>"mod_stats" a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of model fit statistics;</p></li>
 <li><p>"sample_size" the size of the posterior sample;</p></li>
-<li><p>"nec_posterior" a full model weighted posterior estimate of the nec;</p></li>
-<li><p>"predicted_y" the predicted values for the observed data;</p></li>
-<li><p>"residuals" residual values of the observed data from the fitted model;</p></li>
-<li><p>"pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of posterior predicted values based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
-<li><p>"nec" a model averaged posterior of the estimated NEC;</p></li>
+<li><p>"w_nec_posterior" the model-weighted posterior estimate of the NEC;</p></li>
+<li><p>"w_predicted_y" the model-weighted predicted values for the observed data;</p></li>
+<li><p>"w_residuals" model-weighted residual values (i.e. observed - w_predicted_y);</p></li>
+<li><p>"w_pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing model-weighted posterior predicted values based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
+<li><p>"w_nec" the summary stats (median and 95% credibility intervals) of w_nec_posterior;</p></li>
 <li><p>"data" the original supplied data</p></li>
 <li><p>"x_var" the supplied <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the concentration (x) variable.</p></li>
 <li><p>"y_var" the supplied A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the response (y) variable.</p></li>
