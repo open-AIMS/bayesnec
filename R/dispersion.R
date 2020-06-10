@@ -15,7 +15,6 @@
 #' of the dispersion metric.
 #'
 #' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
-#' @importFrom HDInterval hdi
 #' @importFrom stats median
 #' @examples
 #' \dontrun{
@@ -63,10 +62,7 @@ dispersion <- function(model, summary = FALSE) {
     }
     disp <- rowSums(prd_sr) / rowSums(sim_sr)
     if (summary) {
-      qts <- hdi(disp, cred_mass = 0.95)
-      data.frame(mean = mean(disp), median = median(disp),
-                 lower = qts["lower"], upper = qts["upper"],
-                 stringsAsFactors = FALSE, row.names = NULL)
+      estimates_summary(disp)
     } else {
       disp
     }

@@ -12,7 +12,7 @@ RoxygenNote: 7.1.0
 Biarch: true
 Imports:
     brms,
-    HDInterval
+    loo
 Suggests:
     knitr,
     rmarkdown,

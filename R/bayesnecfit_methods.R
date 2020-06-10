@@ -27,7 +27,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              jitter_y = FALSE, ylab = "response",
                              xlab = "concentration", xticks = NA) {
 
-  family <- x$family
+  family <- x$family$family
   if (family == "binomial") {
     y_dat <- x$mod_dat$y / x$mod_dat$trials
   } else {
@@ -35,22 +35,22 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   }
 
   ec10 <- c(NA, NA, NA)
-  if (add_ec10 & x$family != "gaussian") {
+  if (add_ec10 & family != "gaussian") {
     ec10 <- ecx(x)
   }
-  if (add_ec10 & x$family == "gaussian") {
+  if (add_ec10 & family == "gaussian") {
     ec10 <- ecx(x, type = "relative")
   }
 
   if (inherits(xform, "function")) {
     x_dat <- xform(x$mod_dat$x)
     nec <- xform(x$nec)
-    x_vec <- xform(x$pred_vals$x)
+    x_vec <- xform(x$pred_vals$data$x)
     ec10 <- xform(ec10)
   } else {
     x_dat <- x$mod_dat$x
     nec <- x$nec
-    x_vec <- x$pred_vals$x
+    x_vec <- x$pred_vals$data$x
   }
 
   if (jitter_x) {
@@ -94,11 +94,11 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   }
 
   if (CI) {
-    lines(x_vec, x$pred_vals$up, lty = 2)
-    lines(x_vec, x$pred_vals$lw, lty = 2)
+    lines(x_vec, x$pred_vals$data$Q97.5, lty = 2)
+    lines(x_vec, x$pred_vals$data$Q2.5, lty = 2)
   }
 
-  lines(x_vec, x$pred_vals$y)
+  lines(x_vec, x$pred_vals$data$Estimate)
 
   if (add_nec & !add_ec10) {
     abline(v = nec, col = "red", lty = c(1, 3, 3))
@@ -123,11 +123,11 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @param object the bayesnec model fit (as returned by fit_bayesnec).
 #'
+#' @param ... unused.
+#' 
 #' @param precision the number of x values over which to predict values.
 #'
 #' @param x_range The range of x values over which to make predictions.
-#'
-#' @param ... unused.
 #'
 #' @export
 #' @return A list containing x and fitted y, with up and lw values
@@ -135,10 +135,9 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 predict.bayesnecfit <- function(object, ..., precision = 100,
                                 x_range = NA) {
   mod_dat <- object$mod_dat
-  family <- object$family
   fit <- object$fit
 
-  if (is.na(x_range[1])) {
+  if (any(is.na(x_range))) {
     x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length = precision)
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
@@ -147,17 +146,10 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
   new_dat <- data.frame(x = x_seq)
 
   pred_out <- brms::posterior_epred(fit, newdata = new_dat,
-                                      re_formula = NA)
+                                    re_formula = NA)
 
-  m_vals <- apply(pred_out, 2, quantile, probs = 0.5)
-  up_vals <- apply(pred_out, 2, quantile, probs = 0.975)
-  lw_vals <- apply(pred_out, 2, quantile, probs = 0.025)
-
-  list(
-    x = x_seq,
-    y = m_vals,
-    up = up_vals,
-    lw = lw_vals,
-    posterior = pred_out
-  )
+  pred_d <- cbind(x = x_seq, data.frame(t(apply(pred_out, 2,
+                                                estimates_summary))))
+  list(data = pred_d,
+       posterior = pred_out)
 }

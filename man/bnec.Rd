@@ -11,7 +11,7 @@ bnec(
   model = NA,
   trials_var = NA,
   x_type = NA,
-  family = NA,
+  family = NULL,
   priors,
   x_range = NA,
   precision = 1000,
@@ -64,38 +64,36 @@ When only a single model is passed \code{\link{bnec}} returns a \code{\link[base
 \item "family" \code{\link[base]{character}} string defining the statistical distribution used for the y (response) data;
 \item "x_type" \code{\link[base]{character}} string indicating the statistical distribution for the x (concentration) data;
 \item "model" \code{\link[base]{character}} string indicating the name of the fitted model;
-\item "pred_vals" a \code{\link[base]{list}} of posterior predicted values based on the supplied \code{precision} and \code{x_range};
+\item "pred_vals" a \code{\link[base]{list}} containing a \code{\link[base]{data.frame}} of summary posterior predicted values
+and a vector containing based on the supplied \code{precision} and \code{x_range};
 \item "nec" the estimated NEC;
 \item "top" the estimate for parameter "top" in the fitted model;
 \item "beta" the estimate for parameter "beta" in the fitted model;
 \item "alpha" the estimate for parameter "alpha" in the fitted model, NA if absent for the fitted model type;
 \item "bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;
 \item "d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;
+\item "slope" the estimate for parameter "slope" in the fitted model, NA if absent for the fitted model type;
 \item "ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;
 \item "dispersion" an estimate of dispersion;
 \item "predicted_y" the predicted values for the observed data;
 \item "residuals" residual values of the observed data from the fitted model;
-\item "nec_posterior" a full posterior estimate of the nec.
+\item "nec_posterior" a full posterior estimate of the NEC.
 }
 When more than one model is passed, \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesmanecfit" containing:
 \itemize{
 \item mod_fits a \code{\link[base]{list}} of fitted model outputs of class "bayesnecfit" for each of the fitted models,
 each containing all the elements of class bayesnecfit above;
 \item "success_models" \code{\link[base]{character}} vector indicating the name of the successfully fitted models
-\item "mod_dat" the data used for the model fit;
-\item "family" \code{\link[base]{character}} string defining the statistical distribution used for the y (response) data;
-\item "x_type" \code{\link[base]{character}} string indicating the statistical distribution for the x (concentration) data;
 \item "mod_stats" a \code{\link[base]{data.frame}} of model fit statistics;
 \item "sample_size" the size of the posterior sample;
-\item "nec_posterior" a full model weighted posterior estimate of the nec;
-\item "predicted_y" the predicted values for the observed data;
-\item "residuals" residual values of the observed data from the fitted model;
-\item "pred_vals" a \code{\link[base]{list}} of posterior predicted values based on the supplied \code{precision} and \code{x_range};
-\item "nec" a model averaged posterior of the estimated NEC;
+\item "w_nec_posterior" the model-weighted posterior estimate of the NEC;
+\item "w_predicted_y" the model-weighted predicted values for the observed data;
+\item "w_residuals" model-weighted residual values (i.e. observed - w_predicted_y);
+\item "w_pred_vals" a \code{\link[base]{list}} containing model-weighted posterior predicted values based on the supplied \code{precision} and \code{x_range};
+\item "w_nec" the summary stats (median and 95\% credibility intervals) of w_nec_posterior;
 \item "data" the original supplied data
 \item "x_var" the supplied \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.
 \item "y_var" the supplied A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.
-
 }
 }
 \description{

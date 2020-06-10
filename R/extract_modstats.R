@@ -6,8 +6,8 @@
 #' \code{\link{bnec}} when more than one model is supplied.
 #'
 #' @return A list of model statistical output derived from the input model list
-#' @importFrom brms loo_model_weights waic
-#' @importFrom stats quantile predict
+#' @importFrom loo loo_model_weights
+#' @importFrom stats quantile
 extract_modstats <- function(mod_fits) {
   model_set <- names(mod_fits)
   success_models <- model_set[sapply(mod_fits, class) == "bayesnecfit"]
@@ -15,6 +15,11 @@ extract_modstats <- function(mod_fits) {
     stop("None of the models fit successfully, ",
          "try using bnec with a single model (e.g. ecxexp) using the default ",
          "settings as a starting point for trouble shooting.")
+  } else if (length(success_models) == 1) {
+    message(paste("Only", success_models, " was successfully fitted, "),
+                  "no model averaging done. Perhaps try setting better priors.\n",
+                  paste("returning", success_models))
+    return(mod_fits[[success_models]])
   } else {
     message(paste("successfully fitted the models: ",
                   paste(success_models, collapse = " ")))
@@ -23,69 +28,42 @@ extract_modstats <- function(mod_fits) {
   family <- mod_fits[[1]]$family
   x_type <- mod_fits[[1]]$x_type
   mod_dat <- mod_fits[[1]]$mod_dat
-  disp <-  do.call("rbind", lapply(mod_fits, function(x) x$over_disp))
-  colnames(disp) <- c("dispersion_mean", "dispersion_median",
-                      "dispersion_lw", "dispersion_up")
+  disp <-  do_wrapper(mod_fits, extract_dispersion, fct = "rbind")
+  colnames(disp) <- c("dispersion_Estimate",
+                      "dispersion_Q2.5", "dispersion_Q97.5")
   mod_stats <- data.frame(model = success_models)
-  mod_stats$waic <- sapply(mod_fits, function(x) {
-    waic(x$fit)$estimates["waic", "Estimate"]
-  })
-  mod_stats$wi <- loo_model_weights(lapply(mod_fits, function(x) x$fit$loo))
+  mod_stats$waic <- sapply(mod_fits, extract_waic)
+  mod_stats$wi <- loo_model_weights(lapply(mod_fits, extract_loo))
   mod_stats <- cbind(mod_stats, disp)
 
-  sample_size <- nrow(predict(mod_fits[[1]]$fit, summary = FALSE))
+  sample_size <- extract_simdat(mod_fits[[1]])$n_samples
 
-  # model averaged nec posterior
-  nec_posterior <- unlist(lapply(seq_len(length(success_models)),
-                                 function(x, mod_fits, sample_size, mod_stats) {
-    sample(mod_fits[[x]]$nec_posterior,
-           size = as.integer(round(sample_size * mod_stats[x, "wi"])))
-  }, mod_fits, sample_size, mod_stats))
+  nec_posterior <- unlist(lapply(success_models, w_nec_calc,
+                                 mod_fits, sample_size, mod_stats))
 
-  # model averaged predicted y
-  predicted_y <- rowSums(do.call("cbind",
-                                 lapply(seq_len(length(success_models)),
-                                        function(x, mod_fits, mod_stats) {
-    mod_fits[[x]]$predicted_y * mod_stats[x, "wi"]
-  }, mod_fits, mod_stats)))
+  y_pred <- rowSums(do_wrapper(success_models, w_pred_calc,
+                               mod_fits, mod_stats))
 
-  # model averaged pred_vals
-  x <- mod_fits[[success_models[1]]]$pred_vals$x
+  y_m <- rowSums(do_wrapper(success_models, w_y_calc,
+                            mod_fits, mod_stats))
 
-  y_m <- rowSums(do.call("cbind", lapply(success_models,
-                                         function(x, mod_fits, mod_stats) {
-    mod_fits[[x]]$pred_vals$y_m * mod_stats[x, "wi"]
-  }, mod_fits, mod_stats)))
+  post_pred <- do_wrapper(success_models, w_post_pred_calc,
+                          mod_fits, sample_size, mod_stats,
+                          fct = "rbind")
 
-  # model weighted posterior
-  posterior_predicted <- do.call("cbind",
-                                 lapply(seq_len(length(success_models)),
-                                        function(x, mod_fits, sample_size,
-                                                 mod_stats) {
-    mod_fits[[x]]$pred_vals$posterior[, sample(seq_len(sample_size),
-                                               round(sample_size *
-                                                       mod_stats[x, "wi"]))]
-  }, mod_fits, sample_size, mod_stats))
+  x <- mod_fits[[success_models[1]]]$pred_vals$data$x
+  pred_data <- cbind(x = x,
+                     data.frame(t(apply(post_pred, 2,
+                                        estimates_summary))))
 
-  y <- apply(posterior_predicted, 1, median)
-  up <- apply(posterior_predicted, 1, quantile, probs = 0.975)
-  lw <- apply(posterior_predicted, 1, quantile, probs = 0.025)
+  nec <- estimates_summary(nec_posterior)
 
-  nec <- quantile(nec_posterior, c(0.5, 0.025,  0.975))
-  names(nec) <- c("Estimate", "Q2.5", "Q97.5")
-
-  list(mod_fits = mod_fits,
-       success_models = success_models,
-       mod_dat = mod_dat,
-       family = family,
-       x_type = x_type,
-       mod_stats = mod_stats,
-       sample_size = sample_size,
-       nec_posterior = nec_posterior,
-       predicted_y = predicted_y,
-       residuals = mod_dat$y - predicted_y,
-       pred_vals = list(x = x, y = y, up = up,
-                        lw = lw, posterior = posterior_predicted,
-                        y_m = y_m),
-       nec = nec)
+  list(mod_fits = mod_fits, success_models = success_models,
+       mod_stats = mod_stats, sample_size = sample_size,
+       w_nec_posterior = nec_posterior, w_predicted_y = y_pred,
+       w_residuals = mod_dat$y - y_pred,
+       w_pred_vals = list(data = pred_data,
+                          posterior = post_pred,
+                          y_m = y_m),
+       w_nec = nec)
 }
