@@ -1,59 +1,49 @@
 #' modify
 #'
 #' Modifies an existing bayesmanecfit object, for example, by adding or removing fitted models.
-#'
-#' @aliases modify
 #' 
 #' @param object An object of class "bayesmanecfit" output list, as returned by \code{\link{bnec}}.
-#' @param model_set A \code{\link[base]{character}} vector containing the of names of model types to be included in the modified fit.
-#' @param drop_models A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.
-#' @param add_models A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
+#' @param drop A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.
+#' @param add A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
 #' 
 #' @return All successfully fitted "bayesmanecfit" model fits.
 #' @export
-modify <- function(object, model_set = NA, drop_models = NA,
-                   add_models = NA) {
-  if (is.na(model_set[1])) {
-    model_set <- names(object$mod_fits)
+modify <- function(object, drop, add) {
+  if (missing(drop) && missing(add)) {
+    message("Nothing to modify, please specify a model to ",
+            "either add or drop;\n",
+            "Returning original model set")
+    return(object)
   }
-  if (model_set[1] == "nec") {
-    model_set <- c("nec3param", "nec4param", "nechorme", "necsigm")
+  model_set <- names(object$mod_fits)
+  if (!missing(drop)) {
+    model_set <- handle_set(model_set, drop = drop)
   }
-  if (model_set[1] == "ecx") {
-    model_set <- c("ecx4param", "ecxwb1", "ecxwb2")
+  if (!missing(add)) {
+    model_set <- handle_set(model_set, add = add)
   }
-  if (model_set[1] == "all") {
-    model_set <- c("nec3param", "nec4param", "nechorme", "necsigm",
-                   "ecxlin", "ecxexp", "ecxsigm",
-                   "ecx4param", "ecxwb1", "ecxwb2")
-  }
-  if (model_set[1] == "bot_free") {
-    model_set <- c("nec3param", "nechorme", "necsigm",
-                   "ecxlin", "ecxexp", "ecxsigm")
-  }
-
-  if (!is.na(drop_models[1])) {
-    model_set <- model_set[is.na(match(model_set, drop_models))]
-  }
-  if (!is.na(add_models[1])) {
-    model_set <- unique(c(model_set, add_models))
+  if (is.logical(model_set)) {
+    message("Returning original model set")
+    return(object)
   }
   simdat <- extract_simdat(object$mod_fits[[1]])
+  data <- object$mod_fits[[1]]$mod_dat
+  x_type <- object$mod_fits[[1]]$x_type
+  family <- object$mod_fits[[1]]$family
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
 
-  for (m in seq_len(length(model_set))) {
+  for (m in seq_along(model_set)) {
     model <- model_set[m]
-    mod_m <- NULL
     mod_m <- try(object$mod_fits[[model]], silent = TRUE)
     if (!inherits(mod_m, "bayesnecfit")) {
       fit_m <- try(
-        fit_bayesnec(data = object,
-                     x_var = object$x_var,
-                     y_var = object$y_var,
-                     trials_var = object$trials_var,
-                     x_type = object$x_type,
-                     family = object$family,
+        fit_bayesnec(data = data,
+                     x_var = "x",
+                     y_var = "y",
+                     trials_var = "trials",
+                     x_type = x_type,
+                     family = family,
                      model = model,
                      iter = simdat$iter,
                      thin = simdat$thin,
@@ -70,12 +60,8 @@ modify <- function(object, model_set = NA, drop_models = NA,
     }
   }
   mod_fits <- extract_modstats(mod_fits)
-  if (inherits(mod_fits, "bayesnecfit")) {
-    export_list <- mod_fits
-  } else {
-    export_list <- c(mod_fits,
-                     list(data = data, x_var = x_var, y_var = y_var,
-                          trials_var = trials_var))
+  export_list <- mod_fits
+  if (!inherits(mod_fits, "bayesnecfit")) {
     class(export_list) <- "bayesmanecfit"
   }
   export_list
