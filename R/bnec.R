@@ -106,8 +106,11 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
     stop("You need to define a model type. See ?bnec")
   }
 
-  if (length(model) == 1 & model %in% names(mod_groups)) {
-      model <- mod_groups[[model]]
+  msets <- names(mod_groups)
+  if (length(model) == 1 && any(model %in% msets)) {
+      group_mods <- intersect(model, msets)
+      model <- union(model, unname(unlist(mod_groups[group_mods])))
+      model <- setdiff(model, msets)
   }
 
   if (length(model) > 1) {
