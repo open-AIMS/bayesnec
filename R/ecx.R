@@ -76,12 +76,6 @@ ecx_nec <- function(object, ecx_val = 10, precision = 1000,
     stop("Absolute ECx values are not valid for a gaussian ",
          "response variable unless a 4 parameter model is fit")
   }
-  if (object$x_type == "gaussian" & object$model == "ecxlin" &
-        type == "absolute") {
-    stop("Absolute ECx values are not valid for a linear model when ",
-         "x-values are gaussian, because \"top\" merely indicates the ",
-         "y-intercept. Use type \"relative\".")
-  }
 
   pred_vals <- predict(object, precision = precision, x_range = x_range)
   p_samples <- pred_vals$posterior
