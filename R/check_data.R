@@ -116,7 +116,7 @@ check_data <- function(data, x_var, y_var,
 
   mod_dat <- data.frame(x = data[, x_var],
                         y = data[, y_var],
-                        N = nrow(data))
+                        trials = nrow(data))
 
   response <- data[, y_var]
 
@@ -131,7 +131,6 @@ check_data <- function(data, x_var, y_var,
   list(priors = priors,
        response = response,
        mod_dat = mod_dat,
-       data = data,
        family = family,
        x_type = x_type,
        x_dat = x_dat,
