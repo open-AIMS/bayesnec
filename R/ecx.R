@@ -148,13 +148,13 @@ modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
   posterior_sample
 }
 
-ecx_x_absolute <- function(y, ecx_val, x_vec) {
+ecx_x_relative <- function(y, ecx_val, x_vec) {
   range_y <- range(y, na.rm = TRUE)
   ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
   x_vec[min_abs(y - ecx_y)]
 }
 
-ecx_x_relative <- function(y, ecx_val, x_vec) {
+ecx_x_absolute <- function(y, ecx_val, x_vec) {
   range_y <- c(0, max(y, na.rm = TRUE))
   ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
   x_vec[min_abs(y - ecx_y)]
