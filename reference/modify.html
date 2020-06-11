@@ -47,7 +47,7 @@
 
 
 <meta property="og:title" content="modify — modify" />
-<meta property="og:description" content="Modifies an existing bayesmanecfit object, for example, but adding or removing fitted models." />
+<meta property="og:description" content="Modifies an existing bayesmanecfit object, for example, by adding or removing fitted models." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -134,10 +134,10 @@
     </div>
 
     <div class="ref-description">
-    <p>Modifies an existing bayesmanecfit object, for example, but adding or removing fitted models.</p>
+    <p>Modifies an existing bayesmanecfit object, for example, by adding or removing fitted models.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>modify</span>(<span class='no'>object</span>, <span class='kw'>model_set</span> <span class='kw'>=</span> <span class='fl'>NA</span>, <span class='kw'>drop_models</span> <span class='kw'>=</span> <span class='fl'>NA</span>, <span class='kw'>add_models</span> <span class='kw'>=</span> <span class='fl'>NA</span>)</pre>
+    <pre class="usage"><span class='fu'>modify</span>(<span class='no'>object</span>, <span class='no'>drop</span>, <span class='no'>add</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -147,15 +147,11 @@
       <td><p>An object of class "bayesmanecfit" output list, as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>model_set</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the of names of model types to be included in the modified fit.</p></td>
-    </tr>
-    <tr>
-      <th>drop_models</th>
+      <th>drop</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types you which to drop for the modified fit.</p></td>
     </tr>
     <tr>
-      <th>add_models</th>
+      <th>add</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types to add to the modified fit.</p></td>
     </tr>
     </table>

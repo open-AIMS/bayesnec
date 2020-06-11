@@ -141,7 +141,7 @@
   <span class='no'>data</span>,
   <span class='no'>x_var</span>,
   <span class='no'>y_var</span>,
-  <span class='kw'>model</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
+  <span class='no'>model</span>,
   <span class='kw'>trials_var</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>x_type</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
   <span class='kw'>family</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
@@ -254,9 +254,6 @@ each containing all the elements of class bayesnecfit above;</p></li>
 <li><p>"w_residuals" model-weighted residual values (i.e. observed - w_predicted_y);</p></li>
 <li><p>"w_pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing model-weighted posterior predicted values based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
 <li><p>"w_nec" the summary stats (median and 95% credibility intervals) of w_nec_posterior;</p></li>
-<li><p>"data" the original supplied data</p></li>
-<li><p>"x_var" the supplied <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the concentration (x) variable.</p></li>
-<li><p>"y_var" the supplied A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the response (y) variable.</p></li>
 </ul>
 
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
