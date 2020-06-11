@@ -8,7 +8,8 @@
 #' 
 #' @return All successfully fitted "bayesmanecfit" model fits.
 #' @export
-modify <- function(object, drop, add) {
+modify <- function(object, drop, add, x_range = NA,
+                   precision = 1000, sig_val = 0.01) {
   if (missing(drop) && missing(add)) {
     message("Nothing to modify, please specify a model to ",
             "either add or drop;\n",
@@ -27,24 +28,20 @@ modify <- function(object, drop, add) {
     return(object)
   }
   simdat <- extract_simdat(object$mod_fits[[1]])
-  data <- object$mod_fits[[1]]$mod_dat
-  x_type <- object$mod_fits[[1]]$x_type
-  family <- object$mod_fits[[1]]$family
+  data <- object$mod_fits[[1]]$fit$data
+  family <- object$mod_fits[[1]]$fit$family
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
 
   for (m in seq_along(model_set)) {
     model <- model_set[m]
     mod_m <- try(object$mod_fits[[model]], silent = TRUE)
-    if (!inherits(mod_m, "bayesnecfit")) {
+    if (!inherits(mod_m, "prebayesnecfit")) {
       fit_m <- try(
         fit_bayesnec(data = data,
-                     x_var = "x",
-                     y_var = "y",
-                     trials_var = "trials",
-                     x_type = x_type,
                      family = family,
                      model = model,
+                     skip_check = TRUE,
                      iter = simdat$iter,
                      thin = simdat$thin,
                      warmup = simdat$warmup,
@@ -59,10 +56,14 @@ modify <- function(object, drop, add) {
       mod_fits[[m]] <- mod_m
     }
   }
-  mod_fits <- extract_modstats(mod_fits)
-  export_list <- mod_fits
-  if (!inherits(mod_fits, "bayesnecfit")) {
-    class(export_list) <- "bayesmanecfit"
+  mod_fits <- expand_manec(mod_fits, x_range = x_range,
+                           precision = precision, sig_val = sig_val)
+  if (!inherits(mod_fits, "prebayesnecfit")) {
+    allot_class(mod_fits, "bayesmanecfit")
+  } else {
+    mod_fits <- expand_nec(mod_fits, x_range = x_range,
+                           precision = precision,
+                           sig_val = sig_val)
+    allot_class(mod_fits, "bayesnecfit")
   }
-  export_list
 }
