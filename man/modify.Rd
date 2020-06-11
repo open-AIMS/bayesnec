@@ -4,20 +4,18 @@
 \alias{modify}
 \title{modify}
 \usage{
-modify(object, model_set = NA, drop_models = NA, add_models = NA)
+modify(object, drop, add)
 }
 \arguments{
 \item{object}{An object of class "bayesmanecfit" output list, as returned by \code{\link{bnec}}.}
 
-\item{model_set}{A \code{\link[base]{character}} vector containing the of names of model types to be included in the modified fit.}
+\item{drop}{A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.}
 
-\item{drop_models}{A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.}
-
-\item{add_models}{A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.}
+\item{add}{A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.}
 }
 \value{
 All successfully fitted "bayesmanecfit" model fits.
 }
 \description{
-Modifies an existing bayesmanecfit object, for example, but adding or removing fitted models.
+Modifies an existing bayesmanecfit object, for example, by adding or removing fitted models.
 }

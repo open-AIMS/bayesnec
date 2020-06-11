@@ -78,3 +78,35 @@ estimates_summary <- function(x) {
   names(x) <- c("Estimate", "Q2.5", "Q97.5")
   x
 }
+
+handle_set <- function(x, add, drop) {
+  msets <- names(mod_groups)
+  tmp <- x
+  if (!missing(add)) {
+    y <- add
+    if (any(add %in% msets)) {
+      y <- unname(unlist(mod_groups[intersect(add, msets)]))
+      y <- setdiff(union(y, add), msets)
+    }
+    tmp <- union(tmp, y)
+  }
+  if (!missing(drop)) {
+    y <- drop
+    if (any(drop %in% msets)) {
+      y <- unname(unlist(mod_groups[intersect(drop, msets)]))
+    }
+    tmp <- setdiff(tmp, y)
+    if (length(tmp) == 0) {
+      stop("All models removed, nothing to return;\n",
+           "Perhaps try calling function bnec with another ",
+           "model set")
+    }
+  }
+  if (identical(sort(x), sort(tmp))) {
+    message("Nothing to modify, please specify a model to ",
+            "either add or drop that differs from the original set")
+    FALSE
+  } else {
+    tmp
+  }
+}
