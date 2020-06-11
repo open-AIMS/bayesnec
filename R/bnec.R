@@ -107,7 +107,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
   }
 
   msets <- names(mod_groups)
-  if (length(model) == 1 && any(model %in% msets)) {
+  if (any(model %in% msets)) {
       group_mods <- intersect(model, msets)
       model <- union(model, unname(unlist(mod_groups[group_mods])))
       model <- setdiff(model, msets)
