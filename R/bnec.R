@@ -96,16 +96,13 @@
 #'    \item "w_residuals" model-weighted residual values (i.e. observed - w_predicted_y);
 #'    \item "w_pred_vals" a \code{\link[base]{list}} containing model-weighted posterior predicted values based on the supplied \code{precision} and \code{x_range};
 #'    \item "w_nec" the summary stats (median and 95% credibility intervals) of w_nec_posterior;
-#'    \item "data" the original supplied data 
-#'    \item "x_var" the supplied \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.  
-#'    \item "y_var" the supplied A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.
 #' }
 #' @export
-bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
+bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  x_type = NA, family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 2e3, warmup = floor(iter / 5) * 4, ...) {
-  if (is.na(model)) {
+  if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
 
@@ -132,12 +129,8 @@ bnec <- function(data, x_var, y_var, model = NA, trials_var = NA,
       }
     }
     mod_fits <- extract_modstats(mod_fits)
-    if (inherits(mod_fits, "bayesnecfit")) {
-      export_list <- mod_fits
-    } else {
-      export_list <- c(mod_fits,
-                       list(data = data, x_var = x_var, y_var = y_var,
-                            trials_var = trials_var))
+    export_list <- mod_fits
+    if (!inherits(mod_fits, "bayesnecfit")) {
       class(export_list) <- "bayesmanecfit"
     }
   }

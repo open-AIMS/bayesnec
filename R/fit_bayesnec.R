@@ -23,7 +23,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   family <- data_check$family
   x_type <- data_check$x_type
   response <- data_check$response
-  data <- data_check$data
   x_dat <- data_check$x_dat
   y_dat <- data_check$y_dat
   if (missing(priors)) {
@@ -38,7 +37,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   fit$waic <- waic(fit)
 
   out <- list(fit = fit, mod_dat = mod_dat,
-              family = family, x_type = x_type, model = model)
+              family = family, x_type = x_type,
+              model = model)
 
   extract_params <- c("top", "beta", "nec", "alpha",
                       "bot", "d", "slope", "ec50")
