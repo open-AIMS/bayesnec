@@ -13,7 +13,7 @@
 #' @return A \code{\link[base]{list}} of modified elements
 #' necessary for \code{\link{fit_bayesnec}}.
 check_data <- function(data, x_var, y_var,
-                       trials_var, x_type = NA, family = NULL,
+                       trials_var, family = NULL,
                        model) {
   use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var))
   var_colms <- match(use_vars, colnames(data))
@@ -64,10 +64,6 @@ check_data <- function(data, x_var, y_var,
     stop("The model type you have specified does not exist.")
   }
 
-  if (is.na(x_type)) {
-    x_type <- set_distribution(x_dat)
-  }
-
   if (is.null(family)) {
     if (is.na(trials_var)) {
       m_trials <- NULL
@@ -80,6 +76,7 @@ check_data <- function(data, x_var, y_var,
   family <- validate_family(family)
   fam_tag <- family$family
 
+  x_type <- set_distribution(x_dat)
   if (min(data[, x_var]) == 0 & x_type == "Gamma") {
     tt <- data[, x_var]
     min_val <- min(tt[which(tt > 0)])
@@ -129,10 +126,6 @@ check_data <- function(data, x_var, y_var,
                          family = family, response = response)
 
   list(priors = priors,
-       response = response,
        mod_dat = mod_dat,
-       family = family,
-       x_type = x_type,
-       x_dat = x_dat,
-       y_dat = y_dat)
+       family = family)
 }

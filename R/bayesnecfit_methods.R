@@ -27,11 +27,11 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              jitter_y = FALSE, ylab = "response",
                              xlab = "concentration", xticks = NA) {
 
-  family <- x$family$family
+  family <- x$fit$family$family
   if (family == "binomial") {
-    y_dat <- x$mod_dat$y / x$mod_dat$trials
+    y_dat <- x$fit$data$y / x$fit$data$trials
   } else {
-    y_dat <- x$mod_dat$y
+    y_dat <- x$fit$data$y
   }
 
   ec10 <- c(NA, NA, NA)
@@ -43,12 +43,12 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   }
 
   if (inherits(xform, "function")) {
-    x_dat <- xform(x$mod_dat$x)
+    x_dat <- xform(x$fit$data$x)
     nec <- xform(x$nec)
     x_vec <- xform(x$pred_vals$data$x)
     ec10 <- xform(ec10)
   } else {
-    x_dat <- x$mod_dat$x
+    x_dat <- x$fit$data$x
     nec <- x$nec
     x_vec <- x$pred_vals$data$x
   }
@@ -97,7 +97,6 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     lines(x_vec, x$pred_vals$data$Q97.5, lty = 2)
     lines(x_vec, x$pred_vals$data$Q2.5, lty = 2)
   }
-
   lines(x_vec, x$pred_vals$data$Estimate)
 
   if (add_nec & !add_ec10) {
@@ -134,7 +133,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #' @importFrom brms posterior_epred
 predict.bayesnecfit <- function(object, ..., precision = 100,
                                 x_range = NA) {
-  mod_dat <- object$mod_dat
+  mod_dat <- object$fit$data
   fit <- object$fit
 
   if (any(is.na(x_range))) {

@@ -23,6 +23,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
         mar = c(1.5, 1.5, 1.5, 1.5), oma = c(3, 3, 0, 0))
 
     for (m in seq_along(mod_fits)) {
+      mod_fits[[m]] <- expand_and_assign_nec(mod_fits[[m]])
       plot(x = mod_fits[[m]],
            CI = CI, add_nec = add_nec,
            position_legend = position_legend,
@@ -37,8 +38,8 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     }
   } else {
     universal <- x$mod_fits[[1]]
-    family <- universal$family$family
-    mod_dat <- universal$mod_dat
+    family <- universal$fit$family$family
+    mod_dat <- universal$fit$data
     if (family == "binomial") {
       y_dat <- mod_dat$y / mod_dat$trials
     } else {

@@ -58,10 +58,6 @@ w_pred_calc <- function(index, mod_fits, mod_stats) {
   mod_fits[[index]]$predicted_y * mod_stats[index, "wi"]
 }
 
-w_y_calc <- function(index, mod_fits, mod_stats) {
-  mod_fits[[index]]$pred_vals$data$Estimate * mod_stats[index, "wi"]
-}
-
 w_post_pred_calc <- function(index, mod_fits, sample_size, mod_stats) {
   x <- seq_len(sample_size)
   size <- round(sample_size * mod_stats[index, "wi"])
@@ -109,4 +105,21 @@ handle_set <- function(x, add, drop) {
   } else {
     tmp
   }
+}
+
+#' allot_class
+#'
+#' Assigns class to an object.
+#'
+#' @param x An object.
+#' @param new_class The new object class.
+#'
+#' @return An object of class new_class.
+allot_class <- function(x, new_class) {
+  class(x) <- new_class
+  x
+}
+
+expand_and_assign_nec <- function(x, ...) {
+  allot_class(expand_nec(x, ...), "bayesnecfit")
 }

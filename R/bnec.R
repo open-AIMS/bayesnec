@@ -8,8 +8,6 @@
 #' @param model A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.
 #' @param trials_var The column heading indicating the column for the number of "trials" for binomial response data. 
 #' If not supplied, the model may run but will not be the model you intended!
-#' @param x_type The statistical distribution of the x (concentration) data. This will be guessed based on 
-#' the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.
 #' @param family Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.
 #' @param priors An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
 #' If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.
@@ -65,9 +63,6 @@
 #' @return When only a single model is passed \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesnecfit", containing:
 #' \itemize{
 #'    \item "fit": the the fitted Bayesian model of class \code{\link[brms]{brmsfit}};
-#'    \item "mod_dat" the data used for the model fit;
-#'    \item "family" \code{\link[base]{character}} string defining the statistical distribution used for the y (response) data;
-#'    \item "x_type" \code{\link[base]{character}} string indicating the statistical distribution for the x (concentration) data;
 #'    \item "model" \code{\link[base]{character}} string indicating the name of the fitted model;
 #'    \item "pred_vals" a \code{\link[base]{list}} containing a \code{\link[base]{data.frame}} of summary posterior predicted values
 #'           and a vector containing based on the supplied \code{precision} and \code{x_range};
@@ -99,7 +94,7 @@
 #' }
 #' @export
 bnec <- function(data, x_var, y_var, model, trials_var = NA,
-                 x_type = NA, family = NULL, priors, x_range = NA,
+                 family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 2e3, warmup = floor(iter / 5) * 4, ...) {
   if (missing(model)) {
@@ -120,10 +115,9 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
       model_m <- model[m]
       fit_m <- try(
         fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
-                     trials_var = trials_var, x_type = x_type, family = family,
+                     trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
-                     x_range = x_range, precision = precision, iter = iter,
-                     warmup = warmup, ...),
+                     iter = iter, warmup = warmup, ...),
         silent = TRUE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
@@ -131,20 +125,25 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
         mod_fits[[m]] <- NA
       }
     }
-    mod_fits <- extract_modstats(mod_fits)
-    export_list <- mod_fits
-    if (!inherits(mod_fits, "bayesnecfit")) {
-      class(export_list) <- "bayesmanecfit"
+    mod_fits <- expand_manec(mod_fits, x_range = x_range,
+                             precision = precision,
+                             sig_val = sig_val)
+    if (!inherits(mod_fits, "prebayesnecfit")) {
+      allot_class(mod_fits, "bayesmanecfit")
+    } else {
+      mod_fits <- expand_nec(mod_fits, x_range = x_range,
+                             precision = precision,
+                             sig_val = sig_val)
+      allot_class(mod_fits, "bayesnecfit")
     }
+  } else {
+    mod_fit <- fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
+                            trials_var = trials_var, family = family,
+                            priors = priors, model = model,
+                            iter = iter, warmup = warmup, ...)
+    mod_fit <- expand_nec(mod_fit, x_range = x_range,
+                          precision = precision,
+                          sig_val = sig_val)
+    allot_class(mod_fit, "bayesnecfit")
   }
-
-  if (length(model) == 1) {
-    export_list <-  fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
-                                 trials_var = trials_var, x_type = x_type,
-                                 family = family, priors = priors,
-                                 model = model, x_range = x_range,
-                                 precision = precision, iter = iter,
-                                 warmup = warmup, ...)
-  }
-  export_list
 }
