@@ -52,9 +52,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   new_dat <- data.frame(x = x_seq)
   pred_posterior <- posterior_epred(fit, newdata = new_dat,
                                     re_formula = NA)
-  if (family$family == "binomial") {
-    pred_posterior <- pred_posterior / 10^3
-  }
   y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
                      scale = "response")
   pred_data <- data.frame(x = x_seq, Estimate = y_pred_m[, "Estimate"],
