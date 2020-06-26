@@ -138,15 +138,15 @@
     </div>
 
     <pre class="usage"><span class='fu'>ecx</span>(
-  <span class='no'>object</span>,
-  <span class='kw'>ecx_val</span> <span class='kw'>=</span> <span class='fl'>10</span>,
-  <span class='kw'>precision</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
-  <span class='kw'>posterior</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
-  <span class='kw'>type</span> <span class='kw'>=</span> <span class='st'>"absolute"</span>,
-  <span class='kw'>hormesis_def</span> <span class='kw'>=</span> <span class='st'>"control"</span>,
-  <span class='kw'>xform</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>x_range</span> <span class='kw'>=</span> <span class='fl'>NA</span>,
-  <span class='kw'>prob_vals</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span>)
+  <span class='kw'>object</span>,
+  ecx_val = <span class='fl'>10</span>,
+  precision = <span class='fl'>1000</span>,
+  posterior = <span class='fl'>FALSE</span>,
+  type = <span class='st'>"absolute"</span>,
+  hormesis_def = <span class='st'>"control"</span>,
+  xform = <span class='fl'>NA</span>,
+  x_range = <span class='fl'>NA</span>,
+  prob_vals = <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span>)
 )</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -154,7 +154,7 @@
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>object</th>
-      <td><p>An object of class "bayesnecfit" or "bayesmanecfit" returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
+      <td><p>An object of class "bayesnecfit" or "bayesmanecfit" returned by <code>bnec</code>.</p></td>
     </tr>
     <tr>
       <th>ecx_val</th>
@@ -206,7 +206,7 @@ For <code>hormesis_def</code>, if "max", then ECx values are calculated as a dec
 if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
-    <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
+    <div class='dont-index'><p><code>bnec</code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
