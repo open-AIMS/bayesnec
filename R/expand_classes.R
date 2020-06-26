@@ -23,6 +23,10 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
                  length = precision)
   }
   new_dat <- data.frame(x = x_seq)
+  family <- fit$family$family
+  if (family == "binomial") {
+    new_dat$trials <- 1
+  }
   pred_posterior <- posterior_epred(fit, newdata = new_dat,
                                     re_formula = NA)
   y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
