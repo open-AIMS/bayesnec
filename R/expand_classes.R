@@ -58,7 +58,7 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
   }
 
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
-  residuals <-  residuals(fit, method = "pp_expect")
+  residuals <-  residuals(fit, method = "pp_expect")[,"Estimate"]
   c(object, list(pred_vals = pred_vals), extracted_params,
     list(dispersion = od, predicted_y = predicted_y,
     residuals = residuals, nec_posterior = nec_posterior))
