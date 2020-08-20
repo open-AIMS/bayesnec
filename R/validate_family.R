@@ -9,7 +9,7 @@ validate_family <- function(family) {
   if (inherits(family, "function")) {
     family <- family()
   } else if (is.character(family)) {
-    family <- get(family)()
+    family <- get(family)(link = "identity")
   }
   if (!inherits(family, "family")) {
     stop("argument family either is not an actual family, ",
