@@ -217,7 +217,7 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></
     </tr>
     <tr>
       <th>...</th>
-      <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> via <code>fit_bayesnec</code>.</p></td>
+      <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> via <code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p></td>
     </tr>
     </table>
 
@@ -267,7 +267,7 @@ and may currently be "Beta" / Beta / Beta(), "binomial" / binomial / binomial(),
 of package <span class="pkg">brms</span>, so the user needs to load <span class="pkg">brms</span> before calling these families.
 Other families can be added as required, please raise an <a href='https://github.com/AIMS/bayesnec/issues'>issue</a> on the GitHub development site if your
 required family is not currently available.
-If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code>check_data</code>. Guesses
+If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>. Guesses
 include all of the above families but negbinomial because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
 Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the negbinomial family.</p>
 <p>The argument <code>model</code> may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
