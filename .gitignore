@@ -16,3 +16,4 @@ pdfs/
 bayesnec.Rcheck/
 bayesnec*tar.gz
 ..Rcheck/
+.Rproj.user
