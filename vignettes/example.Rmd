@@ -26,7 +26,7 @@ knitr::opts_chunk$set(
 
 # *bayesnec*
 
-The *bayesnec* is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via *brms* and *stan*. The package is an adaptation and extension of an initial package *jagsNEC* [@Fisher2020] which as based on the *R2jags* package and *jags*. 
+The *bayesnec* is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via *brms* [@Burkner2017; @Burkner2018] and *stan*. The package is an adaptation and extension of an initial package *jagsNEC* [@Fisher2020] which as based on the *R2jags* package [@Su2015] and *jags* [@Plummer2003]. 
 
 # Background
 
