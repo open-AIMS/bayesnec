@@ -72,7 +72,7 @@ ecx_nec <- function(object, ecx_val = 10, precision = 1000,
     m4param <- 0
   }
 
-  if (object$family$family == "gaussian" & type == "absolute") {
+  if (object$fit$family$family == "gaussian" & type == "absolute") {
     stop("Absolute ECx values are not valid for a gaussian ",
          "response variable unless a 4 parameter model is fit")
   }
