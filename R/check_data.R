@@ -118,12 +118,12 @@ check_data <- function(data, x_var, y_var,
   response <- data[, y_var]
 
   if (fam_tag == "binomial") {
-    mod_dat$trials <- data[, trials_var] # number of "trials"
+    mod_dat$trials <- data[, trials_var]
     response <- data[, y_var] / data[, trials_var]
   }
 
-  priors <- define_prior(model = model, x_type = x_type,
-                         family = family, response = response)
+  priors <- define_prior(model = model, family = family,
+                         predictor = mod_dat$x, response = response)
 
   list(priors = priors,
        mod_dat = mod_dat,
