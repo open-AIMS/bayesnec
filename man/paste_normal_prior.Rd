@@ -4,7 +4,7 @@
 \alias{paste_normal_prior}
 \title{paste_normal_prior}
 \usage{
-paste_normal_prior(mean, param, sd = 100, ...)
+paste_normal_prior(mean, param, sd = 1, ...)
 }
 \arguments{
 \item{mean}{A \code{\link[base]{numeric}} vector.}

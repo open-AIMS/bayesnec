@@ -9,9 +9,6 @@ define_prior(model, x_type, family, response)
 \arguments{
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 
-\item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
-the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
-
 \item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
 
 \item{response}{The response variable for the NEC model fit.}

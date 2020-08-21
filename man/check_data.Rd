@@ -4,7 +4,7 @@
 \alias{check_data}
 \title{check_data}
 \usage{
-check_data(data, x_var, y_var, trials_var, x_type = NA, family = NULL, model)
+check_data(data, x_var, y_var, trials_var, family = NULL, model)
 }
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for the model.}
@@ -15,9 +15,6 @@ check_data(data, x_var, y_var, trials_var, x_type = NA, family = NULL, model)
 
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
-
-\item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
-the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
 \item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
 

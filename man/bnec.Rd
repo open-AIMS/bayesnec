@@ -10,7 +10,6 @@ bnec(
   y_var,
   model,
   trials_var = NA,
-  x_type = NA,
   family = NULL,
   priors,
   x_range = NA,
@@ -32,9 +31,6 @@ bnec(
 
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
-
-\item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
-the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
 
 \item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
 
@@ -60,9 +56,6 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
 When only a single model is passed \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesnecfit", containing:
 \itemize{
 \item "fit": the the fitted Bayesian model of class \code{\link[brms]{brmsfit}};
-\item "mod_dat" the data used for the model fit;
-\item "family" \code{\link[base]{character}} string defining the statistical distribution used for the y (response) data;
-\item "x_type" \code{\link[base]{character}} string indicating the statistical distribution for the x (concentration) data;
 \item "model" \code{\link[base]{character}} string indicating the name of the fitted model;
 \item "pred_vals" a \code{\link[base]{list}} containing a \code{\link[base]{data.frame}} of summary posterior predicted values
 and a vector containing based on the supplied \code{precision} and \code{x_range};

@@ -9,13 +9,10 @@ fit_bayesnec(
   x_var,
   y_var,
   trials_var = NA,
-  x_type = NA,
   family = NULL,
   priors,
-  x_range = NA,
-  precision = 1000,
   model = NA,
-  sig_val = 0.01,
+  skip_check = FALSE,
   ...
 )
 }
@@ -29,22 +26,16 @@ fit_bayesnec(
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
 
-\item{x_type}{The statistical distribution of the x (concentration) data. This will be guessed based on
-the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.}
-
 \item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
 If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
 
-\item{x_range}{A range of x values over which to consider extracting ECx.}
-
-\item{precision}{The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.}
-
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+\item{skip_check}{Should data check via \code{\link{check_data}}
+be avoided? Only relevant to function \code{\link{modify}}.
+Defaults to FALSE.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
 }
