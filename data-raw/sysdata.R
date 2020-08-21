@@ -4,13 +4,13 @@ library(brms)
 # ACCEPTED MODEL GROUPS AND FAMILIES
 ####################################
 mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme", "necsigm"),
-                       ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsimg",
-                               "ecxwb1", "ecxwb2"),
-                       all = c("nec3param", "nec4param", "nechorme", "necsigm",
-                               "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
-                               "ecxwb1", "ecxwb2"),
-                       bot_free = c("nec3param", "nechorme", "necsigm",
-                                    "ecxlin", "ecxexp", "ecxsigm"))
+                   ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsimg",
+                           "ecxwb1", "ecxwb2"),
+                   all = c("nec3param", "nec4param", "nechorme", "necsigm",
+                           "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
+                           "ecxwb1", "ecxwb2"),
+                   bot_free = c("nec3param", "nechorme", "necsigm",
+                                "ecxlin", "ecxexp", "ecxsigm"))
 
 mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",

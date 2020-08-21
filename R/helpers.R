@@ -33,7 +33,7 @@ min_abs <- function(x) {
 #'
 #' @return A \code{\link[base]{character}} vector.
 #' @importFrom brms prior_string
-paste_normal_prior <- function(mean, param, sd = 100, ...) {
+paste_normal_prior <- function(mean, param, sd = 1, ...) {
     prior_string(paste0("normal(", mean, ", ", sd, ")"), nlpar = param, ...)
 }
 
