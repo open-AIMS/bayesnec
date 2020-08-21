@@ -12,16 +12,15 @@
 #' @importFrom stats qlogis binomial quantile Gamma poisson gaussian
 define_prior <- function(model, x_type, family, response) {
   link_fct <- family$linkfun
-  prior_top <- quantile(link_fct(response), probs = 0.8)
-  prior_bot <- quantile(link_fct(response), probs = 0.2)
-  prior_ec50 <- quantile(link_fct(response), probs = 0.5)
+  mean_top <- quantile(link_fct(response), probs = 0.8)
+  mean_bot <- quantile(link_fct(response), probs = 0.2)
 
-  priors <- prior_string("normal(0, 10)", nlpar = "beta", lb = 0) +
-            paste_normal_prior(prior_top, "top", 5)
+  priors <- prior_string("normal(0, 1)", nlpar = "beta") +
+            paste_normal_prior(mean_top, "top", 5)
 
   x_based_priors <- c(beta = "uniform(0.0001, 0.9999)",
-                      Gamma = "normal(0, 100)",
-                      gaussian = "normal(3, 100)")
+                      Gamma = "normal(0, 1)",
+                      gaussian = "normal(3, 1)")
   prior_nec <- prior_string(x_based_priors[x_type], nlpar = "nec")
   prior_d <- paste_normal_prior(0, "d")
 
@@ -33,18 +32,18 @@ define_prior <- function(model, x_type, family, response) {
   }
   if (model %in% c("ecx4param", "ecxwb1", "ecxwb2")) {
     priors <- priors +
-              paste_normal_prior(prior_bot, "bot") +
-              paste_normal_prior(prior_ec50, "ec50")
+              paste_normal_prior(mean_bot, "bot") +
+              prior_string(x_based_priors[x_type], nlpar = "ec50")
   }
   if (model == "nec4param") {
     priors <- priors +
-              paste_normal_prior(prior_bot, "bot") +
+              paste_normal_prior(mean_bot, "bot") +
               prior_nec
   }
   if (model == "nechorme") {
     priors <- priors +
               prior_nec +
-              paste_normal_prior(0, "slope", lb = 0)
+              paste_normal_prior(0, "slope")
   }
   if (model == "necsigm") {
     priors <- priors +
