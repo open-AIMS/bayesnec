@@ -4,7 +4,7 @@
 \alias{modify}
 \title{modify}
 \usage{
-modify(object, drop, add)
+modify(object, drop, add, x_range = NA, precision = 1000, sig_val = 0.01)
 }
 \arguments{
 \item{object}{An object of class "bayesmanecfit" output list, as returned by \code{\link{bnec}}.}

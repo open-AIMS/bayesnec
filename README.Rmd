@@ -28,6 +28,10 @@ version <- gsub('-', '.', version)
 ![pkgdown](https://github.com/AIMS/bayesnec/workflows/pkgdown/badge.svg)
 [![license](https://img.shields.io/badge/license-MIT + file LICENSE-lightgrey.svg)](https://choosealicense.com/)
 [![packageversion](https://img.shields.io/badge/Package%20version-`r version`-orange.svg)](commits/master)
+[![Ask Us Anything
+\!](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/AIMS/bayesnec/issues/new)
+![Open Source
+Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)
 <!-- badges: end -->
 
 ## Warning
