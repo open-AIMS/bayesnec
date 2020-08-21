@@ -12,6 +12,7 @@ extract_simdat <- function(modfit) {
        thin = x$thin,
        warmup = x$warmup,
        chains = x$chains,
+       inits = modfit$fit$fit@inits,
        n_samples = ceiling((x$iter - x$warmup) /
                              x$thin * x$chains))
 }

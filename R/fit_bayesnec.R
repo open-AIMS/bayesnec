@@ -15,16 +15,15 @@
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          family = NULL, priors, model = NA,
-                         skip_check = FALSE, ...) {
+                         inits, skip_check = FALSE, ...) {
 
   if (skip_check) {
     mod_dat <- data
     if (missing(priors)) {
       response <- ifelse(family$family != "binomial", data$y,
                          data$y / data$trials)
-      x_type <- set_distribution(data$x)
-      priors <- define_prior(model = model, x_type = x_type,
-                             family = family, response = response)
+      priors <- define_prior(model = model, family = family,
+                             predictor = data$x, response = response)
     }
   } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
@@ -39,8 +38,18 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
 
   suffix <- ifelse(family$family == "binomial", "_binom", "_deflt")
   brms_bf <- get(paste0("bf_", model, suffix))
+  add_args <- list(...)
+  if (missing(inits)) {
+    if ("chains" %in% names(add_args)) {
+      chs <- add_args$chains
+    } else {
+      # brms default
+      chs <- 4
+    }
+    inits <- make_inits(priors, chs)
+  }
   fit <- brm(formula = brms_bf, data = mod_dat, family = family,
-             prior = priors, ...)
+             prior = priors, inits = inits, ...)
   fit$loo <- loo(fit)
   fit$waic <- waic(fit)
 

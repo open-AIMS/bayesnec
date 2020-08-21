@@ -45,6 +45,7 @@ modify <- function(object, drop, add, x_range = NA,
                      iter = simdat$iter,
                      thin = simdat$thin,
                      warmup = simdat$warmup,
+                     inits = simdat$inits,
                      chains = simdat$chains),
         silent = TRUE)
       if (!inherits(fit_m, "try-error")) {

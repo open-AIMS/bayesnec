@@ -12,6 +12,7 @@ fit_bayesnec(
   family = NULL,
   priors,
   model = NA,
+  inits,
   skip_check = FALSE,
   ...
 )
@@ -32,6 +33,8 @@ If not supplied, the model may run but will not be the model you intended!}
 If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
+
+\item{inits}{Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.}
 
 \item{skip_check}{Should data check via \code{\link{check_data}}
 be avoided? Only relevant to function \code{\link{modify}}.

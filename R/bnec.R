@@ -19,6 +19,7 @@
 #' @param warmup A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number 
 #' of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup 
 #' should not be larger than "iter" and the default is "floor(iter / 5) * 4".
+#' @param inits Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.
 #' @param ... Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.
 #' 
 #' @details As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
@@ -96,7 +97,8 @@
 bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
-                 iter = 2e3, warmup = floor(iter / 5) * 4, ...) {
+                 iter = 2e3, warmup = floor(iter / 5) * 4,
+                 inits, ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
@@ -117,7 +119,8 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
         fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                      trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
-                     iter = iter, warmup = warmup, ...),
+                     iter = iter, warmup = warmup, inits = inits,
+                     ...),
         silent = TRUE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
@@ -140,7 +143,8 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
     mod_fit <- fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                             trials_var = trials_var, family = family,
                             priors = priors, model = model,
-                            iter = iter, warmup = warmup, ...)
+                            iter = iter, warmup = warmup,
+                            inits = inits, ...)
     mod_fit <- expand_nec(mod_fit, x_range = x_range,
                           precision = precision,
                           sig_val = sig_val)

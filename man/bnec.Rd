@@ -17,6 +17,7 @@ bnec(
   sig_val = 0.01,
   iter = 2000,
   warmup = floor(iter/5) * 4,
+  inits,
   ...
 )
 }
@@ -49,6 +50,8 @@ against the lowest observed concentration (assumed to be the control), to estima
 \item{warmup}{A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number
 of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup
 should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
+
+\item{inits}{Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
 }

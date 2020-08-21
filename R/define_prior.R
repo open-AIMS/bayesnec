@@ -4,51 +4,77 @@
 #'
 #' @inheritParams bnec
 #'
+#' @param predictor The predictor variable for the NEC model fit.
 #' @param response The response variable for the NEC model fit.
 #'
 #' @return A \code{\link[base]{list}} containing the \code{\link[brms]{prior}}
 #' and the string defining response distribution family to use.
 #' @importFrom brms bf prior_string negbinomial Beta
 #' @importFrom stats qlogis binomial quantile Gamma poisson gaussian
-define_prior <- function(model, x_type, family, response) {
-  link_fct <- family$linkfun
-  mean_top <- quantile(link_fct(response), probs = 0.8)
-  mean_bot <- quantile(link_fct(response), probs = 0.2)
+define_prior <- function(model, family, predictor, response) {
+  family <- family$family
+  x_type <- set_distribution(predictor)
+  u_t_g <- paste0("gamma(2, ",
+                  1 / (quantile(response, probs = 0.75) / 2),
+                  ")")
+  u_b_g <- paste0("gamma(2, ",
+                  1 / (quantile(response, probs = 0.25) / 2),
+                  ")")
+  y_t_prs <- c(Gamma = u_t_g,
+               poisson = u_t_g,
+               negbinomial = u_t_g,
+               gaussian = paste0("normal(",
+                                 quantile(response, probs = 0.75),
+                               ", 10)"),
+               binomial = "beta(1, 2)",
+               beta = "beta(1, 2)")
+  y_b_prs <- c(Gamma = u_b_g,
+               poisson = u_b_g,
+               negbinomial = u_b_g,
+               gaussian = paste0("normal(",
+                                 quantile(response, probs = 0.25),
+                               ", 10)"),
+               binomial = "beta(2, 1)",
+               beta = "beta(2, 1)")
 
-  priors <- prior_string("normal(0, 1)", nlpar = "beta") +
-            paste_normal_prior(mean_top, "top", 5)
-
-  x_based_priors <- c(beta = "uniform(0.0001, 0.9999)",
-                      Gamma = "normal(0, 1)",
-                      gaussian = "normal(3, 1)")
-  prior_nec <- prior_string(x_based_priors[x_type], nlpar = "nec")
-  prior_d <- paste_normal_prior(0, "d")
-
-  if (model == "nec3param") {
-    priors <- priors + prior_nec
-  }
+  x_prs <- c(beta = "beta(2, 2)",
+             Gamma = paste0("gamma(2, ",
+                            1 / (quantile(predictor,
+                                          probs = 0.5) / 2),
+                            ")"),
+             gaussian = paste0("normal(",
+                               quantile(predictor,
+                                        probs = 0.5),
+                               ", 10)"))
+  # y-dependent priors
+  pr_top <- prior_string(y_t_prs[family], nlpar = "top")
+  pr_bot <- prior_string(y_b_prs[family], nlpar = "bot")
+  # x-dependent priors
+  x_type <- set_distribution(predictor)
+  pr_nec <- prior_string(x_prs[x_type], nlpar = "nec")
+  pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50")
+  # x- and y-independent priors
+  pr_d <- paste_normal_prior(1, "d", 10)
+  pr_beta <- prior_string("gamma(2, 0.1)", nlpar = "beta")
+  pr_slope <- pr_beta
+  # assemble
   if (model == "ecxsigm") {
-    priors <- priors + prior_d
+    priors <- pr_beta + pr_top + pr_d
   }
   if (model %in% c("ecx4param", "ecxwb1", "ecxwb2")) {
-    priors <- priors +
-              paste_normal_prior(mean_bot, "bot") +
-              prior_string(x_based_priors[x_type], nlpar = "ec50")
+    priors <- pr_beta + pr_top + pr_bot + pr_ec50
+  }
+  if (model == "nec3param") {
+    priors <- pr_beta + pr_top + pr_nec
   }
   if (model == "nec4param") {
-    priors <- priors +
-              paste_normal_prior(mean_bot, "bot") +
-              prior_nec
+    priors <- pr_beta + pr_top + pr_bot + pr_nec
   }
   if (model == "nechorme") {
-    priors <- priors +
-              prior_nec +
-              paste_normal_prior(0, "slope")
+    priors <- pr_beta + pr_top + pr_nec + pr_slope
   }
   if (model == "necsigm") {
-    priors <- priors +
-              prior_nec +
-              prior_d
+    priors <- pr_beta + pr_top + pr_nec + pr_d
   }
   priors
 }
