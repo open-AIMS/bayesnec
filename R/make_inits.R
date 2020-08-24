@@ -14,18 +14,27 @@ make_inits <- function(priors, chains) {
             beta = rbeta,
             uniform = runif)
   priors <- as.data.frame(priors)
-  priors <- priors[priors$nlpar != "" &
-                   priors$prior != "", ]
+  priors <- priors[priors$prior != "", ]
+  par_names <- character(length = nrow(priors))
+  for (j in seq_along(par_names)) {
+    sep <- ifelse(priors$class[j] == "b", "_", "")
+    par_names[j] <- paste(priors$class[j],
+                          priors$nlpar[j],
+                          sep = sep)
+  }
   out <- vector(mode = "list", length = chains)
   for (i in seq_along(out)) {
     out[[i]] <- vector(mode = "list", length = nrow(priors))
-    names(out[[i]]) <- priors$nlpar
+    names(out[[i]]) <- par_names
     for (j in seq_len(nrow(priors))) {
       bits <- strsplit(priors$prior[j], "[^[:alnum:]\\-\\.\\s]")[[1]]
       fct_i <- bits[1]
       v1 <- as.numeric(bits[2])
       v2 <- as.numeric(bits[4])
       out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+      if (priors$class[j] == "b") {
+        dim(out[[i]][[j]]) <- 1
+      }
     }
   }
   out
