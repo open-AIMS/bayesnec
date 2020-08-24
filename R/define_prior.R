@@ -18,14 +18,14 @@ define_prior <- function(model, family, predictor, response) {
                   1 / (quantile(response, probs = 0.75) / 2),
                   ")")
   u_b_g <- paste0("gamma(2, ",
-                  1 / (quantile(response, probs = 0.25) / 2),
+                  (1 / (quantile(response, probs = 0.25) / 2))+min(response),
                   ")")
   y_t_prs <- c(Gamma = u_t_g,
                poisson = u_t_g,
                negbinomial = u_t_g,
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.75),
-                               ", 10)"),
+                               ", ", sd(response), ")"),
                binomial = "beta(2, 1)",
                beta = "beta(2, 1)")
   y_b_prs <- c(Gamma = u_b_g,
@@ -33,7 +33,7 @@ define_prior <- function(model, family, predictor, response) {
                negbinomial = u_b_g,
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.25),
-                               ", 10)"),
+                               ", ", sd(response),")"),
                binomial = "beta(1, 2)",
                beta = "beta(1, 2)")
 
@@ -45,7 +45,7 @@ define_prior <- function(model, family, predictor, response) {
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),
-                               ", 10)"))
+                               ", ", sd(predictor), ")"))
   # y-dependent priors
   pr_top <- prior_string(y_t_prs[family], nlpar = "top")
   pr_bot <- prior_string(y_b_prs[family], nlpar = "bot")
