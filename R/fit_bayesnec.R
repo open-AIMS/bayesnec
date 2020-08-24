@@ -20,8 +20,11 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   if (skip_check) {
     mod_dat <- data
     if (missing(priors)) {
-      response <- ifelse(family$family != "binomial", data$y,
-                         data$y / data$trials)
+      if (family$family != "binomial") {
+        response <- data$y
+      } else {
+        response <- data$y / data$trials
+      }
       priors <- define_prior(model = model, family = family,
                              predictor = data$x, response = response)
     }
@@ -39,7 +42,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   suffix <- ifelse(family$family == "binomial", "_binom", "_deflt")
   brms_bf <- get(paste0("bf_", model, suffix))
   add_args <- list(...)
-  if (missing(inits)) {
+  if (missing(inits) | skip_check) {
     if ("chains" %in% names(add_args)) {
       chs <- add_args$chains
     } else {
@@ -57,6 +60,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                  model, " model using a ", family$family,
                  " distribution."))
 
-  out <- list(fit = fit, model = model)
+  out <- list(fit = fit, model = model, inits = inits)
   allot_class(out, "prebayesnecfit")
 }
