@@ -18,7 +18,7 @@ define_prior <- function(model, family, predictor, response) {
                   1 / (quantile(response, probs = 0.75) / 2),
                   ")")
   u_b_g <- paste0("gamma(2, ",
-                  (1 / (quantile(response, probs = 0.25) / 2))+min(response),
+                  1 / ((quantile(response, probs = 0.25)+min(response[response > 0])/100) / 2),
                   ")")
   y_t_prs <- c(Gamma = u_t_g,
                poisson = u_t_g,
