@@ -60,6 +60,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                  model, " model using a ", family$family,
                  " distribution."))
 
-  out <- list(fit = fit, model = model)
+  out <- list(fit = fit, model = model, inits = inits)
   allot_class(out, "prebayesnecfit")
 }
