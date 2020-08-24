@@ -78,12 +78,12 @@ bf_necsigm_deflt <- brms::bf(y ~ top *
 # ECXEXP MODELS
 ###############
 # ecxlin
-bf_ecxlin_binom <- brms::bf(y | trials(trials) ~ top - beta * x,
-                            top + beta ~ 1,
+bf_ecxlin_binom <- brms::bf(y | trials(trials) ~ top - slope * x,
+                            top + slope ~ 1,
                             nl = TRUE)
 
-bf_ecxlin_deflt <- brms::bf(y ~ top - beta * x,
-                            top + beta ~ 1,
+bf_ecxlin_deflt <- brms::bf(y ~ top - slope * x,
+                            top + slope ~ 1,
                             nl = TRUE)
 
 # ecxexp
