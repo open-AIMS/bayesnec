@@ -334,8 +334,7 @@ out <- bnec(
   data = binom.data,
   x_var = "log.x",
   y_var = "prop",
-  model = "ecx4param",
-  family = Beta(link="identity")
+  model = "ecx4param"
 )
 
 plot(out$fit)
