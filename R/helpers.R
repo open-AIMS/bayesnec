@@ -140,3 +140,87 @@ are_chains_correct <- function(brms_fit, chains) {
     fit_chs == chains
   }
 }
+
+pred_nec3param <- function(b_beta, b_nec, b_top, x) {
+  b_top * exp(-b_beta * (x - b_nec) *
+    ifelse(x - b_nec < 0, 0, 1))
+}
+
+pred_nec4param <- function(b_beta, b_bot, b_nec, b_top, x) {
+  b_bot + (b_top - b_bot) * exp(-b_beta * (x - b_nec) *
+    ifelse(x - b_nec < 0, 0, 1))
+}
+
+pred_nechorme <- function(b_top, b_slope, b_beta, b_nec, x) {
+  (b_top + b_slope * x) * exp(-b_beta * (x - b_nec) *
+    ifelse(x - b_nec < 0, 0, 1))
+}
+
+pred_necsigm <- function(b_beta, b_top, b_nec, b_d, x) {
+  b_top * exp(-b_beta * (x - b_nec) ^ b_d *
+    ifelse(x - b_nec < 0, 0, 1))
+}
+
+pred_ecxlin <- function(b_top, b_slope, x) {
+  b_top - b_slope * x
+}
+
+pred_ecxexp <- function(b_top, b_beta, x) {
+  b_top * exp(-b_beta * x)
+}
+
+pred_ecxsigm <- function(b_top, b_beta, b_d, x) {
+  b_top * exp(-b_beta * x)^b_d
+}
+
+pred_ecx4param <- function(b_top, b_bot, b_ec50, b_beta, x) {
+  b_top + (b_bot - b_top) /
+    (1 + exp((b_ec50 - x) * b_beta))
+}
+
+pred_ecxwb1 <- function(x) {
+  b_bot + (b_top - b_bot) *
+    exp(-exp(b_beta * (x - b_ec50)))
+}
+
+pred_ecxwb2 <- function(x) {
+  b_bot + (b_top - b_bot) *
+    (1 - exp(-exp(b_beta * (x - b_ec50))))
+}
+
+get_init_ranges <- function(y, x, fct, .args) {
+  y <- y[match(.args, names(y))]
+  y <- lapply(y, as.numeric)
+  y[["x"]] <- x
+  range(do.call("fct", y))
+}
+
+check_limits <- function(x, limits) {
+  min(x) >= min(limits) & max(x) <= max(limits)
+}
+
+make_good_inits <- function(family, model, x, ...) {
+  limits <- list(gaussian = c(-Inf, Inf),
+                 poisson = c(0, Inf),
+                 negbinomial = c(0, Inf),
+                 Gamma = c(1e-100, Inf),
+                 beta = c(1e-100, 0.999999999),
+                 binomial = c(0, 1))
+  limits <- limits[[family$family]]
+  pred_fct <- get(paste0("pred_", model))
+  fct_args <- names(unlist(as.list(args(pred_fct))))
+  fct_args <- setdiff(fct_args, "x")
+  inits <- make_inits(...)
+  init_ranges <- lapply(inits, get_init_ranges,
+                        x, pred_fct, fct_args)
+  are_good <- all(sapply(init_ranges, check_limits, limits))
+  while (!are_good) {
+    inits <- make_inits(...)
+    init_ranges <- lapply(inits, get_init_ranges,
+                          x, pred_fct, fct_args)
+    are_good <- all(sapply(init_ranges,
+                           check_limits,
+                           limits))
+  }
+  inits
+}
