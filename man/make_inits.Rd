@@ -4,12 +4,15 @@
 \alias{make_inits}
 \title{make_inits}
 \usage{
-make_inits(priors, chains)
+make_inits(priors, chains, stan_like = FALSE)
 }
 \arguments{
 \item{priors}{an object of class "brmsprior" from package \pkg{brms}.}
 
 \item{chains}{Number of chains to be passed to brms model.}
+
+\item{stan_like}{Should initial values be drawn in a similar
+fashion to how they are drawn by stan? Defaults to FALSE.}
 }
 \value{
 A \code{\link[base]{list}} containing the initialisation values.
