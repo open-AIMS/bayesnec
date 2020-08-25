@@ -80,7 +80,7 @@ define_prior <- function(model, family, predictor, response) {
     priors <- pr_beta + pr_top + pr_nec + pr_slope
   }
   if (model == "necsigm") {
-    priors <- pr_beta + pr_top + pr_nec
+    priors <- pr_beta + pr_top + pr_nec + pr_d
   }
   if (model == "ecxlin") {
     priors <- pr_slope + pr_top
