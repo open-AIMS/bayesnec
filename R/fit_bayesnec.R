@@ -48,7 +48,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     inits <- make_inits(priors, chs)
   }
   fit <- brm(formula = brms_bf, data = mod_dat, family = family,
-             prior = priors, inits = inits, ...)
+             prior = priors, inits = 'random', ...)
   w <- 1
   n_tries <- 5
   pass <- are_chains_correct(fit, chs)
@@ -60,8 +60,16 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     if (!pass) {
       inits <- make_inits(priors, chs, stan_like = TRUE)
       fit <- update(fit, inits = inits, ...)
+      pass <- are_chains_correct(fit, chs)   
     }
+
     w <- w + 1
+  }
+  
+  if (!pass) {
+    fit <- brm(formula = brms_bf, data = mod_dat, family = family,
+               prior = priors,  ...) 
+    pass <- are_chains_correct(fit, chs)     
   }
   if (!pass) {
     stop(paste0("Failed to fit model ", model, "."),
