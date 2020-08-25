@@ -16,7 +16,6 @@
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          family = NULL, priors, model = NA,
                          inits, skip_check = FALSE, ...) {
-
   if (skip_check) {
     mod_dat <- data
     if (missing(priors)) {
@@ -38,83 +37,41 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
       priors <- data_check$priors
     }
   }
-
-  pass <- FALSE
-  w <- 1
-  n_tries <- 5
-  
   suffix <- ifelse(family$family == "binomial", "_binom", "_deflt")
   brms_bf <- get(paste0("bf_", model, suffix))
   add_args <- list(...)
-  
+  chs <- 4
+  if ("chains" %in% names(add_args)) {
+    chs <- add_args$chains
+  }
   if (missing(inits) | skip_check) {
-    if ("chains" %in% names(add_args)) {
-      chs <- add_args$chains
-    } else {
-      # brms default
-      chs <- 4
-    }
     inits <- make_inits(priors, chs)
   }
-
   fit <- brm(formula = brms_bf, data = mod_dat, family = family,
-               prior = priors, inits = inits, ...)
-  fit.chs <- fit$fit@sim$chains
-  if(is.null(fit.chs)){
-    pass <- FALSE
-  }else{
-    if(fit.chs==chs){
-      pass <- TRUE
-    }
-    if(fit.chs!=chs){
-      pass <- FALSE
-    }    
-  }
-
-  while(pass==FALSE & w < n_tries){
+             prior = priors, inits = inits, ...)
+  w <- 1
+  n_tries <- 5
+  pass <- are_chains_correct(fit, chs)
+  # try with bayesnec random initial values
+  while (!pass & w < n_tries) {
     inits <- make_inits(priors, chs)
-    #fit <- brm(formula = brms_bf, data = mod_dat, family = family,
-    #           prior = priors, inits = inits, ...)
-    update(fit, inits = inits)
-    fit.chs <- fit$fit@sim$chains
-    if(is.null(fit.chs)){
-      pass <- FALSE
-    }else{
-      if(fit.chs==chs){
-        pass <- TRUE
-      }
-      if(fit.chs!=chs){
-        pass <- FALSE
-      }    
+    fit <- update(fit, inits = inits, ...)
+    pass <- are_chains_correct(fit, chs)
+    if (!pass) {
+      inits <- make_inits(priors, chs, stan_like = TRUE)
+      fit <- update(fit, inits = inits, ...)
     }
-    w <- w+1
+    w <- w + 1
   }
-  
-  if(pass==FALSE){ # try with brms default initial values
-    fit <- brm(formula = brms_bf, data = mod_dat, family = family,
-               prior = priors, ...)
-  }  
-  fit.chs <- fit$fit@sim$chains
-  if(is.null(fit.chs)){
-    pass <- FALSE
-  }else{
-    if(fit.chs==chs){
-      pass <- TRUE
-    }
-    if(fit.chs!=chs){
-      pass <- FALSE
-    }    
+  if (!pass) {
+    stop(paste0("Failed to fit model ", model, "."),
+         call. = FALSE)
   }
-  
-  if(pass==FALSE){stop(paste("Failed to fit model ", model, ".", sep=""), call. = FALSE)}
-
   fit$loo <- loo(fit)
   fit$waic <- waic(fit)
-
   message(paste0("Response variable modelled as a ",
                  model, " model using a ", family$family,
                  " distribution."))
-
   out <- list(fit = fit, model = model, inits = inits)
   allot_class(out, "prebayesnecfit")
 }
