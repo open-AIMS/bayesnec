@@ -8,7 +8,7 @@
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 make_inits <- function(priors, chains) {
-  set.seed(10)
+  #set.seed(10)
   fcts <- c(gamma = rgamma,
             normal = rnorm,
             beta = rbeta,
