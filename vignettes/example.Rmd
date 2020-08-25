@@ -100,14 +100,7 @@ The function shows the progress of the *brms* fit and returns the usual *brms* o
 plot(out$fit)
 ```
 
-In our example, the chains are well mixed and our ACF plot looks good, so we can go ahead and interpret this model, although the brms warning message indicates that we might need more iterations. Let's add some more iterations to our model, and check the output again. Note that it is important replace the fit in our bayesnecfit object with the updated model.
-
-```{r update-binomial-NEC, echo=FALSE}
-out$fit <- update(out$fit, iter = 10000)
-plot(out$fit)
-
-
-```
+In our example, the chains are well mixed and our ACF plot looks good, so we can go ahead and interpret this model. There are a range of brms warnings messages, for now as long as the chain plots are good and the parameter estimates are reasonable it is generally ok to interpret a model.
 
 The function *plot* can be used to plot the fitted model. You can also make your own plot from the data included in the returned *bayesnecfit* object from the call to *bnec*. In this example, this could be extracted using *out$pred.vals*. Here we use the default plot method from *bayesnec*.
 
