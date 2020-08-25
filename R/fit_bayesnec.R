@@ -94,6 +94,17 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     fit <- brm(formula = brms_bf, data = mod_dat, family = family,
                prior = priors, ...)
   }  
+  fit.chs <- fit$fit@sim$chains
+  if(is.null(fit.chs)){
+    pass <- FALSE
+  }else{
+    if(fit.chs==chs){
+      pass <- TRUE
+    }
+    if(fit.chs!=chs){
+      pass <- FALSE
+    }    
+  }
   
   if(pass==FALSE){stop(paste("Failed to fit model ", model, ".", sep=""), call. = FALSE)}
 
