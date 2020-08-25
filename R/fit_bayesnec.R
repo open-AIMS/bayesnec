@@ -40,16 +40,20 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   suffix <- ifelse(family$family == "binomial", "_binom", "_deflt")
   brms_bf <- get(paste0("bf_", model, suffix))
   add_args <- list(...)
-  chs <- 4
-  if ("chains" %in% names(add_args)) {
-    chs <- add_args$chains
+  if (!("chains" %in% names(add_args))) {
+    add_args[["chains"]] <- 4
   }
+  chs <- add_args$chains
   if (missing(inits) | skip_check) {
     inits <- make_good_inits(family, model, mod_dat$x,
-                             priors = priors, chains = chs)
+                             priors = priors,
+                             chains = chs)
   }
-  fit <- brm(formula = brms_bf, data = mod_dat, family = family,
-             prior = priors, inits = "random", ...)
+  all_args <- c(list(formula = brms_bf, data = mod_dat,
+                     family = family, prior = priors,
+                     inits = inits),
+                add_args)
+  fit <- do.call(brm, all_args)
   w <- 1
   n_tries <- 5
   pass <- are_chains_correct(fit, chs)
@@ -57,23 +61,20 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   while (!pass & w < n_tries) {
     inits <- make_good_inits(family, model, mod_dat$x,
                              priors = priors, chains = chs)
-    fit <- update(fit, inits = inits, ...)
+    up_args <- c(list(object = fit, inits = inits),
+                 add_args)
+    fit <- do.call(update, up_args)
     pass <- are_chains_correct(fit, chs)
     if (!pass) {
       inits <- make_good_inits(family, model, mod_dat$x,
                                priors = priors, chains = chs,
                                stan_like = TRUE)
-      fit <- update(fit, inits = inits, ...)
-      pass <- are_chains_correct(fit, chs)   
+      up_args <- c(list(object = fit, inits = inits),
+                   add_args)
+      fit <- do.call(update, up_args)
+      pass <- are_chains_correct(fit, chs)
     }
-
     w <- w + 1
-  }
-  
-  if (!pass) {
-    fit <- brm(formula = brms_bf, data = mod_dat, family = family,
-               prior = priors,  ...) 
-    pass <- are_chains_correct(fit, chs)     
   }
   if (!pass) {
     stop(paste0("Failed to fit model ", model, "."),
