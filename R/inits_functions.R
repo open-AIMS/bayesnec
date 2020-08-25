@@ -18,7 +18,6 @@ make_inits <- function(priors, chains, stan_like = FALSE) {
                normal = function() runif(1, -2, 2),
                beta = function() runif(1, 0.01, 0.99),
                uniform = function() runif(1, -2, 2))
-
   priors <- as.data.frame(priors)
   priors <- priors[priors$prior != "", ]
   par_names <- character(length = nrow(priors))
@@ -48,4 +47,41 @@ make_inits <- function(priors, chains, stan_like = FALSE) {
     }
   }
   out
+}
+
+#' make_good_inits
+#'
+#' Creates list of initialisation values that generate
+#' data within the natural range of data
+#'
+#' @inheritParams bnec
+#' 
+#' @param x A \code{\link[base]{numeric}} vector containing the x predictor.
+#' @param y A \code{\link[base]{numeric}} vector containing the y response.
+#' @param n_trials A \code{\link[base]{numeric}} vector indicating
+#' how many attempts the function should run before giving up.
+#' @param ... Additional arguments to \code{\link{make_inits}}.
+#'
+#' @seealso \code{\link{make_inits}}
+#' @return A \code{\link[base]{list}} containing the initialisation values.
+make_good_inits <- function(model, x, y, n_trials = 1e3, ...) {
+  limits <- range(y, na.rm = TRUE)
+  pred_fct <- get(paste0("pred_", model))
+  fct_args <- names(unlist(as.list(args(pred_fct))))
+  fct_args <- setdiff(fct_args, "x")
+  inits <- make_inits(...)
+  init_ranges <- lapply(inits, get_init_ranges,
+                        x, pred_fct, fct_args)
+  are_good <- all(sapply(init_ranges, check_limits, limits))
+  n <- 1
+  while (!are_good & n <= n_trials) {
+    inits <- make_inits(...)
+    init_ranges <- lapply(inits, get_init_ranges,
+                          x, pred_fct, fct_args)
+    are_good <- all(sapply(init_ranges,
+                           check_limits,
+                           limits))
+    n <- n + 1
+  }
+  inits
 }
