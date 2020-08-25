@@ -36,6 +36,11 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     if (missing(priors)) {
       priors <- data_check$priors
     }
+    if (family$family != "binomial") {
+      response <- mod_dat$y
+    } else {
+      response <- mod_dat$y / mod_dat$trials
+    }
   }
   suffix <- ifelse(family$family == "binomial", "_binom", "_deflt")
   brms_bf <- get(paste0("bf_", model, suffix))
@@ -45,8 +50,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   }
   chs <- add_args$chains
   if (missing(inits) | skip_check) {
-    inits <- make_good_inits(family, model, mod_dat$x,
-                             priors = priors,
+    inits <- make_good_inits(model, mod_dat$x,
+                             response, priors = priors,
                              chains = chs)
   }
   all_args <- c(list(formula = brms_bf, data = mod_dat,
@@ -59,15 +64,17 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   pass <- are_chains_correct(fit, chs)
   # try with bayesnec random initial values
   while (!pass & w < n_tries) {
-    inits <- make_good_inits(family, model, mod_dat$x,
-                             priors = priors, chains = chs)
+    inits <- make_good_inits(model, mod_dat$x,
+                             response, priors = priors,
+                             chains = chs)
     up_args <- c(list(object = fit, inits = inits),
                  add_args)
     fit <- do.call(update, up_args)
     pass <- are_chains_correct(fit, chs)
     if (!pass) {
-      inits <- make_good_inits(family, model, mod_dat$x,
-                               priors = priors, chains = chs,
+      inits <- make_good_inits(model, mod_dat$x,
+                               response, priors = priors,
+                               chains = chs,
                                stan_like = TRUE)
       up_args <- c(list(object = fit, inits = inits),
                    add_args)
