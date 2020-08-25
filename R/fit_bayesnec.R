@@ -45,7 +45,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     chs <- add_args$chains
   }
   if (missing(inits) | skip_check) {
-    inits <- make_inits(priors, chs)
+    inits <- make_good_inits(family, model, mod_dat$x,
+                             priors = priors, chains = chs)
   }
   fit <- brm(formula = brms_bf, data = mod_dat, family = family,
              prior = priors, inits = 'random', ...)
@@ -54,11 +55,14 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   pass <- are_chains_correct(fit, chs)
   # try with bayesnec random initial values
   while (!pass & w < n_tries) {
-    inits <- make_inits(priors, chs)
+    inits <- make_good_inits(family, model, mod_dat$x,
+                             priors = priors, chains = chs)
     fit <- update(fit, inits = inits, ...)
     pass <- are_chains_correct(fit, chs)
     if (!pass) {
-      inits <- make_inits(priors, chs, stan_like = TRUE)
+      inits <- make_good_inits(family, model, mod_dat$x,
+                               priors = priors, chains = chs,
+                               stan_like = TRUE)
       fit <- update(fit, inits = inits, ...)
       pass <- are_chains_correct(fit, chs)   
     }
