@@ -14,9 +14,9 @@ make_inits <- function(priors, chains, stan_like = FALSE) {
             normal = rnorm,
             beta = rbeta,
             uniform = runif)
-  fcts_st <- c(gamma = function() runif(1, 0, 2),
+  fcts_st <- c(gamma = function() runif(1, 0.01, 2),
                normal = function() runif(1, -2, 2),
-               beta = function() runif(1, 0, 1),
+               beta = function() runif(1, 0.01, 0.99),
                uniform = function() runif(1, -2, 2))
 
   priors <- as.data.frame(priors)
