@@ -63,13 +63,13 @@ bf_nechorme_deflt <- brms::bf(y ~ (top + slope * x) *
 
 # necsigm
 bf_necsigm_binom <- brms::bf(y | trials(trials) ~ top *
-                               exp(-beta * (x - nec)^d *
+                               exp(-beta * exp(x - nec) *
                                  step(x - nec)),
                              top + beta + nec + d ~ 1,
                              nl = TRUE)
 
 bf_necsigm_deflt <- brms::bf(y ~ top *
-                               exp(-beta * (x - nec)^d *
+                               exp(-beta * exp(x - nec) *
                                  step(x - nec)),
                              top + beta + nec + d ~ 1,
                              nl = TRUE)
@@ -96,11 +96,11 @@ bf_ecxexp_deflt <- brms::bf(y ~ top * exp(-beta * x),
                             nl = TRUE)
 
 # ecxsigm
-bf_ecxsigm_binom <- brms::bf(y | trials(trials) ~ top * exp(-beta * x)^d,
+bf_ecxsigm_binom <- brms::bf(y | trials(trials) ~ top * exp(-beta * x)^exp(d),
                              d + top + beta ~ 1,
                              nl = TRUE)
 
-bf_ecxsigm_deflt <- brms::bf(y ~ top * exp(-beta * x)^d,
+bf_ecxsigm_deflt <- brms::bf(y ~ top * exp(-beta * x)^exp(d),
                              d + top + beta ~ 1,
                              nl = TRUE)
 

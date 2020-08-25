@@ -54,9 +54,9 @@ define_prior <- function(model, family, predictor, response) {
   pr_nec <- prior_string(x_prs[x_type], nlpar = "nec")
   pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50")
   # x- and y-independent priors
-  pr_d <- prior_string("gamma(2, 0.2)", nlpar = "d")
+  pr_d <- prior_string("normal(0, 0.1)", nlpar = "d")
   
-  pr_beta <- prior_string("gamma(2, 0.2)", nlpar = "beta")
+  pr_beta <- prior_string("gamma(0.5, 2)", nlpar = "beta")
   
   # scaling dependent priors
   pr_slope <- prior_string(paste0("gamma(2, ",
@@ -80,7 +80,7 @@ define_prior <- function(model, family, predictor, response) {
     priors <- pr_beta + pr_top + pr_nec + pr_slope
   }
   if (model == "necsigm") {
-    priors <- pr_beta + pr_top + pr_nec + pr_d
+    priors <- pr_beta + pr_top + pr_nec
   }
   if (model == "ecxlin") {
     priors <- pr_slope + pr_top
