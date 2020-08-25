@@ -49,7 +49,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                              priors = priors, chains = chs)
   }
   fit <- brm(formula = brms_bf, data = mod_dat, family = family,
-             prior = priors, inits = 'random', ...)
+             prior = priors, inits = "random", ...)
   w <- 1
   n_tries <- 5
   pass <- are_chains_correct(fit, chs)
