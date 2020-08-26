@@ -16,7 +16,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                lxform = NA, jitter_x = FALSE,
                                jitter_y = FALSE, ylab = "response",
                                xlab = "concentration", xticks = NA,
-                               all_models = TRUE) {
+                               all_models = FALSE) {
   if (all_models) {
     mod_fits <- x$mod_fits
     par(mfrow = c(ceiling(length(mod_fits) / 2), 2),
