@@ -27,7 +27,7 @@ pred_ecxexp <- function(b_top, b_beta, x) {
 }
 
 pred_ecxsigm <- function(b_top, b_beta, b_d, x) {
-  b_top * exp(-b_beta * x)^exp(b_d)
+  b_top * exp(-b_beta * x^exp(b_d))
 }
 
 pred_ecx4param <- function(b_top, b_bot, b_ec50, b_beta, x) {
