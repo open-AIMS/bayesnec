@@ -35,12 +35,12 @@ pred_ecx4param <- function(b_top, b_bot, b_ec50, b_beta, x) {
     (1 + exp((b_ec50 - x) * b_beta))
 }
 
-pred_ecxwb1 <- function(x) {
+pred_ecxwb1 <- function(b_bot, b_top, b_beta, b_ec50, x) {
   b_bot + (b_top - b_bot) *
     exp(-exp(b_beta * (x - b_ec50)))
 }
 
-pred_ecxwb2 <- function(x) {
+pred_ecxwb2 <- function(b_bot, b_top, b_beta, b_ec50, x) {
   b_bot + (b_top - b_bot) *
     (1 - exp(-exp(b_beta * (x - b_ec50))))
 }
