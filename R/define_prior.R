@@ -26,8 +26,8 @@ define_prior <- function(model, family, predictor, response) {
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.75),
                                ", ", sd(response), ")"),
-               binomial = "beta(2, 1)",
-               beta = "beta(2, 1)")
+               binomial = "beta(5, 1)",
+               beta = "beta(5, 1)")
   y_b_prs <- c(Gamma = u_b_g,
                poisson = u_b_g,
                negbinomial = u_b_g,
@@ -35,7 +35,7 @@ define_prior <- function(model, family, predictor, response) {
                                  quantile(response, probs = 0.25),
                                ", ", sd(response),")"),
                binomial = "beta(1, 5)",
-               beta = "beta(1, 2)")
+               beta = "beta(1, 5)")
 
   x_prs <- c(beta = "beta(2, 2)",
              Gamma = paste0("gamma(2, ",
