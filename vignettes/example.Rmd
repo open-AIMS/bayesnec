@@ -388,7 +388,7 @@ plot(out)
 The default plot looks exactly the same out our regular *bayesnecfit* plot, but the output is based in a weighted average of all the models fits. The *NEC* estimate on this plot is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the *ecx* models in the set. Note that we do not currently recommend reporting this values as the *NEC* (see below). The fitted *bayesmanecfit* object contains different elements to the *bayesnecfit*. In particular
 
 ```{r modstats-beta-MANEC}
-out$mod.stats
+out$mod_stats
 ```
 
 contains the table of model fit statistic for all the fitted models. This includes the model name, the WAIC (as returned from *brms*), WAIC.delta (WAIC - the lowest WAIC), wi (the model weight), pD, and the overdispersion estimate. For this example, three models have relatively similar weights and contribute to the model averaged outcome, including the *nec3param*, *nec4param* and the *ecx4param* models, with the *nec4param* being overall the highest.
@@ -396,8 +396,8 @@ contains the table of model fit statistic for all the fitted models. This includ
 The *bayesmanecfit* object also contains all of the original fits, which can be extracted using the *pull_out* function.
 
 ```{r extract_mod-beta-MANEC}
-out.nec3param <-pull_out(out)
-
+out.nec3param <-pull_out(out, model = "nec3param")
+plot(out.nec3param)
 ```
 
 This would extract the *nec3param* model from the *bayesmanecfit* and create a new object that contains just this *bayesnecfit* fit. This would be identical to fitting the *nec3param* as a single model using *bnec* as we did above. All of the models in the *bayesmanecfit* can be simultaneously plotted using
@@ -414,7 +414,8 @@ The models prefixed with *ecx* are all models that do not have the *NEC* as a pa
 
 
 ```{r extract_NECmod-beta-MANEC, cache=TRUE, echo=FALSE}
-out.NEC <- modify(out, model = "NEC")
+out.NEC <- pull_out(out, model = "nec")
+out.NEC <- modify(out, drop = "nec3param")
 ```
  and then drop the *necsigmoidal* model as invalid (see above)
  
@@ -422,6 +423,7 @@ out.NEC <- modify(out, model = "NEC")
 ```{r dropmod-beta-MANEC}
 out.NEC <- modify(out.NEC, drop.models = "necsigmoidal")
 out <- modify(out, drop.models = "necsigmoidal")
+
 ```
 
 Now we have two model sets, an *NEC* set and a mixed *NEC* and *ECx* set, neither of which have the *necsigmoidal* model. Of course before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. We can use *plot(out$fit)* on the *bayesnecfit*. Note that adding the argument *pdf.file = "out_chains"* to *plot(out$fit)* would write the chain plots out to a pdf file, which can be more convenient, as you can see here *plot(out$fit)* generates a lot of plots on a *bayesnecfit*.
