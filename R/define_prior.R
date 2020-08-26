@@ -34,7 +34,7 @@ define_prior <- function(model, family, predictor, response) {
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.25),
                                ", ", sd(response),")"),
-               binomial = "beta(1, 2)",
+               binomial = "beta(1, 5)",
                beta = "beta(1, 2)")
 
   x_prs <- c(beta = "beta(2, 2)",

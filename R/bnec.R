@@ -97,7 +97,7 @@
 bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
-                 iter = 2e3, warmup = floor(iter / 5) * 4,
+                 iter = 2e4, warmup = floor(iter / 5) * 4,
                  inits, ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
