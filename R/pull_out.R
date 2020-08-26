@@ -12,7 +12,7 @@
 #' @return An object of class bayesnecfit.
 #' @export
 pull_out <- function(manec, model, ...) {
-  if (model == "all") {
+  if (any(model %in% "all")) {
     stop("\"all\" is not an allowed option for ",
          "argument model in function pull_out")
   }
