@@ -38,7 +38,10 @@ check_data <- function(data, x_var, y_var,
                 ". The function bnec requires the concentration",
                 " data (argument x_var) to be numeric."))
   }
-
+  if (any(x_dat < 0) & model == "necsigm") {
+    message("necsigm should only be called when x values are >= 0")
+    stop()
+  }
   test_x <- mean(x_dat)
   test_y <- mean(y_dat)
   if (!is.finite(test_x)) {
