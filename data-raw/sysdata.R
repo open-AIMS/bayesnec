@@ -98,11 +98,11 @@ bf_ecxexp_deflt <- brms::bf(y ~ top * exp(-beta * x),
                             nl = TRUE)
 
 # ecxsigm
-bf_ecxsigm_binom <- brms::bf(y | trials(trials) ~ top * exp(-beta * x)^exp(d),
+bf_ecxsigm_binom <- brms::bf(y | trials(trials) ~ top * exp(-beta * x^exp(d)),
                              d + top + beta ~ 1,
                              nl = TRUE)
 
-bf_ecxsigm_deflt <- brms::bf(y ~ top * exp(-beta * x)^exp(d),
+bf_ecxsigm_deflt <- brms::bf(y ~ top * exp(-beta * x^exp(d)),
                              d + top + beta ~ 1,
                              nl = TRUE)
 
