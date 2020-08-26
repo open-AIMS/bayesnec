@@ -244,7 +244,7 @@ plot(out)
 plot(binom.data$raw.x, out$residuals)
 ```
 
-A test for over or under-dispersion is performed by *bayesnec*, and this can be extracted using *$over.disp*. Values >0.5 indicate over-dispersion and values <0.5 indicate under-dispersion. Values in the range 0.22-0.75 are acceptable. In this case the overdispersion value is 1, indicating quite extreme overdispersion (meaning our model doesn't properly capture the true variability represented in this data). Over and under-dispersion can be due to a poor fitting model, as well as violation of the distribution assumptions of the fitted data (for example, when the response data are poisson, the variance should equal to the mean, which is often not the case).
+A test for over or under-dispersion is performed by *bayesnec*, and this can be extracted using *$dispersion*. Values >1 indicate over-dispersion and values <1 indicate under-dispersion. In this case the overdispersion value is much bigger than 1, indicating quite extreme overdispersion (meaning our model doesn't properly capture the true variability represented in this data). Over and under-dispersion can be due to a poor fitting model, as well as violation of the distribution assumptions of the fitted data (for example, when the response data are poisson, the variance should equal to the mean, which is often not the case).
 
 ```{r over-disp}
 out$dispersion
@@ -365,14 +365,14 @@ Yes it seems that the beta distribution provides a good fit to these data regard
 So far we have explored how to fit individual models via the function *bnec*. The *bayesnec* package also has the capacity to fit a custom selection of models, pre-specified sets of models or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains using *bnec* can be very slow. See details under *?bnec* for more information on the models, and model sets that can be specied.
 
 ```{r fit-beta-MANEC, cache=TRUE, echo=FALSE}
-set.seed(333)
-out <- bnec(
- data = binom.data,
- x_var = "raw.x",
- y_var = "prop",
-model = "all"
-)
-save(out, file="ignore/out_temp.RData")
+# set.seed(333)
+# out <- bnec(
+#  data = binom.data,
+#  x_var = "raw.x",
+#  y_var = "prop",
+# model = "all"
+# )
+# save(out, file="ignore/out_temp.RData")
 ```
 Here we run *bnec* usin gmodel =  *all* using the proportional data example for a beta response variable from above, and save the output as an *.RData* file so that the rmarkdown will not include all of the console output that is generated when these models run. Saving an *.RData* file of the *all* model *bnec* output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) and reloading them later to explore, plot, extract values, and modify the model set as required. 
 
