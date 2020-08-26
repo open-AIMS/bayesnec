@@ -368,7 +368,7 @@ So far we have explored how to fit individual models via the function *bnec*. Th
 set.seed(333)
 out <- bnec(
  data = binom.data,
- x_var = "raw.x",
+ x_var = "log.x",
  y_var = "prop",
 model = "all"
 )
