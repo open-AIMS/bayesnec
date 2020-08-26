@@ -54,7 +54,7 @@ define_prior <- function(model, family, predictor, response) {
   pr_nec <- prior_string(x_prs[x_type], nlpar = "nec")
   pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50")
   # x- and y-independent priors
-  pr_d <- prior_string("normal(0, 0.1)", nlpar = "d")
+  pr_d <- prior_string("normal(0, 1)", nlpar = "d")
   
   pr_beta <- prior_string("gamma(0.5, 2)", nlpar = "beta")
   
