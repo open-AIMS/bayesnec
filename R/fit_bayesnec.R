@@ -5,7 +5,7 @@
 #' @inheritParams bnec
 #'
 #' @param skip_check Should data check via \code{\link{check_data}}
-#' be avoided? Only relevant to function \code{\link{modify}}.
+#' be avoided? Only relevant to function \code{\link{amend}}.
 #' Defaults to FALSE.
 #'
 #' @importFrom brms brm loo waic

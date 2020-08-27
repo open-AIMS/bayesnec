@@ -1,6 +1,6 @@
 #' plot.bayesmanecfit
 #'
-#' Generates a plot of a fitted "bayesmanecfit" model, as returned by \code{\link{bnec}}.
+#' Generates a plot of a fitted \code{\link{bayesmanecfit}} object, as returned by \code{\link{bnec}}.
 #'
 #' @inheritParams plot.bayesnecfit
 #'
