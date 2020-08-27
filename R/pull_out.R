@@ -12,23 +12,43 @@
 #' @return An object of class bayesnecfit.
 #' @export
 pull_out <- function(manec, model, ...) {
-  if (any(model %in% "all")) {
-    stop("\"all\" is not an allowed option for ",
-         "argument model in function pull_out")
-  }
   existing <- names(manec$mod_fits)
   msets <- names(mod_groups)
   if (any(model %in% msets)) {
     group_mods <- intersect(model, msets)
     model <- union(model, unname(unlist(mod_groups[group_mods])))
-    model <- intersect(model, existing)
+    model <- setdiff(model, msets)
   }
-  pass <- suppressMessages(handle_set(existing, drop = model))
-  if (is.logical(pass)) {
-    stop("Model \"", model, "\" non-existent in current set of models: ",
-         paste0(existing, collapse = ", "))
+  to_go <- intersect(model, existing)
+  if (length(to_go) == 0) {
+    message("Model(s) ", paste0(model, collapse = ", "),
+            " non-existent in current set of models: ",
+            paste0(existing, collapse = ", "), ".\n",
+            "If needed, add desired model(s) via function ",
+            "modify (see ?modify)\n",
+            "Returning original object")
+    return(manec)
+  } else if (!all(model %in% existing)) {
+    non_existing <- setdiff(model, existing)
+    message("Model(s) ", paste0(non_existing, collapse = ", "),
+            " non-existent in current set of models: ",
+            paste0(existing, collapse = ", "), ".\n",
+            "If needed, add desired model(s) via function ",
+            "modify (see ?modify)")
   }
-  mod_fits <- expand_manec(manec$mod_fits[model], ...)
+  if (all(existing %in% to_go)) {
+    message("Current model(s) are 100% contained ",
+            "within target model(s) to pull out\n",
+            "Returning original object")
+    return(manec)
+  } else if (all(!(to_go %in% existing))) {
+    message("Target model(s) are 100% contained ",
+            "within target model(s) to pull out\n",
+            "Returning original object")
+  }
+  mod_fits <- suppressMessages(expand_manec(manec$mod_fits[to_go], ...))
+  message("Successfully pulled out model(s): ",
+          paste0(to_go, collapse = ", "))
   if (!inherits(mod_fits, "prebayesnecfit")) {
     allot_class(mod_fits, "bayesmanecfit")
   } else {

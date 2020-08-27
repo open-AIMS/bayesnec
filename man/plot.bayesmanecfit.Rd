@@ -18,7 +18,7 @@
   ylab = "response",
   xlab = "concentration",
   xticks = NA,
-  all_models = TRUE
+  all_models = FALSE
 )
 }
 \arguments{
