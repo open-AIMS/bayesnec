@@ -2,7 +2,7 @@
 #'
 #' Generates a plot of a fitted "bayesnecfit" model, as returned by \code{\link{bnec}}.
 #' 
-#' @param x The "bayesnecfit" model fit as returned by \code{\link{bnec}}.
+#' @param x An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.
 #' @param ... Additional arguments to \code{\link[graphics]{plot}}.
 #' @param CI A \code{\link[base]{logical}} value indicating if credibility intervals on the model fit should be plotted, calculated as the upper and lower bounds of the individual predicted values from all posterior samples.
 #' @param add_nec A \code{\link[base]{logical}} value indicating if the estimated NEC value and 95% credible intervals should be added to the plot.
@@ -120,7 +120,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 
 #' predict.bayesnecfit
 #'
-#' @param object the bayesnec model fit (as returned by fit_bayesnec).
+#' @param object An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.
 #'
 #' @param ... unused.
 #' 
@@ -128,9 +128,11 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @param x_range The range of x values over which to make predictions.
 #'
-#' @export
 #' @return A list containing x and fitted y, with up and lw values
+#' 
 #' @importFrom brms posterior_epred
+#' 
+#' @export
 predict.bayesnecfit <- function(object, ..., precision = 100,
                                 x_range = NA) {
   mod_dat <- object$fit$data
@@ -151,4 +153,17 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
                                                 estimates_summary))))
   list(data = pred_d,
        posterior = pred_out)
+}
+
+#' predict.prebayesnecfit
+#'
+#' @inheritDotParams predict.bayesnecfit -object
+#' 
+#' @param object An object of class \code{\link{prebayesnecfit}} as returned by \code{\link{fit_bayesnec}}.
+#'
+#' @inherit predict.bayesnecfit return
+#' 
+#' @export
+predict.prebayesnecfit <- function(object, ...) {
+  predict.bayesnecfit(object, ...)
 }
