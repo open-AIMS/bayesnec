@@ -56,38 +56,8 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
 }
 \value{
-When only a single model is passed \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesnecfit", containing:
-\itemize{
-\item "fit": the the fitted Bayesian model of class \code{\link[brms]{brmsfit}};
-\item "model" \code{\link[base]{character}} string indicating the name of the fitted model;
-\item "pred_vals" a \code{\link[base]{list}} containing a \code{\link[base]{data.frame}} of summary posterior predicted values
-and a vector containing based on the supplied \code{precision} and \code{x_range};
-\item "nec" the estimated NEC;
-\item "top" the estimate for parameter "top" in the fitted model;
-\item "beta" the estimate for parameter "beta" in the fitted model;
-\item "alpha" the estimate for parameter "alpha" in the fitted model, NA if absent for the fitted model type;
-\item "bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;
-\item "d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;
-\item "slope" the estimate for parameter "slope" in the fitted model, NA if absent for the fitted model type;
-\item "ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;
-\item "dispersion" an estimate of dispersion;
-\item "predicted_y" the predicted values for the observed data;
-\item "residuals" residual values of the observed data from the fitted model;
-\item "nec_posterior" a full posterior estimate of the NEC.
-}
-When more than one model is passed, \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesmanecfit" containing:
-\itemize{
-\item mod_fits a \code{\link[base]{list}} of fitted model outputs of class "bayesnecfit" for each of the fitted models,
-each containing all the elements of class bayesnecfit above;
-\item "success_models" \code{\link[base]{character}} vector indicating the name of the successfully fitted models
-\item "mod_stats" a \code{\link[base]{data.frame}} of model fit statistics;
-\item "sample_size" the size of the posterior sample;
-\item "w_nec_posterior" the model-weighted posterior estimate of the NEC;
-\item "w_predicted_y" the model-weighted predicted values for the observed data;
-\item "w_residuals" model-weighted residual values (i.e. observed - w_predicted_y);
-\item "w_pred_vals" a \code{\link[base]{list}} containing model-weighted posterior predicted values based on the supplied \code{precision} and \code{x_range};
-\item "w_nec" the summary stats (median and 95\% credibility intervals) of w_nec_posterior;
-}
+If argument model is a single string, then an object of class \code{\link{bayesnecfit}}; if many strings or a set,
+an object of class \code{\link{bayesmanecfit}}.
 }
 \description{
 Fits a variety of NEC models using Bayesian analysis and provides a model averaged predictions based on WAIC model weights
@@ -109,9 +79,9 @@ Return section, the user can extract the dispersion parameter from a bnec call, 
 
 The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
 "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type it fit, and \code{\link{bnec}} returns a model
-object of class "bayesnecfit".
+object of class \code{\link{bayesnecfit}}.
 
-If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class "bayesmanecfit"
+If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class \code{\link{bayesmanecfit}}
 containing model averaged predictions for the supplied models, providing they were successfully fitted.
 
 Model averaging is achieved through a weighted sample of each fitted models posterior predictions, with weights derived
