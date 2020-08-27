@@ -1,17 +1,34 @@
-#' modify
+#' amend
 #'
-#' Modifies an existing bayesmanecfit object, for example, by adding or removing fitted models.
+#' Amends an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
 #' 
-#' @param object An object of class "bayesmanecfit" output list, as returned by \code{\link{bnec}}.
+#' @inheritDotParams amend.bayesmanecfit -object
+#' 
+#' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
+#' 
+#' @return All successfully fitted model fits, either as a \code{\link{bayesnecfit}} (1 model case)
+#' or \code{\link{bayesmanecfit}} (multiple models case) object.
+#' @export
+amend <- function(object, ...) {
+  UseMethod("amend", object)
+}
+
+#' amend.bayesmanecfit
+#'
+#' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
+#' 
+#' @inheritParams bnec
+#' 
+#' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
 #' @param drop A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
 #' 
-#' @return All successfully fitted "bayesmanecfit" model fits.
+#' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #' @export
-modify <- function(object, drop, add, x_range = NA,
-                   precision = 1000, sig_val = 0.01) {
+amend.bayesmanecfit <- function(object, drop, add, x_range = NA,
+                                precision = 1000, sig_val = 0.01) {
   if (missing(drop) && missing(add)) {
-    message("Nothing to modify, please specify a model to ",
+    message("Nothing to amend, please specify a model to ",
             "either add or drop;\n",
             "Returning original model set")
     return(object)

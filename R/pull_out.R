@@ -25,7 +25,7 @@ pull_out <- function(manec, model, ...) {
             " non-existent in current set of models: ",
             paste0(existing, collapse = ", "), ".\n",
             "If needed, add desired model(s) via function ",
-            "modify (see ?modify)\n",
+            "amend (see ?amend)\n",
             "Returning original object")
     return(manec)
   } else if (!all(model %in% existing)) {
@@ -34,7 +34,7 @@ pull_out <- function(manec, model, ...) {
             " non-existent in current set of models: ",
             paste0(existing, collapse = ", "), ".\n",
             "If needed, add desired model(s) via function ",
-            "modify (see ?modify)")
+            "amend (see ?amend)")
   }
   if (all(existing %in% to_go)) {
     message("Current model(s) are 100% contained ",

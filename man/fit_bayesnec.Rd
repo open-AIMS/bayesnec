@@ -37,7 +37,7 @@ If missing, \code{\link{bnec}} will figure out a baseline prior for each paramet
 \item{inits}{Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.}
 
 \item{skip_check}{Should data check via \code{\link{check_data}}
-be avoided? Only relevant to function \code{\link{modify}}.
+be avoided? Only relevant to function \code{\link{amend}}.
 Defaults to FALSE.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
