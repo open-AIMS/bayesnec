@@ -15,7 +15,7 @@ bnec(
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
-  iter = 2000,
+  iter = 20000,
   warmup = floor(iter/5) * 4,
   inits,
   ...
