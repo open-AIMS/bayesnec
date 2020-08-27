@@ -7,7 +7,7 @@
 \method{predict}{bayesnecfit}(object, ..., precision = 100, x_range = NA)
 }
 \arguments{
-\item{object}{the bayesnec model fit (as returned by fit_bayesnec).}
+\item{object}{An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.}
 
 \item{...}{unused.}
 

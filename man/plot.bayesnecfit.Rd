@@ -21,7 +21,7 @@
 )
 }
 \arguments{
-\item{x}{The "bayesnecfit" model fit as returned by \code{\link{bnec}}.}
+\item{x}{An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.}
 
 \item{...}{Additional arguments to \code{\link[graphics]{plot}}.}
 
