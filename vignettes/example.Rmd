@@ -372,9 +372,9 @@ out <- bnec(
  y_var = "prop",
 model = "all"
 )
-
+save(out, "out.RData")
 ```
-Here we run *bnec* usin gmodel =  *all* using the proportional data example for a beta response variable from above, and save the output as an *.RData* file so that the rmarkdown will not include all of the console output that is generated when these models run. Saving an *.RData* file of the *all* model *bnec* output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) and reloading them later to explore, plot, extract values, and modify the model set as required. 
+Here we run *bnec* using model =  *all* for the proportional data example for a beta response variable from above and save the outcome as an *.RData* file. Saving an *.RData* file of the *all* model *bnec* output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) and reloading them later to explore, plot, extract values, and modify the model set as required. 
 
 ### Exploring a *bayesmanecfit* model
 
