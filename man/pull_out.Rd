@@ -10,6 +10,9 @@ pull_out(manec, model, ...)
 \item{manec}{An object of class bayesmanecfit output list
 as returned by \code{\link{bnec}}.}
 
+\item{model}{A \code{\link[base]{character}} string indicating
+which model or class of models to pull out.}
+
 \item{...}{Additional arguments to \code{\link{expand_nec}}.}
 }
 \value{
