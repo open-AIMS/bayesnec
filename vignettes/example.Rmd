@@ -16,6 +16,31 @@ knitr::opts_chunk$set(
 )
 ```
 
-# *bayesnec*
+# `bayesnec`
 
-The *bayesnec* is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via *brms* [@Burkner2017; @Burkner2018] and *stan*. The package is an adaptation and extension of an initial package *jagsNEC* [@Fisher2020] which as based on the *R2jags* package [@Su2015] and *jags* [@Plummer2003].
+The `bayesnec` is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via `brms` [@Burkner2017; @Burkner2018] and `stan`. The package is an adaptation and extension of an initial package `jagsNEC` [@Fisher2020] which as based on the `R2jags` package [@Su2015] and `jags` [@Plummer2003].
+
+# Background
+
+Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for *NEC* estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting *NEC* models and other concentration-response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor, x) as well as the "response" (y) variable. The model formula, including priors and initial values required to call a `brms` model are automatically generated based on information contained in the supplied data. While the distribution of the x and y variables can be specified directly, `bayesnec` will automatically 'guess' the correct distribution to use based on the characteristics of the provided data.
+
+This project started with an implementation of the *NEC* model based on that described in [@Fox2010] using R2jags. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported gaussian, poisson, binomial, gamma, negbin and beta response data `bayesnec` supports any of the `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of typically used concentration-response models (such as 4-parameter logistic and weibull models) that have no *NEC* 'step' function but simply model the response as a smooth function of concentration, as can be fit using other commonly used frequentist packages such as `drc` [@Ritz2016].
+
+Specific models can be fit directly using `bnec`. Alternatively it is possible to fit a a custom model set, specific model set or all of the available models. When multiple models are specified the `bnec` function returns a model weighted estimate of predicted posterior values, based on watanabe information criteria (WAIC) model weights, analogous to the way model weights are generated using AIC or AICc [@Burnham2002]. It is also possible to obtain all individual model fits from the fitted `bayesnecfit` model object if required. Multi-model inference can be useful where there are a range of plausible models that could be used [@Burnham2002] and has been recently adopted in ecotoxicology for SSD model inference [@Thorley2018].
+
+An additional endpoint has also been derived using Bayesian posterior predicted values to estimate the "No-Statistical-Effect-Concentration" as the concentration at which predicted values for each MCMC chain fall below a lower percentile bound (defined as `sig_val`) of the control, which is assumed to be the lowest treatment (x_var) concentration in the data. *NSEC* estimates are currently used to approximate *NEC* for models without a specific *NEC* step parameter (in `bayesnec` these have the prefix `ecx` in their model name).
+
+
+Important information on the current package is contained in the `bayesnec` helpfiles.
+
+This package is currently under development. We are keen on any feedback regarding usage, and especially bug reporting that includes an easy to run self contained reproducible example of unexpected behaviour or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy to run reproducible example is not supplied.
+
+# Installation
+
+To install the latest version from github (https://github.com/AIMS/bayesnec) use:
+
+```{r, eval = FALSE}
+install.packages("remotes")
+remotes::install_github("AIMS/bayesnec")
+```
+
