@@ -5,7 +5,7 @@ vignette: >
   %\VignetteIndexEntry{General usage}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-bibliography: 'bayesnec.bib'
+#bibliography: 'bayesnec.bib'
 ---
 
 
