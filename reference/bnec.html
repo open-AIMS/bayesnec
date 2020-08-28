@@ -143,14 +143,14 @@
   <span class='kw'>y_var</span>,
   <span class='kw'>model</span>,
   trials_var = <span class='fl'>NA</span>,
-  x_type = <span class='fl'>NA</span>,
   family = <span class='kw'>NULL</span>,
   <span class='kw'>priors</span>,
   x_range = <span class='fl'>NA</span>,
   precision = <span class='fl'>1000</span>,
   sig_val = <span class='fl'>0.01</span>,
-  iter = <span class='fl'>2000</span>,
+  iter = <span class='fl'>20000</span>,
   warmup = <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>floor</a></span>(<span class='kw'>iter</span><span class='op'>/</span><span class='fl'>5</span>) <span class='op'>*</span> <span class='fl'>4</span>,
+  <span class='kw'>inits</span>,
   <span class='kw'>...</span>
 )</pre>
 
@@ -177,11 +177,6 @@
       <th>trials_var</th>
       <td><p>The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!</p></td>
-    </tr>
-    <tr>
-      <th>x_type</th>
-      <td><p>The statistical distribution of the x (concentration) data. This will be guessed based on
-the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.</p></td>
     </tr>
     <tr>
       <th>family</th>
@@ -216,6 +211,10 @@ of iterations used for stepsize adaptation, so warmup samples should not be used
 should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></td>
     </tr>
     <tr>
+      <th>inits</th>
+      <td><p>Optional. Initialisation values. Must be a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.</p></td>
+    </tr>
+    <tr>
       <th>...</th>
       <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> via <code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p></td>
     </tr>
@@ -223,39 +222,8 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>When only a single model is passed <code>bnec</code> returns a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of class "bayesnecfit", containing:</p><ul>
-<li><p>"fit": the the fitted Bayesian model of class <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code>;</p></li>
-<li><p>"mod_dat" the data used for the model fit;</p></li>
-<li><p>"family" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining the statistical distribution used for the y (response) data;</p></li>
-<li><p>"x_type" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the statistical distribution for the x (concentration) data;</p></li>
-<li><p>"model" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the name of the fitted model;</p></li>
-<li><p>"pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of summary posterior predicted values
-and a vector containing based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
-<li><p>"nec" the estimated NEC;</p></li>
-<li><p>"top" the estimate for parameter "top" in the fitted model;</p></li>
-<li><p>"beta" the estimate for parameter "beta" in the fitted model;</p></li>
-<li><p>"alpha" the estimate for parameter "alpha" in the fitted model, NA if absent for the fitted model type;</p></li>
-<li><p>"bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;</p></li>
-<li><p>"d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;</p></li>
-<li><p>"slope" the estimate for parameter "slope" in the fitted model, NA if absent for the fitted model type;</p></li>
-<li><p>"ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;</p></li>
-<li><p>"dispersion" an estimate of dispersion;</p></li>
-<li><p>"predicted_y" the predicted values for the observed data;</p></li>
-<li><p>"residuals" residual values of the observed data from the fitted model;</p></li>
-<li><p>"nec_posterior" a full posterior estimate of the NEC.</p></li>
-</ul><p>When more than one model is passed, <code>bnec</code> returns a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of class "bayesmanecfit" containing:</p><ul>
-<li><p>mod_fits a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of fitted model outputs of class "bayesnecfit" for each of the fitted models,
-each containing all the elements of class bayesnecfit above;</p></li>
-<li><p>"success_models" <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the name of the successfully fitted models</p></li>
-<li><p>"mod_stats" a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of model fit statistics;</p></li>
-<li><p>"sample_size" the size of the posterior sample;</p></li>
-<li><p>"w_nec_posterior" the model-weighted posterior estimate of the NEC;</p></li>
-<li><p>"w_predicted_y" the model-weighted predicted values for the observed data;</p></li>
-<li><p>"w_residuals" model-weighted residual values (i.e. observed - w_predicted_y);</p></li>
-<li><p>"w_pred_vals" a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing model-weighted posterior predicted values based on the supplied <code>precision</code> and <code>x_range</code>;</p></li>
-<li><p>"w_nec" the summary stats (median and 95% credibility intervals) of w_nec_posterior;</p></li>
-</ul>
-
+    <p>If argument model is a single string, then an object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>; if many strings or a set,
+an object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
     <p>As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
@@ -272,8 +240,8 @@ include all of the above families but negbinomial because this latter requires k
 Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the negbinomial family.</p>
 <p>The argument <code>model</code> may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
 "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type it fit, and <code>bnec</code> returns a model
-object of class "bayesnecfit".</p>
-<p>If a vector of two or more of the available models is supplied, <code>bnec</code> returns a model object of class "bayesmanecfit"
+object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
+<p>If a vector of two or more of the available models is supplied, <code>bnec</code> returns a model object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>
 containing model averaged predictions for the supplied models, providing they were successfully fitted.</p>
 <p>Model averaging is achieved through a weighted sample of each fitted models posterior predictions, with weights derived
 using the <code><a href='https://rdrr.io/pkg/brms/man/loo_model_weights.brmsfit.html'>loo_model_weights</a></code> from <span class="pkg">brms</span>. Individual model fits can be extracted from the <code>mod_fits</code>

@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>paste_normal_prior — paste_normal_prior • bayesnec</title>
+<title>Class bayesnecfit of models fitted with the brms package — bayesnecfit-class • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,11 @@
 
 
 
-<meta property="og:title" content="paste_normal_prior — paste_normal_prior" />
-<meta property="og:description" content="Creates prior string given a number" />
+<meta property="og:title" content="Class bayesnecfit of models fitted with the brms package — bayesnecfit-class" />
+<meta property="og:description" content="Models fitted with the bayesnec package are
+represented as a bayesnecfit object, which contain the original brmsfit
+fitted object, list of initialisation values used, name of non-linear model that was fitted, posterior predictions,
+posterior parameter estimates and a series of other statistics." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -128,43 +131,65 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>paste_normal_prior</h1>
-    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/helpers.R'><code>R/helpers.R</code></a></small>
-    <div class="hidden name"><code>paste_normal_prior.Rd</code></div>
+    <h1>Class <code>bayesnecfit</code> of models fitted with the <span class="pkg">brms</span> package</h1>
+    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/bayesnecfit-class.R'><code>R/bayesnecfit-class.R</code></a></small>
+    <div class="hidden name"><code>bayesnecfit-class.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Creates prior string given a number</p>
+    <p>Models fitted with the <code><a href='bayesnec-package.html'>bayesnec</a></code> package are
+represented as a <code>bayesnecfit</code> object, which contain the original <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code>
+fitted object, list of initialisation values used, name of non-linear model that was fitted, posterior predictions,
+posterior parameter estimates and a series of other statistics.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>paste_normal_prior</span>(<span class='kw'>mean</span>, <span class='kw'>param</span>, sd = <span class='fl'>1</span>, <span class='kw'>...</span>)</pre>
 
-    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
-    <table class="ref-arguments">
-    <colgroup><col class="name" /><col class="desc" /></colgroup>
-    <tr>
-      <th>mean</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector.</p></td>
-    </tr>
-    <tr>
-      <th>param</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the
-target non-linear parameter.</p></td>
-    </tr>
-    <tr>
-      <th>sd</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the
-standard deviation.</p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>Additional arguments of <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></code>.</p></td>
-    </tr>
-    </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector.</p>
+    <p>See <code><a href='https://rdrr.io/r/utils/methods.html'>methods(class = "bayesnecfit")</a></code> for an overview of available methods.</p>
+    <h2 class="hasAnchor" id="slots"><a class="anchor" href="#slots"></a>Slots</h2>
+
+    
+
+<dl>
+<dt><code>fit</code></dt><dd><p>The fitted Bayesian model of class <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code>.</p></dd>
+
+<dt><code>model</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the name of the fitted model.</p></dd>
+
+<dt><code>inits</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the initialisation values for to fit the model.</p></dd>
+
+<dt><code>pred_vals</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of summary posterior predicted values
+and a vector containing based on the supplied <code>precision</code> and <code>x_range</code>.</p></dd>
+
+<dt><code>top</code></dt><dd><p>The estimate for parameter "top" in the fitted model.</p></dd>
+
+<dt><code>beta</code></dt><dd><p>The estimate for parameter "beta" in the fitted model.</p></dd>
+
+<dt><code>nec</code></dt><dd><p>The estimated NEC.</p></dd>
+
+<dt><code>bot</code></dt><dd><p>The estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type.</p></dd>
+
+<dt><code>d</code></dt><dd><p>The estimate for parameter "d" in the fitted model, NA if absent for the fitted model type.</p></dd>
+
+<dt><code>slope</code></dt><dd><p>The estimate for parameter "slope" in the fitted model, NA if absent for the fitted model type.</p></dd>
+
+<dt><code>ec50</code></dt><dd><p>The estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type.</p></dd>
+
+<dt><code>dispersion</code></dt><dd><p>An estimate of dispersion.</p></dd>
+
+<dt><code>predicted_y</code></dt><dd><p>The predicted values for the observed data.</p></dd>
+
+<dt><code>residuals</code></dt><dd><p>Residual values of the observed data from the fitted model.</p></dd>
+
+<dt><code>nec_posterior</code></dt><dd><p>A full posterior estimate of the NEC.</p></dd>
+
+</dl>
+    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
+
+    <div class='dont-index'><p><code><a href='bayesnec-package.html'>bayesnec</a></code>,
+<code><a href='bnec.html'>bnec</a></code>,
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

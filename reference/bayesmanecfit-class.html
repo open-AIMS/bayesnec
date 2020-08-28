@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>paste_normal_prior — paste_normal_prior • bayesnec</title>
+<title>Class bayesmanecfit of models fitted with the brms package — bayesmanecfit-class • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,12 @@
 
 
 
-<meta property="og:title" content="paste_normal_prior — paste_normal_prior" />
-<meta property="og:description" content="Creates prior string given a number" />
+<meta property="og:title" content="Class bayesmanecfit of models fitted with the brms package — bayesmanecfit-class" />
+<meta property="og:description" content="Multiple models fitted with the bayesnec package are
+represented as a bayesmanecfit object, which contains the original brmsfit
+fitted objects, names of non-linear models that were fitted, model averaging WAIC stats, sample size,
+mean posterior NEC values, mean model averaged predictions on the data scale, model averaged residuals,
+full posterior distribution of predicated values, and summary statistics of NEC statistics." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -128,43 +132,54 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>paste_normal_prior</h1>
-    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/helpers.R'><code>R/helpers.R</code></a></small>
-    <div class="hidden name"><code>paste_normal_prior.Rd</code></div>
+    <h1>Class <code>bayesmanecfit</code> of models fitted with the <span class="pkg">brms</span> package</h1>
+    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/bayesmanecfit-class.R'><code>R/bayesmanecfit-class.R</code></a></small>
+    <div class="hidden name"><code>bayesmanecfit-class.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Creates prior string given a number</p>
+    <p>Multiple models fitted with the <code><a href='bayesnec-package.html'>bayesnec</a></code> package are
+represented as a <code>bayesmanecfit</code> object, which contains the original <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code>
+fitted objects, names of non-linear models that were fitted, model averaging WAIC stats, sample size,
+mean posterior NEC values, mean model averaged predictions on the data scale, model averaged residuals,
+full posterior distribution of predicated values, and summary statistics of NEC statistics.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>paste_normal_prior</span>(<span class='kw'>mean</span>, <span class='kw'>param</span>, sd = <span class='fl'>1</span>, <span class='kw'>...</span>)</pre>
 
-    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
-    <table class="ref-arguments">
-    <colgroup><col class="name" /><col class="desc" /></colgroup>
-    <tr>
-      <th>mean</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector.</p></td>
-    </tr>
-    <tr>
-      <th>param</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the
-target non-linear parameter.</p></td>
-    </tr>
-    <tr>
-      <th>sd</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the
-standard deviation.</p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>Additional arguments of <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></code>.</p></td>
-    </tr>
-    </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector.</p>
+    <p>See <code><a href='https://rdrr.io/r/utils/methods.html'>methods(class = "bayesmanecfit")</a></code> for an overview of available methods.</p>
+    <h2 class="hasAnchor" id="slots"><a class="anchor" href="#slots"></a>Slots</h2>
+
+    
+
+<dl>
+<dt><code>mod_fits</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of fitted model outputs of class <code>prebayesnecfit</code> for each of the fitted models.</p></dd>
+
+<dt><code>success_models</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the name of the successfully fitted models.</p></dd>
+
+<dt><code>mod_stats</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of model fit statistics.</p></dd>
+
+<dt><code>sample_size</code></dt><dd><p>The size of the posterior sample.
+information on the priors used in the model.</p></dd>
+
+<dt><code>w_nec_posterior</code></dt><dd><p>The model-weighted posterior estimate of the NEC.</p></dd>
+
+<dt><code>w_predicted_y</code></dt><dd><p>The model-weighted predicted values for the observed data.</p></dd>
+
+<dt><code>w_residuals</code></dt><dd><p>Model-weighted residual values (i.e. observed - w_predicted_y).</p></dd>
+
+<dt><code>w_pred_vals</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing model-weighted posterior predicted values based on the supplied <code>precision</code> and <code>x_range</code>.</p></dd>
+
+<dt><code>w_nec</code></dt><dd><p>The summary stats (median and 95% credibility intervals) of w_nec_posterior.</p></dd>
+
+</dl>
+    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
+
+    <div class='dont-index'><p><code><a href='bayesnec-package.html'>bayesnec</a></code>,
+<code><a href='bnec.html'>bnec</a></code>,
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

@@ -137,7 +137,7 @@
     <p>Check data input for a Bayesian NEC model fit</p>
     </div>
 
-    <pre class="usage"><span class='fu'>check_data</span>(<span class='kw'>data</span>, <span class='kw'>x_var</span>, <span class='kw'>y_var</span>, <span class='kw'>trials_var</span>, x_type = <span class='fl'>NA</span>, family = <span class='kw'>NULL</span>, <span class='kw'>model</span>)</pre>
+    <pre class="usage"><span class='fu'>check_data</span>(<span class='kw'>data</span>, <span class='kw'>x_var</span>, <span class='kw'>y_var</span>, <span class='kw'>trials_var</span>, family = <span class='kw'>NULL</span>, <span class='kw'>model</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -158,11 +158,6 @@
       <th>trials_var</th>
       <td><p>The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!</p></td>
-    </tr>
-    <tr>
-      <th>x_type</th>
-      <td><p>The statistical distribution of the x (concentration) data. This will be guessed based on
-the characteristic of the input data if not supplied and will inform the priors used for estimating nec in NEC step models.</p></td>
     </tr>
     <tr>
       <th>family</th>

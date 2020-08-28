@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Posterior dispersion — dispersion • bayesnec</title>
+<title>make_inits — make_inits • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="Posterior dispersion — dispersion" />
-<meta property="og:description" content="Calculates posterior dispersion metric" />
+<meta property="og:title" content="make_inits — make_inits" />
+<meta property="og:description" content="Creates list of initialisation values" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -128,65 +128,42 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Posterior dispersion</h1>
-    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/dispersion.R'><code>R/dispersion.R</code></a></small>
-    <div class="hidden name"><code>dispersion.Rd</code></div>
+    <h1>make_inits</h1>
+    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/inits_functions.R'><code>R/inits_functions.R</code></a></small>
+    <div class="hidden name"><code>make_inits.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Calculates posterior dispersion metric</p>
+    <p>Creates list of initialisation values</p>
     </div>
 
-    <pre class="usage"><span class='fu'>dispersion</span>(<span class='kw'>model</span>, summary = <span class='fl'>FALSE</span>)</pre>
+    <pre class="usage"><span class='fu'>make_inits</span>(<span class='kw'>priors</span>, <span class='kw'>chains</span>, stan_like = <span class='fl'>FALSE</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>model</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code> whose distribution family
-is either <code><a href='https://rdrr.io/r/stats/family.html'>gaussian</a></code>, <code><a href='https://rdrr.io/r/stats/family.html'>poisson</a></code> or <code><a href='https://rdrr.io/r/stats/family.html'>binomial</a></code>.</p></td>
+      <th>priors</th>
+      <td><p>an object of class "brmsprior" from package <span class="pkg">brms</span>.</p></td>
     </tr>
     <tr>
-      <th>summary</th>
-      <td><p>Logical. Should summary stats be returned instead of full vector? Defaults to FALSE.</p></td>
+      <th>chains</th>
+      <td><p>Number of chains to be passed to brms model.</p></td>
+    </tr>
+    <tr>
+      <th>stan_like</th>
+      <td><p>Should initial values be drawn in a similar
+fashion to how they are drawn by stan? Defaults to FALSE.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>If <code>summary</code> is FALSE, an n-long <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector containing the dispersion metric,
-where n is the number of post warm-up posterior draws from the <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code> object. If TRUE, then a
-<code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the summary stats (mean, median, 95% highest density intervals).
-of the dispersion metric.</p>
-    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
+    <p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the initialisation values.</p>
+    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
-    <p>This function calculates a dispersion metric which takes the ratio between the observed relative to simulated
-Pearson residuals sums of squares.</p>
+    <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
-    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='co'>if</span> (<span class='fl'>FALSE</span>) {
-<span class='fu'><a href='https://rdrr.io/r/base/library.html'>library</a></span>(<span class='kw'><a href='https://github.com/paul-buerkner/brms'>brms</a></span>)
-<span class='fu'><a href='https://rdrr.io/r/base/Random.html'>set.seed</a></span>(<span class='fl'>10</span>)
-
-<span class='kw'>dt</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></span>(predictor = <span class='fu'><a href='https://rdrr.io/r/stats/Poisson.html'>rpois</a></span>(<span class='fl'>60</span>, lambda = <span class='fl'>15</span>))
-<span class='kw'>dt</span><span class='op'>$</span><span class='kw'>response</span> <span class='op'>&lt;-</span> <span class='kw'>dt</span><span class='op'>$</span><span class='kw'>predictor</span> <span class='op'>+</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span>(<span class='fu'><a href='https://rdrr.io/r/stats/Normal.html'>rnorm</a></span>(<span class='fu'><a href='https://rdrr.io/r/base/nrow.html'>nrow</a></span>(<span class='kw'>dt</span>), <span class='fl'>0</span>, <span class='fl'>1</span>))
-<span class='co'># mimic overdispersion</span>
-<span class='kw'>dt</span><span class='op'>$</span><span class='kw'>response_od</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>abs</a></span>(<span class='kw'>dt</span><span class='op'>$</span><span class='kw'>predictor</span> <span class='op'>+</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span>(<span class='fu'><a href='https://rdrr.io/r/stats/Normal.html'>rnorm</a></span>(<span class='fu'><a href='https://rdrr.io/r/base/nrow.html'>nrow</a></span>(<span class='kw'>dt</span>), <span class='fl'>0</span>, <span class='fl'>10</span>)))
-<span class='kw'>mod_pois</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></span>(<span class='kw'>response</span> <span class='op'>~</span> <span class='kw'>predictor</span>, <span class='kw'>dt</span>, family = <span class='fu'><a href='https://rdrr.io/r/stats/family.html'>poisson</a></span>())
-<span class='kw'>mod_pois_od</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></span>(<span class='kw'>response_od</span><span class='op'>~</span><span class='kw'>predictor</span>, <span class='kw'>dt</span>, family = <span class='fu'><a href='https://rdrr.io/r/stats/family.html'>poisson</a></span>())
-
-<span class='fu'>dispersion</span>(<span class='kw'>mod_pois</span>)
-<span class='fu'>dispersion</span>(<span class='kw'>mod_pois_od</span>)
-
-<span class='co'># compare with regular dispersion parameter</span>
-<span class='co'># from quasipoisson glm</span>
-<span class='fu'>dispersion</span>(<span class='kw'>mod_pois</span>, summary = <span class='fl'>TRUE</span>)
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='fu'><a href='https://rdrr.io/r/stats/glm.html'>glm</a></span>(<span class='kw'>response</span> <span class='op'>~</span> <span class='kw'>predictor</span>, data = <span class='kw'>dt</span>, family = <span class='kw'>quasipoisson</span>))
-<span class='fu'>dispersion</span>(<span class='kw'>mod_pois_od</span>, summary = <span class='fl'>TRUE</span>)
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='fu'><a href='https://rdrr.io/r/stats/glm.html'>glm</a></span>(<span class='kw'>response_od</span> <span class='op'>~</span> <span class='kw'>predictor</span>, data = <span class='kw'>dt</span>, family = <span class='kw'>quasipoisson</span>))
-}
-</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
