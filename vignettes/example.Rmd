@@ -8,4 +8,12 @@ vignette: >
   bibliography: 'bayesnec.bib'
 ---
 
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/ignore/example-"
+)
+```
+
 Placeholder.
