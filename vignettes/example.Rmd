@@ -372,7 +372,7 @@ out <- bnec(
  y_var = "prop",
 model = "all"
 )
-save(out, "out.RData")
+save(out, file = "out.RData")
 ```
 Here we run *bnec* using model =  *all* for the proportional data example for a beta response variable from above and save the outcome as an *.RData* file. Saving an *.RData* file of the *all* model *bnec* output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) and reloading them later to explore, plot, extract values, and modify the model set as required. 
 
@@ -407,71 +407,44 @@ This would extract the *nec3param* model from the *bayesmanecfit* and create a n
 plot(out, all_models = TRUE)
 ```
 
-
-You can see that the *nechormesis* model and the *necsigmoidal* models are highly unresolved. The *necsigmoidal* model in particular poses a theoretical problem as it is a model that has a natural upper plateau. Thus it becomes difficult to resolve where the flat no-effect part of the data ends, and the sigmoidal decline begins. It should not be used at this time and may be remove from the model set in future versions. It is currently retained as an experimental model for research and development purposes. The *nechormesis* model allows an initial linear increase with concentration prior to the exponential decline of the *nec3param* model once the *NEC* concentration has been reached. This does not work well for this data, but neither does it have substantial WAIC weight, so it can be left in the model set for completeness.
-
 The models prefixed with *ecx* are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plot above for these models are an approximation based on *NSEC* (see above) and should not be used without careful consideration of the validity of this endpoint value. A formal model averaged estimate of *NEC* should be obtained with *model = "NEC"*, and there is a helper function *modify* that can be used to alter the model set as required. We can use this to obtain first a set of *NEC* only models
 
 
 ```{r extract_NECmod-beta-MANEC, cache=TRUE, echo=FALSE}
 out.NEC <- pull_out(out, model = "nec")
-out.NEC <- modify(out, drop = "nec3param")
+
 ```
- and then drop the *necsigmoidal* model as invalid (see above)
+We can drop other models from the set if desired, for example let's drop the nechormesis model using the *amend* function
  
  
 ```{r dropmod-beta-MANEC}
-out.NEC <- modify(out.NEC, drop.models = "necsigmoidal")
-out <- modify(out, drop.models = "necsigmoidal")
+out <- amend(out.NEC, drop = "nechormesis")
 
 ```
 
-Now we have two model sets, an *NEC* set and a mixed *NEC* and *ECx* set, neither of which have the *necsigmoidal* model. Of course before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. We can use *plot(out$fit)* on the *bayesnecfit*. Note that adding the argument *pdf.file = "out_chains"* to *plot(out$fit)* would write the chain plots out to a pdf file, which can be more convenient, as you can see here *plot(out$fit)* generates a lot of plots on a *bayesnecfit*.
+Now we have two model sets, an *NEC* set and a mixed *NEC* and *ECx* set. Of course before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. For the all set, the models this highest weight are ecx4param and	ecxwb1. We can assess the chains for these models to make sure they are good.
 
 ```{r checkchains-beta-MANEC}
-plot(out$fit)
+plot(out$mod_fits$ecx4param$fit)
+plot(out$mod_fits$ecxwb1$fit)
+
 ```
 
-Chains for the *nechormesis* model in this case are very badly mixed, so we should drop this as well from our model sets
-
-```{r dropmod2-beta-MANEC}
-out.NEC <- modify(out.NEC, drop.models = "nechormesis")
-out <- modify(out, drop.models = "nechormesis")
-```
 
 Now we can use the ecx function to get EC10 and ec50 values. We can do this using our all model set, because it is valid to use *NEC* models for estimating *ECx*.
 
 ```{r extract_ecvals-beta-MANEC}
-ECx10 <- ecx(out, ECx.val = 10)
+ECx10 <- ecx(out, ecx_val = 10)
 ECx50 <- ecx(out, ECx.val = 50)
 
 ECx10
 ECx50
 ```
 
-Note that the median estimate for our ec50 is the same as the upper bound. This indicates that the 'absolute' ec50 may lie beyond the observed data, because the lowest values here are just below 0.2, and the 'absolute' *ECx* type scales between the highest predicted values (usually *top* or the y-intercept) and 0. We could use *type = 'relative'* in our call to *ecx* or we can try extending the *x.range*. Which option to use depends on the specific context and question. Let's try extending the x.range.
-
-
-```{r extract_ecvals2-beta-MANEC}
-ECx50 <- ecx(out, ECx.val = 50, x.range = c(0.01, 8))
-ECx50
-```
-
-This still yields an upper bound that is identical to the upper range that we supplied, which is again an indication that the upper bound at a concentration of 8 still does not reach our ec50. To extend the predictions further it would be better to refit our data using *model.set = "bot.free"*. This is because to extrapolate for an absolute *ECx* value it may be more valid to only use models that do not have a lower asymptote (otherwise the predicted values may never reach zero). Here we will consider our *ECx* values in relative terms instead for simplicity, which means the *ECx* values represent a percentage decline in the response relative to the range of the fitted data across the observed range of concentration (x.val). We will do this for both our EC10 and our ec50 to be consistent.
-
-
-```{r extract_ecvals3-beta-MANEC}
-ECx10 <- ecx(out, ECx.val = 10, type = "relative")
-ECx50 <- ecx(out, ECx.val = 50, type = "relative")
-
-ECx10
-ECx50
-```
-
-The *NEC* values can be extracted directly from the *NEC* model set object, as they are an explicit parameter in these models.
+The weighted *NEC* estimates can be extracted directly from the *NEC* model set object, as they are an explicit parameter in these models.
 
 ```{r NECvals-beta-MANEC}
-NECvals <- out.NEC$NEC
+NECvals <- out.NEC$w_nec
 NECvals
 ```
 
