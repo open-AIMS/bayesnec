@@ -374,7 +374,8 @@ model = "all"
 )
 save(out, file = "out.RData")
 ```
-Here we run *bnec* using model =  *all* for the proportional data example for a beta response variable from above and save the outcome as an *.RData* file. Saving an *.RData* file of the *all* model *bnec* output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) and reloading them later to explore, plot, extract values, and modify the model set as required. 
+
+Here we run *bnec* usin gmodel =  *all* using the proportional data example for a beta response variable from above, and save the output as an *.RData* file so that the rmarkdown will not include all of the console output that is generated when these models run. Saving an *.RData* file of the *all* model *bnec* output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) and reloading them later to explore, plot, extract values, and amend the model set as required. 
 
 ### Exploring a *bayesmanecfit* model
 
@@ -407,7 +408,8 @@ This would extract the *nec3param* model from the *bayesmanecfit* and create a n
 plot(out, all_models = TRUE)
 ```
 
-The models prefixed with *ecx* are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plot above for these models are an approximation based on *NSEC* (see above) and should not be used without careful consideration of the validity of this endpoint value. A formal model averaged estimate of *NEC* should be obtained with *model = "NEC"*, and there is a helper function *modify* that can be used to alter the model set as required. We can use this to obtain first a set of *NEC* only models
+
+The models prefixed with *ecx* are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plot above for these models are an approximation based on *NSEC* (see above) and should not be used without careful consideration of the validity of this endpoint value. A formal model averaged estimate of *NEC* should be obtained with *model = "NEC"*, and there is a helper function *amend* that can be used to alter the model set as required. We can use this to obtain first a set of *NEC* only models
 
 
 ```{r extract_NECmod-beta-MANEC, cache=TRUE, echo=FALSE}
@@ -418,7 +420,9 @@ We can drop other models from the set if desired, for example let's drop the nec
  
  
 ```{r dropmod-beta-MANEC}
+
 out <- amend(out.NEC, drop = "nechormesis")
+
 
 ```
 
@@ -427,7 +431,6 @@ Now we have two model sets, an *NEC* set and a mixed *NEC* and *ECx* set. Of cou
 ```{r checkchains-beta-MANEC}
 plot(out$mod_fits$ecx4param$fit)
 plot(out$mod_fits$ecxwb1$fit)
-
 ```
 
 
@@ -435,7 +438,7 @@ Now we can use the ecx function to get EC10 and ec50 values. We can do this usin
 
 ```{r extract_ecvals-beta-MANEC}
 ECx10 <- ecx(out, ecx_val = 10)
-ECx50 <- ecx(out, ECx.val = 50)
+ECx50 <- ecx(out, ecx_val = 50)
 
 ECx10
 ECx50
@@ -452,14 +455,14 @@ Now we can make a combined plot of our output, showing the model averaged "*NEC*
 
 
 ```{r plot_final-beta-MANEC}
-plot(out, add.NEC = FALSE)
+plot(out, add_nec = FALSE)
 
 abline(v = ECx10, col = "orange", lty = c(1, 3, 3))
 abline(v = ECx50, col = "blue", lty = c(1, 3, 3))
 abline(v = NECvals, col = "darkgrey", lty = c(3, 1, 3))
-lines(out.NEC$pred.vals$x, out.NEC$pred.vals$y, col = "darkgrey")
-lines(out.NEC$pred.vals$x, out.NEC$pred.vals$up, col = "darkgrey", lty = 3)
-lines(out.NEC$pred.vals$x, out.NEC$pred.vals$lw, col = "darkgrey", lty = 3)
+lines(out.NEC$pred_vals$x, out.NEC$pred_vals$y, col = "darkgrey")
+lines(out.NEC$pred_vals$x, out.NEC$pred_vals$up, col = "darkgrey", lty = 3)
+lines(out.NEC$pred_vals$x, out.NEC$pred_vals$lw, col = "darkgrey", lty = 3)
 legend("bottomleft",
   legend = c("Complete averaged model", "EC10", "ec50", "NEC"),
   col = c("black", "orange", "blue", "darkgrey"), lty = 1, bty = "n"
