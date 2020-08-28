@@ -454,9 +454,10 @@ plot(out, add_nec = FALSE)
 abline(v = ECx10, col = "orange", lty = c(1, 3, 3))
 abline(v = ECx50, col = "blue", lty = c(1, 3, 3))
 abline(v = NECvals, col = "darkgrey", lty = c(3, 1, 3))
-lines(out.NEC$pred_vals$x, out.NEC$pred_vals$y, col = "darkgrey")
-lines(out.NEC$pred_vals$x, out.NEC$pred_vals$up, col = "darkgrey", lty = 3)
-lines(out.NEC$pred_vals$x, out.NEC$pred_vals$lw, col = "darkgrey", lty = 3)
+preds <- out.NEC$w_pred_vals$data
+lines(preds$x, preds$Estimate, col = "darkgrey")
+lines(preds$x, preds$Q2.5, col = "darkgrey", lty = 3)
+lines(preds$x, preds$Q97.5, col = "darkgrey", lty = 3)
 legend("bottomleft",
   legend = c("Complete averaged model", "EC10", "ec50", "NEC"),
   col = c("black", "orange", "blue", "darkgrey"), lty = 1, bty = "n"
