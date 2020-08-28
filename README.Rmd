@@ -59,8 +59,6 @@ After `devtools` has been installed `bayesnec` can be installed directly from Gi
 devtools::install_github("https://github.com/AIMS/bayesnec")
 ```
 
-This command will also install 2 dependencies `httr` and `jsonlite`.
-
 ## Usage
 
 To populate.
