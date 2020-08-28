@@ -398,7 +398,7 @@ plot(out.nec3param)
 This would extract the *nec3param* model from the *bayesmanecfit* and create a new object that contains just this *bayesnecfit* fit. This would be identical to fitting the *nec3param* as a single model using *bnec* as we did above. All of the models in the *bayesmanecfit* can be simultaneously plotted using
 
 
-```{r plot_mod-beta-MANEC}
+```{r plot_mod-beta-MANEC, fig.width = 7, fig.height = 20}
 plot(out, all_models = TRUE)
 ```
 
