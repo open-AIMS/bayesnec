@@ -165,7 +165,7 @@ modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
     target <- object$nec_posterior[n]
     change <- x_vec < target
   } else if (hormesis_def == "control") {
-    target <- posterior_sample[n, 1]
+    target <- posterior_sample[1]
     change <- posterior_sample >= target
   }
   posterior_sample[change] <- NA
