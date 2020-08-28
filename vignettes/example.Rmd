@@ -1,17 +1,11 @@
 ---
 title: "General usage"
-# output: rmarkdown::html_vignette
-# vignette: >
-#   %\VignetteIndexEntry{General usage}
-#   %\VignetteEngine{knitr::rmarkdown}
-#   %\VignetteEncoding{UTF-8}
-  
-output:  
-  md_document:
-    variant: markdown_github
-    toc: true
-    toc_depth: 2
-bibliography: 'C:/Users/rfisher/OneDrive - Australian Institute of Marine Science/Documents/library.bib'
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{General usage}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: 'bayesnec.bib'
 ---
 
 
