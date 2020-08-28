@@ -50,13 +50,11 @@ This command will also install 2 dependencies `httr` and `jsonlite`.
 Usage
 -----
 
-To populate.
+Usage and further information about `bayesnec` can be seen on the [project
+page](https://aims.github.io/bayesnec) and the [vignette](https://aims.github.io/bayesnec/articles/example.html). Help files for the individual functions can be found on the [reference page](https://aims.github.io/bayesnec/reference/index.html).
 
 Further Information
 -------------------
-
-Further information about `bayesnec` can be seen on the [project
-page](https://aims.github.io/bayesnec).
 
 `bayesnec` is provided by the [Australian Institute of Marine
 Science](https://www.aims.gov.au) under the MIT License
