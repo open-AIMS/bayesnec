@@ -62,9 +62,6 @@ binom.data <- read.table("https://pastebin.com/raw/zfrUha88", header = TRUE, dec
 str(binom.data)
 binom.data$raw.x <- as.numeric(as.character(binom.data$raw.x))
 range(binom.data$raw.x)
-par(mfrow = c(2, 1))
-hist(binom.data$raw.x)
-hist(binom.data$suc / binom.data$tot)
 ```
 
 In this case for x, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the x data are common for concentration response experiments, where the x "concentration" data are the concentration of contaminants, or dilutions. The current default in *bayesnec* is to estimate the appropriate distribution(s) and priors for both the *y_type* and *x_type* arguments, but it is possible to supply these arguments directly.
