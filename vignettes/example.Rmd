@@ -374,7 +374,7 @@ model = "all"
 )
 
 ```
-Here we run *bnec* usin gmodel =  *all* using the proportional data example for a beta response variable from above, and save the output as an *.RData* file so that the rmarkdown will not include all of the console output that is generated when these models run. Saving an *.RData* file of the *all* model *bnec* output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) and reloading them later to explore, plot, extract values, and modify the model set as required. 
+Here we run *bnec* usin gmodel =  *all* using the proportional data example for a beta response variable from above, and save the output as an *.RData* file so that the rmarkdown will not include all of the console output that is generated when these models run. Saving an *.RData* file of the *all* model *bnec* output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) and reloading them later to explore, plot, extract values, and amend the model set as required. 
 
 ### Exploring a *bayesmanecfit* model
 
@@ -410,19 +410,19 @@ plot(out, all_models = TRUE)
 
 You can see that the *nechormesis* model and the *necsigmoidal* models are highly unresolved. The *necsigmoidal* model in particular poses a theoretical problem as it is a model that has a natural upper plateau. Thus it becomes difficult to resolve where the flat no-effect part of the data ends, and the sigmoidal decline begins. It should not be used at this time and may be remove from the model set in future versions. It is currently retained as an experimental model for research and development purposes. The *nechormesis* model allows an initial linear increase with concentration prior to the exponential decline of the *nec3param* model once the *NEC* concentration has been reached. This does not work well for this data, but neither does it have substantial WAIC weight, so it can be left in the model set for completeness.
 
-The models prefixed with *ecx* are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plot above for these models are an approximation based on *NSEC* (see above) and should not be used without careful consideration of the validity of this endpoint value. A formal model averaged estimate of *NEC* should be obtained with *model = "NEC"*, and there is a helper function *modify* that can be used to alter the model set as required. We can use this to obtain first a set of *NEC* only models
+The models prefixed with *ecx* are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plot above for these models are an approximation based on *NSEC* (see above) and should not be used without careful consideration of the validity of this endpoint value. A formal model averaged estimate of *NEC* should be obtained with *model = "NEC"*, and there is a helper function *amend* that can be used to alter the model set as required. We can use this to obtain first a set of *NEC* only models
 
 
 ```{r extract_NECmod-beta-MANEC, cache=TRUE, echo=FALSE}
 out.NEC <- pull_out(out, model = "nec")
-out.NEC <- modify(out, drop = "nec3param")
+out.NEC <- amend(out, drop = "nec3param")
 ```
  and then drop the *necsigmoidal* model as invalid (see above)
  
  
 ```{r dropmod-beta-MANEC}
-out.NEC <- modify(out.NEC, drop.models = "necsigmoidal")
-out <- modify(out, drop.models = "necsigmoidal")
+out.NEC <- amend(out.NEC, drop.models = "necsigmoidal")
+out <- amend(out, drop.models = "necsigmoidal")
 
 ```
 
@@ -435,8 +435,8 @@ plot(out$fit)
 Chains for the *nechormesis* model in this case are very badly mixed, so we should drop this as well from our model sets
 
 ```{r dropmod2-beta-MANEC}
-out.NEC <- modify(out.NEC, drop.models = "nechormesis")
-out <- modify(out, drop.models = "nechormesis")
+out.NEC <- amend(out.NEC, drop.models = "nechormesis")
+out <- amend(out, drop.models = "nechormesis")
 ```
 
 Now we can use the ecx function to get EC10 and ec50 values. We can do this using our all model set, because it is valid to use *NEC* models for estimating *ECx*.
