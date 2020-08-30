@@ -11,6 +11,7 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
+  include = TRUE,
   comment = "#>",
   fig.path = "man/ignore/example-"
 )
@@ -69,7 +70,7 @@ The main 'working' function in `bayesnec` is the function `bnec`, which calls th
 
 `bnec` will guess the data types for use, although we could manually specify `y_type` as "binomial" and `x_type` as "gamma". This example fits without specifying either, but `trials_var` must be supplied.
 
-```{r fit-binomial-NEC, cache=TRUE, echo=FALSE}
+```{r fit-binomial-NEC, warning=FALSE}
 library(bayesnec)
 
 set.seed(333)
@@ -96,6 +97,7 @@ The function `plot` can be used to plot the fitted model. You can also make your
 par(mfrow = c(1, 1))
 plot(out)
 ```
+
 Alternatively, we can use the built in `brms` methods to plot the `brms` fit directly. For example:
 
 ```{r plotbrms-binomial-NEC}
@@ -106,4 +108,114 @@ plot(brms::conditional_effects(out$fit))[[1]] +
      geom_point(data= df, aes(x=x, y = prop), inherit.aes = FALSE)
 
 ```
+
 This model fit doesn't look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). We discuss this more below.
+
+### Beta data
+
+Sometimes the response variable is distributed between `0` and `1` but is not a straight forward binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical 'trials' and the data must be modelled using a beta distribution.
+
+```{r fit-beta-NEC}
+require(tidyverse)
+prop.data <- read.table("https://pastebin.com/raw/123jq46d", header = TRUE, dec = ",") %>%
+  mutate(
+    raw.x = log(as.numeric(as.character(raw.x)) + 1),
+    resp = as.numeric(as.character(resp))
+  )
+set.seed(333)
+out <- bnec(
+  data = prop.data,
+  x_var = "raw.x",
+  y_var = "resp",
+  model = "nec3param"
+)
+```
+
+```{r check-beta-NEC}
+plot(out$fit)
+```
+
+```{r plot-beta-NEC}
+par(mfrow = c(1, 1))
+plot(out)
+```
+
+### Poisson data
+
+Where data are a count (of, for example, individuals or cells) y is poisson. Such data are distributed from `0` to `Inf` and are integers. First we read in the count data example from pastebin, and then plot the "concentration" or x data, Again, this is raw.x, and distributed as in our binomial example above.
+
+
+```{r get-poisson-data}
+count.data <- read.table("https://pastebin.com/raw/ENgNSgf7", header = TRUE, dec = ",")
+str(count.data)
+
+count.data$raw.x <- as.numeric(as.character(count.data$raw.x))
+
+range(count.data$raw.x)
+par(mfrow = c(2, 1))
+hist(count.data$raw.x)
+hist(count.data$count)
+```
+
+
+First we supply `bnec` with `data` (count.data), and specify `x_var` and `y_var`. As we have concentration data, our `x_type` would be the gamma distribution, and `y_type` is "poisson". The default behaviour to guess the variable types works for this example.
+
+
+```{r fit-poisson-NEC, warning=FALSE}
+set.seed(333)
+out <- bnec(
+  data = count.data,
+  x_var = "raw.x",
+  y_var = "count",
+  model = "nec3param"
+)
+```
+
+We first plot the model chains and parameter estimates to check the fit.
+
+```{r check-poisson-NEC}
+plot(out$fit)
+```
+
+
+```{r plot-poisson-NEC}
+par(mfrow = c(1, 1))
+plot(out)
+```
+
+### Measure data
+
+Where data are a measured variable (ie length or size)  y is gamma. Such data are distributed from `0+` to `Inf` and are continuous. First we read in the count data example from pastebin, and then plot the "concentration" or x data, Again, this is raw.x, and distributed as in our binomial example above.
+
+```{r get-measure-data}
+measure.data <- read.table("https://pastebin.com/raw/pWeS6x0n", header = TRUE, dec = ",")
+measure.data$raw.x <- as.numeric(as.character(measure.data$raw.x))
+measure.data$measure <- as.numeric(as.character(measure.data$measure))
+```
+
+
+```{r fit-measure-NEC,warning=FALSE}
+set.seed(333)
+out <- bnec(
+  data = measure.data,
+  x_var = "raw.x",
+  y_var = "measure",
+  model = "nec3param"
+)
+```
+
+
+```{r check-measure-NEC}
+plot(out$fit)
+```
+
+The function `plot` can be used to plot the fitted model. The estimated *NEC* value can be obtained directly from the fitted model object, using `out$NEC`. EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve.
+
+
+```{r plot-measure-NEC}
+par(mfrow = c(1, 1))
+plot(out)
+ecx(out)
+```
+
+
