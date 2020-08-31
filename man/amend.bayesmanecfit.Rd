@@ -4,24 +4,16 @@
 \alias{amend.bayesmanecfit}
 \title{amend.bayesmanecfit}
 \usage{
-\method{amend}{bayesmanecfit}(object, drop, add, x_range = NA, precision = 1000, sig_val = 0.01)
+\method{amend}{bayesmanecfit}(object, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.}
 
-\item{drop}{A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.}
-
-\item{add}{A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.}
-
-\item{x_range}{A range of x values over which to consider extracting ECx.}
-
-\item{precision}{The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.}
-
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+\item{...}{Additional arguments to \code{\link{amend}}}
 }
 \value{
-All successfully fitted \code{\link{bayesmanecfit}} model fits.
+All successfully fitted model fits, either as a \code{\link{bayesnecfit}} (1 model case)
+or \code{\link{bayesmanecfit}} (multiple models case) object.
 }
 \description{
 Modifies an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.

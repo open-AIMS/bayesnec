@@ -10,10 +10,10 @@
   precision = 1000,
   posterior = FALSE,
   type = "absolute",
-  xform = NA,
+  hormesis_def = "control",
   x_range = NA,
-  prob_vals = c(0.5, 0.025, 0.975),
-  ...
+  xform = NA,
+  prob_vals = c(0.5, 0.025, 0.975)
 )
 }
 \arguments{
@@ -30,13 +30,13 @@ instead of just the median and 95 credible intervals}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of "relative", "absolute" (the default) or "direct". See Details.}
 
-\item{xform}{A function to apply to the returned estimated concentration values}
+\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values of "max" or "control". See Details.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx}
 
-\item{prob_vals}{A vector indicating the probability values over which to return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).}
+\item{xform}{A function to apply to the returned estimated concentration values}
 
-\item{...}{Additional arguments to \code{\link{ecx.bayesnecfit}}.}
+\item{prob_vals}{A vector indicating the probability values over which to return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).}
 }
 \value{
 A vector containing the estimated ECx value, including upper and lower 95\% credible interval bounds.

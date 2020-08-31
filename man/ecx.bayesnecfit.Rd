@@ -4,39 +4,13 @@
 \alias{ecx.bayesnecfit}
 \title{ecx.bayesnecfit}
 \usage{
-\method{ecx}{bayesnecfit}(
-  object,
-  ecx_val = 10,
-  precision = 1000,
-  posterior = FALSE,
-  type = "absolute",
-  hormesis_def = "control",
-  x_range = NA,
-  xform = NA,
-  prob_vals = c(0.5, 0.025, 0.975)
-)
+\method{ecx}{bayesnecfit}(object, ...)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}} returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesnecfit}}
+returned by \code{\link{bnec}}.}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
-and "absolute"), defaults to 10.}
-
-\item{precision}{The number of unique x values over which to find ECx - large values will make the ECx estimate more
-precise.}
-
-\item{posterior}{A \code{\link[base]{logical}} value indicating if the full posterior sample of calculated ECx values should be returned
-instead of just the median and 95 credible intervals}
-
-\item{type}{A \code{\link[base]{character}} vector, taking values of "relative", "absolute" (the default) or "direct". See Details.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values of "max" or "control". See Details.}
-
-\item{x_range}{A range of x values over which to consider extracting ECx}
-
-\item{xform}{A function to apply to the returned estimated concentration values}
-
-\item{prob_vals}{A vector indicating the probability values over which to return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).}
+\item{...}{Additional arguments to \code{\link{ecx}}}
 }
 \value{
 A vector containing the estimated ECx value, including upper and lower 95\% credible interval bounds.
