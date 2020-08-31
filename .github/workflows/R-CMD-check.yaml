@@ -54,9 +54,15 @@ jobs:
           sysreqs=$(Rscript -e "cat(sysreqs::sysreq_commands('DESCRIPTION'))")
           sudo -s eval "$sysreqs"
 
+      - name: V8 fix
+        if: runner.os == 'macOS'
+        run: |
+          brew install v8
+
       - name: Install dependencies
         run: |
-          install.packages(c("remotes", "rcmdcheck", "tidyverse", "anytime", "brms"))
+          install.packages(c("remotes", "rcmdcheck", "tidyverse", "anytime"))
+          remotes::install_github("paul-buerkner/brms")
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
 
