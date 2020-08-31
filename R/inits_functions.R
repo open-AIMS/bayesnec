@@ -7,6 +7,8 @@
 #' @param stan_like Should initial values be drawn in a similar
 #' fashion to how they are drawn by stan? Defaults to FALSE.
 #'
+#' @importFrom stats rgamma rnorm rbeta runif
+#' 
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 make_inits <- function(priors, chains, stan_like = FALSE) {

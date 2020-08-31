@@ -9,6 +9,8 @@
 #' Defaults to FALSE.
 #'
 #' @importFrom brms brm loo waic
+#' @importFrom stats update
+#'
 #' @seealso \code{\link{bnec}}
 #' @return The fitted \pkg{brms} model, including an estimate of the NEC
 #' value and predicted posterior values.

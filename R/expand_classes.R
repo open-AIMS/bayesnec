@@ -68,6 +68,8 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
 #'
 #' Extracts a range of statistics from a list of bayesnecfit model fits.
 #'
+#' @inheritParams bnec
+#' 
 #' @param object a bayesmanecfit mod_fits output list, as returned by
 #' \code{\link{bnec}} when more than one model is supplied.
 #'

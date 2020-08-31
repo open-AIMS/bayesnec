@@ -1,19 +1,4 @@
-#' amend
-#'
-#' Amends an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
-#' 
-#' @inheritDotParams amend.bayesmanecfit -object
-#' 
-#' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
-#' 
-#' @return All successfully fitted model fits, either as a \code{\link{bayesnecfit}} (1 model case)
-#' or \code{\link{bayesmanecfit}} (multiple models case) object.
-#' @export
-amend <- function(object, ...) {
-  UseMethod("amend", object)
-}
-
-#' amend.bayesmanecfit
+#' amend.default
 #'
 #' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
 #' 
@@ -25,8 +10,8 @@ amend <- function(object, ...) {
 #' 
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #' @export
-amend.bayesmanecfit <- function(object, drop, add, x_range = NA,
-                                precision = 1000, sig_val = 0.01) {
+amend.default <- function(object, drop, add, x_range = NA,
+                          precision = 1000, sig_val = 0.01) {
   if (missing(drop) && missing(add)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop;\n",
@@ -84,4 +69,34 @@ amend.bayesmanecfit <- function(object, drop, add, x_range = NA,
                            sig_val = sig_val)
     allot_class(mod_fits, "bayesnecfit")
   }
+}
+
+#' amend
+#'
+#' Amends an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
+#' 
+#' @inheritParams amend.default
+#' 
+#' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
+#' 
+#' @return All successfully fitted model fits, either as a \code{\link{bayesnecfit}} (1 model case)
+#' or \code{\link{bayesmanecfit}} (multiple models case) object.
+#' @export
+amend <- function(object, drop, add, x_range = NA,
+                  precision = 1000, sig_val = 0.01) {
+  UseMethod("amend")
+}
+
+#' amend.bayesmanecfit
+#'
+#' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
+#'
+#' @inheritParams amend
+#' 
+#' @param ... Additional arguments to \code{\link{amend}}
+#' 
+#' @inherit amend return
+#' @export
+amend.bayesmanecfit <- function(object, ...) {
+  amend.default(object, ...)
 }

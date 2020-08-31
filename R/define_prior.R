@@ -10,7 +10,7 @@
 #' @return A \code{\link[base]{list}} containing the \code{\link[brms]{prior}}
 #' and the string defining response distribution family to use.
 #' @importFrom brms bf prior_string negbinomial Beta
-#' @importFrom stats qlogis binomial quantile Gamma poisson gaussian
+#' @importFrom stats qlogis binomial quantile Gamma poisson gaussian sd
 define_prior <- function(model, family, predictor, response) {
   family <- family$family
   x_type <- set_distribution(predictor)
