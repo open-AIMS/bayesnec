@@ -19,4 +19,3 @@ pull_prior <- function(object) {
     object$fit$prior
   }
 }
-pull_prior(test)
