@@ -371,7 +371,7 @@ Yes it seems that the beta distribution provides a good fit to these data regard
 
 So far we have explored how to fit individual models via the function `bnec`. The `bayesnec` package also has the capacity to fit a custom selection of models, pre-specified sets of models or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains using `bnec` can be very slow. See details under `?bnec` for more information on the models, and model sets that can be specified.
 
-```{r}
+```{r, results = "hide"}
 set.seed(333)
 out <- bnec(data = binom_data, x_var = "log_x",
             y_var = "prop", model = "all")
@@ -454,7 +454,7 @@ NECvals
 Now we can make a combined plot of our output, showing the model averaged "*NEC*" model and the "all averaged model", along with the relevant thresholds.
 
 
-```{r, fig.width = 7, fig.height = 10}
+```{r, fig.width = 7, fig.height = 7}
 preds <- out_nec$w_pred_vals$data
 
 plot(out, add_nec = FALSE)
