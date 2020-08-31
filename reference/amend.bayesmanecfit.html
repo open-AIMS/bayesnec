@@ -138,7 +138,7 @@
     </div>
 
     <pre class="usage"><span class='co'># S3 method for bayesmanecfit</span>
-<span class='fu'><a href='amend.html'>amend</a></span>(<span class='kw'>object</span>, <span class='kw'>drop</span>, <span class='kw'>add</span>, x_range = <span class='fl'>NA</span>, precision = <span class='fl'>1000</span>, sig_val = <span class='fl'>0.01</span>)</pre>
+<span class='fu'><a href='amend.html'>amend</a></span>(<span class='kw'>object</span>, <span class='kw'>...</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -148,31 +148,15 @@
       <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>, as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>drop</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types you which to drop for the modified fit.</p></td>
-    </tr>
-    <tr>
-      <th>add</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types to add to the modified fit.</p></td>
-    </tr>
-    <tr>
-      <th>x_range</th>
-      <td><p>A range of x values over which to consider extracting ECx.</p></td>
-    </tr>
-    <tr>
-      <th>precision</th>
-      <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
-    </tr>
-    <tr>
-      <th>sig_val</th>
-      <td><p>Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
+      <th>...</th>
+      <td><p>Additional arguments to <code><a href='amend.html'>amend</a></code></p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>All successfully fitted <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> model fits.</p>
+    <p>All successfully fitted model fits, either as a <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> (1 model case)
+or <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> (multiple models case) object.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

@@ -140,59 +140,19 @@ bayesnecfit." />
     </div>
 
     <pre class="usage"><span class='co'># S3 method for bayesnecfit</span>
-<span class='fu'><a href='ecx.html'>ecx</a></span>(
-  <span class='kw'>object</span>,
-  ecx_val = <span class='fl'>10</span>,
-  precision = <span class='fl'>1000</span>,
-  posterior = <span class='fl'>FALSE</span>,
-  type = <span class='st'>"absolute"</span>,
-  hormesis_def = <span class='st'>"control"</span>,
-  x_range = <span class='fl'>NA</span>,
-  xform = <span class='fl'>NA</span>,
-  prob_vals = <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span>)
-)</pre>
+<span class='fu'><a href='ecx.html'>ecx</a></span>(<span class='kw'>object</span>, <span class='kw'>...</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>object</th>
-      <td><p>An object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
+      <td><p>An object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>
+returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>ecx_val</th>
-      <td><p>The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
-and "absolute"), defaults to 10.</p></td>
-    </tr>
-    <tr>
-      <th>precision</th>
-      <td><p>The number of unique x values over which to find ECx - large values will make the ECx estimate more
-precise.</p></td>
-    </tr>
-    <tr>
-      <th>posterior</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if the full posterior sample of calculated ECx values should be returned
-instead of just the median and 95 credible intervals</p></td>
-    </tr>
-    <tr>
-      <th>type</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "relative", "absolute" (the default) or "direct". See Details.</p></td>
-    </tr>
-    <tr>
-      <th>hormesis_def</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "max" or "control". See Details.</p></td>
-    </tr>
-    <tr>
-      <th>x_range</th>
-      <td><p>A range of x values over which to consider extracting ECx</p></td>
-    </tr>
-    <tr>
-      <th>xform</th>
-      <td><p>A function to apply to the returned estimated concentration values</p></td>
-    </tr>
-    <tr>
-      <th>prob_vals</th>
-      <td><p>A vector indicating the probability values over which to return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).</p></td>
+      <th>...</th>
+      <td><p>Additional arguments to <code><a href='ecx.html'>ecx</a></code></p></td>
     </tr>
     </table>
 

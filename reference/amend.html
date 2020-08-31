@@ -137,7 +137,7 @@
     <p>Amends an existing <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object, for example, by adding or removing fitted models.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>amend</span>(<span class='kw'>object</span>, <span class='kw'>...</span>)</pre>
+    <pre class="usage"><span class='fu'>amend</span>(<span class='kw'>object</span>, <span class='kw'>drop</span>, <span class='kw'>add</span>, x_range = <span class='fl'>NA</span>, precision = <span class='fl'>1000</span>, sig_val = <span class='fl'>0.01</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -147,16 +147,25 @@
       <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>, as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>...</th>
-      <td><p>Arguments passed on to <code><a href='amend.bayesmanecfit.html'>amend.bayesmanecfit</a></code></p><dl>
-    <dt><code>drop</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types you which to drop for the modified fit.</p></dd>
-    <dt><code>add</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types to add to the modified fit.</p></dd>
-    <dt><code>x_range</code></dt><dd><p>A range of x values over which to consider extracting ECx.</p></dd>
-    <dt><code>precision</code></dt><dd><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></dd>
-    <dt><code>sig_val</code></dt><dd><p>Probability value to use as the lower quantile to test significance of the predictor posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></dd>
-  
-</dl></td>
+      <th>drop</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types you which to drop for the modified fit.</p></td>
+    </tr>
+    <tr>
+      <th>add</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types to add to the modified fit.</p></td>
+    </tr>
+    <tr>
+      <th>x_range</th>
+      <td><p>A range of x values over which to consider extracting ECx.</p></td>
+    </tr>
+    <tr>
+      <th>precision</th>
+      <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
+    </tr>
+    <tr>
+      <th>sig_val</th>
+      <td><p>Probability value to use as the lower quantile to test significance of the predictor posterior values
+against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     </table>
 

@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ecx.bayesmanecfit — ecx.bayesmanecfit • bayesnec</title>
+<title>amend.default — amend.default • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,9 +46,8 @@
 
 
 
-<meta property="og:title" content="ecx.bayesmanecfit — ecx.bayesmanecfit" />
-<meta property="og:description" content="Extracts the predicted ECx value as desired from an object of class
-bayesmanecfit." />
+<meta property="og:title" content="amend.default — amend.default" />
+<meta property="og:description" content="Modifies an existing bayesmanecfit object, for example, by adding or removing fitted models." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -129,87 +128,51 @@ bayesmanecfit." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>ecx.bayesmanecfit</h1>
-    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/ecx.R'><code>R/ecx.R</code></a></small>
-    <div class="hidden name"><code>ecx.bayesmanecfit.Rd</code></div>
+    <h1>amend.default</h1>
+    <small class="dont-index">Source: <a href='https://github.com/aims/bayesnec/blob/master/R/amend.R'><code>R/amend.R</code></a></small>
+    <div class="hidden name"><code>amend.default.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Extracts the predicted ECx value as desired from an object of class
-<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p>
+    <p>Modifies an existing <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object, for example, by adding or removing fitted models.</p>
     </div>
 
-    <pre class="usage"><span class='co'># S3 method for bayesmanecfit</span>
-<span class='fu'><a href='ecx.html'>ecx</a></span>(
-  <span class='kw'>object</span>,
-  ecx_val = <span class='fl'>10</span>,
-  precision = <span class='fl'>1000</span>,
-  posterior = <span class='fl'>FALSE</span>,
-  type = <span class='st'>"absolute"</span>,
-  hormesis_def = <span class='st'>"control"</span>,
-  x_range = <span class='fl'>NA</span>,
-  xform = <span class='fl'>NA</span>,
-  prob_vals = <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span>)
-)</pre>
+    <pre class="usage"><span class='co'># S3 method for default</span>
+<span class='fu'><a href='amend.html'>amend</a></span>(<span class='kw'>object</span>, <span class='kw'>drop</span>, <span class='kw'>add</span>, x_range = <span class='fl'>NA</span>, precision = <span class='fl'>1000</span>, sig_val = <span class='fl'>0.01</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>object</th>
-      <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
+      <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>, as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>ecx_val</th>
-      <td><p>The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
-and "absolute"), defaults to 10.</p></td>
+      <th>drop</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types you which to drop for the modified fit.</p></td>
     </tr>
     <tr>
-      <th>precision</th>
-      <td><p>The number of unique x values over which to find ECx - large values will make the ECx estimate more
-precise.</p></td>
-    </tr>
-    <tr>
-      <th>posterior</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if the full posterior sample of calculated ECx values should be returned
-instead of just the median and 95 credible intervals</p></td>
-    </tr>
-    <tr>
-      <th>type</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "relative", "absolute" (the default) or "direct". See Details.</p></td>
-    </tr>
-    <tr>
-      <th>hormesis_def</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "max" or "control". See Details.</p></td>
+      <th>add</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types to add to the modified fit.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
-      <td><p>A range of x values over which to consider extracting ECx</p></td>
+      <td><p>A range of x values over which to consider extracting ECx.</p></td>
     </tr>
     <tr>
-      <th>xform</th>
-      <td><p>A function to apply to the returned estimated concentration values</p></td>
+      <th>precision</th>
+      <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
     </tr>
     <tr>
-      <th>prob_vals</th>
-      <td><p>A vector indicating the probability values over which to return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).</p></td>
+      <th>sig_val</th>
+      <td><p>Probability value to use as the lower quantile to test significance of the predictor posterior values
+against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A vector containing the estimated ECx value, including upper and lower 95% credible interval bounds.</p>
-    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
-
-    <p><code>type</code> "relative" is calculated as the percentage decrease from the maximum predicted value of the response (top) to the minimum predicted value
-of the response. Type "absolute" (the default) is calculated as the percentage decrease from the maximum value of the response (top)
-to 0 (or bot for a 4 parameter model fit). Type "direct" provides a direct estimate of the x value for a given y.
-Note that for the current version, ECx for an "nechorme" (NEC Hormesis) model is estimated at a percent decline from the control.
-For <code>hormesis_def</code>, if "max", then ECx values are calculated as a decline from the maximum estimates (i.e. the peak at nec);
-if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.</p>
-    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
-
-    <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
+    <p>All successfully fitted <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> model fits.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
