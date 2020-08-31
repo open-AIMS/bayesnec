@@ -70,7 +70,8 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           dir.create("C:\\Users\\runneradmin\\Documents\\.R", recursive = TRUE)
-          write("CXX14FLAGS=-O3 -mtune=native", "C:\\Users\\runneradmin\\Documents\\.R\\Makevars.win")
+          write("CXX14FLAGS=-O3 -mtune=native -Wno-ignored-attributes", "C:\\Users\\runneradmin\\Documents\\.R\\Makevars.win")
+          install.packages("https://github.com/bgoodri/inline/archive/master.tar.gz", repos = NULL, type = "source")
         shell: Rscript {0}
 
       - name: Check
