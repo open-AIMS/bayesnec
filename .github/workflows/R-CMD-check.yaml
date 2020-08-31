@@ -63,6 +63,7 @@ jobs:
       - name: Fix Windows Makevars
         if: runner.os == 'Windows'
         run: |
+          dir.create("C:\\Users\\runneradmin\\Documents\\.R", recursive = TRUE)
           write("CXX14FLAGS=-O3 -mtune=native", "C:\\Users\\runneradmin\\Documents\\.R\\Makevars.win")
         shell: Rscript {0}
 
