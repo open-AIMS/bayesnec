@@ -60,6 +60,12 @@ jobs:
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
 
+      - name: Fix Windows Makevars
+        if: runner.os == 'Windows'
+        run: |
+          write("CXX14FLAGS=-O3 -mtune=native", file.path(Sys.getenv("HOME"), ".R", "Makevars.win"))
+        shell: Rscript {0}
+
       - name: Check
         run: rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
         shell: Rscript {0}
