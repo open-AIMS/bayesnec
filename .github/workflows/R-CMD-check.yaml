@@ -56,7 +56,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          install.packages(c("remotes", "rcmdcheck", "tidyverse", "anytime"))
+          install.packages(c("remotes", "rcmdcheck", "tidyverse", "anytime", "brms"))
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
 
