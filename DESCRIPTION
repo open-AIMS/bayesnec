@@ -20,6 +20,6 @@ Suggests:
     dplyr,
     ggplot2
 VignetteBuilder: knitr
-URL: https://aims.github.io/bayesnec
-BugReports: https://github.com/aims/bayesnec/issues
+URL: https://open-aims.github.io/bayesnec
+BugReports: https://github.com/open-aims/bayesnec/issues
 Roxygen: list(markdown = TRUE)
