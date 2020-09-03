@@ -140,9 +140,6 @@ This model fit doesn't look great. You can see that the error bounds around the 
 ```{r}
 exp_1$dispersion
 ```
-```{r, echo = FALSE}
-rm(exp_1)
-```
 
 ### Beta data
 
@@ -166,9 +163,6 @@ plot(exp_2$fit)
 
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_2)
-```
-```{r, echo = FALSE}
-rm(exp_2)
 ```
 
 ### Poisson data
@@ -209,9 +203,6 @@ plot(exp_3$fit)
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_3)
 ```
-```{r, echo = FALSE}
-rm(exp_3)
-```
 
 ### Measure data
 
@@ -245,9 +236,6 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 
 ```{r, warning = FALSE}
 ecx(exp_4)
-```
-```{r, echo = FALSE}
-rm(exp_4)
 ```
 
 ## Fitting multiple models and model averaging using the `bnec` function
@@ -286,9 +274,6 @@ The `bayesmanecfit` object also contains all of the original fits, which can be 
 ```{r, fig.width = 7, fig.height = 7}
 exp_5_nec3param <- pull_out(exp_5, model = "nec3param")
 plot(exp_5_nec3param)
-```
-```{r, echo = FALSE}
-rm(exp_5_nec3param)
 ```
 
 This would extract the `nec3param` model from the `bayesmanecfit` and create a new object that contains just this `bayesnecfit` fit. This would be identical to fitting the `nec3param` as a single model using `bnec` as we did above. All of the models in the `bayesmanecfit` can be simultaneously plotted using
