@@ -122,7 +122,7 @@ Note the Rhat values in this example are one, indicating convergence.
 The function `plot` can be used to plot the fitted model. You can also make your own plot from the data included in the returned `bayesnecfit` object from the call to `bnec`. Here we use the default plot method from `bayesnec`, where we add the exp function to plot the tick labels on the original scaling of the concentration data.
 
 ```{r, fig.width = 7, fig.height = 7}
-plot(exp_1, lxform=exp)
+plot(exp_1, lxform = exp)
 ```
 
 Alternatively, we can use the built in `brms` methods to plot the `brms` fit directly. For example:
@@ -137,8 +137,11 @@ plot(brms::conditional_effects(exp_1$fit))[[1]] +
 
 This model fit doesn't look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_5$dispersion`. Values >1 indicate over-dispersion and values <1 indicate under-dispersion. In this case the over-dispersion value is much bigger than 1, suggesting extreme over-dispersion (meaning our model doesn't properly capture the true variability represented in this data). We would need consider alternative ways of modelling this data using a different distribution. One option would be to try modelling the proportions as a Beta, for example - although this looses the information in how many trials underpin each data point, which in this case may not be valid as they vary substantially for each row.
 
-```{r overDispNEC}
+```{r}
 exp_1$dispersion
+```
+```{r, echo = FALSE}
+rm(exp_1)
 ```
 
 ### Beta data
@@ -163,6 +166,9 @@ plot(exp_2$fit)
 
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_2)
+```
+```{r, echo = FALSE}
+rm(exp_2)
 ```
 
 ### Poisson data
@@ -200,9 +206,11 @@ We first plot the model chains and parameter estimates to check the fit.
 plot(exp_3$fit)
 ```
 
-
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_3)
+```
+```{r, echo = FALSE}
+rm(exp_3)
 ```
 
 ### Measure data
@@ -215,7 +223,6 @@ measure_data <- "https://pastebin.com/raw/pWeS6x0n" %>%
   dplyr::rename(raw_x = raw.x) %>%
   dplyr::mutate(dplyr::across(where(is.character), as.numeric))
 ```
-
 
 ```{r, warning = FALSE}
 set.seed(333)
@@ -238,6 +245,9 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 
 ```{r, warning = FALSE}
 ecx(exp_4)
+```
+```{r, echo = FALSE}
+rm(exp_4)
 ```
 
 ## Fitting multiple models and model averaging using the `bnec` function
@@ -276,6 +286,9 @@ The `bayesmanecfit` object also contains all of the original fits, which can be 
 ```{r, fig.width = 7, fig.height = 7}
 exp_5_nec3param <- pull_out(exp_5, model = "nec3param")
 plot(exp_5_nec3param)
+```
+```{r, echo = FALSE}
+rm(exp_5_nec3param)
 ```
 
 This would extract the `nec3param` model from the `bayesmanecfit` and create a new object that contains just this `bayesnecfit` fit. This would be identical to fitting the `nec3param` as a single model using `bnec` as we did above. All of the models in the `bayesmanecfit` can be simultaneously plotted using
