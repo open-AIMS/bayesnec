@@ -66,9 +66,10 @@ jobs:
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
 
-      - name: Fix Windows Makevars
+      - name: Create Windows Makevars
         if: runner.os == 'Windows'
         run: |
+          install.packages("vctrs")
           dir.create("C:\\Users\\runneradmin\\Documents\\.R", recursive = TRUE)
           write("CXX14FLAGS=-O3 -mtune=native -Wno-ignored-attributes", "C:\\Users\\runneradmin\\Documents\\.R\\Makevars.win")
           install.packages("https://github.com/bgoodri/inline/archive/master.tar.gz", repos = NULL, type = "source")
