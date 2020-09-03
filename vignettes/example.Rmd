@@ -44,11 +44,11 @@ This package is currently under development. We are keen on any feedback regardi
 
 # Installation
 
-To install the latest version from GitHub (https://github.com/AIMS/bayesnec) use:
+To install the latest version from GitHub (https://github.com/open-AIMS/bayesnec) use:
 
 ```{r, eval = FALSE}
 install.packages("remotes")
-remotes::install_github("AIMS/bayesnec")
+remotes::install_github("open-AIMS/bayesnec")
 ```
 
 To run this vignette we will also need some additional packages, which are made available via `tidyverse`
