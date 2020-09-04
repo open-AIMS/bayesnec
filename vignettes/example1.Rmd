@@ -1,5 +1,5 @@
 ---
-title: "General usage"
+title: "Single model usage"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{General usage}
@@ -33,7 +33,7 @@ Bayesian model fitting can be difficult to automate across a broad range of usag
 
 This project started with an implementation of the *NEC* model based on that described in [@Fox2010] using R2jags. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported gaussian, poisson, binomial, gamma, negbin and beta response data `bayesnec` supports any of the `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of typically used concentration-response models (such as 4-parameter logistic and weibull models) that have no *NEC* 'step' function but simply model the response as a smooth function of concentration, as can be fit using other commonly used frequentist packages such as `drc` [@Ritz2016].
 
-Specific models can be fit directly using `bnec`. Alternatively it is possible to fit a a custom model set, specific model set or all of the available models. When multiple models are specified the `bnec` function returns a model weighted estimate of predicted posterior values, based on watanabe information criteria (WAIC) model weights, analogous to the way model weights are generated using AIC or AICc [@Burnham2002]. It is also possible to obtain all individual model fits from the fitted `bayesnecfit` model object if required. Multi-model inference can be useful where there are a range of plausible models that could be used [@Burnham2002] and has been recently adopted in ecotoxicology for SSD model inference [@Thorley2018].
+Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively it is possible to fit a a custom model set, specific model set or all of the available models. Further information on fitting multi models using `bayesnec` can be found in the Multi model usage vignette.
 
 An additional endpoint has also been derived using Bayesian posterior predicted values to estimate the "No-Statistical-Effect-Concentration" as the concentration at which predicted values for each MCMC chain fall below a lower percentile bound (defined as `sig_val`) of the control, which is assumed to be the lowest treatment (x_var) concentration in the data. *NSEC* estimates are currently used to approximate *NEC* for models without a specific *NEC* step parameter (in `bayesnec` these have the prefix `ecx` in their model name).
 
@@ -155,6 +155,7 @@ prop_data <- "https://pastebin.com/raw/123jq46d" %>%
 set.seed(333)
 exp_2 <- bnec(data = prop_data, x_var = "raw_x",
               y_var = "resp", model = "nec3param")
+
 ```
 
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7}
@@ -238,109 +239,5 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 ecx(exp_4)
 ```
 
-## Fitting multiple models and model averaging using the `bnec` function
-
-### Fitting a `bnec` model
-
-So far we have explored how to fit individual models via the function `bnec`. The `bayesnec` package also has the capacity to fit a custom selection of models, pre-specified sets of models or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains using `bnec` can be very slow. See details under `?bnec` for more information on the models, and model sets that can be specified.
-
-```{r, results = "hide"}
-set.seed(333)
-exp_5 <- bnec(data = prop_data, x_var = "raw_x",
-               y_var = "resp", model = "all")
-# save(exp_5, file = "exp_5.RData")
-```
-
-Here we run `bnec` using `model =  "all"` using the proportional data example for a beta response variable from above, and save the output as an `.RData` file so that the rmarkdown will not include all of the console output that is generated when these models run. Saving an `.RData` file of the *all* model `bnec` output can be a useful way of fitting all the models at a convenient time (this can be very slow, so you can run this overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
-
-### Exploring a `bayesmanecfit` model
-
-We have created some plotting method functions for our `bayesnec` model types, so we can plot a `bayesmanecfit` model object simply with `plot`.
-
-```{r, fig.width = 7, fig.height = 7}
-plot(exp_5)
-```
-
-The default plot looks exactly the same out our regular `bayesnecfit` plot, but the output is based in a weighted average of all the models fits. The *NEC* estimate on this plot is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the `ecx` models in the set. Note that we do not currently recommend reporting this values as the *NEC* (see below). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular
-
-```{r}
-exp_5$mod_stats
-```
-
-contains the table of model fit statistic for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), WAIC.delta (WAIC - the lowest WAIC), wi (the model weight), pD, and the over-dispersion estimate. For this example, three models have relatively similar weights and contribute to the model averaged outcome, including the `nec3param`, `nec4param` and the `ecx4param` models, with the `nec4param` being overall the highest.
-
-The `bayesmanecfit` object also contains all of the original fits, which can be extracted using the `pull_out` function.
-
-```{r, fig.width = 7, fig.height = 7}
-exp_5_nec3param <- pull_out(exp_5, model = "nec3param")
-plot(exp_5_nec3param)
-```
-
-This would extract the `nec3param` model from the `bayesmanecfit` and create a new object that contains just this `bayesnecfit` fit. This would be identical to fitting the `nec3param` as a single model using `bnec` as we did above. All of the models in the `bayesmanecfit` can be simultaneously plotted using
-
-
-```{r, fig.width = 7, fig.height = 10}
-plot(exp_5, all_models = TRUE)
-```
-
-
-The models prefixed with `ecx` are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plot above for these models are an approximation based on *NSEC* (see above) and should not be used without careful consideration of the validity of this endpoint value. A formal model averaged estimate of *NEC* should be obtained with `model = "NEC"`, and there is a helper function `amend` that can be used to alter the model set as required. We can use this to obtain first a set of *NEC* only models
-
-
-```{r}
-exp_5_nec <- pull_out(exp_5, model = "nec")
-
-```
-We can drop other models from the set if desired, for example let's drop the nechormesis model using the `amend` function
-
-```{r}
-exp_5_nec <- amend(exp_5_nec, drop = "nechorme")
-```
-
-Now we have two model sets, an *NEC* set and a mixed *NEC* and *ECx* set. Of course before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. For the all set, the models this highest weight are ecx4param and  ecxwb1. We can assess the chains for these models to make sure they are good.
-
-```{r, fig.width = 7, fig.height = 7}
-plot(exp_5$mod_fits$ecx4param$fit)
-```
-
-```{r, fig.width = 7, fig.height = 7}
-plot(exp_5$mod_fits$ecxwb1$fit)
-```
-
-Now we can use the `ecx` function to get EC10 and ec50 values. We can do this using our all model set, because it is valid to use *NEC* models for estimating *ECx*.
-
-```{r}
-ECx10 <- ecx(exp_5, ecx_val = 10)
-ECx50 <- ecx(exp_5, ecx_val = 50)
-
-ECx10
-ECx50
-```
-
-The weighted *NEC* estimates can be extracted directly from the *NEC* model set object, as they are an explicit parameter in these models.
-
-```{r}
-NECvals <- exp_5_nec$w_nec
-NECvals
-```
-
-Now we can make a combined plot of our output, showing the model averaged "*NEC*" model and the "all averaged model", along with the relevant thresholds.
-
-
-```{r, fig.width = 7, fig.height = 7}
-preds <- exp_5_nec$w_pred_vals$data
-
-plot(exp_5, add_nec = FALSE)
-abline(v = ECx10, col = "orange", lty = c(1, 3, 3))
-abline(v = ECx50, col = "blue", lty = c(1, 3, 3))
-abline(v = NECvals, col = "darkgrey", lty = c(3, 1, 3))
-lines(preds$x, preds$Estimate, col = "darkgrey")
-lines(preds$x, preds$Q2.5, col = "darkgrey", lty = 3)
-lines(preds$x, preds$Q97.5, col = "darkgrey", lty = 3)
-legend("bottomleft",
-  legend = c("Complete averaged model", "EC10", "ec50", "NEC"),
-  col = c("black", "orange", "blue", "darkgrey"), lty = 1, bty = "n"
-)
-```
 
 # References
