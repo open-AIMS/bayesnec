@@ -2,7 +2,7 @@
 title: "Multi model usage"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{General usage}
+  %\VignetteIndexEntry{Multi model usage}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: bayesnec.bib
