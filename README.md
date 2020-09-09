@@ -54,9 +54,9 @@ Usage
 
 Usage and further information about `bayesnec` can be seen on the
 [project page](https://open-aims.github.io/bayesnec) and the
-[vignette](https://open-aims.github.io/bayesnec/articles/example.html).
-Help files for the individual functions can be found on the [reference
-page](https://open-aims.github.io/bayesnec/reference/index.html).
+[vignettes](https://open-aims.github.io/bayesnec/articles/). Help files
+for the individual functions can be found on the [reference
+page](https://open-aims.github.io/bayesnec/reference/).
 
 Further Information
 -------------------
