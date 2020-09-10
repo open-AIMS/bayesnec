@@ -28,6 +28,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
       }
       priors <- define_prior(model = model, family = family,
                              predictor = data$x, response = response)
+    } else {
+      priors <- validate_priors(priors, model)
     }
   } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
@@ -37,6 +39,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     family <- data_check$family
     if (missing(priors)) {
       priors <- data_check$priors
+    } else {
+      priors <- validate_priors(priors, model)
     }
     if (family$family != "binomial") {
       response <- mod_dat$y
