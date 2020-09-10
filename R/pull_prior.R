@@ -9,7 +9,6 @@
 #'
 #' @examples
 #' \dontrun{
-#' library(tidyverse)
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = parallel::detectCores())

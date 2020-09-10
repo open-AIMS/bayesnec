@@ -10,6 +10,23 @@
 #' @param ... Additional arguments to \code{\link{expand_nec}}.
 #'
 #' @return An object of class bayesnecfit.
+#'
+#' @examples
+#' \dontrun{
+#' library(brms)
+#' library(bayesnec)
+#' options(mc.cores = parallel::detectCores())
+#' data(nec_data)
+#'
+#' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'              model = c("nec3param", "nec4param"),
+#'              family = Beta(link = "identity"), priors = my_priors,
+#'              iter = 1e4, control = list(adapt_delta = 0.99))
+#' class(exmp) # bayesmanecfit
+#' exmp_2 <- pull_out(exmp, "nec3param")
+#' class(exmp_2) # bayesnecfit
+#' }
+#'
 #' @export
 pull_out <- function(manec, model, ...) {
   existing <- names(manec$mod_fits)
