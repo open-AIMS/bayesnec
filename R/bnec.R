@@ -68,6 +68,58 @@
 #' 
 #' @return If argument model is a single string, then an object of class \code{\link{bayesnecfit}}; if many strings or a set,
 #' an object of class \code{\link{bayesmanecfit}}.
+#' 
+#' @examples
+#' \dontrun{
+#' library(tidyverse)
+#' library(brms)
+#' library(bayesnec)
+#' options(mc.cores = parallel::detectCores())
+#' data(nec_data)
+#' 
+#' # a single model
+#' exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'                model = "nec3param",
+#'                family = Beta(link = "identity"),
+#'                iter = 1e4, control = list(adapt_delta = 0.99))
+#' 
+#' class(exmp_a) # bayesnecfit
+#' 
+#' # check fit
+#' plot(exmp_a)
+#' plot(exmp_a$fit) # plot method from brms 
+#' 
+#' # one can specify custom priors too
+#' # tweak from bayesnec default exmp_a$fit$prior
+#' my_prior <- c(prior_string("beta(5, 1)", nlpar = "top"),
+#'               prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+#'               prior_string("gamma(0.5, 2)", nlpar = "beta"))
+#' 
+#' exmp_b <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'                model = "nec3param", priors = my_prior,
+#'                family = Beta(link = "identity"),
+#'                iter = 1e4, control = list(adapt_delta = 0.99))
+#' 
+#' # multiple models; user-specified priors are not necessary
+#' # though we show it here in case this is wanted
+#' my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
+#'                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+#'                                 prior_string("gamma(0.5, 2)", nlpar = "beta")),
+#'                   nec4param = c(prior_string("beta(5, 1)", nlpar = "top"),
+#'                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+#'                                 prior_string("gamma(0.5, 2)", nlpar = "beta"),
+#'                                 prior_string("beta(1, 5)", nlpar = "bot")))
+#' 
+#' exmp_c <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'                model = c("nec3param", "nec4param"),
+#'                family = Beta(link = "identity"), priors = my_priors,
+#'                iter = 1e4, control = list(adapt_delta = 0.99))
+#' 
+#' class(exmp_c) # bayesmanecfit
+#' plot(exmp_c, all_models = FALSE) # model average, default
+#' plot(exmp_c, all_models = TRUE) # individual models separately
+#' }
+#' 
 #' @export
 bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
