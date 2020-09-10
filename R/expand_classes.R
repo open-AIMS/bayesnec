@@ -82,12 +82,17 @@ expand_manec <- function(object, x_range = NA, precision = 1000,
   success_models <- model_set[sapply(object, class) == "prebayesnecfit"]
   if (length(success_models) == 0) {
     stop("None of the models fit successfully, ",
-         "try using bnec with a single model (e.g. ecxexp) using the default ",
-         "settings as a starting point for trouble shooting.")
+         "try using bnec with a single model (e.g. ecxexp) ",
+         "using the default settings as a starting point ",
+         "for trouble shooting, or check ?show_params to ",
+         "make sure you have the correct parameter names ",
+         "for your priors.")
   } else if (length(success_models) == 1) {
-    message(paste("Only", success_models, " was successfully fitted, "),
-                  "no model averaging done. Perhaps try setting better priors.\n",
-                  paste("returning", success_models))
+    message("Only ", success_models, " was successfully fitted, ",
+            "no model averaging done. Perhaps try setting better ",
+            "priors, or check ?show_params to make sure you have ",
+            "the correct parameter names for your priors.\n",
+            "Returning ", success_models)
     return(object[[success_models]])
   } else {
     message(paste("successfully fitted the models: ",
