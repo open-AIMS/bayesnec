@@ -4,9 +4,14 @@
 \alias{make_inits}
 \title{make_inits}
 \usage{
-make_inits(priors, chains, stan_like = FALSE)
+make_inits(model, fct_args, priors, chains, stan_like = FALSE)
 }
 \arguments{
+\item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
+
+\item{fct_args}{A \code{\link[base]{character}} string containing
+the expected argument names to be used.}
+
 \item{priors}{an object of class "brmsprior" from package \pkg{brms}.}
 
 \item{chains}{Number of chains to be passed to brms model.}
