@@ -7,7 +7,8 @@
 pull_prior(object)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesnecfit}}
+or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 }
 \value{
 A list containing the priors
@@ -15,4 +16,20 @@ A list containing the priors
 \description{
 Extracts the priors from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+}
+\examples{
+\dontrun{
+library(tidyverse)
+library(brms)
+library(bayesnec)
+options(mc.cores = parallel::detectCores())
+data(nec_data)
+
+exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
+               model = "nec3param",
+               family = Beta(link = "identity"),
+               iter = 1e4, control = list(adapt_delta = 0.99))
+pull_prior(exmp_a)
+}
+
 }
