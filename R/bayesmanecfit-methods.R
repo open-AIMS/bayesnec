@@ -34,7 +34,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
            xticks = xticks, ...)
       mtext(xlab, side = 1, outer = TRUE, line = 2)
       mtext(ylab, side = 2, outer = TRUE, line = 2)
-      legend("top", legend = names(mod_fits[m]), bty = "n")
+      legend("bottomleft", legend = names(mod_fits[m]), bty = "n")
     }
   } else {
     universal <- x$mod_fits[[1]]
