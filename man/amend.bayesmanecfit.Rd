@@ -12,9 +12,27 @@
 \item{...}{Additional arguments to \code{\link{amend}}}
 }
 \value{
-All successfully fitted model fits, either as a \code{\link{bayesnecfit}} (1 model case)
-or \code{\link{bayesmanecfit}} (multiple models case) object.
+All successfully fitted \code{\link{bayesmanecfit}} model fits.
 }
 \description{
 Modifies an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
+}
+\examples{
+\dontrun{
+library(brms)
+library(bayesnec)
+options(mc.cores = parallel::detectCores())
+data(nec_data)
+
+exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
+             model = c("nec3param", "nec4param"),
+             family = Beta(link = "identity"), priors = my_priors,
+             iter = 1e4, control = list(adapt_delta = 0.99))
+
+# custom priors are not necessary, just added here for example usage
+ecxlin_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
+                   prior_string("gamma(2, 6.5)", nlpar = "slope"))
+exmp_2 <- amend(exmp, add = "ecxlin", priors = ecxlin_priors)
+}
+
 }

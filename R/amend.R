@@ -8,6 +8,25 @@
 #' @param drop A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
+#'
+#' @examples
+#' \dontrun{
+#' library(brms)
+#' library(bayesnec)
+#' options(mc.cores = parallel::detectCores())
+#' data(nec_data)
+#'
+#' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'              model = c("nec3param", "nec4param"),
+#'              family = Beta(link = "identity"), priors = my_priors,
+#'              iter = 1e4, control = list(adapt_delta = 0.99))
+#'
+#' # custom priors are not necessary, just added here for example usage
+#' ecxlin_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
+#'                    prior_string("gamma(2, 6.5)", nlpar = "slope"))
+#' exmp_2 <- amend(exmp, add = "ecxlin", priors = ecxlin_priors)
+#' }
+#'
 #' @export
 amend.default <- function(object, drop, add, x_range = NA,
                           precision = 1000, sig_val = 0.01,
@@ -80,8 +99,8 @@ amend.default <- function(object, drop, add, x_range = NA,
 #' 
 #' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
 #' 
-#' @return All successfully fitted model fits, either as a \code{\link{bayesnecfit}} (1 model case)
-#' or \code{\link{bayesmanecfit}} (multiple models case) object.
+#' @inherit amend.default return examples
+#' 
 #' @export
 amend <- function(object, drop, add, x_range = NA,
                   precision = 1000, sig_val = 0.01,
@@ -97,7 +116,7 @@ amend <- function(object, drop, add, x_range = NA,
 #' 
 #' @param ... Additional arguments to \code{\link{amend}}
 #' 
-#' @inherit amend return
+#' @inherit amend return examples
 #' @export
 amend.bayesmanecfit <- function(object, ...) {
   amend.default(object, ...)
