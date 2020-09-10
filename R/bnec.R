@@ -10,7 +10,8 @@
 #' If not supplied, the model may run but will not be the model you intended!
 #' @param family Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.
 #' @param priors An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
-#' If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.
+#' If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter. It can also be specified as a named \code{\link[base]{list}} where each
+#' name needs to correspond to the same string as "model". See details.
 #' @param x_range A range of x values over which to consider extracting ECx.
 #' @param precision The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.
 #' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values 
@@ -33,11 +34,11 @@
 #' Other families can be added as required, please raise an \href{https://github.com/AIMS/bayesnec/issues}{issue} on the GitHub development site if your 
 #' required family is not currently available. 
 #' If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}. Guesses
-#' include all of the above families but negbinomial because this latter requires knowledge on whether the data is over-dispersed. As explained below in the 
-#' Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the negbinomial family.
+#' include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the 
+#' Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.
 #' 
 #' The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2", 
-#' "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type it fit, and \code{\link{bnec}} returns a model 
+#' "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model 
 #' object of class \code{\link{bayesnecfit}}.
 #' 
 #' If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class \code{\link{bayesmanecfit}}
@@ -49,7 +50,11 @@
 #' 
 #' \code{model} may also be one of "all", meaning all of the available models will be fit; 
 #' "ecx" meaning only models excluding a specific NEC step parameter fill be fit; "nec" meaning only models with a specific NEC step
-#' parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit.
+#' parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit. Notice that
+#' if one of these group strings is provided together with a user-specified named list for the argument \code{priors}, the list names need to contain
+#' the actual model names, and not the group string, e.g. if \code{model = "ecx"} and \code{priors = my_priors} then \code{names(my_priors)} must
+#' contain \code{c("ecx4param", "ecxlin", "ecxexp", "ecxsigm", "ecxwb1", "ecxwb2")}. To check available models and associated parameters for each group,
+#' use the function \code{\link{show_params}}.
 #' 
 #' Models are fitted using model formula passed to \pkg{brms}.
 #' 

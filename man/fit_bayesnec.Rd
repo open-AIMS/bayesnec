@@ -30,7 +30,8 @@ If not supplied, the model may run but will not be the model you intended!}
 \item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
-If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
+If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter. It can also be specified as a named \code{\link[base]{list}} where each
+name needs to correspond to the same string as "model". See details.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
 

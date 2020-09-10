@@ -29,7 +29,8 @@ amend(
 against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
-If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
+If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter. It can also be specified as a named \code{\link[base]{list}} where each
+name needs to correspond to the same string as "model". See details.}
 }
 \value{
 All successfully fitted model fits, either as a \code{\link{bayesnecfit}} (1 model case)
