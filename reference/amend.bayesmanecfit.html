@@ -158,9 +158,27 @@
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>All successfully fitted model fits, either as a <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> (1 model case)
-or <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> (multiple models case) object.</p>
+    <p>All successfully fitted <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> model fits.</p>
 
+    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
+    <pre class="examples"><div class='input'><span class='co'>if</span> (<span class='fl'>FALSE</span>) {
+<span class='fu'><a href='https://rdrr.io/r/base/library.html'>library</a></span>(<span class='kw'><a href='https://github.com/paul-buerkner/brms'>brms</a></span>)
+<span class='fu'><a href='https://rdrr.io/r/base/library.html'>library</a></span>(<span class='kw'><a href='https://open-aims.github.io/bayesnec'>bayesnec</a></span>)
+<span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span>(mc.cores = <span class='kw'>parallel</span>::<span class='fu'><a href='https://rdrr.io/r/parallel/detectCores.html'>detectCores</a></span>())
+<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span>(<span class='kw'>nec_data</span>)
+
+<span class='kw'>exmp</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span>(data = <span class='kw'>nec_data</span>, x_var = <span class='st'>"x"</span>, y_var = <span class='st'>"y"</span>,
+             model = <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='st'>"nec3param"</span>, <span class='st'>"nec4param"</span>),
+             family = <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span>(link = <span class='st'>"identity"</span>), priors = <span class='kw'>my_priors</span>,
+             iter = <span class='fl'>1e4</span>, control = <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span>(adapt_delta = <span class='fl'>0.99</span>))
+
+<span class='co'># custom priors are not necessary, just added here for example usage</span>
+<span class='kw'>ecxlin_priors</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fu'><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></span>(<span class='st'>"beta(5, 1)"</span>, nlpar = <span class='st'>"top"</span>),
+                   <span class='fu'><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></span>(<span class='st'>"gamma(2, 6.5)"</span>, nlpar = <span class='st'>"slope"</span>))
+<span class='kw'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='amend.html'>amend</a></span>(<span class='kw'>exmp</span>, add = <span class='st'>"ecxlin"</span>, priors = <span class='kw'>ecxlin_priors</span>)
+}
+
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
