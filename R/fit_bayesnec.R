@@ -20,12 +20,12 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          inits, skip_check = FALSE, ...) {
   if (skip_check) {
     mod_dat <- data
+    if (family$family != "binomial") {
+      response <- data$y
+    } else {
+      response <- data$y / data$trials
+    }
     if (missing(priors)) {
-      if (family$family != "binomial") {
-        response <- data$y
-      } else {
-        response <- data$y / data$trials
-      }
       priors <- define_prior(model = model, family = family,
                              predictor = data$x, response = response)
     } else {

@@ -4,7 +4,15 @@
 \alias{amend}
 \title{amend}
 \usage{
-amend(object, drop, add, x_range = NA, precision = 1000, sig_val = 0.01)
+amend(
+  object,
+  drop,
+  add,
+  x_range = NA,
+  precision = 1000,
+  sig_val = 0.01,
+  priors
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.}
@@ -19,6 +27,9 @@ amend(object, drop, add, x_range = NA, precision = 1000, sig_val = 0.01)
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
 against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+
+\item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
+If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.}
 }
 \value{
 All successfully fitted model fits, either as a \code{\link{bayesnecfit}} (1 model case)

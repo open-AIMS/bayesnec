@@ -7,11 +7,11 @@
 #' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
 #' @param drop A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
-#' 
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #' @export
 amend.default <- function(object, drop, add, x_range = NA,
-                          precision = 1000, sig_val = 0.01) {
+                          precision = 1000, sig_val = 0.01,
+                          priors) {
   if (missing(drop) && missing(add)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop;\n",
@@ -48,7 +48,8 @@ amend.default <- function(object, drop, add, x_range = NA,
                      thin = simdat$thin,
                      warmup = simdat$warmup,
                      inits = simdat$inits,
-                     chains = simdat$chains),
+                     chains = simdat$chains,
+                     priors = priors),
         silent = TRUE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[model]] <- fit_m
@@ -83,7 +84,8 @@ amend.default <- function(object, drop, add, x_range = NA,
 #' or \code{\link{bayesmanecfit}} (multiple models case) object.
 #' @export
 amend <- function(object, drop, add, x_range = NA,
-                  precision = 1000, sig_val = 0.01) {
+                  precision = 1000, sig_val = 0.01,
+                  priors) {
   UseMethod("amend")
 }
 
