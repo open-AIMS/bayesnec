@@ -140,7 +140,15 @@
     <p>Amends an existing <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object, for example, by adding or removing fitted models.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>amend</span>(<span class='kw'>object</span>, <span class='kw'>drop</span>, <span class='kw'>add</span>, x_range = <span class='fl'>NA</span>, precision = <span class='fl'>1000</span>, sig_val = <span class='fl'>0.01</span>)</pre>
+    <pre class="usage"><span class='fu'>amend</span>(
+  <span class='kw'>object</span>,
+  <span class='kw'>drop</span>,
+  <span class='kw'>add</span>,
+  x_range = <span class='fl'>NA</span>,
+  precision = <span class='fl'>1000</span>,
+  sig_val = <span class='fl'>0.01</span>,
+  <span class='kw'>priors</span>
+)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -169,6 +177,11 @@
       <th>sig_val</th>
       <td><p>Probability value to use as the lower quantile to test significance of the predictor posterior values
 against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
+    </tr>
+    <tr>
+      <th>priors</th>
+      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which specifies user-desired prior distributions of model parameters.
+If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline prior for each parameter.</p></td>
     </tr>
     </table>
 
