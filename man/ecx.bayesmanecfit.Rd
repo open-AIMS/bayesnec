@@ -53,6 +53,23 @@ Note that for the current version, ECx for an "nechorme" (NEC Hormesis) model is
 For \code{hormesis_def}, if "max", then ECx values are calculated as a decline from the maximum estimates (i.e. the peak at nec);
 if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.
 }
+\examples{
+\dontrun{
+library(brms)
+library(bayesnec)
+options(mc.cores = parallel::detectCores())
+data(nec_data)
+
+exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
+             model = c("nec3param", "nec4param"),
+             family = Beta(link = "identity"), priors = my_priors,
+             iter = 1e4, control = list(adapt_delta = 0.99))
+exmp_2 <- pull_out(exmp, "nec3param")
+ecx(exmp, ecx_val = 50)
+ecx(exmp_2)
+}
+
+}
 \seealso{
 \code{\link{bnec}}
 }
