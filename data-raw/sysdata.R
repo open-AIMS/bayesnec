@@ -4,7 +4,7 @@ library(brms)
 # ACCEPTED MODEL GROUPS AND FAMILIES
 ####################################
 mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme", "necsigm"),
-                   ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsimg",
+                   ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
                            "ecxwb1", "ecxwb2"),
                    all = c("nec3param", "nec4param", "nechorme", "necsigm",
                            "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
