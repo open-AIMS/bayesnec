@@ -19,7 +19,6 @@ Extracts the priors from an object of class
 }
 \examples{
 \dontrun{
-library(tidyverse)
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

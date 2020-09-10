@@ -109,7 +109,6 @@ The default value for \code{sig_val} is 0.01, which corresponds to an alpha valu
 }
 \examples{
 \dontrun{
-library(tidyverse)
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())
