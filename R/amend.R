@@ -50,7 +50,7 @@ amend.default <- function(object, drop, add, x_range = NA,
                      inits = simdat$inits,
                      chains = simdat$chains,
                      priors = priors),
-        silent = TRUE)
+        silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[model]] <- fit_m
       } else {

@@ -96,7 +96,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                      priors = priors, model = model_m,
                      iter = iter, warmup = warmup, inits = inits,
                      ...),
-        silent = TRUE)
+        silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
       } else {

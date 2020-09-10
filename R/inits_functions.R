@@ -2,6 +2,10 @@
 #'
 #' Creates list of initialisation values
 #'
+#' @inheritParams bnec
+#'
+#' @param fct_args A \code{\link[base]{character}} string containing
+#' the expected argument names to be used.
 #' @param priors an object of class "brmsprior" from package \pkg{brms}.
 #' @param chains Number of chains to be passed to brms model.
 #' @param stan_like Should initial values be drawn in a similar
@@ -11,7 +15,8 @@
 #' 
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
-make_inits <- function(priors, chains, stan_like = FALSE) {
+make_inits <- function(model, fct_args, priors,
+                       chains, stan_like = FALSE) {
   fcts <- c(gamma = rgamma,
             normal = rnorm,
             beta = rbeta,
@@ -28,6 +33,19 @@ make_inits <- function(priors, chains, stan_like = FALSE) {
     par_names[j] <- paste(priors$class[j],
                           priors$nlpar[j],
                           sep = sep)
+  }
+  check_args <- identical(sort(par_names), sort(fct_args))
+  if (!check_args) {
+    out_args <- gsub("^b_", "", fct_args)
+    out_pars <- gsub("^b_", "", par_names)
+    stop("In model ", model, ", user-specific parameter ",
+         "prior names (",
+         paste0(out_pars, collapse = ", "), ") do not ",
+         "match expectation (",
+         paste0(out_args, collapse = ", "),
+         "). Consider ",
+         "reconstructing your priors; check necessary ",
+         "parameters with show_params(\"", model, "\")")
   }
   out <- vector(mode = "list", length = chains)
   for (i in seq_along(out)) {
@@ -71,13 +89,13 @@ make_good_inits <- function(model, x, y, n_trials = 1e3, ...) {
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
   fct_args <- setdiff(fct_args, "x")
-  inits <- make_inits(...)
+  inits <- make_inits(model, fct_args, ...)
   init_ranges <- lapply(inits, get_init_ranges,
                         x, pred_fct, fct_args)
   are_good <- all(sapply(init_ranges, check_limits, limits))
   n <- 1
   while (!are_good & n <= n_trials) {
-    inits <- make_inits(...)
+    inits <- make_inits(model, fct_args, ...)
     init_ranges <- lapply(inits, get_init_ranges,
                           x, pred_fct, fct_args)
     are_good <- all(sapply(init_ranges,
