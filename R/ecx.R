@@ -28,6 +28,23 @@
 #' @return A vector containing the estimated ECx value, including upper and lower 95% credible interval bounds.
 #' 
 #' @importFrom stats quantile predict
+#'
+#' @examples
+#' \dontrun{
+#' library(brms)
+#' library(bayesnec)
+#' options(mc.cores = parallel::detectCores())
+#' data(nec_data)
+#'
+#' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'              model = c("nec3param", "nec4param"),
+#'              family = Beta(link = "identity"), priors = my_priors,
+#'              iter = 1e4, control = list(adapt_delta = 0.99))
+#' exmp_2 <- pull_out(exmp, "nec3param")
+#' ecx(exmp, ecx_val = 50)
+#' ecx(exmp_2)
+#' }
+#'
 #' @export
 ecx.default <- function(object, ecx_val = 10, precision = 1000,
                         posterior = FALSE, type = "absolute",
@@ -83,7 +100,7 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
 #'
 #' @inheritParams ecx.default
 #' 
-#' @inherit ecx.default return details seealso
+#' @inherit ecx.default return details seealso examples
 #' 
 #' @export
 ecx <- function(object, ecx_val = 10, precision = 1000,
@@ -102,7 +119,7 @@ ecx <- function(object, ecx_val = 10, precision = 1000,
 #' returned by \code{\link{bnec}}.
 #' @param ... Additional arguments to \code{\link{ecx}}
 #'
-#' @inherit ecx return details seealso
+#' @inherit ecx return details seealso examples
 #' @export
 ecx.bayesnecfit <- function(object, ...) {
   ecx.default(object, ...)
@@ -117,7 +134,7 @@ ecx.bayesnecfit <- function(object, ...) {
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #'
-#' @inherit ecx return details seealso
+#' @inherit ecx return details seealso examples
 #'
 #' @importFrom stats quantile
 #' @export
