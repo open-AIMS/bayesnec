@@ -284,10 +284,11 @@ The default value for <code>sig_val</code> is 0.01, which corresponds to an alph
 
 <span class='co'># check fit</span>
 <span class='fu'><a href='https://rdrr.io/r/graphics/plot.default.html'>plot</a></span>(<span class='kw'>exmp_a</span>)
-<span class='fu'><a href='https://rdrr.io/r/graphics/plot.default.html'>plot</a></span>(<span class='kw'>exmp_a</span><span class='op'>$</span><span class='kw'>fit</span>) <span class='co'># plot method from brms </span>
+<span class='fu'><a href='https://rdrr.io/r/graphics/plot.default.html'>plot</a></span>(<span class='kw'>exmp_a</span><span class='op'>$</span><span class='kw'>fit</span>) <span class='co'># plot method from brms</span>
 
 <span class='co'># one can specify custom priors too</span>
-<span class='co'># tweak from bayesnec default exmp_a$fit$prior</span>
+<span class='co'># tweak from bayesnec default</span>
+<span class='fu'><a href='pull_prior.html'>pull_prior</a></span>(<span class='kw'>exmp_a</span>)
 <span class='kw'>my_prior</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fu'><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></span>(<span class='st'>"beta(5, 1)"</span>, nlpar = <span class='st'>"top"</span>),
               <span class='fu'><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></span>(<span class='st'>"normal(1.3, 2.7)"</span>, nlpar = <span class='st'>"nec"</span>),
               <span class='fu'><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></span>(<span class='st'>"gamma(0.5, 2)"</span>, nlpar = <span class='st'>"beta"</span>))
@@ -296,6 +297,8 @@ The default value for <code>sig_val</code> is 0.01, which corresponds to an alph
                model = <span class='st'>"nec3param"</span>, priors = <span class='kw'>my_prior</span>,
                family = <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span>(link = <span class='st'>"identity"</span>),
                iter = <span class='fl'>1e4</span>, control = <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span>(adapt_delta = <span class='fl'>0.99</span>))
+
+<span class='fu'><a href='pull_prior.html'>pull_prior</a></span>(<span class='kw'>exmp_b</span>)
 
 <span class='co'># multiple models; user-specified priors are not necessary</span>
 <span class='co'># though we show it here in case this is wanted</span>
@@ -312,6 +315,7 @@ The default value for <code>sig_val</code> is 0.01, which corresponds to an alph
                family = <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span>(link = <span class='st'>"identity"</span>), priors = <span class='kw'>my_priors</span>,
                iter = <span class='fl'>1e4</span>, control = <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span>(adapt_delta = <span class='fl'>0.99</span>))
 
+<span class='fu'><a href='pull_prior.html'>pull_prior</a></span>(<span class='kw'>exmp_c</span>)
 <span class='fu'><a href='https://rdrr.io/r/base/class.html'>class</a></span>(<span class='kw'>exmp_c</span>) <span class='co'># bayesmanecfit</span>
 <span class='fu'><a href='https://rdrr.io/r/graphics/plot.default.html'>plot</a></span>(<span class='kw'>exmp_c</span>, all_models = <span class='fl'>FALSE</span>) <span class='co'># model average, default</span>
 <span class='fu'><a href='https://rdrr.io/r/graphics/plot.default.html'>plot</a></span>(<span class='kw'>exmp_c</span>, all_models = <span class='fl'>TRUE</span>) <span class='co'># individual models separately</span>
