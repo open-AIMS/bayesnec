@@ -188,7 +188,8 @@ If not supplied, the model may run but will not be the model you intended!</p></
     <tr>
       <th>priors</th>
       <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which specifies user-desired prior distributions of model parameters.
-If missing, <code>bnec</code> will figure out a baseline prior for each parameter.</p></td>
+If missing, <code>bnec</code> will figure out a baseline prior for each parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> where each
+name needs to correspond to the same string as "model". See details.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -239,10 +240,10 @@ of package <span class="pkg">brms</span>, so the user needs to load <span class=
 Other families can be added as required, please raise an <a href='https://github.com/AIMS/bayesnec/issues'>issue</a> on the GitHub development site if your
 required family is not currently available.
 If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>. Guesses
-include all of the above families but negbinomial because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
-Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the negbinomial family.</p>
+include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
+Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.</p>
 <p>The argument <code>model</code> may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
-"ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type it fit, and <code>bnec</code> returns a model
+"ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and <code>bnec</code> returns a model
 object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
 <p>If a vector of two or more of the available models is supplied, <code>bnec</code> returns a model object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>
 containing model averaged predictions for the supplied models, providing they were successfully fitted.</p>
@@ -251,7 +252,11 @@ using the <code><a href='https://rdrr.io/pkg/brms/man/loo_model_weights.brmsfit.
 element and can be examined individually.</p>
 <p><code>model</code> may also be one of "all", meaning all of the available models will be fit;
 "ecx" meaning only models excluding a specific NEC step parameter fill be fit; "nec" meaning only models with a specific NEC step
-parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit.</p>
+parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit. Notice that
+if one of these group strings is provided together with a user-specified named list for the argument <code>priors</code>, the list names need to contain
+the actual model names, and not the group string, e.g. if <code>model = "ecx"</code> and <code>priors = my_priors</code> then <code><a href='https://rdrr.io/r/base/names.html'>names(my_priors)</a></code> must
+contain <code><a href='https://rdrr.io/r/base/c.html'>c("ecx4param", "ecxlin", "ecxexp", "ecxsigm", "ecxwb1", "ecxwb2")</a></code>. To check available models and associated parameters for each group,
+use the function <code><a href='show_params.html'>show_params</a></code>.</p>
 <p>Models are fitted using model formula passed to <span class="pkg">brms</span>.</p>
 <p>All models provide an estimate for NEC. For model types with "nec" as a prefix, NEC is directly estimated as parameter "nec"
 in the model. Models with "ecx" as a prefix are continuous curve models, typically used for extracting ECx values
