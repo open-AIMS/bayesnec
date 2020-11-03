@@ -94,7 +94,7 @@ exp_5_nec3param <- pull_out(exp_5, model = "nec3param")
 plot(exp_5_nec3param)
 ```
 
-This would extract the `nec3param` model from the `bayesmanecfit` and create a new object that contains just this `bayesnecfit` fit. This would be identical to fitting the `nec3param` as a single model using `bnec` as we did above. All of the models in the `bayesmanecfit` can be simultaneously plotted using
+This would extract the `nec3param` model from the `bayesmanecfit` and create a new object that contains just this `bayesnecfit` fit. This would be identical to fitting the `nec3param` as a single model using `bnec` as we did previously. All of the models in the `bayesmanecfit` can be simultaneously plotted using
 
 
 ```{r, fig.width = 7, fig.height = 10}
@@ -102,7 +102,7 @@ plot(exp_5, all_models = TRUE)
 ```
 
 
-The models prefixed with `ecx` are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plot above for these models are an approximation based on *NSEC* (see above) and should not be used without careful consideration of the validity of this endpoint value. A formal model averaged estimate of *NEC* should be obtained with `model = "NEC"`, and there is a helper function `amend` that can be used to alter the model set as required. We can use this to obtain first a set of *NEC* only models
+The models prefixed with `ecx` are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plot above for these models are an approximation based on *NSEC* (see above) and should not be used without careful consideration of the validity of this endpoint value. A formal model averaged estimate of *NEC* should be obtained with `model = "nec"`, and there is a helper function `amend` that can be used to alter the model set as required. We can use this to obtain first a set of *NEC* only models
 
 
 ```{r}
