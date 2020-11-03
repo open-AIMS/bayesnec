@@ -13,6 +13,11 @@ pred_nechorme <- function(b_top, b_slope, b_beta, b_nec, x) {
     ifelse(x - b_nec < 0, 0, 1))
 }
 
+pred_nechorme4 <- function(b_beta, b_bot, b_slope, b_nec, b_top, x) {
+  b_bot + ((b_top + b_slope * x) - b_bot) * exp(-b_beta * (x - b_nec) *
+                                  ifelse(x - b_nec < 0, 0, 1))
+}
+
 pred_necsigm <- function(b_beta, b_top, b_nec, b_d, x) {
   b_top * exp(-b_beta * ifelse(x - b_nec < 0, 0, (x - b_nec)^exp(b_d)) *
     ifelse(x - b_nec < 0, 0, 1))

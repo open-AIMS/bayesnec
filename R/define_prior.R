@@ -79,6 +79,9 @@ define_prior <- function(model, family, predictor, response) {
   if (model == "nechorme") {
     priors <- pr_beta + pr_top + pr_nec + pr_slope
   }
+  if (model == "nechorme4") {
+    priors <- pr_beta + pr_top + pr_nec + pr_slope + pr_bot
+  }
   if (model == "necsigm") {
     priors <- pr_beta + pr_top + pr_nec + pr_d
   }

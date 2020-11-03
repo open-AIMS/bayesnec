@@ -68,12 +68,12 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   }
   if (object$fit$family$family == "gaussian" & type == "absolute") {
     stop("Absolute ECx values are not valid for a gaussian ",
-         "response variable unless a 4 parameter model is fit")
+         "response variable unless a model with a bot parameter model is fit")
   }
   pred_vals <- predict(object, precision = precision, x_range = x_range)
   p_samples <- pred_vals$posterior
   x_vec <- pred_vals$data$x
-  if (object$model == "nechorme") {
+  if (object$model == "nechorme" | object$model == "nechorme4") {
     n <- seq_len(nrow(p_samples))
     p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
                             p_samples, hormesis_def, fct = "rbind")
