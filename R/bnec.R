@@ -10,7 +10,8 @@
 #' If not supplied, the model may run but will not be the model you intended!
 #' @param family Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.
 #' @param priors An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
-#' If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter.
+#' If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter. It can also be specified as a named \code{\link[base]{list}} where each
+#' name needs to correspond to the same string as "model". See details.
 #' @param x_range A range of x values over which to consider extracting ECx.
 #' @param precision The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.
 #' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values 
@@ -19,6 +20,7 @@
 #' @param warmup A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number 
 #' of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup 
 #' should not be larger than "iter" and the default is "floor(iter / 5) * 4".
+#' @param inits Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.
 #' @param ... Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.
 #' 
 #' @details As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
@@ -32,14 +34,14 @@
 #' Other families can be added as required, please raise an \href{https://github.com/AIMS/bayesnec/issues}{issue} on the GitHub development site if your 
 #' required family is not currently available. 
 #' If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}. Guesses
-#' include all of the above families but negbinomial because this latter requires knowledge on whether the data is over-dispersed. As explained below in the 
-#' Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the negbinomial family.
+#' include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the 
+#' Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.
 #' 
 #' The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2", 
-#' "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type it fit, and \code{\link{bnec}} returns a model 
-#' object of class "bayesnecfit".
+#' "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model 
+#' object of class \code{\link{bayesnecfit}}.
 #' 
-#' If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class "bayesmanecfit" 
+#' If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class \code{\link{bayesmanecfit}}
 #' containing model averaged predictions for the supplied models, providing they were successfully fitted.
 #' 
 #' Model averaging is achieved through a weighted sample of each fitted models posterior predictions, with weights derived 
@@ -48,7 +50,11 @@
 #' 
 #' \code{model} may also be one of "all", meaning all of the available models will be fit; 
 #' "ecx" meaning only models excluding a specific NEC step parameter fill be fit; "nec" meaning only models with a specific NEC step
-#' parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit.
+#' parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit. Notice that
+#' if one of these group strings is provided together with a user-specified named list for the argument \code{priors}, the list names need to contain
+#' the actual model names, and not the group string, e.g. if \code{model = "ecx"} and \code{priors = my_priors} then \code{names(my_priors)} must
+#' contain \code{c("ecx4param", "ecxlin", "ecxexp", "ecxsigm", "ecxwb1", "ecxwb2")}. To check available models and associated parameters for each group,
+#' use the function \code{\link{show_params}}.
 #' 
 #' Models are fitted using model formula passed to \pkg{brms}.
 #' 
@@ -60,43 +66,69 @@
 #' lower than that expected in the case of no exposure). 
 #' The default value for \code{sig_val} is 0.01, which corresponds to an alpha value of 0.01 for a one-sided test of significance.
 #' 
-#' @return When only a single model is passed \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesnecfit", containing:
-#' \itemize{
-#'    \item "fit": the the fitted Bayesian model of class \code{\link[brms]{brmsfit}};
-#'    \item "model" \code{\link[base]{character}} string indicating the name of the fitted model;
-#'    \item "pred_vals" a \code{\link[base]{list}} containing a \code{\link[base]{data.frame}} of summary posterior predicted values
-#'           and a vector containing based on the supplied \code{precision} and \code{x_range};
-#'    \item "nec" the estimated NEC;
-#'    \item "top" the estimate for parameter "top" in the fitted model;
-#'    \item "beta" the estimate for parameter "beta" in the fitted model;
-#'    \item "alpha" the estimate for parameter "alpha" in the fitted model, NA if absent for the fitted model type;
-#'    \item "bot" the estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type;
-#'    \item "d" the estimate for parameter "d" in the fitted model, NA if absent for the fitted model type;
-#'    \item "slope" the estimate for parameter "slope" in the fitted model, NA if absent for the fitted model type;
-#'    \item "ec50" the estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type;
-#'    \item "dispersion" an estimate of dispersion;
-#'    \item "predicted_y" the predicted values for the observed data;
-#'    \item "residuals" residual values of the observed data from the fitted model;
-#'    \item "nec_posterior" a full posterior estimate of the NEC.
+#' @return If argument model is a single string, then an object of class \code{\link{bayesnecfit}}; if many strings or a set,
+#' an object of class \code{\link{bayesmanecfit}}.
+#' 
+#' @examples
+#' \dontrun{
+#' library(brms)
+#' library(bayesnec)
+#' options(mc.cores = parallel::detectCores())
+#' data(nec_data)
+#'
+#' # a single model
+#' exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'                model = "nec3param",
+#'                family = Beta(link = "identity"),
+#'                iter = 1e4, control = list(adapt_delta = 0.99))
+#'
+#' class(exmp_a) # bayesnecfit
+#'
+#' # check fit
+#' plot(exmp_a)
+#' plot(exmp_a$fit) # plot method from brms
+#'
+#' # one can specify custom priors too
+#' # tweak from bayesnec default
+#' pull_prior(exmp_a)
+#' my_prior <- c(prior_string("beta(5, 1)", nlpar = "top"),
+#'               prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+#'               prior_string("gamma(0.5, 2)", nlpar = "beta"))
+#'
+#' exmp_b <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'                model = "nec3param", priors = my_prior,
+#'                family = Beta(link = "identity"),
+#'                iter = 1e4, control = list(adapt_delta = 0.99))
+#'
+#' pull_prior(exmp_b)
+#'
+#' # multiple models; user-specified priors are not necessary
+#' # though we show it here in case this is wanted
+#' my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
+#'                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+#'                                 prior_string("gamma(0.5, 2)", nlpar = "beta")),
+#'                   nec4param = c(prior_string("beta(5, 1)", nlpar = "top"),
+#'                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+#'                                 prior_string("gamma(0.5, 2)", nlpar = "beta"),
+#'                                 prior_string("beta(1, 5)", nlpar = "bot")))
+#' 
+#' exmp_c <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'                model = c("nec3param", "nec4param"),
+#'                family = Beta(link = "identity"), priors = my_priors,
+#'                iter = 1e4, control = list(adapt_delta = 0.99))
+#'
+#' pull_prior(exmp_c)
+#' class(exmp_c) # bayesmanecfit
+#' plot(exmp_c, all_models = FALSE) # model average, default
+#' plot(exmp_c, all_models = TRUE) # individual models separately
 #' }
-#' When more than one model is passed, \code{\link{bnec}} returns a \code{\link[base]{list}} of class "bayesmanecfit" containing:
-#' \itemize{
-#'    \item mod_fits a \code{\link[base]{list}} of fitted model outputs of class "bayesnecfit" for each of the fitted models, 
-#'    each containing all the elements of class bayesnecfit above;
-#'    \item "success_models" \code{\link[base]{character}} vector indicating the name of the successfully fitted models
-#'    \item "mod_stats" a \code{\link[base]{data.frame}} of model fit statistics;
-#'    \item "sample_size" the size of the posterior sample;
-#'    \item "w_nec_posterior" the model-weighted posterior estimate of the NEC;
-#'    \item "w_predicted_y" the model-weighted predicted values for the observed data;
-#'    \item "w_residuals" model-weighted residual values (i.e. observed - w_predicted_y);
-#'    \item "w_pred_vals" a \code{\link[base]{list}} containing model-weighted posterior predicted values based on the supplied \code{precision} and \code{x_range};
-#'    \item "w_nec" the summary stats (median and 95% credibility intervals) of w_nec_posterior;
-#' }
+#'
 #' @export
 bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
-                 iter = 2e3, warmup = floor(iter / 5) * 4, ...) {
+                 iter = 2e4, warmup = floor(iter / 5) * 4,
+                 inits, ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
@@ -117,8 +149,9 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
         fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                      trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
-                     iter = iter, warmup = warmup, ...),
-        silent = TRUE)
+                     iter = iter, warmup = warmup, inits = inits,
+                     ...),
+        silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
       } else {
@@ -140,7 +173,8 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
     mod_fit <- fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                             trials_var = trials_var, family = family,
                             priors = priors, model = model,
-                            iter = iter, warmup = warmup, ...)
+                            iter = iter, warmup = warmup,
+                            inits = inits, ...)
     mod_fit <- expand_nec(mod_fit, x_range = x_range,
                           precision = precision,
                           sig_val = sig_val)

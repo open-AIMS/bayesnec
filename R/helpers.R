@@ -33,7 +33,7 @@ min_abs <- function(x) {
 #'
 #' @return A \code{\link[base]{character}} vector.
 #' @importFrom brms prior_string
-paste_normal_prior <- function(mean, param, sd = 100, ...) {
+paste_normal_prior <- function(mean, param, sd = 1, ...) {
     prior_string(paste0("normal(", mean, ", ", sd, ")"), nlpar = param, ...)
 }
 
@@ -99,7 +99,7 @@ handle_set <- function(x, add, drop) {
     }
   }
   if (identical(sort(x), sort(tmp))) {
-    message("Nothing to modify, please specify a model to ",
+    message("Nothing to amend, please specify a model to ",
             "either add or drop that differs from the original set")
     FALSE
   } else {
@@ -122,4 +122,32 @@ allot_class <- function(x, new_class) {
 
 expand_and_assign_nec <- function(x, ...) {
   allot_class(expand_nec(x, ...), "bayesnecfit")
+}
+
+#' are_chains_correct
+#'
+#' Checks if number of chains in brmsfit object is correct
+#'
+#' @param brms_fit An object of class \code{\link[brms]{brmsfit}}.
+#' @param chains The expected number of correct chains.
+#'
+#' @return A \code{\link[base]{logical}} vector.
+are_chains_correct <- function(brms_fit, chains) {
+  fit_chs <- brms_fit$fit@sim$chains
+  if (is.null(fit_chs)) {
+    FALSE
+  } else {
+    fit_chs == chains
+  }
+}
+
+get_init_ranges <- function(y, x, fct, .args) {
+  y <- y[match(.args, names(y))]
+  y <- lapply(y, as.numeric)
+  y[["x"]] <- x
+  range(do.call("fct", y))
+}
+
+check_limits <- function(x, limits) {
+  min(x) >= min(limits) & max(x) <= max(limits)
 }

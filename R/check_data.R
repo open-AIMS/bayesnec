@@ -38,7 +38,10 @@ check_data <- function(data, x_var, y_var,
                 ". The function bnec requires the concentration",
                 " data (argument x_var) to be numeric."))
   }
-
+  if (any(x_dat < 0) & model == "necsigm") {
+    message("necsigm should only be called when x values are >= 0")
+    stop()
+  }
   test_x <- mean(x_dat)
   test_y <- mean(y_dat)
   if (!is.finite(test_x)) {
@@ -118,12 +121,12 @@ check_data <- function(data, x_var, y_var,
   response <- data[, y_var]
 
   if (fam_tag == "binomial") {
-    mod_dat$trials <- data[, trials_var] # number of "trials"
+    mod_dat$trials <- data[, trials_var]
     response <- data[, y_var] / data[, trials_var]
   }
 
-  priors <- define_prior(model = model, x_type = x_type,
-                         family = family, response = response)
+  priors <- define_prior(model = model, family = family,
+                         predictor = mod_dat$x, response = response)
 
   list(priors = priors,
        mod_dat = mod_dat,

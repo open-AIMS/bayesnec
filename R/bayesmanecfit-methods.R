@@ -1,6 +1,6 @@
 #' plot.bayesmanecfit
 #'
-#' Generates a plot of a fitted "bayesmanecfit" model, as returned by \code{\link{bnec}}.
+#' Generates a plot of a fitted \code{\link{bayesmanecfit}} object, as returned by \code{\link{bnec}}.
 #'
 #' @inheritParams plot.bayesnecfit
 #'
@@ -16,7 +16,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                lxform = NA, jitter_x = FALSE,
                                jitter_y = FALSE, ylab = "response",
                                xlab = "concentration", xticks = NA,
-                               all_models = TRUE) {
+                               all_models = FALSE) {
   if (all_models) {
     mod_fits <- x$mod_fits
     par(mfrow = c(ceiling(length(mod_fits) / 2), 2),
@@ -34,7 +34,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
            xticks = xticks, ...)
       mtext(xlab, side = 1, outer = TRUE, line = 2)
       mtext(ylab, side = 2, outer = TRUE, line = 2)
-      legend("top", legend = names(mod_fits[m]), bty = "n")
+      legend("bottomleft", legend = names(mod_fits[m]), bty = "n")
     }
   } else {
     universal <- x$mod_fits[[1]]

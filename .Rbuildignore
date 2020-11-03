@@ -4,6 +4,9 @@
 README.Rmd
 ^_pkgdown\.yml$
 ^docs$
+^pdfs$
+^ignore$
+^data-raw$
 ^pkgdown$
 ^\.github$
 ^.*Rcheck$

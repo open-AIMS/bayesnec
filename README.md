@@ -8,10 +8,14 @@ bayesnec <img src="man/figures/logo.png" width = 180 alt="bayesnec Logo" align="
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
 [![R build
-status](https://github.com/AIMS/bayesnec/workflows/R-CMD-check/badge.svg)](https://github.com/AIMS/bayesnec/actions)
-![pkgdown](https://github.com/AIMS/bayesnec/workflows/pkgdown/badge.svg)
+status](https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg)](https://github.com/open-AIMS/bayesnec/actions)
+![pkgdown](https://github.com/open-AIMS/bayesnec/workflows/pkgdown/badge.svg)
 [![license](https://img.shields.io/badge/license-MIT%20+%20file%20LICENSE-lightgrey.svg)](https://choosealicense.com/)
 [![packageversion](https://img.shields.io/badge/Package%20version-1.0-orange.svg)](commits/master)
+[![Ask Us Anything
+!](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/open-AIMS/bayesnec/issues/new)
+![Open Source
+Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)
 <!-- badges: end -->
 
 Warning
@@ -43,20 +47,19 @@ R `devtools` can be installed using the following command:
 After `devtools` has been installed `bayesnec` can be installed directly
 from GitHub using the following command:
 
-    devtools::install_github("https://github.com/AIMS/bayesnec")
-
-This command will also install 2 dependencies `httr` and `jsonlite`.
+    devtools::install_github("https://github.com/open-AIMS/bayesnec")
 
 Usage
 -----
 
-To populate.
+Usage and further information about `bayesnec` can be seen on the
+[project page](https://open-aims.github.io/bayesnec) and the
+[vignettes](https://open-aims.github.io/bayesnec/articles/). Help files
+for the individual functions can be found on the [reference
+page](https://open-aims.github.io/bayesnec/reference/).
 
 Further Information
 -------------------
-
-Further information about `bayesnec` can be seen on the [project
-page](https://aims.github.io/bayesnec).
 
 `bayesnec` is provided by the [Australian Institute of Marine
 Science](https://www.aims.gov.au) under the MIT License
