@@ -60,6 +60,19 @@ bf_nechorme_deflt <- brms::bf(y ~ (top + slope * x) *
                                   step(x - nec)),
                               top + beta + nec + slope ~ 1,
                               nl = TRUE)
+# nechorme4
+bf_nechorme4_binom <- brms::bf(y | trials(trials) ~ bot + ((top + slope * x) - bot) *
+                                       exp(-beta * (x - nec) *
+                                                   step(x - nec)),
+                               bot + top + beta + nec + slope ~ 1,
+                               nl = TRUE)
+
+bf_nechorme4_deflt <- brms::bf(y ~ bot + ((top + slope * x) - bot) *
+                                       exp(-beta * (x - nec) *
+                                                   step(x - nec)),
+                               bot + top + beta + nec + slope ~ 1,
+                               nl = TRUE)
+
 
 # necsigm
 bf_necsigm_binom <- brms::bf(y | trials(trials) ~ top *
@@ -151,6 +164,8 @@ save(mod_groups, mod_fams,
      bf_nec4param_deflt, bf_nec4param_binom,
      # nechorme
      bf_nechorme_deflt, bf_nechorme_binom,
+     # nechorme4
+     bf_nechorme4_deflt, bf_nechorme4_binom,
      # necsigm
      bf_necsigm_deflt, bf_necsigm_binom,
      # ecxlin
