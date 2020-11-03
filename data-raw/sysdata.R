@@ -3,10 +3,10 @@ library(brms)
 ####################################
 # ACCEPTED MODEL GROUPS AND FAMILIES
 ####################################
-mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme", "necsigm"),
+mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme", "nechorme4", "necsigm"),
                    ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
                            "ecxwb1", "ecxwb2"),
-                   all = c("nec3param", "nec4param", "nechorme", "necsigm",
+                   all = c("nec3param", "nec4param", "nechorme", "nechorme4", "necsigm",
                            "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
                            "ecxwb1", "ecxwb2"),
                    bot_free = c("nec3param", "nechorme", "necsigm",

@@ -61,7 +61,7 @@ check_data <- function(data, x_var, y_var,
          "values of concentration.")
   }
 
-  if (!model %in% c("nec3param", "necsigm", "nec4param", "nechorme",
+  if (!model %in% c("nec3param", "necsigm", "nec4param", "nechorme", "nechorme4",
                     "ecx4param", "ecxwb1", "ecxwb2", "ecxlin",
                     "ecxexp", "ecxsigm")) {
     stop("The model type you have specified does not exist.")
