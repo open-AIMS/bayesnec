@@ -52,10 +52,11 @@ make_inits <- function(model, fct_args, priors,
     out[[i]] <- vector(mode = "list", length = nrow(priors))
     names(out[[i]]) <- par_names
     for (j in seq_len(nrow(priors))) {
-      bits <- strsplit(priors$prior[j], "[^[:alnum:]\\-\\.\\s]")[[1]]
+      bits <- gsub("\\(|\\)", ",", priors$prior[j])
+      bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
       fct_i <- bits[1]
       v1 <- as.numeric(bits[2])
-      v2 <- as.numeric(bits[4])
+      v2 <- as.numeric(bits[3])
       if (stan_like) {
         out[[i]][[j]] <- fcts_st[[fct_i]]()
       } else {
