@@ -87,12 +87,6 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
-</li>
-<li>
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
@@ -143,18 +137,18 @@
     <p>Fits a concentration(dose)-response model using brms</p>
     </div>
 
-    <pre class="usage"><span class='fu'>fit_bayesnec</span>(
-  <span class='kw'>data</span>,
-  <span class='kw'>x_var</span>,
-  <span class='kw'>y_var</span>,
-  trials_var = <span class='fl'>NA</span>,
-  family = <span class='kw'>NULL</span>,
-  <span class='kw'>priors</span>,
-  model = <span class='fl'>NA</span>,
-  <span class='kw'>inits</span>,
-  skip_check = <span class='fl'>FALSE</span>,
-  <span class='kw'>...</span>
-)</pre>
+    <pre class="usage"><span class='fu'>fit_bayesnec</span><span class='op'>(</span>
+  <span class='va'>data</span>,
+  <span class='va'>x_var</span>,
+  <span class='va'>y_var</span>,
+  trials_var <span class='op'>=</span> <span class='cn'>NA</span>,
+  family <span class='op'>=</span> <span class='cn'>NULL</span>,
+  <span class='va'>priors</span>,
+  model <span class='op'>=</span> <span class='cn'>NA</span>,
+  <span class='va'>inits</span>,
+  skip_check <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  <span class='va'>...</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -230,7 +224,7 @@ A posterior sample of the NEC is also available under <code>nec_posterior</code>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.0.9000.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.9000.</p>
 </div>
 
       </footer>

@@ -88,12 +88,6 @@ bayesmanecfit." />
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
-</li>
-<li>
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
@@ -146,17 +140,17 @@ bayesmanecfit." />
     </div>
 
     <pre class="usage"><span class='co'># S3 method for bayesmanecfit</span>
-<span class='fu'><a href='ecx.html'>ecx</a></span>(
-  <span class='kw'>object</span>,
-  ecx_val = <span class='fl'>10</span>,
-  precision = <span class='fl'>1000</span>,
-  posterior = <span class='fl'>FALSE</span>,
-  type = <span class='st'>"absolute"</span>,
-  hormesis_def = <span class='st'>"control"</span>,
-  x_range = <span class='fl'>NA</span>,
-  xform = <span class='fl'>NA</span>,
-  prob_vals = <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span>)
-)</pre>
+<span class='fu'><a href='ecx.html'>ecx</a></span><span class='op'>(</span>
+  <span class='va'>object</span>,
+  ecx_val <span class='op'>=</span> <span class='fl'>10</span>,
+  precision <span class='op'>=</span> <span class='fl'>1000</span>,
+  posterior <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  type <span class='op'>=</span> <span class='st'>"absolute"</span>,
+  hormesis_def <span class='op'>=</span> <span class='st'>"control"</span>,
+  x_range <span class='op'>=</span> <span class='cn'>NA</span>,
+  xform <span class='op'>=</span> <span class='cn'>NA</span>,
+  prob_vals <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span><span class='op'>)</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -218,20 +212,20 @@ if "control", then ECx values are calculated relative to the control, which is a
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='co'>if</span> (<span class='fl'>FALSE</span>) {
-<span class='fu'><a href='https://rdrr.io/r/base/library.html'>library</a></span>(<span class='kw'><a href='https://github.com/paul-buerkner/brms'>brms</a></span>)
-<span class='fu'><a href='https://rdrr.io/r/base/library.html'>library</a></span>(<span class='kw'><a href='https://open-aims.github.io/bayesnec'>bayesnec</a></span>)
-<span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span>(mc.cores = <span class='kw'>parallel</span>::<span class='fu'><a href='https://rdrr.io/r/parallel/detectCores.html'>detectCores</a></span>())
-<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span>(<span class='kw'>nec_data</span>)
+    <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/paul-buerkner/brms'>brms</a></span><span class='op'>)</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec'>bayesnec</a></span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span><span class='op'>(</span>mc.cores <span class='op'>=</span> <span class='fu'>parallel</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/parallel/detectCores.html'>detectCores</a></span><span class='op'>(</span><span class='op'>)</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span>
 
-<span class='kw'>exmp</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span>(data = <span class='kw'>nec_data</span>, x_var = <span class='st'>"x"</span>, y_var = <span class='st'>"y"</span>,
-             model = <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='st'>"nec3param"</span>, <span class='st'>"nec4param"</span>),
-             family = <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span>(link = <span class='st'>"identity"</span>), priors = <span class='kw'>my_priors</span>,
-             iter = <span class='fl'>1e4</span>, control = <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span>(adapt_delta = <span class='fl'>0.99</span>))
-<span class='kw'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span>(<span class='kw'>exmp</span>, <span class='st'>"nec3param"</span>)
-<span class='fu'><a href='ecx.html'>ecx</a></span>(<span class='kw'>exmp</span>, ecx_val = <span class='fl'>50</span>)
-<span class='fu'><a href='ecx.html'>ecx</a></span>(<span class='kw'>exmp_2</span>)
-}
+<span class='va'>exmp</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,
+             model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec3param"</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>,
+             family <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span><span class='op'>(</span>link <span class='op'>=</span> <span class='st'>"identity"</span><span class='op'>)</span>, priors <span class='op'>=</span> <span class='va'>my_priors</span>,
+             iter <span class='op'>=</span> <span class='fl'>1e4</span>, control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>adapt_delta <span class='op'>=</span> <span class='fl'>0.99</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"nec3param"</span><span class='op'>)</span>
+<span class='fu'><a href='ecx.html'>ecx</a></span><span class='op'>(</span><span class='va'>exmp</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span>
+<span class='fu'><a href='ecx.html'>ecx</a></span><span class='op'>(</span><span class='va'>exmp_2</span><span class='op'>)</span>
+<span class='op'>}</span>
 
 </div></pre>
   </div>
@@ -249,7 +243,7 @@ if "control", then ECx values are calculated relative to the control, which is a
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.0.9000.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.9000.</p>
 </div>
 
       </footer>
