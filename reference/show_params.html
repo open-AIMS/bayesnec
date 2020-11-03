@@ -177,6 +177,14 @@
 #&gt; nec ~ 1
 #&gt; slope ~ 1
 #&gt; 
+#&gt; $nechorme4
+#&gt; y ~ bot + ((top + slope * x) - bot) * exp(-beta * (x - nec) * step(x - nec)) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
 #&gt; $necsigm
 #&gt; y ~ top * exp(-beta * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
 #&gt; top ~ 1
