@@ -1,0 +1,243 @@
+---
+title: "Single model usage"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Single model usage}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r, echo = FALSE}
+plat <- Sys.info()["sysname"]
+if (plat == "Windows") {
+  library(rstan)
+  example(stan_model,
+          run.dontrun = TRUE,
+          verbose = TRUE)
+}
+```
+
+# `bayesnec`
+
+The `bayesnec` is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via `brms` [@Burkner2017; @Burkner2018] and `stan`. The package is an adaptation and extension of an initial package `jagsNEC` [@Fisher2020] which as based on the `R2jags` package [@Su2015] and `jags` [@Plummer2003].
+
+# Background
+
+Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for *NEC* estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting *NEC* models and other concentration-response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor, x) as well as the "response" (y) variable. The model formula, including priors and initial values required to call a `brms` model are automatically generated based on information contained in the supplied data. While the distribution of the x and y variables can be specified directly, `bayesnec` will automatically 'guess' the correct distribution to use based on the characteristics of the provided data.
+
+This project started with an implementation of the *NEC* model based on that described in [@Fox2010] using R2jags. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported gaussian, poisson, binomial, gamma, negbin and beta response data `bayesnec` supports any of the `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of typically used concentration-response models (such as 4-parameter logistic and weibull models) that have no *NEC* 'step' function but simply model the response as a smooth function of concentration, as can be fit using other commonly used frequentist packages such as `drc` [@Ritz2016].
+
+Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively it is possible to fit a a custom model set, specific model set or all of the available models. Further information on fitting multi models using `bayesnec` can be found in the Multi model usage vignette.
+
+An additional endpoint has also been derived using Bayesian posterior predicted values to estimate the "No-Statistical-Effect-Concentration" as the concentration at which predicted values for each MCMC chain fall below a lower percentile bound (defined as `sig_val`) of the control, which is assumed to be the lowest treatment (x_var) concentration in the data. *NSEC* estimates are currently used to approximate *NEC* for models without a specific *NEC* step parameter (in `bayesnec` these have the prefix `ecx` in their model name).
+
+
+Important information on the current package is contained in the `bayesnec` helpfiles.
+
+This package is currently under development. We are keen on any feedback regarding usage, and especially bug reporting that includes an easy to run self contained reproducible example of unexpected behaviour or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy to run reproducible example is not supplied.
+
+# Installation
+
+To install the latest version from GitHub (https://github.com/open-AIMS/bayesnec) use:
+
+```{r, eval = FALSE}
+install.packages("remotes")
+remotes::install_github("open-AIMS/bayesnec")
+```
+
+To run this vignette we will also need some additional packages, which are made available via `tidyverse`
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+```
+
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+```
+
+# Examples
+## Fitting the nec3param model using `bnec`
+
+Here we include some examples showing how to use the package to fit an *NEC* model to binomial, proportional, count and continuous response (y) data. The examples are those used by Gerard Ricardo at: <https://github.com/gerard-ricardo/NECs/blob/master/NECs>. Here we show how to run the same `jags` models using the `bayesnec` package.
+
+### Binomial data
+
+The response variable `y` is considered to follow a binomial distribution when it is a count out of a total (such as the percentage survival of individuals, for example). First we read in the binomial example from [pastebin](https://pastebin.com/tools), prepare the data for analysis, and then inspect the dataset as well as the "concentration" or x variable, in this case `raw_x`.
+
+
+```{r}
+binom_data <- "https://pastebin.com/raw/zfrUha88" %>%
+  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
+  dplyr::rename(raw_x = raw.x) %>%
+  dplyr::mutate(raw_x = as.numeric(as.character(raw_x)),
+                log_x = log(raw_x))
+
+str(binom_data)
+range(binom_data$raw_x)
+hist(binom_data$raw_x)
+```
+
+In this case for x, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the x data are common for concentration response experiments, where the x 'concentration' data are the concentration of contaminants, or dilutions. The current default in `bayesnec` is to estimate the appropriate distribution(s) and priors for both the `y_type` and `x_type` arguments, but it is possible to supply these arguments directly. We are going to model this with the x data on a log scale, as this is the scaling clearly used in the experimental design and the will provide more stable results.
+
+The data are clearly binomial, with the column `suc`---indicating the number of 'successes' in the binomial call, with `tot` clearly indicating the number of trials.
+
+The main 'working' function in `bayesnec` is the function `bnec`, which calls the other necessary functions and fits the `brms` model. We run `bnec` by supplying `data`: a data.frame containing the data for the model fitting, here, `binom_data`;  `x_var`: the name of the column in `data` which contains the concentration data or 'x' data to be used in the *NEC* model fit, and `y_var`: the name of the column in `data` which contains the response or 'y' data to be used in the *NEC* model fit. In our example here, as this is binomial, we must also supply `trials_var`, which is the name of the column in `data` which contains the number of trials in the binomial call.
+
+`bnec` will guess the data types for use, although we could manually specify `y_type` as "binomial" and `x_type` as "gamma". This example fits without specifying either, but `trials_var` must be supplied.
+
+```{r, warning = FALSE, message = FALSE}
+library(bayesnec)
+
+set.seed(333)
+exp_1 <- bnec(data = binom_data, x_var = "log_x",
+              y_var = "suc", model = "nec3param",
+              trials_var = "tot")
+```
+
+The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(exp_1$fit)` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially `bayesnec` will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains `bayesnec` with try up to `n_tries` more times to fit the data using the generated initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.
+
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+plot(exp_1$fit)
+```
+
+In our example, the chains are well mixed and the probability density plots look good. We can also do a pairs plot that can help to assess issues with identifiability, which also looks ok. There are a range of other model diagnostics that can be explored for brms model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (https://github.com/paul-buerkner/brms) models.
+
+```{r, fig.width = 7, fig.height = 7}
+pairs(exp_1$fit)
+```
+
+We can see the summary of our fitted model parameters using:
+```{r}
+summary(exp_1$fit)
+```
+
+Note the Rhat values in this example are one, indicating convergence.
+
+The function `plot` can be used to plot the fitted model. You can also make your own plot from the data included in the returned `bayesnecfit` object from the call to `bnec`. Here we use the default plot method from `bayesnec`, where we add the exp function to plot the tick labels on the original scaling of the concentration data.
+
+```{r, fig.width = 7, fig.height = 7}
+plot(exp_1, lxform = exp)
+```
+
+Alternatively, we can use the built in `brms` methods to plot the `brms` fit directly. For example:
+
+```{r, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 7}
+df <- exp_1$fit$data %>%
+  dplyr::mutate(prop = y / trials)
+plot(brms::conditional_effects(exp_1$fit))[[1]] +
+     geom_point(data = df, aes(x = x, y = prop),
+                inherit.aes = FALSE)
+```
+
+This model fit doesn't look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_5$dispersion`. Values >1 indicate over-dispersion and values <1 indicate under-dispersion. In this case the over-dispersion value is much bigger than 1, suggesting extreme over-dispersion (meaning our model doesn't properly capture the true variability represented in this data). We would need consider alternative ways of modelling this data using a different distribution. One option would be to try modelling the proportions as a Beta, for example - although this looses the information in how many trials underpin each data point, which in this case may not be valid as they vary substantially for each row.
+
+```{r}
+exp_1$dispersion
+```
+
+### Beta data
+
+Sometimes the response variable is distributed between `0` and `1` but is not a straight forward binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical 'trials' and the data must be modelled using a beta distribution.
+
+```{r}
+prop_data <- "https://pastebin.com/raw/123jq46d" %>%
+  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
+  dplyr::rename(raw_x = raw.x) %>%
+  dplyr::mutate(raw_x = log(as.numeric(as.character(raw_x)) + 1),
+                resp = as.numeric(as.character(resp)))
+
+set.seed(333)
+exp_2 <- bnec(data = prop_data, x_var = "raw_x",
+              y_var = "resp", model = "nec3param")
+
+```
+
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+plot(exp_2$fit)
+```
+
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+plot(exp_2)
+```
+
+### Poisson data
+
+Where data are a count (of, for example, individuals or cells) y is poisson. Such data are distributed from `0` to `Inf` and are integers. First we read in the count data example from [pastebin](https://pastebin.com/tools), and then plot the "concentration" or x data, Again, this is `raw_x`, and distributed as in our binomial example above.
+
+
+```{r, warning = FALSE, fig.width = 10, fig.height = 4.7}
+count_data <- "https://pastebin.com/raw/ENgNSgf7" %>%
+  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
+  dplyr::rename(raw_x = raw.x) %>%
+  dplyr::mutate(raw_x = as.numeric(as.character(raw_x)))
+
+str(count_data)
+range(count_data$raw_x)
+
+par(mfrow = c(1, 2))
+hist(count_data$raw_x, xlab = "'x' variable", main = "")
+hist(count_data$count, xlab = "Total counts", main = "")
+```
+
+
+First we supply `bnec` with `data` (count_data), and specify `x_var` and `y_var`. As we have concentration data, our `x_type` would be the gamma distribution, and `y_type` is "poisson". The default behaviour to guess the variable types works for this example.
+
+
+```{r, warning = FALSE}
+set.seed(333)
+exp_3 <- bnec(data = count_data, x_var = "raw_x",
+              y_var = "count", model = "nec3param")
+```
+
+We first plot the model chains and parameter estimates to check the fit.
+
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+plot(exp_3$fit)
+```
+
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+plot(exp_3)
+```
+
+### Measure data
+
+Where data are a measured variable (i.e. length or size) y is gamma. Such data are distributed from `0+` to `Inf` and are continuous. First we read in the count data example from pastebin, and then plot the "concentration" or x data, Again, this is raw_x, and distributed as in our binomial example above.
+
+```{r}
+measure_data <- "https://pastebin.com/raw/pWeS6x0n" %>%
+  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
+  dplyr::rename(raw_x = raw.x) %>%
+  dplyr::mutate(dplyr::across(where(is.character), as.numeric))
+```
+
+```{r, warning = FALSE}
+set.seed(333)
+exp_4 <- bnec(data = measure_data, x_var = "raw_x",
+              y_var = "measure", model = "nec3param")
+```
+
+
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+plot(exp_4$fit)
+```
+
+The function `plot` can be used to plot the fitted model. The estimated *NEC* value can be obtained directly from the fitted model object, using `exp_4$nec`.
+
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+plot(exp_4)
+```
+
+EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve.
+
+```{r, warning = FALSE}
+ecx(exp_4)
+```
+
+
+# References

@@ -5,11 +5,71 @@
 #'
 #' @param manec An object of class bayesmanecfit output list
 #' as returned by \code{\link{bnec}}.
+#' @param model A \code{\link[base]{character}} string indicating
+#' which model or class of models to pull out.
 #' @param ... Additional arguments to \code{\link{expand_nec}}.
 #'
 #' @return An object of class bayesnecfit.
+#'
+#' @examples
+#' \dontrun{
+#' library(brms)
+#' library(bayesnec)
+#' options(mc.cores = parallel::detectCores())
+#' data(nec_data)
+#'
+#' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
+#'              model = c("nec3param", "nec4param"),
+#'              family = Beta(link = "identity"), priors = my_priors,
+#'              iter = 1e4, control = list(adapt_delta = 0.99))
+#' class(exmp) # bayesmanecfit
+#' exmp_2 <- pull_out(exmp, "nec3param")
+#' class(exmp_2) # bayesnecfit
+#' }
+#'
 #' @export
 pull_out <- function(manec, model, ...) {
-    mod_fit <- expand_nec(manec$mod_fits[[model]], ...)
-    allot_class(mod_fit, "bayesnecfit")
+  existing <- names(manec$mod_fits)
+  msets <- names(mod_groups)
+  if (any(model %in% msets)) {
+    group_mods <- intersect(model, msets)
+    model <- union(model, unname(unlist(mod_groups[group_mods])))
+    model <- setdiff(model, msets)
+  }
+  to_go <- intersect(model, existing)
+  if (length(to_go) == 0) {
+    message("Model(s) ", paste0(model, collapse = ", "),
+            " non-existent in current set of models: ",
+            paste0(existing, collapse = ", "), ".\n",
+            "If needed, add desired model(s) via function ",
+            "amend (see ?amend)\n",
+            "Returning original object")
+    return(manec)
+  } else if (!all(model %in% existing)) {
+    non_existing <- setdiff(model, existing)
+    message("Model(s) ", paste0(non_existing, collapse = ", "),
+            " non-existent in current set of models: ",
+            paste0(existing, collapse = ", "), ".\n",
+            "If needed, add desired model(s) via function ",
+            "amend (see ?amend)")
+  }
+  if (all(existing %in% to_go)) {
+    message("Current model(s) are 100% contained ",
+            "within target model(s) to pull out\n",
+            "Returning original object")
+    return(manec)
+  } else if (all(!(to_go %in% existing))) {
+    message("Target model(s) are 100% contained ",
+            "within target model(s) to pull out\n",
+            "Returning original object")
+  }
+  mod_fits <- suppressMessages(expand_manec(manec$mod_fits[to_go], ...))
+  message("Successfully pulled out model(s): ",
+          paste0(to_go, collapse = ", "))
+  if (!inherits(mod_fits, "prebayesnecfit")) {
+    allot_class(mod_fits, "bayesmanecfit")
+  } else {
+    mod_fits <- expand_nec(mod_fits, ...)
+    allot_class(mod_fits, "bayesnecfit")
+  }
 }

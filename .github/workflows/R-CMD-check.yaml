@@ -54,25 +54,36 @@ jobs:
           sysreqs=$(Rscript -e "cat(sysreqs::sysreq_commands('DESCRIPTION'))")
           sudo -s eval "$sysreqs"
 
+      - name: V8 fix
+        if: runner.os == 'macOS'
+        run: |
+          brew install v8
+
       - name: Install dependencies
         run: |
           install.packages(c("remotes", "rcmdcheck", "tidyverse", "anytime"))
+          remotes::install_github("paul-buerkner/brms")
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
 
-      - name: Check
-        run: rcmdcheck::rcmdcheck(args = "--no-manual", error_on = "error")
+      - name: Create Windows Makevars
+        if: runner.os == 'Windows'
+        run: |
+          install.packages("vctrs")
+          dir.create("C:\\Users\\runneradmin\\Documents\\.R", recursive = TRUE)
+          write("CXX14FLAGS=-O3 -mtune=native -Wno-ignored-attributes", "C:\\Users\\runneradmin\\Documents\\.R\\Makevars.win")
+          install.packages("https://github.com/bgoodri/inline/archive/master.tar.gz", repos = NULL, type = "source")
         shell: Rscript {0}
 
-      # - name: Check
-      #   env:
-      #     _R_CHECK_CRAN_INCOMING_REMOTE_: false
-      #   run: rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")
-      #   shell: Rscript {0}
+      - name: Check
+        env:
+          _R_CHECK_CRAN_INCOMING_REMOTE_: false
+        run: rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")
+        shell: Rscript {0}
 
-      # - name: Upload check results
-      #   if: failure()
-      #   uses: actions/upload-artifact@master
-      #   with:
-      #     name: ${{ runner.os }}-r${{ matrix.config.r }}-results
-      #     path: check
+      - name: Upload check results
+        if: failure()
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ runner.os }}-r${{ matrix.config.r }}-results
+          path: check

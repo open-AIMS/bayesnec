@@ -1,0 +1,158 @@
+---
+title: "User-specified priors"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{User-specified priors}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+```{r include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+plat <- Sys.info()["sysname"]
+if (plat == "Windows") {
+  library(rstan)
+  example(stan_model,
+          run.dontrun = TRUE,
+          verbose = TRUE)
+}
+```
+
+# Overview
+
+With `bayesnec` main workhorse function `bnec` the user can specify a series of arguments that can be passed to the `brm` function of brms, so we will not deal with those here. Rather, we refer the user to the original vignettes in brms for those. The main focus here is to showcase how the user can specify their own priors, should they wish to. This might be needed depending on the model and the data because `bayesnec` tries to find reasonable and yet relatively vague priors for the model parameters if the user decides not to provide anything. So below we show how the user can specify priors in multiple ways for objects of class `bayesnecfit` and `bayesmanecfit`.
+
+## bayesnecfit
+
+We start by letting `bnec` find the priors on its own, i.e. by not specifying a `priors` argument at all.
+```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+library(bayesnec)
+library(brms)
+options(mc.cores = parallel::detectCores())
+```
+
+```{r eval = FALSE}
+library(brms)
+library(bayesnec)
+options(mc.cores = parallel::detectCores())
+data(nec_data)
+
+# a single model
+exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
+               model = "nec3param",
+               family = Beta(link = "identity"),
+               iter = 1e4, control = list(adapt_delta = 0.99))
+
+class(exmp_a) # bayesnecfit
+```
+
+If in doubt about what reasonable values the priors should take, or at least to have some vague idea, the user can take advantage of the function `pull_prior` to inspect what `bnec` came up with on its own.
+
+```{r eval = FALSE}
+pull_prior(exmp_a)
+##                        prior class      coef group resp dpar nlpar bound
+## 1              gamma(0.5, 2)     b                            beta      
+## 2                                b Intercept                  beta      
+## 3 gamma(2, 2.28313180499098)     b                             nec      
+## 4                                b Intercept                   nec      
+## 5                 beta(5, 1)     b                             top      
+## 6                                b Intercept                   top      
+## 7          gamma(0.01, 0.01)   phi                                      
+```
+
+`bnec` chose a `gamma` prior on the NEC parameter of `nec3param` because the x predictor in the data `nec_data` is non-zero positive. However imagine that in theory the x predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
+
+```{r eval = FALSE}
+my_prior <- c(prior_string("beta(5, 1)", nlpar = "top"),
+              prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+              prior_string("gamma(0.5, 2)", nlpar = "beta"))
+
+exmp_b <- bnec(data = nec_data, x_var = "x", y_var = "y",
+               model = "nec3param", priors = my_prior,
+               family = Beta(link = "identity"),
+               iter = 1e4, control = list(adapt_delta = 0.99))
+```
+
+Two things are of note. If the user is specifying their own priors, `bnec` requires them to specify priors for **all** parameters. The `pull_prior` function shows the priors *after* the model was fitted, but suppose the user does not know what parameters were comprised in a particular model. In those instances, the user can call the function `show_params(model = "all")` to inspect the parameters of each function, or some targeted function in particular.
+
+```{r}
+show_params(model = "nec3param")
+```
+
+## bayesmanecfit
+
+The user can also specify a named list of priors when one or more models are being fitted to the same dataset.
+
+```{r eval = FALSE}
+my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
+                                prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+                                prior_string("gamma(0.5, 2)", nlpar = "beta")),
+                  nec4param = c(prior_string("beta(5, 1)", nlpar = "top"),
+                                prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+                                prior_string("gamma(0.5, 2)", nlpar = "beta"),
+                                prior_string("beta(1, 5)", nlpar = "bot")))
+
+exmp_c <- bnec(data = nec_data, x_var = "x", y_var = "y",
+               model = c("nec3param", "nec4param"),
+               family = Beta(link = "identity"), priors = my_priors,
+               iter = 1e4, control = list(adapt_delta = 0.99))
+```
+
+`pull_prior` also works for an object of class `bayesmanecfit`
+
+```{r eval = FALSE}
+pull_prior(exmp_c)
+## $nec3param
+##               prior class      coef group resp dpar nlpar bound
+## 1     gamma(0.5, 2)     b                            beta      
+## 2                       b Intercept                  beta      
+## 3  normal(1.3, 2.7)     b                             nec      
+## 4                       b Intercept                   nec      
+## 5        beta(5, 1)     b                             top      
+## 6                       b Intercept                   top      
+## 7 gamma(0.01, 0.01)   phi                                      
+
+## $nec4param
+##               prior class      coef group resp dpar nlpar bound
+## 1     gamma(0.5, 2)     b                            beta      
+## 2                       b Intercept                  beta      
+## 3        beta(1, 5)     b                             bot      
+## 4                       b Intercept                   bot      
+## 5  normal(1.3, 2.7)     b                             nec      
+## 6                       b Intercept                   nec      
+## 7        beta(5, 1)     b                             top      
+## 8                       b Intercept                   top      
+## 9 gamma(0.01, 0.01)   phi                                      
+```
+
+The user can also specify priors for one model only out of the entire set, `bayesnec` will return a message stating that it's searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.
+
+```{r eval = FALSE}
+my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
+                                prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+                                prior_string("gamma(0.5, 2)", nlpar = "beta")),
+                  nec4param = c(prior_string("beta(5, 1)", nlpar = "top"),
+                                prior_string("normal(1.3, 2.7)", nlpar = "nec"),
+                                prior_string("gamma(0.5, 2)", nlpar = "beta"),
+                                prior_string("beta(1, 5)", nlpar = "bot")))
+
+exmp_d <- bnec(data = nec_data, x_var = "x", y_var = "y",
+               model = c("nec3param", "nec4param"),
+               family = Beta(link = "identity"), priors = my_priors[1],
+               iter = 1e4, control = list(adapt_delta = 0.99))=
+```
+
+`priors = my_priors[[1]]` would also have worked because the argument priors can either take a `brmsprior` object directly, or a named list containing model-specific `brmsprior` objects.
+
+Finally the user can also extend an existing `bayesmanecfit` pbject with the function `amend`, also by specifying custom-built priors.
+
+```{r eval = FALSE}
+ecxlin_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
+                   prior_string("gamma(2, 6.5)", nlpar = "slope"))
+exmp_e <- amend(exmp_d, add = "ecxlin", priors = ecxlin_priors)
+```

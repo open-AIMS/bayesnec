@@ -10,6 +10,7 @@ TODO.md
 *tmp*
 docs/
 ignore/
+pdfs/
 
 # package development
 bayesnec.Rcheck/

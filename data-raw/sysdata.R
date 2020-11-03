@@ -4,13 +4,13 @@ library(brms)
 # ACCEPTED MODEL GROUPS AND FAMILIES
 ####################################
 mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme", "necsigm"),
-                       ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsimg",
-                               "ecxwb1", "ecxwb2"),
-                       all = c("nec3param", "nec4param", "nechorme", "necsigm",
-                               "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
-                               "ecxwb1", "ecxwb2"),
-                       bot_free = c("nec3param", "nechorme", "necsigm",
-                                    "ecxlin", "ecxexp", "ecxsigm"))
+                   ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
+                           "ecxwb1", "ecxwb2"),
+                   all = c("nec3param", "nec4param", "nechorme", "necsigm",
+                           "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
+                           "ecxwb1", "ecxwb2"),
+                   bot_free = c("nec3param", "nechorme", "necsigm",
+                                "ecxlin", "ecxexp", "ecxsigm"))
 
 mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",
@@ -36,13 +36,13 @@ bf_nec3param_deflt <- brms::bf(y ~ top *
                                nl = TRUE)
 
 # nec4param
-bf_nec4param_binom <- brms::bf(y | trials(trials) ~ bot + (bot - top) *
+bf_nec4param_binom <- brms::bf(y | trials(trials) ~ bot + (top - bot) *
                                  exp(-beta * (x - nec) *
                                    step(x - nec)),
                                bot + top + beta + nec ~ 1,
                                nl = TRUE)
 
-bf_nec4param_deflt <- brms::bf(y ~ bot + (bot - top) *
+bf_nec4param_deflt <- brms::bf(y ~ bot + (top - bot) *
                                  exp(-beta * (x - nec) *
                                    step(x - nec)),
                                bot + top + beta + nec ~ 1,
@@ -63,14 +63,16 @@ bf_nechorme_deflt <- brms::bf(y ~ (top + slope * x) *
 
 # necsigm
 bf_necsigm_binom <- brms::bf(y | trials(trials) ~ top *
-                               exp(-beta * (x - nec)^d *
-                                 step(x - nec)),
+                               exp(-beta * (step(x - nec) *
+                                 (x - nec))^exp(d) *
+                                   step(x - nec)),
                              top + beta + nec + d ~ 1,
                              nl = TRUE)
 
 bf_necsigm_deflt <- brms::bf(y ~ top *
-                               exp(-beta * (x - nec)^d *
-                                 step(x - nec)),
+                               exp(-beta * (step(x - nec) *
+                                 (x - nec))^exp(d) *
+                                   step(x - nec)),
                              top + beta + nec + d ~ 1,
                              nl = TRUE)
 
@@ -78,12 +80,12 @@ bf_necsigm_deflt <- brms::bf(y ~ top *
 # ECXEXP MODELS
 ###############
 # ecxlin
-bf_ecxlin_binom <- brms::bf(y | trials(trials) ~ top - beta * x,
-                            top + beta ~ 1,
+bf_ecxlin_binom <- brms::bf(y | trials(trials) ~ top - slope * x,
+                            top + slope ~ 1,
                             nl = TRUE)
 
-bf_ecxlin_deflt <- brms::bf(y ~ top - beta * x,
-                            top + beta ~ 1,
+bf_ecxlin_deflt <- brms::bf(y ~ top - slope * x,
+                            top + slope ~ 1,
                             nl = TRUE)
 
 # ecxexp
@@ -96,11 +98,11 @@ bf_ecxexp_deflt <- brms::bf(y ~ top * exp(-beta * x),
                             nl = TRUE)
 
 # ecxsigm
-bf_ecxsigm_binom <- brms::bf(y | trials(trials) ~ top * exp(-beta * x)^d,
+bf_ecxsigm_binom <- brms::bf(y | trials(trials) ~ top * exp(-beta * x^exp(d)),
                              d + top + beta ~ 1,
                              nl = TRUE)
 
-bf_ecxsigm_deflt <- brms::bf(y ~ top * exp(-beta * x)^d,
+bf_ecxsigm_deflt <- brms::bf(y ~ top * exp(-beta * x^exp(d)),
                              d + top + beta ~ 1,
                              nl = TRUE)
 

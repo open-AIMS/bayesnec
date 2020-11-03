@@ -23,6 +23,10 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
                  length = precision)
   }
   new_dat <- data.frame(x = x_seq)
+  family <- fit$family$family
+  if (family == "binomial") {
+    new_dat$trials <- 1
+  }
   pred_posterior <- posterior_epred(fit, newdata = new_dat,
                                     re_formula = NA)
   y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
@@ -54,7 +58,7 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
   }
 
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
-  residuals <-  residuals(fit, method = "pp_expect")
+  residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
   c(object, list(pred_vals = pred_vals), extracted_params,
     list(dispersion = od, predicted_y = predicted_y,
     residuals = residuals, nec_posterior = nec_posterior))
@@ -64,6 +68,8 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
 #'
 #' Extracts a range of statistics from a list of bayesnecfit model fits.
 #'
+#' @inheritParams bnec
+#' 
 #' @param object a bayesmanecfit mod_fits output list, as returned by
 #' \code{\link{bnec}} when more than one model is supplied.
 #'
@@ -76,12 +82,17 @@ expand_manec <- function(object, x_range = NA, precision = 1000,
   success_models <- model_set[sapply(object, class) == "prebayesnecfit"]
   if (length(success_models) == 0) {
     stop("None of the models fit successfully, ",
-         "try using bnec with a single model (e.g. ecxexp) using the default ",
-         "settings as a starting point for trouble shooting.")
+         "try using bnec with a single model (e.g. ecxexp) ",
+         "using the default settings as a starting point ",
+         "for trouble shooting, or check ?show_params to ",
+         "make sure you have the correct parameter names ",
+         "for your priors.")
   } else if (length(success_models) == 1) {
-    message(paste("Only", success_models, " was successfully fitted, "),
-                  "no model averaging done. Perhaps try setting better priors.\n",
-                  paste("returning", success_models))
+    message("Only ", success_models, " was successfully fitted, ",
+            "no model averaging done. Perhaps try setting better ",
+            "priors, or check ?show_params to make sure you have ",
+            "the correct parameter names for your priors.\n",
+            "Returning ", success_models)
     return(object[[success_models]])
   } else {
     message(paste("successfully fitted the models: ",
