@@ -12,7 +12,12 @@
 #' @importFrom brms bf prior_string negbinomial Beta
 #' @importFrom stats qlogis binomial quantile Gamma poisson gaussian sd
 define_prior <- function(model, family, predictor, response) {
-  family <- family$family
+  link_tag <- family$link
+  if(link_tag=="logit"  | link_tag=="log"){
+     fam_tag <- "gaussian"
+     response <- family$linkfun(response)
+  } else { fam_tag <- family$family }
+ 
   x_type <- set_distribution(predictor)
   u_t_g <- paste0("gamma(2, ",
                   1 / (quantile(response, probs = 0.75) / 2),
@@ -47,8 +52,8 @@ define_prior <- function(model, family, predictor, response) {
                                         probs = 0.5),
                                ", ", sd(predictor), ")"))
   # y-dependent priors
-  pr_top <- prior_string(y_t_prs[family], nlpar = "top")
-  pr_bot <- prior_string(y_b_prs[family], nlpar = "bot")
+  pr_top <- prior_string(y_t_prs[fam_tag], nlpar = "top")
+  pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot")
   # x-dependent priors
   x_type <- set_distribution(predictor)
   pr_nec <- prior_string(x_prs[x_type], nlpar = "nec")
