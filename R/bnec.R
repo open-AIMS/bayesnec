@@ -150,6 +150,20 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
   }
   family <- validate_family(family)
   fam_tag <- family$family
+  link_tag <- family$link
+
+  if (link_tag=="logit" | link_tag=="log") {
+    use_model <-  model[(model %in% mod_groups$bot_free)==FALSE]
+    drop_model <- setdiff(model, use_model)
+    if (length(drop_model)>0) {
+      warning(paste( "Dropping the model(s)", paste0(drop_model, collapse=", "), "as they are not valid in the case of a", link_tag, "link."))     
+    }
+    if (length(use_model)==0) {
+      stop(paste("None of the model(s) specified are valid for a",  link_tag, "link."))
+    }else{
+      model <- use_model
+    }
+  }
   
   if (fam_tag=="gaussian") {
    use_model <-  model[(model %in% mod_groups$bot_free)==FALSE]
