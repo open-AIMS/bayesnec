@@ -13,7 +13,7 @@
 #' @return A \code{\link[base]{list}} of modified elements
 #' necessary for \code{\link{fit_bayesnec}}.
 check_data <- function(data, x_var, y_var,
-                       trials_var, family = NULL,
+                       trials_var, family,
                        model) {
   use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var))
   var_colms <- match(use_vars, colnames(data))
@@ -53,7 +53,7 @@ check_data <- function(data, x_var, y_var,
 
   resp_check <- mean(y_dat[which(x_dat < mean(x_dat))]) <
     mean(y_dat[which(x_dat > mean(x_dat))])
-  if (resp_check & model != "nechorme") {
+  if (resp_check & !grepl("horme", model)) {
     stop("The mean value of the response for the lower half of the ",
          "concentration data are lower than that of the upper half ",
          "of the concentration data. bnec only fits concentration ",
@@ -64,19 +64,10 @@ check_data <- function(data, x_var, y_var,
   if (!model %in% c("nec3param", "necsigm", "nec4param", "nechorme", "nechorme4",
                     "ecx4param", "ecxwb1", "ecxwb2", "ecxlin",
                     "ecxexp", "ecxsigm")) {
-    stop("The model type you have specified does not exist.")
+    stop(paste("The model" , model, "is not a valid model name. Please check ?bnec for valid model calls."))
   }
 
-  if (is.null(family)) {
-    if (is.na(trials_var)) {
-      m_trials <- NULL
-    } else {
-      m_trials <- data[, trials_var]
-    }
-    family <- set_distribution(y_dat, support_integer = TRUE,
-                               trials = m_trials)
-  }
-  family <- validate_family(family)
+
   fam_tag <- family$family
 
   x_type <- set_distribution(x_dat)
