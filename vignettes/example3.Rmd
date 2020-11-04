@@ -149,7 +149,7 @@ exmp_d <- bnec(data = nec_data, x_var = "x", y_var = "y",
 
 `priors = my_priors[[1]]` would also have worked because the argument priors can either take a `brmsprior` object directly, or a named list containing model-specific `brmsprior` objects.
 
-Finally the user can also extend an existing `bayesmanecfit` pbject with the function `amend`, also by specifying custom-built priors.
+Finally the user can also extend an existing `bayesmanecfit` object with the function `amend`, also by specifying custom-built priors.
 
 ```{r eval = FALSE}
 ecxlin_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
