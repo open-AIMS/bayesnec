@@ -139,7 +139,31 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
       model <- union(model, unname(unlist(mod_groups[group_mods])))
       model <- setdiff(model, msets)
   }
-
+  if (is.null(family)) {
+    if (is.na(trials_var)) {
+      m_trials <- NULL
+    } else {
+      m_trials <- data[, trials_var]
+    }
+    family <- set_distribution(data[, y_var], support_integer = TRUE,
+                               trials = m_trials)
+  }
+  family <- validate_family(family)
+  fam_tag <- family$family
+  
+  if (fam_tag=="gaussian") {
+   use_model <-  model[(model %in% mod_groups$bot_free)==FALSE]
+   drop_model <- setdiff(model, use_model)
+   if (length(drop_model)>0) {
+    warning(paste( "Dropping the model(s)", paste0(drop_model, collapse=", "), "as they are not valid in the case of gaussian y data."))     
+   }
+   if (length(use_model)==0) {
+     stop("None of the model(s) specified are valid for gaussian y data.")
+   }else{
+     model <- use_model
+   }
+  }
+  
   if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
