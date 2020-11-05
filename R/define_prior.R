@@ -30,7 +30,7 @@ define_prior <- function(model, family, predictor, response) {
                negbinomial = u_t_g,
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.9),
-                               ", ", sd(response)*20, ")"),
+                               ", ", sd(response)*10, ")"),
                binomial = "beta(5, 1)",
                beta = "beta(5, 1)")
   y_b_prs <- c(Gamma = u_b_g,
@@ -50,7 +50,7 @@ define_prior <- function(model, family, predictor, response) {
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),
-                               ", ", sd(response)*100, ")"))
+                               ", ", sd(response)*20, ")"))
   # y-dependent priors
   pr_top <- prior_string(y_t_prs[fam_tag], nlpar = "top")
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot")
