@@ -84,7 +84,7 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
     ecx_out <- xform(ecx_out)
   }
   label <- paste("ec", ecx_val, sep = "_")
-  ecx_estimate <- quantile(ecx_out, probs = prob_vals)
+  ecx_estimate <- quantile(unlist(ecx_out), probs = prob_vals)
   names(ecx_estimate) <- paste(label, clean_names(ecx_estimate), sep = "_")
   if (!posterior) {
     ecx_estimate
