@@ -116,12 +116,12 @@
 <h1 class="hasAnchor">
 <a href="#installation" class="anchor"></a>Installation</h1>
 <p>To install the latest version from GitHub (<a href="https://github.com/open-AIMS/bayesnec" class="uri">https://github.com/open-AIMS/bayesnec</a>) use:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span>
-<span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html">install_github</a></span><span class="op">(</span><span class="st">"open-AIMS/bayesnec"</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span>
+<span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html">install_github</a></span><span class="op">(</span><span class="st">"open-AIMS/bayesnec"</span><span class="op">)</span></code></pre></div>
 <p>To run this vignette we will also need some additional packages, which are made available via <code>tidyverse</code></p>
-<div class="sourceCode" id="cb2"><pre class="downlit">
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span></code></pre></div>
 </div>
 <div id="examples" class="section level1">
 <h1 class="hasAnchor">
@@ -135,41 +135,41 @@
 <h3 class="hasAnchor">
 <a href="#binomial-data" class="anchor"></a>Binomial data</h3>
 <p>The response variable <code>y</code> is considered to follow a binomial distribution when it is a count out of a total (such as the percentage survival of individuals, for example). First we read in the binomial example from <a href="https://pastebin.com/tools">pastebin</a>, prepare the data for analysis, and then inspect the dataset as well as the “concentration” or x variable, in this case <code>raw_x</code>.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit">
-<span class="va">binom_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/zfrUha88"</span> <span class="op">%&gt;%</span>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">binom_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/zfrUha88"</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span><span class="op">)</span>,
                 log_x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html">log</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span><span class="op">)</span>
 
-<span class="fu"><a href="https://rdrr.io/r/utils/str.html">str</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">)</span></pre></div>
+<span class="fu"><a href="https://rdrr.io/r/utils/str.html">str</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">)</span></code></pre></div>
 <pre><code>## 'data.frame':    48 obs. of  4 variables:
 ##  $ raw_x: num  0.1 0.1 0.1 0.1 0.1 0.1 6.25 6.25 6.25 6.25 ...
 ##  $ suc  : int  101 106 102 112 58 158 95 91 93 113 ...
 ##  $ tot  : int  175 112 103 114 69 165 109 92 99 138 ...
 ##  $ log_x: num  -2.3 -2.3 -2.3 -2.3 -2.3 ...</code></pre>
-<div class="sourceCode" id="cb5"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/range.html">range</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/range.html">range</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></code></pre></div>
 <pre><code>## [1]   0.1 400.0</code></pre>
-<div class="sourceCode" id="cb7"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
 <p>In this case for x, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the x data are common for concentration response experiments, where the x ‘concentration’ data are the concentration of contaminants, or dilutions. The current default in <code>bayesnec</code> is to estimate the appropriate distribution(s) and priors for both the <code>y_type</code> and <code>x_type</code> arguments, but it is possible to supply these arguments directly. We are going to model this with the x data on a log scale, as this is the scaling clearly used in the experimental design and the will provide more stable results.</p>
 <p>The data are clearly binomial, with the column <code>suc</code>—indicating the number of ‘successes’ in the binomial call, with <code>tot</code> clearly indicating the number of trials.</p>
 <p>The main ‘working’ function in <code>bayesnec</code> is the function <code>bnec</code>, which calls the other necessary functions and fits the <code>brms</code> model. We run <code>bnec</code> by supplying <code>data</code>: a data.frame containing the data for the model fitting, here, <code>binom_data</code>; <code>x_var</code>: the name of the column in <code>data</code> which contains the concentration data or ‘x’ data to be used in the <em>NEC</em> model fit, and <code>y_var</code>: the name of the column in <code>data</code> which contains the response or ‘y’ data to be used in the <em>NEC</em> model fit. In our example here, as this is binomial, we must also supply <code>trials_var</code>, which is the name of the column in <code>data</code> which contains the number of trials in the binomial call.</p>
 <p><code>bnec</code> will guess the data types for use, although we could manually specify <code>y_type</code> as “binomial” and <code>x_type</code> as “gamma”. This example fits without specifying either, but <code>trials_var</code> must be supplied.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit">
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec">bayesnec</a></span><span class="op">)</span>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec">bayesnec</a></span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">binom_data</span>, x_var <span class="op">=</span> <span class="st">"log_x"</span>,
               y_var <span class="op">=</span> <span class="st">"suc"</span>, model <span class="op">=</span> <span class="st">"nec3param"</span>,
-              trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span></pre></div>
+              trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span></code></pre></div>
 <pre><code>## 
-## SAMPLING FOR MODEL '76a795ed32e214859b4b1e3f29e20eda' NOW (CHAIN 1).
+## SAMPLING FOR MODEL 'b7454435a86028256d095a13277a6629' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 7.6e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.76 seconds.
+## Chain 1: Gradient evaluation took 7.4e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.74 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -186,12 +186,12 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 2.45909 seconds (Warm-up)
-## Chain 1:                0.888678 seconds (Sampling)
-## Chain 1:                3.34776 seconds (Total)
+## Chain 1:  Elapsed Time: 221.071 seconds (Warm-up)
+## Chain 1:                0.708642 seconds (Sampling)
+## Chain 1:                221.78 seconds (Total)
 ## Chain 1: 
 ## 
-## SAMPLING FOR MODEL '76a795ed32e214859b4b1e3f29e20eda' NOW (CHAIN 2).
+## SAMPLING FOR MODEL 'b7454435a86028256d095a13277a6629' NOW (CHAIN 2).
 ## Chain 2: 
 ## Chain 2: Gradient evaluation took 3.3e-05 seconds
 ## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.33 seconds.
@@ -211,15 +211,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 2.49274 seconds (Warm-up)
-## Chain 2:                0.812569 seconds (Sampling)
-## Chain 2:                3.30531 seconds (Total)
+## Chain 2:  Elapsed Time: 127.72 seconds (Warm-up)
+## Chain 2:                80.3082 seconds (Sampling)
+## Chain 2:                208.029 seconds (Total)
 ## Chain 2: 
 ## 
-## SAMPLING FOR MODEL '76a795ed32e214859b4b1e3f29e20eda' NOW (CHAIN 3).
+## SAMPLING FOR MODEL 'b7454435a86028256d095a13277a6629' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 3.7e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.37 seconds.
+## Chain 3: Gradient evaluation took 3.1e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.31 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -236,12 +236,12 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 2.49019 seconds (Warm-up)
-## Chain 3:                0.840232 seconds (Sampling)
-## Chain 3:                3.33042 seconds (Total)
+## Chain 3:  Elapsed Time: 220.391 seconds (Warm-up)
+## Chain 3:                0.868229 seconds (Sampling)
+## Chain 3:                221.26 seconds (Total)
 ## Chain 3: 
 ## 
-## SAMPLING FOR MODEL '76a795ed32e214859b4b1e3f29e20eda' NOW (CHAIN 4).
+## SAMPLING FOR MODEL 'b7454435a86028256d095a13277a6629' NOW (CHAIN 4).
 ## Chain 4: 
 ## Chain 4: Gradient evaluation took 3.9e-05 seconds
 ## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.39 seconds.
@@ -261,21 +261,21 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.44766 seconds (Warm-up)
-## Chain 4:                0.76974 seconds (Sampling)
-## Chain 4:                3.2174 seconds (Total)
+## Chain 4:  Elapsed Time: 185.291 seconds (Warm-up)
+## Chain 4:                0.867156 seconds (Sampling)
+## Chain 4:                186.158 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code><a href="https://rdrr.io/r/graphics/plot.default.html">plot(exp_1$fit)</a></code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using the generated initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-7-1.png" width="672"></p>
 <p>In our example, the chains are well mixed and the probability density plots look good. We can also do a pairs plot that can help to assess issues with identifiability, which also looks ok. There are a range of other model diagnostics that can be explored for brms model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (<a href="https://github.com/paul-buerkner/brms" class="uri">https://github.com/paul-buerkner/brms</a>) models.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/pairs.html">pairs</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/pairs.html">pairs</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-8-1.png" width="672"></p>
 <p>We can see the summary of our fitted model parameters using:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <pre><code>##  Family: binomial 
 ##   Links: mu = identity 
 ## Formula: y | trials(trials) ~ top * exp(-beta * (x - nec) * step(x - nec)) 
@@ -288,38 +288,38 @@
 ## 
 ## Population-Level Effects: 
 ##                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## top_Intercept      0.83      0.01     0.81     0.84 1.00    10178     9575
-## beta_Intercept     1.61      0.08     1.45     1.78 1.00     7120     8743
-## nec_Intercept      4.36      0.03     4.30     4.42 1.00     6805     7983
+## top_Intercept      0.83      0.01     0.81     0.84 1.00      642      676
+## beta_Intercept     1.61      0.08     1.45     1.77 1.01      945     2128
+## nec_Intercept      4.36      0.03     4.30     4.41 1.00     1524     3765
 ## 
 ## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <p>Note the Rhat values in this example are one, indicating convergence.</p>
 <p>The function <code>plot</code> can be used to plot the fitted model. You can also make your own plot from the data included in the returned <code>bayesnecfit</code> object from the call to <code>bnec</code>. Here we use the default plot method from <code>bayesnec</code>, where we add the exp function to plot the tick labels on the original scaling of the concentration data.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_1</span>, lxform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_1</span>, lxform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-10-1.png" width="672"></p>
 <p>Alternatively, we can use the built in <code>brms</code> methods to plot the <code>brms</code> fit directly. For example:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit">
-<span class="va">df</span> <span class="op">&lt;-</span> <span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">$</span><span class="va">data</span> <span class="op">%&gt;%</span>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">df</span> <span class="op">&lt;-</span> <span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">$</span><span class="va">data</span> <span class="op">%&gt;%</span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>prop <span class="op">=</span> <span class="va">y</span> <span class="op">/</span> <span class="va">trials</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/conditional_effects.brmsfit.html">conditional_effects</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span>
      <span class="fu">geom_point</span><span class="op">(</span>data <span class="op">=</span> <span class="va">df</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">prop</span><span class="op">)</span>,
-                inherit.aes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></pre></div>
+                inherit.aes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-11-1.png" width="672"><img src="example1_files/figure-html/unnamed-chunk-11-2.png" width="672"></p>
 <p>This model fit doesn’t look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by <code>bayesnec</code>, and this can be extracted using <code>exp_5$dispersion</code>. Values &gt;1 indicate over-dispersion and values &lt;1 indicate under-dispersion. In this case the over-dispersion value is much bigger than 1, suggesting extreme over-dispersion (meaning our model doesn’t properly capture the true variability represented in this data). We would need consider alternative ways of modelling this data using a different distribution. One option would be to try modelling the proportions as a Beta, for example - although this looses the information in how many trials underpin each data point, which in this case may not be valid as they vary substantially for each row.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit">
-<span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></pre></div>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></code></pre></div>
 <pre><code>## Estimate     Q2.5    Q97.5 
-## 21.31751 14.16173 33.86846</code></pre>
+## 21.34232 14.14367 33.85788</code></pre>
 </div>
 <div id="beta-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#beta-data" class="anchor"></a>Beta data</h3>
 <p>Sometimes the response variable is distributed between <code>0</code> and <code>1</code> but is not a straight forward binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical ‘trials’ and the data must be modelled using a beta distribution.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit">
-<span class="va">prop_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/123jq46d"</span> <span class="op">%&gt;%</span>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">prop_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/123jq46d"</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span>,
@@ -327,12 +327,12 @@
 
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">prop_data</span>, x_var <span class="op">=</span> <span class="st">"raw_x"</span>,
-              y_var <span class="op">=</span> <span class="st">"resp"</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></pre></div>
+              y_var <span class="op">=</span> <span class="st">"resp"</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></code></pre></div>
 <pre><code>## 
 ## SAMPLING FOR MODEL '7326b7d3e656ca3d3967d3d146c37dee' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 0.000135 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.35 seconds.
+## Chain 1: Gradient evaluation took 0.000138 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.38 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -349,15 +349,15 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 14.3563 seconds (Warm-up)
-## Chain 1:                4.89321 seconds (Sampling)
-## Chain 1:                19.2496 seconds (Total)
+## Chain 1:  Elapsed Time: 14.6092 seconds (Warm-up)
+## Chain 1:                4.96795 seconds (Sampling)
+## Chain 1:                19.5772 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '7326b7d3e656ca3d3967d3d146c37dee' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 8.9e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.89 seconds.
+## Chain 2: Gradient evaluation took 9.1e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.91 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -374,15 +374,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 13.9415 seconds (Warm-up)
-## Chain 2:                4.31839 seconds (Sampling)
-## Chain 2:                18.2599 seconds (Total)
+## Chain 2:  Elapsed Time: 14.1767 seconds (Warm-up)
+## Chain 2:                4.39337 seconds (Sampling)
+## Chain 2:                18.5701 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '7326b7d3e656ca3d3967d3d146c37dee' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 7.7e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.77 seconds.
+## Chain 3: Gradient evaluation took 8.6e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.86 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -399,15 +399,15 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 14.0468 seconds (Warm-up)
-## Chain 3:                5.37764 seconds (Sampling)
-## Chain 3:                19.4244 seconds (Total)
+## Chain 3:  Elapsed Time: 14.2692 seconds (Warm-up)
+## Chain 3:                5.46673 seconds (Sampling)
+## Chain 3:                19.7359 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '7326b7d3e656ca3d3967d3d146c37dee' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 8.2e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.82 seconds.
+## Chain 4: Gradient evaluation took 8.9e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.89 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -424,49 +424,49 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 13.8298 seconds (Warm-up)
-## Chain 4:                5.15514 seconds (Sampling)
-## Chain 4:                18.9849 seconds (Total)
+## Chain 4:  Elapsed Time: 14.0809 seconds (Warm-up)
+## Chain 4:                5.24641 seconds (Sampling)
+## Chain 4:                19.3273 seconds (Total)
 ## Chain 4:</code></pre>
-<div class="sourceCode" id="cb20"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-14-1.png" width="672"></p>
-<div class="sourceCode" id="cb21"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-15-1.png" width="672"></p>
 </div>
 <div id="poisson-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#poisson-data" class="anchor"></a>Poisson data</h3>
 <p>Where data are a count (of, for example, individuals or cells) y is poisson. Such data are distributed from <code>0</code> to <code>Inf</code> and are integers. First we read in the count data example from <a href="https://pastebin.com/tools">pastebin</a>, and then plot the “concentration” or x data, Again, this is <code>raw_x</code>, and distributed as in our binomial example above.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit">
-<span class="va">count_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/ENgNSgf7"</span> <span class="op">%&gt;%</span>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">count_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/ENgNSgf7"</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
 
-<span class="fu"><a href="https://rdrr.io/r/utils/str.html">str</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">)</span></pre></div>
+<span class="fu"><a href="https://rdrr.io/r/utils/str.html">str</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">)</span></code></pre></div>
 <pre><code>## 'data.frame':    48 obs. of  2 variables:
 ##  $ raw_x: num  0.1 0.1 0.1 0.1 0.1 0.1 9.67 9.67 9.67 9.67 ...
 ##  $ count: int  164 100 103 102 102 101 131 102 112 100 ...</code></pre>
-<div class="sourceCode" id="cb24"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/range.html">range</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/range.html">range</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></code></pre></div>
 <pre><code>## [1]   0.1 190.0</code></pre>
-<div class="sourceCode" id="cb26"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">raw_x</span>, xlab <span class="op">=</span> <span class="st">"'x' variable"</span>, main <span class="op">=</span> <span class="st">""</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">count</span>, xlab <span class="op">=</span> <span class="st">"Total counts"</span>, main <span class="op">=</span> <span class="st">""</span><span class="op">)</span></pre></div>
+<span class="fu"><a href="https://rdrr.io/r/graphics/hist.html">hist</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">count</span>, xlab <span class="op">=</span> <span class="st">"Total counts"</span>, main <span class="op">=</span> <span class="st">""</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-16-1.png" width="960"></p>
 <p>First we supply <code>bnec</code> with <code>data</code> (count_data), and specify <code>x_var</code> and <code>y_var</code>. As we have concentration data, our <code>x_type</code> would be the gamma distribution, and <code>y_type</code> is “poisson”. The default behaviour to guess the variable types works for this example.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">count_data</span>, x_var <span class="op">=</span> <span class="st">"raw_x"</span>,
-              y_var <span class="op">=</span> <span class="st">"count"</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></pre></div>
+              y_var <span class="op">=</span> <span class="st">"count"</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></code></pre></div>
 <pre><code>## 
 ## SAMPLING FOR MODEL 'd2b9d742584d569911d4965fabd955e7' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 5.9e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.59 seconds.
+## Chain 1: Gradient evaluation took 5.8e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.58 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -483,15 +483,15 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 2.78241 seconds (Warm-up)
-## Chain 1:                0.714032 seconds (Sampling)
-## Chain 1:                3.49644 seconds (Total)
+## Chain 1:  Elapsed Time: 2.82274 seconds (Warm-up)
+## Chain 1:                0.725286 seconds (Sampling)
+## Chain 1:                3.54802 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL 'd2b9d742584d569911d4965fabd955e7' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 2.5e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+## Chain 2: Gradient evaluation took 2.3e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.23 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -508,15 +508,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 2.18739 seconds (Warm-up)
-## Chain 2:                0.977374 seconds (Sampling)
-## Chain 2:                3.16476 seconds (Total)
+## Chain 2:  Elapsed Time: 2.22873 seconds (Warm-up)
+## Chain 2:                0.997207 seconds (Sampling)
+## Chain 2:                3.22594 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL 'd2b9d742584d569911d4965fabd955e7' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 2.5e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+## Chain 3: Gradient evaluation took 2.6e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.26 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -533,15 +533,15 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 3.3024 seconds (Warm-up)
-## Chain 3:                0.761857 seconds (Sampling)
-## Chain 3:                4.06425 seconds (Total)
+## Chain 3:  Elapsed Time: 3.36901 seconds (Warm-up)
+## Chain 3:                0.778823 seconds (Sampling)
+## Chain 3:                4.14784 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL 'd2b9d742584d569911d4965fabd955e7' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 2.6e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.26 seconds.
+## Chain 4: Gradient evaluation took 2.3e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.23 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -558,36 +558,36 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.39643 seconds (Warm-up)
-## Chain 4:                0.659288 seconds (Sampling)
-## Chain 4:                3.05572 seconds (Total)
+## Chain 4:  Elapsed Time: 2.45383 seconds (Warm-up)
+## Chain 4:                0.668773 seconds (Sampling)
+## Chain 4:                3.1226 seconds (Total)
 ## Chain 4:</code></pre>
 <p>We first plot the model chains and parameter estimates to check the fit.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-18-1.png" width="672"></p>
-<div class="sourceCode" id="cb30"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-19-1.png" width="672"></p>
 </div>
 <div id="measure-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#measure-data" class="anchor"></a>Measure data</h3>
 <p>Where data are a measured variable (i.e. length or size) y is gamma. Such data are distributed from <code>0+</code> to <code>Inf</code> and are continuous. First we read in the count data example from pastebin, and then plot the “concentration” or x data, Again, this is raw_x, and distributed as in our binomial example above.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit">
-<span class="va">measure_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/pWeS6x0n"</span> <span class="op">%&gt;%</span>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">measure_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/pWeS6x0n"</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op">%&gt;%</span>
-  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html">across</a></span><span class="op">(</span><span class="fu">where</span><span class="op">(</span><span class="va">is.character</span><span class="op">)</span>, <span class="va">as.numeric</span><span class="op">)</span><span class="op">)</span></pre></div>
-<div class="sourceCode" id="cb32"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html">across</a></span><span class="op">(</span><span class="fu">where</span><span class="op">(</span><span class="va">is.character</span><span class="op">)</span>, <span class="va">as.numeric</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">measure_data</span>, x_var <span class="op">=</span> <span class="st">"raw_x"</span>,
-              y_var <span class="op">=</span> <span class="st">"measure"</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></pre></div>
+              y_var <span class="op">=</span> <span class="st">"measure"</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></code></pre></div>
 <pre><code>## 
 ## SAMPLING FOR MODEL '2c0d803dc18f50eb20ea9d1efc60750e' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 6.4e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.64 seconds.
+## Chain 1: Gradient evaluation took 7.2e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.72 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -604,9 +604,9 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 4.13048 seconds (Warm-up)
-## Chain 1:                1.02782 seconds (Sampling)
-## Chain 1:                5.1583 seconds (Total)
+## Chain 1:  Elapsed Time: 4.19516 seconds (Warm-up)
+## Chain 1:                1.04372 seconds (Sampling)
+## Chain 1:                5.23888 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '2c0d803dc18f50eb20ea9d1efc60750e' NOW (CHAIN 2).
@@ -629,15 +629,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 4.37789 seconds (Warm-up)
-## Chain 2:                1.08761 seconds (Sampling)
-## Chain 2:                5.4655 seconds (Total)
+## Chain 2:  Elapsed Time: 4.45625 seconds (Warm-up)
+## Chain 2:                1.11122 seconds (Sampling)
+## Chain 2:                5.56747 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '2c0d803dc18f50eb20ea9d1efc60750e' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 2.5e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+## Chain 3: Gradient evaluation took 2.6e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.26 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -654,15 +654,15 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 4.58135 seconds (Warm-up)
-## Chain 3:                1.06855 seconds (Sampling)
-## Chain 3:                5.64991 seconds (Total)
+## Chain 3:  Elapsed Time: 4.64708 seconds (Warm-up)
+## Chain 3:                1.09266 seconds (Sampling)
+## Chain 3:                5.73974 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '2c0d803dc18f50eb20ea9d1efc60750e' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 2.6e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.26 seconds.
+## Chain 4: Gradient evaluation took 2.7e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.27 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -679,20 +679,20 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 4.30812 seconds (Warm-up)
-## Chain 4:                1.10665 seconds (Sampling)
-## Chain 4:                5.41476 seconds (Total)
+## Chain 4:  Elapsed Time: 4.28038 seconds (Warm-up)
+## Chain 4:                1.08773 seconds (Sampling)
+## Chain 4:                5.36811 seconds (Total)
 ## Chain 4:</code></pre>
-<div class="sourceCode" id="cb34"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-22-1.png" width="672"></p>
 <p>The function <code>plot</code> can be used to plot the fitted model. The estimated <em>NEC</em> value can be obtained directly from the fitted model object, using <code>exp_4$nec</code>.</p>
-<div class="sourceCode" id="cb35"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-23-1.png" width="672"></p>
 <p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em> model fit, using the function <code>ecx</code>. Note these may differ from a typical 4-parameter non-linear model, as the <em>NEC</em> model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve.</p>
-<div class="sourceCode" id="cb36"><pre class="downlit">
-<span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></code></pre></div>
 <pre><code>##   ec_10_Q50  ec_10_Q2.5 ec_10_Q97.5 
 ##    63.20991    52.18468    71.76396</code></pre>
 </div>
