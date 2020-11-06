@@ -148,10 +148,10 @@
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span></code></pre></div>
 <pre><code>##               model      waic           wi dispersion_Estimate dispersion_Q2.5
-## nec3param nec3param -433.3936 5.288052e-01                  NA              NA
-## nec4param nec4param -434.5092 3.768853e-04                  NA              NA
-## ecx4param ecx4param -433.5657 1.388733e-07                  NA              NA
-## ecxwb1       ecxwb1 -433.1880 4.708178e-01                  NA              NA
+## nec3param nec3param -433.4827 5.270696e-01                  NA              NA
+## nec4param nec4param -434.4550 1.373330e-05                  NA              NA
+## ecx4param ecx4param -433.4082 7.421721e-08                  NA              NA
+## ecxwb1       ecxwb1 -433.2782 4.729166e-01                  NA              NA
 ##           dispersion_Q97.5
 ## nec3param               NA
 ## nec4param               NA
@@ -187,7 +187,7 @@
 
 <span class="va">ECx10</span></code></pre></div>
 <pre><code>##    ec_10 ec_10_lw ec_10_up 
-## 3.408857 3.078091 3.751028</code></pre>
+## 3.414559 3.078091 3.745325</code></pre>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ECx50</span></code></pre></div>
 <pre><code>##    ec_50 ec_50_lw ec_50_up 
@@ -197,7 +197,7 @@
 <code class="sourceCode R"><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_nec</span>
 <span class="va">NECvals</span></code></pre></div>
 <pre><code>## Estimate     Q2.5    Q97.5 
-## 3.026710 2.639422 3.286087</code></pre>
+## 3.037903 2.655519 3.283469</code></pre>
 <p>Now we can make a combined plot of our output, showing the model averaged “<em>NEC</em>” model and the “all averaged model”, along with the relevant thresholds.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">preds</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_pred_vals</span><span class="op">$</span><span class="va">data</span>
