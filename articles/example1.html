@@ -166,10 +166,10 @@
               y_var <span class="op">=</span> <span class="st">"suc"</span>, model <span class="op">=</span> <span class="st">"nec3param"</span>,
               trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span></code></pre></div>
 <pre><code>## 
-## SAMPLING FOR MODEL '9cf4a8a39bcf7bf0aabda5f91abc8e3c' NOW (CHAIN 1).
+## SAMPLING FOR MODEL '87dbb9e3e736a74fba174a3c1b9b2a37' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 7.9e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.79 seconds.
+## Chain 1: Gradient evaluation took 7.7e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.77 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -186,15 +186,15 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 15.904 seconds (Warm-up)
-## Chain 1:                0.767607 seconds (Sampling)
-## Chain 1:                16.6716 seconds (Total)
+## Chain 1:  Elapsed Time: 4.03932 seconds (Warm-up)
+## Chain 1:                0.786195 seconds (Sampling)
+## Chain 1:                4.82551 seconds (Total)
 ## Chain 1: 
 ## 
-## SAMPLING FOR MODEL '9cf4a8a39bcf7bf0aabda5f91abc8e3c' NOW (CHAIN 2).
+## SAMPLING FOR MODEL '87dbb9e3e736a74fba174a3c1b9b2a37' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 3.3e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.33 seconds.
+## Chain 2: Gradient evaluation took 3.6e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.36 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -211,15 +211,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 3.32273 seconds (Warm-up)
-## Chain 2:                0.772655 seconds (Sampling)
-## Chain 2:                4.09538 seconds (Total)
+## Chain 2:  Elapsed Time: 90.5665 seconds (Warm-up)
+## Chain 2:                0.690525 seconds (Sampling)
+## Chain 2:                91.257 seconds (Total)
 ## Chain 2: 
 ## 
-## SAMPLING FOR MODEL '9cf4a8a39bcf7bf0aabda5f91abc8e3c' NOW (CHAIN 3).
+## SAMPLING FOR MODEL '87dbb9e3e736a74fba174a3c1b9b2a37' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 3.1e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.31 seconds.
+## Chain 3: Gradient evaluation took 3.9e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.39 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -236,15 +236,15 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 2.51734 seconds (Warm-up)
-## Chain 3:                0.682447 seconds (Sampling)
-## Chain 3:                3.19978 seconds (Total)
+## Chain 3:  Elapsed Time: 26.2825 seconds (Warm-up)
+## Chain 3:                0.80361 seconds (Sampling)
+## Chain 3:                27.0861 seconds (Total)
 ## Chain 3: 
 ## 
-## SAMPLING FOR MODEL '9cf4a8a39bcf7bf0aabda5f91abc8e3c' NOW (CHAIN 4).
+## SAMPLING FOR MODEL '87dbb9e3e736a74fba174a3c1b9b2a37' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 3.9e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.39 seconds.
+## Chain 4: Gradient evaluation took 4e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.4 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -261,9 +261,9 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.50901 seconds (Warm-up)
-## Chain 4:                0.754212 seconds (Sampling)
-## Chain 4:                3.26322 seconds (Total)
+## Chain 4:  Elapsed Time: 59.1612 seconds (Warm-up)
+## Chain 4:                0.96157 seconds (Sampling)
+## Chain 4:                60.1227 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code><a href="https://rdrr.io/r/graphics/plot.default.html">plot(exp_1$fit)</a></code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using the generated initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -288,9 +288,9 @@
 ## 
 ## Population-Level Effects: 
 ##                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## top_Intercept      0.83      0.01     0.81     0.84 1.00    10124     9326
-## beta_Intercept     1.61      0.08     1.45     1.78 1.00     8504     8492
-## nec_Intercept      4.36      0.03     4.30     4.42 1.00     8125     8305
+## top_Intercept      0.83      0.01     0.81     0.84 1.00     9792     9677
+## beta_Intercept     1.61      0.08     1.45     1.78 1.00     8145     8722
+## nec_Intercept      4.36      0.03     4.30     4.42 1.00     8201     8202
 ## 
 ## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -312,7 +312,7 @@
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></code></pre></div>
 <pre><code>## Estimate     Q2.5    Q97.5 
-## 21.37150 14.05693 33.56948</code></pre>
+## 21.34057 14.10386 33.49738</code></pre>
 </div>
 <div id="beta-data" class="section level3">
 <h3 class="hasAnchor">
@@ -331,8 +331,8 @@
 <pre><code>## 
 ## SAMPLING FOR MODEL '7326b7d3e656ca3d3967d3d146c37dee' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 0.000136 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.36 seconds.
+## Chain 1: Gradient evaluation took 0.000132 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.32 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -349,15 +349,15 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 14.33 seconds (Warm-up)
-## Chain 1:                4.87737 seconds (Sampling)
-## Chain 1:                19.2073 seconds (Total)
+## Chain 1:  Elapsed Time: 15.3571 seconds (Warm-up)
+## Chain 1:                7.04715 seconds (Sampling)
+## Chain 1:                22.4042 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '7326b7d3e656ca3d3967d3d146c37dee' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 8.5e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.85 seconds.
+## Chain 2: Gradient evaluation took 8.9e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.89 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -374,15 +374,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 13.9135 seconds (Warm-up)
-## Chain 2:                4.31224 seconds (Sampling)
-## Chain 2:                18.2257 seconds (Total)
+## Chain 2:  Elapsed Time: 18.364 seconds (Warm-up)
+## Chain 2:                5.44775 seconds (Sampling)
+## Chain 2:                23.8118 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '7326b7d3e656ca3d3967d3d146c37dee' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 8e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.8 seconds.
+## Chain 3: Gradient evaluation took 8.6e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.86 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -399,15 +399,15 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 14.0007 seconds (Warm-up)
-## Chain 3:                5.3523 seconds (Sampling)
-## Chain 3:                19.353 seconds (Total)
+## Chain 3:  Elapsed Time: 17.0602 seconds (Warm-up)
+## Chain 3:                6.87946 seconds (Sampling)
+## Chain 3:                23.9397 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '7326b7d3e656ca3d3967d3d146c37dee' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 8.6e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.86 seconds.
+## Chain 4: Gradient evaluation took 9.2e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.92 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -424,9 +424,9 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 13.7911 seconds (Warm-up)
-## Chain 4:                5.13099 seconds (Sampling)
-## Chain 4:                18.922 seconds (Total)
+## Chain 4:  Elapsed Time: 15.5294 seconds (Warm-up)
+## Chain 4:                5.33888 seconds (Sampling)
+## Chain 4:                20.8683 seconds (Total)
 ## Chain 4:</code></pre>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
@@ -465,8 +465,8 @@
 <pre><code>## 
 ## SAMPLING FOR MODEL 'd2b9d742584d569911d4965fabd955e7' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 7e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.7 seconds.
+## Chain 1: Gradient evaluation took 6e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.6 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -483,15 +483,15 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 2.88957 seconds (Warm-up)
-## Chain 1:                0.744972 seconds (Sampling)
-## Chain 1:                3.63454 seconds (Total)
+## Chain 1:  Elapsed Time: 2.8125 seconds (Warm-up)
+## Chain 1:                0.722536 seconds (Sampling)
+## Chain 1:                3.53504 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL 'd2b9d742584d569911d4965fabd955e7' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 2.5e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+## Chain 2: Gradient evaluation took 2.4e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.24 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -508,15 +508,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 2.3027 seconds (Warm-up)
-## Chain 2:                1.0289 seconds (Sampling)
-## Chain 2:                3.3316 seconds (Total)
+## Chain 2:  Elapsed Time: 2.22118 seconds (Warm-up)
+## Chain 2:                0.993993 seconds (Sampling)
+## Chain 2:                3.21517 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL 'd2b9d742584d569911d4965fabd955e7' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 2.5e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+## Chain 3: Gradient evaluation took 2.4e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.24 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -533,15 +533,15 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 3.46891 seconds (Warm-up)
-## Chain 3:                0.799466 seconds (Sampling)
-## Chain 3:                4.26837 seconds (Total)
+## Chain 3:  Elapsed Time: 3.34865 seconds (Warm-up)
+## Chain 3:                0.771644 seconds (Sampling)
+## Chain 3:                4.1203 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL 'd2b9d742584d569911d4965fabd955e7' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 2.5e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+## Chain 4: Gradient evaluation took 2.6e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.26 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -558,9 +558,9 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.53712 seconds (Warm-up)
-## Chain 4:                0.68788 seconds (Sampling)
-## Chain 4:                3.225 seconds (Total)
+## Chain 4:  Elapsed Time: 2.43629 seconds (Warm-up)
+## Chain 4:                0.666471 seconds (Sampling)
+## Chain 4:                3.10276 seconds (Total)
 ## Chain 4:</code></pre>
 <p>We first plot the model chains and parameter estimates to check the fit.</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
@@ -586,8 +586,8 @@
 <pre><code>## 
 ## SAMPLING FOR MODEL '2c0d803dc18f50eb20ea9d1efc60750e' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 6.6e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.66 seconds.
+## Chain 1: Gradient evaluation took 6.5e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.65 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -604,15 +604,15 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 4.24735 seconds (Warm-up)
-## Chain 1:                1.05379 seconds (Sampling)
-## Chain 1:                5.30114 seconds (Total)
+## Chain 1:  Elapsed Time: 4.35197 seconds (Warm-up)
+## Chain 1:                1.08904 seconds (Sampling)
+## Chain 1:                5.44101 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '2c0d803dc18f50eb20ea9d1efc60750e' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 2.6e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.26 seconds.
+## Chain 2: Gradient evaluation took 4.8e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.48 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -629,15 +629,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 4.51431 seconds (Warm-up)
-## Chain 2:                1.12854 seconds (Sampling)
-## Chain 2:                5.64285 seconds (Total)
+## Chain 2:  Elapsed Time: 4.70497 seconds (Warm-up)
+## Chain 2:                1.18775 seconds (Sampling)
+## Chain 2:                5.89272 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '2c0d803dc18f50eb20ea9d1efc60750e' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 2.6e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.26 seconds.
+## Chain 3: Gradient evaluation took 3.2e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.32 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -654,15 +654,15 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 4.73856 seconds (Warm-up)
-## Chain 3:                1.10711 seconds (Sampling)
-## Chain 3:                5.84567 seconds (Total)
+## Chain 3:  Elapsed Time: 4.91118 seconds (Warm-up)
+## Chain 3:                1.16511 seconds (Sampling)
+## Chain 3:                6.07629 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '2c0d803dc18f50eb20ea9d1efc60750e' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 2.6e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.26 seconds.
+## Chain 4: Gradient evaluation took 3.1e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.31 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -679,9 +679,9 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 4.36639 seconds (Warm-up)
-## Chain 4:                1.10783 seconds (Sampling)
-## Chain 4:                5.47423 seconds (Total)
+## Chain 4:  Elapsed Time: 4.5207 seconds (Warm-up)
+## Chain 4:                1.15229 seconds (Sampling)
+## Chain 4:                5.67299 seconds (Total)
 ## Chain 4:</code></pre>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
