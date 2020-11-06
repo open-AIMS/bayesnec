@@ -1,6 +1,6 @@
-#' define_model
+#' define_prior
 #'
-#' Generates model formula and prior model objects to pass to brms
+#' Generates prior model objects to pass to brms
 #'
 #' @inheritParams bnec
 #'
@@ -50,7 +50,7 @@ define_prior <- function(model, family, predictor, response) {
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),
-                               ", ", sd(response)*20, ")"))
+                               ", ", sd(predictor)*20, ")"))
   # y-dependent priors
   pr_top <- prior_string(y_t_prs[fam_tag], nlpar = "top")
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot")
