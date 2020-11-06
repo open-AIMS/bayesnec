@@ -56,17 +56,17 @@ define_prior <- function(model, family, predictor, response) {
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot")
   # x-dependent priors
   x_type <- set_distribution(predictor)
-  pr_nec <- prior_string(x_prs[x_type], nlpar = "nec")
-  pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50")
+  pr_nec <- prior_string(x_prs[x_type], nlpar = "nec", lb = min(predictor), ub = max(predictor))
+  pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50", lb = min(predictor), ub = max(predictor))
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 1)", nlpar = "d")
   
-  pr_beta <- prior_string("gamma(0.5, 2)", nlpar = "beta")
+  pr_beta <- prior_string("gamma(0.5, 2)", nlpar = "beta", lb = 0)
   
   # scaling dependent priors
   pr_slope <- prior_string(paste0("gamma(2, ",
                                   1 / ((diff(range(response))/diff(range(predictor))) / 2),
-                                  ")"), nlpar = "slope")
+                                  ")"), nlpar = "slope", lb = 0)
 
   # assemble
   if (model == "ecxsigm") {
