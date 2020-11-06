@@ -142,13 +142,13 @@ bf_ecxwb1_deflt <- brms::bf(y ~ bot + (top - bot) *
                             nl = TRUE)
 
 # ecxwb2
-bf_ecxwb2_binom <- brms::bf(y | trials(trials) ~ bot + (top - bot) *
+bf_ecxwb2_binom <- brms::bf(y | trials(trials) ~top + (bot - top) *
                               (1 - exp(-exp(beta *
                                 (x - ec50)))),
                             bot + ec50 + top + beta ~ 1,
                             nl = TRUE)
 
-bf_ecxwb2_deflt <- brms::bf(y ~ bot + (top - bot) *
+bf_ecxwb2_deflt <- brms::bf(y ~ top + (bot - top) *
                               (1 - exp(-exp(beta *
                                 (x - ec50)))),
                             bot + ec50 + top + beta ~ 1,
