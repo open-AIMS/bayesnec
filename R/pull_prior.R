@@ -33,5 +33,7 @@ pull_prior <- function(object) {
     out
   } else if (inherits(object, "bayesnecfit")) {
     object$fit$prior
+  } else {
+    stop("Object is not of class bayesnecfit or bayesmaneicfit")
   }
 }
