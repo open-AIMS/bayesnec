@@ -61,7 +61,8 @@ check_data <- function(data, x_var, y_var,
          "values of concentration.")
   }
 
-  if (!model %in% c("neclin", "nec3param", "necsigm", "nec4param", "nechorme", "nechorme4",
+  if (!model %in% c("neclin", "nec3param", "necsigm", "nec4param", 
+                    "nechorme", "neclinhorme", "nechorme4",
                     "ecx4param", "ecxwb1", "ecxwb2", "ecxlin",
                     "ecxexp", "ecxsigm")) {
     stop(paste("The model" , model, "is not a valid model name. Please check ?bnec for valid model calls."))
