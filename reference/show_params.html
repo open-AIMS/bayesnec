@@ -198,6 +198,13 @@
 #&gt; slope ~ 1
 #&gt; nec ~ 1
 #&gt; 
+#&gt; $neclinhorme
+#&gt; y ~ (top + slope * x) - beta * (x - nec) * step(x - nec) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
 #&gt; $ecxlin
 #&gt; y ~ top - slope * x 
 #&gt; top ~ 1
