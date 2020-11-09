@@ -15,9 +15,9 @@
 check_models <- function(model, family){
   fam_tag <- family$family
   link_tag <- family$link
-  
+
   if (link_tag=="logit" | link_tag=="log") {
-    use_model <-  model[(model %in% mod_groups$bot_free)==FALSE]
+    use_model <-  model[(model %in% mod_groups$zero_bounded)==FALSE]
     drop_model <- setdiff(model, use_model)
    if (length(drop_model)>0) {
       message(paste( "Dropping the model(s)", paste0(drop_model, collapse=", "), 
@@ -31,7 +31,7 @@ check_models <- function(model, family){
   }
   
   if (link_tag=="identity" & (fam_tag=="Beta" | fam_tag=="binomial")) {
-    use_model <-  model[(model %in% c("nechorme", "nechorme4", "ecxlin"))==FALSE]
+    use_model <-  model[(model %in% c("neclin", "nechorme", "nechorme4", "ecxlin"))==FALSE]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model)>0) {
       message(paste( "Dropping the model(s)", paste0(drop_model, collapse=", "), 
@@ -45,21 +45,21 @@ check_models <- function(model, family){
   }
   
   if (link_tag=="identity" & (fam_tag=="Gamma" | fam_tag=="poisson" | fam_tag=="negbinomial")) {
-    use_model <-  model[(model %in% "ecxlin")==FALSE]
+    use_model <-  model[(model %in% c("neclin", "ecxlin"))==FALSE]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model)>0) {
       message(paste( "Dropping the model", paste0(drop_model, collapse=", "), 
                      "as they are not valid in the case of a", fam_tag, "with identity link."))     
     }
     if (length(use_model)==0) {
-      stop(paste("The ecxlin model is not valid for a",  fam_tag, "with identity link."))
+      stop(paste("None of the model(s) specified are valid for a",  fam_tag, "with identity link."))
     }else{
       model <- use_model
     }
   }
   
   if (fam_tag=="gaussian") {
-    use_model <-  model[(model %in% setdiff(mod_groups$bot_free, "ecxlin"))==FALSE]
+    use_model <-  model[(model %in% setdiff(mod_groups$bot_free, c("neclin", "ecxlin")))==FALSE]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model)>0) {
       message(paste( "Dropping the model(s)", paste0(drop_model, collapse=", "), 

@@ -37,9 +37,7 @@
 #' include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the 
 #' Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.
 #' 
-#' The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2", 
-#' "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model 
-#' object of class \code{\link{bayesnecfit}}.
+#' The argument \code{model} may be one of "neclin","nec3param", "nec4param", "necsigm", "nechorme", "nechorme4", "ecx4param", "ecxwb1", "ecxwb2", "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model object of class \code{\link{bayesnecfit}}.
 #' 
 #' If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class \code{\link{bayesmanecfit}}
 #' containing model averaged predictions for the supplied models, providing they were successfully fitted.
@@ -132,7 +130,6 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
-
   msets <- names(mod_groups)
   if (any(model %in% msets)) {
       group_mods <- intersect(model, msets)

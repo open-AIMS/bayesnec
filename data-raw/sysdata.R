@@ -3,14 +3,15 @@ library(brms)
 ####################################
 # ACCEPTED MODEL GROUPS AND FAMILIES
 ####################################
-mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme", "nechorme4", "necsigm"),
+mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme", "nechorme4", "necsigm", "neclin"),
                    ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
                            "ecxwb1", "ecxwb2"),
-                   all = c("nec3param", "nec4param", "nechorme", "nechorme4", "necsigm",
+                   all = c("nec3param", "nec4param", "nechorme", "nechorme4", "necsigm", "neclin",
                            "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
                            "ecxwb1", "ecxwb2"),
-                   bot_free = c("nec3param", "nechorme", "necsigm",
-                                "ecxlin", "ecxexp", "ecxsigm"))
+                   bot_free = c("nec3param", "nechorme", "necsigm", "neclin",
+                                "ecxlin", "ecxexp", "ecxsigm"),
+                   zero_bounded = c("nec3param", "nechorme", "necsigm", "ecxexp", "ecxsigm"))
 
 mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",
@@ -22,6 +23,15 @@ mod_fams <- c(gaussian = "gaussian",
 ############
 # NEC MODELS
 ############
+# neclin
+bf_neclin_binom <- brms::bf(y | trials(trials) ~ top - slope * (x - nec) * step(x - nec),
+                               top + slope + nec ~ 1,
+                               nl = TRUE)
+
+bf_neclin_deflt <- brms::bf(y ~ top - slope * (x - nec) * step(x - nec),
+                               top + slope + nec ~ 1,
+                               nl = TRUE)
+
 # nec3param
 bf_nec3param_binom <- brms::bf(y | trials(trials) ~ top *
                                  exp(-beta * (x - nec) *
@@ -158,6 +168,8 @@ bf_ecxwb2_deflt <- brms::bf(y ~ top + (bot - top) *
 # SAVE INTERNAL DATA
 ####################
 save(mod_groups, mod_fams,
+     # neclin
+     bf_neclin_deflt, bf_neclin_binom,     
      # nec3param
      bf_nec3param_deflt, bf_nec3param_binom,
      # nec4param
