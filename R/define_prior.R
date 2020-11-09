@@ -16,8 +16,8 @@ define_prior <- function(model, family, predictor, response) {
   if(link_tag=="logit"  | link_tag=="log"){
      fam_tag <- "gaussian"
      response <- family$linkfun(response)
+     response <- response[is.finite(response)]
   } else { fam_tag <- family$family }
- 
   x_type <- set_distribution(predictor)
   u_t_g <- paste0("gamma(2, ",
                   1 / (quantile(response, probs = 0.75) / 2),
@@ -75,6 +75,9 @@ define_prior <- function(model, family, predictor, response) {
   if (model %in% c("ecx4param", "ecxwb1", "ecxwb2")) {
     priors <- pr_beta + pr_top + pr_bot + pr_ec50
   }
+  if (model == "neclin") {
+    priors <- pr_top + pr_slope + pr_nec
+  }  
   if (model == "nec3param") {
     priors <- pr_beta + pr_top + pr_nec
   }
