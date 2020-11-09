@@ -31,7 +31,7 @@ check_models <- function(model, family){
   }
   
   if (link_tag=="identity" & (fam_tag=="Beta" | fam_tag=="binomial")) {
-    use_model <-  model[(model %in% c("neclin", "nechorme", "nechorme4", "ecxlin"))==FALSE]
+    use_model <-  model[(model %in% c("neclin", "nechorme", "neclinhorme", "nechorme4", "ecxlin"))==FALSE]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model)>0) {
       message(paste( "Dropping the model(s)", paste0(drop_model, collapse=", "), 
@@ -45,7 +45,7 @@ check_models <- function(model, family){
   }
   
   if (link_tag=="identity" & (fam_tag=="Gamma" | fam_tag=="poisson" | fam_tag=="negbinomial")) {
-    use_model <-  model[(model %in% c("neclin", "ecxlin"))==FALSE]
+    use_model <-  model[(model %in% c("neclin", "neclinhorme", "ecxlin"))==FALSE]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model)>0) {
       message(paste( "Dropping the model", paste0(drop_model, collapse=", "), 
@@ -59,7 +59,7 @@ check_models <- function(model, family){
   }
   
   if (fam_tag=="gaussian") {
-    use_model <-  model[(model %in% setdiff(mod_groups$bot_free, c("neclin", "ecxlin")))==FALSE]
+    use_model <-  model[(model %in% mod_groups$zero_bounded)==FALSE]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model)>0) {
       message(paste( "Dropping the model(s)", paste0(drop_model, collapse=", "), 
