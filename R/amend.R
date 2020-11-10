@@ -7,6 +7,7 @@
 #' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
 #' @param drop A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
+#' @param wi_method A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'
 #' @examples
@@ -30,11 +31,11 @@
 #' @export
 amend.default <- function(object, drop, add, x_range = NA,
                           precision = 1000, sig_val = 0.01,
-                          priors) {
-  if (missing(drop) && missing(add)) {
+                          priors, wi_method) {
+  if (missing(drop) && missing(add) && missing(wi_method)) {
     message("Nothing to amend, please specify a model to ",
-            "either add or drop;\n",
-            "Returning original model set")
+            "either add or drop, or a wi_method;\n",
+            "Returning original model set and weights")
     return(object)
   }
   model_set <- names(object$mod_fits)
@@ -45,8 +46,8 @@ amend.default <- function(object, drop, add, x_range = NA,
     model_set <- handle_set(model_set, add = add)
   }
   if (is.logical(model_set)) {
-    message("Returning original model set")
-    return(object)
+   message("Returning original model set")
+   return(object)
   }
   simdat <- extract_simdat(object$mod_fits[[1]])
   data <- object$mod_fits[[1]]$fit$data
@@ -80,7 +81,7 @@ amend.default <- function(object, drop, add, x_range = NA,
     }
   }
   mod_fits <- expand_manec(mod_fits, x_range = x_range,
-                           precision = precision, sig_val = sig_val)
+                           precision = precision, sig_val = sig_val, wi_method = wi_method)
   if (!inherits(mod_fits, "prebayesnecfit")) {
     allot_class(mod_fits, "bayesmanecfit")
   } else {
@@ -104,7 +105,7 @@ amend.default <- function(object, drop, add, x_range = NA,
 #' @export
 amend <- function(object, drop, add, x_range = NA,
                   precision = 1000, sig_val = 0.01,
-                  priors) {
+                  priors, wi_method) {
   UseMethod("amend")
 }
 

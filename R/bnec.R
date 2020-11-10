@@ -21,6 +21,7 @@
 #' of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup 
 #' should not be larger than "iter" and the default is "floor(iter / 5) * 4".
 #' @param inits Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.
+#' @param wi_method A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.
 #' @param ... Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.
 #' 
 #' @details As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
@@ -126,7 +127,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 2e4, warmup = floor(iter / 5) * 4,
-                 inits, ...) {
+                 inits, wi_method = "stacking", ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
@@ -171,7 +172,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
     }
     mod_fits <- expand_manec(mod_fits, x_range = x_range,
                              precision = precision,
-                             sig_val = sig_val)
+                             sig_val = sig_val, wi_method = wi_method)
     if (!inherits(mod_fits, "prebayesnecfit")) {
       allot_class(mod_fits, "bayesmanecfit")
     } else {
