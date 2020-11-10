@@ -71,6 +71,19 @@ bf_nechorme_deflt <- brms::bf(y ~ (top + slope * x) *
                               top + beta + nec + slope ~ 1,
                               nl = TRUE)
 
+# nechorme4
+bf_nechorme4_binom <- brms::bf(y | trials(trials) ~ bot + ((top + slope * x) - bot) *
+                                       exp(-beta * (x - nec) *
+                                                   step(x - nec)),
+                               bot + top + beta + nec + slope ~ 1,
+                               nl = TRUE)
+
+bf_nechorme4_deflt <- brms::bf(y ~ bot + ((top + slope * x) - bot) *
+                                       exp(-beta * (x - nec) *
+                                                   step(x - nec)),
+                               bot + top + beta + nec + slope ~ 1,
+                               nl = TRUE)
+
 # "neclinhorme"
 bf_neclinhorme_binom <- brms::bf(y | trials(trials) ~ (top + slope * x) - beta * (x - nec) *
                                                   step(x - nec),
