@@ -88,14 +88,14 @@ expand_manec <- function(object, x_range = NA, precision = 1000,
          "make sure you have the correct parameter names ",
          "for your priors.")
   } else if (length(success_models) == 1) {
-    message("Only ", success_models, " was successfully fitted, ",
+    message("Only ", success_models, " is fitted, ",
             "no model averaging done. Perhaps try setting better ",
             "priors, or check ?show_params to make sure you have ",
             "the correct parameter names for your priors.\n",
             "Returning ", success_models)
     return(object[[success_models]])
   } else {
-    message(paste("successfully fitted the models: ",
+    message(paste("Fitted the models: ",
                   paste(success_models, collapse = " ")))
   }
   mod_fits <- object[success_models]
