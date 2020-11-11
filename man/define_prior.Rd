@@ -2,7 +2,7 @@
 % Please edit documentation in R/define_prior.R
 \name{define_prior}
 \alias{define_prior}
-\title{define_model}
+\title{define_prior}
 \usage{
 define_prior(model, family, predictor, response)
 }
@@ -20,5 +20,5 @@ A \code{\link[base]{list}} containing the \code{\link[brms]{prior}}
 and the string defining response distribution family to use.
 }
 \description{
-Generates model formula and prior model objects to pass to brms
+Generates prior model objects to pass to brms
 }

@@ -77,7 +77,7 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
 #' @importFrom loo loo_model_weights
 #' @importFrom stats quantile
 expand_manec <- function(object, x_range = NA, precision = 1000,
-                         sig_val = 0.01, wi_method) {
+                         sig_val = 0.01, wi_method = "stacking") {
   model_set <- names(object)
   success_models <- model_set[sapply(object, class) == "prebayesnecfit"]
   if (length(success_models) == 0) {
@@ -95,7 +95,7 @@ expand_manec <- function(object, x_range = NA, precision = 1000,
             "Returning ", success_models)
     return(object[[success_models]])
   } else {
-    message(paste("Fitted the models: ",
+    message(paste("Fitted models are: ",
                   paste(success_models, collapse = " ")))
   }
   mod_fits <- object[success_models]
