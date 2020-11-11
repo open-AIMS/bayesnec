@@ -11,7 +11,8 @@ amend(
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
-  priors
+  priors,
+  wi_method = "stacking"
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ against the lowest observed concentration (assumed to be the control), to estima
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
 If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter. It can also be specified as a named \code{\link[base]{list}} where each
 name needs to correspond to the same string as "model". See details.}
+
+\item{wi_method}{A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.}
 }
 \value{
 All successfully fitted \code{\link{bayesmanecfit}} model fits.

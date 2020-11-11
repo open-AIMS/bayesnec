@@ -31,7 +31,7 @@
 #' @export
 amend.default <- function(object, drop, add, x_range = NA,
                           precision = 1000, sig_val = 0.01,
-                          priors, wi_method) {
+                          priors, wi_method = "stacking") {
   if (missing(drop) && missing(add) && missing(wi_method)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop, or a wi_method;\n",
@@ -46,8 +46,11 @@ amend.default <- function(object, drop, add, x_range = NA,
     model_set <- handle_set(model_set, add = add)
   }
   if (is.logical(model_set)) {
-   message("Returning original model set")
-   return(object)
+     message("Returning original model set")
+   if (!grepl(wi_method, class(object$mod_stats$wi))) {
+     message("wi_method not modified, please call amend and specify only wi_method if you do not need to drop or add any models and simply want to update the weighting method.")   
+   }
+      return(object)
   }
   simdat <- extract_simdat(object$mod_fits[[1]])
   data <- object$mod_fits[[1]]$fit$data
@@ -105,7 +108,7 @@ amend.default <- function(object, drop, add, x_range = NA,
 #' @export
 amend <- function(object, drop, add, x_range = NA,
                   precision = 1000, sig_val = 0.01,
-                  priors, wi_method) {
+                  priors, wi_method = "stacking") {
   UseMethod("amend")
 }
 

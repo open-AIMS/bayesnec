@@ -18,6 +18,7 @@ bnec(
   iter = 20000,
   warmup = floor(iter/5) * 4,
   inits,
+  wi_method = "stacking",
   ...
 )
 }
@@ -54,6 +55,8 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
 
 \item{inits}{Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.}
 
+\item{wi_method}{A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.}
+
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
 }
 \value{
@@ -78,9 +81,7 @@ If not supplied, the appropriate distribution will be guessed based on the chara
 include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
 Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.
 
-The argument \code{model} may be one of "nec3param", "nec4param", "necsigm", "nechorme", "ecx4param", "ecxwb1", "ecxwb2",
-"ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model
-object of class \code{\link{bayesnecfit}}.
+The argument \code{model} may be one of "neclin","nec3param", "nec4param", "necsigm", "nechorme", "nechorme4", "ecx4param", "ecxwb1", "ecxwb2", "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model object of class \code{\link{bayesnecfit}}.
 
 If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class \code{\link{bayesmanecfit}}
 containing model averaged predictions for the supplied models, providing they were successfully fitted.

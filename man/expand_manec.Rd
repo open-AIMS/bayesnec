@@ -4,7 +4,13 @@
 \alias{expand_manec}
 \title{expand_manec}
 \usage{
-expand_manec(object, x_range = NA, precision = 1000, sig_val = 0.01)
+expand_manec(
+  object,
+  x_range = NA,
+  precision = 1000,
+  sig_val = 0.01,
+  wi_method = "stacking"
+)
 }
 \arguments{
 \item{object}{a bayesmanecfit mod_fits output list, as returned by
@@ -16,6 +22,8 @@ expand_manec(object, x_range = NA, precision = 1000, sig_val = 0.01)
 
 \item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
 against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+
+\item{wi_method}{A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.}
 }
 \value{
 A list of model statistical output derived from the input model list

@@ -4,7 +4,7 @@
 \alias{check_data}
 \title{check_data}
 \usage{
-check_data(data, x_var, y_var, trials_var, family = NULL, model)
+check_data(data, x_var, y_var, trials_var, family, model)
 }
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for the model.}
