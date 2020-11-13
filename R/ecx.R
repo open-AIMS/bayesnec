@@ -73,7 +73,7 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   pred_vals <- predict(object, precision = precision, x_range = x_range)
   p_samples <- pred_vals$posterior
   x_vec <- pred_vals$data$x
-  if (object$model == "nechorme" | object$model == "nechorme4") {
+  if (grepl("horme", object$model)) {
     n <- seq_len(nrow(p_samples))
     p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
                             p_samples, hormesis_def, fct = "rbind")
