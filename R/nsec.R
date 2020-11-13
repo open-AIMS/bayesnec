@@ -157,24 +157,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   }
 }
 
-modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
-  posterior_sample <- p_samples[n, ]
-  if (hormesis_def == "max") {
-    target <- object$nec_posterior[n]
-    change <- x_vec < target
-  } else if (hormesis_def == "control") {
-    target <- posterior_sample[1]
-    change <- posterior_sample >= target
-  }
-  posterior_sample[change] <- NA
-  posterior_sample
-}
-
 nsec_fct <- function(y, reference, x_vec) {
   x_vec[min_abs(y - reference)]
 }
 
-
-clean_names <- function(x) {
-  paste0("Q", gsub("%", "", names(x), fixed = TRUE))
-}
