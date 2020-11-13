@@ -14,7 +14,7 @@
 #' name needs to correspond to the same string as "model". See details.
 #' @param x_range A range of x values over which to consider extracting ECx.
 #' @param precision The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.
-#' @param sig_val Probability value to use as the lower quantile to test significance of the predictor posterior values 
+#' @param sig_val Probability value to use as the lower quantile to test significance of the predicted posterior values 
 #' against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.
 #' @param iter The number of iterations to be passed to \code{\link[brms]{brm}}. Defaults to 2e3 to be consistent with brms defaults.
 #' @param warmup A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number 
