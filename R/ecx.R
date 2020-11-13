@@ -174,19 +174,6 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   }
 }
 
-modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
-  posterior_sample <- p_samples[n, ]
-  if (hormesis_def == "max") {
-    target <- object$nec_posterior[n]
-    change <- x_vec < target
-  } else if (hormesis_def == "control") {
-    target <- posterior_sample[1]
-    change <- posterior_sample >= target
-  }
-  posterior_sample[change] <- NA
-  posterior_sample
-}
-
 ecx_x_relative <- function(y, ecx_val, x_vec) {
   range_y <- range(y, na.rm = TRUE)
   ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
@@ -202,8 +189,4 @@ ecx_x_absolute <- function(y, ecx_val, x_vec) {
 ecx_x_direct <- function(y, ecx_val, x_vec) {
   ecx_y <- ecx_val
   x_vec[min_abs(y - ecx_y)]
-}
-
-clean_names <- function(x) {
-  paste0("Q", gsub("%", "", names(x), fixed = TRUE))
 }

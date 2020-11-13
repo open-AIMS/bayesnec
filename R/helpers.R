@@ -151,3 +151,21 @@ get_init_ranges <- function(y, x, fct, .args) {
 check_limits <- function(x, limits) {
   min(x) >= min(limits) & max(x) <= max(limits)
 }
+
+clean_names <- function(x) {
+  paste0("Q", gsub("%", "", names(x), fixed = TRUE))
+}
+
+modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
+  posterior_sample <- p_samples[n, ]
+  if (hormesis_def == "max") {
+    target <- object$nec_posterior[n]
+    change <- x_vec < target
+  } else if (hormesis_def == "control") {
+    target <- posterior_sample[1]
+    change <- posterior_sample >= target
+  }
+  posterior_sample[change] <- NA
+  posterior_sample
+}
+
