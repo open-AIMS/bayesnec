@@ -38,6 +38,11 @@ amend.default <- function(object, drop, add, x_range = NA,
             "Returning original model set and weights")
     return(object)
   }
+  
+  if (!missing(wi_method) && !wi_method %in% c("stacking", "pseudobma")) {
+    stop("The weighting method you have supplied is invalid, it must be one of 'stacking' or 'pseudobma'")
+  }
+  
   model_set <- names(object$mod_fits)
   if (!missing(drop)) {
     model_set <- handle_set(model_set, drop = drop)
