@@ -20,7 +20,7 @@ expand_manec(
 
 \item{precision}{The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.}
 
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
+\item{sig_val}{Probability value to use as the lower quantile to test significance of the predicted posterior values
 against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
 \item{wi_method}{A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.}
