@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>amend.default — amend.default • bayesnec</title>
+<title>nsec.bayesmanecfit — nsec.bayesmanecfit • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,9 @@
 
 
 
-<meta property="og:title" content="amend.default — amend.default" />
-<meta property="og:description" content="Modifies an existing bayesmanecfit object, for example, by adding or removing fitted models." />
+<meta property="og:title" content="nsec.bayesmanecfit — nsec.bayesmanecfit" />
+<meta property="og:description" content="Extracts the predicted nsec value as desired from an object of class
+bayesmanecfit." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -128,25 +129,26 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>amend.default</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/amend.R'><code>R/amend.R</code></a></small>
-    <div class="hidden name"><code>amend.default.Rd</code></div>
+    <h1>nsec.bayesmanecfit</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/nsec.R'><code>R/nsec.R</code></a></small>
+    <div class="hidden name"><code>nsec.bayesmanecfit.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Modifies an existing <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object, for example, by adding or removing fitted models.</p>
+    <p>Extracts the predicted nsec value as desired from an object of class
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p>
     </div>
 
-    <pre class="usage"><span class='co'># S3 method for default</span>
-<span class='fu'><a href='amend.html'>amend</a></span><span class='op'>(</span>
+    <pre class="usage"><span class='co'># S3 method for bayesmanecfit</span>
+<span class='fu'><a href='nsec.html'>nsec</a></span><span class='op'>(</span>
   <span class='va'>object</span>,
-  <span class='va'>drop</span>,
-  <span class='va'>add</span>,
-  x_range <span class='op'>=</span> <span class='cn'>NA</span>,
-  precision <span class='op'>=</span> <span class='fl'>1000</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
-  <span class='va'>priors</span>,
-  wi_method <span class='op'>=</span> <span class='st'>"stacking"</span>
+  precision <span class='op'>=</span> <span class='fl'>1000</span>,
+  posterior <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  hormesis_def <span class='op'>=</span> <span class='st'>"control"</span>,
+  x_range <span class='op'>=</span> <span class='cn'>NA</span>,
+  xform <span class='op'>=</span> <span class='cn'>NA</span>,
+  prob_vals <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span><span class='op'>)</span>
 <span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -154,23 +156,7 @@
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>object</th>
-      <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>, as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
-    </tr>
-    <tr>
-      <th>drop</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types you which to drop for the modified fit.</p></td>
-    </tr>
-    <tr>
-      <th>add</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of model types to add to the modified fit.</p></td>
-    </tr>
-    <tr>
-      <th>x_range</th>
-      <td><p>A range of x values over which to consider extracting ECx.</p></td>
-    </tr>
-    <tr>
-      <th>precision</th>
-      <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
+      <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
       <th>sig_val</th>
@@ -178,20 +164,43 @@
 against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
-      <th>priors</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which specifies user-desired prior distributions of model parameters.
-If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline prior for each parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> where each
-name needs to correspond to the same string as "model". See details.</p></td>
+      <th>precision</th>
+      <td><p>The number of unique x values over which to find nsec - large values will make the nsec estimate more
+precise.</p></td>
     </tr>
     <tr>
-      <th>wi_method</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the desired weighting method to pass to <code><a href='https://rdrr.io/pkg/brms/man/loo_model_weights.brmsfit.html'>loo_model_weights</a></code>.</p></td>
+      <th>posterior</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> value indicating if the full posterior sample of calculated nsec values should be returned
+instead of just the median and 95 credible intervals</p></td>
+    </tr>
+    <tr>
+      <th>hormesis_def</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "max" or "control". See Details.</p></td>
+    </tr>
+    <tr>
+      <th>x_range</th>
+      <td><p>A range of x values over which to consider extracting nsec</p></td>
+    </tr>
+    <tr>
+      <th>xform</th>
+      <td><p>A function to apply to the returned estimated concentration values</p></td>
+    </tr>
+    <tr>
+      <th>prob_vals</th>
+      <td><p>A vector indicating the probability values over which to return the estimated nsec value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>All successfully fitted <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> model fits.</p>
+    <p>A vector containing the estimated nsec value, including upper and lower 95% credible interval bounds.</p>
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
+
+    <p>For <code>hormesis_def</code>, if "max", then nsec values are calculated as a decline from the maximum estimates (i.e. the peak at nec);
+if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.</p>
+    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
+
+    <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>
@@ -201,14 +210,12 @@ name needs to correspond to the same string as "model". See details.</p></td>
 <span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span>
 
 <span class='va'>exmp</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,
-             model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec3param"</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>,
+             model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec4param"</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>,
              family <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span><span class='op'>(</span>link <span class='op'>=</span> <span class='st'>"identity"</span><span class='op'>)</span>, priors <span class='op'>=</span> <span class='va'>my_priors</span>,
              iter <span class='op'>=</span> <span class='fl'>1e4</span>, control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>adapt_delta <span class='op'>=</span> <span class='fl'>0.99</span><span class='op'>)</span><span class='op'>)</span>
-
-<span class='co'># custom priors are not necessary, just added here for example usage</span>
-<span class='va'>ecxlin_priors</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></span><span class='op'>(</span><span class='st'>"beta(5, 1)"</span>, nlpar <span class='op'>=</span> <span class='st'>"top"</span><span class='op'>)</span>,
-                   <span class='fu'><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>prior_string</a></span><span class='op'>(</span><span class='st'>"gamma(2, 6.5)"</span>, nlpar <span class='op'>=</span> <span class='st'>"slope"</span><span class='op'>)</span><span class='op'>)</span>
-<span class='va'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='amend.html'>amend</a></span><span class='op'>(</span><span class='va'>exmp</span>, add <span class='op'>=</span> <span class='st'>"ecxlin"</span>, priors <span class='op'>=</span> <span class='va'>ecxlin_priors</span><span class='op'>)</span>
+<span class='va'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>
+<span class='fu'><a href='nsec.html'>nsec</a></span><span class='op'>(</span><span class='va'>exmp</span>, sig_val <span class='op'>=</span> <span class='fl'>0.05</span><span class='op'>)</span>
+<span class='fu'><a href='nsec.html'>nsec</a></span><span class='op'>(</span><span class='va'>exmp_2</span><span class='op'>)</span>
 <span class='op'>}</span>
 
 </div></pre>
