@@ -44,7 +44,7 @@ name needs to correspond to the same string as "model". See details.}
 
 \item{precision}{The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.}
 
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predictor posterior values
+\item{sig_val}{Probability value to use as the lower quantile to test significance of the predicted posterior values
 against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
 \item{iter}{The number of iterations to be passed to \code{\link[brms]{brm}}. Defaults to 2e3 to be consistent with brms defaults.}
