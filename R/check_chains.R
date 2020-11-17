@@ -3,7 +3,7 @@
 #' Plots mcmc chains for a \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}
 #' 
 #' @param x An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
-#' @param filename An option character vector indicating the plots should be saved to file in the case of a \code{\link{bayesmanecfit}}
+#' @param filename An optional character vector to be used as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non empty character string will indicate the user wants to save the plots.
 #' @export
 check_chains <- function(x, name = "", filename = "") {
   if (class(x) == "bayesnecfit") {
@@ -45,7 +45,7 @@ check_chains <- function(x, name = "", filename = "") {
     }
     mtext(name, side = 3, outer = T)
   } else if (class(x) == "bayesmanecfit") {
-    if (length(filename)>1) {
+    if (nchar(filename)>0) {
       pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
     }
     
@@ -55,6 +55,8 @@ check_chains <- function(x, name = "", filename = "") {
       sims.array <- posterior_samples(x.m$fit, pars = params, as.array = TRUE)
       num.chains <- ncol(sims.array[, , 1])
       if (nchar(filename) == 0) {
+        
+      }
         
       par(mfrow = c(length(params), 2), mar = c(0, 5, 0.5, 0.5), oma = c(4, 0, 2, 0))
       for (i in 1:length(params)) {
@@ -88,13 +90,12 @@ check_chains <- function(x, name = "", filename = "") {
         }
       }
       mtext(names(x$mod_fits)[m], side = 3, outer = T)
-      }
     }
-    if (length(filename)>1) {
+    if (nchar(filename)>0) {
       dev.off()
     }
   
-  }else {
+  } else {
     stop(paste("No option available for class", class(x)))
   }
 }
