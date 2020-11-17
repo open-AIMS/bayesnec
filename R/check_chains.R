@@ -4,6 +4,7 @@
 #' 
 #' @param x An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
 #' @param filename An option character vector indicating the plots should be saved to file in the case of a \code{\link{bayesmanecfit}}
+#' @export
 check_chains <- function(x, name = "", filename = "") {
   if (class(x) == "bayesnecfit") {
     params <-gsub("_Intercept", "", rownames(fixef(x$fit)))
