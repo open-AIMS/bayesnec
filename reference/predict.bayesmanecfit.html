@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>extract_simdat — extract_simdat • bayesnec</title>
+<title>predict.bayesmanecfit — predict.bayesmanecfit • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="extract_simdat — extract_simdat" />
-<meta property="og:description" content="Extracts a range of statistics from a list of bayesnecfit model fits." />
+<meta property="og:title" content="predict.bayesmanecfit — predict.bayesmanecfit" />
+<meta property="og:description" content="predict.bayesmanecfit" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -131,30 +131,42 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>extract_simdat</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/extract_simdat.R'><code>R/extract_simdat.R</code></a></small>
-    <div class="hidden name"><code>extract_simdat.Rd</code></div>
+    <h1>predict.bayesmanecfit</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/bayesmanecfit-methods.R'><code>R/bayesmanecfit-methods.R</code></a></small>
+    <div class="hidden name"><code>predict.bayesmanecfit.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Extracts a range of statistics from a list of bayesnecfit model fits.</p>
+    <p>predict.bayesmanecfit</p>
     </div>
 
-    <pre class="usage"><span class='fu'>extract_simdat</span><span class='op'>(</span><span class='va'>modfit</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='co'># S3 method for bayesmanecfit</span>
+<span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span><span class='op'>(</span><span class='va'>object</span>, <span class='va'>...</span>, precision <span class='op'>=</span> <span class='fl'>100</span>, x_range <span class='op'>=</span> <span class='cn'>NA</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>modfit</th>
-      <td><p>a bayesnecfit, as returned by fit_bayesnec</p></td>
+      <th>object</th>
+      <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td><p>unused.</p></td>
+    </tr>
+    <tr>
+      <th>precision</th>
+      <td><p>the number of x values over which to predict values.</p></td>
+    </tr>
+    <tr>
+      <th>x_range</th>
+      <td><p>The range of x values over which to make predictions.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A list of model simulation statistics including
-iter, thin, warmup and chains</p>
+    <p>A list containing x and fitted y, with up and lw values</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
