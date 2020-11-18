@@ -1,0 +1,160 @@
+---
+title: "Comparing posterior predictions"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Comparing posterior predictions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+```{r include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+plat <- Sys.info()["sysname"]
+if (plat == "Windows") {
+  library(rstan)
+  example(stan_model,
+          run.dontrun = TRUE,
+          verbose = TRUE)
+}
+```
+
+# Overview
+
+With `bayesnec` we have included a function that allows bootstrapped comparisons of posterior predictions. The main focus here is to showcase how the user can fit several different `bnec` model fits and can compare differences in the posterior predictions across these fits for individual endpoint estimates (e.g. nec, nsec or ecx) or across a range of predictor (x) values. Below we demonstrate usage of `compare_posterior` for objects of class `bayesnecfit` and `bayesmanecfit`. In this example we compare different types of models and model sets using a single dataset. However, the intent of this function is to allow comparison across different datasets that might represent, for example, different levels of a fixed factor covariate. At this time `bnec` does not allow interaction with a fixed factor. While this may be introduced in future releases the complexity of defining all possible model combinations at each factor level means that the greatest flexibility in the functional form of individual model fits can be much more readily obtained using individual model fits.
+
+## Comparing posterior endpoint values
+
+
+```{r, eval=FALSE}
+library(brms)
+library(bayesnec)
+data(nec_data)
+
+# Fit a set of models
+exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
+               model = "all",
+               family = Beta(link = "logit"),
+               wi_method = "pseudobma")
+
+class(exmp) # bayesmanecfit
+
+```
+This call fits all models that are suitable for modelling beta response data using a logit link. We can pull out the **nec** models and the **ecx** models separately, to create two more alternative versions for fitting this data.
+
+```{r, eval=FALSE}
+exmp_nec <- pull_out(exmp, model = "nec")
+exmp_ecx <- pull_out(exmp, model = "ecx")
+
+```
+Now we have three different averaged model fits, all of class `bayemanec` in this case (because they all contain multiple fits). We can compare their posterior estimates of the ex10 values using `compare_posterior`.
+
+```{r, eval=FALSE}
+library(tidyverse)
+post_comp <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx, "nec" = exmp_nec), comparison = "ecx", ecx_val = 10)
+names(post_comp)
+# "posterior_list" 
+# "posterior_data" 
+# "diff_list"      
+# "diff_data"      
+# "prob_diff"
+
+```
+The `compare_posterior` function outputs several elements in a named list. This includes the posterior_data for each model in the comparison as a `data.frame`which we can use to plot a `geom_density` plot of the posterior estimates.
+
+```{r, eval=FALSE}
+ggplot(post_comp$posterior_data, aes(x=value)) + 
+  geom_density(aes(group=model, colour=model, fill = model), alpha=0.3) +
+  theme_classic() 
+```
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('example4a.jpeg')
+```
+The `data.frame` "diff_data" can be used to make a similar plot, but specifically for the differences among models.
+
+```{r, eval=FALSE}
+ggplot(post_comp$diff_data, aes(x=diff)) + 
+  geom_density(aes(group=comparison, colour=comparison, fill = comparison), alpha=0.3) +
+  theme_classic() 
+```
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('example4b.jpeg')
+```
+
+Finally, the the probability matrix that the endpoint estimate for one mode is greater than the other is obtained in "prob_diff"
+
+```{r, eval=FALSE}
+post_comp$prob_diff
+#        all    ecx    nec
+# all 1.0000 0.9730 0.5020
+# ecx 0.0325 1.0000 0.0365
+# nec 0.5350 0.9675 1.0000
+```
+
+## Comparing posterior fitted values
+
+The user can also compare posterior fitted values across the full range of x values, using `comparison = "fitted"`
+
+```{r, eval=FALSE}
+library(tidyverse)
+library(bayesnec)
+post_comp_fitted <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx, "nec" = exmp_nec), comparison = "fitted", precision = 50)
+
+```
+In the case of `comparison = "fitted"` most of the elements returned by compare_posterior are class `data.frame`, with summary values for the posteriors, difference values and probabilities returned for each value of x, for each model, or model comparison.
+
+```{r, eval=FALSE}
+head(post_comp_fitted$posterior_data)
+  model          x  Estimate      Q2.5     Q97.5
+# 1   all 0.03234801 0.8885559 0.8718261 0.8991815
+# 2   all 0.09741274 0.8885995 0.8733894 0.8991821
+# 3   all 0.16247747 0.8886515 0.8745928 0.8991952
+# 4   all 0.22754220 0.8887310 0.8759464 0.8991952
+# 5   all 0.29260692 0.8888061 0.8767969 0.8992226
+# 6   all 0.35767165 0.8888948 0.8775943 0.8992401
+
+head(post_comp_fitted$diff_data)
+#            x comparison   prob diff.Estimate    diff.Q2.5  diff.Q97.5
+# 1 0.03234801    ecx-all 0.9185   0.012593751 -0.004832162 0.032435951
+# 2 0.03234801    nec-all 0.5595   0.001079684 -0.013983908 0.019867356
+# 3 0.03234801    nec-ecx 0.0940  -0.011610798 -0.027872420 0.005847878
+# 4 0.09741274    ecx-all 0.9125   0.011564489 -0.005086656 0.031355968
+# 5 0.09741274    nec-all 0.5575   0.001122890 -0.014437448 0.018929807
+# 6 0.09741274    nec-ecx 0.0970  -0.010600105 -0.026747137 0.005956780
+
+```
+We can plot the predicted curves with confience bounds for each of the input models
+
+```{r, eval=FALSE}
+ggplot(post_comp_fitted$posterior_data) +
+geom_line(aes(x=x, y=Estimate, color= model), size=0.5) +
+geom_ribbon(aes(x=x, ymin=Q2.5, ymax=Q97.5, fill=model), alpha=0.3) 
+```
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('example4c.jpeg')
+```
+
+We can plot the differences between pairs of models in the list
+
+```{r eval = FALSE}
+ggplot(post_comp_fitted$diff_data) +
+  geom_line(aes(x=x, diff.Estimate, color=comparison), size=0.5) +
+  geom_ribbon(aes(x=x, ymin=diff.Q2.5, ymax=diff.Q97.5, fill=comparison), alpha=0.3) 
+```
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('example4d.jpeg')
+```
+
+And finally we can plot the probability that one model is greater than the other
+
+```{r eval = FALSE}
+ggplot(post_comp_fitted$diff_data) +
+  geom_line(aes(x=x, prob, color=comparison), size=0.5)
+```
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('example4e.jpeg')
+```
