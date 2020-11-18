@@ -64,6 +64,12 @@ w_post_pred_calc <- function(index, mod_fits, sample_size, mod_stats) {
   mod_fits[[index]]$pred_vals$posterior[sample(x, size), ]
 }
 
+w_pred_list_calc <- function(index, pred_list, sample_size, mod_stats) {
+  x <- seq_len(sample_size)
+  size <- round(sample_size * mod_stats[index, "wi"])
+  pred_list[[index]][sample(x, size), ]
+}
+
 do_wrapper <- function(..., fct = "cbind") {
   do.call(fct, lapply(...))
 }

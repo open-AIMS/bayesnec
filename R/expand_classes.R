@@ -18,10 +18,12 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
   extracted_params <- lapply(extract_params, extract_pars, fit)
   names(extracted_params) <- extract_params
 
-  if (is.na(x_range)) {
-    x_seq <- seq(min(mod_dat$x), max(mod_dat$x),
-                 length = precision)
+  if (any(is.na(x_range))) {
+    x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length = precision)
+  } else {
+    x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
+  
   new_dat <- data.frame(x = x_seq)
   family <- fit$family$family
   if (family == "binomial") {

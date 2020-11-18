@@ -131,3 +131,52 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     }
   }
 }
+
+#' predict.bayesmanecfit
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
+#' @param ... unused.
+#' @param precision the number of x values over which to predict values.
+#' @param x_range The range of x values over which to make predictions.
+#' 
+#' @return A list containing x and fitted y, with up and lw values
+#' 
+#' @importFrom brms posterior_epred
+#' 
+#' @export
+predict.bayesmanecfit <- function(object, ..., precision = 100,
+                                x_range = NA) {
+  mod_fits <- object$mod_fits
+  model_set <- names(mod_fits)
+  mod_dat <- object$mod_fits[[1]]$fit$data
+  mod_stats <- object$mod_stats
+
+  if (any(is.na(x_range))) {
+    x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length = precision)
+  } else {
+    x_seq <- seq(min(x_range), max(x_range), length = precision)
+  }
+  pred_list <- lapply(mod_fits, FUN=function(m){
+    fit <- m$fit
+    new_dat <- data.frame(x = x_seq)
+        posterior_epred(fit, newdata = new_dat, re_formula = NA)})
+  names(pred_list)
+  
+  sample_size <- min(sapply(pred_list, nrow))
+  
+  pred_out <- do_wrapper(model_set, w_pred_list_calc,
+                          pred_list, sample_size, mod_stats,
+                          fct = "rbind")
+  pred_data <- cbind(x = x_seq,
+                     data.frame(t(apply(pred_out, 2,
+                                        estimates_summary))))
+  
+  
+  return(list(data = pred_data,
+              posterior = pred_out))
+  
+  }
+
+
+
+
