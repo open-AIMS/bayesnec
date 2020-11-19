@@ -6,7 +6,9 @@
 \alias{bayesnec}
 \title{The 'bayesnec' package.}
 \description{
-A DESCRIPTION OF THE PACKAGE
+A No-Effect-Concentration estimation package that uses brms (https://github.com/paul-buerkner/brms) to fit concentration
+(dose)-response data using Bayesian methods for the purpose of estimating both ECX values, but more particularly NEC. Please see ?bnec
+for more details.
 }
 \references{
 Paul-Christian Bürkner (2018). Advanced Bayesian Multilevel

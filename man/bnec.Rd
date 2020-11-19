@@ -34,7 +34,8 @@ bnec(
 \item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
 If not supplied, the model may run but will not be the model you intended!}
 
-\item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family) to use for the y (response) data. See details.}
+\item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family)
+to use for the y (response) data. See details.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which specifies user-desired prior distributions of model parameters.
 If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter. It can also be specified as a named \code{\link[base]{list}} where each
@@ -53,7 +54,8 @@ against the lowest observed concentration (assumed to be the control), to estima
 of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup
 should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
 
-\item{inits}{Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.}
+\item{inits}{Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, a
+nd names correspond to the parameter names of a given model.}
 
 \item{wi_method}{A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.}
 
@@ -81,7 +83,8 @@ If not supplied, the appropriate distribution will be guessed based on the chara
 include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
 Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.
 
-The argument \code{model} may be one of "neclin","nec3param", "nec4param", "necsigm", "nechorme", "nechorme4", "ecx4param", "ecxwb1", "ecxwb2", "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model object of class \code{\link{bayesnecfit}}.
+The argument \code{model} may be one of "neclin","nec3param", "nec4param", "necsigm", "nechorme", "nechorme4", "ecx4param", "ecxwb1", "ecxwb2", "ecxexp", "ecxlin", or "excsigm",
+in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model object of class \code{\link{bayesnecfit}}.
 
 If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class \code{\link{bayesmanecfit}}
 containing model averaged predictions for the supplied models, providing they were successfully fitted.
