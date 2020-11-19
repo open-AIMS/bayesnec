@@ -25,8 +25,9 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
   }
   
   new_dat <- data.frame(x = x_seq)
-  family <- fit$family$family
-  if (family == "binomial") {
+  fam_tag <- fit$family$family
+  custom_name <- check_custom_name(fit$family)
+  if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
     new_dat$trials <- 1
   }
   pred_posterior <- posterior_epred(fit, newdata = new_dat,
