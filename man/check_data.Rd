@@ -13,7 +13,7 @@ check_data(data, x_var, y_var, trials_var, family, model)
 
 \item{y_var}{A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.}
 
-\item{trials_var}{The column heading indicating the column for the number of "trials" for binomial response data.
+\item{trials_var}{The column heading indicating the column for the number of "trials" for binomial or beta_binomial2 response data.
 If not supplied, the model may run but will not be the model you intended!}
 
 \item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family)

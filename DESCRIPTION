@@ -5,7 +5,8 @@ Authors@R: c(person("Rebecca", "Fisher", email = "r.fisher@aims.gov.au", role = 
 Description: Implementation of No-Effect-Concentration estimation that uses brms to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating ECX values, but more particularly NEC.
 Depends:
     R (>= 3.6.0),    
-    brms
+    brms,
+    extraDistr
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

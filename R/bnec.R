@@ -6,7 +6,7 @@
 #' @param x_var A \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.
 #' @param y_var A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.
 #' @param model A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.
-#' @param trials_var The column heading indicating the column for the number of "trials" for binomial response data. 
+#' @param trials_var The column heading indicating the column for the number of "trials" for binomial or beta_binomial2 response data.
 #' If not supplied, the model may run but will not be the model you intended!
 #' @param family Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family)
 #' to use for the y (response) data. See details.
@@ -31,7 +31,7 @@
 #' on a continuous scale from 0 to infinity, or are bounded to 0, or 1.
 #' 
 #' The argument \code{family} indicates the family to use for the response variable in the \code{\link[brms]{brm}} call,
-#' and may currently be "Beta" / Beta / Beta(), "binomial" / binomial / binomial(), "Gamma" / Gamma / Gamma(), "gaussian" / gaussian / gaussian(),
+#' and may currently be "Beta" / Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial2" / beta_binomial2, "Gamma" / Gamma / Gamma(), "gaussian" / gaussian / gaussian(),
 #' "negbinomial" / negbinomial / negbinomial(), or "poisson" / poisson / poisson(). Notice that families Beta and negbinomial are exported objects
 #' of package \pkg{brms}, so the user needs to load \pkg{brms} before calling these families.
 #' Other families can be added as required, please raise an \href{https://github.com/AIMS/bayesnec/issues}{issue} on the GitHub development site if your 
