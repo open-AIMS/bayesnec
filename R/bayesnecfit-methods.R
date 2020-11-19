@@ -28,7 +28,8 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              xlab = "concentration", xticks = NA) {
 
   family <- x$fit$family$family
-  if (family == "binomial") {
+  custom_name <- check_custom_name(x$fit$family)
+  if (family == "binomial" | custom_name == "beta_binomial2") {
     y_dat <- x$fit$data$y / x$fit$data$trials
   } else {
     y_dat <- x$fit$data$y

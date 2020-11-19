@@ -1,3 +1,17 @@
+#' check_custom_name
+#' @param family An object of class \code{\link[stats]{family}} or
+#' \code{\link[brms]{brmsfamily}}.
+#' @return A \code{\link[base]{character}} vector containing the brms
+#' custom family or NA.
+#' @importFrom brms fixef
+check_custom_name <- function(family) {
+  custom_name <- NA
+  if (inherits(family, "customfamily")) {
+    custom_name <- family$name
+  }
+  custom_name
+}
+
 #' extract_pars
 #' @param x A \code{\link[base]{character}} vector.
 #' @param model_fit An object of class \code{\link[brms]{brmsfit}}.

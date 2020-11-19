@@ -1,0 +1,84 @@
+#' beta_binomial2_lpmf
+#'
+#' Beta-binomial wrapper LPMF
+#'
+#' @param y observation success[i].
+#' @param trials observation trials[i].
+#' @param mu posterior mu.
+#' @param phi posterior phi.
+#'
+#' @importFrom extraDistr dbbinom
+#'
+#' @export
+beta_binomial2_lpmf <- function(y, mu, phi, trials) {
+  a <- mu * phi
+  b <- (1 - mu) * phi
+  dbbinom(y, trials, alpha = a, beta = b, log = TRUE)
+}
+
+#' beta_binomial2_rng
+#'
+#' Beta-binomial wrapper RNG
+#'
+#' @param trials observation trials[i].
+#' @param mu posterior mu.
+#' @param phi posterior phi.
+#'
+#' @importFrom extraDistr rbbinom
+#'
+#' @export
+beta_binomial2_rng <- function(mu, phi, trials) {
+  a <- mu * phi
+  b <- (1 - mu) * phi
+  out <- numeric(length = length(a))
+  for (i in seq_along(out)) {
+    out[i] <- rbbinom(1, trials, alpha = a[i], beta = b[i])
+  }
+  out
+}
+
+#' log_lik_beta_binomial2
+#'
+#' Beta-binomial wrapper LL
+#'
+#' @param i observation i.
+#' @param prep data with posterior.
+#'
+#' @export
+log_lik_beta_binomial2 <- function(i, prep) {
+  mu <- prep$dpars$mu[, i]
+  phi <- prep$dpars$phi
+  trials <- prep$data$trials[i]
+  y <- prep$data$Y[i]
+  beta_binomial2_lpmf(y, mu, phi, trials)
+}
+
+#' posterior_predict_beta_binomial2
+#'
+#' Beta-binomial wrapper posterior_predict method
+#'
+#' @param i observation i.
+#' @param prep data with posterior.
+#' @param ... unused.
+#'
+#' @export
+posterior_predict_beta_binomial2 <- function(i, prep, ...) {
+  mu <- prep$dpars$mu[, i]
+  phi <- prep$dpars$phi
+  trials <- prep$data$trials[i]
+  beta_binomial2_rng(mu, phi, trials)
+}
+
+#' posterior_epred_beta_binomial2
+#'
+#' Beta-binomial wrapper posterior_epred method
+#'
+#' @param prep data with posterior.
+#'
+#' @export
+posterior_epred_beta_binomial2 <- function(prep) {
+  mu <- prep$dpars$mu
+  trials <- prep$data$trials
+  trials <- matrix(trials, nrow = nrow(mu), ncol = ncol(mu), byrow = TRUE)
+  mu * trials
+}
