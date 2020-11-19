@@ -20,10 +20,11 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          inits, skip_check = FALSE, ...) {
   if (skip_check) {
     mod_dat <- data
-    if (family$family != "binomial") {
-      response <- data$y
-    } else {
+    custom_name <- check_custom_name(family)
+    if (family$family == "binomial" | custom_name == "beta_binomial2") {
       response <- data$y / data$trials
+    } else {
+      response <- data$y
     }
     priors <- validate_priors(priors, model)
     if (is.null(priors)) {
@@ -40,13 +41,17 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     if (is.null(priors)) {
       priors <- data_check$priors
     }
-    if (family$family != "binomial") {
-      response <- mod_dat$y
-    } else {
+    custom_name <- check_custom_name(family)
+    if (family$family == "binomial" | custom_name == "beta_binomial2") {
       response <- mod_dat$y / mod_dat$trials
+    } else {
+      response <- mod_dat$y
     }
   }
-  suffix <- ifelse(family$family == "binomial", "_binom", "_deflt")
+  suffix <- "_deflt"
+  if (family$family == "binomial" | custom_name == "beta_binomial2") {
+    suffix <- "_binom"
+  }
   brms_bf <- get(paste0("bf_", model, suffix))
   add_args <- list(...)
   if (!("chains" %in% names(add_args))) {
@@ -62,6 +67,10 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                      family = family, prior = priors,
                      inits = inits),
                 add_args)
+  if (custom_name == "beta_binomial2") {
+    all_args <- c(list(stanvars = stanvars),
+                  all_args)
+  }
   fit <- do.call(brm, all_args)
   w <- 1
   n_tries <- 5
@@ -91,10 +100,15 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     stop(paste0("Failed to fit model ", model, "."),
          call. = FALSE)
   }
+  if (family$family == "custom") {
+    msg_tag <- custom_name
+  } else {
+    msg_tag <- family$family
+  }
   fit$loo <- loo(fit)
   fit$waic <- waic(fit)
   message(paste0("Response variable modelled as a ",
-                 model, " model using a ", family$family,
+                 model, " model using a ", msg_tag,
                  " distribution."))
   out <- list(fit = fit, model = model, inits = inits)
   allot_class(out, "prebayesnecfit")

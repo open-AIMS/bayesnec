@@ -61,6 +61,23 @@ make_inits <- function(model, fct_args, priors,
         out[[i]][[j]] <- fcts_st[[fct_i]]()
       } else {
         out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+        if (priors$bound[j] != "") {
+          to_keep <- "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"
+          bounds <- regmatches(priors$bound[j],
+                               gregexpr(to_keep, priors$bound[j]))[[1]]
+          bounds <- as.numeric(bounds)
+          if (length(bounds) == 2) {
+            while (out[[i]][[j]] <= min(bounds) |
+                     out[[i]][[j]] >= max(bounds)) {
+              out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+            }
+          } else if (length(bounds) == 1) {
+            bound_fct <- ifelse(grepl("lower", priors$bound[j]), `<=`, `>=`)
+            while (bound_fct(out[[i]][[j]], bounds)) {
+              out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+            }
+          }
+        }
       }
       if (priors$class[j] == "b") {
         dim(out[[i]][[j]]) <- 1

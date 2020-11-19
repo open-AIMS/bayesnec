@@ -3,34 +3,39 @@ library(brms)
 ####################################
 # ACCEPTED MODEL GROUPS AND FAMILIES
 ####################################
-mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme", "nechorme4", "necsigm", "neclin", "neclinhorme"),
+mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
+                           "nechorme4", "necsigm", "neclin", "neclinhorme"),
                    ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
                            "ecxwb1", "ecxwb2"),
-                   all = c("nec3param", "nec4param", "nechorme", "nechorme4", "necsigm", "neclin", "neclinhorme",
+                   all = c("nec3param", "nec4param", "nechorme", "nechorme4",
+                           "necsigm", "neclin", "neclinhorme",
                            "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
                            "ecxwb1", "ecxwb2"),
                    bot_free = c("nec3param", "nechorme", "necsigm", "neclin",
                                 "ecxlin", "ecxexp", "ecxsigm", "neclinhorme"),
-                   zero_bounded = c("nec3param", "nechorme", "necsigm", "ecxexp", "ecxsigm"))
+                   zero_bounded = c("nec3param", "nechorme", "necsigm",
+                                    "ecxexp", "ecxsigm"))
 
 mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",
               poisson = "poisson",
               negbinomial = "negbinomial",
               binomial = "binomial",
+              custom = "beta_binomial2",
               beta = "Beta")
 
 ############
 # NEC MODELS
 ############
 # neclin
-bf_neclin_binom <- brms::bf(y | trials(trials) ~ top - slope * (x - nec) * step(x - nec),
-                               top + slope + nec ~ 1,
-                               nl = TRUE)
+bf_neclin_binom <- brms::bf(y | trials(trials) ~ top - slope *
+                              (x - nec) * step(x - nec),
+                            top + slope + nec ~ 1,
+                            nl = TRUE)
 
 bf_neclin_deflt <- brms::bf(y ~ top - slope * (x - nec) * step(x - nec),
-                               top + slope + nec ~ 1,
-                               nl = TRUE)
+                            top + slope + nec ~ 1,
+                            nl = TRUE)
 
 # nec3param
 bf_nec3param_binom <- brms::bf(y | trials(trials) ~ top *
@@ -72,9 +77,8 @@ bf_nechorme_deflt <- brms::bf(y ~ (top + slope * x) *
                               nl = TRUE)
 
 # nechorme4
-bf_nechorme4_binom <- brms::bf(y | trials(trials) ~ bot + ((top + slope * x) - bot) *
-                                       exp(-beta * (x - nec) *
-                                                   step(x - nec)),
+bf_nechorme4_binom <- brms::bf(y | trials(trials) ~ bot + ((top + slope * x) -
+                                 bot) * exp(-beta * (x - nec) * step(x - nec)),
                                bot + top + beta + nec + slope ~ 1,
                                nl = TRUE)
 
@@ -85,15 +89,15 @@ bf_nechorme4_deflt <- brms::bf(y ~ bot + ((top + slope * x) - bot) *
                                nl = TRUE)
 
 # "neclinhorme"
-bf_neclinhorme_binom <- brms::bf(y | trials(trials) ~ (top + slope * x) - beta * (x - nec) *
-                                                  step(x - nec),
-                              top + beta + nec + slope ~ 1,
-                              nl = TRUE)
+bf_neclinhorme_binom <- brms::bf(y | trials(trials) ~ (top + slope * x) -
+                                   beta * (x - nec) * step(x - nec),
+                                 top + beta + nec + slope ~ 1,
+                                 nl = TRUE)
 
 bf_neclinhorme_deflt <- brms::bf(y ~ (top + slope * x) - beta * (x - nec) *
-                                                  step(x - nec),
-                              top + beta + nec + slope ~ 1,
-                              nl = TRUE)
+                                   step(x - nec),
+                                 top + beta + nec + slope ~ 1,
+                                 nl = TRUE)
 
 # necsigm
 bf_necsigm_binom <- brms::bf(y | trials(trials) ~ top *
@@ -175,12 +179,27 @@ bf_ecxwb2_deflt <- brms::bf(y ~ top + (bot - top) *
                             bot + ec50 + top + beta ~ 1,
                             nl = TRUE)
 
+###############
+# CUSTOM FAMILY
+###############
+# from https://paul-buerkner.github.io/brms/articles/brms_customfamilies.html
+stan_funs <- "
+  real beta_binomial2_lpmf(int y, real mu, real phi, int T) {
+    return beta_binomial_lpmf(y | T, mu * phi, (1 - mu) * phi);
+  }
+  int beta_binomial2_rng(real mu, real phi, int T) {
+    return beta_binomial_rng(T, mu * phi, (1 - mu) * phi);
+  }
+"
+
+stanvars <- brms::stanvar(scode = stan_funs, block = "functions")
+
 ####################
 # SAVE INTERNAL DATA
 ####################
 save(mod_groups, mod_fams,
      # neclin
-     bf_neclin_deflt, bf_neclin_binom,     
+     bf_neclin_deflt, bf_neclin_binom,
      # nec3param
      bf_nec3param_deflt, bf_nec3param_binom,
      # nec4param
@@ -188,7 +207,7 @@ save(mod_groups, mod_fams,
      # nechorme
      bf_nechorme_deflt, bf_nechorme_binom,
      # neclinhorme
-     bf_neclinhorme_deflt, bf_neclinhorme_binom,     
+     bf_neclinhorme_deflt, bf_neclinhorme_binom,
      # nechorme4
      bf_nechorme4_deflt, bf_nechorme4_binom,
      # necsigm
@@ -205,4 +224,5 @@ save(mod_groups, mod_fams,
      bf_ecxwb1_deflt, bf_ecxwb1_binom,
      # ecxwb2
      bf_ecxwb2_deflt, bf_ecxwb2_binom,
+     stan_funs, stanvars,
      file = "R/sysdata.rda")
