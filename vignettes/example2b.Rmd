@@ -1,0 +1,203 @@
+---
+title: "bayesnec Model details"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Comparing posterior predictions}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library("bayesnec")
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+plat <- Sys.info()["sysname"]
+if (plat == "Windows") {
+  library(rstan)
+  example(stan_model,
+          run.dontrun = TRUE,
+          verbose = TRUE)
+}
+```
+
+# `bayesnec`
+
+The `bayesnec` is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via `brms` [@Burkner2017; @Burkner2018] and `stan`. The package is an adaptation and extension of an initial package `jagsNEC` [@Fisher2020] which was based on the `R2jags` package [@Su2015] and `jags` [@Plummer2003].
+
+# Background
+
+There are a range of models available in `bayesnec` and the working `bnec` function supports individual model fitting, as well as multi-model fitting with Bayesian model averaging through. 
+
+The argument `model` in the function `bnec` is a character string indicating the name(s) of the desired model. see ?models for more details, and the list of models available. If a recognised model name is provided a single model of the specified type is fit, and `bnec` returns a model object of class `bayesnecfit`. If a vector of two or more of the available models are supplied, `bnec` returns a model object of class `bayesmanecfit` containing Bayesian model averaged predictions for the supplied models, providing they were successfully fitted.
+
+Model averaging is achieved through a weighted sample of each fitted models' posterior predictions, with weights derived
+using the `loo_model_weights` from `loo` [@vehtari2020; @vehtari2017]. Individual `brms` model fits can be extracted from the `mod_fits` element and can be examined individually.
+
+`model` may also be one of "all", meaning all of the available models will be fit; "ecx" meaning only models excluding the $\eta = \text{NEC}$ step parameter will be fit; "nec" meaning only models with the $\eta = \text{NEC}$ step parameter will be fit. There are a range of other pre-define model groups available. The full list of currently implemented model groups can be seen using
+
+```{r, eval=FALSE}
+library("bayesnec")
+models()
+```
+
+# Model types for NEC and ECx estimation
+
+All models provide an estimate for the No-Effect-Concentration (NEC). For model types with "nec" as a prefix, the NEC is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per [@Fox2010]. Models with "ecx" as a prefix are continuous curve models, typically used for extracting ECx values
+from concentration response data. In this instance the NEC reported is actually the No-Significant-Effect-Concentration (NSEC), defined as the concentration at which there is
+a user supplied (see `sig_val`) percentage certainty (based on the Bayesian posterior estimate) that the response
+falls below the estimated value of the upper asymptote (top) of the response (i.e. the response value is significantly
+lower than that expected in the case of no exposure). The default value for `sig_val` is 0.01, which corresponds to an alpha value of 0.01 for a one-sided test of significance. See `?nsec` for more details. We currently recommend only using the "nec" model set for estimation of NEC values, as the NSEC concept has yet to be formally peer-reviewed. 
+
+ECx estimates can be equally validly obtained from both "nec" and "ecx" models. ECx estimates will usually be lower (more conservative) for **ex** models fitted to the same data as **nec** models (see the **Comparing posterior predictions** vignette for an example). However, we recommend using "all" models where ECx estimation is required because **nec** models can fit some datasets better than **ecx** models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield ECx estimates that are the most representative of the underlying relationship in the dataset.
+
+There is ambiguity in the definition of ECx estimates from hormesis models (these allow an initial increase in the response (see [@Mattson2008]) and include models with the character string `horme` in their name), as well as those that have no natural lower bound on the scale of the response (models with the string `lin` in their name, in the case of gaussian response data). For this reason the `ecx` function has arguments `hormesis_def` and `type`, both character vectors indicating the desired behaviour. For `hormesis_def = "max"` ECx values are calculated as a decline from the maximum estimates (i.e. the peak at $\eta = \text{NEC}$); and `hormesis_def = "control"` (the default) indicates ECx values should be calculated relative to the control, which is assumed to be the lowest observed concentration. For `type = "relative"` ECx is calculated as the percentage decrease from the maximum predicted value of the response (top) to the minimum predicted value of the response (ie, 'relative' to the observed data). For `type = "absolute"` (the default) ECx is calculated as the percentage decrease from the maximum value of the response ($\tau = \text{top}$) to 0 (or $\delta = \text{bottom}$ for a 4 parameter model fit). For `type = "direct"` a direct interpolation of y on x is obtained.
+
+
+# Model suitability for response types
+
+Models that have an exponential decay (most models with parameter "beta") with no $\delta = \text{bottom}$ parameter are `0` bounded and are not suitable for the gaussian family, or any family modelled using a logit or log link because they cannot generate predictions of negative y (response). Conversely models with a linear decay (containing the string "lin" in their name) are not suitable for modelling families that are `0` bounded (gamma, poisson, negative binomial) using an identity link. Models with a linear decay or hormesis linear increase (all models with parameter $\alpha = \text{slope}$) are not suitable for modelling families that are `0`, `1` bounded (binomial, beta and betabinomial2). These restrictions do not need to be controlled by the user as a call to `bnec` with `models = "all"` will simply exclude inappropriate models, albeit with a warning.
+
+# Model Parameters
+
+Where possible we have aimed for consistency in the interpretable meaning of the individual parameters across models. Across the currently implemented model set, models contain from two (basic linear or exponential decay, see **ecxlin** or **ecxexp**) to five possible parameters (**nechorme4**), including: $\tau = \text{top}$, usually interpretable as either the y-intercept or the upper plateau representing the mean concentration of the response at zero concentration;
+$\eta = \text{NEC}$, the no-effect-concentration value (the x concentration value where the breakpoint in the regression is estimated at, see **Model types for NEC and ECx estimation** above and [@Fox2010] for more details on parameter based NEC estimation); 
+$\beta = \text{beta}$, generally the exponential decay rate of response, either from 0 concentration or from the estimated $\eta$ value, with the exception of the **neclinhorme** model where it represents a linear decay from $\eta$ because slope ($\epsilon$) is required for the linear increase;
+$\delta = \text{bottom}$, representing the lower plateau for the response at infinite concentration; 
+$\alpha = \text{slope}$, the linear decay rate in the models **neclin** and **ecxlin**, or the linear increase rate prior to $\eta$ for all hormesis models; and 
+$\epsilon = \text{d}$, the exponent in the **ecxsigm** and **necisgm** models.
+
+In addition to the model parameters, all **nec...**  models have a step function used to define the breakpoint in the regression, which can be defined as
+
+$$
+f(x_i, \eta) = \begin{cases} 
+      x_i - \eta < 0, & 0 \\
+      x_i - \eta \geq 0, & 1 \\
+   \end{cases}
+$$
+
+# Model definitions
+
+## ECx models
+
+### ecxlin
+The **ecxlin** model is a basic linear decay model, given by the equation:
+$$y_i = \tau - \alpha x_i$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxlin")
+```
+Because the model contains linear predictors it is not suitable for `0`, `1` bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for `0`, `Inf` bounded data (gamma, poisson, negative binomial with identity link).
+
+### ecxexp
+The **ecxexp** model is a basic exponential decay model, given by the equation:
+$$y_i = \tau e^{-\beta x_i}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxexp")
+```
+The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+
+### ecxsigm
+The **ecxsigm** model is a simple sigmoidal decay model, given by the equation:
+$$y_i = \tau e^{-\beta x_i^{e^\epsilon}}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxsigm")
+```
+The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+
+### ecx4param
+The **ecx4param** model is a 4 parameter sigmoidal decay model, given by the equation:
+$$y_i = \frac{\tau + (\delta - \tau)}{1 + e^{\beta (\text{EC}_{50} - x_i)}}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecx4param")
+```
+
+### ecxwb1
+The **ecxwb1** model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull1 model of [@Ritz2016], given by the equation:
+$$y_i = \delta + (\tau - \delta) e^{-e^{\beta (x_i - \text{EC}_{50})}}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxwb1")
+```
+
+### ecxwb2
+The **ecxwb2** model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull2 model of [@Ritz2016], given by the equation:
+$$y_i = \delta + (\tau - \delta) (1 - e^{-e^{\beta (x_i - \text{EC}_{50})}})$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxwb2")
+```
+While very similar the **ecxwb1**, according to [@Ritz2016] fitted **ecxwb1** and **ecxwb2** models can differ slightly.
+
+## NEC models
+
+### neclin
+The **neclin** model is a basic linear decay model equivalent to **ecxlin** with the addition of the **nec** step function, given by the equation:
+$$y_i = \tau - \alpha \left(x_i - \eta \right) f(x_i, \eta)$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("neclin")
+```
+Because the model contains linear predictors it is not suitable for `0`, `1` bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for `0`, `Inf` bounded data (gamma, poisson, negative binomial with identity link). 
+
+### nec3param
+The **nec3param** model is a basic exponential decay model equivalent to **ecxexp** with the addition of the **nec** step function, given by the equation:
+$$y_i = \tau e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("nec3param")
+```
+
+For binomial data in the case of identity link this model is equivalent to that in [@Fox2010]. The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+
+### nec4param
+The **nec4param** model is a 3 parameter decay model with the addition of the **nec** step function, given by the equation:
+$$y_i = \delta + (\tau - \delta) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+```{r, echo=FALSE}
+show_params("nec4param")
+```
+
+### nechorme
+The **nechorme** model is a basic exponential decay model with an **nec** step function equivalent to **nec3param**, with the addition of a linear increase prior to $\eta$, given by the equation:
+$$y_i = (\tau + \alpha x_i) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("nechorme")
+```
+This is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
+The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function. In this case the linear version (**neclinhorme**) should be used. Because the model contains linear predictors it is not suitable for `0`, `1` bounded data (binomial and beta families with identity link).
+
+### neclinhorme
+The **neclinhorme** model is a basic linear decay model with an **nec** step function equivalent to **neclin**, with the addition of a linear increase prior to $\eta$, given by the equation:
+$$y_i = (\tau + \alpha x_i) - \beta \left(x_i - \eta \right) f(x_i, \eta)$$
+and fitted in R via `brms` using the formula. 
+```{r, echo=FALSE}
+show_params("neclinhorme")
+```
+This is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. This model contains linear predictors and is not suitable for `0`, `1` bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for `0`, `Inf` bounded data (gamma, poisson, negative binomial with identity link).
+
+### nechorme4
+The **nechorme4** model is 4 parameter decay model with an **nec** step function equivalent to **nec4param** with the addition of a linear increase prior to $\eta$, given by the equation:
+$$y_i = \delta + ((\tau + \alpha x_i) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("nechorme4")
+```
+This is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. This model contains linear predictors and is not suitable for `0`, `1` bounded data (binomial and beta families with identity link).
+
+### necsigm
+The **necsigm** model is a basic exponential decay model equivalent to **ecxlin** with the addition of the **nec** step function, given by the equation:
+$$y_i \tau e^{-\beta g(x_i, \eta, epsilon) f(x_i, \eta)}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("necsigm")
+```
+The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an **nec** step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of no-effect-concentrations using this model are not currently recommended without further testing.
+
+# References
