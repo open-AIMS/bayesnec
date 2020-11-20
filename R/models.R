@@ -21,8 +21,8 @@
 #' @return A list of the available or fitted models
 #' #' @examples
 #' library(bayesnec)
-#' # default to all models (i.e. model = "all")
-#' show_params()
+#' # default to all models and model groups
+#' models()
 #' # single model
 #' show_params("nec3param")
 #' # group of models
@@ -32,10 +32,11 @@
 #' 
 #' @export
 models <- function(x) {
-  if (missing(x)) {
-    use_mods <- mod_groups
-    }  
-  if (class(x) == "bayesnecfit"){
+   if (missing(x)) {
+     use_mods <- mod_groups
+     return(return(use_mods))  
+   } else {
+   if (class(x) == "bayesnecfit"){
     use_mods <- x$model
     }
   if (class(x) == "bayesmanecfit"){
@@ -71,5 +72,7 @@ models <- function(x) {
   }
   mod_params <- show_params(use_mods)
   names(mod_params) <- use_mods
-  return(return(mod_params))     
+  return(return(mod_params))          
+    }
+
 }
