@@ -5,7 +5,7 @@
 #' custom family or NA.
 #' @importFrom brms fixef
 check_custom_name <- function(family) {
-  custom_name <- NA
+  custom_name <- "none"
   if (inherits(family, "customfamily")) {
     custom_name <- family$name
   }

@@ -3,7 +3,7 @@
 #' Extracts the predicted ECx value as desired from an object of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by \code{\link{bnec}}.
+#' @param object An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #' @param ecx_val The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative" 
 #' and "absolute"), defaults to 10.
 #' @param type A \code{\link[base]{character}} vector, taking values of "relative", "absolute" (the default) or "direct". See Details.

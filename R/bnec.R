@@ -40,8 +40,7 @@
 #' include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the 
 #' Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.
 #' 
-#' The argument \code{model} may be one of "neclin","nec3param", "nec4param", "necsigm", "nechorme", "nechorme4", "ecx4param", "ecxwb1", "ecxwb2", "ecxexp", "ecxlin", or "excsigm",
-#' in which case a single model of the specified type is fit, and \code{\link{bnec}} returns a model object of class \code{\link{bayesnecfit}}.
+#' The argument \code{model} may be a character string indicating the names of the desired model. see ?models for more details, and the list of models available. If a recongised model name is provided a single model of the specified type is fit, and \code{\link{bnec}} returns a model object of class \code{\link{bayesnecfit}}.
 #' 
 #' If a vector of two or more of the available models is supplied, \code{\link{bnec}} returns a model object of class \code{\link{bayesmanecfit}}
 #' containing model averaged predictions for the supplied models, providing they were successfully fitted.
@@ -54,9 +53,9 @@
 #' "ecx" meaning only models excluding a specific NEC step parameter fill be fit; "nec" meaning only models with a specific NEC step
 #' parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit. Notice that
 #' if one of these group strings is provided together with a user-specified named list for the argument \code{priors}, the list names need to contain
-#' the actual model names, and not the group string, e.g. if \code{model = "ecx"} and \code{priors = my_priors} then \code{names(my_priors)} must
-#' contain \code{c("ecx4param", "ecxlin", "ecxexp", "ecxsigm", "ecxwb1", "ecxwb2")}. To check available models and associated parameters for each group,
-#' use the function \code{\link{show_params}}.
+#' the actual model names, and not the group string , e.g. if \code{model = "ecx"} and \code{priors = my_priors} then \code{names(my_priors)} must
+#' contain \code{models("ecx")}. To check available models and associated parameters for each group,
+#' use the function \code{\link{models}} or to check the parameters of a specific model use the function \code{\link{show_params}}.
 #' 
 #' Models are fitted using model formula passed to \pkg{brms}.
 #' 
