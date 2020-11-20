@@ -170,12 +170,13 @@
     </tr>
     <tr>
       <th>trials_var</th>
-      <td><p>The column heading indicating the column for the number of "trials" for binomial response data.
+      <td><p>The column heading indicating the column for the number of "trials" for binomial or beta_binomial2 response data.
 If not supplied, the model may run but will not be the model you intended!</p></td>
     </tr>
     <tr>
       <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
+      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family)
+to use for the y (response) data. See details.</p></td>
     </tr>
     <tr>
       <th>priors</th>
@@ -189,7 +190,8 @@ name needs to correspond to the same string as "model". See details.</p></td>
     </tr>
     <tr>
       <th>inits</th>
-      <td><p>Optional. Initialisation values. Must be a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.</p></td>
+      <td><p>Optional. Initialisation values. Must be a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the number of chains, a
+nd names correspond to the parameter names of a given model.</p></td>
     </tr>
     <tr>
       <th>skip_check</th>

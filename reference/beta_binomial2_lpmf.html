@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>validate_family — validate_family • bayesnec</title>
+<title>beta_binomial2_lpmf — beta_binomial2_lpmf • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="validate_family — validate_family" />
-<meta property="og:description" content="Checks if family is allowed" />
+<meta property="og:title" content="beta_binomial2_lpmf — beta_binomial2_lpmf" />
+<meta property="og:description" content="Beta-binomial wrapper LPMF" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -131,30 +131,38 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>validate_family</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/validate_family.R'><code>R/validate_family.R</code></a></small>
-    <div class="hidden name"><code>validate_family.Rd</code></div>
+    <h1>beta_binomial2_lpmf</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/beta_binomial2.R'><code>R/beta_binomial2.R</code></a></small>
+    <div class="hidden name"><code>beta_binomial2_lpmf.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Checks if family is allowed</p>
+    <p>Beta-binomial wrapper LPMF</p>
     </div>
 
-    <pre class="usage"><span class='fu'>validate_family</span><span class='op'>(</span><span class='va'>family</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>beta_binomial2_lpmf</span><span class='op'>(</span><span class='va'>y</span>, <span class='va'>mu</span>, <span class='va'>phi</span>, <span class='va'>trials</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family)
-to use for the y (response) data. See details.</p></td>
+      <th>y</th>
+      <td><p>observation successi.</p></td>
+    </tr>
+    <tr>
+      <th>mu</th>
+      <td><p>posterior mu.</p></td>
+    </tr>
+    <tr>
+      <th>phi</th>
+      <td><p>posterior phi.</p></td>
+    </tr>
+    <tr>
+      <th>trials</th>
+      <td><p>observation trialsi.</p></td>
     </tr>
     </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
-
-    <p>An object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code>.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

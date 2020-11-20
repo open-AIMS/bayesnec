@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>validate_family — validate_family • bayesnec</title>
+<title>check_custom_name — check_custom_name • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="validate_family — validate_family" />
-<meta property="og:description" content="Checks if family is allowed" />
+<meta property="og:title" content="check_custom_name — check_custom_name" />
+<meta property="og:description" content="check_custom_name" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -131,30 +131,31 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>validate_family</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/validate_family.R'><code>R/validate_family.R</code></a></small>
-    <div class="hidden name"><code>validate_family.Rd</code></div>
+    <h1>check_custom_name</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/helpers.R'><code>R/helpers.R</code></a></small>
+    <div class="hidden name"><code>check_custom_name.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Checks if family is allowed</p>
+    <p>check_custom_name</p>
     </div>
 
-    <pre class="usage"><span class='fu'>validate_family</span><span class='op'>(</span><span class='va'>family</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>check_custom_name</span><span class='op'>(</span><span class='va'>family</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family)
-to use for the y (response) data. See details.</p></td>
+      <td><p>An object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> or
+<code><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>brmsfamily</a></code>.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>An object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code>.</p>
+    <p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the brms
+custom family or NA.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

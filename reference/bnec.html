@@ -179,12 +179,13 @@
     </tr>
     <tr>
       <th>trials_var</th>
-      <td><p>The column heading indicating the column for the number of "trials" for binomial response data.
+      <td><p>The column heading indicating the column for the number of "trials" for binomial or beta_binomial2 response data.
 If not supplied, the model may run but will not be the model you intended!</p></td>
     </tr>
     <tr>
       <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family) to use for the y (response) data. See details.</p></td>
+      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family)
+to use for the y (response) data. See details.</p></td>
     </tr>
     <tr>
       <th>priors</th>
@@ -217,7 +218,8 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></
     </tr>
     <tr>
       <th>inits</th>
-      <td><p>Optional. Initialisation values. Must be a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the number of chains, and names correspond to the parameter names of a given model.</p></td>
+      <td><p>Optional. Initialisation values. Must be a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the number of chains, a
+nd names correspond to the parameter names of a given model.</p></td>
     </tr>
     <tr>
       <th>wi_method</th>
@@ -239,7 +241,7 @@ an object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></c
 small offset is added (1 / 10th of the next lowest value) to zero values of concentration where <code>x_var</code> are distributed
 on a continuous scale from 0 to infinity, or are bounded to 0, or 1.</p>
 <p>The argument <code>family</code> indicates the family to use for the response variable in the <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> call,
-and may currently be "Beta" / Beta / Beta(), "binomial" / binomial / binomial(), "Gamma" / Gamma / Gamma(), "gaussian" / gaussian / gaussian(),
+and may currently be "Beta" / Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial2" / beta_binomial2, "Gamma" / Gamma / Gamma(), "gaussian" / gaussian / gaussian(),
 "negbinomial" / negbinomial / negbinomial(), or "poisson" / poisson / poisson(). Notice that families Beta and negbinomial are exported objects
 of package <span class="pkg">brms</span>, so the user needs to load <span class="pkg">brms</span> before calling these families.
 Other families can be added as required, please raise an <a href='https://github.com/AIMS/bayesnec/issues'>issue</a> on the GitHub development site if your
@@ -247,7 +249,7 @@ required family is not currently available.
 If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>. Guesses
 include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
 Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.</p>
-<p>The argument <code>model</code> may be one of "neclin","nec3param", "nec4param", "necsigm", "nechorme", "nechorme4", "ecx4param", "ecxwb1", "ecxwb2", "ecxexp", "ecxlin", or "excsigm", in which case a single model of the specified type is fit, and <code>bnec</code> returns a model object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
+<p>The argument <code>model</code> may be a character string indicating the names of the desired model. see ?models for more details, and the list of models available. If a recongised model name is provided a single model of the specified type is fit, and <code>bnec</code> returns a model object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
 <p>If a vector of two or more of the available models is supplied, <code>bnec</code> returns a model object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>
 containing model averaged predictions for the supplied models, providing they were successfully fitted.</p>
 <p>Model averaging is achieved through a weighted sample of each fitted models posterior predictions, with weights derived
@@ -257,9 +259,9 @@ element and can be examined individually.</p>
 "ecx" meaning only models excluding a specific NEC step parameter fill be fit; "nec" meaning only models with a specific NEC step
 parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit. Notice that
 if one of these group strings is provided together with a user-specified named list for the argument <code>priors</code>, the list names need to contain
-the actual model names, and not the group string, e.g. if <code>model = "ecx"</code> and <code>priors = my_priors</code> then <code><a href='https://rdrr.io/r/base/names.html'>names(my_priors)</a></code> must
-contain <code><a href='https://rdrr.io/r/base/c.html'>c("ecx4param", "ecxlin", "ecxexp", "ecxsigm", "ecxwb1", "ecxwb2")</a></code>. To check available models and associated parameters for each group,
-use the function <code><a href='show_params.html'>show_params</a></code>.</p>
+the actual model names, and not the group string , e.g. if <code>model = "ecx"</code> and <code>priors = my_priors</code> then <code><a href='https://rdrr.io/r/base/names.html'>names(my_priors)</a></code> must
+contain <code><a href='models.html'>models("ecx")</a></code>. To check available models and associated parameters for each group,
+use the function <code><a href='models.html'>models</a></code> or to check the parameters of a specific model use the function <code><a href='show_params.html'>show_params</a></code>.</p>
 <p>Models are fitted using model formula passed to <span class="pkg">brms</span>.</p>
 <p>All models provide an estimate for NEC. For model types with "nec" as a prefix, NEC is directly estimated as parameter "nec"
 in the model. Models with "ecx" as a prefix are continuous curve models, typically used for extracting ECx values
