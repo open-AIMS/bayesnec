@@ -194,6 +194,16 @@ stan_funs <- "
 
 stanvars <- brms::stanvar(scode = stan_funs, block = "functions")
 
+##################
+#PREDICT FUNCTIONS
+##################
+source("R/pred_equations.R")
+pred_functions <- list("nec3param" = pred_nec3param, "nec4param" = pred_nec4param, "nechorme" = pred_nechorme, 
+                       "nechorme4" = pred_nechorme4, "necsigm" = pred_necsigm,
+                       "neclin" = pred_neclin, "neclinhorme" = pred_neclinhorme, 
+                       "ecxlin" = pred_ecxlin, "ecxexp" = pred_ecxexp, "ecxsigm"= pred_ecxsigm,    
+                       "ecx4param" = pred_ecx4param, "ecxwb1" = pred_ecxwb1, "ecxwb2" = pred_ecxwb2)
+
 ####################
 # SAVE INTERNAL DATA
 ####################
@@ -225,4 +235,5 @@ save(mod_groups, mod_fams,
      # ecxwb2
      bf_ecxwb2_deflt, bf_ecxwb2_binom,
      stan_funs, stanvars,
+     pred_functions,
      file = "R/sysdata.rda")

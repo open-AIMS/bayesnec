@@ -18,6 +18,9 @@
 #' 
 #' @export
 show_params <- function(model = "all") {
+  if (class(model)!="character"){
+    stop("Not a valid model name")
+  }
   display <- function(x) {
     get(paste("bf", x, "deflt", sep = "_"))
   }
@@ -30,7 +33,7 @@ show_params <- function(model = "all") {
   }
   if (length(model) > 1) {
     lapply(model, display)
-  } else {
+  } else if (length(model) == 1) {
     display(model)
   }
 }

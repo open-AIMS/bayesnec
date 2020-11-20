@@ -64,7 +64,7 @@ pull_out <- function(manec, model, ...) {
             "Returning original object")
   }
   mod_fits <- suppressMessages(expand_manec(manec$mod_fits[to_go], ...))
-  message("Successfully pulled out model(s): ",
+  message("Pulling out model(s): ",
           paste0(to_go, collapse = ", "))
   if (!inherits(mod_fits, "prebayesnecfit")) {
     allot_class(mod_fits, "bayesmanecfit")
