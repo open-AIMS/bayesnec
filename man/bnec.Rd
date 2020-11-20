@@ -80,7 +80,7 @@ of package \pkg{brms}, so the user needs to load \pkg{brms} before calling these
 Other families can be added as required, please raise an \href{https://github.com/AIMS/bayesnec/issues}{issue} on the GitHub development site if your
 required family is not currently available.
 If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through \code{\link{check_data}}. Guesses
-include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
+include all of the above families but "negbinomial" and "betabinomimal2" because these requires knowledge on whether the data is over-dispersed. As explained below in the
 Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.
 
 The argument \code{model} may be a character string indicating the names of the desired model. see ?models for more details, and the list of models available. If a recongised model name is provided a single model of the specified type is fit, and \code{\link{bnec}} returns a model object of class \code{\link{bayesnecfit}}.
