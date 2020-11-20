@@ -61,6 +61,9 @@
       <a href="../articles/example2.html">Multi model usage</a>
     </li>
     <li>
+      <a href="../articles/example2b.html">bayesnec Model details</a>
+    </li>
+    <li>
       <a href="../articles/example3.html">User-specified priors</a>
     </li>
     <li>
@@ -103,7 +106,7 @@
 <h1 class="hasAnchor">
 <a href="#bayesnec" class="anchor"></a><code>bayesnec</code>
 </h1>
-<p>The <code>bayesnec</code> is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage ‘x’, <em>ECx</em>) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via <code>brms</code> <span class="citation">(Bürkner 2017; <span class="citeproc-not-found" data-reference-id="Burkner2018"><strong>???</strong></span>)</span> and <code>stan</code>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which as based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
+<p>The <code>bayesnec</code> is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage ‘x’, <em>ECx</em>) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span> and <code>stan</code>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which as based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
 <p>The background of <code>bayesnec</code> is covered in the Single model usage vignette. Here we explain multi model usage using <code>bayesnec</code>. In <code>bayesnec</code> it is possible to fit a a custom model set, specific model set or all of the available models. When multiple models are specified the <code>bnec</code> function returns a model weighted estimate of predicted posterior values, based on watanabe information criteria (WAIC) model weights, analogous to the way model weights are generated using AIC or AICc <span class="citation">(Burnham and Anderson 2002)</span>. It is also possible to obtain all individual model fits from the fitted <code>bayesnecfit</code> model object if required. Multi-model inference can be useful where there are a range of plausible models that could be used <span class="citation">(Burnham and Anderson 2002)</span> and has been recently adopted in ecotoxicology for SSD model inference <span class="citation">(Thorley and Schwarz 2018)</span>.</p>
 </div>
 <div id="installation" class="section level1">
@@ -229,6 +232,9 @@
 </div>
 <div id="ref-Burkner2017">
 <p>Bürkner, Paul Christian. 2017. “brms: An R package for Bayesian multilevel models using Stan.” <em>Journal of Statistical Software</em>. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>.</p>
+</div>
+<div id="ref-Burkner2018">
+<p>Bürkner, Paul-Christian. 2018. “Advanced Bayesian Multilevel Modeling with the R Package brms.” <em>The R Journal</em> 10 (1): 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>.</p>
 </div>
 <div id="ref-Fisher2020">
 <p>Fisher, Rebecca, Gerard Ricardo, and David Fox. 2020. “Bayesian concentration-response modelling using jagsNEC.” <a href="https://doi.org/10.5281/ZENODO.3966864">https://doi.org/10.5281/ZENODO.3966864</a>.</p>
