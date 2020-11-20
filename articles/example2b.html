@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>bayesnec Model details • bayesnec</title>
+<title>Model details • bayesnec</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
 <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
-<script src="../pkgdown.js"></script><meta property="og:title" content="bayesnec Model details">
+<script src="../pkgdown.js"></script><meta property="og:title" content="Model details">
 <meta property="og:description" content="bayesnec">
 <meta property="og:image" content="/logo.png">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
@@ -61,7 +61,7 @@
       <a href="../articles/example2.html">Multi model usage</a>
     </li>
     <li>
-      <a href="../articles/example2b.html">bayesnec Model details</a>
+      <a href="../articles/example2b.html">Model details</a>
     </li>
     <li>
       <a href="../articles/example3.html">User-specified priors</a>
@@ -92,7 +92,7 @@
       </header><script src="example2b_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>bayesnec Model details</h1>
+      <h1 data-toc-skip>Model details</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/master/vignettes/example2b.Rmd"><code>vignettes/example2b.Rmd</code></a></small>
@@ -102,46 +102,46 @@
 
     
     
-<div id="bayesnec" class="section level1">
-<h1 class="hasAnchor">
-<a href="#bayesnec" class="anchor"></a><code>bayesnec</code>
-</h1>
-<p>The <code>bayesnec</code> is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage ‘x’, <em>ECx</em>) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span> and <code>stan</code>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which was based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
-</div>
 <div id="background" class="section level1">
 <h1 class="hasAnchor">
 <a href="#background" class="anchor"></a>Background</h1>
-<p>There are a range of models available in <code>bayesnec</code> and the working <code>bnec</code> function supports individual model fitting, as well as multi-model fitting with Bayesian model averaging through.</p>
-<p>The argument <code>model</code> in the function <code>bnec</code> is a character string indicating the name(s) of the desired model. see ?models for more details, and the list of models available. If a recognised model name is provided a single model of the specified type is fit, and <code>bnec</code> returns a model object of class <code>bayesnecfit</code>. If a vector of two or more of the available models are supplied, <code>bnec</code> returns a model object of class <code>bayesmanecfit</code> containing Bayesian model averaged predictions for the supplied models, providing they were successfully fitted.</p>
-<p>Model averaging is achieved through a weighted sample of each fitted models’ posterior predictions, with weights derived using the <code>loo_model_weights</code> from <code>loo</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry 2017)</span>. Individual <code>brms</code> model fits can be extracted from the <code>mod_fits</code> element and can be examined individually.</p>
-<p><code>model</code> may also be one of “all”, meaning all of the available models will be fit; “ecx” meaning only models excluding the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter will be fit; “nec” meaning only models with the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter will be fit. There are a range of other pre-define model groups available. The full list of currently implemented model groups can be seen using</p>
+<p>The <code>bayesnec</code> is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (“nec”), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage ‘x’, ecx) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span> and <code>stan</code> <span class="citation">(Stan Development Team 2020)</span>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which was based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
+</div>
+<div id="models-in-bayesnec" class="section level1">
+<h1 class="hasAnchor">
+<a href="#models-in-bayesnec" class="anchor"></a>Models in <code>bayesnec</code>
+</h1>
+<p>There are a range of models available in <code>bayesnec</code> and the working <code>bnec</code> function supports individual model fitting, as well as multi-model fitting with Bayesian model averaging.</p>
+<p>The argument <code>model</code> in the function <code>bnec</code> is a character string indicating the name(s) of the desired model (see ?models for more details, and the list of models available). If a recognised model name is provided a single model of the specified type is fit, and <code>bnec</code> returns a model object of class <code>bayesnecfit</code>. If a vector of two or more of the available models are supplied, <code>bnec</code> returns a model object of class <code>bayesmanecfit</code> containing Bayesian model averaged predictions for the supplied models, providing they were successfully fitted.</p>
+<p>Model averaging is achieved through a weighted sample of each fitted models’ posterior predictions, with weights derived using the <code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry 2017)</span>. Individual <code>brms</code> model fits can be extracted from the <code>mod_fits</code> element and can be examined individually.</p>
+<p>The <code>model</code> argument may also be one of “all”, meaning all of the available models will be fit; “ecx” meaning only models excluding the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter will be fit; or “nec” meaning only models with the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter (see below <strong>Model parameters</strong>) will be fit. There are a range of other pre-define model groups available. The full list of currently implemented model groups can be seen using:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="st"><a href="https://open-aims.github.io/bayesnec">"bayesnec"</a></span><span class="op">)</span>
 <span class="fu"><a href="../reference/models.html">models</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 </div>
-<div id="model-types-for-nec-and-ecx-estimation" class="section level1">
+<div id="parameter-definitions" class="section level1">
 <h1 class="hasAnchor">
-<a href="#model-types-for-nec-and-ecx-estimation" class="anchor"></a>Model types for NEC and ECx estimation</h1>
-<p>All models provide an estimate for the No-Effect-Concentration (NEC). For model types with “nec” as a prefix, the NEC is directly estimated as parameter <span class="math inline">\(\eta = \text{NEC}\)</span> in the model, as per <span class="citation">(Fox 2010)</span>. Models with “ecx” as a prefix are continuous curve models, typically used for extracting ECx values from concentration response data. In this instance the NEC reported is actually the No-Significant-Effect-Concentration (NSEC), defined as the concentration at which there is a user supplied (see <code>sig_val</code>) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote (top) of the response (i.e. the response value is significantly lower than that expected in the case of no exposure). The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha value of 0.01 for a one-sided test of significance. See <code><a href="../reference/nsec.html">?nsec</a></code> for more details. We currently recommend only using the “nec” model set for estimation of NEC values, as the NSEC concept has yet to be formally peer-reviewed.</p>
-<p>ECx estimates can be equally validly obtained from both “nec” and “ecx” models. ECx estimates will usually be lower (more conservative) for <strong>ex</strong> models fitted to the same data as <strong>nec</strong> models (see the <strong>Comparing posterior predictions</strong> vignette for an example). However, we recommend using “all” models where ECx estimation is required because <strong>nec</strong> models can fit some datasets better than <strong>ecx</strong> models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield ECx estimates that are the most representative of the underlying relationship in the dataset.</p>
-<p>There is ambiguity in the definition of ECx estimates from hormesis models (these allow an initial increase in the response (see <span class="citation">(Mattson 2008)</span>) and include models with the character string <code>horme</code> in their name), as well as those that have no natural lower bound on the scale of the response (models with the string <code>lin</code> in their name, in the case of gaussian response data). For this reason the <code>ecx</code> function has arguments <code>hormesis_def</code> and <code>type</code>, both character vectors indicating the desired behaviour. For <code>hormesis_def = "max"</code> ECx values are calculated as a decline from the maximum estimates (i.e. the peak at <span class="math inline">\(\eta = \text{NEC}\)</span>); and <code>hormesis_def = "control"</code> (the default) indicates ECx values should be calculated relative to the control, which is assumed to be the lowest observed concentration. For <code>type = "relative"</code> ECx is calculated as the percentage decrease from the maximum predicted value of the response (top) to the minimum predicted value of the response (ie, ‘relative’ to the observed data). For <code>type = "absolute"</code> (the default) ECx is calculated as the percentage decrease from the maximum value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to 0 (or <span class="math inline">\(\delta = \text{bottom}\)</span> for a 4 parameter model fit). For <code>type = "direct"</code> a direct interpolation of y on x is obtained.</p>
-</div>
-<div id="model-suitability-for-response-types" class="section level1">
-<h1 class="hasAnchor">
-<a href="#model-suitability-for-response-types" class="anchor"></a>Model suitability for response types</h1>
-<p>Models that have an exponential decay (most models with parameter “beta”) with no <span class="math inline">\(\delta = \text{bottom}\)</span> parameter are <code>0</code> bounded and are not suitable for the gaussian family, or any family modelled using a logit or log link because they cannot generate predictions of negative y (response). Conversely models with a linear decay (containing the string “lin” in their name) are not suitable for modelling families that are <code>0</code> bounded (gamma, poisson, negative binomial) using an identity link. Models with a linear decay or hormesis linear increase (all models with parameter <span class="math inline">\(\alpha = \text{slope}\)</span>) are not suitable for modelling families that are <code>0</code>, <code>1</code> bounded (binomial, beta and betabinomial2). These restrictions do not need to be controlled by the user as a call to <code>bnec</code> with <code>models = "all"</code> will simply exclude inappropriate models, albeit with a warning.</p>
-</div>
-<div id="model-parameters" class="section level1">
-<h1 class="hasAnchor">
-<a href="#model-parameters" class="anchor"></a>Model Parameters</h1>
-<p>Where possible we have aimed for consistency in the interpretable meaning of the individual parameters across models. Across the currently implemented model set, models contain from two (basic linear or exponential decay, see <strong>ecxlin</strong> or <strong>ecxexp</strong>) to five possible parameters (<strong>nechorme4</strong>), including: <span class="math inline">\(\tau = \text{top}\)</span>, usually interpretable as either the y-intercept or the upper plateau representing the mean concentration of the response at zero concentration; <span class="math inline">\(\eta = \text{NEC}\)</span>, the no-effect-concentration value (the x concentration value where the breakpoint in the regression is estimated at, see <strong>Model types for NEC and ECx estimation</strong> above and <span class="citation">(Fox 2010)</span> for more details on parameter based NEC estimation); <span class="math inline">\(\beta = \text{beta}\)</span>, generally the exponential decay rate of response, either from 0 concentration or from the estimated <span class="math inline">\(\eta\)</span> value, with the exception of the <strong>neclinhorme</strong> model where it represents a linear decay from <span class="math inline">\(\eta\)</span> because slope (<span class="math inline">\(\epsilon\)</span>) is required for the linear increase; <span class="math inline">\(\delta = \text{bottom}\)</span>, representing the lower plateau for the response at infinite concentration; <span class="math inline">\(\alpha = \text{slope}\)</span>, the linear decay rate in the models <strong>neclin</strong> and <strong>ecxlin</strong>, or the linear increase rate prior to <span class="math inline">\(\eta\)</span> for all hormesis models; and <span class="math inline">\(\epsilon = \text{d}\)</span>, the exponent in the <strong>ecxsigm</strong> and <strong>necisgm</strong> models.</p>
-<p>In addition to the model parameters, all <strong>nec…</strong> models have a step function used to define the breakpoint in the regression, which can be defined as</p>
+<a href="#parameter-definitions" class="anchor"></a>Parameter definitions</h1>
+<p>Where possible we have aimed for consistency in the interpretable meaning of the individual parameters across models. Across the currently implemented model set, models contain from two (basic linear or exponential decay, see <strong>ecxlin</strong> or <strong>ecxexp</strong>) to five possible parameters (<strong>nechorme4</strong>), including: <span class="math inline">\(\tau = \text{top}\)</span>, usually interpretable as either the y-intercept or the upper plateau representing the mean concentration of the response at zero concentration; <span class="math inline">\(\eta = \text{NEC}\)</span>, the no-effect-concentration value (the x concentration value where the breakpoint in the regression is estimated at, see <strong>Model types for NEC and ECx estimation</strong> and <span class="citation">(Fox 2010)</span> for more details on parameter based NEC estimation); <span class="math inline">\(\beta = \text{beta}\)</span>, generally the exponential decay rate of response, either from 0 concentration or from the estimated <span class="math inline">\(\eta\)</span> value, with the exception of the <strong>neclinhorme</strong> model where it represents a linear decay from <span class="math inline">\(\eta\)</span> because slope (<span class="math inline">\(\epsilon\)</span>) is required for the linear increase; <span class="math inline">\(\delta = \text{bottom}\)</span>, representing the lower plateau for the response at infinite concentration; <span class="math inline">\(\alpha = \text{slope}\)</span>, the linear decay rate in the models <strong>neclin</strong> and <strong>ecxlin</strong>, or the linear increase rate prior to <span class="math inline">\(\eta\)</span> for all hormesis models; and <span class="math inline">\(\epsilon = \text{d}\)</span>, the exponent in the <strong>ecxsigm</strong> and <strong>necisgm</strong> models.</p>
+<p>In addition to the model parameters, all <code>nec...</code> models have a step function used to define the breakpoint in the regression, which can be defined as</p>
 <p><span class="math display">\[
 f(x_i, \eta) = \begin{cases} 
       x_i - \eta &lt; 0, &amp; 0 \\
       x_i - \eta \geq 0, &amp; 1 \\
    \end{cases}
 \]</span></p>
+</div>
+<div id="model-types-for-nec-and-ecx-estimation" class="section level1">
+<h1 class="hasAnchor">
+<a href="#model-types-for-nec-and-ecx-estimation" class="anchor"></a>Model types for NEC and ECx estimation</h1>
+<p>All models provide an estimate for the No-Effect-Concentration (NEC). For model types with “nec” as a prefix, the NEC is directly estimated as parameter <span class="math inline">\(\eta = \text{NEC}\)</span> in the model, as per <span class="citation">(Fox 2010)</span>. Models with “ecx” as a prefix are continuous curve models, typically used for extracting ECx values from concentration response data. In this instance the NEC reported is actually the No-Significant-Effect-Concentration (NSEC), defined as the concentration at which there is a user supplied (see <code>sig_val</code>) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote (<span class="math inline">\(\tau = \text{top}\)</span>) of the response (i.e. the response value is significantly lower than that expected in the case of no exposure). The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha value (Type 1 error rate) of 0.01 for a one-sided test of significance. See <code><a href="../reference/nsec.html">?nsec</a></code> for more details. We currently recommend only using the “nec” model set for estimation of NEC values, as the NSEC concept has yet to be formally peer-reviewed.</p>
+<p>ECx estimates can be equally validly obtained from both “nec” and “ecx” models. ECx estimates will usually be lower (more conservative) for “ecx” models fitted to the same data as “nec” models (see the <strong>Comparing posterior predictions</strong> vignette for an example). However, we recommend using “all” models where ECx estimation is required because “nec” models can fit some datasets better than “ecx” models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield ECx estimates that are the most representative of the underlying relationship in the dataset.</p>
+<p>There is ambiguity in the definition of ECx estimates from hormesis models (these allow an initial increase in the response (see <span class="citation">(Mattson 2008)</span>) and include models with the character string <code>horme</code> in their name), as well as those that have no natural lower bound on the scale of the response (models with the string <code>lin</code> in their name, in the case of gaussian response data). For this reason the <code>ecx</code> function has arguments <code>hormesis_def</code> and <code>type</code>, both character vectors indicating the desired behaviour. For <code>hormesis_def = "max"</code> ECx values are calculated as a decline from the maximum estimates (i.e. the peak at <span class="math inline">\(\eta = \text{NEC}\)</span>); and <code>hormesis_def = "control"</code> (the default) indicates ECx values should be calculated relative to the control, which is assumed to be the lowest observed concentration. For <code>type = "relative"</code> ECx is calculated as the percentage decrease from the maximum predicted value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to the minimum predicted value of the response (ie, ‘relative’ to the observed data). For <code>type = "absolute"</code> (the default) ECx is calculated as the percentage decrease from the maximum value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to 0 (or <span class="math inline">\(\delta = \text{bottom}\)</span> for models with that parameter). For <code>type = "direct"</code> a direct interpolation of y on x is obtained.</p>
+</div>
+<div id="model-suitability-for-response-types" class="section level1">
+<h1 class="hasAnchor">
+<a href="#model-suitability-for-response-types" class="anchor"></a>Model suitability for response types</h1>
+<p>Models that have an exponential decay (most models with parameter <span class="math inline">\(\beta = \text{beta}\)</span>) with no <span class="math inline">\(\delta = \text{bottom}\)</span> parameter are <code>0</code> bounded and are not suitable for the gaussian family, or any family modelled using a logit or log link because they cannot generate predictions of negative y (response). Conversely models with a linear decay (containing the string “lin” in their name) are not suitable for modelling families that are <code>0</code> bounded (gamma, poisson, negative binomial) using an identity link. Models with a linear decay or hormesis linear increase (all models with parameter <span class="math inline">\(\alpha = \text{slope}\)</span>) are not suitable for modelling families that are <code>0</code>, <code>1</code> bounded (binomial, beta and betabinomial2). These restrictions do not need to be controlled by the user as a call to <code>bnec</code> with <code>models = "all"</code> will simply exclude inappropriate models, albeit with a warning.</p>
 </div>
 <div id="model-definitions" class="section level1">
 <h1 class="hasAnchor">
@@ -152,7 +152,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxlin" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxlin" class="anchor"></a>ecxlin</h3>
-<p>The <strong>ecxlin</strong> model is a basic linear decay model, given by the equation: <span class="math display">\[y_i = \tau - \alpha x_i\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxlin</strong> model is a basic linear decay model, given by the equation <span class="math display">\[y_i = \tau - \alpha x_i\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top - slope * x 
 ## top ~ 1
 ## slope ~ 1</code></pre>
@@ -161,7 +161,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxexp" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxexp" class="anchor"></a>ecxexp</h3>
-<p>The <strong>ecxexp</strong> model is a basic exponential decay model, given by the equation: <span class="math display">\[y_i = \tau e^{-\beta x_i}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxexp</strong> model is a basic exponential decay model, given by the equation <span class="math display">\[y_i = \tau e^{-\beta x_i}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top * exp(-beta * x) 
 ## top ~ 1
 ## beta ~ 1</code></pre>
@@ -170,7 +170,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxsigm" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxsigm" class="anchor"></a>ecxsigm</h3>
-<p>The <strong>ecxsigm</strong> model is a simple sigmoidal decay model, given by the equation: <span class="math display">\[y_i = \tau e^{-\beta x_i^{e^\epsilon}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxsigm</strong> model is a simple sigmoidal decay model, given by the equation <span class="math display">\[y_i = \tau e^{-\beta x_i^{e^\epsilon}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top * exp(-beta * x^exp(d)) 
 ## d ~ 1
 ## top ~ 1
@@ -180,7 +180,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecx4param" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecx4param" class="anchor"></a>ecx4param</h3>
-<p>The <strong>ecx4param</strong> model is a 4 parameter sigmoidal decay model, given by the equation: <span class="math display">\[y_i = \frac{\tau + (\delta - \tau)}{1 + e^{\beta (\text{EC}_{50} - x_i)}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecx4param</strong> model is a 4 parameter sigmoidal decay model, given by the equation <span class="math display">\[y_i = \frac{\tau + (\delta - \tau)}{1 + e^{\beta (\text{EC}_{50} - x_i)}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top + (bot - top)/(1 + exp((ec50 - x) * beta)) 
 ## bot ~ 1
 ## ec50 ~ 1
@@ -190,7 +190,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxwb1" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxwb1" class="anchor"></a>ecxwb1</h3>
-<p>The <strong>ecxwb1</strong> model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull1 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{\beta (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxwb1</strong> model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull1 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{\beta (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ bot + (top - bot) * exp(-exp(beta * (x - ec50))) 
 ## bot ~ 1
 ## ec50 ~ 1
@@ -200,7 +200,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxwb2" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxwb2" class="anchor"></a>ecxwb2</h3>
-<p>The <strong>ecxwb2</strong> model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull2 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) (1 - e^{-e^{\beta (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxwb2</strong> model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull2 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta) (1 - e^{-e^{\beta (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top + (bot - top) * (1 - exp(-exp(beta * (x - ec50)))) 
 ## bot ~ 1
 ## ec50 ~ 1
@@ -215,7 +215,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="neclin" class="section level3">
 <h3 class="hasAnchor">
 <a href="#neclin" class="anchor"></a>neclin</h3>
-<p>The <strong>neclin</strong> model is a basic linear decay model equivalent to <strong>ecxlin</strong> with the addition of the <strong>nec</strong> step function, given by the equation: <span class="math display">\[y_i = \tau - \alpha \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>neclin</strong> model is a basic linear decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i = \tau - \alpha \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top - slope * (x - nec) * step(x - nec) 
 ## top ~ 1
 ## slope ~ 1
@@ -225,7 +225,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="nec3param" class="section level3">
 <h3 class="hasAnchor">
 <a href="#nec3param" class="anchor"></a>nec3param</h3>
-<p>The <strong>nec3param</strong> model is a basic exponential decay model equivalent to <strong>ecxexp</strong> with the addition of the <strong>nec</strong> step function, given by the equation: <span class="math display">\[y_i = \tau e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>nec3param</strong> model is a basic exponential decay model equivalent to <strong>ecxexp</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i = \tau e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top * exp(-beta * (x - nec) * step(x - nec)) 
 ## top ~ 1
 ## beta ~ 1
@@ -235,7 +235,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="nec4param" class="section level3">
 <h3 class="hasAnchor">
 <a href="#nec4param" class="anchor"></a>nec4param</h3>
-<p>The <strong>nec4param</strong> model is a 3 parameter decay model with the addition of the <strong>nec</strong> step function, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span></p>
+<p>The <strong>nec4param</strong> model is a 3 parameter decay model with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ bot + (top - bot) * exp(-beta * (x - nec) * step(x - nec)) 
 ## bot ~ 1
 ## top ~ 1
@@ -245,7 +245,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="nechorme" class="section level3">
 <h3 class="hasAnchor">
 <a href="#nechorme" class="anchor"></a>nechorme</h3>
-<p>The <strong>nechorme</strong> model is a basic exponential decay model with an <strong>nec</strong> step function equivalent to <strong>nec3param</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + \alpha x_i) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>nechorme</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + \alpha x_i) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ (top + slope * x) * exp(-beta * (x - nec) * step(x - nec)) 
 ## top ~ 1
 ## beta ~ 1
@@ -256,7 +256,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="neclinhorme" class="section level3">
 <h3 class="hasAnchor">
 <a href="#neclinhorme" class="anchor"></a>neclinhorme</h3>
-<p>The <strong>neclinhorme</strong> model is a basic linear decay model with an <strong>nec</strong> step function equivalent to <strong>neclin</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + \alpha x_i) - \beta \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula.</p>
+<p>The <strong>neclinhorme</strong> model is a basic linear decay model with an “nec” step function equivalent to <strong>neclin</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + \alpha x_i) - \beta \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula.</p>
 <pre><code>## y ~ (top + slope * x) - beta * (x - nec) * step(x - nec) 
 ## top ~ 1
 ## beta ~ 1
@@ -267,7 +267,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="nechorme4" class="section level3">
 <h3 class="hasAnchor">
 <a href="#nechorme4" class="anchor"></a>nechorme4</h3>
-<p>The <strong>nechorme4</strong> model is 4 parameter decay model with an <strong>nec</strong> step function equivalent to <strong>nec4param</strong> with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + \alpha x_i) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>nechorme4</strong> model is 4 parameter decay model with an “nec” step function equivalent to <strong>nec4param</strong> with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = \delta + ((\tau + \alpha x_i) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ bot + ((top + slope * x) - bot) * exp(-beta * (x - nec) * step(x - nec)) 
 ## bot ~ 1
 ## top ~ 1
@@ -279,13 +279,13 @@ f(x_i, \eta) = \begin{cases}
 <div id="necsigm" class="section level3">
 <h3 class="hasAnchor">
 <a href="#necsigm" class="anchor"></a>necsigm</h3>
-<p>The <strong>necsigm</strong> model is a basic exponential decay model equivalent to <strong>ecxlin</strong> with the addition of the <strong>nec</strong> step function, given by the equation: <span class="math display">\[y_i \tau e^{-\beta g(x_i, \eta, epsilon) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>necsigm</strong> model is a basic exponential decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i \tau e^{-\beta g(x_i, \eta, epsilon) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top * exp(-beta * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
 ## top ~ 1
 ## beta ~ 1
 ## nec ~ 1
 ## d ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for gaussian data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an <strong>nec</strong> step function because where there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of no-effect-concentrations using this model are not currently recommended without further testing.</p>
+<p>The model is <code>0</code> bounded, thus not suitable for gaussian data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an “nec” step function because where there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of no-effect-concentrations using this model are not currently recommended without further testing.</p>
 </div>
 </div>
 </div>
@@ -313,6 +313,9 @@ f(x_i, \eta) = \begin{cases}
 </div>
 <div id="ref-Ritz2016">
 <p>Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard. 2016. “Dose-Response Analysis Using R.” <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021">https://doi.org/10.1371/journal.pone.0146021</a>.</p>
+</div>
+<div id="ref-stan2020">
+<p>Stan Development Team. 2020. “RStan: The R Interface to Stan.” <a href="http://mc-stan.org/">http://mc-stan.org/</a>.</p>
 </div>
 <div id="ref-Su2015">
 <p>Su, Yu-Sung, and Masanao Yajima. 2015. “R2jags: Using R to Run ’JAGS’. R package version 0.5-6. http://CRAN.R-project.org/package=R2jags.”</p>
