@@ -32,7 +32,7 @@ Overview
 [brms](https://github.com/paul-buerkner/brms) to fit
 concentration(dose)-response data using Bayesian methods for the purpose
 of estimating both ECX values, but more particularly NEC. Please see
-`?bayesnec` for more details.
+`?bnec` for more a more detailed help file.
 
 Installation
 ------------
