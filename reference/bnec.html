@@ -247,7 +247,7 @@ of package <span class="pkg">brms</span>, so the user needs to load <span class=
 Other families can be added as required, please raise an <a href='https://github.com/AIMS/bayesnec/issues'>issue</a> on the GitHub development site if your
 required family is not currently available.
 If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>. Guesses
-include all of the above families but "negbinomial" because this latter requires knowledge on whether the data is over-dispersed. As explained below in the
+include all of the above families but "negbinomial" and "betabinomimal2" because these requires knowledge on whether the data is over-dispersed. As explained below in the
 Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.</p>
 <p>The argument <code>model</code> may be a character string indicating the names of the desired model. see ?models for more details, and the list of models available. If a recongised model name is provided a single model of the specified type is fit, and <code>bnec</code> returns a model object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
 <p>If a vector of two or more of the available models is supplied, <code>bnec</code> returns a model object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>
