@@ -23,6 +23,7 @@
 #' should not be larger than "iter" and the default is "floor(iter / 5) * 4".
 #' @param inits Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, a
 #' nd names correspond to the parameter names of a given model.
+#' @param n_tries Number of times to attempt a fit.
 #' @param wi_method A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.
 #' @param ... Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.
 #' 
@@ -129,7 +130,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 2e4, warmup = floor(iter / 5) * 4,
-                 inits, wi_method = "stacking", ...) {
+                 inits, n_tries = 5, wi_method = "stacking", ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
@@ -163,7 +164,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
         fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                      trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
-                     iter = iter, warmup = warmup, inits = inits,
+                     iter = iter, warmup = warmup, inits = inits, n_tries = n_tries,
                      ...),
         silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
@@ -188,7 +189,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                             trials_var = trials_var, family = family,
                             priors = priors, model = model,
                             iter = iter, warmup = warmup,
-                            inits = inits, ...)
+                            inits = inits, n_tries = n_tries, ...)
     mod_fit <- expand_nec(mod_fit, x_range = x_range,
                           precision = precision,
                           sig_val = sig_val)

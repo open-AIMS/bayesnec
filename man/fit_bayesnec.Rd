@@ -14,6 +14,7 @@ fit_bayesnec(
   model = NA,
   inits,
   skip_check = FALSE,
+  n_tries = n_tries,
   ...
 )
 }
@@ -42,6 +43,8 @@ nd names correspond to the parameter names of a given model.}
 \item{skip_check}{Should data check via \code{\link{check_data}}
 be avoided? Only relevant to function \code{\link{amend}}.
 Defaults to FALSE.}
+
+\item{n_tries}{Number of times to attempt a fit.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via \code{\link{fit_bayesnec}}.}
 }

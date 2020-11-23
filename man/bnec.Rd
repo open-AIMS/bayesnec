@@ -18,6 +18,7 @@ bnec(
   iter = 20000,
   warmup = floor(iter/5) * 4,
   inits,
+  n_tries = 5,
   wi_method = "stacking",
   ...
 )
@@ -56,6 +57,8 @@ should not be larger than "iter" and the default is "floor(iter / 5) * 4".}
 
 \item{inits}{Optional. Initialisation values. Must be a \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the number of chains, a
 nd names correspond to the parameter names of a given model.}
+
+\item{n_tries}{Number of times to attempt a fit.}
 
 \item{wi_method}{A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.}
 
