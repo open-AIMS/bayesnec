@@ -153,6 +153,7 @@
   model <span class='op'>=</span> <span class='cn'>NA</span>,
   <span class='va'>inits</span>,
   skip_check <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  n_tries <span class='op'>=</span> <span class='va'>n_tries</span>,
   <span class='va'>...</span>
 <span class='op'>)</span></pre>
 
@@ -201,6 +202,10 @@ nd names correspond to the parameter names of a given model.</p></td>
       <td><p>Should data check via <code><a href='check_data.html'>check_data</a></code>
 be avoided? Only relevant to function <code><a href='amend.html'>amend</a></code>.
 Defaults to FALSE.</p></td>
+    </tr>
+    <tr>
+      <th>n_tries</th>
+      <td><p>Number of times to attempt a fit.</p></td>
     </tr>
     <tr>
       <th>...</th>
