@@ -2,7 +2,7 @@
 title: "Model details"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Comparing posterior predictions}
+  %\VignetteIndexEntry{Model details}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: bayesnec.bib
@@ -23,6 +23,21 @@ if (plat == "Windows") {
           verbose = TRUE)
 }
 ```
+
+
+```{r echo = FALSE}
+e1 <- "https://open-aims.github.io/bayesnec/articles/example1.html"
+e2 <- "https://open-aims.github.io/bayesnec/articles/example2.html"
+e2b <- "https://open-aims.github.io/bayesnec/articles/example2b.html"
+e3 <- "https://open-aims.github.io/bayesnec/articles/example3.html"
+e4 <- "https://open-aims.github.io/bayesnec/articles/example4.html"
+```
+
+[e1]: `r e1`
+[e2]: `r e2`
+[e2b]: `r e2b`
+[e3]: `r e3`
+[e4]: `r e4`
 
 # Background
 
@@ -74,7 +89,7 @@ a user supplied (see `sig_val`) percentage certainty (based on the Bayesian post
 falls below the estimated value of the upper asymptote ($\tau = \text{top}$) of the response (i.e. the response value is significantly
 lower than that expected in the case of no exposure). The default value for `sig_val` is 0.01, which corresponds to an alpha value (Type 1 error rate) of 0.01 for a one-sided test of significance. See `?nsec` for more details. We currently recommend only using the "nec" model set for estimation of NEC values, as the NSEC concept has yet to be formally peer-reviewed. 
 
-ECx estimates can be equally validly obtained from both "nec" and "ecx" models. ECx estimates will usually be lower (more conservative) for "ecx" models fitted to the same data as "nec" models (see the **Comparing posterior predictions** vignette for an example). However, we recommend using "all" models where ECx estimation is required because "nec" models can fit some datasets better than "ecx" models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield ECx estimates that are the most representative of the underlying relationship in the dataset.
+ECx estimates can be equally validly obtained from both "nec" and "ecx" models. ECx estimates will usually be lower (more conservative) for "ecx" models fitted to the same data as "nec" models (see the [Comparing posterior predictions][e4] vignette for an example. However, we recommend using "all" models where ECx estimation is required because "nec" models can fit some datasets better than "ecx" models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield ECx estimates that are the most representative of the underlying relationship in the dataset.
 
 There is ambiguity in the definition of ECx estimates from hormesis models (these allow an initial increase in the response (see [@Mattson2008]) and include models with the character string `horme` in their name), as well as those that have no natural lower bound on the scale of the response (models with the string `lin` in their name, in the case of gaussian response data). For this reason the `ecx` function has arguments `hormesis_def` and `type`, both character vectors indicating the desired behaviour. For `hormesis_def = "max"` ECx values are calculated as a decline from the maximum estimates (i.e. the peak at $\eta = \text{NEC}$); and `hormesis_def = "control"` (the default) indicates ECx values should be calculated relative to the control, which is assumed to be the lowest observed concentration. For `type = "relative"` ECx is calculated as the percentage decrease from the maximum predicted value of the response ($\tau = \text{top}$) to the minimum predicted value of the response (ie, 'relative' to the observed data). For `type = "absolute"` (the default) ECx is calculated as the percentage decrease from the maximum value of the response ($\tau = \text{top}$) to 0 (or $\delta = \text{bottom}$ for models with that parameter). For `type = "direct"` a direct interpolation of y on x is obtained.
 

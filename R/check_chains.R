@@ -93,6 +93,7 @@ check_chains <- function(x, name = "", filename = "") {
     }
     if (nchar(filename)>0) {
       dev.off()
+      message(paste("Chain plots saved to file ", filename, ".pdf, in your working directory.", sep=""))
     }
   
   } else {

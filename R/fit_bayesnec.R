@@ -17,7 +17,7 @@
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          family = NULL, priors, model = NA,
-                         inits, skip_check = FALSE, ...) {
+                         inits, skip_check = FALSE, n_tries = n_tries, ...) {
   if (skip_check) {
     mod_dat <- data
     custom_name <- check_custom_name(family)
@@ -73,7 +73,6 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   }
   fit <- do.call(brm, all_args)
   w <- 1
-  n_tries <- 5
   pass <- are_chains_correct(fit, chs)
   # try with bayesnec random initial values
   while (!pass & w < n_tries) {
