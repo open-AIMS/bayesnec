@@ -12,7 +12,7 @@ validate_family <- function(family) {
     if (family == "beta_binomial2") {
       family <- get(family)
     } else {
-      family <- get(family)(link = "identity")
+      family <- get(family)()#(link = "identity")
     }
   }
   if (!inherits(family, "family")) {
