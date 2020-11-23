@@ -50,7 +50,7 @@ This project started with an implementation of the *NEC* model based on that des
 
 Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively it is possible to fit a custom model set, specific model set or all of the available models. Further information on fitting multi models using `bayesnec` can be found in the [Multi model usage][e2] vignette. For detailed information on the models available in `bayesnec` see the [Model details][e2b] vignette.
 
-Important information on the current package is contained in the `bayesnec` help-files and the Model details [vignette][e2b].
+Important information on the current package is contained in the `bayesnec` help-files and the [Model details][e2b] vignette.
 
 This package is currently under development. We are keen on any feedback regarding usage, and especially bug reporting that includes an easy to run self contained reproducible example of unexpected behaviour or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy to run reproducible example is not supplied.
 
@@ -76,7 +76,7 @@ library(tidyverse)
 # Examples
 ## Fitting the neclin model using `bnec`
 
-Here we include some examples showing how to use the package to fit an *NEC* model to binomial, proportional, count and continuous response (y) data. The examples are those used by Gerard Ricardo at: <https://github.com/gerard-ricardo/NECs/blob/master/NECs>. Here we show how to run a similar `jags` models using the `bayesnec` package. Note however, the default behaviour in `bayesnec` is to use native link functions for each family, thus we fit the "neclin" model for these examples, rather than the "nec3param" model which is not valid for use with the logit or log link (see the [Model details][e2b] for more information, and the models available in `bayesnec`).
+Here we include some examples showing how to use the package to fit an *NEC* model to binomial, proportional, count and continuous response (y) data. The examples are those used by Gerard Ricardo at: <https://github.com/gerard-ricardo/NECs/blob/master/NECs>. Here we show how to run a similar `jags` models using the `bayesnec` package. Note however, the default behaviour in `bayesnec` is to use native link functions for each family, thus we fit the "neclin" model for these examples, rather than the "nec3param" model which is not valid for use with the logit or log link (see the [Model details][e2b] vignette for more information and the models available in `bayesnec`).
 
 ### Binomial data
 
