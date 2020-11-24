@@ -2,8 +2,8 @@
 #'
 #' Beta-binomial wrapper LPMF
 #'
-#' @param y observation success[i].
-#' @param trials observation trials[i].
+#' @param y vector of observation successes.
+#' @param trials vector of observation trials.
 #' @param mu posterior mu.
 #' @param phi posterior phi.
 #'
@@ -20,7 +20,7 @@ beta_binomial2_lpmf <- function(y, mu, phi, trials) {
 #'
 #' Beta-binomial wrapper RNG
 #'
-#' @param trials observation trials[i].
+#' @param trials vector of observation trials..
 #' @param mu posterior mu.
 #' @param phi posterior phi.
 #'

@@ -1,25 +1,28 @@
 Package: bayesnec
 Title: A Bayesian No-Effect- Concentration (NEC) Algorithm
-Version: 1.0
+Version: 1.0.1
 Authors@R: c(person("Rebecca", "Fisher", email = "r.fisher@aims.gov.au", role = c("aut", "cre")), person("Diego","Barneche",role="aut"), person("Gerard","Ricardo",role="aut"), person("David","Fox",role="aut"))
 Description: Implementation of No-Effect-Concentration estimation that uses brms to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating ECX values, but more particularly NEC.
 Depends:
     R (>= 3.6.0),    
-    brms,
-    extraDistr
+    brms
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.1
 Biarch: true
 Imports:
-    loo
+    loo,
+    extraDistr,
+    plyr,
+    dplyr,
+    tidyr,
+    tidyselect,
+    lazyeval
 Suggests:
     knitr,
     rmarkdown,
-    plyr,
-    dplyr,
-    ggplot2
+    tidyverse
 VignetteBuilder: knitr
 URL: https://open-aims.github.io/bayesnec
 BugReports: https://github.com/open-aims/bayesnec/issues
