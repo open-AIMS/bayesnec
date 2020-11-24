@@ -78,6 +78,8 @@ check_chains.default <- function(x, ...) {
 #'
 #' @inheritParams check_chains.default
 #'
+#' @inherit check_chains.default return examples
+#'
 #' @export
 check_chains <- function(x, ...) {
   UseMethod("check_chains")
@@ -89,6 +91,8 @@ check_chains <- function(x, ...) {
 #' by \code{\link{bnec}}.
 #'
 #' @inheritParams check_chains.default
+#'
+#' @inherit check_chains.default return examples
 #'
 #' @export
 check_chains.bayesnecfit <- function(x, ...) {
@@ -107,6 +111,8 @@ check_chains.bayesnecfit <- function(x, ...) {
 #' string will indicate the user wants to save the plots.
 #'
 #' @importFrom grDevices pdf dev.off
+#'
+#' @inherit check_chains.default return examples
 #'
 #' @export
 check_chains.bayesmanecfit <- function(x, ..., filename = NA) {
