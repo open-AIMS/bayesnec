@@ -17,12 +17,12 @@
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesnecfit}} returned by \code{\link{bnec}}.}
+\code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values against the lowest observed
-concentration (assumed to be the control), to estimate NEC as an
-interpolated NOEC value from smooth ECx curves.}
+significance of the predicted posterior values.
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
 \item{precision}{The number of unique x values over which to find nsec -
 large values will make the nsec estimate more precise.}
