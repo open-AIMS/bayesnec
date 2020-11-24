@@ -7,7 +7,8 @@
 make_good_inits(model, x, y, n_trials = 1000, ...)
 }
 \arguments{
-\item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
+\item{model}{A \code{\link[base]{character}} vector indicating the model(s)
+to fit. See Details for more information.}
 
 \item{x}{A \code{\link[base]{numeric}} vector containing the x predictor.}
 

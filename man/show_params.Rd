@@ -7,7 +7,8 @@
 show_params(model = "all")
 }
 \arguments{
-\item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
+\item{model}{A \code{\link[base]{character}} vector indicating the model(s)
+to fit. See Details for more information.}
 }
 \value{
 An object of class

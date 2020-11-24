@@ -9,7 +9,7 @@ expand_manec(
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
-  wi_method = "stacking"
+  loo_controls = list(wi_method = "pseudobma")
 )
 }
 \arguments{
@@ -18,12 +18,19 @@ expand_manec(
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
-\item{precision}{The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.}
+\item{precision}{The length of the x vector used for posterior predictions,
+and over which to extract ECx values. Large values will be slower but more
+precise.}
 
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+\item{sig_val}{Probability value to use as the lower quantile to test
+significance of the predicted posterior values
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
-\item{wi_method}{A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.}
+\item{loo_controls}{A named \code{\link[base]{list}} containing the desired
+arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
+the default wi_method to "pseudobma". See help documentation
+?loo_model_weights from package loo.}
 }
 \value{
 A list of model statistical output derived from the input model list
