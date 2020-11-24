@@ -7,10 +7,16 @@
 check_chains(x, name = "", filename = "")
 }
 \arguments{
-\item{x}{An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.}
+\item{x}{An object of class \code{\link{bayesnecfit}} or
+\code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.}
 
-\item{filename}{An optional character vector to be used as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non empty character string will indicate the user wants to save the plots.}
+\item{name}{Label to add outside of plot.}
+
+\item{filename}{An optional character vector to be used as a pdf filename
+in the case of a \code{\link{bayesmanecfit}}. Any non empty character
+string will indicate the user wants to save the plots.}
 }
 \description{
-Plots mcmc chains for a \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}
+Plots mcmc chains for a \code{\link{bayesnecfit}} or
+\code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}
 }

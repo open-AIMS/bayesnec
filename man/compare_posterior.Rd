@@ -17,9 +17,12 @@ compare_posterior(
 )
 }
 \arguments{
-\item{x}{A named list \code{\link[base]{list}} of objects of class \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by \code{\link{bnec}}.}
+\item{x}{A named list \code{\link[base]{list}} of objects of class
+\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
+\code{\link{bnec}}.}
 
-\item{comparison}{The posterior predictions to compare, takes values of "nec", "nsec", "ecx" or "fitted".}
+\item{comparison}{The posterior predictions to compare, takes values of
+"nec", "nsec", "ecx" or "fitted".}
 
 \item{ecx_val}{The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
 and "absolute"), defaults to 10.}
@@ -28,25 +31,27 @@ and "absolute"), defaults to 10.}
 
 \item{hormesis_def}{A \code{\link[base]{character}} vector, taking values of "max" or "control". See Details.}
 
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+\item{sig_val}{Probability value to use as the lower quantile to test
+significance of the predicted posterior values against the lowest observed
+concentration (assumed to be the control), to estimate NEC as an
+interpolated NOEC value from smooth ECx curves.}
 
 \item{precision}{The number of unique x values over which to find ECx - large values will make the ECx estimate more
 precise.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx}
 
-\item{n_samples}{The number of bootstrap iterations to perform}
+\item{n_samples}{The number of bootstrap iterations to perform.}
 }
 \value{
-A named list containing bootstrapped differences in posterior predictions of the \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits contained in x. See Details.
+A named list containing bootstrapped differences in posterior
+predictions of the \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}
+model fits contained in x. See Details.
 }
 \description{
 Extracts posterior predicted values from a list of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and compares these via bootstrap re sampling.
-}
-\details{
-
+\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+compares these via bootstrap re sampling.
 }
 \examples{
 \dontrun{

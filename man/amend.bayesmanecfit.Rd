@@ -7,7 +7,8 @@
 \method{amend}{bayesmanecfit}(object, ...)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesmanecfit}}, as returned
+by \code{\link{bnec}}.}
 
 \item{...}{Additional arguments to \code{\link{amend}}}
 }
@@ -15,7 +16,8 @@
 All successfully fitted \code{\link{bayesmanecfit}} model fits.
 }
 \description{
-Modifies an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
+Modifies an existing \code{\link{bayesmanecfit}} object, for example, by
+adding or removing fitted models.
 }
 \examples{
 \dontrun{
