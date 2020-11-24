@@ -80,7 +80,8 @@ define_prior <- function(model, family, predictor, response) {
   pr_slope <- prior_string(paste0("gamma(2, ",
                                   1 / ((diff(range(response)) /
                                     diff(range(predictor))) / 2),
-                                  ")"), nlpar = "slope", lb = 0)
+                                  ")"),
+                           nlpar = "slope", lb = 0)
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d

@@ -16,35 +16,46 @@
 )
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesnecfit}} or
+\code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
-\item{sig_val}{Probability value to use as the lower quantile to test significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+\item{sig_val}{Probability value to use as the lower quantile to test
+significance of the predicted posterior values.
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
-\item{precision}{The number of unique x values over which to find nsec - large values will make the nsec estimate more
-precise.}
+\item{precision}{The number of unique x values over which to find nsec -
+large values will make the nsec estimate more precise.}
 
-\item{posterior}{A \code{\link[base]{logical}} value indicating if the full posterior sample of calculated nsec values should be returned
-instead of just the median and 95 credible intervals}
+\item{posterior}{A \code{\link[base]{logical}} value indicating if the full
+posterior sample of calculated nsec values should be returned instead of
+just the median and 95 credible intervals.}
 
-\item{x_range}{A range of x values over which to consider extracting nsec}
+\item{x_range}{A range of x values over which to consider extracting nsec.}
 
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values of "max" or "control". See Details.}
+\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
+of "max" or "control". See Details.}
 
-\item{xform}{A function to apply to the returned estimated concentration values}
+\item{xform}{A function to apply to the returned estimated concentration
+values.}
 
-\item{prob_vals}{A vector indicating the probability values over which to return the estimated nsec value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).}
+\item{prob_vals}{A vector indicating the probability values over which to
+return the estimated nsec value. Defaults to 0.5 (median) and 0.025 and
+0.975 (95 percent credible intervals).}
 }
 \value{
-A vector containing the estimated nsec value, including upper and lower 95\% credible interval bounds.
+A vector containing the estimated nsec value, including upper and
+lower 95\% credible interval bounds.
 }
 \description{
 Extracts the predicted nsec value as desired from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 }
 \details{
-For \code{hormesis_def}, if "max", then nsec values are calculated as a decline from the maximum estimates (i.e. the peak at nec);
-if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.
+For \code{hormesis_def}, if "max", then nsec values are calculated
+as a decline from the maximum estimates (i.e. the peak at nec);
+if "control", then ECx values are calculated relative to the control, which
+is assumed to be the lowest observed concentration.
 }
 \examples{
 \dontrun{

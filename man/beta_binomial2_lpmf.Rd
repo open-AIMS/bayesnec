@@ -7,13 +7,13 @@
 beta_binomial2_lpmf(y, mu, phi, trials)
 }
 \arguments{
-\item{y}{observation success\link{i}.}
+\item{y}{vector of observation successes.}
 
 \item{mu}{posterior mu.}
 
 \item{phi}{posterior phi.}
 
-\item{trials}{observation trials\link{i}.}
+\item{trials}{vector of observation trials.}
 }
 \description{
 Beta-binomial wrapper LPMF

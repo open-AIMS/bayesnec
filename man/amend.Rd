@@ -16,11 +16,14 @@ amend(
 )
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesmanecfit}}, as returned
+by \code{\link{bnec}}.}
 
-\item{drop}{A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.}
+\item{drop}{A \code{\link[base]{character}} vector containing the names of
+model types you which to drop for the modified fit.}
 
-\item{add}{A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.}
+\item{add}{A \code{\link[base]{character}} vector containing the names of
+model types to add to the modified fit.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -33,13 +36,15 @@ against the lowest observed concentration (assumed to be the control), to estima
 If missing, \code{\link{bnec}} will figure out a baseline prior for each parameter. It can also be specified as a named \code{\link[base]{list}} where each
 name needs to correspond to the same string as "model". See details.}
 
-\item{wi_method}{A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.}
+\item{wi_method}{A \code{\link[base]{character}} vector containing the
+desired weighting method to pass to \code{\link{loo_model_weights}}.}
 }
 \value{
 All successfully fitted \code{\link{bayesmanecfit}} model fits.
 }
 \description{
-Amends an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
+Amends an existing \code{\link{bayesmanecfit}} object, for example, by
+adding or removing fitted models.
 }
 \examples{
 \dontrun{

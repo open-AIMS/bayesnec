@@ -7,7 +7,8 @@
 \method{predict}{bayesmanecfit}(object, ..., precision = 100, x_range = NA)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesmanecfit}} as
+returned by \code{\link{bnec}}.}
 
 \item{...}{unused.}
 

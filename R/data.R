@@ -12,3 +12,11 @@
 #' @name nec_data
 #' @docType data
 NULL
+
+#' Custom beta-binomial family
+#'
+#' @format An object of class \code{\link[brms]{customfamily}}
+#'
+#' @name beta_binomial2
+#' @docType data
+NULL
