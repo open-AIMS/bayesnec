@@ -1,11 +1,11 @@
 #' expand_nec
-#' 
+#'
 #' Assigns class to a prebayesnecfit object
 #'
 #' @inheritParams bnec
-#' 
+#'
 #' @param object An object of class prebayesnecfit.
-#' 
+#'
 #' @return An object of class bayesnecfit.
 #' @importFrom brms posterior_epred posterior_samples
 #' @importFrom stats quantile fitted residuals
@@ -72,7 +72,7 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
 #' Extracts a range of statistics from a list of bayesnecfit model fits.
 #'
 #' @inheritParams bnec
-#' 
+#'
 #' @param object a bayesmanecfit mod_fits output list, as returned by
 #' \code{\link{bnec}} when more than one model is supplied.
 #'
@@ -80,7 +80,8 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
 #' @importFrom loo loo_model_weights
 #' @importFrom stats quantile
 expand_manec <- function(object, x_range = NA, precision = 1000,
-                         sig_val = 0.01, wi_method = "stacking") {
+                         sig_val = 0.01,
+                         loo_controls = list(wi_method = "pseudobma")) {
   model_set <- names(object)
   success_models <- model_set[sapply(object, class) == "prebayesnecfit"]
   if (length(success_models) == 0) {
@@ -114,9 +115,9 @@ expand_manec <- function(object, x_range = NA, precision = 1000,
                       "dispersion_Q2.5", "dispersion_Q97.5")
   mod_stats <- data.frame(model = success_models)
   mod_stats$waic <- sapply(object, extract_waic)
-  mod_stats$wi <- loo_model_weights(lapply(object, extract_loo), method = wi_method)
+  loo_mw_args <- c(list(x = lapply(object, extract_loo)), loo_controls)
+  mod_stats$wi <- do.call(loo_model_weights, loo_mw_args)
   mod_stats <- cbind(mod_stats, disp)
-
   sample_size <- extract_simdat(object[[1]])$n_samples
 
   nec_posterior <- unlist(lapply(success_models, w_nec_calc,
