@@ -11,8 +11,7 @@
 #' model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of
 #' model types to add to the modified fit.
-#' @param wi_method A \code{\link[base]{character}} vector containing the
-#' desired weighting method to pass to \code{\link{loo_model_weights}}.
+#'
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'
 #' @examples
@@ -35,18 +34,19 @@
 #'
 #' @export
 amend.default <- function(object, drop, add, x_range = NA,
-                          precision = 1000, sig_val = 0.01,
-                          priors, wi_method = "stacking") {
-  if (missing(drop) && missing(add) && missing(wi_method)) {
+                          precision = 1000, sig_val = 0.01, priors,
+                          loo_controls = list(wi_method = "pseudobma")) {
+  wi_method <- loo_controls$wi_method
+  if (missing(drop) && missing(add) && is.null(wi_method)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop, or a wi_method;\n",
             "Returning original model set and weights")
     return(object)
   }
 
-  if (!missing(wi_method) && !wi_method %in% c("stacking", "pseudobma")) {
+  if (!is.null(wi_method) && !wi_method %in% c("stacking", "pseudobma")) {
     stop("The weighting method you have supplied is invalid,",
-         " it must be one of 'stacking' or 'pseudobma'")
+         " it must be one of \"stacking\" or \"pseudobma\"")
   }
 
   model_set <- names(object$mod_fits)
@@ -58,12 +58,12 @@ amend.default <- function(object, drop, add, x_range = NA,
   }
   if (is.logical(model_set)) {
      message("Returning original model set")
-   if (!grepl(wi_method, class(object$mod_stats$wi))) {
+    if (!grepl(wi_method, class(object$mod_stats$wi))) {
      message("wi_method not modified, please call amend and specify only",
              " wi_method if you do not need to drop or add any models and",
              " simply want to update the weighting method.")
-   }
-   return(object)
+    }
+    return(object)
   }
   simdat <- extract_simdat(object$mod_fits[[1]])
   data <- object$mod_fits[[1]]$fit$data
@@ -98,7 +98,7 @@ amend.default <- function(object, drop, add, x_range = NA,
   }
   mod_fits <- expand_manec(mod_fits, x_range = x_range,
                            precision = precision, sig_val = sig_val,
-                           wi_method = wi_method)
+                           loo_controls = loo_controls)
   if (!inherits(mod_fits, "prebayesnecfit")) {
     allot_class(mod_fits, "bayesmanecfit")
   } else {
@@ -124,7 +124,7 @@ amend.default <- function(object, drop, add, x_range = NA,
 #' @export
 amend <- function(object, drop, add, x_range = NA,
                   precision = 1000, sig_val = 0.01,
-                  priors, wi_method = "stacking") {
+                  priors, loo_controls = list(wi_method = "pseudobma")) {
   UseMethod("amend")
 }
 
