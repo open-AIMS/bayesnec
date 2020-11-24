@@ -2,6 +2,9 @@
 
 S3method(amend,bayesmanecfit)
 S3method(amend,default)
+S3method(check_chains,bayesmanecfit)
+S3method(check_chains,bayesnecfit)
+S3method(check_chains,default)
 S3method(ecx,bayesmanecfit)
 S3method(ecx,bayesnecfit)
 S3method(ecx,default)
