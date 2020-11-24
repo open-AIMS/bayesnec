@@ -13,16 +13,6 @@ stopifnot(require(knitr))
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
-plat <- Sys.info()["sysname"]
-if (plat == "Windows") {
-  library(rstan)
-  example(stan_model,
-          run.dontrun = TRUE,
-          verbose = TRUE)
-}
-```
-
 ```{r echo = FALSE}
 e1 <- "https://open-aims.github.io/bayesnec/articles/example1.html"
 e2 <- "https://open-aims.github.io/bayesnec/articles/example2.html"
@@ -36,7 +26,6 @@ e4 <- "https://open-aims.github.io/bayesnec/articles/example4.html"
 [e2b]: `r e2b`
 [e3]: `r e3`
 [e4]: `r e4`
-
 
 # `bayesnec`
 
