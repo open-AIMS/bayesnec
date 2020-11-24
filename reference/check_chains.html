@@ -48,7 +48,7 @@
 
 <meta property="og:title" content="check_chains — check_chains" />
 <meta property="og:description" content="Plots mcmc chains for a bayesnecfit or
-bayesmanecfit model fit as returned by bnec" />
+bayesmanecfit model fit as returned by bnec." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -81,7 +81,7 @@ bayesmanecfit model fit as returned by bnec" />
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.1</span>
       </span>
     </div>
 
@@ -114,6 +114,9 @@ bayesmanecfit model fit as returned by bnec" />
     </li>
   </ul>
 </li>
+<li>
+  <a href="../news/index.html">Changelog</a>
+</li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
@@ -142,10 +145,10 @@ bayesmanecfit model fit as returned by bnec" />
 
     <div class="ref-description">
     <p>Plots mcmc chains for a <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or
-<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> model fit as returned by <code><a href='bnec.html'>bnec</a></code></p>
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> model fit as returned by <code><a href='bnec.html'>bnec</a></code>.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>check_chains</span><span class='op'>(</span><span class='va'>x</span>, name <span class='op'>=</span> <span class='st'>""</span>, filename <span class='op'>=</span> <span class='st'>""</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>check_chains</span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>...</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -156,14 +159,8 @@ bayesmanecfit model fit as returned by bnec" />
 <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>name</th>
-      <td><p>Label to add outside of plot.</p></td>
-    </tr>
-    <tr>
-      <th>filename</th>
-      <td><p>An optional character vector to be used as a pdf filename
-in the case of a <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>. Any non empty character
-string will indicate the user wants to save the plots.</p></td>
+      <th>...</th>
+      <td><p>arguments used when class is <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p></td>
     </tr>
     </table>
 
