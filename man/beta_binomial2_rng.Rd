@@ -11,7 +11,7 @@ beta_binomial2_rng(mu, phi, trials)
 
 \item{phi}{posterior phi.}
 
-\item{trials}{observation trials\link{i}.}
+\item{trials}{vector of observation trials..}
 }
 \description{
 Beta-binomial wrapper RNG

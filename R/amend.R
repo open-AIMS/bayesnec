@@ -1,13 +1,18 @@
 #' amend.default
 #'
-#' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
-#' 
+#' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by
+#' adding or removing fitted models.
+#'
 #' @inheritParams bnec
-#' 
-#' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
-#' @param drop A \code{\link[base]{character}} vector containing the names of model types you which to drop for the modified fit.
-#' @param add A \code{\link[base]{character}} vector containing the names of model types to add to the modified fit.
-#' @param wi_method A \code{\link[base]{character}} vector containing the desired weighting method to pass to \code{\link{loo_model_weights}}.
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}}, as returned
+#' by \code{\link{bnec}}.
+#' @param drop A \code{\link[base]{character}} vector containing the names of
+#' model types you which to drop for the modified fit.
+#' @param add A \code{\link[base]{character}} vector containing the names of
+#' model types to add to the modified fit.
+#' @param wi_method A \code{\link[base]{character}} vector containing the
+#' desired weighting method to pass to \code{\link{loo_model_weights}}.
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'
 #' @examples
@@ -38,11 +43,12 @@ amend.default <- function(object, drop, add, x_range = NA,
             "Returning original model set and weights")
     return(object)
   }
-  
+
   if (!missing(wi_method) && !wi_method %in% c("stacking", "pseudobma")) {
-    stop("The weighting method you have supplied is invalid, it must be one of 'stacking' or 'pseudobma'")
+    stop("The weighting method you have supplied is invalid,",
+         " it must be one of 'stacking' or 'pseudobma'")
   }
-  
+
   model_set <- names(object$mod_fits)
   if (!missing(drop)) {
     model_set <- handle_set(model_set, drop = drop)
@@ -53,9 +59,11 @@ amend.default <- function(object, drop, add, x_range = NA,
   if (is.logical(model_set)) {
      message("Returning original model set")
    if (!grepl(wi_method, class(object$mod_stats$wi))) {
-     message("wi_method not modified, please call amend and specify only wi_method if you do not need to drop or add any models and simply want to update the weighting method.")   
+     message("wi_method not modified, please call amend and specify only",
+             " wi_method if you do not need to drop or add any models and",
+             " simply want to update the weighting method.")
    }
-      return(object)
+   return(object)
   }
   simdat <- extract_simdat(object$mod_fits[[1]])
   data <- object$mod_fits[[1]]$fit$data
@@ -89,7 +97,8 @@ amend.default <- function(object, drop, add, x_range = NA,
     }
   }
   mod_fits <- expand_manec(mod_fits, x_range = x_range,
-                           precision = precision, sig_val = sig_val, wi_method = wi_method)
+                           precision = precision, sig_val = sig_val,
+                           wi_method = wi_method)
   if (!inherits(mod_fits, "prebayesnecfit")) {
     allot_class(mod_fits, "bayesmanecfit")
   } else {
@@ -102,14 +111,16 @@ amend.default <- function(object, drop, add, x_range = NA,
 
 #' amend
 #'
-#' Amends an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
-#' 
+#' Amends an existing \code{\link{bayesmanecfit}} object, for example, by
+#' adding or removing fitted models.
+#'
 #' @inheritParams amend.default
-#' 
-#' @param object An object of class \code{\link{bayesmanecfit}}, as returned by \code{\link{bnec}}.
-#' 
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}}, as returned
+#' by \code{\link{bnec}}.
+#'
 #' @inherit amend.default return examples
-#' 
+#'
 #' @export
 amend <- function(object, drop, add, x_range = NA,
                   precision = 1000, sig_val = 0.01,
@@ -119,12 +130,13 @@ amend <- function(object, drop, add, x_range = NA,
 
 #' amend.bayesmanecfit
 #'
-#' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by adding or removing fitted models.
+#' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by
+#' adding or removing fitted models.
 #'
 #' @inheritParams amend
-#' 
+#'
 #' @param ... Additional arguments to \code{\link{amend}}
-#' 
+#'
 #' @inherit amend return examples
 #' @export
 amend.bayesmanecfit <- function(object, ...) {
