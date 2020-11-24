@@ -134,15 +134,16 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 
 #' predict.bayesmanecfit
 #'
-#' @param object An object of class \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
+#' @param object An object of class \code{\link{bayesmanecfit}} as
+#' returned by \code{\link{bnec}}.
 #' @param ... unused.
 #' @param precision the number of x values over which to predict values.
 #' @param x_range The range of x values over which to make predictions.
-#' 
+#'
 #' @return A list containing x and fitted y, with up and lw values
-#' 
+#'
 #' @importFrom brms posterior_epred
-#' 
+#'
 #' @export
 predict.bayesmanecfit <- function(object, ..., precision = 100,
                                 x_range = NA) {
@@ -170,13 +171,6 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
   pred_data <- cbind(x = x_seq,
                      data.frame(t(apply(pred_out, 2,
                                         estimates_summary))))
-  
-  
-  return(list(data = pred_data,
-              posterior = pred_out))
-  
-  }
-
-
-
-
+  list(data = pred_data,
+       posterior = pred_out)  
+}
