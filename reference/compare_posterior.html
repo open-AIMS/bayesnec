@@ -48,7 +48,8 @@
 
 <meta property="og:title" content="compare_posterior — compare_posterior" />
 <meta property="og:description" content="Extracts posterior predicted values from a list of class
-bayesnecfit or bayesnecfit model fits and compares these via bootstrap re sampling." />
+bayesnecfit or bayesnecfit model fits and
+compares these via bootstrap re sampling." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -142,7 +143,8 @@ bayesnecfit or bayesnecfit model fits and compares these via bootstrap re sampli
 
     <div class="ref-description">
     <p>Extracts posterior predicted values from a list of class
-<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> model fits and compares these via bootstrap re sampling.</p>
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> model fits and
+compares these via bootstrap re sampling.</p>
     </div>
 
     <pre class="usage"><span class='fu'>compare_posterior</span><span class='op'>(</span>
@@ -162,11 +164,14 @@ bayesnecfit or bayesnecfit model fits and compares these via bootstrap re sampli
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>x</th>
-      <td><p>A named list <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of objects of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
+      <td><p>A named list <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of objects of class
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> returned by
+<code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
       <th>comparison</th>
-      <td><p>The posterior predictions to compare, takes values of "nec", "nsec", "ecx" or "fitted".</p></td>
+      <td><p>The posterior predictions to compare, takes values of
+"nec", "nsec", "ecx" or "fitted".</p></td>
     </tr>
     <tr>
       <th>ecx_val</th>
@@ -183,8 +188,10 @@ and "absolute"), defaults to 10.</p></td>
     </tr>
     <tr>
       <th>sig_val</th>
-      <td><p>Probability value to use as the lower quantile to test significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
+      <td><p>Probability value to use as the lower quantile to test
+significance of the predicted posterior values.
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
       <th>precision</th>
@@ -197,18 +204,15 @@ precise.</p></td>
     </tr>
     <tr>
       <th>n_samples</th>
-      <td><p>The number of bootstrap iterations to perform</p></td>
+      <td><p>The number of bootstrap iterations to perform.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A named list containing bootstrapped differences in posterior predictions of the <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> model fits contained in x. See Details.</p>
-    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
-
-    
-
-
+    <p>A named list containing bootstrapped differences in posterior
+predictions of the <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>
+model fits contained in x. See Details.</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
