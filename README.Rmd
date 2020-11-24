@@ -16,8 +16,8 @@ knitr::opts_chunk$set(
 ```
 
 ```{r, echo = FALSE}
-version <- as.vector(read.dcf('DESCRIPTION')[, 'Version'])
-version <- gsub('-', '.', version)
+version <- as.vector(read.dcf("DESCRIPTION")[, "Version"])
+version <- gsub("-", ".", version)
 ```
 
 # bayesnec <img src="man/figures/logo.png" width = 180 alt="bayesnec Logo" align="right" />
