@@ -47,7 +47,8 @@
 
 
 <meta property="og:title" content="bnec — bnec" />
-<meta property="og:description" content="Fits a variety of NEC models using Bayesian analysis and provides a model averaged predictions based on WAIC model weights" />
+<meta property="og:description" content="Fits a variety of NEC models using Bayesian analysis and provides a model
+averaged predictions based on WAIC model weights" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -143,7 +144,8 @@
     </div>
 
     <div class="ref-description">
-    <p>Fits a variety of NEC models using Bayesian analysis and provides a model averaged predictions based on WAIC model weights</p>
+    <p>Fits a variety of NEC models using Bayesian analysis and provides a model
+averaged predictions based on WAIC model weights</p>
     </div>
 
     <pre class="usage"><span class='fu'>bnec</span><span class='op'>(</span>
@@ -161,7 +163,7 @@
   warmup <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>floor</a></span><span class='op'>(</span><span class='va'>iter</span><span class='op'>/</span><span class='fl'>5</span><span class='op'>)</span> <span class='op'>*</span> <span class='fl'>4</span>,
   <span class='va'>inits</span>,
   n_tries <span class='op'>=</span> <span class='fl'>5</span>,
-  wi_method <span class='op'>=</span> <span class='st'>"stacking"</span>,
+  loo_controls <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>wi_method <span class='op'>=</span> <span class='st'>"pseudobma"</span><span class='op'>)</span>,
   <span class='va'>...</span>
 <span class='op'>)</span></pre>
 
@@ -170,35 +172,44 @@
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>data</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for the model.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for
+the model.</p></td>
     </tr>
     <tr>
       <th>x_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the concentration (x) variable.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
+containing the concentration (x) variable.</p></td>
     </tr>
     <tr>
       <th>y_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading containing the response (y) variable.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
+containing the response (y) variable.</p></td>
     </tr>
     <tr>
       <th>model</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s) to fit. See Details for more information.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
+to fit. See Details for more information.</p></td>
     </tr>
     <tr>
       <th>trials_var</th>
-      <td><p>The column heading indicating the column for the number of "trials" for binomial or beta_binomial2 response data.
+      <td><p>The column heading indicating the column for the number
+of "trials" for binomial or beta_binomial2 response data.
 If not supplied, the model may run but will not be the model you intended!</p></td>
     </tr>
     <tr>
       <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical distribution (family)
-to use for the y (response) data. See details.</p></td>
+      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or
+an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical
+distribution (family) to use for the y (response) data. See details.</p></td>
     </tr>
     <tr>
       <th>priors</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which specifies user-desired prior distributions of model parameters.
-If missing, <code>bnec</code> will figure out a baseline prior for each parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> where each
-name needs to correspond to the same string as "model". See details.</p></td>
+      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which
+specifies user-desired prior distributions of model parameters.
+If missing, <code>bnec</code> will figure out a baseline prior for each
+parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
+where each name needs to correspond to the same string as "model". See
+details.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -206,81 +217,127 @@ name needs to correspond to the same string as "model". See details.</p></td>
     </tr>
     <tr>
       <th>precision</th>
-      <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
+      <td><p>The length of the x vector used for posterior predictions,
+and over which to extract ECx values. Large values will be slower but more
+precise.</p></td>
     </tr>
     <tr>
       <th>sig_val</th>
-      <td><p>Probability value to use as the lower quantile to test significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
+      <td><p>Probability value to use as the lower quantile to test
+significance of the predicted posterior values
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
       <th>iter</th>
-      <td><p>The number of iterations to be passed to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>. Defaults to 2e3 to be consistent with brms defaults.</p></td>
+      <td><p>The number of iterations to be passed to
+<code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>. Defaults to 2e3 to be consistent with brms
+defaults.</p></td>
     </tr>
     <tr>
       <th>warmup</th>
-      <td><p>A positive integer specifying number of warmup (a.k.a. burnin) iterations. This also specifies the number
-of iterations used for stepsize adaptation, so warmup samples should not be used for inference. The number of warmup
-should not be larger than "iter" and the default is "floor(iter / 5) * 4".</p></td>
+      <td><p>A positive integer specifying number of warmup (a.k.a.
+burnin) iterations. This also specifies the number of iterations used for
+stepsize adaptation, so warmup samples should not be used for inference.
+The number of warmup should not be larger than "iter" and the default is
+"floor(iter / 5) * 4".</p></td>
     </tr>
     <tr>
       <th>inits</th>
-      <td><p>Optional. Initialisation values. Must be a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the number of chains, a
-nd names correspond to the parameter names of a given model.</p></td>
+      <td><p>Optional. Initialisation values. Must be a
+<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the
+number of chains, and names correspond to the parameter names of a given
+model.</p></td>
     </tr>
     <tr>
       <th>n_tries</th>
       <td><p>Number of times to attempt a fit.</p></td>
     </tr>
     <tr>
-      <th>wi_method</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the desired weighting method to pass to <code><a href='https://rdrr.io/pkg/brms/man/loo_model_weights.brmsfit.html'>loo_model_weights</a></code>.</p></td>
+      <th>loo_controls</th>
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
+arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It sets
+the default wi_method to "pseudobma". See help documentation
+?loo_model_weights from package loo.</p></td>
     </tr>
     <tr>
       <th>...</th>
-      <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> via <code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p></td>
+      <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> via
+<code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>If argument model is a single string, then an object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>; if many strings or a set,
+    <p>If argument model is a single string, then an object of class
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>; if many strings or a set,
 an object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>As some concentration-response data will use zero concentration which can cause numerical estimation issues, a
-small offset is added (1 / 10th of the next lowest value) to zero values of concentration where <code>x_var</code> are distributed
-on a continuous scale from 0 to infinity, or are bounded to 0, or 1.</p>
-<p>The argument <code>family</code> indicates the family to use for the response variable in the <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> call,
-and may currently be "Beta" / Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial2" / beta_binomial2, "Gamma" / Gamma / Gamma(), "gaussian" / gaussian / gaussian(),
-"negbinomial" / negbinomial / negbinomial(), or "poisson" / poisson / poisson(). Notice that families Beta and negbinomial are exported objects
-of package <span class="pkg">brms</span>, so the user needs to load <span class="pkg">brms</span> before calling these families.
-Other families can be added as required, please raise an <a href='https://github.com/AIMS/bayesnec/issues'>issue</a> on the GitHub development site if your
-required family is not currently available.
-If not supplied, the appropriate distribution will be guessed based on the characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>. Guesses
-include all of the above families but "negbinomial" and "betabinomimal2" because these requires knowledge on whether the data is over-dispersed. As explained below in the
-Return section, the user can extract the dispersion parameter from a bnec call, and if they so wish, can refit the model using the "negbinomial" family.</p>
-<p>The argument <code>model</code> may be a character string indicating the names of the desired model. see ?models for more details, and the list of models available. If a recongised model name is provided a single model of the specified type is fit, and <code>bnec</code> returns a model object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
-<p>If a vector of two or more of the available models is supplied, <code>bnec</code> returns a model object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>
-containing model averaged predictions for the supplied models, providing they were successfully fitted.</p>
-<p>Model averaging is achieved through a weighted sample of each fitted models posterior predictions, with weights derived
-using the <code><a href='https://rdrr.io/pkg/brms/man/loo_model_weights.brmsfit.html'>loo_model_weights</a></code> from <span class="pkg">brms</span>. Individual model fits can be extracted from the <code>mod_fits</code>
-element and can be examined individually.</p>
-<p><code>model</code> may also be one of "all", meaning all of the available models will be fit;
-"ecx" meaning only models excluding a specific NEC step parameter fill be fit; "nec" meaning only models with a specific NEC step
-parameter will be fit; or "bot_free" meaning only models without a "bot" parameter (without a bottom plateau) will be fit. Notice that
-if one of these group strings is provided together with a user-specified named list for the argument <code>priors</code>, the list names need to contain
-the actual model names, and not the group string , e.g. if <code>model = "ecx"</code> and <code>priors = my_priors</code> then <code><a href='https://rdrr.io/r/base/names.html'>names(my_priors)</a></code> must
-contain <code><a href='models.html'>models("ecx")</a></code>. To check available models and associated parameters for each group,
-use the function <code><a href='models.html'>models</a></code> or to check the parameters of a specific model use the function <code><a href='show_params.html'>show_params</a></code>.</p>
+    <p>As some concentration-response data will use zero concentration
+which can cause numerical estimation issues, a small offset is added (1 /
+10th of the next lowest value) to zero values of concentration where
+<code>x_var</code> are distributed on a continuous scale from 0 to infinity, or
+are bounded to 0, or 1.</p>
+<p>The argument <code>family</code> indicates the family to use for the response
+variable in the <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> call, and may currently be "Beta" /
+Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial2" /
+beta_binomial2, "Gamma" / Gamma / Gamma(), "gaussian" / gaussian /
+gaussian(), "negbinomial" / negbinomial / negbinomial(), or "poisson" /
+poisson / poisson(). Notice that families Beta and negbinomial are exported
+objects of package <span class="pkg">brms</span>, so the user needs to load <span class="pkg">brms</span> before
+calling these families.</p>
+<p>Other families can be added as required, please raise an
+<a href='https://github.com/AIMS/bayesnec/issues'>issue</a> on the GitHub
+development site if your required family is not currently available.</p>
+<p>If not supplied, the appropriate distribution will be guessed based on the
+characteristics of the input data through <code><a href='check_data.html'>check_data</a></code>. Guesses
+include all of the above families but "negbinomial" and "betabinomimal2"
+because these requires knowledge on whether the data is over-dispersed. As
+explained below in the Return section, the user can extract the dispersion
+parameter from a bnec call, and if they so wish, can refit the model using
+the "negbinomial" family.</p>
+<p>The argument <code>model</code> may be a character string indicating the names of
+the desired model. see ?models for more details, and the list of models
+available. If a recongised model name is provided a single model of the
+specified type is fit, and <code>bnec</code> returns a model object of
+class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
+<p>If a vector of two or more of the available models is supplied,
+<code>bnec</code> returns a model object of class
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> containing model averaged predictions for the
+supplied models, providing they were successfully fitted.</p>
+<p>Model averaging is achieved through a weighted sample of each fitted models
+posterior predictions, with weights derived using the
+<code><a href='https://rdrr.io/pkg/brms/man/loo_model_weights.brmsfit.html'>loo_model_weights</a></code> from <span class="pkg">brms</span>. Individual model
+fits can be extracted from the <code>mod_fits</code> element and can be examined
+individually.</p>
+<p><code>model</code> may also be one of "all", meaning all of the available models
+will be fit; "ecx" meaning only models excluding a specific NEC step
+parameter will be fit; "nec" meaning only models with a specific NEC step
+parameter will be fit; or "bot_free" meaning only models without a "bot"
+parameter (without a bottom plateau) will be fit. Notice that
+if one of these group strings is provided together with a user-specified
+named list for the argument <code>priors</code>, the list names need to contain
+the actual model names, and not the group string , e.g. if
+<code>model = "ecx"</code> and <code>priors = my_priors</code> then
+<code><a href='https://rdrr.io/r/base/names.html'>names(my_priors)</a></code> must #' contain <code><a href='models.html'>models("ecx")</a></code>. To check
+available models and associated parameters for each group,
+use the function <code><a href='models.html'>models</a></code> or to check the parameters of a
+specific model use the function <code><a href='show_params.html'>show_params</a></code>.</p>
 <p>Models are fitted using model formula passed to <span class="pkg">brms</span>.</p>
-<p>All models provide an estimate for NEC. For model types with "nec" as a prefix, NEC is directly estimated as parameter "nec"
-in the model. Models with "ecx" as a prefix are continuous curve models, typically used for extracting ECx values
-from concentration response data. In this instance the NEC value is defined as the concentration at which there is
-a user supplied (see <code>sig_val</code>) percentage certainty (based on the Bayesian posterior estimate) that the response
-falls below the estimated value of the upper asymptote (top) of the response (i.e. the response value is significantly
+<p>All models provide an estimate for NEC. For model types with "nec" as a
+prefix, NEC is directly estimated as parameter "nec"
+in the model. Models with "ecx" as a prefix are continuous curve models,
+typically used for extracting ECx values
+from concentration response data. In this instance the NEC value is defined
+as the concentration at which there is
+a user supplied (see <code>sig_val</code>) percentage certainty (based on the
+Bayesian posterior estimate) that the response
+falls below the estimated value of the upper asymptote (top) of the
+response (i.e. the response value is significantly
 lower than that expected in the case of no exposure).
-The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha value of 0.01 for a one-sided test of significance.</p>
+The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha
+value of 0.01 for a one-sided test of significance.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>

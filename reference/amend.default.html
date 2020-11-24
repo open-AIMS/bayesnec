@@ -157,7 +157,7 @@ adding or removing fitted models.</p>
   precision <span class='op'>=</span> <span class='fl'>1000</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
   <span class='va'>priors</span>,
-  wi_method <span class='op'>=</span> <span class='st'>"stacking"</span>
+  loo_controls <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>wi_method <span class='op'>=</span> <span class='st'>"pseudobma"</span><span class='op'>)</span>
 <span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -184,23 +184,32 @@ model types to add to the modified fit.</p></td>
     </tr>
     <tr>
       <th>precision</th>
-      <td><p>The length of the x vector used for posterior predictions, and over which to extract ECx values. Large values will be slower but more precise.</p></td>
+      <td><p>The length of the x vector used for posterior predictions,
+and over which to extract ECx values. Large values will be slower but more
+precise.</p></td>
     </tr>
     <tr>
       <th>sig_val</th>
-      <td><p>Probability value to use as the lower quantile to test significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
+      <td><p>Probability value to use as the lower quantile to test
+significance of the predicted posterior values
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
       <th>priors</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which specifies user-desired prior distributions of model parameters.
-If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline prior for each parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> where each
-name needs to correspond to the same string as "model". See details.</p></td>
+      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which
+specifies user-desired prior distributions of model parameters.
+If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline prior for each
+parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
+where each name needs to correspond to the same string as "model". See
+details.</p></td>
     </tr>
     <tr>
-      <th>wi_method</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
-desired weighting method to pass to <code><a href='https://rdrr.io/pkg/brms/man/loo_model_weights.brmsfit.html'>loo_model_weights</a></code>.</p></td>
+      <th>loo_controls</th>
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
+arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It sets
+the default wi_method to "pseudobma". See help documentation
+?loo_model_weights from package loo.</p></td>
     </tr>
     </table>
 
