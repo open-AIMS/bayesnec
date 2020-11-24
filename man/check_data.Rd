@@ -7,19 +7,25 @@
 check_data(data, x_var, y_var, trials_var, family, model)
 }
 \arguments{
-\item{data}{A \code{\link[base]{data.frame}} containing the data to use for the model.}
+\item{data}{A \code{\link[base]{data.frame}} containing the data to use for
+the model.}
 
-\item{x_var}{A \code{\link[base]{character}} indicating the column heading containing the concentration (x) variable.}
+\item{x_var}{A \code{\link[base]{character}} indicating the column heading
+containing the concentration (x) variable.}
 
-\item{y_var}{A \code{\link[base]{character}} indicating the column heading containing the response (y) variable.}
+\item{y_var}{A \code{\link[base]{character}} indicating the column heading
+containing the response (y) variable.}
 
-\item{trials_var}{The column heading indicating the column for the number of "trials" for binomial or beta_binomial2 response data.
+\item{trials_var}{The column heading indicating the column for the number
+of "trials" for binomial or beta_binomial2 response data.
 If not supplied, the model may run but will not be the model you intended!}
 
-\item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family)
-to use for the y (response) data. See details.}
+\item{family}{Either a \code{\link[base]{character}} string, a function, or
+an object of class \code{\link[stats]{family}} defining the statistical
+distribution (family) to use for the y (response) data. See details.}
 
-\item{model}{A \code{\link[base]{character}} vector indicating the model(s) to fit. See Details for more information.}
+\item{model}{A \code{\link[base]{character}} vector indicating the model(s)
+to fit. See Details for more information.}
 }
 \value{
 A \code{\link[base]{list}} of modified elements

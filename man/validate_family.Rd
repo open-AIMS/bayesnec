@@ -7,8 +7,9 @@
 validate_family(family)
 }
 \arguments{
-\item{family}{Either a \code{\link[base]{character}} string, a function, or an object of class \code{\link[stats]{family}} defining the statistical distribution (family)
-to use for the y (response) data. See details.}
+\item{family}{Either a \code{\link[base]{character}} string, a function, or
+an object of class \code{\link[stats]{family}} defining the statistical
+distribution (family) to use for the y (response) data. See details.}
 }
 \value{
 An object of class \code{\link[stats]{family}}.
