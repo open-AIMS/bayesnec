@@ -13,16 +13,6 @@ stopifnot(require(knitr))
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
-plat <- Sys.info()["sysname"]
-if (plat == "Windows") {
-  library(rstan)
-  example(stan_model,
-          run.dontrun = TRUE,
-          verbose = TRUE)
-}
-```
-
 # Overview
 
 With `bayesnec` main workhorse function `bnec` the user can specify a series of arguments that can be passed to the `brm` function of brms, so we will not deal with those here. Rather, we refer the user to the original vignettes in brms for those. The main focus here is to showcase how the user can specify their own priors, should they wish to. This might be needed depending on the model and the data because `bayesnec` tries to find reasonable and yet relatively vague priors for the model parameters if the user decides not to provide anything. So below we show how the user can specify priors in multiple ways for objects of class `bayesnecfit` and `bayesmanecfit`.
