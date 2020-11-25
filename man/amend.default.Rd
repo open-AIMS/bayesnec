@@ -12,7 +12,7 @@
   precision = 1000,
   sig_val = 0.01,
   priors,
-  loo_controls = list(wi_method = "pseudobma")
+  loo_controls = list(method = "pseudobma")
 )
 }
 \arguments{

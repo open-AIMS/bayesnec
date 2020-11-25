@@ -35,8 +35,8 @@
 #' @export
 amend.default <- function(object, drop, add, x_range = NA,
                           precision = 1000, sig_val = 0.01, priors,
-                          loo_controls = list(wi_method = "pseudobma")) {
-  wi_method <- loo_controls$wi_method
+                          loo_controls = list(method = "pseudobma")) {
+  wi_method <- loo_controls$method
   if (missing(drop) && missing(add) && is.null(wi_method)) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop, or a wi_method;\n",

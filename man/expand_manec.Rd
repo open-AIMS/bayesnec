@@ -9,7 +9,7 @@ expand_manec(
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
-  loo_controls = list(wi_method = "pseudobma")
+  loo_controls = list(method = "pseudobma")
 )
 }
 \arguments{

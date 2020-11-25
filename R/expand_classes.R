@@ -81,7 +81,7 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
 #' @importFrom stats quantile
 expand_manec <- function(object, x_range = NA, precision = 1000,
                          sig_val = 0.01,
-                         loo_controls = list(wi_method = "pseudobma")) {
+                         loo_controls = list(method = "pseudobma")) {
   model_set <- names(object)
   success_models <- model_set[sapply(object, class) == "prebayesnecfit"]
   if (length(success_models) == 0) {
