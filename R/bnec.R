@@ -189,7 +189,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 2e4, warmup = floor(iter / 5) * 4,
                  inits, n_tries = 5,
-                 loo_controls = list(wi_method = "pseudobma"), ...) {
+                 loo_controls = list(method = "pseudobma"), ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
