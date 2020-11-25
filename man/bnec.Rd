@@ -19,7 +19,7 @@ bnec(
   warmup = floor(iter/5) * 4,
   inits,
   n_tries = 5,
-  loo_controls = list(wi_method = "pseudobma"),
+  loo_controls = list(method = "pseudobma"),
   ...
 )
 }
