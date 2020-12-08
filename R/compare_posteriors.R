@@ -46,6 +46,17 @@ compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
                               sig_val = 0.01, precision = 1000, x_range = NA,
                               n_samples = 2000) {
+  if (is.na(x_range)){
+    x_range <- range(unlist(
+     lapply(x, FUN=function(l){
+       if (class(l)=="bayesmanecfit"){l$w_pred_vals$data$x} else if 
+         (class(l)=="bayesnecfit"){l$pred_vals$data$x} else {
+           stop("Not all objects in x are of class bayesnecfit or bayesmanecfit")
+         }
+      })
+    ), na.rm=TRUE)
+  }
+
   if (comparison == "nec") {
     posterior_list <- lapply(x, function(m) {
       if (class(m) == "bayesnecfit") {
@@ -71,7 +82,8 @@ compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
     posterior_list <- lapply(x, function(m, ...) {
       predict(m, ...)$posterior
     }, precision = precision, x_range = x_range)
-    x_vec <- predict(x[[1]], precision = precision, x_range = x_range)$data$x
+    x_vec <- seq(min(x_range), max(x_range), length = precision)
+    
   }
   names(posterior_list) <- names(x)
   if (comparison != "fitted") {
@@ -143,7 +155,7 @@ extract_diffs <- function(diff_list) {
 #' @importFrom dplyr %>% if_else mutate
 #' @importFrom plyr ldply
 extract_diffs_fitted <- function(all_diff_list) {
-  ldply(all_diff_list, extract_diffs, .id = "x") %>%
+  plyr::ldply(all_diff_list, extract_diffs, .id = "x") %>%
     mutate(gr_0 = if_else(diff >= 0, 1, 0))
 }
 
@@ -162,7 +174,7 @@ melt_diff <- function(diff, order = NULL, diff_name = "diff") {
   diff_df$rows <- row.names(diff)
   diff_df %>%
     gather_(key_col = "cols",
-            value_col = interp("diff_name", diff_name = as.name(diff_name)),
+            value_col = lazyeval::interp("diff_name", diff_name = as.name(diff_name)),
             order, na.rm = TRUE) %>%
     unite(comparison, rows, cols, sep = "-") %>%
     data.frame
