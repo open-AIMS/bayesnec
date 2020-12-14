@@ -6,15 +6,15 @@ library(brms)
 mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
                            "nechorme4", "necsigm", "neclin", "neclinhorme"),
                    ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
-                           "ecxwb1", "ecxwb2"),
+                           "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3"),
                    all = c("nec3param", "nec4param", "nechorme", "nechorme4",
-                           "necsigm", "neclin", "neclinhorme",
+                           "necsigm", "neclin", "neclinhorme", "ecxwb1p3", "ecxwb2p3",
                            "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
                            "ecxwb1", "ecxwb2"),
                    bot_free = c("nec3param", "nechorme", "necsigm", "neclin",
-                                "ecxlin", "ecxexp", "ecxsigm", "neclinhorme"),
+                                "ecxlin", "ecxexp", "ecxsigm", "neclinhorme", "ecxwb1p3", "ecxwb2p3"),
                    zero_bounded = c("nec3param", "nechorme", "necsigm",
-                                    "ecxexp", "ecxsigm"))
+                                    "ecxexp", "ecxsigm", "ecxwb1p3", "ecxwb2p3"))
 
 mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",
@@ -156,27 +156,54 @@ bf_ecx4param_deflt <- brms::bf(y ~ top + (bot - top) /
                                nl = TRUE)
 
 # ecxwb1
+# c + (d - c) * exp(- exp(b*(x - e)))
 bf_ecxwb1_binom <- brms::bf(y | trials(trials) ~ bot + (top - bot) *
-                              exp(-exp(beta * (x - ec50))),
+                              exp(-exp(beta * (log(x) - log(ec50)))),
                             bot + ec50 + top + beta ~ 1,
                             nl = TRUE)
 
 bf_ecxwb1_deflt <- brms::bf(y ~ bot + (top - bot) *
-                              exp(-exp(beta * (x - ec50))),
+                              exp(-exp(beta * (log(x) - log(ec50)))),
                             bot + ec50 + top + beta ~ 1,
+                            nl = TRUE)
+
+# ecxwb1p3
+# 0 + (d - 0) * exp(- exp(b*(x - e)))
+bf_ecxwb1p3_binom <- brms::bf(y | trials(trials) ~ 0 + (top - 0) *
+                              exp(-exp(beta * (log(x) - log(ec50)))),
+                            ec50 + top + beta ~ 1,
+                            nl = TRUE)
+
+bf_ecxwb1p3_deflt <- brms::bf(y ~ 0 + (top - 0) *
+                              exp(-exp(beta * (log(x) - log(ec50)))),
+                            ec50 + top + beta ~ 1,
                             nl = TRUE)
 
 # ecxwb2
-bf_ecxwb2_binom <- brms::bf(y | trials(trials) ~top + (bot - top) *
+# c + (d - c)*(1 - exp(- exp(b*(x - e))))
+bf_ecxwb2_binom <- brms::bf(y | trials(trials) ~ bot + (top - bot) *
                               (1 - exp(-exp(beta *
-                                (x - ec50)))),
+                                (log(x) - log(ec50))))),
                             bot + ec50 + top + beta ~ 1,
                             nl = TRUE)
 
-bf_ecxwb2_deflt <- brms::bf(y ~ top + (bot - top) *
+bf_ecxwb2_deflt <- brms::bf(y ~ bot + (top - bot) *
                               (1 - exp(-exp(beta *
-                                (x - ec50)))),
+                                (log(x) - log(ec50))))),
                             bot + ec50 + top + beta ~ 1,
+                            nl = TRUE)
+
+# ecxwb2p3
+bf_ecxwb2p3_binom <- brms::bf(y | trials(trials) ~ 0 + (top - 0) *
+                              (1 - exp(-exp(beta *
+                                              (log(x) - log(ec50))))),
+                            ec50 + top + beta ~ 1,
+                            nl = TRUE)
+
+bf_ecxwb2p3_deflt <- brms::bf(y ~ 0 + (top - 0) *
+                              (1 - exp(-exp(beta *
+                                              (log(x) - log(ec50))))),
+                            ec50 + top + beta ~ 1,
                             nl = TRUE)
 
 ###############
@@ -202,7 +229,8 @@ pred_functions <- list("nec3param" = pred_nec3param, "nec4param" = pred_nec4para
                        "nechorme4" = pred_nechorme4, "necsigm" = pred_necsigm,
                        "neclin" = pred_neclin, "neclinhorme" = pred_neclinhorme, 
                        "ecxlin" = pred_ecxlin, "ecxexp" = pred_ecxexp, "ecxsigm"= pred_ecxsigm,    
-                       "ecx4param" = pred_ecx4param, "ecxwb1" = pred_ecxwb1, "ecxwb2" = pred_ecxwb2)
+                       "ecx4param" = pred_ecx4param, "ecxwb1" = pred_ecxwb1, "ecxwb2" = pred_ecxwb2, 
+                       "ecxwb1p3" = pred_ecxwb1p3, "ecxwb2p3" = pred_ecxwb2p3)
 
 ####################
 # SAVE INTERNAL DATA
@@ -234,6 +262,10 @@ save(mod_groups, mod_fams,
      bf_ecxwb1_deflt, bf_ecxwb1_binom,
      # ecxwb2
      bf_ecxwb2_deflt, bf_ecxwb2_binom,
+     # ecxwb1p3
+     bf_ecxwb1p3_deflt, bf_ecxwb1p3_binom,
+     # ecxwb2p3
+     bf_ecxwb2p3_deflt, bf_ecxwb2p3_binom,
      stan_funs, stanvars,
      pred_functions,
      file = "R/sysdata.rda")
