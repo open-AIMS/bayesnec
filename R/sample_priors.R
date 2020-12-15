@@ -5,12 +5,18 @@
 #' @inheritParams bnec
 #' 
 #' @param priors an object of class "brmsprior" from package \pkg{brms}.
+#' 
+#' @param plot NA returns a list of numeric vectors of sampled priors, 
+#' "ggplot" returns a ggplot and 
+#' "base" returns a histogram in base R
+#' 
+#' @param n_samples the number of prior samples to return
 #'
 #' @importFrom stats rgamma rnorm rbeta runif
 #' 
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
-sample_priors <- function(priors, n_samples = 10000, plot = NA) {
+sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   fcts <- c(gamma = rgamma,
             normal = rnorm,
             beta = rbeta,
@@ -41,9 +47,8 @@ sample_priors <- function(priors, n_samples = 10000, plot = NA) {
           
           
           if (length(bounds) == 2) {
-            
-            out[[j]] <- sample(out[[j]][which(out[[j]] <= min(bounds) |
-                                              out[[j]] >= max(bounds))],
+            out[[j]] <- sample(out[[j]][which(out[[j]] >= min(bounds) &
+                                              out[[j]] <= max(bounds))],
                                n_samples, replace = TRUE)
             
           } else if (length(bounds) == 1) {

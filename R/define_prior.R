@@ -56,7 +56,7 @@ define_prior <- function(model, family, predictor, response) {
                beta_binomial2 = "beta(1, 5)",
                beta = "beta(1, 5)")
   x_prs <- c(beta = "beta(2, 2)",
-             Gamma = paste0("gamma(2, ",
+             Gamma = paste0("gamma(5, ",
                             1 / (quantile(predictor,
                                           probs = 0.5) / 2),
                             ")"),
@@ -75,7 +75,8 @@ define_prior <- function(model, family, predictor, response) {
                           lb = min(predictor), ub = max(predictor))
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 1)", nlpar = "d")
-  pr_beta <- prior_string("gamma(0.5, 2)", nlpar = "beta", lb = 0)
+  pr_beta <- prior_string("normal(0, 1)", nlpar = "beta")
+  #pr_beta <- prior_string("gamma(2, 0.2)", nlpar = "beta", lb = 0) 
   # scaling dependent priors
   pr_slope <- prior_string(paste0("gamma(2, ",
                                   1 / ((diff(range(response)) /
@@ -88,6 +89,9 @@ define_prior <- function(model, family, predictor, response) {
   }
   if (model %in% c("ecx4param", "ecxwb1", "ecxwb2")) {
     priors <- pr_beta + pr_top + pr_bot + pr_ec50
+  }
+  if (model %in% c("ecxwb1p3", "ecxwb2p3")) {
+    priors <- pr_beta + pr_top + pr_ec50
   }
   if (model == "neclin") {
     priors <- pr_top + pr_slope + pr_nec
