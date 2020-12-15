@@ -78,7 +78,7 @@
 <ul class="nav navbar-nav navbar-right">
 <li>
   <a href="https://github.com/open-aims/bayesnec/">
-    <span class="fab fa fab fa-github fa-lg"></span>
+    <span class="fab fa-github fa-lg"></span>
      
   </a>
 </li>
@@ -156,7 +156,7 @@ f(x_i, \eta) = \begin{cases}
 <h3 class="hasAnchor">
 <a href="#ecxlin" class="anchor"></a>ecxlin</h3>
 <p>The <strong>ecxlin</strong> model is a basic linear decay model, given by the equation <span class="math display">\[y_i = \tau - \alpha x_i\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ top - slope * x 
+<pre><code>## y ~ top - exp(slope) * x 
 ## top ~ 1
 ## slope ~ 1</code></pre>
 <p>Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for <code>0</code>, <code>Inf</code> bounded data (gamma, poisson, negative binomial with identity link).</p>
@@ -165,26 +165,26 @@ f(x_i, \eta) = \begin{cases}
 <h3 class="hasAnchor">
 <a href="#ecxexp" class="anchor"></a>ecxexp</h3>
 <p>The <strong>ecxexp</strong> model is a basic exponential decay model, given by the equation <span class="math display">\[y_i = \tau e^{-\beta x_i}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ top * exp(-beta * x) 
+<pre><code>## y ~ top * exp(-exp(beta) * x) 
 ## top ~ 1
 ## beta ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for gaussian data or the use of a logit or log link function.</p>
+<p>The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="ecxsigm" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxsigm" class="anchor"></a>ecxsigm</h3>
 <p>The <strong>ecxsigm</strong> model is a simple sigmoidal decay model, given by the equation <span class="math display">\[y_i = \tau e^{-\beta x_i^{e^\epsilon}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ top * exp(-beta * x^exp(d)) 
+<pre><code>## y ~ top * exp(-exp(beta) * x^exp(d)) 
 ## d ~ 1
 ## top ~ 1
 ## beta ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for gaussian data or the use of a logit or log link function.</p>
+<p>The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="ecx4param" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecx4param" class="anchor"></a>ecx4param</h3>
 <p>The <strong>ecx4param</strong> model is a 4 parameter sigmoidal decay model, given by the equation <span class="math display">\[y_i = \frac{\tau + (\delta - \tau)}{1 + e^{\beta (\text{EC}_{50} - x_i)}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ top + (bot - top)/(1 + exp((ec50 - x) * beta)) 
+<pre><code>## y ~ top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) 
 ## bot ~ 1
 ## ec50 ~ 1
 ## top ~ 1
@@ -193,23 +193,74 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxwb1" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxwb1" class="anchor"></a>ecxwb1</h3>
-<p>The <strong>ecxwb1</strong> model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull1 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{\beta (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ bot + (top - bot) * exp(-exp(beta * (x - ec50))) 
+<p>The <strong>ecxwb1</strong> model is a 4 parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{\beta (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) 
 ## bot ~ 1
 ## ec50 ~ 1
 ## top ~ 1
 ## beta ~ 1</code></pre>
 </div>
+<div id="ecxwb1p3" class="section level3">
+<h3 class="hasAnchor">
+<a href="#ecxwb1p3" class="anchor"></a>ecxwb1p3</h3>
+<p>The <strong>ecxwb1p3</strong> model is a 3 parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = {0} + (\tau - {0}) e^{-e^{\beta (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) 
+## ec50 ~ 1
+## top ~ 1
+## beta ~ 1</code></pre>
+<p>The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function.</p>
+</div>
 <div id="ecxwb2" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxwb2" class="anchor"></a>ecxwb2</h3>
-<p>The <strong>ecxwb2</strong> model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull2 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta) (1 - e^{-e^{\beta (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ top + (bot - top) * (1 - exp(-exp(beta * (x - ec50)))) 
+<p>The <strong>ecxwb2</strong> model is a 4 parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta) (1 - e^{-e^{\beta (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
 ## bot ~ 1
 ## ec50 ~ 1
 ## top ~ 1
 ## beta ~ 1</code></pre>
 <p>While very similar the <strong>ecxwb1</strong>, according to <span class="citation">(Ritz et al. 2016)</span> fitted <strong>ecxwb1</strong> and <strong>ecxwb2</strong> models can differ slightly.</p>
+</div>
+<div id="ecxwb2p3" class="section level3">
+<h3 class="hasAnchor">
+<a href="#ecxwb2p3" class="anchor"></a>ecxwb2p3</h3>
+<p>The <strong>ecxwb2</strong> model is a 3 parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = {0} + (\tau -{0}) (1 - e^{-e^{\beta (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
+## ec50 ~ 1
+## top ~ 1
+## beta ~ 1</code></pre>
+<p>While very similar the <strong>ecxwb1</strong>, according to <span class="citation">(Ritz et al. 2016)</span> fitted <strong>ecxwb1</strong> and <strong>ecxwb2</strong> models can differ slightly. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function.</p>
+</div>
+<div id="ecxll5" class="section level3">
+<h3 class="hasAnchor">
+<a href="#ecxll5" class="anchor"></a>ecxll5</h3>
+<p>The <strong>ecxll5</strong> model is a 5 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.5 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^f 
+## bot ~ 1
+## top ~ 1
+## beta ~ 1
+## ec50 ~ 1
+## f ~ 1</code></pre>
+</div>
+<div id="ecxll4" class="section level3">
+<h3 class="hasAnchor">
+<a href="#ecxll4" class="anchor"></a>ecxll4</h3>
+<p>The <strong>ecxll4</strong> model is a 4 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.4 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) 
+## bot ~ 1
+## top ~ 1
+## beta ~ 1
+## ec50 ~ 1</code></pre>
+</div>
+<div id="ecxll3" class="section level3">
+<h3 class="hasAnchor">
+<a href="#ecxll3" class="anchor"></a>ecxll3</h3>
+<p>The <strong>ecxll3</strong> model is a 3 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.3 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) 
+## top ~ 1
+## beta ~ 1
+## ec50 ~ 1</code></pre>
+<p>The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function.</p>
 </div>
 </div>
 <div id="nec-models" class="section level2">
@@ -229,17 +280,17 @@ f(x_i, \eta) = \begin{cases}
 <h3 class="hasAnchor">
 <a href="#nec3param" class="anchor"></a>nec3param</h3>
 <p>The <strong>nec3param</strong> model is a basic exponential decay model equivalent to <strong>ecxexp</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i = \tau e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ top * exp(-beta * (x - nec) * step(x - nec)) 
+<pre><code>## y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 ## top ~ 1
 ## beta ~ 1
 ## nec ~ 1</code></pre>
-<p>For binomial data in the case of identity link this model is equivalent to that in <span class="citation">(Fox 2010)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian data or the use of a logit or log link function.</p>
+<p>For binomial data in the case of identity link this model is equivalent to that in <span class="citation">(Fox 2010)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="nec4param" class="section level3">
 <h3 class="hasAnchor">
 <a href="#nec4param" class="anchor"></a>nec4param</h3>
 <p>The <strong>nec4param</strong> model is a 3 parameter decay model with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ bot + (top - bot) * exp(-beta * (x - nec) * step(x - nec)) 
+<pre><code>## y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 ## bot ~ 1
 ## top ~ 1
 ## beta ~ 1
@@ -249,18 +300,18 @@ f(x_i, \eta) = \begin{cases}
 <h3 class="hasAnchor">
 <a href="#nechorme" class="anchor"></a>nechorme</h3>
 <p>The <strong>nechorme</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + \alpha x_i) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ (top + slope * x) * exp(-beta * (x - nec) * step(x - nec)) 
+<pre><code>## y ~ (top + exp(slope) * x) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 ## top ~ 1
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used. Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link).</p>
+<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used. Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link).</p>
 </div>
 <div id="neclinhorme" class="section level3">
 <h3 class="hasAnchor">
 <a href="#neclinhorme" class="anchor"></a>neclinhorme</h3>
 <p>The <strong>neclinhorme</strong> model is a basic linear decay model with an “nec” step function equivalent to <strong>neclin</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + \alpha x_i) - \beta \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula.</p>
-<pre><code>## y ~ (top + slope * x) - beta * (x - nec) * step(x - nec) 
+<pre><code>## y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) 
 ## top ~ 1
 ## beta ~ 1
 ## nec ~ 1
@@ -271,7 +322,7 @@ f(x_i, \eta) = \begin{cases}
 <h3 class="hasAnchor">
 <a href="#nechorme4" class="anchor"></a>nechorme4</h3>
 <p>The <strong>nechorme4</strong> model is 4 parameter decay model with an “nec” step function equivalent to <strong>nec4param</strong> with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = \delta + ((\tau + \alpha x_i) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ bot + ((top + slope * x) - bot) * exp(-beta * (x - nec) * step(x - nec)) 
+<pre><code>## y ~ bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 ## bot ~ 1
 ## top ~ 1
 ## beta ~ 1
@@ -283,12 +334,12 @@ f(x_i, \eta) = \begin{cases}
 <h3 class="hasAnchor">
 <a href="#necsigm" class="anchor"></a>necsigm</h3>
 <p>The <strong>necsigm</strong> model is a basic exponential decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i \tau e^{-\beta g(x_i, \eta, epsilon) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ top * exp(-beta * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
+<pre><code>## y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
 ## top ~ 1
 ## beta ~ 1
 ## nec ~ 1
 ## d ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for gaussian data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an “nec” step function because where there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of no-effect-concentrations using this model are not currently recommended without further testing.</p>
+<p>The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an “nec” step function because where there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of no-effect-concentrations using this model are not currently recommended without further testing.</p>
 </div>
 </div>
 </div>

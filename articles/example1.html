@@ -78,7 +78,7 @@
 <ul class="nav navbar-nav navbar-right">
 <li>
   <a href="https://github.com/open-aims/bayesnec/">
-    <span class="fab fa fab fa-github fa-lg"></span>
+    <span class="fab fa-github fa-lg"></span>
      
   </a>
 </li>
@@ -174,10 +174,10 @@
               y_var <span class="op">=</span> <span class="st">"suc"</span>, model <span class="op">=</span> <span class="st">"neclin"</span>,
               trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span></code></pre></div>
 <pre><code>## 
-## SAMPLING FOR MODEL '336996607b74146fd0df91231a9c348f' NOW (CHAIN 1).
+## SAMPLING FOR MODEL 'c9a58199162a7c28e1591eb84cd1f254' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 8.1e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.81 seconds.
+## Chain 1: Gradient evaluation took 7.5e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.75 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -194,15 +194,15 @@
 ## Chain 1: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 3.51962 seconds (Warm-up)
-## Chain 1:                1.06052 seconds (Sampling)
-## Chain 1:                4.58014 seconds (Total)
+## Chain 1:  Elapsed Time: 3.27289 seconds (Warm-up)
+## Chain 1:                1.03262 seconds (Sampling)
+## Chain 1:                4.30551 seconds (Total)
 ## Chain 1: 
 ## 
-## SAMPLING FOR MODEL '336996607b74146fd0df91231a9c348f' NOW (CHAIN 2).
+## SAMPLING FOR MODEL 'c9a58199162a7c28e1591eb84cd1f254' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 3e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.3 seconds.
+## Chain 2: Gradient evaluation took 2.9e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.29 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -219,15 +219,15 @@
 ## Chain 2: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 3.56657 seconds (Warm-up)
-## Chain 2:                1.13784 seconds (Sampling)
-## Chain 2:                4.70441 seconds (Total)
+## Chain 2:  Elapsed Time: 3.47731 seconds (Warm-up)
+## Chain 2:                1.06749 seconds (Sampling)
+## Chain 2:                4.5448 seconds (Total)
 ## Chain 2: 
 ## 
-## SAMPLING FOR MODEL '336996607b74146fd0df91231a9c348f' NOW (CHAIN 3).
+## SAMPLING FOR MODEL 'c9a58199162a7c28e1591eb84cd1f254' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 3.1e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.31 seconds.
+## Chain 3: Gradient evaluation took 2.9e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.29 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -244,15 +244,15 @@
 ## Chain 3: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 3.56168 seconds (Warm-up)
-## Chain 3:                1.09717 seconds (Sampling)
-## Chain 3:                4.65885 seconds (Total)
+## Chain 3:  Elapsed Time: 3.27658 seconds (Warm-up)
+## Chain 3:                1.02767 seconds (Sampling)
+## Chain 3:                4.30425 seconds (Total)
 ## Chain 3: 
 ## 
-## SAMPLING FOR MODEL '336996607b74146fd0df91231a9c348f' NOW (CHAIN 4).
+## SAMPLING FOR MODEL 'c9a58199162a7c28e1591eb84cd1f254' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 3.2e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.32 seconds.
+## Chain 4: Gradient evaluation took 3e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.3 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -269,9 +269,9 @@
 ## Chain 4: Iteration: 18000 / 20000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 20000 / 20000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 4.29115 seconds (Warm-up)
-## Chain 4:                1.18379 seconds (Sampling)
-## Chain 4:                5.47494 seconds (Total)
+## Chain 4:  Elapsed Time: 3.31428 seconds (Warm-up)
+## Chain 4:                0.983405 seconds (Sampling)
+## Chain 4:                4.29769 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code><a href="https://rdrr.io/r/graphics/plot.default.html">plot(exp_1$fit)</a></code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -296,9 +296,9 @@
 ## 
 ## Population-Level Effects: 
 ##                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## top_Intercept       1.69      0.05     1.59     1.80 1.00     7396     6945
-## slope_Intercept     1.92      0.08     1.78     2.08 1.00     5726     5366
-## nec_Intercept       3.72      0.06     3.60     3.82 1.00     5461     5092
+## top_Intercept       1.69      0.05     1.59     1.80 1.00     7257     7505
+## slope_Intercept     1.92      0.08     1.77     2.07 1.00     6743     6695
+## nec_Intercept       3.71      0.06     3.60     3.82 1.00     6127     6590
 ## 
 ## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -320,7 +320,7 @@
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></code></pre></div>
 <pre><code>## Estimate     Q2.5    Q97.5 
-## 19.34850 12.95029 30.05121</code></pre>
+## 19.38542 13.02463 30.28824</code></pre>
 </div>
 <div id="beta-binomial" class="section level3">
 <h3 class="hasAnchor">

@@ -120,7 +120,7 @@
       <ul class="nav navbar-nav navbar-right">
         <li>
   <a href="https://github.com/open-aims/bayesnec/">
-    <span class="fab fa fab fa-github fa-lg"></span>
+    <span class="fab fa-github fa-lg"></span>
      
   </a>
 </li>
@@ -167,140 +167,14 @@ to fit. See Details for more information.</p></td>
     <pre class="examples"><div class='input'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec'>bayesnec</a></span><span class='op'>)</span>
 <span class='co'># default to all models (i.e. model = "all")</span>
 <span class='fu'>show_params</span><span class='op'>(</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; $nec3param
-#&gt; y ~ top * exp(-beta * (x - nec) * step(x - nec)) 
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; nec ~ 1
-#&gt; 
-#&gt; $nec4param
-#&gt; y ~ bot + (top - bot) * exp(-beta * (x - nec) * step(x - nec)) 
-#&gt; bot ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; nec ~ 1
-#&gt; 
-#&gt; $nechorme
-#&gt; y ~ (top + slope * x) * exp(-beta * (x - nec) * step(x - nec)) 
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; nec ~ 1
-#&gt; slope ~ 1
-#&gt; 
-#&gt; $nechorme4
-#&gt; y ~ bot + ((top + slope * x) - bot) * exp(-beta * (x - nec) * step(x - nec)) 
-#&gt; bot ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; nec ~ 1
-#&gt; slope ~ 1
-#&gt; 
-#&gt; $necsigm
-#&gt; y ~ top * exp(-beta * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; nec ~ 1
-#&gt; d ~ 1
-#&gt; 
-#&gt; $neclin
-#&gt; y ~ top - slope * (x - nec) * step(x - nec) 
-#&gt; top ~ 1
-#&gt; slope ~ 1
-#&gt; nec ~ 1
-#&gt; 
-#&gt; $neclinhorme
-#&gt; y ~ (top + slope * x) - beta * (x - nec) * step(x - nec) 
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; nec ~ 1
-#&gt; slope ~ 1
-#&gt; 
-#&gt; $ecxlin
-#&gt; y ~ top - slope * x 
-#&gt; top ~ 1
-#&gt; slope ~ 1
-#&gt; 
-#&gt; $ecxexp
-#&gt; y ~ top * exp(-beta * x) 
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; 
-#&gt; $ecxsigm
-#&gt; y ~ top * exp(-beta * x^exp(d)) 
-#&gt; d ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; 
-#&gt; $ecx4param
-#&gt; y ~ top + (bot - top)/(1 + exp((ec50 - x) * beta)) 
-#&gt; bot ~ 1
-#&gt; ec50 ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; 
-#&gt; $ecxwb1
-#&gt; y ~ bot + (top - bot) * exp(-exp(beta * (x - ec50))) 
-#&gt; bot ~ 1
-#&gt; ec50 ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; 
-#&gt; $ecxwb2
-#&gt; y ~ top + (bot - top) * (1 - exp(-exp(beta * (x - ec50)))) 
-#&gt; bot ~ 1
-#&gt; ec50 ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; </div><div class='input'><span class='co'># single model</span>
+</div><div class='output co'>#&gt; <span class='error'>Error in get(paste("bf", x, "deflt", sep = "_")): object 'bf_ecxll2_deflt' not found</span></div><div class='input'><span class='co'># single model</span>
 <span class='fu'>show_params</span><span class='op'>(</span>model <span class='op'>=</span> <span class='st'>"nec3param"</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; y ~ top * exp(-beta * (x - nec) * step(x - nec)) 
+</div><div class='output co'>#&gt; y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 #&gt; top ~ 1
 #&gt; beta ~ 1
 #&gt; nec ~ 1</div><div class='input'><span class='co'># group of models</span>
 <span class='fu'>show_params</span><span class='op'>(</span>model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec3param"</span>, <span class='st'>"ecx"</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; $nec3param
-#&gt; y ~ top * exp(-beta * (x - nec) * step(x - nec)) 
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; nec ~ 1
-#&gt; 
-#&gt; $ecx4param
-#&gt; y ~ top + (bot - top)/(1 + exp((ec50 - x) * beta)) 
-#&gt; bot ~ 1
-#&gt; ec50 ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; 
-#&gt; $ecxlin
-#&gt; y ~ top - slope * x 
-#&gt; top ~ 1
-#&gt; slope ~ 1
-#&gt; 
-#&gt; $ecxexp
-#&gt; y ~ top * exp(-beta * x) 
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; 
-#&gt; $ecxsigm
-#&gt; y ~ top * exp(-beta * x^exp(d)) 
-#&gt; d ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; 
-#&gt; $ecxwb1
-#&gt; y ~ bot + (top - bot) * exp(-exp(beta * (x - ec50))) 
-#&gt; bot ~ 1
-#&gt; ec50 ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; 
-#&gt; $ecxwb2
-#&gt; y ~ top + (bot - top) * (1 - exp(-exp(beta * (x - ec50)))) 
-#&gt; bot ~ 1
-#&gt; ec50 ~ 1
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; </div><div class='input'>
+</div><div class='output co'>#&gt; <span class='error'>Error in get(paste("bf", x, "deflt", sep = "_")): object 'bf_ecxhormebc4_deflt' not found</span></div><div class='input'>
 </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
