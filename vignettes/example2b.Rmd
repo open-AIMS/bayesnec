@@ -138,21 +138,39 @@ show_params("ecx4param")
 ```
 
 ### ecxwb1
-The **ecxwb1** model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull1 model of [@Ritz2016], given by the equation
+The **ecxwb1** model is a 4 parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of [@Ritz2016], given by the equation
 $$y_i = \delta + (\tau - \delta) e^{-e^{\beta (x_i - \text{EC}_{50})}}$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("ecxwb1")
 ```
 
+### ecxwb1p3
+The **ecxwb1p3** model is a 3 parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of [@Ritz2016], given by the equation
+$$y_i = {0} + (\tau - {0}) e^{-e^{\beta (x_i - \text{EC}_{50})}}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxwb1p3")
+```
+The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+
 ### ecxwb2
-The **ecxwb2** model is a 4 parameter sigmoidal decay model which is a slight reformulate of the Weibull2 model of [@Ritz2016], given by the equation
+The **ecxwb2** model is a 4 parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of [@Ritz2016], given by the equation
 $$y_i = \delta + (\tau - \delta) (1 - e^{-e^{\beta (x_i - \text{EC}_{50})}})$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("ecxwb2")
 ```
 While very similar the **ecxwb1**, according to [@Ritz2016] fitted **ecxwb1** and **ecxwb2** models can differ slightly.
+
+### ecxwb2p3
+The **ecxwb2** model is a 3 parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of [@Ritz2016], given by the equation
+$$y_i = {0} + (\tau -{0}) (1 - e^{-e^{\beta (x_i - \text{EC}_{50})}})$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxwb2p3")
+```
+While very similar the **ecxwb1**, according to [@Ritz2016] fitted **ecxwb1** and **ecxwb2** models can differ slightly. The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
 
 ## NEC models
 
