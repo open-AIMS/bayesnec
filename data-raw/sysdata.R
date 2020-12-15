@@ -6,15 +6,15 @@ library(brms)
 mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
                            "nechorme4", "necsigm", "neclin", "neclinhorme"),
                    ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
-                           "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3", "ecxll5", "ecxll4", "ecxll3"),
+                           "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3", "ecxll5", "ecxll4", "ecxll3", "ecxhormebc4", "ecxhormebc5"),
                    all = c("nec3param", "nec4param", "nechorme", "nechorme4",
                            "necsigm", "neclin", "neclinhorme", "ecxwb1p3", "ecxwb2p3",
                            "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
-                           "ecxwb1", "ecxwb2", "ecxll5", "ecxll4", "ecxll3", "ecxll2"),
+                           "ecxwb1", "ecxwb2", "ecxll5", "ecxll4", "ecxll3", "ecxll2", "ecxhormebc4", "ecxhormebc5"),
                    bot_free = c("nec3param", "nechorme", "necsigm", "neclin",
-                                "ecxlin", "ecxexp", "ecxsigm", "neclinhorme", "ecxwb1p3", "ecxwb2p3", "ecxll3"),
+                                "ecxlin", "ecxexp", "ecxsigm", "neclinhorme", "ecxwb1p3", "ecxwb2p3", "ecxll3", "ecxhormebc4"),
                    zero_bounded = c("nec3param", "nechorme", "necsigm",
-                                    "ecxexp", "ecxsigm", "ecxwb1p3", "ecxwb2p3", "ecxll3"))
+                                    "ecxexp", "ecxsigm", "ecxwb1p3", "ecxwb2p3", "ecxll3", "ecxhormebc4"))
 
 mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",
@@ -64,37 +64,37 @@ bf_nec4param_deflt <- brms::bf(y ~ bot + (top - bot) *
                                nl = TRUE)
 
 # nechorme
-bf_nechorme_binom <- brms::bf(y | trials(trials) ~ (top + slope * x) *
+bf_nechorme_binom <- brms::bf(y | trials(trials) ~ (top + exp(slope) * x) *
                                 exp(-exp(beta) * (x - nec) *
                                   step(x - nec)),
                               top + beta + nec + slope ~ 1,
                               nl = TRUE)
 
-bf_nechorme_deflt <- brms::bf(y ~ (top + slope * x) *
+bf_nechorme_deflt <- brms::bf(y ~ (top + exp(slope) * x) *
                                 exp(-exp(beta) * (x - nec) *
                                   step(x - nec)),
                               top + beta + nec + slope ~ 1,
                               nl = TRUE)
 
 # nechorme4
-bf_nechorme4_binom <- brms::bf(y | trials(trials) ~ bot + ((top + slope * x) -
+bf_nechorme4_binom <- brms::bf(y | trials(trials) ~ bot + ((top + exp(slope) * x) -
                                  bot) * exp(-exp(beta) * (x - nec) * step(x - nec)),
                                bot + top + beta + nec + slope ~ 1,
                                nl = TRUE)
 
-bf_nechorme4_deflt <- brms::bf(y ~ bot + ((top + slope * x) - bot) *
+bf_nechorme4_deflt <- brms::bf(y ~ bot + ((top + exp(slope) * x) - bot) *
                                        exp(-exp(beta) * (x - nec) *
                                                    step(x - nec)),
                                bot + top + beta + nec + slope ~ 1,
                                nl = TRUE)
 
 # "neclinhorme"
-bf_neclinhorme_binom <- brms::bf(y | trials(trials) ~ (top + slope * x) -
+bf_neclinhorme_binom <- brms::bf(y | trials(trials) ~ (top + exp(slope) * x) -
                                    exp(beta) * (x - nec) * step(x - nec),
                                  top + beta + nec + slope ~ 1,
                                  nl = TRUE)
 
-bf_neclinhorme_deflt <- brms::bf(y ~ (top + slope * x) - exp(beta) * (x - nec) *
+bf_neclinhorme_deflt <- brms::bf(y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) *
                                    step(x - nec),
                                  top + beta + nec + slope ~ 1,
                                  nl = TRUE)
@@ -118,11 +118,11 @@ bf_necsigm_deflt <- brms::bf(y ~ top *
 # ECXEXP MODELS
 ###############
 # ecxlin
-bf_ecxlin_binom <- brms::bf(y | trials(trials) ~ top - slope * x,
+bf_ecxlin_binom <- brms::bf(y | trials(trials) ~ top - exp(slope) * x,
                             top + slope ~ 1,
                             nl = TRUE)
 
-bf_ecxlin_deflt <- brms::bf(y ~ top - slope * x,
+bf_ecxlin_deflt <- brms::bf(y ~ top - exp(slope) * x,
                             top + slope ~ 1,
                             nl = TRUE)
 
@@ -230,6 +230,24 @@ bf_ecxll3_deflt <- brms::bf(y ~ 0 + (top - 0)/ (1 + exp(exp(beta)*(x - ec50))),
                             top + beta + ec50 ~ 1,
                             nl = TRUE)
 
+# ecxhormebc5
+bf_ecxhormebc5_binom <- brms::bf(y | trials(trials) ~ bot + (top - bot + exp(slope) * x)/ (1 + exp(exp(beta)*(x - ec50))),
+                            bot + top + beta + ec50 + slope ~ 1,
+                            nl = TRUE)
+bf_ecxhormebc5_deflt <- brms::bf(y ~ bot + (top - bot + exp(slope) * x)/ (1 + exp(exp(beta)*(x - ec50))),
+                            bot + top + beta + ec50 + slope ~ 1,
+                            nl = TRUE)
+
+
+# ecxhormebc4
+bf_ecxhormebc4_binom <- brms::bf(y | trials(trials) ~ 0 + (top - 0 + exp(slope) * x)/ (1 + exp(exp(beta)*(x - ec50))),
+                            top + beta + ec50 + slope  ~ 1,
+                            nl = TRUE)
+bf_ecxhormebc4_deflt <- brms::bf(y ~ 0 + (top - 0 + exp(slope) * x)/ (1 + exp(exp(beta)*(x - ec50))),
+                            top + beta + ec50 + slope ~ 1,
+                            nl = TRUE)
+
+
 ###############
 # CUSTOM FAMILY
 ###############
@@ -255,7 +273,8 @@ pred_functions <- list("nec3param" = pred_nec3param, "nec4param" = pred_nec4para
                        "ecxlin" = pred_ecxlin, "ecxexp" = pred_ecxexp, "ecxsigm"= pred_ecxsigm,    
                        "ecx4param" = pred_ecx4param, "ecxwb1" = pred_ecxwb1, "ecxwb2" = pred_ecxwb2, 
                        "ecxwb1p3" = pred_ecxwb1p3, "ecxwb2p3" = pred_ecxwb2p3, 
-                       "ecxll5" = pred_ecxll5, "ecxll4" = pred_ecxll4, "ecxll3" = pred_ecxll3)
+                       "ecxll5" = pred_ecxll5, "ecxll4" = pred_ecxll4, "ecxll3" = pred_ecxll3,
+                       "ecxhormebc4" = pred_ecxhormebc4, "ecxhormebc5"= pred_ecxhormebc5)
 
 ####################
 # SAVE INTERNAL DATA
@@ -297,6 +316,8 @@ save(mod_groups, mod_fams,
      bf_ecxll4_deflt, bf_ecxll4_binom,
      #ecxll3
      bf_ecxll3_deflt, bf_ecxll3_binom,
+     #ecxhormebc5
+     bf_ecxhormebc5_deflt, bf_ecxhormebc5_binom,
      stan_funs, stanvars,
      pred_functions,
      file = "R/sysdata.rda")
