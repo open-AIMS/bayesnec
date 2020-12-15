@@ -118,7 +118,7 @@ and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("ecxexp")
 ```
-The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
 
 ### ecxsigm
 The **ecxsigm** model is a simple sigmoidal decay model, given by the equation
@@ -127,7 +127,7 @@ and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("ecxsigm")
 ```
-The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
 
 ### ecx4param
 The **ecx4param** model is a 4 parameter sigmoidal decay model, given by the equation
@@ -152,7 +152,7 @@ and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("ecxwb1p3")
 ```
-The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
 
 ### ecxwb2
 The **ecxwb2** model is a 4 parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of [@Ritz2016], given by the equation
@@ -170,7 +170,33 @@ and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("ecxwb2p3")
 ```
-While very similar the **ecxwb1**, according to [@Ritz2016] fitted **ecxwb1** and **ecxwb2** models can differ slightly. The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+While very similar the **ecxwb1**, according to [@Ritz2016] fitted **ecxwb1** and **ecxwb2** models can differ slightly. The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
+
+
+### ecxll5
+The **ecxll5** model is a 5 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.5 model of [@Ritz2016], given by the equation
+$$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxll5")
+```
+
+### ecxll4
+The **ecxll4** model is a 4 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.4 model of [@Ritz2016], given by the equation
+$$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxll4")
+```
+
+### ecxll3
+The **ecxll3** model is a 3 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.3 model of [@Ritz2016], given by the equation
+$$y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxll3")
+```
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
 
 ## NEC models
 
@@ -191,7 +217,7 @@ and fitted in R via `brms` using the formula
 show_params("nec3param")
 ```
 
-For binomial data in the case of identity link this model is equivalent to that in [@Fox2010]. The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function.
+For binomial data in the case of identity link this model is equivalent to that in [@Fox2010]. The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
 
 ### nec4param
 The **nec4param** model is a 3 parameter decay model with the addition of the "nec" step function, given by the equation
@@ -209,7 +235,7 @@ and fitted in R via `brms` using the formula
 show_params("nechorme")
 ```
 This is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
-The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function. In this case the linear version (**neclinhorme**) should be used. Because the model contains linear predictors it is not suitable for `0`, `1` bounded data (binomial and beta families with identity link).
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (**neclinhorme**) should be used. Because the model contains linear predictors it is not suitable for `0`, `1` bounded data (binomial and beta families with identity link).
 
 ### neclinhorme
 The **neclinhorme** model is a basic linear decay model with an "nec" step function equivalent to **neclin**, with the addition of a linear increase prior to $\eta$, given by the equation
@@ -236,6 +262,6 @@ and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("necsigm")
 ```
-The model is `0` bounded, thus not suitable for gaussian data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an "nec" step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of no-effect-concentrations using this model are not currently recommended without further testing.
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an "nec" step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of no-effect-concentrations using this model are not currently recommended without further testing.
 
 # References
