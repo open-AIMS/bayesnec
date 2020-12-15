@@ -69,3 +69,14 @@ pred_ecxwb2p3 <- function(b_top, b_beta, b_ec50, x) {
     (1 - exp(-exp(-exp(b_beta) * (x - b_ec50))))
 }
 
+pred_ecxll5 <- function(b_bot, b_top, b_beta, b_ec50, b_f, x) {
+  b_bot + (b_top - b_bot)/ (1 + exp(exp(b_beta)*(x - b_ec50)))^b_f
+}
+
+pred_ecxll4 <- function(b_bot, b_top, b_beta, b_ec50, x) {
+  b_bot + (b_top - b_bot)/ (1 + exp(exp(b_beta)*(x - b_ec50)))
+}
+
+pred_ecxll3 <- function(b_top, b_beta, b_ec50, x) {
+  0 + (b_top - 0)/ (1 + exp(exp(b_beta)*(x - b_ec50)))
+}
