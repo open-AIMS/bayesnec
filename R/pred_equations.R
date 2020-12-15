@@ -14,16 +14,16 @@ pred_nec4param <- function(b_beta, b_bot, b_nec, b_top, x) {
 }
 
 pred_nechorme <- function(b_top, b_slope, b_beta, b_nec, x) {
-  (b_top + b_slope * x) * exp(-exp(b_beta) * (x - b_nec) *
+  (b_top + exp(b_slope)*x) * exp(-exp(b_beta) * (x - b_nec) *
     ifelse(x - b_nec < 0, 0, 1))
 }
 pred_neclinhorme <- function(b_top, b_slope, b_beta, b_nec, x) {
-  (b_top + b_slope * x) - exp(b_beta) * (x - b_nec) *
+  (b_top + exp(b_slope)*x) - exp(b_beta) * (x - b_nec) *
                                 ifelse(x - b_nec < 0, 0, 1)
 }
 
 pred_nechorme4 <- function(b_beta, b_bot, b_slope, b_nec, b_top, x) {
-  b_bot + ((b_top + b_slope * x) - b_bot) * exp(-exp(b_beta) * (x - b_nec) *
+  b_bot + ((b_top + exp(b_slope)*x) - b_bot) * exp(-exp(b_beta) * (x - b_nec) *
                                   ifelse(x - b_nec < 0, 0, 1))
 }
 
@@ -33,7 +33,7 @@ pred_necsigm <- function(b_beta, b_top, b_nec, b_d, x) {
 }
 
 pred_ecxlin <- function(b_top, b_slope, x) {
-  b_top - b_slope * x
+  b_top - exp(b_slope)*x
 }
 
 pred_ecxexp <- function(b_top, b_beta, x) {
@@ -79,4 +79,12 @@ pred_ecxll4 <- function(b_bot, b_top, b_beta, b_ec50, x) {
 
 pred_ecxll3 <- function(b_top, b_beta, b_ec50, x) {
   0 + (b_top - 0)/ (1 + exp(exp(b_beta)*(x - b_ec50)))
+}
+
+pred_ecxhormebc5 <- function(b_bot, b_top, b_beta, b_ec50, b_slope, x) {
+  b_bot + (b_top - b_bot + exp(b_slope)*x)/ (1 + exp(exp(b_beta)*(x - b_ec50)))
+}
+
+pred_ecxhormebc4 <- function(b_top, b_beta, b_ec50, b_slope, x) {
+  0 + (b_top - 0 + exp(b_slope)*x)/ (1 + exp(exp(b_beta)*(x - b_ec50)))
 }
