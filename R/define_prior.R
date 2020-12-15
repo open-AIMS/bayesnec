@@ -79,11 +79,12 @@ define_prior <- function(model, family, predictor, response) {
   pr_f <- prior_string("normal(0, 1)", nlpar = "f")
   #pr_beta <- prior_string("gamma(2, 0.2)", nlpar = "beta", lb = 0) 
   # scaling dependent priors
-  pr_slope <- prior_string(paste0("gamma(2, ",
-                                  1 / ((diff(range(response)) /
-                                    diff(range(predictor))) / 2),
-                                  ")"),
-                           nlpar = "slope", lb = 0)
+  # pr_slope <- prior_string(paste0("gamma(2, ",
+  #                                1 / ((diff(range(response)) /
+  #                                  diff(range(predictor))) / 2),
+  #                                ")"),
+  #                         nlpar = "slope", lb = 0)
+  pr_slope <- prior_string("normal(0, 1)", nlpar = "slope")
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d
@@ -124,5 +125,12 @@ define_prior <- function(model, family, predictor, response) {
   if (model == "ecxexp") {
     priors <- pr_beta + pr_top
   }
+  if (model == "ecxhormebc4") {
+    priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
+  }
+  if (model == "ecxhormebc5") {
+    priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
+  }
+  
   priors
 }
