@@ -187,14 +187,13 @@ If missing all available models and their groups are listed.</p></td>
 #&gt; 
 #&gt; $all
 #&gt;  [1] "nec3param"   "nec4param"   "nechorme"    "nechorme4"   "necsigm"    
-#&gt;  [6] "neclin"      "neclinhorme" "ecxwb1p3"    "ecxwb2p3"    "ecxlin"     
-#&gt; [11] "ecxexp"      "ecxsigm"     "ecx4param"   "ecxwb1"      "ecxwb2"     
-#&gt; [16] "ecxll5"      "ecxll4"      "ecxll3"      "ecxll2"      "ecxhormebc4"
-#&gt; [21] "ecxhormebc5"
+#&gt;  [6] "neclin"      "neclinhorme" "ecxlin"      "ecxexp"      "ecxsigm"    
+#&gt; [11] "ecx4param"   "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"   
+#&gt; [16] "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"
 #&gt; 
 #&gt; $bot_free
-#&gt;  [1] "nec3param"   "nechorme"    "necsigm"     "neclin"      "ecxlin"     
-#&gt;  [6] "ecxexp"      "ecxsigm"     "neclinhorme" "ecxwb1p3"    "ecxwb2p3"   
+#&gt;  [1] "nec3param"   "nechorme"    "necsigm"     "neclin"      "neclinhorme"
+#&gt;  [6] "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1p3"    "ecxwb2p3"   
 #&gt; [11] "ecxll3"      "ecxhormebc4"
 #&gt; 
 #&gt; $zero_bounded
@@ -207,9 +206,240 @@ If missing all available models and their groups are listed.</p></td>
 #&gt; beta ~ 1
 #&gt; nec ~ 1</div><div class='input'><span class='co'># group of models</span>
 <span class='fu'>models</span><span class='op'>(</span><span class='st'>"all"</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='error'>Error in get(paste("bf", x, "deflt", sep = "_")): object 'bf_ecxll2_deflt' not found</span></div><div class='input'><span class='co'># models that are suitable for 0,1 bounded data</span>
+</div><div class='output co'>#&gt; $nec3param
+#&gt; y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; 
+#&gt; $nec4param
+#&gt; y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; 
+#&gt; $nechorme
+#&gt; y ~ (top + exp(slope) * x) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $nechorme4
+#&gt; y ~ bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $necsigm
+#&gt; y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; d ~ 1
+#&gt; 
+#&gt; $neclin
+#&gt; y ~ top - slope * (x - nec) * step(x - nec) 
+#&gt; top ~ 1
+#&gt; slope ~ 1
+#&gt; nec ~ 1
+#&gt; 
+#&gt; $neclinhorme
+#&gt; y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $ecxlin
+#&gt; y ~ top - exp(slope) * x 
+#&gt; top ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $ecxexp
+#&gt; y ~ top * exp(-exp(beta) * x) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxsigm
+#&gt; y ~ top * exp(-exp(beta) * x^exp(d)) 
+#&gt; d ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecx4param
+#&gt; y ~ top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) 
+#&gt; bot ~ 1
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxwb1
+#&gt; y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) 
+#&gt; bot ~ 1
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxwb2
+#&gt; y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
+#&gt; bot ~ 1
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxwb1p3
+#&gt; y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) 
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxwb2p3
+#&gt; y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxll5
+#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^f 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; f ~ 1
+#&gt; 
+#&gt; $ecxll4
+#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; 
+#&gt; $ecxll3
+#&gt; y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; 
+#&gt; $ecxhormebc4
+#&gt; y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $ecxhormebc5
+#&gt; y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; slope ~ 1
+#&gt; </div><div class='input'><span class='co'># models that are suitable for 0,1 bounded data</span>
 <span class='fu'>models</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>0</span>,<span class='fl'>1</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='error'>Error in get(paste("bf", x, "deflt", sep = "_")): object 'bf_ecxll2_deflt' not found</span></div><div class='input'>
+</div><div class='output co'>#&gt; $nec3param
+#&gt; y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; 
+#&gt; $nec4param
+#&gt; y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; 
+#&gt; $necsigm
+#&gt; y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; d ~ 1
+#&gt; 
+#&gt; $ecxexp
+#&gt; y ~ top * exp(-exp(beta) * x) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxsigm
+#&gt; y ~ top * exp(-exp(beta) * x^exp(d)) 
+#&gt; d ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecx4param
+#&gt; y ~ top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) 
+#&gt; bot ~ 1
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxwb1
+#&gt; y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) 
+#&gt; bot ~ 1
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxwb2
+#&gt; y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
+#&gt; bot ~ 1
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxwb1p3
+#&gt; y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) 
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxwb2p3
+#&gt; y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
+#&gt; ec50 ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; 
+#&gt; $ecxll5
+#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^f 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; f ~ 1
+#&gt; 
+#&gt; $ecxll4
+#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; 
+#&gt; $ecxll3
+#&gt; y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; 
+#&gt; $ecxhormebc4
+#&gt; y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $ecxhormebc5
+#&gt; y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; ec50 ~ 1
+#&gt; slope ~ 1
+#&gt; </div><div class='input'>
 </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
