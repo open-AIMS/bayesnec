@@ -1,8 +1,6 @@
 #' sample_priors
 #'
 #' Creates list or generates a plot of prior samples
-#'
-#' @inheritParams bnec
 #' 
 #' @param priors an object of class "brmsprior" from package \pkg{brms}.
 #' 
@@ -13,6 +11,14 @@
 #' @param n_samples the number of prior samples to return
 #'
 #' @importFrom stats rgamma rnorm rbeta runif
+#' 
+#' @importFrom ggplot2 ggplot geom_histogram facet_wrap
+#' 
+#' @importFrom graphics hist
+#' 
+#' @importFrom tidyr pivot_longer 
+#' 
+#' @importFrom magrittr %>%
 #' 
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
@@ -63,7 +69,7 @@ names(out) <- par_names
 if(plot=="base"){
   par(mfrow=c(ceiling(nrow(priors)/2), 2))
   for(j in 1:length(out)){
-    hist(out[[j]], main=names(out)[j])
+   hist(out[[j]], main=names(out)[j])
   }
 }  
 if(plot=="ggplot"){

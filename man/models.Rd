@@ -30,3 +30,15 @@ To see the model names, model formula and parameters fitted in an existing bayes
 
 To see what models are available for a given type of data use the function \code{\link{models}} passing a numeric vector indicating the range of possible data types. Models that have an exponential decay (most models with parameter "beta") with no "bot" parameter are zero_bounded and are not suitable for the gaussian family, or any family modelled using a logit or log link function. Models with a linear decay (containing the string "lin" in their name) are not suitable for modelling families that are zero bounded (gamma, poisson, negative binomial) using an identity link. Models with a linear decay or hormesis linear increase (all models with parameter "slope") are not suitable for modelling families that are 0, 1 bounded (binomial, beta, betabinomial2). These restrictions do not need to be controlled by the user and a call to \code{\link{bnec}} with models="all" will simply exclude inappropriate models.
 }
+\examples{
+library(bayesnec)
+# default to all models and model groups
+models()
+# single model
+show_params("nec3param")
+# group of models
+models("all")
+# models that are suitable for 0,1 bounded data
+models(c(0,1))
+
+}
