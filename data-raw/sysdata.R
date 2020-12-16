@@ -10,7 +10,7 @@ mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
                    all = c("nec3param", "nec4param", "nechorme", "nechorme4",
                            "necsigm", "neclin", "neclinhorme", "ecxwb1p3", "ecxwb2p3",
                            "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
-                           "ecxwb1", "ecxwb2", "ecxll5", "ecxll4", "ecxll3", "ecxll2", "ecxhormebc4", "ecxhormebc5"),
+                           "ecxwb1", "ecxwb2", "ecxll5", "ecxll4", "ecxll3", "ecxhormebc4", "ecxhormebc5"),
                    bot_free = c("nec3param", "nechorme", "necsigm", "neclin",
                                 "ecxlin", "ecxexp", "ecxsigm", "neclinhorme", "ecxwb1p3", "ecxwb2p3", "ecxll3", "ecxhormebc4"),
                    zero_bounded = c("nec3param", "nechorme", "necsigm",
@@ -247,7 +247,6 @@ bf_ecxhormebc4_deflt <- brms::bf(y ~ 0 + (top - 0 + exp(slope) * x)/ (1 + exp(ex
                             top + beta + ec50 + slope ~ 1,
                             nl = TRUE)
 
-
 ###############
 # CUSTOM FAMILY
 ###############
@@ -318,6 +317,8 @@ save(mod_groups, mod_fams,
      bf_ecxll3_deflt, bf_ecxll3_binom,
      #ecxhormebc5
      bf_ecxhormebc5_deflt, bf_ecxhormebc5_binom,
+     #ecxhormebc4
+     bf_ecxhormebc4_deflt, bf_ecxhormebc4_binom,
      stan_funs, stanvars,
      pred_functions,
      file = "R/sysdata.rda")
