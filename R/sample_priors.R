@@ -12,13 +12,9 @@
 #'
 #' @importFrom stats rgamma rnorm rbeta runif
 #' 
-#' @importFrom ggplot2 ggplot geom_histogram facet_wrap
-#' 
 #' @importFrom graphics hist
 #' 
 #' @importFrom tidyr pivot_longer 
-#' 
-#' @importFrom magrittr %>%
 #' 
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
@@ -75,7 +71,7 @@ if(plot=="base"){
 if(plot=="ggplot"){
   plot <- do.call("cbind", out) %>% 
     data.frame() %>% 
-    tidyr::pivot_longer(names_to = "param", 
+    pivot_longer(names_to = "param", 
                         values_to = "value",
                         cols = starts_with("b_")) %>% 
     ggplot(aes(value)) +
