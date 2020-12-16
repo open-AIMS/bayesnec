@@ -18,7 +18,8 @@ Imports:
     dplyr,
     tidyr,
     tidyselect,
-    lazyeval
+    lazyeval,
+    ggplot2
 Suggests:
     knitr,
     rmarkdown,
