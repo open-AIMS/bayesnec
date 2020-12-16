@@ -31,7 +31,8 @@ check_models <- function(model, family) {
       model <- use_model
     }
   }
-  if (link_tag == "identity" & fam_tag %in% c("Beta", "binomial")) {
+
+  if (link_tag == "identity" & fam_tag %in% c("beta", "binomial")) {
     use_model <-  model[!model %in% c("neclin", "nechorme", "neclinhorme",
                                       "nechorme4", "ecxlin", "ecxhormebc4", "ecxhormebc5")]
     drop_model <- setdiff(model, use_model)
