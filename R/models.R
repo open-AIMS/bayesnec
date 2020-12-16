@@ -26,7 +26,7 @@
 #' # single model
 #' show_params("nec3param")
 #' # group of models
-#' models("all)
+#' models("all")
 #' # models that are suitable for 0,1 bounded data
 #' models(c(0,1))
 #' 
