@@ -14,7 +14,13 @@
 #' 
 #' @importFrom graphics hist
 #' 
+#' @importFrom ggplot2 ggplot aes geom_histogram
+#' 
 #' @importFrom tidyr pivot_longer 
+#' 
+#' @importFrom tidyselect starts_with
+#' 
+#' @importFrom dplyr %>%
 #' 
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
