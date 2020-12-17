@@ -198,6 +198,24 @@ show_params("ecxll3")
 ```
 The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
 
+### ecxhormebc5
+The **ecxhormebc5** model is a 5 parameter log-logisitic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the "Brain-Cousens" (BC.5) model of [@Ritz2016], given by the equation
+$$y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxhormebc5")
+```
+
+### ecxhormebc4
+The **ecxhormebc4** model is a 5 parameter log-logisitic model similar to the exchormebc5 model but with a lower bound of 0, given by the equation
+$$y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("ecxhormebc4")
+```
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
+
+
 ## NEC models
 
 ### neclin
@@ -237,6 +255,17 @@ show_params("nechorme")
 This is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
 The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (**neclinhorme**) should be used. Because the model contains linear predictors it is not suitable for `0`, `1` bounded data (binomial and beta families with identity link).
 
+### nechormepwr
+The **nechormepwr** model is a basic exponential decay model with an "nec" step function equivalent to **nec3param**, with the addition of a power increase prior to $\eta$, given by the equation
+$$y_i = (\tau + x_i^{1/e^{alpha}}) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("nechormepwr")
+```
+This is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function. Because the model can generate predictions > `1` it should not be used for binomial and beta families with identity link. In this case the **nechromepwr01** model should be used.
+
+
 ### neclinhorme
 The **neclinhorme** model is a basic linear decay model with an "nec" step function equivalent to **neclin**, with the addition of a linear increase prior to $\eta$, given by the equation
 $$y_i = (\tau + \alpha x_i) - \beta \left(x_i - \eta \right) f(x_i, \eta)$$
@@ -255,6 +284,26 @@ show_params("nechorme4")
 ```
 This is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. This model contains linear predictors and is not suitable for `0`, `1` bounded data (binomial and beta families with identity link).
 
+### nechorme4pwr
+The **nechorme4pwr** model is 4 parameter decay model with an "nec" step function equivalent to **nec4param** with the addition of a power increase prior to $\eta$, given by the equation
+$$y_i = \delta + ((\tau + x_i^{1/e^{alpha}}) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("nechorme4pwr")
+```
+This is a *hormesis* model [@Mattson2008], allowing an initial power increase in the response variable at concentrations below $\eta$. Because the model can generate predictions > `1` it should not be used for binomial and beta families with identity link. In this case the **nechromepwr01** model should be used.
+
+### nechormepwr01
+The **nechormepwr01** model is a basic exponential decay model with an "nec" step function equivalent to **nec3param**, with the addition of a power increase prior to $\eta$, given by the equation
+$$y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+
+and fitted in R via `brms` using the formula
+```{r, echo=FALSE}
+show_params("nechormepwr01")
+```
+This is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
+The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (**neclinhorme**) should be used. Because the model contains linear predictors it is not suitable for `0`, `1` bounded data (binomial and beta families with identity link).
+
 ### necsigm
 The **necsigm** model is a basic exponential decay model equivalent to **ecxlin** with the addition of the "nec" step function, given by the equation
 $$y_i \tau e^{-\beta g(x_i, \eta, epsilon) f(x_i, \eta)}$$
@@ -263,5 +312,6 @@ and fitted in R via `brms` using the formula
 show_params("necsigm")
 ```
 The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an "nec" step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of no-effect-concentrations using this model are not currently recommended without further testing.
+
 
 # References
