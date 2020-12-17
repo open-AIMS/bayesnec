@@ -177,8 +177,9 @@ If missing all available models and their groups are listed.</p></td>
 <span class='co'># default to all models and model groups</span>
 <span class='fu'>models</span><span class='op'>(</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; $nec
-#&gt; [1] "nec3param"   "nec4param"   "nechorme"    "nechorme4"   "necsigm"    
-#&gt; [6] "neclin"      "neclinhorme"
+#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"    
+#&gt;  [5] "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"  
+#&gt;  [9] "nechorme4pwr"  "nechormepwr01"
 #&gt; 
 #&gt; $ecx
 #&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"     
@@ -186,19 +187,23 @@ If missing all available models and their groups are listed.</p></td>
 #&gt; [11] "ecxll3"      "ecxhormebc4" "ecxhormebc5"
 #&gt; 
 #&gt; $all
-#&gt;  [1] "nec3param"   "nec4param"   "nechorme"    "nechorme4"   "necsigm"    
-#&gt;  [6] "neclin"      "neclinhorme" "ecxlin"      "ecxexp"      "ecxsigm"    
-#&gt; [11] "ecx4param"   "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"   
-#&gt; [16] "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"
+#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"    
+#&gt;  [5] "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"  
+#&gt;  [9] "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"       
+#&gt; [13] "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"       
+#&gt; [17] "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"       
+#&gt; [21] "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  
 #&gt; 
 #&gt; $bot_free
-#&gt;  [1] "nec3param"   "nechorme"    "necsigm"     "neclin"      "neclinhorme"
-#&gt;  [6] "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1p3"    "ecxwb2p3"   
-#&gt; [11] "ecxll3"      "ecxhormebc4"
+#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"       
+#&gt;  [5] "neclinhorme"   "nechormepwr"   "ecxlin"        "ecxexp"       
+#&gt;  [9] "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"       
+#&gt; [13] "ecxhormebc4"   "nechormepwr01"
 #&gt; 
 #&gt; $zero_bounded
-#&gt; [1] "nec3param"   "nechorme"    "necsigm"     "ecxexp"      "ecxsigm"    
-#&gt; [6] "ecxwb1p3"    "ecxwb2p3"    "ecxll3"      "ecxhormebc4"
+#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"  
+#&gt;  [5] "nechormepwr01" "ecxexp"        "ecxsigm"       "ecxwb1p3"     
+#&gt;  [9] "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
 #&gt; </div><div class='input'><span class='co'># single model</span>
 <span class='fu'><a href='show_params.html'>show_params</a></span><span class='op'>(</span><span class='st'>"nec3param"</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
@@ -249,6 +254,28 @@ If missing all available models and their groups are listed.</p></td>
 #&gt; 
 #&gt; $neclinhorme
 #&gt; y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $nechormepwr
+#&gt; y ~ (top + x^(1/exp(slope))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $nechorme4pwr
+#&gt; y ~ bot + ((top + x^(1/exp(slope))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $nechormepwr01
+#&gt; y ~ (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 #&gt; top ~ 1
 #&gt; beta ~ 1
 #&gt; nec ~ 1
@@ -359,6 +386,28 @@ If missing all available models and their groups are listed.</p></td>
 #&gt; beta ~ 1
 #&gt; nec ~ 1
 #&gt; d ~ 1
+#&gt; 
+#&gt; $nechormepwr
+#&gt; y ~ (top + x^(1/exp(slope))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $nechorme4pwr
+#&gt; y ~ bot + ((top + x^(1/exp(slope))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; bot ~ 1
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
+#&gt; 
+#&gt; $nechormepwr01
+#&gt; y ~ (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; top ~ 1
+#&gt; beta ~ 1
+#&gt; nec ~ 1
+#&gt; slope ~ 1
 #&gt; 
 #&gt; $ecxexp
 #&gt; y ~ top * exp(-exp(beta) * x) 

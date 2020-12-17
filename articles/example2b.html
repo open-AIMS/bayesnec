@@ -262,6 +262,28 @@ f(x_i, \eta) = \begin{cases}
 ## ec50 ~ 1</code></pre>
 <p>The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function.</p>
 </div>
+<div id="ecxhormebc5" class="section level3">
+<h3 class="hasAnchor">
+<a href="#ecxhormebc5" class="anchor"></a>ecxhormebc5</h3>
+<p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logisitic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the “Brain-Cousens” (BC.5) model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
+## bot ~ 1
+## top ~ 1
+## beta ~ 1
+## ec50 ~ 1
+## slope ~ 1</code></pre>
+</div>
+<div id="ecxhormebc4" class="section level3">
+<h3 class="hasAnchor">
+<a href="#ecxhormebc4" class="anchor"></a>ecxhormebc4</h3>
+<p>The <strong>ecxhormebc4</strong> model is a 5 parameter log-logisitic model similar to the exchormebc5 model but with a lower bound of 0, given by the equation <span class="math display">\[y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
+## top ~ 1
+## beta ~ 1
+## ec50 ~ 1
+## slope ~ 1</code></pre>
+<p>The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function.</p>
+</div>
 </div>
 <div id="nec-models" class="section level2">
 <h2 class="hasAnchor">
@@ -307,6 +329,17 @@ f(x_i, \eta) = \begin{cases}
 ## slope ~ 1</code></pre>
 <p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used. Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link).</p>
 </div>
+<div id="nechormepwr" class="section level3">
+<h3 class="hasAnchor">
+<a href="#nechormepwr" class="anchor"></a>nechormepwr</h3>
+<p>The <strong>nechormepwr</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + x_i^{1/e^{alpha}}) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ (top + x^(1/exp(slope))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+## top ~ 1
+## beta ~ 1
+## nec ~ 1
+## slope ~ 1</code></pre>
+<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. Because the model can generate predictions &gt; <code>1</code> it should not be used for binomial and beta families with identity link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
+</div>
 <div id="neclinhorme" class="section level3">
 <h3 class="hasAnchor">
 <a href="#neclinhorme" class="anchor"></a>neclinhorme</h3>
@@ -329,6 +362,30 @@ f(x_i, \eta) = \begin{cases}
 ## nec ~ 1
 ## slope ~ 1</code></pre>
 <p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. This model contains linear predictors and is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link).</p>
+</div>
+<div id="nechorme4pwr" class="section level3">
+<h3 class="hasAnchor">
+<a href="#nechorme4pwr" class="anchor"></a>nechorme4pwr</h3>
+<p>The <strong>nechorme4pwr</strong> model is 4 parameter decay model with an “nec” step function equivalent to <strong>nec4param</strong> with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = \delta + ((\tau + x_i^{1/e^{alpha}}) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ bot + ((top + x^(1/exp(slope))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+## bot ~ 1
+## top ~ 1
+## beta ~ 1
+## nec ~ 1
+## slope ~ 1</code></pre>
+<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial power increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. Because the model can generate predictions &gt; <code>1</code> it should not be used for binomial and beta families with identity link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
+</div>
+<div id="nechormepwr01" class="section level3">
+<h3 class="hasAnchor">
+<a href="#nechormepwr01" class="anchor"></a>nechormepwr01</h3>
+<p>The <strong>nechormepwr01</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span></p>
+<p>and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+## top ~ 1
+## beta ~ 1
+## nec ~ 1
+## slope ~ 1</code></pre>
+<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used. Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link).</p>
 </div>
 <div id="necsigm" class="section level3">
 <h3 class="hasAnchor">
