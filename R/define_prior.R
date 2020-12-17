@@ -126,7 +126,7 @@ define_prior <- function(model, family, predictor, response) {
     priors <- pr_beta + pr_top
   }
   if (model == "ecxhormebc4") {
-    priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
+    priors <- pr_top + pr_beta + pr_ec50 + pr_slope
   }
   if (model == "ecxhormebc5") {
     priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
