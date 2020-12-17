@@ -4,21 +4,23 @@ library(brms)
 # ACCEPTED MODEL GROUPS AND FAMILIES
 ####################################
 mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
-                           "nechorme4", "necsigm", "neclin", "neclinhorme"),
+                           "nechorme4", "necsigm", "neclin", "neclinhorme",
+                           "nechormepwr", "nechorme4pwr", "nechormepwr01"),
                    ecx = c("ecx4param", "ecxlin", "ecxexp", "ecxsigm",
                            "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3", 
                            "ecxll5", "ecxll4", "ecxll3", 
                            "ecxhormebc4", "ecxhormebc5"),
                    all = c("nec3param", "nec4param", "nechorme", "nechorme4",
-                           "necsigm", "neclin", "neclinhorme", 
-                           "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
+                           "necsigm", "neclin", "neclinhorme",
+                           "nechormepwr", "nechorme4pwr", "nechormepwr01",
+                                                     "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
                            "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3",
                            "ecxll5", "ecxll4", "ecxll3", 
                            "ecxhormebc4", "ecxhormebc5"),
-                   bot_free = c("nec3param", "nechorme", "necsigm", "neclin", "neclinhorme", 
+                   bot_free = c("nec3param", "nechorme", "necsigm", "neclin", "neclinhorme", "nechormepwr",
                                 "ecxlin", "ecxexp", "ecxsigm", 
-                                "ecxwb1p3", "ecxwb2p3", "ecxll3", "ecxhormebc4"),
-                   zero_bounded = c("nec3param", "nechorme", "necsigm",
+                                "ecxwb1p3", "ecxwb2p3", "ecxll3", "ecxhormebc4", "nechormepwr01"),
+                   zero_bounded = c("nec3param", "nechorme", "necsigm", "nechormepwr", "nechormepwr01",
                                     "ecxexp", "ecxsigm", 
                                     "ecxwb1p3", "ecxwb2p3", 
                                     "ecxll3", "ecxhormebc4"))
@@ -120,6 +122,46 @@ bf_necsigm_deflt <- brms::bf(y ~ top *
                                    step(x - nec)),
                              top + beta + nec + d ~ 1,
                              nl = TRUE)
+
+# nechormepwr
+bf_nechormepwr_binom <- brms::bf(y | trials(trials) ~ (top + x^(1/exp(slope))) *
+                                exp(-exp(beta) * (x - nec) *
+                                      step(x - nec)),
+                              top + beta + nec + slope ~ 1,
+                              nl = TRUE)
+
+bf_nechormepwr_deflt <- brms::bf(y ~ (top + x^(1/exp(slope))) *
+                                exp(-exp(beta) * (x - nec) *
+                                      step(x - nec)),
+                              top + beta + nec + slope ~ 1,
+                              nl = TRUE)
+
+# nechormepwr01
+bf_nechormepwr01_binom <- brms::bf(y | trials(trials) ~ 
+                                     (1/(1 + ((1/top)-1) * exp(-exp(slope)*x))) *
+                                   exp(-exp(beta) * (x - nec) *
+                                         step(x - nec)),
+                                 top + beta + nec + slope ~ 1,
+                                 nl = TRUE)
+
+bf_nechormepwr01_deflt <- brms::bf(y ~ 
+                                     (1/(1 + ((1/top)-1) * exp(-exp(slope)*x))) *
+                                   exp(-exp(beta) * (x - nec) *
+                                         step(x - nec)),
+                                 top + beta + nec + slope ~ 1,
+                                 nl = TRUE)
+
+# nechorme4pwr
+bf_nechorme4pwr_binom <- brms::bf(y | trials(trials) ~ bot + ((top + x^(1/exp(slope))) -
+                                                             bot) * exp(-exp(beta) * (x - nec) * step(x - nec)),
+                               bot + top + beta + nec + slope ~ 1,
+                               nl = TRUE)
+
+bf_nechorme4pwr_deflt <- brms::bf(y ~ bot + ((top + x^(1/exp(slope))) - bot) *
+                                 exp(-exp(beta) * (x - nec) *
+                                       step(x - nec)),
+                               bot + top + beta + nec + slope ~ 1,
+                               nl = TRUE)
 
 ###############
 # ECXEXP MODELS
@@ -276,6 +318,8 @@ source("R/pred_equations.R")
 pred_functions <- list("nec3param" = pred_nec3param, "nec4param" = pred_nec4param, "nechorme" = pred_nechorme, 
                        "nechorme4" = pred_nechorme4, "necsigm" = pred_necsigm,
                        "neclin" = pred_neclin, "neclinhorme" = pred_neclinhorme, 
+                       "nechormepwr" = pred_nechormepwr, "nechorme4pwr" = pred_nechorme4pwr,
+                       "nechormepwr01" = pred_nechormepwr01,
                        "ecxlin" = pred_ecxlin, "ecxexp" = pred_ecxexp, "ecxsigm"= pred_ecxsigm,    
                        "ecx4param" = pred_ecx4param, "ecxwb1" = pred_ecxwb1, "ecxwb2" = pred_ecxwb2, 
                        "ecxwb1p3" = pred_ecxwb1p3, "ecxwb2p3" = pred_ecxwb2p3, 
@@ -294,10 +338,16 @@ save(mod_groups, mod_fams,
      bf_nec4param_deflt, bf_nec4param_binom,
      # nechorme
      bf_nechorme_deflt, bf_nechorme_binom,
+     # nechormepwr
+     bf_nechormepwr_deflt, bf_nechormepwr_binom,
+     # nechormepwr01
+     bf_nechormepwr01_deflt, bf_nechormepwr01_binom,
      # neclinhorme
      bf_neclinhorme_deflt, bf_neclinhorme_binom,
      # nechorme4
      bf_nechorme4_deflt, bf_nechorme4_binom,
+     # nechorme4pwr
+     bf_nechorme4pwr_deflt, bf_nechorme4pwr_binom,
      # necsigm
      bf_necsigm_deflt, bf_necsigm_binom,
      # ecxlin

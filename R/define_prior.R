@@ -77,14 +77,8 @@ define_prior <- function(model, family, predictor, response) {
   pr_d <- prior_string("normal(0, 1)", nlpar = "d")
   pr_beta <- prior_string("normal(0, 1)", nlpar = "beta")
   pr_f <- prior_string("normal(0, 1)", nlpar = "f")
-  #pr_beta <- prior_string("gamma(2, 0.2)", nlpar = "beta", lb = 0) 
-  # scaling dependent priors
-  # pr_slope <- prior_string(paste0("gamma(2, ",
-  #                                1 / ((diff(range(response)) /
-  #                                  diff(range(predictor))) / 2),
-  #                                ")"),
-  #                         nlpar = "slope", lb = 0)
   pr_slope <- prior_string("normal(0, 1)", nlpar = "slope")
+  
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d
@@ -107,13 +101,13 @@ define_prior <- function(model, family, predictor, response) {
   if (model == "nec4param") {
     priors <- pr_beta + pr_top + pr_bot + pr_nec
   }
-  if (model == "nechorme") {
+  if (model %in% c("nechorme", "nechormepwr", "nechormepwr01")) {
     priors <- pr_beta + pr_top + pr_nec + pr_slope
   }
   if (model == "neclinhorme") {
     priors <- pr_beta + pr_top + pr_nec + pr_slope
   }
-  if (model == "nechorme4") {
+  if (model %in% c("nechorme4",  "nechorme4pwr")) {
     priors <- pr_beta + pr_top + pr_nec + pr_slope + pr_bot
   }
   if (model == "necsigm") {
