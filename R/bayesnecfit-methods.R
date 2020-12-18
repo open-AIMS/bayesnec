@@ -26,7 +26,6 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              lxform = NA, jitter_x = FALSE,
                              jitter_y = FALSE, ylab = "response",
                              xlab = "concentration", xticks = NA) {
-
   family <- x$fit$family$family
   custom_name <- check_custom_name(x$fit$family)
   if (family == "binomial" | custom_name == "beta_binomial2") {
@@ -144,9 +143,13 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
-
-  new_dat <- data.frame(x = x_seq)
-
+  
+  new_dat <- data.frame(x = x_seq, trials = 10e3)
+  fam_tag <- fit$family$family
+  custom_name <- check_custom_name(fit$family)
+  if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
+    new_dat$trials <- 1
+  }
   pred_out <- brms::posterior_epred(fit, newdata = new_dat,
                                     re_formula = NA)
 
