@@ -104,8 +104,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   } else {
     msg_tag <- family$family
   }
-  fit$loo <- loo(fit, pointwise = TRUE)
-  fit$waic <- waic(fit, pointwise = TRUE)
+  fit$loo <- loo(fit)
+  fit$waic <- waic(fit)
   message(paste0("Response variable modelled as a ",
                  model, " model using a ", msg_tag,
                  " distribution."))
