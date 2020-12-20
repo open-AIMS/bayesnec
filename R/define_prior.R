@@ -29,6 +29,11 @@ define_prior <- function(model, family, predictor, response) {
       fam_tag <- family$family
     }
   }
+  if (length(response) == 0) {
+    stop("response vector is empty, most likely caused by Inf values",
+         " on the inverse link scale (i.e. 0 or 1 data) or for containing NAs",
+         " only")
+  }
   x_type <- set_distribution(predictor)
   u_t_g <- paste0("gamma(2, ",
                   1 / (quantile(response, probs = 0.75) / 2),
