@@ -19,6 +19,9 @@ define_prior <- function(model, family, predictor, response) {
     if (custom_name == "beta_binomial2") {
       response <- binomial(link = link_tag)$linkfun(response)
     } else {
+      if (family$family == "binomial") {
+        response <- linear_rescale(response, r_out = c(0.001, 0.999))
+      }
       response <- family$linkfun(response)
     }
     response <- response[is.finite(response)]
@@ -83,7 +86,6 @@ define_prior <- function(model, family, predictor, response) {
   pr_beta <- prior_string("normal(0, 1)", nlpar = "beta")
   pr_f <- prior_string("normal(0, 1)", nlpar = "f")
   pr_slope <- prior_string("normal(0, 1)", nlpar = "slope")
-  
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d
@@ -130,6 +132,5 @@ define_prior <- function(model, family, predictor, response) {
   if (model == "ecxhormebc5") {
     priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
   }
-  
   priors
 }
