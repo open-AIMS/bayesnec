@@ -8,23 +8,16 @@
 #' the expected argument names to be used.
 #' @param priors an object of class "brmsprior" from package \pkg{brms}.
 #' @param chains Number of chains to be passed to brms model.
-#' @param stan_like Should initial values be drawn in a similar
-#' fashion to how they are drawn by stan? Defaults to FALSE.
 #'
 #' @importFrom stats rgamma rnorm rbeta runif
 #'
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
-make_inits <- function(model, fct_args, priors,
-                       chains, stan_like = FALSE) {
+make_inits <- function(model, fct_args, priors, chains) {
   fcts <- c(gamma = rgamma,
             normal = rnorm,
             beta = rbeta,
             uniform = runif)
-  fcts_st <- c(gamma = function() runif(1, 0.01, 2),
-               normal = function() runif(1, -2, 2),
-               beta = function() runif(1, 0.01, 0.99),
-               uniform = function() runif(1, -2, 2))
   priors <- as.data.frame(priors)
   priors <- priors[priors$prior != "", ]
   par_names <- character(length = nrow(priors))
@@ -57,25 +50,21 @@ make_inits <- function(model, fct_args, priors,
       fct_i <- bits[1]
       v1 <- as.numeric(bits[2])
       v2 <- as.numeric(bits[3])
-      if (stan_like) {
-        out[[i]][[j]] <- fcts_st[[fct_i]]()
-      } else {
-        out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
-        if (priors$bound[j] != "") {
-          to_keep <- "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"
-          bounds <- regmatches(priors$bound[j],
-                               gregexpr(to_keep, priors$bound[j]))[[1]]
-          bounds <- as.numeric(bounds)
-          if (length(bounds) == 2) {
-            while (out[[i]][[j]] <= min(bounds) |
-                     out[[i]][[j]] >= max(bounds)) {
-              out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
-            }
-          } else if (length(bounds) == 1) {
-            bound_fct <- ifelse(grepl("lower", priors$bound[j]), `<=`, `>=`)
-            while (bound_fct(out[[i]][[j]], bounds)) {
-              out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
-            }
+      out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+      if (priors$bound[j] != "") {
+        to_keep <- "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"
+        bounds <- regmatches(priors$bound[j],
+                             gregexpr(to_keep, priors$bound[j]))[[1]]
+        bounds <- as.numeric(bounds)
+        if (length(bounds) == 2) {
+          while (out[[i]][[j]] <= min(bounds) |
+                   out[[i]][[j]] >= max(bounds)) {
+            out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+          }
+        } else if (length(bounds) == 1) {
+          bound_fct <- ifelse(grepl("lower", priors$bound[j]), `<=`, `>=`)
+          while (bound_fct(out[[i]][[j]], bounds)) {
+            out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
           }
         }
       }
@@ -102,7 +91,7 @@ make_inits <- function(model, fct_args, priors,
 #'
 #' @seealso \code{\link{make_inits}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
-make_good_inits <- function(model, x, y, n_trials = 1e6, ...) {
+make_good_inits <- function(model, x, y, n_trials = 1e5, ...) {
   limits <- range(y, na.rm = TRUE)
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
@@ -119,7 +108,10 @@ make_good_inits <- function(model, x, y, n_trials = 1e6, ...) {
   }
   if (!are_good) {
     message("bayesnec failed to find initial values within the",
-            " range of the response.")
+            " range of the response. Resorting to Stan's default",
+            " initialisation process.")
+    "random"
+  } else {
+    inits
   }
-  inits
 }

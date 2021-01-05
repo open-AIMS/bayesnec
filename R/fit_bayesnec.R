@@ -58,6 +58,14 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     add_args[["chains"]] <- 4
   }
   chs <- add_args$chains
+  if (family$family == "custom") {
+    msg_tag <- custom_name
+  } else {
+    msg_tag <- family$family
+  }
+  message(paste0("Finding initial values which allow the response to be",
+                 " fitted using a ", model, " model and a ", msg_tag,
+                 " distribution."))
   if (missing(inits) | skip_check) {
     inits <- make_good_inits(model, mod_dat$x,
                              response, priors = priors,
@@ -72,37 +80,10 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                   all_args)
   }
   fit <- do.call(brm, all_args)
-  w <- 1
   pass <- are_chains_correct(fit, chs)
-  # try with bayesnec random initial values
-  while (!pass & w < n_tries) {
-    inits <- make_good_inits(model, mod_dat$x,
-                             response, priors = priors,
-                             chains = chs)
-    up_args <- c(list(object = fit, inits = inits),
-                 add_args)
-    fit <- do.call(update, up_args)
-    pass <- are_chains_correct(fit, chs)
-    if (!pass) {
-      inits <- make_good_inits(model, mod_dat$x,
-                               response, priors = priors,
-                               chains = chs,
-                               stan_like = TRUE)
-      up_args <- c(list(object = fit, inits = inits),
-                   add_args)
-      fit <- do.call(update, up_args)
-      pass <- are_chains_correct(fit, chs)
-    }
-    w <- w + 1
-  }
   if (!pass) {
     stop(paste0("Failed to fit model ", model, "."),
          call. = FALSE)
-  }
-  if (family$family == "custom") {
-    msg_tag <- custom_name
-  } else {
-    msg_tag <- family$family
   }
   fit$loo <- loo(fit)
   fit$waic <- waic(fit)
