@@ -72,9 +72,15 @@ define_prior <- function(model, family, predictor, response) {
                                quantile(predictor,
                                         probs = 0.5),
                                ", ", sd(predictor) * 20, ")"))
+  lbs <- c(Gamma = 0, poisson = 0, negbinomial = 0, gaussian = NA,
+           binomial = 0, beta_binomial2 = 0, beta = 0)
+  ubs <- c(Gamma = NA, poisson = NA, negbinomial = NA, gaussian = NA,
+           binomial = 1, beta_binomial2 = 1, beta = 1)
   # y-dependent priors
-  pr_top <- prior_string(y_t_prs[fam_tag], nlpar = "top")
-  pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot")
+  pr_top <- prior_string(y_t_prs[fam_tag], nlpar = "top",
+                         lb = lbs[fam_tag], ub = ubs[fam_tag])
+  pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot",
+                         lb = lbs[fam_tag], ub = ubs[fam_tag])
   # x-dependent priors
   x_type <- set_distribution(predictor)
   pr_nec <- prior_string(x_prs[x_type], nlpar = "nec",
