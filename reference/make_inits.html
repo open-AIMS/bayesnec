@@ -146,7 +146,7 @@
     <p>Creates list of initialisation values</p>
     </div>
 
-    <pre class="usage"><span class='fu'>make_inits</span><span class='op'>(</span><span class='va'>model</span>, <span class='va'>fct_args</span>, <span class='va'>priors</span>, <span class='va'>chains</span>, stan_like <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>make_inits</span><span class='op'>(</span><span class='va'>model</span>, <span class='va'>fct_args</span>, <span class='va'>priors</span>, <span class='va'>chains</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -168,11 +168,6 @@ the expected argument names to be used.</p></td>
     <tr>
       <th>chains</th>
       <td><p>Number of chains to be passed to brms model.</p></td>
-    </tr>
-    <tr>
-      <th>stan_like</th>
-      <td><p>Should initial values be drawn in a similar
-fashion to how they are drawn by stan? Defaults to FALSE.</p></td>
     </tr>
     </table>
 
