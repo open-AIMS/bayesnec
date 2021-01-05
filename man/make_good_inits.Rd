@@ -4,7 +4,7 @@
 \alias{make_good_inits}
 \title{make_good_inits}
 \usage{
-make_good_inits(model, x, y, n_trials = 1000, ...)
+make_good_inits(model, x, y, n_trials = 1e+06, ...)
 }
 \arguments{
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s)
