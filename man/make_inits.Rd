@@ -4,7 +4,7 @@
 \alias{make_inits}
 \title{make_inits}
 \usage{
-make_inits(model, fct_args, priors, chains, stan_like = FALSE)
+make_inits(model, fct_args, priors, chains)
 }
 \arguments{
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s)
@@ -16,9 +16,6 @@ the expected argument names to be used.}
 \item{priors}{an object of class "brmsprior" from package \pkg{brms}.}
 
 \item{chains}{Number of chains to be passed to brms model.}
-
-\item{stan_like}{Should initial values be drawn in a similar
-fashion to how they are drawn by stan? Defaults to FALSE.}
 }
 \value{
 A \code{\link[base]{list}} containing the initialisation values.
