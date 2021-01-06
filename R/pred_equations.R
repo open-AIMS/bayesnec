@@ -90,12 +90,12 @@ pred_ecxhormebc4 <- function(b_top, b_beta, b_ec50, b_slope, x) {
 }
 
 pred_nechormepwr <- function(b_top, b_slope, b_beta, b_nec, x) {
-  (b_top + x^(1/exp(b_slope))) * exp(-exp(b_beta) * (x - b_nec) *
+  (b_top + x^(1/(1+exp(b_slope)))) * exp(-exp(b_beta) * (x - b_nec) *
                                    ifelse(x - b_nec < 0, 0, 1))
 }
 
 pred_nechorme4pwr <- function(b_beta, b_bot, b_slope, b_nec, b_top, x) {
-  b_bot + ((b_top + x^(1/exp(b_slope))) - b_bot) * exp(-exp(b_beta) * (x - b_nec) *
+  b_bot + ((b_top + x^(1/(1+exp(b_slope)))) - b_bot) * exp(-exp(b_beta) * (x - b_nec) *
                                                      ifelse(x - b_nec < 0, 0, 1))
 }
 

@@ -257,7 +257,7 @@ The model is `0` bounded, thus not suitable for gaussian response data or the us
 
 ### nechormepwr
 The **nechormepwr** model is a basic exponential decay model with an "nec" step function equivalent to **nec3param**, with the addition of a power increase prior to $\eta$, given by the equation
-$$y_i = (\tau + x_i^{1/e^{alpha}}) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+$$y_i = (\tau + x_i^{1/(1+e^{alpha})}) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("nechormepwr")
@@ -286,7 +286,7 @@ This is a *hormesis* model [@Mattson2008], allowing an initial increase in the r
 
 ### nechorme4pwr
 The **nechorme4pwr** model is 4 parameter decay model with an "nec" step function equivalent to **nec4param** with the addition of a power increase prior to $\eta$, given by the equation
-$$y_i = \delta + ((\tau + x_i^{1/e^{alpha}}) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
+$$y_i = \delta + ((\tau + x_i^{1/(1+e^{alpha})}) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("nechorme4pwr")
