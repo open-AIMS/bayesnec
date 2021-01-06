@@ -182,8 +182,9 @@ knitr::include_graphics('example1k.jpeg')
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
 
 ```{r, warning = FALSE, eval=FALSE}
-ecx(exp_4)
-
+ecx(exp_1b)
+#  ec_10_Q50  ec_10_Q2.5 ec_10_Q97.5 
+#   3.799644    3.276595    4.223064 
 ```
 
 
@@ -226,10 +227,13 @@ Where data are a count (of, for example, individuals or cells) y is poisson. Suc
 
 
 ```{r, warning = FALSE, fig.width = 10, fig.height = 4.7}
+require(tidyverse)
+require(bayesnec)
 count_data <- "https://pastebin.com/raw/ENgNSgf7" %>%
   read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
   dplyr::rename(raw_x = raw.x) %>%
-  dplyr::mutate(raw_x = as.numeric(as.character(raw_x)))
+  dplyr::mutate(raw_x = as.numeric(as.character(raw_x)),
+                sqrt_x = sqrt(raw_x))
 
 str(count_data)
 range(count_data$raw_x)
@@ -245,7 +249,7 @@ First we supply `bnec` with `data` (count_data), and specify `x_var` and `y_var`
 
 ```{r, warning = FALSE, eval=FALSE}
 set.seed(333)
-exp_3 <- bnec(data = count_data, x_var = "raw_x",
+exp_3 <- bnec(data = count_data, x_var = "sqrt_x",
               y_var = "count", model = "neclin")
 ```
 
@@ -276,10 +280,10 @@ When count data are overdispersed and cannot be modelled using the poisson famil
 
 ```{r, warning = FALSE, eval=FALSE}
 set.seed(333)
-exp_3b <- bnec(data = count_data, x_var = "raw_x",
+exp_3b <- bnec(data = count_data, x_var = "sqrt_x",
               y_var = "count", family = "negbinomial", model = "neclin")
 ```
-The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it appears there are some bi-modality in these parameter estimates, particularly in the position of the `nec` parameter, and an alternative model may be better for these data.
+The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it it still does not seem to be a good model for these data.
 
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7, eval=FALSE}
 plot(exp_3b)
