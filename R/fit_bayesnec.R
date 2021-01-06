@@ -48,11 +48,10 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
       response <- mod_dat$y
     }
   }
-  suffix <- "_deflt"
+  brms_bf <- get(paste0("bf_", model))
   if (family$family == "binomial" | custom_name == "beta_binomial2") {
-    suffix <- "_binom"
+    brms_bf[[1]][[2]] <- str2lang("y | trials(trials)")
   }
-  brms_bf <- get(paste0("bf_", model, suffix))
   add_args <- list(...)
   if (!("chains" %in% names(add_args))) {
     add_args[["chains"]] <- 4
