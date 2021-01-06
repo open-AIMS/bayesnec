@@ -78,7 +78,7 @@ bf_necsigm <- brms::bf(y ~ top * exp(-exp(beta) * (step(x - nec) *
                        nl = TRUE)
 
 # nechormepwr
-bf_nechormepwr <- brms::bf(y ~ (top + x ^ (1 / exp(slope))) *
+bf_nechormepwr <- brms::bf(y ~ (top + x ^ (1 / (1 + exp(slope)))) *
                              exp(-exp(beta) * (x - nec) * step(x - nec)),
                            top + beta + nec + slope ~ 1,
                            nl = TRUE)
@@ -91,7 +91,7 @@ bf_nechormepwr01 <- brms::bf(y ~ (1 / (1 + ((1 / top) - 1) * exp(-exp(slope) *
                              nl = TRUE)
 
 # nechorme4pwr
-bf_nechorme4pwr <- brms::bf(y ~ bot + ((top + x ^ (1 / exp(slope))) - bot) *
+bf_nechorme4pwr <- brms::bf(y ~ bot + ((top + x ^ (1 / (1 + exp(slope)))) - bot) *
                               exp(-exp(beta) * (x - nec) * step(x - nec)),
                             bot + top + beta + nec + slope ~ 1,
                             nl = TRUE)
