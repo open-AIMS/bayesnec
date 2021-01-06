@@ -32,8 +32,7 @@ check_models <- function(model, family) {
     }
   }
   if (link_tag == "identity" & fam_tag %in% c("beta", "binomial", "custom")) {
-    use_model <-  model[!model %in% c("neclin", "nechorme", "neclinhorme",
-                                      "nechorme4", "ecxlin", "nechormepwr", "nechorme4pwr")]
+    use_model <-  model[!model %in% c("neclin", "neclinhorme","ecxlin")]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
       message(paste("Dropping the model(s)",
