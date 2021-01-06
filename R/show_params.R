@@ -15,14 +15,14 @@
 #' show_params(model = "nec3param")
 #' # group of models
 #' show_params(model = c("nec3param", "ecx"))
-#' 
+#'
 #' @export
 show_params <- function(model = "all") {
-  if (class(model)!="character"){
+  if (class(model) != "character") {
     stop("Not a valid model name")
   }
   display <- function(x) {
-    get(paste("bf", x, "deflt", sep = "_"))
+    get(paste0("bf_", x))
   }
   msets <- names(mod_groups)
   if (any(model %in% msets)) {
