@@ -88,15 +88,20 @@ knitr::include_graphics('example2a.jpeg')
 The default plot looks exactly the same out our regular `bayesnecfit` plot, but the output is based on a weighted average of all the models fits. The *NEC* estimate on this plot is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the `ecx` models in the set. Note that we do not currently recommend reporting this values as the *NEC* (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular `mod_stats` contains the table of model fit statistic for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to "pseudobma" with Bayesian boostrap from `loo`), pD, and the over-dispersion estimate (in this case blank because we have fitted a beta family). For this example, the **nec4param** model has the highest weight, followed by the **neclin** and the **neclinhorme** models.
 ```{r, eval=FALSE}
 exp_5$mod_stats
-#                   model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-# nec4param     nec4param -334.0280 6.370498e-01                  NA              NA               NA
-# nechorme4     nechorme4 -303.5511 7.174919e-07                  NA              NA               NA
-# neclin           neclin -332.7034 1.811404e-01                  NA              NA               NA
-# neclinhorme neclinhorme -329.9205 1.817941e-01                  NA              NA               NA
-# ecxlin           ecxlin -188.2148 6.949153e-09                  NA              NA               NA
-# ecx4param     ecx4param -302.6093 1.240282e-05                  NA              NA               NA
-# ecxwb1           ecxwb1 -294.8037 1.571710e-06                  NA              NA               NA
-# ecxwb2           ecxwb2 -294.6499 1.011942e-06                  NA              NA               NA
+#                     model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
+# nec4param       nec4param -333.6126 3.899322e-01                  NA              NA               NA
+# nechorme4       nechorme4 -330.9883 1.141959e-01                  NA              NA               NA
+# neclin             neclin -332.0894 2.915951e-01                  NA              NA               NA
+# neclinhorme   neclinhorme -330.0939 1.404787e-01                  NA              NA               NA
+# nechorme4pwr nechorme4pwr -329.1494 4.791722e-02                  NA              NA               NA
+# ecxlin             ecxlin -188.1694 9.833897e-26                  NA              NA               NA
+# ecx4param       ecx4param -302.1875 1.504711e-06                  NA              NA               NA
+# ecxwb1             ecxwb1 -294.3077 4.322416e-08                  NA              NA               NA
+# ecxwb2             ecxwb2 -316.6227 5.808150e-04                  NA              NA               NA
+# ecxll5             ecxll5 -325.9983 1.528076e-02                  NA              NA               NA
+# ecxll4             ecxll4 -302.1073 1.609033e-06                  NA              NA               NA
+# ecxhormebc5   ecxhormebc5 -309.5604 1.611482e-05                  NA              NA               NA
+
 ```
 
 The `bayesmanecfit` object also contains all of the original fits, which can be extracted using the `pull_out` function. For example, we can pull out the highested weighted model, **nec4param**.
@@ -144,9 +149,9 @@ We can use this to obtain first a set of *NEC* only models from the existing set
 
 ```{r, eval=FALSE}
 exp_5_nec <- pull_out(exp_5, model = "nec")
-# Model(s) nec3param, nechorme, necsigm non-existent in current set of models: nec4param, nechorme4, neclin, neclinhorme, ecxlin, ecx4param, ecxwb1, ecxwb2.
+# Model(s) nec3param, nechorme, necsigm, nechormepwr, nechormepwr01 non-existent in current set of models: nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr, ecxlin, ecx4param, ecxwb1, ecxwb2, ecxll5, ecxll4, ecxhormebc5.
 # If needed, add desired model(s) via function amend (see ?amend)
-# Pulling out model(s): nec4param, nechorme4, neclin, neclinhorm
+# Pulling out model(s): nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr
 ```
 In this case, because we have already fitted "all" models, we can ignore the message regarding the missing nec models - these are all models that are not appropriate for a `Beta` family with a `logit` link function.
 
@@ -154,7 +159,7 @@ We can drop other models from the set if desired, for example let's drop the **n
 
 ```{r, eval=FALSE}
 exp_5_nec <- amend(exp_5_nec, drop = "neclinhorme")
-#Fitted models are:  nec4param nechorme4 neclin
+#Fitted models are:  nec4param nechorme4 neclin nechorme4pwr
 ```
 Now we have two model sets, an *NEC* set and a mixed *NEC* and *ECx* set. Of course before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
 
@@ -165,10 +170,10 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #    ec_10 ec_10_lw ec_10_up 
-# 1.564202 1.509949 1.612073 
+# 1.567394 1.503566 1.621647 
 ECx50
 #    ec_50 ec_50_lw ec_50_up 
-# 2.004610 1.963123 2.049289
+# 2.004610 1.956740 2.052481
 ```
 
 The weighted *NEC* estimates can be extracted directly from the *NEC* model set object, as they are an explicit parameter in these models.
@@ -177,7 +182,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_nec
 NECvals
 # Estimate     Q2.5    Q97.5 
-# 1.384765 1.297690 1.459165 
+# 1.382239 1.274046 1.466245 
 ```
 
 ### Putting it all together
