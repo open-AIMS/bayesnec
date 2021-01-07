@@ -154,15 +154,19 @@
 <p>The default plot looks exactly the same out our regular <code>bayesnecfit</code> plot, but the output is based on a weighted average of all the models fits. The <em>NEC</em> estimate on this plot is based on a mix of actual <em>NEC</em> estimates, as well as the <em>NSEC</em> estimates that are used as an approximation to <em>NEC</em> for all the <code>ecx</code> models in the set. Note that we do not currently recommend reporting this values as the <em>NEC</em> (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more information). The fitted <code>bayesmanecfit</code> object contains different elements to the <code>bayesnecfit</code>. In particular <code>mod_stats</code> contains the table of model fit statistic for all the fitted models. This includes the model name, the WAIC (as returned from <code>brms</code>), wi (the model weight, currently defaulting to “pseudobma” with Bayesian boostrap from <code>loo</code>), pD, and the over-dispersion estimate (in this case blank because we have fitted a beta family). For this example, the <strong>nec4param</strong> model has the highest weight, followed by the <strong>neclin</strong> and the <strong>neclinhorme</strong> models.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span>
-<span class="co">#                   model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span>
-<span class="co"># nec4param     nec4param -334.0280 6.370498e-01                  NA              NA               NA</span>
-<span class="co"># nechorme4     nechorme4 -303.5511 7.174919e-07                  NA              NA               NA</span>
-<span class="co"># neclin           neclin -332.7034 1.811404e-01                  NA              NA               NA</span>
-<span class="co"># neclinhorme neclinhorme -329.9205 1.817941e-01                  NA              NA               NA</span>
-<span class="co"># ecxlin           ecxlin -188.2148 6.949153e-09                  NA              NA               NA</span>
-<span class="co"># ecx4param     ecx4param -302.6093 1.240282e-05                  NA              NA               NA</span>
-<span class="co"># ecxwb1           ecxwb1 -294.8037 1.571710e-06                  NA              NA               NA</span>
-<span class="co"># ecxwb2           ecxwb2 -294.6499 1.011942e-06                  NA              NA               NA</span></code></pre></div>
+<span class="co">#                     model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span>
+<span class="co"># nec4param       nec4param -333.6126 3.899322e-01                  NA              NA               NA</span>
+<span class="co"># nechorme4       nechorme4 -330.9883 1.141959e-01                  NA              NA               NA</span>
+<span class="co"># neclin             neclin -332.0894 2.915951e-01                  NA              NA               NA</span>
+<span class="co"># neclinhorme   neclinhorme -330.0939 1.404787e-01                  NA              NA               NA</span>
+<span class="co"># nechorme4pwr nechorme4pwr -329.1494 4.791722e-02                  NA              NA               NA</span>
+<span class="co"># ecxlin             ecxlin -188.1694 9.833897e-26                  NA              NA               NA</span>
+<span class="co"># ecx4param       ecx4param -302.1875 1.504711e-06                  NA              NA               NA</span>
+<span class="co"># ecxwb1             ecxwb1 -294.3077 4.322416e-08                  NA              NA               NA</span>
+<span class="co"># ecxwb2             ecxwb2 -316.6227 5.808150e-04                  NA              NA               NA</span>
+<span class="co"># ecxll5             ecxll5 -325.9983 1.528076e-02                  NA              NA               NA</span>
+<span class="co"># ecxll4             ecxll4 -302.1073 1.609033e-06                  NA              NA               NA</span>
+<span class="co"># ecxhormebc5   ecxhormebc5 -309.5604 1.611482e-05                  NA              NA               NA</span></code></pre></div>
 <p>The <code>bayesmanecfit</code> object also contains all of the original fits, which can be extracted using the <code>pull_out</code> function. For example, we can pull out the highested weighted model, <strong>nec4param</strong>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5_nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>
@@ -187,14 +191,14 @@
 <p>We can use this to obtain first a set of <em>NEC</em> only models from the existing set.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>
-<span class="co"># Model(s) nec3param, nechorme, necsigm non-existent in current set of models: nec4param, nechorme4, neclin, neclinhorme, ecxlin, ecx4param, ecxwb1, ecxwb2.</span>
+<span class="co"># Model(s) nec3param, nechorme, necsigm, nechormepwr, nechormepwr01 non-existent in current set of models: nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr, ecxlin, ecx4param, ecxwb1, ecxwb2, ecxll5, ecxll4, ecxhormebc5.</span>
 <span class="co"># If needed, add desired model(s) via function amend (see ?amend)</span>
-<span class="co"># Pulling out model(s): nec4param, nechorme4, neclin, neclinhorm</span></code></pre></div>
+<span class="co"># Pulling out model(s): nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr</span></code></pre></div>
 <p>In this case, because we have already fitted “all” models, we can ignore the message regarding the missing nec models - these are all models that are not appropriate for a <code>Beta</code> family with a <code>logit</code> link function.</p>
 <p>We can drop other models from the set if desired, for example let’s drop the <strong>neclinhorme</strong> model using the <code>amend</code> function.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/amend.html">amend</a></span><span class="op">(</span><span class="va">exp_5_nec</span>, drop <span class="op">=</span> <span class="st">"neclinhorme"</span><span class="op">)</span>
-<span class="co">#Fitted models are:  nec4param nechorme4 neclin</span></code></pre></div>
+<span class="co">#Fitted models are:  nec4param nechorme4 neclin nechorme4pwr</span></code></pre></div>
 <p>Now we have two model sets, an <em>NEC</em> set and a mixed <em>NEC</em> and <em>ECx</em> set. Of course before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. For the “all” set, the model with the highest weight is <strong>nec4param</strong>.</p>
 <p>Now we can use the <code>ecx</code> function to get EC10 and ec50 values. We can do this using our all model set, because it is valid to use <em>NEC</em> models for estimating <em>ECx</em> (see more information in the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
@@ -202,16 +206,16 @@
 <span class="va">ECx50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span>
 <span class="va">ECx10</span>
 <span class="co">#    ec_10 ec_10_lw ec_10_up </span>
-<span class="co"># 1.564202 1.509949 1.612073 </span>
+<span class="co"># 1.567394 1.503566 1.621647 </span>
 <span class="va">ECx50</span>
 <span class="co">#    ec_50 ec_50_lw ec_50_up </span>
-<span class="co"># 2.004610 1.963123 2.049289</span></code></pre></div>
+<span class="co"># 2.004610 1.956740 2.052481</span></code></pre></div>
 <p>The weighted <em>NEC</em> estimates can be extracted directly from the <em>NEC</em> model set object, as they are an explicit parameter in these models.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_nec</span>
 <span class="va">NECvals</span>
 <span class="co"># Estimate     Q2.5    Q97.5 </span>
-<span class="co"># 1.384765 1.297690 1.459165 </span></code></pre></div>
+<span class="co"># 1.382239 1.274046 1.466245 </span></code></pre></div>
 </div>
 <div id="putting-it-all-together" class="section level3">
 <h3 class="hasAnchor">
