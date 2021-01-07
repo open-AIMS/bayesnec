@@ -38,9 +38,10 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     }
   } else {
     universal <- x$mod_fits[[1]]
+    mod_dat <- universal$fit$data    
     family <- universal$fit$family$family
-    mod_dat <- universal$fit$data
-    if (family == "binomial") {
+    custom_name <- check_custom_name(universal$fit$family)
+    if (family == "binomial" | custom_name == "beta_binomial2") {
       y_dat <- mod_dat$y / mod_dat$trials
     } else {
       y_dat <- mod_dat$y
