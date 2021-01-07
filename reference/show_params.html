@@ -216,14 +216,14 @@ to fit. See Details for more information.</p></td>
 #&gt; slope ~ 1
 #&gt; 
 #&gt; $nechormepwr
-#&gt; y ~ (top + x^(1/exp(slope))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; y ~ (top + x^(1/(1 + exp(slope)))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 #&gt; top ~ 1
 #&gt; beta ~ 1
 #&gt; nec ~ 1
 #&gt; slope ~ 1
 #&gt; 
 #&gt; $nechorme4pwr
-#&gt; y ~ bot + ((top + x^(1/exp(slope))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#&gt; y ~ bot + ((top + x^(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 #&gt; bot ~ 1
 #&gt; top ~ 1
 #&gt; beta ~ 1

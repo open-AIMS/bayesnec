@@ -327,13 +327,13 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used. Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link).</p>
+<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
 </div>
 <div id="nechormepwr" class="section level3">
 <h3 class="hasAnchor">
 <a href="#nechormepwr" class="anchor"></a>nechormepwr</h3>
-<p>The <strong>nechormepwr</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + x_i^{1/e^{alpha}}) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ (top + x^(1/exp(slope))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+<p>The <strong>nechormepwr</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + x_i^{1/(1+e^{alpha})}) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ (top + x^(1/(1 + exp(slope)))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 ## top ~ 1
 ## beta ~ 1
 ## nec ~ 1
@@ -361,13 +361,13 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. This model contains linear predictors and is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link).</p>
+<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>.</p>
 </div>
 <div id="nechorme4pwr" class="section level3">
 <h3 class="hasAnchor">
 <a href="#nechorme4pwr" class="anchor"></a>nechorme4pwr</h3>
-<p>The <strong>nechorme4pwr</strong> model is 4 parameter decay model with an “nec” step function equivalent to <strong>nec4param</strong> with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = \delta + ((\tau + x_i^{1/e^{alpha}}) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ bot + ((top + x^(1/exp(slope))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+<p>The <strong>nechorme4pwr</strong> model is 4 parameter decay model with an “nec” step function equivalent to <strong>nec4param</strong> with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = \delta + ((\tau + x_i^{1/(1+e^{alpha})}) - \delta ) e^{-\beta \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ bot + ((top + x^(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 ## bot ~ 1
 ## top ~ 1
 ## beta ~ 1
@@ -385,7 +385,7 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used. Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link).</p>
+<p>This is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
 </div>
 <div id="necsigm" class="section level3">
 <h3 class="hasAnchor">
