@@ -182,16 +182,21 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
 #' @param object An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
 #' @param ... unused.
+#' 
+#' @param rhat_cutoff A numeric vector indicating the rhat criteria used to test for model convergence.
 #'
 #' @return A list containing a vector or rhat values as returned for a brm fit for each parameter, for each of the fitted models
 #'
 #' @importFrom brms rhat
 #'
 #' @export
-rhat.bayesmanecfit <- function(object, ... ) {
- lapply(object$mod_fits, FUN=function(x){
-   rhat(x$fit)
-   })
+rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.005, ... ) {
+ rhat_vals <- lapply(object$mod_fits, FUN=function(x){rhat(x$fit)})
+ failed <- names(rhat_vals)[lapply(rhat_vals, FUN = function(x){max(x>rhat_cutoff)})==1]
+ if(length(failed == length(rhat_vals))){
+   warning(paste("All models failed the rhat_cutoff of", rhat_cutoff))
+ }
+ return(list(rhat_vals = rhat_vals, failed=failed)) 
 }
 
 
@@ -211,3 +216,4 @@ summary.bayesmanecfit <- function(object, ... ) {
     summary(x$fit)
   })
 }
+
