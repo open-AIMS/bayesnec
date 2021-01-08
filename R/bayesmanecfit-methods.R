@@ -158,9 +158,15 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
+
   pred_list <- lapply(mod_fits, FUN=function(m){
     fit <- m$fit
     new_dat <- data.frame(x = x_seq)
+    fam_tag <- fit$family$family
+    custom_name <- check_custom_name(fit$family)
+    if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
+      new_dat$trials <- 1
+    }
         posterior_epred(fit, newdata = new_dat, re_formula = NA)})
   names(pred_list)
   
@@ -190,7 +196,7 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
 #' @importFrom brms rhat
 #'
 #' @export
-rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.005, ... ) {
+rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
  rhat_vals <- lapply(object$mod_fits, FUN=function(x){rhat(x$fit)})
  failed <- names(rhat_vals)[lapply(rhat_vals, FUN = function(x){max(x>rhat_cutoff)})==1]
 
