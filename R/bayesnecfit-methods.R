@@ -182,8 +182,6 @@ rhat.bayesnecfit <- function(object, ... ) {
 #' 
 #' @return A summary of the fitted model as returned for a brm fit
 #' 
-#' @importFrom brms summary
-#' 
 #' @export
 summary.bayesnecfit <- function(object, ... ) {
   summary(object$fit)
