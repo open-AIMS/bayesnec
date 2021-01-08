@@ -120,18 +120,17 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 
 #' predict.bayesnecfit
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.
+#' @param object An object of class \code{\link{bayesnecfit}} as returned
+#' by \code{\link{bnec}}.
 #'
-#' @param ... unused.
-#' 
+#' @param ... Unused.
 #' @param precision the number of x values over which to predict values.
-#'
 #' @param x_range The range of x values over which to make predictions.
 #'
 #' @return A list containing x and fitted y, with up and lw values
-#' 
+#'
 #' @importFrom brms posterior_epred
-#' 
+#'
 #' @export
 predict.bayesnecfit <- function(object, ..., precision = 100,
                                 x_range = NA) {
@@ -143,7 +142,6 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
-  
   new_dat <- data.frame(x = x_seq)
   fam_tag <- fit$family$family
   custom_name <- check_custom_name(fit$family)
@@ -161,14 +159,15 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
 
 #' rhat.bayesnecfit
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.
+#' @param object An object of class \code{\link{bayesnecfit}} as returned
+#' by \code{\link{bnec}}.
+#' @param ... Unused.
 #'
-#' @param ... unused.
-#' 
-#' @return A named vector containing rhat values as returned for a brm fit for each of the estimated parameters
-#' 
+#' @return A named vector containing rhat values as returned for a brmsfit
+#' for each of the estimated parameters.
+#'
 #' @importFrom brms rhat
-#' 
+#'
 #' @export
 rhat.bayesnecfit <- function(object, ... ) {
   rhat(object$fit)
@@ -176,13 +175,75 @@ rhat.bayesnecfit <- function(object, ... ) {
 
 #' summary.bayesnecfit
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.
+#' @param object An object of class \code{\link{bayesnecfit}} as returned
+#' by \code{\link{bnec}}.
+#' @param ecx Should summary EC values be calculated? Defaults to FALSE.
+#' @param ecx_vals EC targets (between 1 and 99). Only relevant if ecx = TRUE.
+#' If no value is specified by the user, returns calculations for EC10, EC50,
+#' and EC90.
+#' @param ... Unused.
 #'
-#' @param ... unused.
-#' 
-#' @return A summary of the fitted model as returned for a brm fit
-#' 
+#' @return A summary of the fitted model as returned for a brmsfit
+#'
 #' @export
-summary.bayesnecfit <- function(object, ... ) {
-  summary(object$fit)
+summary.bayesnecfit <- function(x, ecx = FALSE,
+                                ecx_vals = c(10, 50, 90), ...) {
+  ecs <- NULL
+  if (ecx) {
+    message("ECX calculation takes a few seconds per model, calculating...\n")
+    ecs <- list()
+    for (i in seq_along(ecx_vals)) {
+      ecs[[i]] <- ecx(x, ecx_val = ecx_vals[i])
+    }
+    names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
+  }
+  out <- list(
+    brmssummary = summary(x$fit, robust = TRUE),
+    model = x$model,
+    is_ecx = x$model %in% mod_groups$ecx,
+    ecs = ecs
+  )
+  allot_class(out, "necsummary")
+}
+
+#' print.necsummary
+#'
+#' @param x An object of class \code{\link{necsummary}} as
+#' returned by \code{\link{summary.bayesnecfit}}.
+#' @param ... Unused.
+#'
+#' @return A list containing a summary of model features and statistics.
+#'
+#' @export
+print.necsummary <- function(x, ...) {
+  cat("Object of class bayesnecfit containing the following",
+      " non-linear model: ", x$model, "\n\n", sep = "")
+  print(x$brmssummary)
+
+  if (x$is_ecx) {
+    cat("\nNB: Model ", x$model, " is an ECX model and so ",
+        "the NEC estimate is an NSEC surrogate.\n", sep = "")
+  }
+  if (!is.null(x$ecs)) {
+    cat("\n\n")
+    for (i in seq_along(x$ecs)) {
+      nice_ecx_out(x$ecs[[i]], names(x$ecs)[i])
+      "\n\n"
+    }
+  }
+  invisible(x)
+}
+
+#' print.bayesnecfit
+#'
+#' @param x An object of class \code{\link{bayesnecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... Further arguments to function summary.
+#'
+#' @return A list containing a summary of the model fit as returned a
+#' brmsfit for each model.
+#'
+#' @export
+print.bayesnecfit <- function(x, ...) {
+  print(summary(x, ...))
 }

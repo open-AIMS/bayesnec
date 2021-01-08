@@ -137,7 +137,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
-#' @param ... unused.
+#' @param ... Unused.
 #' @param precision the number of x values over which to predict values.
 #' @param x_range The range of x values over which to make predictions.
 #'
@@ -187,7 +187,7 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
-#' @param ... unused.
+#' @param ... Unused.
 #' 
 #' @param rhat_cutoff A numeric vector indicating the rhat criteria used to test for model convergence.
 #'
@@ -206,19 +206,104 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
  return(list(rhat_vals = rhat_vals, failed=failed)) 
 }
 
-
 #' summary.bayesmanecfit
 #'
-#' @param object An object of class \code{\link{bayesmanecfit}} as
+#' @param x An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
-#' @param ... unused.
+#' @param ecx Should summary EC values be calculated? Defaults to FALSE.
+#' @param ecx_vals EC targets (between 1 and 99). Only relevant if ecx = TRUE.
+#' If no value is specified by the user, returns calculations for EC10, EC50,
+#' and EC90.
+#' @param ... Unused.
 #'
-#' @return A list containing a summary of the model fit as returned a brm fit for each model.
+#' @return A list containing a summary of the model fit as returned a
+#' brmsfit for each model.
 #'
+#' @importFrom plyr llply
 #' @export
-summary.bayesmanecfit <- function(object, ... ) {
-  lapply(object$mod_fits, FUN=function(x){
-    summary(x$fit)
-  })
+summary.bayesmanecfit <- function(x, ecx = FALSE,
+                                  ecx_vals = c(10, 50, 90), ...) {
+  ecs <- NULL
+  if (ecx) {
+    message("ECX calculation takes a few seconds per model, calculating...\n")
+    ecs <- list()
+    for (i in seq_along(ecx_vals)) {
+      ecs[[i]] <- ecx(x, ecx_val = ecx_vals[i])
+    }
+    names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
+  }
+  ecx_mods <- NULL
+  if (any(x$success_models %in% mod_groups$ecx)) {
+    ecx_mods <- x$success_models[x$success_models %in% mod_groups$ecx]
+  }
+  out <- list(
+    models = x$success_models,
+    family = x$mod_fits[[1]]$fit$family$family,
+    sample_size = x$sample_size,
+    mod_weights = clean_mod_weights(x),
+    mod_weights_method = class(x$mod_stats$wi),
+    ecx_mods = ecx_mods,
+    nec_vals = clean_nec_vals(x),
+    ecs = ecs,
+    rhat_issues = llply(x$mod_fits, function(y)has_r_hat_warnings(y$fit))
+  )
+  allot_class(out, "manecsummary")
 }
 
+#' print.manecsummary
+#'
+#' @param x An object of class \code{\link{manecsummary}} as
+#' returned by \code{\link{summary.bayesmanecfit}}.
+#' @param ... Unused.
+#'
+#' @return A list containing a summary of model features and statistics.
+#'
+#' @export
+print.manecsummary <- function(x, ...) {
+  cat("Object of class bayesmanecfit containing the following",
+      " non-linear models:\n",
+      paste0("  -  ", x$models, collapse = "\n"), sep = "")
+  cat("\n\n")
+  cat("Distribution family:", x$family)
+  cat("\n")
+  cat("Number of posterior draws per model: ", x$sample_size)
+  cat("\n\n")
+  cat("Model weights (Method: ", x$mod_weights_method, "):\n", sep = "")
+  print_mat(x$mod_weights)
+  cat("\n\n")
+  cat("Summary of weighted NEC posterior estimates:\n")
+  if (!is.null(x$ecx_mods)) {
+    cat("NB: Model set contains the ECX models: ",
+        paste0(x$ecx_mods, collapse = ";"),
+        "; weighted NEC estimates include NSEC surrogates for NEC\n", sep = "")
+  }
+  print_mat(x$NEC)
+  cat("\n\n")
+  if (!is.null(x$ecs)) {
+    for (i in seq_along(x$ecs)) {
+      nice_ecx_out(x$ecs[[i]], names(x$ecs)[i])
+      "\n\n"
+    }
+  }
+  with_issues <- names(x$rhat_issues[unlist(x$rhat_issues)])
+  if (length(with_issues) > 0) {
+      warning("The following model had Rhats > 1.05 (no convergence):\n",
+              paste0("  -  ", with_issues, collapse = "\n"), "\n",
+              "Consider dropping them (see ?amend)\n", sep = "")
+  }
+  invisible(x)
+}
+
+#' print.bayesmanecfit
+#'
+#' @param x An object of class \code{\link{bayesmanecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... Further arguments to function summary.
+#'
+#' @return A list containing a summary of the model fit as returned a
+#' brmsfit for each model.
+#'
+#' @export
+print.bayesmanecfit <- function(x, ...) {
+  print(summary(x, ...))
+}

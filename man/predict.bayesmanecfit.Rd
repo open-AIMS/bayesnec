@@ -10,7 +10,7 @@
 \item{object}{An object of class \code{\link{bayesmanecfit}} as
 returned by \code{\link{bnec}}.}
 
-\item{...}{unused.}
+\item{...}{Unused.}
 
 \item{precision}{the number of x values over which to predict values.}
 
