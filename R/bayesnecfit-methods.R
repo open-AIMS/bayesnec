@@ -144,7 +144,7 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
   
-  new_dat <- data.frame(x = x_seq, trials = 10e3)
+  new_dat <- data.frame(x = x_seq)
   fam_tag <- fit$family$family
   custom_name <- check_custom_name(fit$family)
   if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
