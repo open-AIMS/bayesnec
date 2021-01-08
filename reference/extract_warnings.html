@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>summary.bayesmanecfit — summary.bayesmanecfit • bayesnec</title>
+<title>find_warnings — extract_warnings • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="summary.bayesmanecfit — summary.bayesmanecfit" />
-<meta property="og:description" content="summary.bayesmanecfit" />
+<meta property="og:title" content="find_warnings — extract_warnings" />
+<meta property="og:description" content="Extract warnings from brmsfit object" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -137,46 +137,29 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>summary.bayesmanecfit</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/bayesmanecfit-methods.R'><code>R/bayesmanecfit-methods.R</code></a></small>
-    <div class="hidden name"><code>summary.bayesmanecfit.Rd</code></div>
+    <h1>find_warnings</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/helpers.R'><code>R/helpers.R</code></a></small>
+    <div class="hidden name"><code>extract_warnings.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>summary.bayesmanecfit</p>
+    <p>Extract warnings from brmsfit object</p>
     </div>
 
-    <pre class="usage"><span class='co'># S3 method for bayesmanecfit</span>
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>x</span>, ecx <span class='op'>=</span> <span class='cn'>FALSE</span>, ecx_vals <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>10</span>, <span class='fl'>50</span>, <span class='fl'>90</span><span class='op'>)</span>, <span class='va'>...</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>extract_warnings</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>x</th>
-      <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> as
-returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
-    </tr>
-    <tr>
-      <th>ecx</th>
-      <td><p>Should summary EC values be calculated? Defaults to FALSE.</p></td>
-    </tr>
-    <tr>
-      <th>ecx_vals</th>
-      <td><p>EC targets (between 1 and 99). Only relevant if ecx = TRUE.
-If no value is specified by the user, returns calculations for EC10, EC50,
-and EC90.</p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>Unused.</p></td>
+      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code>.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A list containing a summary of the model fit as returned a
-brmsfit for each model.</p>
+    <p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing all warning messages.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
