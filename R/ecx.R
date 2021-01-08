@@ -145,7 +145,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   sample_ecx <- function(x, object, ecx_val, precision,
                          posterior, type, hormesis_def,
                          x_range, xform, prob_vals, sample_size) {
-    out <- ecx.default(object$mod_fits[[x]], ecx_val = ecx_val,
+    mod <- names(object$mod_fits)[x]
+    target <- suppressMessages(pull_out(object, model = mod))
+    out <- ecx.default(target, ecx_val = ecx_val,
                        precision = precision, posterior = posterior,
                        type = type, hormesis_def = hormesis_def,
                        x_range = x_range, xform = xform,
