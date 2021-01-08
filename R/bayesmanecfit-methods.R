@@ -193,7 +193,8 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
 rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.005, ... ) {
  rhat_vals <- lapply(object$mod_fits, FUN=function(x){rhat(x$fit)})
  failed <- names(rhat_vals)[lapply(rhat_vals, FUN = function(x){max(x>rhat_cutoff)})==1]
- if(length(failed == length(rhat_vals))){
+
+ if(length(failed) == length(rhat_vals)){
    warning(paste("All models failed the rhat_cutoff of", rhat_cutoff))
  }
  return(list(rhat_vals = rhat_vals, failed=failed)) 
