@@ -7,12 +7,14 @@
 \method{rhat}{bayesnecfit}(object, ...)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesnecfit}} as returned
+by \code{\link{bnec}}.}
 
-\item{...}{unused.}
+\item{...}{Unused.}
 }
 \value{
-A named vector containing rhat values as returned for a brm fit for each of the estimated parameters
+A named vector containing rhat values as returned for a brmsfit
+for each of the estimated parameters.
 }
 \description{
 rhat.bayesnecfit

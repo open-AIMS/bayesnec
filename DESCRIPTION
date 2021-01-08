@@ -19,7 +19,8 @@ Imports:
     tidyr,
     tidyselect,
     lazyeval,
-    ggplot2
+    ggplot2,
+    evaluate
 Suggests:
     knitr,
     rmarkdown,

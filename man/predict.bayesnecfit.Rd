@@ -7,9 +7,10 @@
 \method{predict}{bayesnecfit}(object, ..., precision = 100, x_range = NA)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesnecfit}} as returned
+by \code{\link{bnec}}.}
 
-\item{...}{unused.}
+\item{...}{Unused.}
 
 \item{precision}{the number of x values over which to predict values.}
 

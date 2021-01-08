@@ -200,3 +200,55 @@ modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
   posterior_sample
 }
 
+#' find_warnings
+#'
+#' Extract warnings from brmsfit object
+#'
+#' @param x An object of class \code{\link[brms]{brmsfit}}.
+#'
+#' @importFrom evaluate evaluate is.warning
+#'
+#' @return A \code{\link[base]{list}} containing all warning messages.
+extract_warnings <- function(x) {
+  x <- evaluate("identity(x)", new_device = FALSE)
+  to_extract <- which(sapply(x, is.warning))
+  if (length(to_extract) > 0) {
+    x[to_extract]
+  } else {
+    NULL
+  }
+}
+
+has_r_hat_warnings <- function(...) {
+  x <- extract_warnings(...)
+  any(grepl("some Rhats are > 1.05", x, fixed = TRUE))
+}
+
+print_mat <- function(x, digits = 2) {
+  fmt <- paste0("%.", digits, "f")
+  out <- x
+  for (i in seq_len(ncol(x))) {
+    out[, i] <- sprintf(fmt, x[, i])
+  }
+  print(out, quote = FALSE, right = TRUE)
+  invisible(x)
+}
+
+clean_mod_weights <- function(x) {
+  a <- x$mod_stats[, !sapply(x$mod_stats, function(z)all(is.na(z)))]
+  as.matrix(a[, -1])
+}
+
+clean_nec_vals <- function(x) {
+  mat <- t(as.matrix(x$w_nec))
+  rownames(mat) <- "NEC"
+  mat
+}
+
+nice_ecx_out <- function(ec, ecx_tag) {
+  cat(ecx_tag)
+  cat("\n")
+  mat <- t(as.matrix(ec))
+  rownames(mat) <- "Estimate"
+  print_mat(mat)
+}

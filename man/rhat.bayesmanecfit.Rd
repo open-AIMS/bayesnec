@@ -4,7 +4,7 @@
 \alias{rhat.bayesmanecfit}
 \title{rhat.bayesmanecfit}
 \usage{
-\method{rhat}{bayesmanecfit}(object, rhat_cutoff = 1.005, ...)
+\method{rhat}{bayesmanecfit}(object, rhat_cutoff = 1.05, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesmanecfit}} as
@@ -12,7 +12,7 @@ returned by \code{\link{bnec}}.}
 
 \item{rhat_cutoff}{A numeric vector indicating the rhat criteria used to test for model convergence.}
 
-\item{...}{unused.}
+\item{...}{Unused.}
 }
 \value{
 A list containing a vector or rhat values as returned for a brm fit for each parameter, for each of the fitted models
