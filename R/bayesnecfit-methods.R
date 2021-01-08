@@ -159,15 +159,32 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
        posterior = pred_out)
 }
 
-#' predict.prebayesnecfit
+#' rhat.bayesnecfit
 #'
-#' @inheritDotParams predict.bayesnecfit -object
+#' @param object An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.
+#'
+#' @param ... unused.
 #' 
-#' @param object An object of class \code{\link{prebayesnecfit}} as returned by \code{\link{fit_bayesnec}}.
-#'
-#' @inherit predict.bayesnecfit return
+#' @return A named vector containing rhat values as returned for a brm fit for each of the estimated parameters
+#' 
+#' @importFrom brms rhat
 #' 
 #' @export
-predict.prebayesnecfit <- function(object, ...) {
-  predict.bayesnecfit(object, ...)
+rhat.bayesnecfit <- function(object, ... ) {
+  rhat(object$fit)
+}
+
+#' summary.bayesnecfit
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} as returned by \code{\link{bnec}}.
+#'
+#' @param ... unused.
+#' 
+#' @return A summary of the fitted model as returned for a brm fit
+#' 
+#' @importFrom brms summary
+#' 
+#' @export
+summary.bayesnecfit <- function(object, ... ) {
+  summary(object$fit)
 }

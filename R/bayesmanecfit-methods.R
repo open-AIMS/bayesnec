@@ -175,3 +175,39 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
   list(data = pred_data,
        posterior = pred_out)  
 }
+
+
+#' rhat.bayesmanecfit
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... unused.
+#'
+#' @return A list containing a vector or rhat values as returned for a brm fit for each parameter, for each of the fitted models
+#'
+#' @importFrom brms rhat
+#'
+#' @export
+rhat.bayesmanecfit <- function(object, ... ) {
+ lapply(object$mod_fits, FUN=function(x){
+   rhat(x$fit)
+   })
+}
+
+
+#' summary.bayesmanecfit
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... unused.
+#'
+#' @return A list containing a summary of the model fit as returned a brm fit for each model.
+#'
+#' @importFrom brms summary
+#'
+#' @export
+summary.bayesmanecfit <- function(object, ... ) {
+  lapply(object$mod_fits, FUN=function(x){
+    summary(x$fit)
+  })
+}
