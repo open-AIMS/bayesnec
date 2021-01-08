@@ -208,8 +208,6 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.005, ... ) {
 #'
 #' @return A list containing a summary of the model fit as returned a brm fit for each model.
 #'
-#' @importFrom brms summary
-#'
 #' @export
 summary.bayesmanecfit <- function(object, ... ) {
   lapply(object$mod_fits, FUN=function(x){
