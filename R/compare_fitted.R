@@ -19,9 +19,7 @@
 #' model fits contained in x. See Details.
 #'
 #' @importFrom stats quantile predict
-#' @importFrom dplyr %>% mutate bind_rows group_by summarise ungroup
-#' @importFrom tidyr pivot_longer
-#' @importFrom tidyselect everything
+#' @importFrom dplyr %>% mutate bind_rows
 #'
 #' @examples
 #' \dontrun{
@@ -51,40 +49,44 @@ compare_fitted <- function(x, precision = 100, x_range = NA) {
       })
     ), na.rm=TRUE)
   }
-
-  posterior_list <- lapply(x, function(m, ...) {
+ n_samples <- min(sapply(x, FUN = function(v){v$sample_size}))  
+ posterior_list <- lapply(x, function(m, ...) {
       predict(m, ...)$posterior
     }, precision = precision, x_range = x_range)
-    x_vec <- seq(min(x_range), max(x_range), length = precision)
+ x_vec <- seq(min(x_range), max(x_range), length = precision)
     
-  names(posterior_list) <- names(x)
- # mat_a <- mat_a[sample(seq_len(nrow(mat_a))), ]
-  
-  
-  posterior_data <- posterior_list %>%
+ names(posterior_list) <- names(x)
+ 
+ r_posterior_list <- lapply(posterior_list, FUN = function(m){m[sample(seq_len(n_samples), replace = FALSE), ]})
+ posterior_data <- posterior_list %>%
       lapply(summarise_posterior, x_vec = x_vec) %>%
       bind_rows(.id = "model") %>%
       data.frame
-  
- diff_list <- boot_sample_fitted(posterior_list, n_samples, x_vec)
- prob_diff <- extract_probs_fitted(diff_list)
+ all_combn <- combn(names(x), 2, simplify = FALSE)
+ diff_list <- lapply(all_combn, FUN = function(a){
+      r_posterior_list[[a[1]]]-r_posterior_list[[a[2]]]})
+ names(diff_list) <- sapply(all_combn, FUN=function(m){paste(m[1], m[2], sep="-")})
+ diff_data <- lapply(diff_list, FUN = function(m){
+   out_diffs <- t(apply(m, MARGIN = 2, FUN = quantile, probs = c(0.5, 0.025, 0.975))) %>% 
+     data.frame() %>% 
+     mutate(x=x_vec)
+ })
+ diff_data_out <- bind_rows(diff_data, .id = "comparison")
+ colnames(diff_data_out) <- c("comparison", "diff.Estimate", "diff.Q2.5", "diff.Q97.5", "x")
  
- diff_data <- extract_diffs_fitted(diff_list) #%>%
-    mutate(index = 1) %>%
-      group_by(x, comparison) %>%
-      summarise(prob = sum(gr_0) / sum(index),
-                diff.Estimate = quantile(diff, probs = 0.5),
-                diff.Q2.5 = quantile(diff, probs = 0.025),
-                diff.Q97.5 = quantile(diff, probs = 0.975),
-                .groups = "keep") %>%
-      ungroup %>%
-      mutate(x = as.numeric(as.character(x))) %>%
-      data.frame
+ prob_diff <- lapply(diff_list, FUN = function(m){
+   m[m>0] <- 1
+   m[m<=0] <- 0
+   cbind(x=x_vec, prob=colMeans(m)) %>% 
+     data.frame()
+ })
   
-  list(posterior_list = posterior_list,
+ prob_diff_out <- bind_rows(prob_diff, .id = "comparison")
+
+ return(list(posterior_list = posterior_list,
        posterior_data = posterior_data,
        diff_list = diff_list,
-       diff_data = diff_data,
-       prob_diff = prob_diff)
+       diff_data = diff_data_out,
+       prob_diff = prob_diff_out))
 }
 
