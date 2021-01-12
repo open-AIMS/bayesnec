@@ -19,6 +19,7 @@ bnec(
   warmup = floor(iter/5) * 4,
   inits,
   n_tries = 5,
+  pointwise,
   loo_controls = list(method = "pseudobma"),
   ...
 )
@@ -78,6 +79,11 @@ number of chains, and names correspond to the parameter names of a given
 model.}
 
 \item{n_tries}{Number of times to attempt a fit.}
+
+\item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
+at once or separately for each observation. The latter approach is usually considerably slower but requires
+much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
+but will not work for the custom family beta_binomial2}
 
 \item{loo_controls}{A named \code{\link[base]{list}} containing the desired
 arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets

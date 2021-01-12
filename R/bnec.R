@@ -44,6 +44,11 @@
 #' number of chains, and names correspond to the parameter names of a given
 #' model.
 #' @param n_tries Number of times to attempt a fit.
+#' @param pointwise A flag indicating whether to compute the full log-likelihood matrix 
+#' at once or separately for each observation. The latter approach is usually considerably slower but requires
+#' much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
+#' but will not work for the custom family beta_binomial2
+#' 
 #' @param loo_controls A named \code{\link[base]{list}} containing the desired
 #' arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
 #' the default wi_method to "pseudobma". See help documentation
@@ -188,7 +193,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 2e4, warmup = floor(iter / 5) * 4,
-                 inits, n_tries = 5,
+                 inits, n_tries = 5, pointwise, 
                  loo_controls = list(method = "pseudobma"), ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
@@ -212,6 +217,14 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
   fam_tag <- family$family
   link_tag <- family$link
 
+  if (missing(pointwise)) {
+    if (fam_tag == "custom"){pointwise = FALSE} else {pointwise = TRUE}
+  } else {
+    if(pointwise == TRUE & fam_tag == "custom"){
+      stop("You cannot currently set pointwise = TRUE for custom families")
+    }
+  }
+  
   model <- check_models(model, family)
 
   if (length(model) > 1) {
