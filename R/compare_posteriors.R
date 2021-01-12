@@ -42,155 +42,22 @@
 #' }
 #'
 #' @export
-compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
+compare_posterior <- function(x, comparison = "nec", ecx_val = 10, 
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision = 1000, x_range = NA,
-                              n_samples = 2000) {
-  if (is.na(x_range)){
-    x_range <- range(unlist(
-     lapply(x, FUN=function(l){
-       if (class(l)=="bayesmanecfit"){l$w_pred_vals$data$x} else if 
-         (class(l)=="bayesnecfit"){l$pred_vals$data$x} else {
-           stop("Not all objects in x are of class bayesnecfit or bayesmanecfit")
-         }
-      })
-    ), na.rm=TRUE)
-  }
-
-  if (comparison == "nec") {
-    posterior_list <- lapply(x, function(m) {
-      if (class(m) == "bayesnecfit") {
-        out <- unname(m$nec_posterior)
-      }
-      if (class(m) == "bayesmanecfit") {
-        out <- unname(m$w_nec_posterior)
-      }
-      return(out)
-    })
-  }
-  if (comparison == "ecx") {
-    posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
-                             posterior = TRUE, type = type,
-                             hormesis_def = hormesis_def, x_range = x_range)
-  }
-  if (comparison == "nsec") {
-    posterior_list <- lapply(x, nsec, sig_val = sig_val, precision = precision,
-                             posterior = TRUE, hormesis_def = hormesis_def,
-                             x_range = x_range)
-  }
-  if (comparison == "fitted") {
-    posterior_list <- lapply(x, function(m, ...) {
-      predict(m, ...)$posterior
-    }, precision = precision, x_range = x_range)
-    x_vec <- seq(min(x_range), max(x_range), length = precision)
-    
-  }
-  names(posterior_list) <- names(x)
+                              sig_val = 0.01, precision = 1000, x_range = NA) {
   if (comparison != "fitted") {
-    posterior_data <- do.call("cbind", posterior_list) %>%
-      data.frame %>%
-      pivot_longer(cols = everything(), names_to = "model")
-    diff_list <- boot_sample(posterior_list, n_samples)
-    prob_diff <- extract_probs(diff_list)
-    diff_data <- extract_diffs(diff_list)
-  } else {
-    posterior_data <- posterior_list %>%
-      lapply(summarise_posterior, x_vec = x_vec) %>%
-      bind_rows(.id = "model") %>%
-      data.frame
-    diff_list <- boot_sample_fitted(posterior_list, n_samples, x_vec)
-    prob_diff <- extract_probs_fitted(diff_list)
-    diff_data <- extract_diffs_fitted(diff_list) %>%
-      mutate(index = 1) %>%
-      group_by(x, comparison) %>%
-      summarise(prob = sum(gr_0) / sum(index),
-                diff.Estimate = quantile(diff, probs = 0.5),
-                diff.Q2.5 = quantile(diff, probs = 0.025),
-                diff.Q97.5 = quantile(diff, probs = 0.975),
-                .groups = "keep") %>%
-      ungroup %>%
-      mutate(x = as.numeric(as.character(x))) %>%
-      data.frame
+    out <- compare_endpoints(x = x, comparison = comparison, ecx_val = ecx_val,
+                             type = type, hormesis_def = hormesis_def,
+                             sig_val = sig_val, precision = precision, x_range = x_range)
+     } else {
+       out <- compare_fitted(x = x, precision = precision, x_range = x_range)
+
   }
-  list(posterior_list = posterior_list,
-       posterior_data = posterior_data,
-       diff_list = diff_list,
-       diff_data = diff_data,
-       prob_diff = prob_diff)
+ return(out)
 }
 
-boot_sample <- function(posterior_list, n_samples = 1000) {
-  lapply(seq_len(n_samples), function(n, posterior_list) {
-    v <- sapply(posterior_list, sample, size = 1)
-    outer(v, v, `-`)
-  }, posterior_list = posterior_list)
-}
-
-boot_sample_fitted <- function(posterior_list, n_samples = 1000, x_vec) {
-  all_diff_list <- lapply(seq_len(length(x_vec)), function(p, pl, ns) {
-    posterior_list_p <- lapply(pl, function(h, p) h[, p], p = p)
-    boot_sample(posterior_list_p, ns)
-  }, pl = posterior_list, ns = n_samples)
-  names(all_diff_list) <- x_vec
-  all_diff_list
-}
-
-extract_probs <- function(diff_list) {
-  tmp <- lapply(diff_list, function(x) {
-    x[x >= 0] <- 1
-    x[x < 0] <- 0
-    x
-  })
-  Reduce("+", tmp) / length(diff_list)
-}
-
-extract_probs_fitted <- function(all_diff_list) {
-  lapply(all_diff_list, extract_probs)
-}
-
-extract_diffs <- function(diff_list) {
-  do.call("rbind", lapply(diff_list, melt_diff))
-}
-
-#' @importFrom dplyr %>% if_else mutate
-#' @importFrom plyr ldply
-extract_diffs_fitted <- function(all_diff_list) {
-  plyr::ldply(all_diff_list, extract_diffs, .id = "x") %>%
-    mutate(gr_0 = if_else(diff >= 0, 1, 0))
-}
-
-#' @importFrom dplyr %>%
-#' @importFrom tidyr gather_ unite
-#' @importFrom lazyeval interp
-melt_diff <- function(diff, order = NULL, diff_name = "diff") {
-  if (!is.null(order)) {
-    diff <- diff[order, order]
-  } else {
-    order <- row.names(diff)
-  }
-  diag(diff) <- NA
-  diff[upper.tri(diff)] <- NA
-  diff_df <- as.data.frame(diff)
-  diff_df$rows <- row.names(diff)
-  diff_df %>%
-    gather_(key_col = "cols",
-            value_col = lazyeval::interp("diff_name", diff_name = as.name(diff_name)),
-            order, na.rm = TRUE) %>%
-    unite(comparison, rows, cols, sep = "-") %>%
-    data.frame
-}
 
 summarise_posterior <- function(mat, x_vec) {
   cbind(x = x_vec, data.frame(t(apply(mat, 2, estimates_summary))))
 }
 
-#' @importFrom dplyr %>% rename_all mutate
-#' @importFrom tidyr pivot_longer
-pivot_posterior <- function(mat, vec) {
-  data.frame(t(mat)) %>%
-    rename_all(~ gsub("X", "col_", .x, fixed = TRUE)) %>%
-    mutate(x_var = vec) %>%
-    pivot_longer(cols = -x_var,
-                 names_to = "sample",
-                 values_to = "y_pred")
-}
