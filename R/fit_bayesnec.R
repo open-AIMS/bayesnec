@@ -17,7 +17,7 @@
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          family = NULL, priors, model = NA,
-                         inits, skip_check = FALSE, n_tries = n_tries, ...) {
+                         inits, skip_check = FALSE, n_tries = n_tries, pointwise = pointwise, ...) {
   if (skip_check) {
     mod_dat <- data
     custom_name <- check_custom_name(family)
@@ -85,7 +85,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
          call. = FALSE)
   }
   fit$loo <- loo(fit)
-  fit$waic <- waic(fit)
+  fit$waic <- waic(fit, pointwise = pointwise)
   message(paste0("Response variable modelled as a ",
                  model, " model using a ", msg_tag,
                  " distribution."))
