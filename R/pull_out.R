@@ -41,7 +41,7 @@ pull_out <- function(manec, model, ...) {
     message("Model(s) ", paste0(model, collapse = ", "),
             " non-existent in current set of models: ",
             paste0(existing, collapse = ", "), ".\n",
-            "If needed, add desired model(s) via function ",
+            "They may have been removed due to incombatiblity with the modelled response distribution. If needed, add desired model(s) via function ",
             "amend (see ?amend)\n",
             "Returning original object")
     return(manec)
@@ -50,7 +50,7 @@ pull_out <- function(manec, model, ...) {
     message("Model(s) ", paste0(non_existing, collapse = ", "),
             " non-existent in current set of models: ",
             paste0(existing, collapse = ", "), ".\n",
-            "If needed, add desired model(s) via function ",
+            "They may have been removed due to incombatiblity with the modelled response distribution. If needed, add desired model(s) via function ",
             "amend (see ?amend)")
   }
   if (all(existing %in% to_go)) {
