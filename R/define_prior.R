@@ -50,7 +50,7 @@ define_prior <- function(model, family, predictor, response) {
                negbinomial = u_t_g,
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.9),
-                                 ", ", sd(response) * 10, ")"),
+                                 ", ", sd(response) * 2.5, ")"),
                binomial = "beta(5, 1)",
                beta_binomial2 = "beta(5, 1)",
                beta = "beta(5, 1)")
@@ -59,7 +59,7 @@ define_prior <- function(model, family, predictor, response) {
                negbinomial = u_b_g,
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.1),
-                                 ", ", sd(response) * 20, ")"),
+                                 ", ", sd(response) * 2.5, ")"),
                binomial = "beta(1, 5)",
                beta_binomial2 = "beta(1, 5)",
                beta = "beta(1, 5)")
@@ -71,7 +71,7 @@ define_prior <- function(model, family, predictor, response) {
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),
-                               ", ", sd(predictor) * 20, ")"))
+                               ", ", sd(predictor) * 2.5, ")"))
   lbs <- c(Gamma = 0, poisson = 0, negbinomial = 0, gaussian = NA,
            binomial = 0, beta_binomial2 = 0, beta = 0)
   ubs <- c(Gamma = NA, poisson = NA, negbinomial = NA, gaussian = NA,
@@ -92,6 +92,7 @@ define_prior <- function(model, family, predictor, response) {
   pr_beta <- prior_string("normal(0, 1)", nlpar = "beta")
   pr_f <- prior_string("normal(0, 1)", nlpar = "f")
   pr_slope <- prior_string("normal(0, 1)", nlpar = "slope")
+  
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d
