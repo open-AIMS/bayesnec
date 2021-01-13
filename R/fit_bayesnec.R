@@ -67,7 +67,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                  " distribution."))
   if (missing(inits) | skip_check) {
     inits <- make_good_inits(model, mod_dat$x,
-                             response, priors = priors,
+                             family$linkfun(response), priors = priors,
                              chains = chs)
   }
   all_args <- c(list(formula = brms_bf, data = mod_dat,
