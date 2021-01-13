@@ -15,10 +15,9 @@ bnec(
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
-  iter = 20000,
+  iter = 5000,
   warmup = floor(iter/5) * 4,
   inits,
-  n_tries = 5,
   pointwise,
   loo_controls = list(method = "pseudobma"),
   ...
@@ -77,8 +76,6 @@ The number of warmup should not be larger than "iter" and the default is
 \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the
 number of chains, and names correspond to the parameter names of a given
 model.}
-
-\item{n_tries}{Number of times to attempt a fit.}
 
 \item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
 at once or separately for each observation. The latter approach is usually considerably slower but requires

@@ -43,7 +43,6 @@
 #' \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the
 #' number of chains, and names correspond to the parameter names of a given
 #' model.
-#' @param n_tries Number of times to attempt a fit.
 #' @param pointwise A flag indicating whether to compute the full log-likelihood matrix 
 #' at once or separately for each observation. The latter approach is usually considerably slower but requires
 #' much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
@@ -192,8 +191,8 @@
 bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
-                 iter = 2e4, warmup = floor(iter / 5) * 4,
-                 inits, n_tries = 5, pointwise, 
+                 iter = 5e3, warmup = floor(iter / 5) * 4,
+                 inits, pointwise, 
                  loo_controls = list(method = "pseudobma"), ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
@@ -218,14 +217,13 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
   link_tag <- family$link
 
   if (missing(pointwise)) {
-    if (fam_tag == "custom"){pointwise = FALSE} else {pointwise = TRUE}
+    if (fam_tag == "custom") {pointwise <-  FALSE} else {pointwise <- TRUE}
   } else {
-    if(pointwise == TRUE & fam_tag == "custom"){
+    if(pointwise & fam_tag == "custom") {
       stop("You cannot currently set pointwise = TRUE for custom families")
     }
   }
   model <- check_models(model, family)
-
   if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
@@ -236,7 +234,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                      trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
                      iter = iter, warmup = warmup, inits = inits,
-                     n_tries = n_tries, pointwise = pointwise, ...),
+                     pointwise = pointwise, ...),
         silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
@@ -260,7 +258,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                             trials_var = trials_var, family = family,
                             priors = priors, model = model,
                             iter = iter, warmup = warmup,
-                            inits = inits, n_tries = n_tries, ...)
+                            inits = inits, pointwise = pointwise, ...)
     mod_fit <- expand_nec(mod_fit, x_range = x_range,
                           precision = precision,
                           sig_val = sig_val)
