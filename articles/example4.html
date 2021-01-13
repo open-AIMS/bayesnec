@@ -118,10 +118,7 @@
 <span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>
 
 <span class="co"># Fit a set of models</span>
-<span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">nec_data</span>, x_var <span class="op">=</span> <span class="st">"x"</span>, y_var <span class="op">=</span> <span class="st">"y"</span>,
-               model <span class="op">=</span> <span class="st">"all"</span>,
-               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"logit"</span><span class="op">)</span>,
-               wi_method <span class="op">=</span> <span class="st">"pseudobma"</span><span class="op">)</span>
+<span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">nec_data</span>, x_var <span class="op">=</span> <span class="st">"x"</span>, y_var <span class="op">=</span> <span class="st">"y"</span>, model <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">exmp</span><span class="op">)</span> <span class="co"># bayesmanecfit</span></code></pre></div>
 <p>This call fits all models that are suitable for modelling beta response data using a logit link. We can pull out the <strong>nec</strong> models and the <strong>ecx</strong> models separately, to create two more alternative model fits of this data.</p>
@@ -199,7 +196,7 @@
 <p><img src="example4d.jpeg" width="100%"></p>
 <p>And finally we can plot the probability that one model is greater than the other by plotting “prob” from “diff_data”. The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The green line hovers around 0.5 clearly indicating the lack of significant difference in the <strong>nec</strong> and <strong>all</strong> model sets at any point of the x-curve. The red and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the <strong>ecx</strong> and the <strong>nec</strong> or <strong>all</strong> predictions. The greatest probability of difference among these curves is between values of ~1 and ~1.5 of x.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">ggplot</span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span> <span class="op">+</span>
+<code class="sourceCode R"><span class="fu">ggplot</span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">prob_diff</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu">geom_line</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>x<span class="op">=</span><span class="va">x</span>, <span class="va">prob</span>, color<span class="op">=</span><span class="va">comparison</span><span class="op">)</span>, size<span class="op">=</span><span class="fl">0.5</span><span class="op">)</span></code></pre></div>
 <p><img src="example4e.jpeg" width="100%"></p>
 </div>

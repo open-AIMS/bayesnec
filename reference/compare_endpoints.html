@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>compare_posterior — compare_posterior • bayesnec</title>
+<title>compare_endpoints — compare_endpoints • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,7 +46,7 @@
 
 
 
-<meta property="og:title" content="compare_posterior — compare_posterior" />
+<meta property="og:title" content="compare_endpoints — compare_endpoints" />
 <meta property="og:description" content="Extracts posterior predicted values from a list of class
 bayesnecfit or bayesnecfit model fits and
 compares these via bootstrap re sampling." />
@@ -141,9 +141,9 @@ compares these via bootstrap re sampling." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>compare_posterior</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/compare_posteriors.R'><code>R/compare_posteriors.R</code></a></small>
-    <div class="hidden name"><code>compare_posterior.Rd</code></div>
+    <h1>compare_endpoints</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/compare_endpoints.R'><code>R/compare_endpoints.R</code></a></small>
+    <div class="hidden name"><code>compare_endpoints.Rd</code></div>
     </div>
 
     <div class="ref-description">
@@ -152,14 +152,14 @@ compares these via bootstrap re sampling." />
 compares these via bootstrap re sampling.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>compare_posterior</span><span class='op'>(</span>
+    <pre class="usage"><span class='fu'>compare_endpoints</span><span class='op'>(</span>
   <span class='va'>x</span>,
   comparison <span class='op'>=</span> <span class='st'>"nec"</span>,
   ecx_val <span class='op'>=</span> <span class='fl'>10</span>,
   type <span class='op'>=</span> <span class='st'>"absolute"</span>,
   hormesis_def <span class='op'>=</span> <span class='st'>"control"</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
-  precision <span class='op'>=</span> <span class='fl'>100</span>,
+  precision <span class='op'>=</span> <span class='fl'>1000</span>,
   x_range <span class='op'>=</span> <span class='cn'>NA</span>
 <span class='op'>)</span></pre>
 
@@ -234,7 +234,7 @@ model fits contained in x. See Details.</p>
              iter <span class='op'>=</span> <span class='fl'>1e4</span>, control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>adapt_delta <span class='op'>=</span> <span class='fl'>0.99</span><span class='op'>)</span><span class='op'>)</span>
 <span class='va'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>
 <span class='va'>exmp_3</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>
-<span class='fu'>compare_posterior</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>exmp_2</span>, <span class='va'>exmp_3</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span>
+<span class='fu'><a href='compare_posterior.html'>compare_posterior</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>exmp_2</span>, <span class='va'>exmp_3</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span>
 <span class='op'>}</span>
 
 </div></pre>
