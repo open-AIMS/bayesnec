@@ -12,9 +12,9 @@
 #'
 #' @importFrom stats rgamma rnorm rbeta runif
 #' @importFrom graphics hist
-#' @importFrom ggplot2 ggplot aes geom_histogram
+#' @importFrom ggplot2 ggplot aes geom_histogram facet_wrap
 #' @importFrom tidyr pivot_longer 
-#' @importFrom tidyselect starts_with facet_wrap
+#' @importFrom tidyselect starts_with
 #' @importFrom dplyr %>%
 #' 
 #' @seealso \code{\link{bnec}}
