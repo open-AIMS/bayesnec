@@ -277,7 +277,7 @@ print.manecsummary <- function(x, ...) {
         paste0(x$ecx_mods, collapse = ";"),
         "; weighted NEC estimates include NSEC surrogates for NEC\n", sep = "")
   }
-  print_mat(x$NEC)
+  print_mat(x$nec_vals)
   cat("\n\n")
   if (!is.null(x$ecs)) {
     for (i in seq_along(x$ecs)) {
