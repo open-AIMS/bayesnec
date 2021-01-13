@@ -32,12 +32,12 @@ Overview
 [brms](https://github.com/paul-buerkner/brms) to fit
 concentration(dose)-response data using Bayesian methods for the purpose
 of estimating both ECX values, but more particularly NEC. Please see
-`?bnec` for more a more detailed help file.
+`?bnec` for a more detailed help file.
 
 Installation
 ------------
 
-At this stage `bayesnec` is not hosted on CRAN R package network. An
+At this stage `bayesnec` is not hosted on the CRAN R package network. An
 alternative method of installation is to use the R `devtools` package.
 
 R `devtools` can be installed using the following command:
