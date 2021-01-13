@@ -224,7 +224,6 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
       stop("You cannot currently set pointwise = TRUE for custom families")
     }
   }
-  
   model <- check_models(model, family)
 
   if (length(model) > 1) {
@@ -237,7 +236,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                      trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
                      iter = iter, warmup = warmup, inits = inits,
-                     n_tries = n_tries, ...),
+                     n_tries = n_tries, pointwise = pointwise, ...),
         silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
