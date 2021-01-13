@@ -191,7 +191,7 @@
 bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
-                 iter = 5e3, warmup = floor(iter / 5) * 4,
+                 iter = 10e3, warmup = floor(iter / 10) * 9,
                  inits, pointwise, 
                  loo_controls = list(method = "pseudobma"), ...) {
   if (missing(model)) {
