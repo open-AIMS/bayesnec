@@ -44,7 +44,7 @@
 #' @export
 compare_endpoints <- function(x, comparison = "nec", ecx_val = 10, 
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision = 1000, x_range = NA) {
+                              sig_val = 0.01, precision, x_range = NA) {
   if (is.na(x_range)){
     x_range <- range(unlist(
      lapply(x, FUN=function(l){
@@ -55,7 +55,7 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
       })
     ), na.rm=TRUE)
   }
-  n_samples <- min(sapply(x, FUN = function(v){v$sample_size}))  
+ 
   if (comparison == "nec") {
     posterior_list <- lapply(x, function(m) {
       if (class(m) == "bayesnecfit") {
@@ -79,7 +79,7 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
   }
 
   names(posterior_list) <- names(x)
-
+  n_samples <- min(sapply(posterior_list, length)) 
   r_posterior_list <- lapply(posterior_list, FUN = function(m){m[sample(seq_len(n_samples), replace = FALSE)]})
   posterior_data <- do.call("cbind", r_posterior_list) %>%
       data.frame %>%
