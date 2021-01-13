@@ -108,7 +108,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e5, ...) {
   }
   if (!are_good) {
     message("bayesnec failed to find initial values within the",
-            " range of the response. Resorting to Stan's default",
+            " range of the response. Using Stan's default",
             " initialisation process.")
     "random"
   } else {
