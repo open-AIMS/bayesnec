@@ -252,3 +252,21 @@ nice_ecx_out <- function(ec, ecx_tag) {
   rownames(mat) <- "Estimate"
   print_mat(mat)
 }
+
+response_link_scale <- function(response, family) {
+ link_tag <- family$link
+ custom_name <- check_custom_name(family)
+ if (link_tag %in% c("logit", "log")) {
+  fam_tag <- "gaussian"
+  if (custom_name == "beta_binomial2") {
+    response <- binomial(link = link_tag)$linkfun(response)
+  } else {
+    if (family$family == "binomial") {
+      response <- linear_rescale(response, r_out = c(0.001, 0.999))
+    }
+    response <- family$linkfun(response)
+  }
+  response <- response[is.finite(response)]
+ } 
+ return(response)
+}
