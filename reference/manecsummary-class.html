@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>fit_bayesnec — fit_bayesnec • bayesnec</title>
+<title>Class manecsummary of models fitted with the brms package — manecsummary-class • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,16 @@
 
 
 
-<meta property="og:title" content="fit_bayesnec — fit_bayesnec" />
-<meta property="og:description" content="Fits a concentration(dose)-response model using brms" />
+<meta property="og:title" content="Class manecsummary of models fitted with the brms package — manecsummary-class" />
+<meta property="og:description" content="Multiple models fitted with the
+bayesnec package are summarised
+as a manecsummary object, which contains the name of the
+non-linear models fitted, the family distribution used
+to fit all the models, the total post-warm-up sample size, a table
+containing the model weights, the method to calculate the weights,
+whether this model is an ECx-type model
+(see details below), and the ECx summary values should the user decide
+to calculate them." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -139,105 +147,62 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>fit_bayesnec</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/fit_bayesnec.R'><code>R/fit_bayesnec.R</code></a></small>
-    <div class="hidden name"><code>fit_bayesnec.Rd</code></div>
+    <h1>Class <code>manecsummary</code> of models fitted with the <span class="pkg">brms</span> package</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/manecsummary-class.R'><code>R/manecsummary-class.R</code></a></small>
+    <div class="hidden name"><code>manecsummary-class.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Fits a concentration(dose)-response model using brms</p>
+    <p>Multiple models fitted with the
+<code><a href='bayesnec-package.html'>bayesnec</a></code> package are summarised
+as a <code>manecsummary</code> object, which contains the name of the
+non-linear models fitted, the family distribution used
+to fit all the models, the total post-warm-up sample size, a table
+containing the model weights, the method to calculate the weights,
+whether this model is an ECx-type model
+(see details below), and the ECx summary values should the user decide
+to calculate them.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>fit_bayesnec</span><span class='op'>(</span>
-  <span class='va'>data</span>,
-  <span class='va'>x_var</span>,
-  <span class='va'>y_var</span>,
-  trials_var <span class='op'>=</span> <span class='cn'>NA</span>,
-  family <span class='op'>=</span> <span class='cn'>NULL</span>,
-  <span class='va'>priors</span>,
-  model <span class='op'>=</span> <span class='cn'>NA</span>,
-  <span class='va'>inits</span>,
-  skip_check <span class='op'>=</span> <span class='cn'>FALSE</span>,
-  n_tries <span class='op'>=</span> <span class='va'>n_tries</span>,
-  <span class='va'>...</span>
-<span class='op'>)</span></pre>
 
-    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
-    <table class="ref-arguments">
-    <colgroup><col class="name" /><col class="desc" /></colgroup>
-    <tr>
-      <th>data</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for
-the model.</p></td>
-    </tr>
-    <tr>
-      <th>x_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the concentration (x) variable.</p></td>
-    </tr>
-    <tr>
-      <th>y_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the response (y) variable.</p></td>
-    </tr>
-    <tr>
-      <th>trials_var</th>
-      <td><p>The column heading indicating the column for the number
-of "trials" for binomial or beta_binomial2 response data.
-If not supplied, the model may run but will not be the model you intended!</p></td>
-    </tr>
-    <tr>
-      <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or
-an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical
-distribution (family) to use for the y (response) data. See details.</p></td>
-    </tr>
-    <tr>
-      <th>priors</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which
-specifies user-desired prior distributions of model parameters.
-If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline prior for each
-parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
-where each name needs to correspond to the same string as "model". See
-details.</p></td>
-    </tr>
-    <tr>
-      <th>model</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
-to fit. See Details for more information.</p></td>
-    </tr>
-    <tr>
-      <th>inits</th>
-      <td><p>Optional. Initialisation values. Must be a
-<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the
-number of chains, and names correspond to the parameter names of a given
-model.</p></td>
-    </tr>
-    <tr>
-      <th>skip_check</th>
-      <td><p>Should data check via <code><a href='check_data.html'>check_data</a></code>
-be avoided? Only relevant to function <code><a href='amend.html'>amend</a></code>.
-Defaults to FALSE.</p></td>
-    </tr>
-    <tr>
-      <th>n_tries</th>
-      <td><p>Number of times to attempt a fit.</p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> via
-<code>fit_bayesnec</code>.</p></td>
-    </tr>
-    </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>The fitted <span class="pkg">brms</span> model, including an estimate of the NEC
-value and predicted posterior values.
-A posterior sample of the NEC is also available under <code>nec_posterior</code></p>
+    <p>See <code><a href='https://rdrr.io/r/utils/methods.html'>methods(class = "manecsummary")</a></code> for an overview of available
+methods.</p>
+    <h2 class="hasAnchor" id="slots"><a class="anchor" href="#slots"></a>Slots</h2>
+
+    
+
+<dl>
+<dt><code>models</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the name of
+the fitted non-linear models.</p></dd>
+
+<dt><code>family</code></dt><dd><p>The family distribution used to fit all the models.</p></dd>
+
+<dt><code>sample_size</code></dt><dd><p>The total post-warm-up sample size.</p></dd>
+
+<dt><code>mod_weights</code></dt><dd><p>A table containing the model weights.</p></dd>
+
+<dt><code>mod_weights_method</code></dt><dd><p>The method to calculate the weights.</p></dd>
+
+<dt><code>ecx_mods</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> indicating which <code>models</code>
+are ECx-type models.</p></dd>
+
+<dt><code>nec_vals</code></dt><dd><p>The model-averaged NEC values. Note that if model stack
+contains ECx-type models, these will be via NSEC proxies.</p></dd>
+
+<dt><code>rhat_issues</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> detailing whether each fitted
+model exhibited convergence issues based on the Rhat evaluation.</p></dd>
+
+</dl>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
-    <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
+    <div class='dont-index'><p><code><a href='bayesnec-package.html'>bayesnec</a></code>,
+<code><a href='bnec.html'>bnec</a></code>,
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>,
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>,
+<code><a href='necsummary-class.html'>necsummary</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

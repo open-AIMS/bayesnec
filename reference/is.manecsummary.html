@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>fit_bayesnec — fit_bayesnec • bayesnec</title>
+<title>Checks if argument is a manecsummary object — is.manecsummary • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="fit_bayesnec — fit_bayesnec" />
-<meta property="og:description" content="Fits a concentration(dose)-response model using brms" />
+<meta property="og:title" content="Checks if argument is a manecsummary object — is.manecsummary" />
+<meta property="og:description" content="Checks if argument is a manecsummary object" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -139,105 +139,26 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>fit_bayesnec</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/fit_bayesnec.R'><code>R/fit_bayesnec.R</code></a></small>
-    <div class="hidden name"><code>fit_bayesnec.Rd</code></div>
+    <h1>Checks if argument is a <code>manecsummary</code> object</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/manecsummary-class.R'><code>R/manecsummary-class.R</code></a></small>
+    <div class="hidden name"><code>is.manecsummary.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Fits a concentration(dose)-response model using brms</p>
+    <p>Checks if argument is a <code>manecsummary</code> object</p>
     </div>
 
-    <pre class="usage"><span class='fu'>fit_bayesnec</span><span class='op'>(</span>
-  <span class='va'>data</span>,
-  <span class='va'>x_var</span>,
-  <span class='va'>y_var</span>,
-  trials_var <span class='op'>=</span> <span class='cn'>NA</span>,
-  family <span class='op'>=</span> <span class='cn'>NULL</span>,
-  <span class='va'>priors</span>,
-  model <span class='op'>=</span> <span class='cn'>NA</span>,
-  <span class='va'>inits</span>,
-  skip_check <span class='op'>=</span> <span class='cn'>FALSE</span>,
-  n_tries <span class='op'>=</span> <span class='va'>n_tries</span>,
-  <span class='va'>...</span>
-<span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>is.manecsummary</span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>data</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for
-the model.</p></td>
-    </tr>
-    <tr>
-      <th>x_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the concentration (x) variable.</p></td>
-    </tr>
-    <tr>
-      <th>y_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the response (y) variable.</p></td>
-    </tr>
-    <tr>
-      <th>trials_var</th>
-      <td><p>The column heading indicating the column for the number
-of "trials" for binomial or beta_binomial2 response data.
-If not supplied, the model may run but will not be the model you intended!</p></td>
-    </tr>
-    <tr>
-      <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or
-an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical
-distribution (family) to use for the y (response) data. See details.</p></td>
-    </tr>
-    <tr>
-      <th>priors</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which
-specifies user-desired prior distributions of model parameters.
-If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline prior for each
-parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
-where each name needs to correspond to the same string as "model". See
-details.</p></td>
-    </tr>
-    <tr>
-      <th>model</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
-to fit. See Details for more information.</p></td>
-    </tr>
-    <tr>
-      <th>inits</th>
-      <td><p>Optional. Initialisation values. Must be a
-<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the
-number of chains, and names correspond to the parameter names of a given
-model.</p></td>
-    </tr>
-    <tr>
-      <th>skip_check</th>
-      <td><p>Should data check via <code><a href='check_data.html'>check_data</a></code>
-be avoided? Only relevant to function <code><a href='amend.html'>amend</a></code>.
-Defaults to FALSE.</p></td>
-    </tr>
-    <tr>
-      <th>n_tries</th>
-      <td><p>Number of times to attempt a fit.</p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> via
-<code>fit_bayesnec</code>.</p></td>
+      <th>x</th>
+      <td><p>An <span style="R">R</span> object</p></td>
     </tr>
     </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
-
-    <p>The fitted <span class="pkg">brms</span> model, including an estimate of the NEC
-value and predicted posterior values.
-A posterior sample of the NEC is also available under <code>nec_posterior</code></p>
-    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
-
-    <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
