@@ -55,7 +55,7 @@ Now we have three different averaged model fits, all of class `bayemanec` in thi
 
 ```{r, eval=FALSE}
 library(tidyverse)
-post_comp <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx, "nec" = exmp_nec), comparison = "ecx", ecx_val = 10, precision=100)
+post_comp <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx, "nec" = exmp_nec), comparison = "ecx", ecx_val = 10)
 names(post_comp)
 # "posterior_list" 
 # "posterior_data" 
