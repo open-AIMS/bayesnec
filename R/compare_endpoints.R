@@ -80,13 +80,12 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
 
   names(posterior_list) <- names(x)
 
-  posterior_data <- do.call("cbind", posterior_list) %>%
+  r_posterior_list <- lapply(posterior_list, FUN = function(m){m[sample(seq_len(n_samples), replace = FALSE)]})
+  posterior_data <- do.call("cbind", r_posterior_list) %>%
       data.frame %>%
       pivot_longer(cols = everything(), names_to = "model") %>% 
       arrange(model) %>% 
-      data.frame()
-    
-  r_posterior_list <- lapply(posterior_list, FUN = function(m){m[sample(seq_len(n_samples), replace = FALSE)]})
+      data.frame() 
   
   all_combn <- combn(names(x), 2, simplify = FALSE)
   diff_list <- lapply(all_combn, FUN = function(a){
@@ -102,7 +101,7 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
     m[m<=0] <- 0
     prob=mean(m) 
   })
-  
+
   prob_diff_out <- bind_rows(prob_diff, .id = "comparison") %>% 
     data.frame()
 
