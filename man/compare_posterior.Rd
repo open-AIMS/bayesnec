@@ -11,7 +11,7 @@ compare_posterior(
   type = "absolute",
   hormesis_def = "control",
   sig_val = 0.01,
-  precision = 1000,
+  precision = 100,
   x_range = NA
 )
 }
