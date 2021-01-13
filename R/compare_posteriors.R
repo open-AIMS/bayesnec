@@ -44,12 +44,14 @@
 #' @export
 compare_posterior <- function(x, comparison = "nec", ecx_val = 10, 
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision = 100, x_range = NA) {
+                              sig_val = 0.01, precision, x_range = NA) {
   if (comparison != "fitted") {
+    if (missing(precision)) { precision <- 500 }
     out <- compare_endpoints(x = x, comparison = comparison, ecx_val = ecx_val,
                              type = type, hormesis_def = hormesis_def,
                              sig_val = sig_val, precision = precision, x_range = x_range)
      } else {
+       if (missing(precision)) { precision <- 50 }
        out <- compare_fitted(x = x, precision = precision, x_range = x_range)
 
   }

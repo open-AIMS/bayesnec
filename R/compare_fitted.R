@@ -38,7 +38,7 @@
 #' }
 #'
 #' @export
-compare_fitted <- function(x, precision = 100, x_range = NA) {
+compare_fitted <- function(x, precision, x_range = NA) {
   if (is.na(x_range)){
     x_range <- range(unlist(
      lapply(x, FUN=function(l){
@@ -49,19 +49,19 @@ compare_fitted <- function(x, precision = 100, x_range = NA) {
       })
     ), na.rm=TRUE)
   }
- n_samples <- min(sapply(x, FUN = function(v){v$sample_size}))  
+
  posterior_list <- lapply(x, function(m, ...) {
       predict(m, ...)$posterior
     }, precision = precision, x_range = x_range)
  x_vec <- seq(min(x_range), max(x_range), length = precision)
-    
+  #  browser()
  names(posterior_list) <- names(x)
- 
+ n_samples <- min(sapply(posterior_list, nrow))   
  r_posterior_list <- lapply(posterior_list, FUN = function(m){m[sample(seq_len(n_samples), replace = FALSE), ]})
  posterior_data <- posterior_list %>%
       lapply(summarise_posterior, x_vec = x_vec) %>%
       bind_rows(.id = "model") %>%
-      data.frame
+      data.frame()
  all_combn <- combn(names(x), 2, simplify = FALSE)
  diff_list <- lapply(all_combn, FUN = function(a){
       r_posterior_list[[a[1]]]-r_posterior_list[[a[2]]]})
