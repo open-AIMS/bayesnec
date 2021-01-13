@@ -17,7 +17,7 @@
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          family = NULL, priors, model = NA,
-                         inits, skip_check = FALSE, n_tries = n_tries, pointwise = pointwise, ...) {
+                         inits, skip_check = FALSE, pointwise, ...) {
   if (skip_check) {
     mod_dat <- data
     custom_name <- check_custom_name(family)
