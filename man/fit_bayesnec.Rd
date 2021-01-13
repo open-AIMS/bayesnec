@@ -14,8 +14,7 @@ fit_bayesnec(
   model = NA,
   inits,
   skip_check = FALSE,
-  n_tries = n_tries,
-  pointwise = pointwise,
+  pointwise,
   ...
 )
 }
@@ -55,8 +54,6 @@ model.}
 \item{skip_check}{Should data check via \code{\link{check_data}}
 be avoided? Only relevant to function \code{\link{amend}}.
 Defaults to FALSE.}
-
-\item{n_tries}{Number of times to attempt a fit.}
 
 \item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
 at once or separately for each observation. The latter approach is usually considerably slower but requires
