@@ -11,7 +11,7 @@ compare_endpoints(
   type = "absolute",
   hormesis_def = "control",
   sig_val = 0.01,
-  precision = 1000,
+  precision,
   x_range = NA
 )
 }
@@ -39,8 +39,6 @@ estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 precise.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx}
-
-\item{n_samples}{The number of bootstrap iterations to perform.}
 }
 \value{
 A named list containing bootstrapped differences in posterior

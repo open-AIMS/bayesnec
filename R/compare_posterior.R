@@ -9,7 +9,6 @@
 #' \code{\link{bnec}}.
 #' @param comparison The posterior predictions to compare, takes values of
 #' "nec", "nsec", "ecx" or "fitted".
-#' @param n_samples The number of bootstrap iterations to perform.
 #'
 #' @inheritParams ecx
 #' @inheritParams nsec
@@ -57,7 +56,6 @@ compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
   }
  return(out)
 }
-
 
 summarise_posterior <- function(mat, x_vec) {
   cbind(x = x_vec, data.frame(t(apply(mat, 2, estimates_summary))))

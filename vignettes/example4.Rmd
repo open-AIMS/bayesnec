@@ -34,7 +34,7 @@ With `bayesnec` we have included a function that allows bootstrapped comparisons
 ## Comparing posterior endpoint values
 
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 library(brms)
 library(bayesnec)
 data(nec_data)
@@ -47,13 +47,13 @@ class(exmp) # bayesmanecfit
 ```
 This call fits all models that are suitable for modelling beta response data using a logit link. We can pull out the **nec** models and the **ecx** models separately, to create two more alternative model fits of this data.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 exmp_nec <- pull_out(exmp, model = "nec")
 exmp_ecx <- pull_out(exmp, model = "ecx")
 ```
 Now we have three different averaged model fits, all of class `bayemanec` in this case (because they all contain multiple fits). We can compare their posterior estimates of the ex10 values using `compare_posterior`.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 library(tidyverse)
 post_comp <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx, "nec" = exmp_nec), comparison = "ecx", ecx_val = 10)
 names(post_comp)
@@ -65,7 +65,7 @@ names(post_comp)
 ```
 The `compare_posterior` function outputs several elements in a named list. This includes the **posterior_data** for each model in the comparison as a `data.frame` which we can use to plot a `geom_density` plot of the posterior estimates, so they can be compared visually.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 ggplot(post_comp$posterior_data, aes(x=value)) + 
   geom_density(aes(group=model, colour=model, fill = model), alpha=0.3) +
   theme_classic() 
@@ -79,7 +79,7 @@ From this you can see that the ec10 estimates are very similar for the **nec** a
 
 The `data.frame` "diff_data" can be used to make a similar plot, but specifically for the differences among models.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 ggplot(post_comp$diff_data, aes(x=diff)) + 
   geom_density(aes(group=comparison, colour=comparison, fill = comparison), alpha=0.3) +
   theme_classic() 
@@ -90,7 +90,7 @@ knitr::include_graphics('example4b.jpeg')
 
 This shows clearly the differences among the three estimates, with there being no difference in the **nec** and **all** estimates (the probability density overlaps zero), and a tendency for the **ecx** to be lower than **all** and **nec**. Finally, the probability that the endpoint estimate for one model set is greater than the other is obtained in "prob_diff". Here you can see there is ~50% chance that **nec** is greater or less than **all** (i.e. they do not differ), but a 97% chance that the **ecx** estimate is lower than the other two.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 post_comp$prob_diff
 #        all    ecx    nec
 # all 1.0000 0.9730 0.5020
@@ -103,15 +103,15 @@ post_comp$prob_diff
 
 The user can also compare posterior fitted values across the full range of x values, using `comparison = "fitted"`. 
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 library(tidyverse)
 library(bayesnec)
-post_comp_fitted <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx, "nec" = exmp_nec), comparison = "fitted", precision = 50)
+post_comp_fitted <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx, "nec" = exmp_nec), comparison = "fitted")
 
 ```
 In the case of `comparison = "fitted"` most of the elements returned by compare_posterior are class `data.frame`, with summary values for the posteriors, difference values and probabilities returned for each value of x, for each model, or model comparison.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 head(post_comp_fitted$posterior_data)
   model          x  Estimate      Q2.5     Q97.5
 # 1   all 0.03234801 0.8885559 0.8718261 0.8991815
@@ -134,7 +134,7 @@ head(post_comp_fitted$diff_data)
 
 Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** or **all** sets, which are flat prior to the nec step point, and then decline more rapidly.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 ggplot(post_comp_fitted$posterior_data) +
 geom_line(aes(x=x, y=Estimate, color= model), size=0.5) +
 geom_ribbon(aes(x=x, ymin=Q2.5, ymax=Q97.5, fill=model), alpha=0.3) 
