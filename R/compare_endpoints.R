@@ -3,16 +3,8 @@
 #' Extracts posterior predicted values from a list of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
 #' compares these via bootstrap re sampling.
-#'
-#' @param x A named list \code{\link[base]{list}} of objects of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
-#' \code{\link{bnec}}.
-#' @param comparison The posterior predictions to compare, takes values of
-#' "nec", "nsec", "ecx" or "fitted".
-#' @param n_samples The number of bootstrap iterations to perform.
-#'
-#' @inheritParams ecx
-#' @inheritParams nsec
+#' 
+#' @inheritParams compare_posterior
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -21,9 +13,10 @@
 #' model fits contained in x. See Details.
 #'
 #' @importFrom stats quantile predict
-#' @importFrom dplyr %>% mutate bind_rows 
+#' @importFrom dplyr %>% mutate bind_rows arrange
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect everything
+#' @importFrom utils combn
 #'
 #' @examples
 #' \dontrun{

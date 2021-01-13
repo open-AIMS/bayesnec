@@ -3,14 +3,8 @@
 #' Extracts posterior predicted values from a list of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
 #' compares these across a vector of fitted values.
-#'
-#' @param x A named list \code{\link[base]{list}} of objects of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
-#' \code{\link{bnec}}.
 #' 
-#' @param precision the number of x values over which to predict values.
-#'
-#' @param x_range The range of x values over which to make predictions.
+#' @inheritParams compare_posterior
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -20,6 +14,7 @@
 #'
 #' @importFrom stats quantile predict
 #' @importFrom dplyr %>% mutate bind_rows
+#' @importFrom utils combn
 #'
 #' @examples
 #' \dontrun{

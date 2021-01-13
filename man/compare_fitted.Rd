@@ -4,16 +4,17 @@
 \alias{compare_fitted}
 \title{compare_fitted}
 \usage{
-compare_fitted(x, precision = 100, x_range = NA)
+compare_fitted(x, precision, x_range = NA)
 }
 \arguments{
 \item{x}{A named list \code{\link[base]{list}} of objects of class
 \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
 \code{\link{bnec}}.}
 
-\item{precision}{the number of x values over which to predict values.}
+\item{precision}{The number of unique x values over which to find ECx - large values will make the ECx estimate more
+precise.}
 
-\item{x_range}{The range of x values over which to make predictions.}
+\item{x_range}{A range of x values over which to consider extracting ECx}
 }
 \value{
 A named list containing bootstrapped differences in posterior
