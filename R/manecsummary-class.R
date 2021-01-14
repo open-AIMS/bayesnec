@@ -29,7 +29,7 @@
 #' contains ECx-type models, these will be via NSEC proxies.
 #' @slot ecs A \code{\link[base]{list}} containing the ECx values
 #' should the user decide to calculate them (see the non-exported
-#' \code{bayesnec:::summary.bayesnecfit}} help file for details). Different
+#' \code{bayesnec:::summary.bayesnecfit} help file for details). Different
 #' from the single-model case of class \code{\link{bayesnecfit}}, these ECx
 #' estimates will be based on the model weights.
 #' @slot rhat_issues A \code{\link[base]{list}} detailing whether each fitted

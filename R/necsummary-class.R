@@ -25,7 +25,7 @@
 #' is an ECx-type model.
 #' @slot ecs A \code{\link[base]{list}} containing the ECx values
 #' should the user decide to calculate them (see the non-exported
-#' \code{bayesnec:::summary.bayesnecfit}} help file for details).
+#' \code{bayesnec:::summary.bayesnecfit} help file for details).
 #'
 #' @seealso
 #'   \code{\link{bayesnec}},

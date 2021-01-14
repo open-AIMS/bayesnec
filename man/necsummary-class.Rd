@@ -30,6 +30,10 @@ the fitted non-linear model.}
 
 \item{\code{is_ecx}}{A \code{\link[base]{logical}} indicating whether \code{model}
 is an ECx-type model.}
+
+\item{\code{ecs}}{A \code{\link[base]{list}} containing the ECx values
+should the user decide to calculate them (see the non-exported
+\code{bayesnec:::summary.bayesnecfit} help file for details).}
 }}
 
 \seealso{
