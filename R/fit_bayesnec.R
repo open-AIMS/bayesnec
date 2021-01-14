@@ -85,7 +85,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     stop(paste0("Failed to fit model ", model, "."),
          call. = FALSE)
   }
-  browser()  
+  
   fit$loo <- loo(fit)
 
   fit$waic <- suppressWarnings(waic(fit, pointwise = pointwise))
