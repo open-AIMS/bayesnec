@@ -46,7 +46,7 @@ remotes::install_github("open-AIMS/bayesnec")
 
 To run this vignette we will also need some additional packages, which are made available via `tidyverse`
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "hide", eval = FALSE}
 install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 ```
 
@@ -89,18 +89,18 @@ The default plot looks exactly the same out our regular `bayesnecfit` plot, but 
 ```{r, eval=FALSE}
 exp_5$mod_stats
 #                     model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-# nec4param       nec4param -333.6126 3.899322e-01                  NA              NA               NA
-# nechorme4       nechorme4 -330.9883 1.141959e-01                  NA              NA               NA
-# neclin             neclin -332.0894 2.915951e-01                  NA              NA               NA
-# neclinhorme   neclinhorme -330.0939 1.404787e-01                  NA              NA               NA
-# nechorme4pwr nechorme4pwr -329.1494 4.791722e-02                  NA              NA               NA
-# ecxlin             ecxlin -188.1694 9.833897e-26                  NA              NA               NA
-# ecx4param       ecx4param -302.1875 1.504711e-06                  NA              NA               NA
-# ecxwb1             ecxwb1 -294.3077 4.322416e-08                  NA              NA               NA
-# ecxwb2             ecxwb2 -316.6227 5.808150e-04                  NA              NA               NA
-# ecxll5             ecxll5 -325.9983 1.528076e-02                  NA              NA               NA
-# ecxll4             ecxll4 -302.1073 1.609033e-06                  NA              NA               NA
-# ecxhormebc5   ecxhormebc5 -309.5604 1.611482e-05                  NA              NA               NA
+# nec4param       nec4param -333.1372 3.777323e-01                  NA              NA               NA
+# nechorme4       nechorme4 -330.8176 1.469187e-01                  NA              NA               NA
+# neclin             neclin -332.2588 2.814116e-01                  NA              NA               NA
+# neclinhorme   neclinhorme -330.2539 1.539925e-01                  NA              NA               NA
+# nechorme4pwr nechorme4pwr -328.3598 3.826458e-02                  NA              NA               NA
+# ecxlin             ecxlin -188.4782 1.129799e-24                  NA              NA               NA
+# ecx4param       ecx4param -302.4447 2.931145e-06                  NA              NA               NA
+# ecxwb1             ecxwb1 -294.3911 5.046193e-08                  NA              NA               NA
+# ecxwb2             ecxwb2 -317.1749 6.455120e-04                  NA              NA               NA
+# ecxll5             ecxll5 -316.8985 9.937506e-04                  NA              NA               NA
+# ecxll4             ecxll4 -302.0296 1.661897e-06                  NA              NA               NA
+# ecxhormebc5   ecxhormebc5 -310.1298 3.640250e-05                  NA              NA               NA
 
 ```
 
