@@ -152,7 +152,7 @@ compares these across a vector of fitted values." />
 compares these across a vector of fitted values.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>compare_fitted</span><span class='op'>(</span><span class='va'>x</span>, precision <span class='op'>=</span> <span class='fl'>100</span>, x_range <span class='op'>=</span> <span class='cn'>NA</span><span class='op'>)</span></pre>
+    <pre class="usage"><span class='fu'>compare_fitted</span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>precision</span>, x_range <span class='op'>=</span> <span class='cn'>NA</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -165,11 +165,12 @@ compares these across a vector of fitted values.</p>
     </tr>
     <tr>
       <th>precision</th>
-      <td><p>the number of x values over which to predict values.</p></td>
+      <td><p>The number of unique x values over which to find ECx - large values will make the ECx estimate more
+precise.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
-      <td><p>The range of x values over which to make predictions.</p></td>
+      <td><p>A range of x values over which to consider extracting ECx</p></td>
     </tr>
     </table>
 
