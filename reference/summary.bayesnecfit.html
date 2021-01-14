@@ -149,11 +149,20 @@
     </div>
 
     <pre class="usage"><span class='co'># S3 method for bayesnecfit</span>
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>x</span>, ecx <span class='op'>=</span> <span class='cn'>FALSE</span>, ecx_vals <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>10</span>, <span class='fl'>50</span>, <span class='fl'>90</span><span class='op'>)</span>, <span class='va'>...</span><span class='op'>)</span></pre>
+<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>object</span>, <span class='va'>...</span>, ecx <span class='op'>=</span> <span class='cn'>FALSE</span>, ecx_vals <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>10</span>, <span class='fl'>50</span>, <span class='fl'>90</span><span class='op'>)</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>object</th>
+      <td><p>An object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> as returned
+by <code><a href='bnec.html'>bnec</a></code>.</p></td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td><p>Unused.</p></td>
+    </tr>
     <tr>
       <th>ecx</th>
       <td><p>Should summary EC values be calculated? Defaults to FALSE.</p></td>
@@ -163,15 +172,6 @@
       <td><p>EC targets (between 1 and 99). Only relevant if ecx = TRUE.
 If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.</p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>Unused.</p></td>
-    </tr>
-    <tr>
-      <th>object</th>
-      <td><p>An object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> as returned
-by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     </table>
 
