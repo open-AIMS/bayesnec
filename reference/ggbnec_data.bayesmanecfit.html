@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Class necsummary of models fitted with the brms package — necsummary-class • bayesnec</title>
+<title>ggbnec_data — ggbnec_data.bayesmanecfit • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,14 +46,9 @@
 
 
 
-<meta property="og:title" content="Class necsummary of models fitted with the brms package — necsummary-class" />
-<meta property="og:description" content="Single models fitted with the
-bayesnec package are summarised
-as a necsummary object, which contains the original
-brmsfit object summary, the name of the
-non-linear model fitted, whether this model is an ECx-type model
-(see details below), and the ECx summary values should the user decide
-to calculate them." />
+<meta property="og:title" content="ggbnec_data — ggbnec_data.bayesmanecfit" />
+<meta property="og:description" content="Creates the data.frame that feeds into the plotting function
+ggbnec." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -145,54 +140,45 @@ to calculate them." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Class <code>necsummary</code> of models fitted with the <span class="pkg">brms</span> package</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/necsummary-class.R'><code>R/necsummary-class.R</code></a></small>
-    <div class="hidden name"><code>necsummary-class.Rd</code></div>
+    <h1>ggbnec_data</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/ggnec.R'><code>R/ggnec.R</code></a></small>
+    <div class="hidden name"><code>ggbnec_data.bayesmanecfit.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Single models fitted with the
-<code><a href='bayesnec-package.html'>bayesnec</a></code> package are summarised
-as a <code>necsummary</code> object, which contains the original
-<code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code> object summary, the name of the
-non-linear model fitted, whether this model is an ECx-type model
-(see details below), and the ECx summary values should the user decide
-to calculate them.</p>
+    <p>Creates the data.frame that feeds into the plotting function
+<code><a href='ggbnec.html'>ggbnec</a></code>.</p>
     </div>
 
+    <pre class="usage"><span class='co'># S3 method for bayesmanecfit</span>
+<span class='fu'><a href='ggbnec_data.html'>ggbnec_data</a></span><span class='op'>(</span><span class='va'>x</span>, add_nec <span class='op'>=</span> <span class='cn'>TRUE</span>, add_ecx <span class='op'>=</span> <span class='cn'>FALSE</span>, <span class='va'>...</span><span class='op'>)</span></pre>
 
+    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
+    <table class="ref-arguments">
+    <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>x</th>
+      <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>, as returned by
+function <code><a href='bnec.html'>bnec</a></code>.</p></td>
+    </tr>
+    <tr>
+      <th>add_nec</th>
+      <td><p>Should NEC values be added to the plot? Defaults to TRUE.</p></td>
+    </tr>
+    <tr>
+      <th>add_ecx</th>
+      <td><p>Should ECx values be added to the plot? Defaults to FALSE.</p></td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td><p>Additional arguments to be passed to <code><a href='ecx.html'>ecx</a></code>. By
+default, function <code><a href='ecx.html'>ecx</a></code> returns EC10.</p></td>
+    </tr>
+    </table>
 
-    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
+    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>See <code><a href='https://rdrr.io/r/utils/methods.html'>methods(class = "necsummary")</a></code> for an overview of available
-methods.</p>
-    <h2 class="hasAnchor" id="slots"><a class="anchor" href="#slots"></a>Slots</h2>
-
-    
-
-<dl>
-<dt><code>brmssummary</code></dt><dd><p>The standard summary method of class
-<code>brmssummary</code> for the fitted Bayesian model of class
-<code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code>.</p></dd>
-
-<dt><code>model</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string indicating the name of
-the fitted non-linear model.</p></dd>
-
-<dt><code>is_ecx</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code> indicating whether <code>model</code>
-is an ECx-type model.</p></dd>
-
-<dt><code>ecs</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the ECx values
-should the user decide to calculate them (see the non-exported
-<code>bayesnec:::summary.bayesnecfit</code> help file for details).</p></dd>
-
-</dl>
-    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
-
-    <div class='dont-index'><p><code><a href='bayesnec-package.html'>bayesnec</a></code>,
-<code><a href='bnec.html'>bnec</a></code>,
-<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>,
-<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>,
-<code><a href='manecsummary-class.html'>manecsummary</a></code></p></div>
+    <p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

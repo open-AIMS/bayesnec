@@ -192,6 +192,12 @@ are ECx-type models.</p></dd>
 <dt><code>nec_vals</code></dt><dd><p>The model-averaged NEC values. Note that if model stack
 contains ECx-type models, these will be via NSEC proxies.</p></dd>
 
+<dt><code>ecs</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the ECx values
+should the user decide to calculate them (see the non-exported
+<code>bayesnec:::summary.bayesnecfit</code> help file for details). Different
+from the single-model case of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>, these ECx
+estimates will be based on the model weights.</p></dd>
+
 <dt><code>rhat_issues</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> detailing whether each fitted
 model exhibited convergence issues based on the Rhat evaluation.</p></dd>
 
