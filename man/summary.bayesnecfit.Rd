@@ -4,19 +4,19 @@
 \alias{summary.bayesnecfit}
 \title{summary.bayesnecfit}
 \usage{
-\method{summary}{bayesnecfit}(x, ecx = FALSE, ecx_vals = c(10, 50, 90), ...)
+\method{summary}{bayesnecfit}(object, ..., ecx = FALSE, ecx_vals = c(10, 50, 90))
 }
 \arguments{
+\item{object}{An object of class \code{\link{bayesnecfit}} as returned
+by \code{\link{bnec}}.}
+
+\item{...}{Unused.}
+
 \item{ecx}{Should summary EC values be calculated? Defaults to FALSE.}
 
 \item{ecx_vals}{EC targets (between 1 and 99). Only relevant if ecx = TRUE.
 If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
-
-\item{...}{Unused.}
-
-\item{object}{An object of class \code{\link{bayesnecfit}} as returned
-by \code{\link{bnec}}.}
 }
 \value{
 A summary of the fitted model as returned for a brmsfit

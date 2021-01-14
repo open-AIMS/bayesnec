@@ -208,7 +208,7 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 
 #' summary.bayesmanecfit
 #'
-#' @param x An object of class \code{\link{bayesmanecfit}} as
+#' @param object An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
 #' @param ecx Should summary EC values be calculated? Defaults to FALSE.
 #' @param ecx_vals EC targets (between 1 and 99). Only relevant if ecx = TRUE.
@@ -221,8 +221,8 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 #'
 #' @importFrom plyr llply
 #' @export
-summary.bayesmanecfit <- function(x, ecx = FALSE,
-                                  ecx_vals = c(10, 50, 90), ...) {
+summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
+                                  ecx_vals = c(10, 50, 90)) {
   ecs <- NULL
   if (ecx) {
     message("ECX calculation takes a few seconds per model, calculating...\n")

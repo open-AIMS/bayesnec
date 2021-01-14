@@ -4,7 +4,7 @@
 \alias{ggbnec.default}
 \title{ggbnec.default}
 \usage{
-\method{ggbnec}{default}(x, nec = TRUE, ecx = FALSE)
+\method{ggbnec}{default}(x, nec = TRUE, ecx = FALSE, ...)
 }
 \arguments{
 \item{x}{A data.frame created by function \code{\link{ggbnec_data}}.}
@@ -12,6 +12,8 @@
 \item{nec}{Should NEC values be added to the plot? Defaults to TRUE.}
 
 \item{ecx}{Should ECx values be added to the plot? Defaults to FALSE.}
+
+\item{...}{Unused.}
 }
 \value{
 A \code{\link[ggplot2]{ggplot}} object.

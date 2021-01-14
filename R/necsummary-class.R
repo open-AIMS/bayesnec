@@ -16,9 +16,8 @@
 #' See \code{methods(class = "necsummary")} for an overview of available
 #' methods.
 #'
-#' @slot brmssummary The standard summary method of class
-#' \code{\link[brms]{brmssummary}} for the fitted Bayesian model of class
-#' \code{\link[brms]{brmsfit}}.
+#' @slot brmssummary The standard summary for the fitted Bayesian model of
+#' class \code{\link[brms]{brmsfit}}.
 #' @slot model A \code{\link[base]{character}} string indicating the name of
 #' the fitted non-linear model.
 #' @slot is_ecx A \code{\link[base]{logical}} indicating whether \code{model}

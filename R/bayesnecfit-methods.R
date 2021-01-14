@@ -186,8 +186,8 @@ rhat.bayesnecfit <- function(object, ... ) {
 #' @return A summary of the fitted model as returned for a brmsfit
 #'
 #' @export
-summary.bayesnecfit <- function(x, ecx = FALSE,
-                                ecx_vals = c(10, 50, 90), ...) {
+summary.bayesnecfit <- function(object, ..., ecx = FALSE,
+                                ecx_vals = c(10, 50, 90)) {
   ecs <- NULL
   if (ecx) {
     message("ECX calculation takes a few seconds per model, calculating...\n")
