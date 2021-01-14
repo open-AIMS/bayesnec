@@ -21,9 +21,8 @@ methods.
 \section{Slots}{
 
 \describe{
-\item{\code{brmssummary}}{The standard summary method of class
-\code{\link[brms]{brmssummary}} for the fitted Bayesian model of class
-\code{\link[brms]{brmsfit}}.}
+\item{\code{brmssummary}}{The standard summary for the fitted Bayesian model of
+class \code{\link[brms]{brmsfit}}.}
 
 \item{\code{model}}{A \code{\link[base]{character}} string indicating the name of
 the fitted non-linear model.}

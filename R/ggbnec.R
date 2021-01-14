@@ -189,6 +189,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
 #' @param x A data.frame created by function \code{\link{ggbnec_data}}.
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
+#' @param ... Unused.
 #'
 #' @return A \code{\link[ggplot2]{ggplot}} object.
 #'
@@ -198,7 +199,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
 #' @importFrom dplyr %>% filter
 #'
 #' @export
-ggbnec.default <- function(x, nec = TRUE, ecx = FALSE) {
+ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
   out <- ggplot() +
     geom_polygon(data = x %>% filter(!is.na(y_ci)),
                  mapping = aes(x = x_e, y = y_ci),
@@ -228,11 +229,11 @@ ggbnec.default <- function(x, nec = TRUE, ecx = FALSE) {
     ltys <- rep(c(1, 2, 2), length(unique(x$model)))
     lwds <- rep(c(0.5, 0.2, 0.2), length(unique(x$model)))
     out <- out +
-      geom_vline(data = x %>% dplyr::filter(!is.na(ecx_vals)),
+      geom_vline(data = x %>% filter(!is.na(ecx_vals)),
                  mapping = aes(xintercept = ecx_vals),
                  linetype = ltys, colour = "dodgerblue4",
                  lwd = lwds) +
-      geom_text(data = x %>% dplyr::filter(!is.na(ecx_labs)),
+      geom_text(data = x %>% filter(!is.na(ecx_labs)),
                 mapping = aes(label = paste0("EC[", ecx_int, "]", ": ",
                                              ecx_labs, " (", ecx_labs_l,
                                              "-", ecx_labs_u, ")")),
@@ -255,13 +256,12 @@ ggbnec.default <- function(x, nec = TRUE, ecx = FALSE) {
 #'
 #' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
 #'
-#' @inheritParams ggbnec.default
 #' @inheritDotParams ggbnec.bayesmanecfit
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}}.
-#' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}
-#' and when object is \code{\link{bayesmanecfit}}.
+#' @param nec Should NEC values be added to the plot? Defaults to TRUE.
+#' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
 #'
 #' @inherit ggbnec.default return
 #'
@@ -305,10 +305,12 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #'
 #' @inherit ggbnec.default return
 #'
+#' @importFrom dplyr mutate
+#'
 #' @export
 ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
   ggbnec_data(x, add_nec = nec, add_ecx = ecx, ...) %>%
-    dplyr::mutate(model = x$model) %>%
+    mutate(model = x$model) %>%
     ggbnec.default(nec = nec, ecx = ecx)
 }
 
@@ -335,6 +337,9 @@ ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #'
 #' @inherit ggbnec.default return
 #'
+#' @importFrom dplyr %>% mutate
+#' @importFrom plyr ldply
+#' @importFrom grDevices devAskNewPage
 #' @export
 ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = TRUE,
                                  plot = TRUE, ask = TRUE, newpage = TRUE,
@@ -343,8 +348,8 @@ ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = TRUE,
     all_fits <- suppressMessages(lapply(x$success_models, pull_out, manec = x))
     if (multi_facet) {
       names(all_fits) <- x$success_models
-      plyr::ldply(all_fits, ggbnec_data, add_nec = nec,
-                  add_ecx = ecx, ..., .id = "model") %>%
+      ldply(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
+            ..., .id = "model") %>%
         ggbnec.default(nec = nec, ecx = ecx)
     } else {
       if (plot) {
@@ -355,8 +360,8 @@ ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = TRUE,
       plots <- vector(mode = "list", length = length(all_fits))
       for (i in seq_along(all_fits)) {
         plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec,
-                            add_ecx = ecx, ...) %>%
-          dplyr::mutate(model = x$success_models[i]) %>%
+                                  add_ecx = ecx, ...) %>%
+          mutate(model = x$success_models[i]) %>%
           ggbnec.default(nec = nec, ecx = ecx)
         plot(plots[[i]], newpage = newpage || i > 1)
         if (i == 1) {
@@ -367,7 +372,7 @@ ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = TRUE,
     }
   } else {
     ggbnec_data(x, add_nec = nec, add_ecx = ecx, ...) %>%
-      dplyr::mutate(model = "Model averaged predictions") %>%
+      mutate(model = "Model averaged predictions") %>%
       ggbnec.default(nec = nec, ecx = ecx)
   }
 }
