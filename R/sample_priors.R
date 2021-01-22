@@ -19,6 +19,8 @@
 #' 
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
+#' 
+#' @export
 sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   fcts <- c(gamma = rgamma,
             normal = rnorm,
