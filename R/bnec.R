@@ -48,6 +48,10 @@
 #' much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
 #' but will not work for the custom family beta_binomial2
 #' 
+#' @param sample_prior Indicate if samples from priors should be drawn additionally to the posterior samples. 
+#' Options are "no", "yes" (the default), and "only". 
+#' Among others, these samples can be used to calculate Bayes factors for point hypotheses via hypothesis. 
+#' 
 #' @param loo_controls A named \code{\link[base]{list}} containing the desired
 #' arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
 #' the default wi_method to "pseudobma". See help documentation
@@ -193,6 +197,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 10e3, warmup = floor(iter / 10) * 9,
                  inits, pointwise, 
+                 sample_prior = "yes",
                  loo_controls = list(method = "pseudobma"), ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
@@ -234,7 +239,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                      trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
                      iter = iter, warmup = warmup, inits = inits,
-                     pointwise = pointwise, ...),
+                     pointwise = pointwise, sample_prior, ...),
         silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
@@ -258,7 +263,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                             trials_var = trials_var, family = family,
                             priors = priors, model = model,
                             iter = iter, warmup = warmup,
-                            inits = inits, pointwise = pointwise, ...)
+                            inits = inits, pointwise = pointwise, sample_prior, ...)
     mod_fit <- expand_nec(mod_fit, x_range = x_range,
                           precision = precision,
                           sig_val = sig_val)
