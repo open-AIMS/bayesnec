@@ -188,6 +188,7 @@ rhat.bayesnecfit <- function(object, ... ) {
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
                                 ecx_vals = c(10, 50, 90)) {
+  x <- object
   ecs <- NULL
   if (ecx) {
     message("ECX calculation takes a few seconds per model, calculating...\n")
