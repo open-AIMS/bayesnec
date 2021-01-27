@@ -223,6 +223,7 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 #' @export
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90)) {
+  x <- object
   ecs <- NULL
   if (ecx) {
     message("ECX calculation takes a few seconds per model, calculating...\n")
