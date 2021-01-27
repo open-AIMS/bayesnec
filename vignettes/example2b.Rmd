@@ -309,7 +309,7 @@ The model is `0` bounded, thus not suitable for gaussian response data or the us
 
 ### necsigm
 The **necsigm** model is a basic exponential decay model equivalent to **ecxlin** with the addition of the "nec" step function, given by the equation
-$$y_i \tau e^{-e^{\beta} x_i^{e^\epsilon}} f(x_i, \eta)} $$
+$$y_i = \tau e^{-e^{\beta} \left(x_i^{e^\epsilon} - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("necsigm")
