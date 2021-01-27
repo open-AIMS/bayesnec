@@ -46,20 +46,21 @@ This project started with an implementation of the *NEC* model based on that des
 
 The main working function in `bayesnec` is `bnec`. We have attempted to make the `bnec` function as easy to use as possible, targeting the novice R user. A `bayesnec` model can be fit as simply as:
 
-```{r fit, eval=TRUE}
+
+```r
 library(bayesnec)
 data(nec_data)
-exmp_fit <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "all", sample_prior = "yes")
-exmp_fit2 <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "all")
+exmp_fit <- bnec(data = nec_data, x_var = "x", y_var = "y")
 ```
 
-Only four arguments must be supplied, including: `data` - a `data.frame` containing the data to use for the model; `x_var` - a `character` indicating the column heading containing the concentration (x) variable; `y_var` - a `character` indicating the column heading containing the response (y) variable; and `model`- a `character` indicating the desired model (or model set, see details below).  However, a large range of arguments can be specified manually by the user as required for more advanced users. 
+Only three arguments must be supplied, including: `data` - a `data.frame` containing the data to use for the model; `x_var` - a `character` indicating the column heading containing the concentration (x) variable; and `y_var` - a `character` indicating the column heading containing the response (y) variable. However, a large range of arguments can be specified manually by the user as required for more advanced users. 
 
 While the distribution of the x and y variables can be specified directly, `bayesnec` will automatically 'guess' the correct distribution (family) to use based on the characteristics of the provided data, as well as build the relevant model priors and initial values for the `brms` model. 
 
 If not supplied, the appropriate family to use will be determined based on the characteristics of the input data. This includes evaluation of class (integer or numeric) as well as the observed range (`0` to `1`, `0` to `+ve`, or `-ve` to `+ve`)) through `check_data`. Guesses include all of the available families (see above) except negative binomial and betabinomimal because these require knowledge on whether the data are over-dispersed. By default `bayesnec` will use the default link function for the guessed family. If other link functions are required, such as Identity in the case of a beta for example, this will need to be specified manually using:
 
-```{r, eval=TRUE}
+
+```r
 family = Beta(link = "identity")
 ```
 
@@ -75,12 +76,13 @@ A range of tools are available to assess model fit, including an estimate of ove
 
 All diagnostic functions available in `brms` and `rstan` can be used on the underlying `brm` model fit by extracting the fitted `brms` model from the `bayenecfit` or `bayesmanecfit` model object. For example, we can use the default `brms` plotting method to obtain a diagnostic plot of the individual fit of the **nec4param** model using:
 
-```{r brms-plot, eval=TRUE}
+
+```r
 plot(exmp_fit$mod_fits$nec4param$fit)
 ```
-```{r echo=FALSE, out.width='100%', fig.cap="\\label{fig:brmsplot}Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters."}
-knitr::include_graphics('brms_plot.png')
-```
+\begin{figure}
+\includegraphics[width=1\linewidth]{brms_plot} \caption{\label{fig:brmsplot}Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters.}\label{fig:unnamed-chunk-2}
+\end{figure}
 which yields a plot the posterior densities and chains plot for each parameter in the specified model as shown in Fig. \@ref(fig:brmsplot).
 
 The default number of total iterations in `bayesnec` is 10,000 per chain, with 9,000 of these used as warm up (or burn-in) across 4 chains. If the `bnec` call returns `brms` warning messages the number of iterations and warm-up samples can be adjusted through `iter` and `warmup`. A range of other arguments can be further adjusted to improve convergence, see the rich set of [Resources](https://github.com/paul-buerkner/brms available) available for the `brms` package for further information.
@@ -93,12 +95,13 @@ Several helper functions have been included that allow the user to add or drop m
 
 Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the `brms` package. An example base plot of a `bayesmanecfit` model fit can be seen in Fig. \@ref(fig:baseplot). 
 
-```{r base-plot, eval=TRUE}
+
+```r
 plot(exmp_fit)
 ```
-```{r echo=FALSE, out.width='100%', fig.cap="\\label{fig:baseplot}Base plot of the exmp_fit model averaged curve, showing the fitted median of the posterior prediction (solid line), 95% credible intervals (dashed lines), and the estimated *NEC* value (red vertical lines)."}
-knitr::include_graphics('base_plot.png')
-```
+\begin{figure}
+\includegraphics[width=1\linewidth]{base_plot} \caption{\label{fig:baseplot}Base plot of the exmp_fit model averaged curve, showing the fitted median of the posterior prediction (solid line), 95% credible intervals (dashed lines), and the estimated *NEC* value (red vertical lines).}\label{fig:unnamed-chunk-3}
+\end{figure}
 
 By default the plot shows the fitted posterior curve with 95% credible intervals, along with an estimate of the $\eta = \text{NEC}$ value. Please see the [vignettes](https://open-aims.github.io/bayesnec/articles/) for more examples using `bayesnec` models for inference.
 
@@ -108,7 +111,8 @@ The argument `model` in the function `bnec` is a character string indicating the
 
 The `model` argument may also be one of "all", meaning all of the available models will be fit; "ecx" meaning only models excluding the $\eta = \text{NEC}$ step parameter will be fit; or "nec" meaning only models with the $\eta = \text{NEC}$ step parameter (see below **Model parameters**) will be fit. There are a range of other pre-define model groups available. The full list of currently implemented model groups can be seen using:
 
-```{r, eval=TRUE}
+
+```r
 library("bayesnec")
 models()
 ```
@@ -185,12 +189,13 @@ For the parameters $\beta = \text{beta}$, $\alpha = \text{slope}$ and $\epsilon 
 
 There may be situations were the default `bayesnec` priors to not behave as desired, or the user wants to provide informative priors. For example the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the `x_var` data). Conversely, priors may be too vague, leading to poor model convergence.  Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for `bayesnec` to guess correctly the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual `brms` model fits through the function `sample_priors` which samples directly from the `prior` element in the `brm` model fit (see Fig. \@ref(fig:priorsplot)).
 
-```{r sample-prior, eval=TRUE}
+
+```r
 sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 ```
-```{r echo=FALSE, out.width='100%', fig.cap="\\label{fig:priorsplot}Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example nec_data."}
-knitr::include_graphics('sample_prior.png')
-```
+\begin{figure}
+\includegraphics[width=1\linewidth]{sample_prior} \caption{\label{fig:priorsplot}Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example nec_data.}\label{fig:unnamed-chunk-5}
+\end{figure}
 
 ## Model comparison
 
