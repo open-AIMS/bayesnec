@@ -19,6 +19,7 @@ bnec(
   warmup = floor(iter/10) * 9,
   inits,
   pointwise,
+  sample_prior = "yes",
   loo_controls = list(method = "pseudobma"),
   ...
 )
@@ -81,6 +82,10 @@ model.}
 at once or separately for each observation. The latter approach is usually considerably slower but requires
 much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
 but will not work for the custom family beta_binomial2}
+
+\item{sample_prior}{Indicate if samples from priors should be drawn additionally to the posterior samples.
+Options are "no", "yes" (the default), and "only".
+Among others, these samples can be used to calculate Bayes factors for point hypotheses via hypothesis.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} containing the desired
 arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
