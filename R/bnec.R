@@ -239,7 +239,7 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                      trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
                      iter = iter, warmup = warmup, inits = inits,
-                     pointwise = pointwise, sample_prior, ...),
+                     pointwise = pointwise, sample_prior = sample_prior, ...),
         silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
@@ -263,7 +263,8 @@ bnec <- function(data, x_var, y_var, model, trials_var = NA,
                             trials_var = trials_var, family = family,
                             priors = priors, model = model,
                             iter = iter, warmup = warmup,
-                            inits = inits, pointwise = pointwise, sample_prior, ...)
+                            inits = inits, pointwise = pointwise, 
+                            sample_prior = sample_prior, ...)
     mod_fit <- expand_nec(mod_fit, x_range = x_range,
                           precision = precision,
                           sig_val = sig_val)
