@@ -192,7 +192,7 @@
 #' }
 #'
 #' @export
-bnec <- function(data, x_var, y_var, model, trials_var = NA,
+bnec <- function(data, x_var, y_var, model = "all", trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 10e3, warmup = floor(iter / 10) * 9,
