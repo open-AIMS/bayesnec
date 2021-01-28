@@ -101,7 +101,7 @@ exp_5$mod_stats
 # ecxll4             ecxll4 -302.9171 3.615674e-06                  NA              NA               NA
 # ecxhormebc5   ecxhormebc5 -310.2534 4.644824e-05                  NA              NA               NA
 ```
-We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the ecxll5 model may have convergence issues according to the default brms Rhat criteria.
+We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default brms Rhat criteria.
 
 ```{r, eval=FALSE}
 summary(exp_5)
@@ -172,7 +172,7 @@ knitr::include_graphics('example2c.jpeg')
 ```
  You can see that some of these model represent very bad fits, and accordingly have extremely low model weights, such as the **ecxlin** model in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.
  
- We can assess the chains for the best model to make sure this is good.
+We can assess the chains for the best model to make sure this is good.
 
 ```{r, fig.width = 7, fig.height = 7, eval=FALSE}
 plot(exp_5$mod_fits$nec4param$fit)
@@ -186,6 +186,21 @@ Assessing chains for all the models in a `bayesmanecfit` doesn't work as well us
 check_chains(exp_5, filename = "example_5_all_chains")
 #Chain plots saved to file example_5_all_chains.pdf, in your working directory.
 ```
+
+We can also make a plot to compare the posterior probability density to that of the prior using the `check_priors` function, for an individual model fit, but also saving all fits to file in the working directory.
+
+```{r, fig.width = 7, fig.height = 7, eval=FALSE}
+check_priors(exp_5$mod_fits$nec4param$fit)
+```
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('example2f.jpeg')
+```
+
+```{r, fig.width = 7, fig.height = 7, eval=FALSE}
+check_priors(exp_5, filename = "example_5_all_priors")
+#Probability density plots saved to file example_5_all_priors.pdf
+```
+
 
 ### Extracting endpoint values
 
