@@ -4,6 +4,7 @@
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
+#' @param ... Unused.
 #'
 #' @seealso \code{\link{bnec}}
 #' 
