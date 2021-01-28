@@ -50,10 +50,10 @@ The main working function in `bayesnec` is `bnec`. We have attempted to make the
 ```r
 library(bayesnec)
 data(nec_data)
-exmp_fit <- bnec(data = nec_data, x_var = "x", y_var = "y")
+exmp_fit <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "all")
 ```
 
-Only three arguments must be supplied, including: `data` - a `data.frame` containing the data to use for the model; `x_var` - a `character` indicating the column heading containing the concentration (x) variable; and `y_var` - a `character` indicating the column heading containing the response (y) variable. However, a large range of arguments can be specified manually by the user as required for more advanced users. 
+Only four arguments must be supplied, including: `data` - a `data.frame` containing the data to use for the model; `x_var` - a `character` indicating the column heading containing the concentration (x) variable; `y_var` - a `character` indicating the column heading containing the response (y) variable; and `model`- a `character` indicating the desired model (or model set, see details below).  However, a large range of arguments can be specified manually by the user as required for more advanced users. 
 
 While the distribution of the x and y variables can be specified directly, `bayesnec` will automatically 'guess' the correct distribution (family) to use based on the characteristics of the provided data, as well as build the relevant model priors and initial values for the `brms` model. 
 
@@ -87,11 +87,58 @@ which yields a plot the posterior densities and chains plot for each parameter i
 
 The default number of total iterations in `bayesnec` is 10,000 per chain, with 9,000 of these used as warm up (or burn-in) across 4 chains. If the `bnec` call returns `brms` warning messages the number of iterations and warm-up samples can be adjusted through `iter` and `warmup`. A range of other arguments can be further adjusted to improve convergence, see the rich set of [Resources](https://github.com/paul-buerkner/brms available) available for the `brms` package for further information.
 
-Several helper functions have been included that allow the user to add or drop models from a `bayesmanecfit` object , or change the model weighting method (`amend`); extract a single or subset of models from the `bayesmanecfit` object (`pull_out`); and examine the priors use for model fitting (`pull_prior` and `sample_prior`).
+Several helper functions have been included that allow the user to add or drop models from a `bayesmanecfit` object , or change the model weighting method (`amend`); extract a single or subset of models from the `bayesmanecfit` object (`pull_out`); and examine the priors use for model fitting (`pull_prior`, `sample_prior` and `check_priors`).
 
 ### Model inference
 
-`bayesnec` includes a summary method for both `bayesnecfit` and `bayesmanecfit` model objects, providing the usual summary of model parameters and any relevant model fit statistics as returned in the underlying `brm` model fits.
+`bayesnec` includes a summary method for both `bayesnecfit` and `bayesmanecfit` model objects, providing the usual summary of model parameters and any relevant model fit statistics as returned in the underlying `brm` model fits. This includes a list of fitted models, and model weights are provided and a model averaged NEC, reported with a warning in this case indicating it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default brms Rhat criteria.
+
+
+```r
+summary(exmp_fit)
+# Object of class bayesmanecfit containing the following non-linear models:
+#   -  nec4param
+#   -  nechorme4
+#   -  neclin
+#   -  neclinhorme
+#   -  nechorme4pwr
+#   -  ecxlin
+#   -  ecx4param
+#   -  ecxwb1
+#   -  ecxwb2
+#   -  ecxll5
+#   -  ecxll4
+#   -  ecxhormebc5
+# 
+# Distribution family: beta
+# Number of posterior draws per model:  4000
+# 
+# Model weights (Method: pseudobma_bb_weights):
+#                 waic   wi
+# nec4param    -332.75 0.37
+# nechorme4    -330.31 0.13
+# neclin       -332.05 0.29
+# neclinhorme  -329.80 0.14
+# nechorme4pwr -328.40 0.06
+# ecxlin       -188.03 0.00
+# ecx4param    -302.35 0.00
+# ecxwb1       -294.30 0.00
+# ecxwb2       -317.12 0.00
+# ecxll5       -317.78 0.00
+# ecxll4       -302.92 0.00
+# ecxhormebc5  -310.25 0.00
+# 
+# Summary of weighted NEC posterior estimates:
+# NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4;ecxhormebc5; weighted NEC estimates include NSEC surrogates for NEC
+#     Estimate Q2.5 Q97.5
+# NEC     1.39 1.26  1.48
+# 
+# Warning message:
+# In print.manecsummary(x) :
+#   The following model had Rhats > 1.05 (no convergence):
+#   -  ecxll5
+# Consider dropping them (see ?amend)
+```
 
 Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the `brms` package. An example base plot of a `bayesmanecfit` model fit can be seen in Fig. \@ref(fig:baseplot). 
 
@@ -100,7 +147,7 @@ Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict meth
 plot(exmp_fit)
 ```
 \begin{figure}
-\includegraphics[width=1\linewidth]{base_plot} \caption{\label{fig:baseplot}Base plot of the exmp_fit model averaged curve, showing the fitted median of the posterior prediction (solid line), 95% credible intervals (dashed lines), and the estimated *NEC* value (red vertical lines).}\label{fig:unnamed-chunk-3}
+\includegraphics[width=1\linewidth]{base_plot} \caption{\label{fig:baseplot}Base plot of the exmp_fit model averaged curve, showing the fitted median of the posterior prediction (solid line), 95% credible intervals (dashed lines), and the estimated *NEC* value (red vertical lines).}\label{fig:unnamed-chunk-4}
 \end{figure}
 
 By default the plot shows the fitted posterior curve with 95% credible intervals, along with an estimate of the $\eta = \text{NEC}$ value. Please see the [vignettes](https://open-aims.github.io/bayesnec/articles/) for more examples using `bayesnec` models for inference.
@@ -194,8 +241,24 @@ There may be situations were the default `bayesnec` priors to not behave as desi
 sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 ```
 \begin{figure}
-\includegraphics[width=1\linewidth]{sample_prior} \caption{\label{fig:priorsplot}Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example nec_data.}\label{fig:unnamed-chunk-5}
+\includegraphics[width=1\linewidth]{sample_prior} \caption{\label{fig:priorsplot}Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example nec_data.}\label{fig:unnamed-chunk-6}
 \end{figure}
+
+We can also use the function `check_priors` (based on the `hypothesis` function of `brms`) to assess how the posterior probability density for each parameter differs from that of the prior. Here we show the prior and posterior probability densities for the parameters in the **nec4param** model, extracted from our example fit (see Fig. \@ref(fig:checkpriorsplot)). There is also a class `bayesmanecfit` method that can be used to sequentially view all plots in a `bnec` call with multiple models, or write to a pdf as in `check_chains`. 
+
+
+```r
+# for a single model
+exmp_fit_nec4param <- pull_out(exmp_fit, model = "nec4param")
+check_priors(exmp_fit_nec4param)
+
+# for all models, writing to a pdf file named Check_priors_plots.pdf
+check_priors(exmp_fit, filename = "Check_priors_plots")
+```
+\begin{figure}
+\includegraphics[width=1\linewidth]{check_prior} \caption{\label{fig:checkpriorsplot}A comparison of the prior and posterior parameter probability densities for the nec4param model fit to the example nec_data.}\label{fig:unnamed-chunk-7}
+\end{figure}
+
 
 ## Model comparison
 
@@ -205,11 +268,11 @@ At this time `bnec` does not allow inclusion of an interaction with a fixed fact
 
 # Conclusions, caveats and future directions
 
-The `bayesnec` package is a work in progress, and we welcome suggestions and feedback that will improve the package performance and function. Please submit requests through the package [Issues](https://github.com/open-AIMS/bayesnec/issues) on github. Some existing future enhancements include the addition of other custom families, such as the tweedie distribution for data that are `0` to `+Inf` on the continuous scale, and the addition of random offsets for accomodating hierarchical designs.
+The `bayesnec` package is a work in progress, and we welcome suggestions and feedback that will improve the package performance and function. Please submit requests through the package [Issues](https://github.com/open-AIMS/bayesnec/issues) on github. Some existing future enhancements include the addition of other custom families, such as the tweedie distribution for data that are `0` to `+Inf` on the continuous scale, and the addition of random offsets for accommodating hierarchical designs.
 
 Where possible we have tried to set default values to align with those in `brms`. Wherever we deviate  we have tended towards being more conservative (for example in the default `iter`) and/or clearly explained our reasoning above (e.g. use of pseudobma rather than stacking weights). We welcome constructive criticism of our selections and users must expect that default settings may change accordingly in later releases.
 
-As described above in detail, we have made considerable effort to ensure that `bayesnec` makes a sensible guess at the appropriate family, constructs appropriate weakly informative priors, and generates sensible initial values. However, this is a difficult task across such a broad range of non-linear models, and across the potential range of ecotoxicological data that may be used. The user must interrogate their model fits and use their own judgement regarding the appropriateness of model inferences for their own application. 
+As described above in detail, we have made considerable effort to ensure that `bayesnec` makes a sensible guess at the appropriate family, constructs appropriate weakly informative priors, and generates sensible initial values. However, this is a difficult task across such a broad range of non-linear models, and across the potential range of ecotoxicological data that may be used. The user must interrogate their model fits using the wide array of helper functions, and use their own judgement regarding the appropriateness of model inferences for their own application. 
 
 Like R itself, bayesnec is free software and comes with ABSOLUTELY NO WARRANTY, or even IMPLIED WARRANTY.
 
