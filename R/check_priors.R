@@ -4,7 +4,7 @@
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
-#' @param ... Unused.
+#' @param ... Optional arguments passed to specific methods.
 #'
 #' @seealso \code{\link{bnec}}
 #' 
@@ -69,12 +69,11 @@ check_priors <- function(object, ...) {
 #'
 #' @param object An object of class \code{\link{bayesnecfit}}
 #' returned by \code{\link{bnec}}.
-#' @param ... Additional arguments to \code{\link{check_priors}}
 #'
 #' @inherit check_priors return details seealso examples
 #' @export
-check_priors.bayesnecfit <- function(object, ...) {
-  check_priors.default(object, ...)
+check_priors.bayesnecfit <- function(object) {
+  check_priors.default(object)
 }
 
 #' check_priors.bayesmanecfit
@@ -85,7 +84,7 @@ check_priors.bayesnecfit <- function(object, ...) {
 #' @inheritParams check_priors
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
-#' #' @param filename An optional character vector to be used as a pdf filename
+#' @param filename An optional character vector to be used as a pdf filename
 #' in the case of a \code{\link{bayesmanecfit}}. Any non empty character
 #' string will indicate the user wants to save the plots.
 #'
@@ -94,13 +93,13 @@ check_priors.bayesnecfit <- function(object, ...) {
 #' @importFrom ggplot2 ggtitle
 #' @importFrom grDevices devAskNewPage pdf
 #' @export
-check_priors.bayesmanecfit <- function(object, ..., filename = NA) {
+check_priors.bayesmanecfit <- function(object, filename = NA) {
   
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE, width = 12, height = 4)
   }else{devAskNewPage(ask = TRUE)}
   for (m in seq_len(length(object$mod_fits))) {
-   out_plot <- check_priors.default(object = object$mod_fits[[m]], ...) +
+   out_plot <- check_priors.default(object = object$mod_fits[[m]]) +
      ggtitle(names(object$mod_fits)[m])
    print(out_plot)
   }
