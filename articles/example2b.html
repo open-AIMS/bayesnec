@@ -391,7 +391,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="necsigm" class="section level3">
 <h3 class="hasAnchor">
 <a href="#necsigm" class="anchor"></a>necsigm</h3>
-<p>The <strong>necsigm</strong> model is a basic exponential decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i \tau e^{-e^{\beta} x_i^{e^\epsilon}} f(x_i, \eta)} \]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>necsigm</strong> model is a basic exponential decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i = \tau e^{-e^{\beta} \left(x_i^{e^\epsilon} - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
 ## top ~ 1
 ## beta ~ 1
