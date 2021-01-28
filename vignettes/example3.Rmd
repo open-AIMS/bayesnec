@@ -40,11 +40,11 @@ For the parameters **beta**, **slope**, **d** and **f** we first ensured any rel
 
 There may be situations were the default `bayesnec` priors to not behave as desired, or the user wants to provide informative priors. For example the default priors may be too informative, yielding unreasonably tight confidence bands, although this is only likely where there are few data. Conversely, priors may be too vague, leading to poor model convergence.  Alternatively, as indicated in the example below under **User specified priors**, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for `bayesnec` to guess correctly the appropriate ones to use.
 
-The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual `brms` model fits through the function `samples_priors` which samples directly friom the `prior` element in thre `brm` model fit.
+The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual `brms` model fits through the function `samples_priors` which samples directly from the `prior` element in the `brm` model fit. We can also use the function `check_prior` (based on the `hypothesis` function of `brms`) to assess how the posterior probability density for each parameter differs from that of the prior.
 
 ### bayesnecfit
 
-We start by letting `bnec` find the priors on its own, i.e. by not specifying a `priors` argument at all.
+To set specified priors, it is simplest to start by letting `bnec` find the priors on its own, i.e. by not specifying a `priors` argument at all.
 ```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
 library(bayesnec)
 library(brms)
@@ -66,7 +66,16 @@ exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
 class(exmp_a) # bayesnecfit
 ```
 
-If in doubt about what reasonable values the priors should take, or at least to have some vague idea, the user can take advantage of the function `pull_prior` to inspect what `bnec` came up with on its own.
+We can view the prior and posterior probability densities of all the parameters in the model using the function `check_prior`, based on the `hypothesis` function of `brms`. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.
+
+```{r, fig.width = 7, fig.height = 7, eval=FALSE}
+check_priors(exmp_a)
+```
+```{r echo=FALSE, out.width='100%'}
+knitr::include_graphics('example3a.jpeg')
+```
+
+In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function `pull_prior` to inspect what `bnec` came up with on its own, and decide how best to modify those priors to be more desirable.
 
 ```{r eval = FALSE}
 pull_prior(exmp_a)
@@ -118,7 +127,7 @@ exmp_c <- bnec(data = nec_data, x_var = "x", y_var = "y",
                iter = 1e4, control = list(adapt_delta = 0.99))
 ```
 
-`pull_prior` also works for an object of class `bayesmanecfit`
+`pull_prior` also works for an object of class `bayesmanecfit`, as does `check_priors` which allows an option of passing a filename to save the prior and posterior probability density plots to a pdf.
 
 ```{r eval = FALSE}
 pull_prior(exmp_c)
@@ -142,7 +151,9 @@ pull_prior(exmp_c)
 ## 6                       b Intercept                   nec      
 ## 7        beta(5, 1)     b                             top      
 ## 8                       b Intercept                   top      
-## 9 gamma(0.01, 0.01)   phi                                      
+## 9 gamma(0.01, 0.01)   phi     
+
+check_priors(exmp_c, filename = "Check_priors")                                 
 ```
 
 The user can also specify priors for one model only out of the entire set, `bayesnec` will return a message stating that it's searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.
