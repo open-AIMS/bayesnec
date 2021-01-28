@@ -84,23 +84,70 @@ plot(exp_5)
 ```{r echo=FALSE, out.width='100%'}
 knitr::include_graphics('example2a.jpeg')
 ```
-
-The default plot looks exactly the same out our regular `bayesnecfit` plot, but the output is based on a weighted average of all the models fits. The *NEC* estimate on this plot is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the `ecx` models in the set. Note that we do not currently recommend reporting this values as the *NEC* (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular `mod_stats` contains the table of model fit statistic for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to "pseudobma" with Bayesian boostrap from `loo`), pD, and the over-dispersion estimate (in this case blank because we have fitted a beta family). For this example, the **nec4param** model has the highest weight, followed by the **neclin** and the **neclinhorme** models.
+The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the `ecx` models in the set. Note that we do not currently recommend reporting this values as the *NEC* (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular `mod_stats` contains the table of model fit statistic for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to "pseudobma" with Bayesian boostrap from `loo`), pD, and the over-dispersion estimate (in this case blank because we have fitted a beta family). For this example, the **nec4param** model has the highest weight, followed by the **neclin** and the **neclinhorme** models.
 ```{r, eval=FALSE}
 exp_5$mod_stats
 #                     model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-# nec4param       nec4param -333.1372 3.777323e-01                  NA              NA               NA
-# nechorme4       nechorme4 -330.8176 1.469187e-01                  NA              NA               NA
-# neclin             neclin -332.2588 2.814116e-01                  NA              NA               NA
-# neclinhorme   neclinhorme -330.2539 1.539925e-01                  NA              NA               NA
-# nechorme4pwr nechorme4pwr -328.3598 3.826458e-02                  NA              NA               NA
-# ecxlin             ecxlin -188.4782 1.129799e-24                  NA              NA               NA
-# ecx4param       ecx4param -302.4447 2.931145e-06                  NA              NA               NA
-# ecxwb1             ecxwb1 -294.3911 5.046193e-08                  NA              NA               NA
-# ecxwb2             ecxwb2 -317.1749 6.455120e-04                  NA              NA               NA
-# ecxll5             ecxll5 -316.8985 9.937506e-04                  NA              NA               NA
-# ecxll4             ecxll4 -302.0296 1.661897e-06                  NA              NA               NA
-# ecxhormebc5   ecxhormebc5 -310.1298 3.640250e-05                  NA              NA               NA
+# nec4param       nec4param -332.7474 3.747495e-01                  NA              NA               NA
+# nechorme4       nechorme4 -330.3145 1.275786e-01                  NA              NA               NA
+# neclin             neclin -332.0511 2.903177e-01                  NA              NA               NA
+# neclinhorme   neclinhorme -329.7996 1.448851e-01                  NA              NA               NA
+# nechorme4pwr nechorme4pwr -328.3958 6.005012e-02                  NA              NA               NA
+# ecxlin             ecxlin -188.0340 1.468296e-24                  NA              NA               NA
+# ecx4param       ecx4param -302.3491 2.512591e-06                  NA              NA               NA
+# ecxwb1             ecxwb1 -294.3010 7.113960e-08                  NA              NA               NA
+# ecxwb2             ecxwb2 -317.1199 6.432912e-04                  NA              NA               NA
+# ecxll5             ecxll5 -317.7844 1.723062e-03                  NA              NA               NA
+# ecxll4             ecxll4 -302.9171 3.615674e-06                  NA              NA               NA
+# ecxhormebc5   ecxhormebc5 -310.2534 4.644824e-05                  NA              NA               NA
+```
+We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the ecxll5 model may have convergence issues according to the default brms Rhat criteria.
+
+```{r, eval=FALSE}
+summary(exp_5)
+# Object of class bayesmanecfit containing the following non-linear models:
+#   -  nec4param
+#   -  nechorme4
+#   -  neclin
+#   -  neclinhorme
+#   -  nechorme4pwr
+#   -  ecxlin
+#   -  ecx4param
+#   -  ecxwb1
+#   -  ecxwb2
+#   -  ecxll5
+#   -  ecxll4
+#   -  ecxhormebc5
+# 
+# Distribution family: beta
+# Number of posterior draws per model:  4000
+# 
+# Model weights (Method: pseudobma_bb_weights):
+#                 waic   wi
+# nec4param    -332.75 0.37
+# nechorme4    -330.31 0.13
+# neclin       -332.05 0.29
+# neclinhorme  -329.80 0.14
+# nechorme4pwr -328.40 0.06
+# ecxlin       -188.03 0.00
+# ecx4param    -302.35 0.00
+# ecxwb1       -294.30 0.00
+# ecxwb2       -317.12 0.00
+# ecxll5       -317.78 0.00
+# ecxll4       -302.92 0.00
+# ecxhormebc5  -310.25 0.00
+# 
+# 
+# Summary of weighted NEC posterior estimates:
+# NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4;ecxhormebc5; weighted NEC estimates include NSEC surrogates for NEC
+#     Estimate Q2.5 Q97.5
+# NEC     1.39 1.26  1.48
+# 
+# Warning message:
+# In print.manecsummary(x) :
+#   The following model had Rhats > 1.05 (no convergence):
+#   -  ecxll5
+# Consider dropping them (see ?amend)
 
 ```
 

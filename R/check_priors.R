@@ -100,7 +100,7 @@ check_priors.bayesmanecfit <- function(object, ..., filename = NA) {
   }else{devAskNewPage(ask = TRUE)}
   for (m in seq_len(length(object$mod_fits))) {
    out_plot <- check_priors.default(object = object$mod_fits[[m]], ...) +
-     ggtitle(names(exmp$mod_fits)[m])
+     ggtitle(names(object$mod_fits)[m])
    print(out_plot)
   }
   if (!is.na(filename)) {

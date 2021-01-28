@@ -115,7 +115,7 @@ pairs(exp_1$fit)
 
 We can see the summary of our fitted model parameters using:
 ```{r}
-summary(exp_1$fit)
+summary(exp_1)
 ```
 
 Note the Rhat values in this example are one, indicating convergence.
