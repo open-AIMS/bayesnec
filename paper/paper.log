@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.999992 (TeX Live 2020/W32TeX) (preloaded format=xelatex 2021.1.19)  29 JAN 2021 08:42
+This is XeTeX, Version 3.14159265-2.6-0.999992 (TeX Live 2020/W32TeX) (preloaded format=xelatex 2021.1.19)  29 JAN 2021 13:44
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1397,7 +1397,7 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 File: base_plot.png Graphic file (type bmp)
 <base_plot.png>
 
-Overfull \hbox (64.30984pt too wide) in paragraph at lines 604--611
+Overfull \hbox (64.30984pt too wide) in paragraph at lines 605--612
 []\TU/lmr/m/n/10 \begin{figure} []
  []
 
@@ -1415,7 +1415,7 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 
 [5]
 LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 620.
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 621.
 File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
 S-logo.png Graphic file (type bmp)
 <C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOSS-log
@@ -1430,7 +1430,7 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 
 [6]
 LaTeX Font Info:    Font shape `TU/lmss/bx/it' in size <10> not available
-(Font)              Font shape `TU/lmss/bx/sl' tried instead on input line 708.
+(Font)              Font shape `TU/lmss/bx/sl' tried instead on input line 709.
 
 File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
 S-logo.png Graphic file (type bmp)
@@ -1474,14 +1474,14 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 File: sample_prior.png Graphic file (type bmp)
 <sample_prior.png>
 
-Overfull \hbox (64.30984pt too wide) in paragraph at lines 909--915
+Overfull \hbox (64.30984pt too wide) in paragraph at lines 910--916
 []\TU/lmr/m/n/10 \begin{figure} []
  []
 
 File: check_prior.png Graphic file (type bmp)
 <check_prior.png>
 
-Overfull \hbox (64.32468pt too wide) in paragraph at lines 937--943
+Overfull \hbox (64.32468pt too wide) in paragraph at lines 938--944
 []\TU/lmr/m/n/10 \begin{figure} []
  []
 
@@ -1524,7 +1524,20 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 (fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
 
 [12]
-Underfull \hbox (badness 1019) in paragraph at lines 1101--1106
+File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
+S-logo.png Graphic file (type bmp)
+<C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOSS-log
+o.png>
+
+Package fancyhdr Warning: \headheight is too small (62.59596pt): 
+(fancyhdr)                Make it at least 63.55022pt, for example:
+(fancyhdr)                \setlength{\headheight}{63.55022pt}.
+(fancyhdr)                You might also make \topmargin smaller to compensate:
+
+(fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
+
+[13]
+Underfull \hbox (badness 1019) in paragraph at lines 1220--1225
 \TU/lmr/m/n/10 erage Bayesian Predictive Distributions (with Discussion). \TU/l
 mr/m/it/10 Bayesian Analysis\TU/lmr/m/n/10 .
  []
@@ -1541,20 +1554,20 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 
 (fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
 
-[13] (./paper.aux)
+[14] (./paper.aux)
 Package rerunfilecheck Info: File `paper.out' has not changed.
-(rerunfilecheck)             Checksum: 8404385FBB1E187B68B13190759E3366;1532.
+(rerunfilecheck)             Checksum: 7C5CF5E8A9F35C9677C53D24F7A342E4;1564.
 Package logreq Info: Writing requests to 'paper.run.xml'.
 \openout1 = `paper.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 35503 strings out of 479212
+ 35504 strings out of 479212
  714407 string characters out of 5873009
- 1503197 words of memory out of 5000000
- 54496 multiletter control sequences out of 15000+600000
+ 1503271 words of memory out of 5000000
+ 54497 multiletter control sequences out of 15000+600000
  410350 words of font info for 81 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  95i,13n,103p,738b,804s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on paper.pdf (13 pages).
+Output written on paper.pdf (14 pages).
