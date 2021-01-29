@@ -35,7 +35,7 @@ The `bayesnec` is an R package to fit concentration(dose) - response curves to t
 
 Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for *NEC* estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting *NEC* models and other concentration-response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor, x) as well as the "response" (y) variable. The model formula, including priors and initial values required to call a `brms` model are automatically generated based on information contained in the supplied data. While the distribution of the x and y variables can be specified directly, `bayesnec` will automatically 'guess' the correct distribution to use based on the characteristics of the provided data.
 
-This project started with an implementation of the *NEC* model based on that described in [@Fox2010] using R2jags. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported gaussian, poisson, binomial, gamma, negbin and beta response data `bayesnec` supports any of the `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of typically used concentration-response models (such as 4-parameter logistic and weibull models) that have no *NEC* 'step' function but simply model the response as a smooth function of concentration, as can be fit using other commonly used frequentist packages such as `drc` [@Ritz2016].
+This project started with an implementation of the *NEC* model based on that described in [@Fox2010] using R2jags. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported gaussian, poisson, binomial, gamma, negative binomial and beta response data `bayesnec` additionally supports the betabinomial, and can be easily extended to include any of the available `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of typically used concentration-response models (such as 4-parameter logistic and weibull models) that have no *NEC* 'step' function but simply model the response as a smooth function of concentration, as can be fit using other commonly used frequentist packages such as `drc` [@Ritz2016].
 
 Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively it is possible to fit a custom model set, specific model set or all of the available models. Further information on fitting multi models using `bayesnec` can be found in the [Multi model usage][e2] vignette. For detailed information on the models available in `bayesnec` see the [Model details][e2b] vignette.
 
@@ -283,7 +283,7 @@ set.seed(333)
 exp_3b <- bnec(data = count_data, x_var = "sqrt_x",
               y_var = "count", family = "negbinomial", model = "neclin")
 ```
-The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it it still does not seem to be a good model for these data.
+The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it it still does not seem to be a good model for these data. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
 
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7, eval=FALSE}
 plot(exp_3b)
@@ -302,18 +302,16 @@ knitr::include_graphics('example1g.jpeg')
 
 ### Measure data
 
-Where data are a measured variable (i.e. length or size) y is family gamma. Such data are distributed from `0+` to `Inf` and are continuous. First we read in the count data example from pastebin, and then plot the "concentration" or x data, Again, this is raw_x, and distributed as in our binomial example above.
-
+Where data are a measured variable y is family gamma. Good examples of `gamma` distributed data include measures of body size, such as length, weight or area. Such data are distributed from `0+` to `Inf` and are continuous. Here we use the nec_data supplied with `bayesnec` with y on the exponential scale to ensure the right data range for a gamma as an example.
 ```{r}
-measure_data <- "https://pastebin.com/raw/pWeS6x0n" %>%
-  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
-  dplyr::rename(raw_x = raw.x) %>%
-  dplyr::mutate(dplyr::across(where(is.character), as.numeric))
+data(nec_data)
+measure_data <- nec_data %>%
+  dplyr::mutate(measure = exp(y))
 ```
 
 ```{r, warning = FALSE, eval=FALSE}
 set.seed(333)
-exp_4 <- bnec(data = measure_data, x_var = "raw_x",
+exp_4 <- bnec(data = measure_data, x_var = "x",
               y_var = "measure", model = "neclin")
 ```
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7, eval=FALSE}
@@ -325,26 +323,38 @@ knitr::include_graphics('example1h.jpeg')
 
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7, eval=FALSE}
 plot(exp_4)
+summary(exp_4)
+#Object of class bayesnecfit containing the following non-linear model: neclin
+#
+# Family: gamma 
+#  Links: mu = log; shape = identity 
+#Formula: y ~ top - slope * (x - nec) * step(x - nec) 
+#         top ~ 1
+#         slope ~ 1
+#         nec ~ 1
+#   Data: structure(list(x = c(1.01874617094183, 0.815747457 (Number of observations: 100) 
+#Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;
+#         total post-warmup samples = 4000
+#
+#Population-Level Effects: 
+#                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#top_Intercept       0.89      0.01     0.88     0.91 1.00     2625     2290
+#slope_Intercept     0.55      0.03     0.50     0.60 1.00     1970     2145
+#nec_Intercept       1.31      0.04     1.23     1.38 1.00     1648     2038
+#
+#Family Specific Parameters: 
+#      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#shape   248.66     36.61   185.55   328.96 1.00     2690     2229
+#
+#Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+#and Tail_ESS are effective sample size measures, and Rhat is the potential
+#scale reduction factor on split chains (at convergence, Rhat = 1).
+
 ```
 ```{r echo=FALSE, out.width='100%'}
 knitr::include_graphics('example1i.jpeg')
 ```
-In this case our model is a terrible fit. This is because the default link for the gamma family is inverse, which doesn't work at all in this case. We need to run this again calling the family `Gamma` manually, and setting a `log` link.
 
-```{r, warning = FALSE, eval=FALSE}
-set.seed(333)
-exp_4b <- bnec(data = measure_data, x_var = "raw_x",
-              y_var = "measure", model = "neclin", family = Gamma(link = "log"))
-```
-
-```{r, warning = FALSE, fig.width = 7, fig.height = 7, eval=FALSE}
-plot(exp_4b)
-```
-```{r echo=FALSE, out.width='100%'}
-knitr::include_graphics('example1j.jpeg')
-```
-
-Using the `log` link our `Gamma` distribution is a reasonable fit to these data.
-
+In this case our model has converged well, although it is perhaps not the best model to fit. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
 
 # References
