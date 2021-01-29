@@ -90,7 +90,7 @@ The data are clearly binomial, with the column `suc`---indicating the number of 
 
 The main 'working' function in `bayesnec` is the function `bnec`, which calls the other necessary functions and fits the `brms` model. We run `bnec` by supplying `data`: a data.frame containing the data for the model fitting, here, `binom_data`;  `x_var`: the name of the column in `data` which contains the concentration data or 'x' data to be used in the *NEC* model fit, and `y_var`: the name of the column in `data` which contains the response or 'y' data to be used in the *NEC* model fit. In our example here, as this is binomial, we must also supply `trials_var`, which is the name of the column in `data` which contains the number of trials in the binomial call.
 
-`bnec` will guess the data types for use, although as mentioned above we could manually specify `family` as "binomial". `bnec` will also generate appropriate priors for the `brms` model call, although these can also be specified manually (see the [User-specified priors][e3] vignette for more details).
+`bnec` will guess the data types for use, although as mentioned above we could manually specify `family` as "binomial". `bnec` will also generate appropriate priors for the `brms` model call, although these can also be specified manually (see the [Priors][e3] vignette for more details).
 
 ```{r, warning = FALSE, message = FALSE}
 library(bayesnec)
@@ -175,7 +175,7 @@ hist(exp_1b$nec_posterior)
 ```
 
 ```{r echo=FALSE, out.width='100%'}
-knitr::include_graphics('example1k.jpeg')
+knitr::include_graphics('example1k.png')
 ```
 
 
@@ -187,6 +187,37 @@ ecx(exp_1b)
 #   3.799644    3.276595    4.223064 
 ```
 
+A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for **NEC**, as the nec_intercept population level effect in the model.
+
+```{r, warning = FALSE, eval=FALSE}
+summary(exp_1b)
+# Object of class bayesnecfit containing the following non-linear model: neclin
+# 
+#  Family: beta_binomial2 
+#   Links: mu = logit; phi = identity 
+# Formula: y | trials(trials) ~ top - slope * (x - nec) * step(x - nec) 
+#          top ~ 1
+#          slope ~ 1
+#          nec ~ 1
+#    Data: structure(list(x = c(-2.30258509299405, -2.3025850 (Number of observations: 48) 
+# Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;
+#          total post-warmup samples = 4000
+# 
+# Population-Level Effects: 
+#                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+# top_Intercept       1.83      0.23     1.38     2.34 1.00     1667     1751
+# slope_Intercept     1.52      0.24     1.06     2.04 1.00     1947     2129
+# nec_Intercept       3.41      0.30     2.67     3.94 1.00     1625     1618
+# 
+# Family Specific Parameters: 
+#     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+# phi     5.74      1.30     3.55     8.75 1.00     2276     2206
+# 
+# Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+# and Tail_ESS are effective sample size measures, and Rhat is the potential
+# scale reduction factor on split chains (at convergence, Rhat = 1).
+
+```
 
 
 ### Beta data

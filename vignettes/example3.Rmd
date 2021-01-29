@@ -2,7 +2,7 @@
 title: "Priors"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{User-specified priors}
+  %\VignetteIndexEntry{Priors}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: bayesnec.bib
