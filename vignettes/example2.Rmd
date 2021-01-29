@@ -101,7 +101,7 @@ exp_5$mod_stats
 # ecxll4             ecxll4 -302.9171 3.615674e-06                  NA              NA               NA
 # ecxhormebc5   ecxhormebc5 -310.2534 4.644824e-05                  NA              NA               NA
 ```
-We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default brms Rhat criteria.
+We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default `brms` Rhat criteria.
 
 ```{r, eval=FALSE}
 summary(exp_5)
@@ -150,7 +150,6 @@ summary(exp_5)
 # Consider dropping them (see ?amend)
 
 ```
-
 The `bayesmanecfit` object also contains all of the original fits, which can be extracted using the `pull_out` function. For example, we can pull out the highested weighted model, **nec4param**.
 
 ```{r, fig.width = 7, fig.height = 7, eval=FALSE}
@@ -200,11 +199,18 @@ knitr::include_graphics('example2f.jpeg')
 check_priors(exp_5, filename = "example_5_all_priors")
 #Probability density plots saved to file example_5_all_priors.pdf
 ```
+Where  a large number models are failing to converge, obviously it would be better to adjust `iter` and `warmup` in the `bnec` call, as well as some of the other arguments to `brms` such as `adapt_delta`. See the `brms` documentation for more details. In the example above only a single model had poor convergence according to `rhat` criteria. It is pssible to exclude such models from the model set using amend and the `bayesmanecfit` rhat method, via:
 
+```{r, eval=FALSE}
+exp_5_new <- amend(exp_5, drop = rhat(exp_5)$failed)
+#Fitted models are:  nec4param nechorme4 neclin neclinhorme nechorme4pwr ecxlin ecx4param ecxwb1 ecxwb2 ecxll4 ecxhormebc5
+```
+
+This will drop all models that fail the default `rhat_cutoff` value of 1.05 from the model set, and adjust the model averaged predictions accordingly. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value.
 
 ### Extracting endpoint values
 
-The models prefixed with `ecx` are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plots above for these models are an approximation based on *NSEC* and should not be used without careful consideration of the validity of this endpoint value (see the [Model details][e2b] vignette for more details. A formal model averaged estimate of *NEC* should be obtained with `model = "nec"`. We can use the helper functions `pull_out` and `amend` to alter the model set as required. pull_out has a `model` argument and can be used to pull out a single model (as above) or to pull out a specific types of models.
+The models prefixed with `ecx` are all models that do not have the *NEC* as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plots above for these models are an approximation based on *NSEC* and should not be used without careful consideration of the validity of this endpoint value (see the [Model details][e2b] vignette for more details. A formal model averaged estimate of *NEC* should be obtained with `model = "nec"`. We can use the helper functions `pull_out` and `amend` to alter the model set as required. pull_out has a `model` argument and can be used to pull out a single model (as above) or to pull out a specific set of models.
 
 We can use this to obtain first a set of *NEC* only models from the existing set.
 
