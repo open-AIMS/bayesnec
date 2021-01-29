@@ -135,11 +135,11 @@
 <h2 class="hasAnchor">
 <a href="#user-specified-priors" class="anchor"></a>User specified priors</h2>
 <p>There may be situations were the default <code>bayesnec</code> priors to not behave as desired, or the user wants to provide informative priors. For example the default priors may be too informative, yielding unreasonably tight confidence bands, although this is only likely where there are few data. Conversely, priors may be too vague, leading to poor model convergence. Alternatively, as indicated in the example below under <strong>User specified priors</strong>, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for <code>bayesnec</code> to guess correctly the appropriate ones to use.</p>
-<p>The priors used in the default model fit can be extracted using <code>pull_prior</code>, and a sample or plot of prior values can be obtained from the individual <code>brms</code> model fits through the function <code>samples_priors</code> which samples directly friom the <code>prior</code> element in thre <code>brm</code> model fit.</p>
+<p>The priors used in the default model fit can be extracted using <code>pull_prior</code>, and a sample or plot of prior values can be obtained from the individual <code>brms</code> model fits through the function <code>samples_priors</code> which samples directly from the <code>prior</code> element in the <code>brm</code> model fit. We can also use the function <code>check_prior</code> (based on the <code>hypothesis</code> function of <code>brms</code>) to assess how the posterior probability density for each parameter differs from that of the prior.</p>
 <div id="bayesnecfit" class="section level3">
 <h3 class="hasAnchor">
 <a href="#bayesnecfit" class="anchor"></a>bayesnecfit</h3>
-<p>We start by letting <code>bnec</code> find the priors on its own, i.e. by not specifying a <code>priors</code> argument at all.</p>
+<p>To set specified priors, it is simplest to start by letting <code>bnec</code> find the priors on its own, i.e. by not specifying a <code>priors</code> argument at all.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms">brms</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec">bayesnec</a></span><span class="op">)</span>
@@ -153,8 +153,12 @@
                iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span> <span class="co"># bayesnecfit</span></code></pre></div>
-<p>If in doubt about what reasonable values the priors should take, or at least to have some vague idea, the user can take advantage of the function <code>pull_prior</code> to inspect what <code>bnec</code> came up with on its own.</p>
+<p>We can view the prior and posterior probability densities of all the parameters in the model using the function <code>check_prior</code>, based on the <code>hypothesis</code> function of <code>brms</code>. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></code></pre></div>
+<p><img src="example3a.jpeg" width="100%"></p>
+<p>In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function <code>pull_prior</code> to inspect what <code>bnec</code> came up with on its own, and decide how best to modify those priors to be more desirable.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span>
 <span class="co">##                        prior class      coef group resp dpar nlpar bound</span>
 <span class="co">## 1              gamma(0.5, 2)     b                            beta      </span>
@@ -165,7 +169,7 @@
 <span class="co">## 6                                b Intercept                   top      </span>
 <span class="co">## 7          gamma(0.01, 0.01)   phi                                      </span></code></pre></div>
 <p><code>bnec</code> chose a <code>gamma</code> prior on the NEC parameter of <code>nec3param</code> because the x predictor in the data <code>nec_data</code> is non-zero positive. However imagine that in theory the x predictor could have had negative values, it just happened to not have in this particular dataset. So let’s go ahead and specify something else, say a normal with larger variance.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">my_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
               <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,
               <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>
@@ -175,7 +179,7 @@
                family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,
                iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <p>Two things are of note. If the user is specifying their own priors, <code>bnec</code> requires them to specify priors for <strong>all</strong> parameters. The <code>pull_prior</code> function shows the priors <em>after</em> the model was fitted, but suppose the user does not know what parameters were comprised in a particular model. In those instances, the user can call the function <code><a href="../reference/show_params.html">show_params(model = "all")</a></code> to inspect the parameters of each function, or some targeted function in particular.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/show_params.html">show_params</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></code></pre></div>
 <pre><code>## y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
 ## top ~ 1
@@ -186,7 +190,7 @@
 <h3 class="hasAnchor">
 <a href="#bayesmanecfit" class="anchor"></a>bayesmanecfit</h3>
 <p>The user can also specify a named list of priors when one or more models are being fitted to the same dataset.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
                                 <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,
                                 <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>,
@@ -199,8 +203,8 @@
                model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span>,
                family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, priors <span class="op">=</span> <span class="va">my_priors</span>,
                iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<p><code>pull_prior</code> also works for an object of class <code>bayesmanecfit</code></p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<p><code>pull_prior</code> also works for an object of class <code>bayesmanecfit</code>, as does <code>check_priors</code> which allows an option of passing a filename to save the prior and posterior probability density plots to a pdf.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_c</span><span class="op">)</span>
 <span class="co">## $nec3param</span>
 <span class="co">##               prior class      coef group resp dpar nlpar bound</span>
@@ -222,23 +226,25 @@
 <span class="co">## 6                       b Intercept                   nec      </span>
 <span class="co">## 7        beta(5, 1)     b                             top      </span>
 <span class="co">## 8                       b Intercept                   top      </span>
-<span class="co">## 9 gamma(0.01, 0.01)   phi                                      </span></code></pre></div>
+<span class="co">## 9 gamma(0.01, 0.01)   phi     </span>
+
+<span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_c</span>, filename <span class="op">=</span> <span class="st">"Check_priors"</span><span class="op">)</span>                                 </code></pre></div>
 <p>The user can also specify priors for one model only out of the entire set, <code>bayesnec</code> will return a message stating that it’s searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a>my_priors &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="dt">nec3param =</span> <span class="kw">c</span>(<span class="kw">prior_string</span>(<span class="st">"beta(5, 1)"</span>, <span class="dt">nlpar =</span> <span class="st">"top"</span>),</span>
-<span id="cb8-2"><a href="#cb8-2"></a>                                <span class="kw">prior_string</span>(<span class="st">"normal(1.3, 2.7)"</span>, <span class="dt">nlpar =</span> <span class="st">"nec"</span>),</span>
-<span id="cb8-3"><a href="#cb8-3"></a>                                <span class="kw">prior_string</span>(<span class="st">"gamma(0.5, 2)"</span>, <span class="dt">nlpar =</span> <span class="st">"beta"</span>)),</span>
-<span id="cb8-4"><a href="#cb8-4"></a>                  <span class="dt">nec4param =</span> <span class="kw">c</span>(<span class="kw">prior_string</span>(<span class="st">"beta(5, 1)"</span>, <span class="dt">nlpar =</span> <span class="st">"top"</span>),</span>
-<span id="cb8-5"><a href="#cb8-5"></a>                                <span class="kw">prior_string</span>(<span class="st">"normal(1.3, 2.7)"</span>, <span class="dt">nlpar =</span> <span class="st">"nec"</span>),</span>
-<span id="cb8-6"><a href="#cb8-6"></a>                                <span class="kw">prior_string</span>(<span class="st">"gamma(0.5, 2)"</span>, <span class="dt">nlpar =</span> <span class="st">"beta"</span>),</span>
-<span id="cb8-7"><a href="#cb8-7"></a>                                <span class="kw">prior_string</span>(<span class="st">"beta(1, 5)"</span>, <span class="dt">nlpar =</span> <span class="st">"bot"</span>)))</span>
-<span id="cb8-8"><a href="#cb8-8"></a></span>
-<span id="cb8-9"><a href="#cb8-9"></a>exmp_d &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> nec_data, <span class="dt">x_var =</span> <span class="st">"x"</span>, <span class="dt">y_var =</span> <span class="st">"y"</span>,</span>
-<span id="cb8-10"><a href="#cb8-10"></a>               <span class="dt">model =</span> <span class="kw">c</span>(<span class="st">"nec3param"</span>, <span class="st">"nec4param"</span>),</span>
-<span id="cb8-11"><a href="#cb8-11"></a>               <span class="dt">family =</span> <span class="kw">Beta</span>(<span class="dt">link =</span> <span class="st">"identity"</span>), <span class="dt">priors =</span> my_priors[<span class="dv">1</span>],</span>
-<span id="cb8-12"><a href="#cb8-12"></a>               <span class="dt">iter =</span> <span class="fl">1e4</span>, <span class="dt">control =</span> <span class="kw">list</span>(<span class="dt">adapt_delta =</span> <span class="fl">0.99</span>))=</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>my_priors &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="dt">nec3param =</span> <span class="kw">c</span>(<span class="kw">prior_string</span>(<span class="st">"beta(5, 1)"</span>, <span class="dt">nlpar =</span> <span class="st">"top"</span>),</span>
+<span id="cb9-2"><a href="#cb9-2"></a>                                <span class="kw">prior_string</span>(<span class="st">"normal(1.3, 2.7)"</span>, <span class="dt">nlpar =</span> <span class="st">"nec"</span>),</span>
+<span id="cb9-3"><a href="#cb9-3"></a>                                <span class="kw">prior_string</span>(<span class="st">"gamma(0.5, 2)"</span>, <span class="dt">nlpar =</span> <span class="st">"beta"</span>)),</span>
+<span id="cb9-4"><a href="#cb9-4"></a>                  <span class="dt">nec4param =</span> <span class="kw">c</span>(<span class="kw">prior_string</span>(<span class="st">"beta(5, 1)"</span>, <span class="dt">nlpar =</span> <span class="st">"top"</span>),</span>
+<span id="cb9-5"><a href="#cb9-5"></a>                                <span class="kw">prior_string</span>(<span class="st">"normal(1.3, 2.7)"</span>, <span class="dt">nlpar =</span> <span class="st">"nec"</span>),</span>
+<span id="cb9-6"><a href="#cb9-6"></a>                                <span class="kw">prior_string</span>(<span class="st">"gamma(0.5, 2)"</span>, <span class="dt">nlpar =</span> <span class="st">"beta"</span>),</span>
+<span id="cb9-7"><a href="#cb9-7"></a>                                <span class="kw">prior_string</span>(<span class="st">"beta(1, 5)"</span>, <span class="dt">nlpar =</span> <span class="st">"bot"</span>)))</span>
+<span id="cb9-8"><a href="#cb9-8"></a></span>
+<span id="cb9-9"><a href="#cb9-9"></a>exmp_d &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> nec_data, <span class="dt">x_var =</span> <span class="st">"x"</span>, <span class="dt">y_var =</span> <span class="st">"y"</span>,</span>
+<span id="cb9-10"><a href="#cb9-10"></a>               <span class="dt">model =</span> <span class="kw">c</span>(<span class="st">"nec3param"</span>, <span class="st">"nec4param"</span>),</span>
+<span id="cb9-11"><a href="#cb9-11"></a>               <span class="dt">family =</span> <span class="kw">Beta</span>(<span class="dt">link =</span> <span class="st">"identity"</span>), <span class="dt">priors =</span> my_priors[<span class="dv">1</span>],</span>
+<span id="cb9-12"><a href="#cb9-12"></a>               <span class="dt">iter =</span> <span class="fl">1e4</span>, <span class="dt">control =</span> <span class="kw">list</span>(<span class="dt">adapt_delta =</span> <span class="fl">0.99</span>))=</span></code></pre></div>
 <p><code>priors = my_priors[[1]]</code> would also have worked because the argument priors can either take a <code>brmsprior</code> object directly, or a named list containing model-specific <code>brmsprior</code> objects.</p>
 <p>Finally the user can also extend an existing <code>bayesmanecfit</code> object with the function <code>amend</code>, also by specifying custom-built priors.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ecxlin_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html">prior_string</a></span><span class="op">(</span><span class="st">"gamma(2, 6.5)"</span>, nlpar <span class="op">=</span> <span class="st">"slope"</span><span class="op">)</span><span class="op">)</span>
 <span class="va">exmp_e</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/amend.html">amend</a></span><span class="op">(</span><span class="va">exmp_d</span>, add <span class="op">=</span> <span class="st">"ecxlin"</span>, priors <span class="op">=</span> <span class="va">ecxlin_priors</span><span class="op">)</span></code></pre></div>

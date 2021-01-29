@@ -150,58 +150,110 @@
 <p>We have created some plotting method functions for our <code>bayesnec</code> model types, so we can plot a <code>bayesmanecfit</code> model object simply with <code>plot</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></code></pre></div>
-<p><img src="example2a.jpeg" width="100%"></p>
-<p>The default plot looks exactly the same out our regular <code>bayesnecfit</code> plot, but the output is based on a weighted average of all the models fits. The <em>NEC</em> estimate on this plot is based on a mix of actual <em>NEC</em> estimates, as well as the <em>NSEC</em> estimates that are used as an approximation to <em>NEC</em> for all the <code>ecx</code> models in the set. Note that we do not currently recommend reporting this values as the <em>NEC</em> (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more information). The fitted <code>bayesmanecfit</code> object contains different elements to the <code>bayesnecfit</code>. In particular <code>mod_stats</code> contains the table of model fit statistic for all the fitted models. This includes the model name, the WAIC (as returned from <code>brms</code>), wi (the model weight, currently defaulting to “pseudobma” with Bayesian boostrap from <code>loo</code>), pD, and the over-dispersion estimate (in this case blank because we have fitted a beta family). For this example, the <strong>nec4param</strong> model has the highest weight, followed by the <strong>neclin</strong> and the <strong>neclinhorme</strong> models.</p>
+<p><img src="example2a.jpeg" width="100%"> The default plot looks exactly the same as our regular <code>bayesnecfit</code> plot, but the output is based on a weighted average of all the model fits. The <em>NEC</em> estimate on this plot (and in the summary output below) is based on a mix of actual <em>NEC</em> estimates, as well as the <em>NSEC</em> estimates that are used as an approximation to <em>NEC</em> for all the <code>ecx</code> models in the set. Note that we do not currently recommend reporting this values as the <em>NEC</em> (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more information). The fitted <code>bayesmanecfit</code> object contains different elements to the <code>bayesnecfit</code>. In particular <code>mod_stats</code> contains the table of model fit statistic for all the fitted models. This includes the model name, the WAIC (as returned from <code>brms</code>), wi (the model weight, currently defaulting to “pseudobma” with Bayesian boostrap from <code>loo</code>), pD, and the over-dispersion estimate (in this case blank because we have fitted a beta family). For this example, the <strong>nec4param</strong> model has the highest weight, followed by the <strong>neclin</strong> and the <strong>neclinhorme</strong> models.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span>
 <span class="co">#                     model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span>
-<span class="co"># nec4param       nec4param -333.1372 3.777323e-01                  NA              NA               NA</span>
-<span class="co"># nechorme4       nechorme4 -330.8176 1.469187e-01                  NA              NA               NA</span>
-<span class="co"># neclin             neclin -332.2588 2.814116e-01                  NA              NA               NA</span>
-<span class="co"># neclinhorme   neclinhorme -330.2539 1.539925e-01                  NA              NA               NA</span>
-<span class="co"># nechorme4pwr nechorme4pwr -328.3598 3.826458e-02                  NA              NA               NA</span>
-<span class="co"># ecxlin             ecxlin -188.4782 1.129799e-24                  NA              NA               NA</span>
-<span class="co"># ecx4param       ecx4param -302.4447 2.931145e-06                  NA              NA               NA</span>
-<span class="co"># ecxwb1             ecxwb1 -294.3911 5.046193e-08                  NA              NA               NA</span>
-<span class="co"># ecxwb2             ecxwb2 -317.1749 6.455120e-04                  NA              NA               NA</span>
-<span class="co"># ecxll5             ecxll5 -316.8985 9.937506e-04                  NA              NA               NA</span>
-<span class="co"># ecxll4             ecxll4 -302.0296 1.661897e-06                  NA              NA               NA</span>
-<span class="co"># ecxhormebc5   ecxhormebc5 -310.1298 3.640250e-05                  NA              NA               NA</span></code></pre></div>
-<p>The <code>bayesmanecfit</code> object also contains all of the original fits, which can be extracted using the <code>pull_out</code> function. For example, we can pull out the highested weighted model, <strong>nec4param</strong>.</p>
+<span class="co"># nec4param       nec4param -332.7474 3.747495e-01                  NA              NA               NA</span>
+<span class="co"># nechorme4       nechorme4 -330.3145 1.275786e-01                  NA              NA               NA</span>
+<span class="co"># neclin             neclin -332.0511 2.903177e-01                  NA              NA               NA</span>
+<span class="co"># neclinhorme   neclinhorme -329.7996 1.448851e-01                  NA              NA               NA</span>
+<span class="co"># nechorme4pwr nechorme4pwr -328.3958 6.005012e-02                  NA              NA               NA</span>
+<span class="co"># ecxlin             ecxlin -188.0340 1.468296e-24                  NA              NA               NA</span>
+<span class="co"># ecx4param       ecx4param -302.3491 2.512591e-06                  NA              NA               NA</span>
+<span class="co"># ecxwb1             ecxwb1 -294.3010 7.113960e-08                  NA              NA               NA</span>
+<span class="co"># ecxwb2             ecxwb2 -317.1199 6.432912e-04                  NA              NA               NA</span>
+<span class="co"># ecxll5             ecxll5 -317.7844 1.723062e-03                  NA              NA               NA</span>
+<span class="co"># ecxll4             ecxll4 -302.9171 3.615674e-06                  NA              NA               NA</span>
+<span class="co"># ecxhormebc5   ecxhormebc5 -310.2534 4.644824e-05                  NA              NA               NA</span></code></pre></div>
+<p>We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the <strong>ecxll5</strong> model may have convergence issues according to the default brms Rhat criteria.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span>
+<span class="co"># Object of class bayesmanecfit containing the following non-linear models:</span>
+<span class="co">#   -  nec4param</span>
+<span class="co">#   -  nechorme4</span>
+<span class="co">#   -  neclin</span>
+<span class="co">#   -  neclinhorme</span>
+<span class="co">#   -  nechorme4pwr</span>
+<span class="co">#   -  ecxlin</span>
+<span class="co">#   -  ecx4param</span>
+<span class="co">#   -  ecxwb1</span>
+<span class="co">#   -  ecxwb2</span>
+<span class="co">#   -  ecxll5</span>
+<span class="co">#   -  ecxll4</span>
+<span class="co">#   -  ecxhormebc5</span>
+<span class="co"># </span>
+<span class="co"># Distribution family: beta</span>
+<span class="co"># Number of posterior draws per model:  4000</span>
+<span class="co"># </span>
+<span class="co"># Model weights (Method: pseudobma_bb_weights):</span>
+<span class="co">#                 waic   wi</span>
+<span class="co"># nec4param    -332.75 0.37</span>
+<span class="co"># nechorme4    -330.31 0.13</span>
+<span class="co"># neclin       -332.05 0.29</span>
+<span class="co"># neclinhorme  -329.80 0.14</span>
+<span class="co"># nechorme4pwr -328.40 0.06</span>
+<span class="co"># ecxlin       -188.03 0.00</span>
+<span class="co"># ecx4param    -302.35 0.00</span>
+<span class="co"># ecxwb1       -294.30 0.00</span>
+<span class="co"># ecxwb2       -317.12 0.00</span>
+<span class="co"># ecxll5       -317.78 0.00</span>
+<span class="co"># ecxll4       -302.92 0.00</span>
+<span class="co"># ecxhormebc5  -310.25 0.00</span>
+<span class="co"># </span>
+<span class="co"># </span>
+<span class="co"># Summary of weighted NEC posterior estimates:</span>
+<span class="co"># NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4;ecxhormebc5; weighted NEC estimates include NSEC surrogates for NEC</span>
+<span class="co">#     Estimate Q2.5 Q97.5</span>
+<span class="co"># NEC     1.39 1.26  1.48</span>
+<span class="co"># </span>
+<span class="co"># Warning message:</span>
+<span class="co"># In print.manecsummary(x) :</span>
+<span class="co">#   The following model had Rhats &gt; 1.05 (no convergence):</span>
+<span class="co">#   -  ecxll5</span>
+<span class="co"># Consider dropping them (see ?amend)</span></code></pre></div>
+<p>The <code>bayesmanecfit</code> object also contains all of the original fits, which can be extracted using the <code>pull_out</code> function. For example, we can pull out the highested weighted model, <strong>nec4param</strong>.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5_nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_5_nec4param</span><span class="op">)</span></code></pre></div>
 <p><img src="example2b.jpeg" width="100%"></p>
 <p>This would extract the <strong>nec4param</strong> model from the <code>bayesmanecfit</code> and create a new object that contains just this <code>bayesnecfit</code> fit. This would be identical to fitting the <strong>nec4param</strong> as a single model using <code>bnec</code>. All of the models in the <code>bayesmanecfit</code> can be simultaneously plotted using the argument <code>all_models = TRUE</code>.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_5</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
 <p><img src="example2c.jpeg" width="100%"> You can see that some of these model represent very bad fits, and accordingly have extremely low model weights, such as the <strong>ecxlin</strong> model in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.</p>
 <p>We can assess the chains for the best model to make sure this is good.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html">plot</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_fits</span><span class="op">$</span><span class="va">nec4param</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example2d.jpeg" width="100%"> Assessing chains for all the models in a <code>bayesmanecfit</code> doesn’t work as well using the default <code>brms</code> plotting method. Instead use <code>check_chains</code> and make sure to pass a <code>filename</code> argument, which mean plots are automatically saved to pdf with a message.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/check_chains.html">check_chains</a></span><span class="op">(</span><span class="va">exp_5</span>, filename <span class="op">=</span> <span class="st">"example_5_all_chains"</span><span class="op">)</span>
 <span class="co">#Chain plots saved to file example_5_all_chains.pdf, in your working directory.</span></code></pre></div>
+<p>We can also make a plot to compare the posterior probability density to that of the prior using the <code>check_priors</code> function, for an individual model fit, but also saving all fits to file in the working directory.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_fits</span><span class="op">$</span><span class="va">nec4param</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
+<p><img src="example2f.jpeg" width="100%"></p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span>, filename <span class="op">=</span> <span class="st">"example_5_all_priors"</span><span class="op">)</span>
+<span class="co">#Probability density plots saved to file example_5_all_priors.pdf</span></code></pre></div>
 </div>
 <div id="extracting-endpoint-values" class="section level3">
 <h3 class="hasAnchor">
 <a href="#extracting-endpoint-values" class="anchor"></a>Extracting endpoint values</h3>
 <p>The models prefixed with <code>ecx</code> are all models that do not have the <em>NEC</em> as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The <em>NEC</em> on the plots above for these models are an approximation based on <em>NSEC</em> and should not be used without careful consideration of the validity of this endpoint value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more details. A formal model averaged estimate of <em>NEC</em> should be obtained with <code>model = "nec"</code>. We can use the helper functions <code>pull_out</code> and <code>amend</code> to alter the model set as required. pull_out has a <code>model</code> argument and can be used to pull out a single model (as above) or to pull out a specific types of models.</p>
 <p>We can use this to obtain first a set of <em>NEC</em> only models from the existing set.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>
 <span class="co"># Model(s) nec3param, nechorme, necsigm, nechormepwr, nechormepwr01 non-existent in current set of models: nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr, ecxlin, ecx4param, ecxwb1, ecxwb2, ecxll5, ecxll4, ecxhormebc5.</span>
 <span class="co"># If needed, add desired model(s) via function amend (see ?amend)</span>
 <span class="co"># Pulling out model(s): nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr</span></code></pre></div>
 <p>In this case, because we have already fitted “all” models, we can ignore the message regarding the missing nec models - these are all models that are not appropriate for a <code>Beta</code> family with a <code>logit</code> link function.</p>
 <p>We can drop other models from the set if desired, for example let’s drop the <strong>neclinhorme</strong> model using the <code>amend</code> function.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/amend.html">amend</a></span><span class="op">(</span><span class="va">exp_5_nec</span>, drop <span class="op">=</span> <span class="st">"neclinhorme"</span><span class="op">)</span>
 <span class="co">#Fitted models are:  nec4param nechorme4 neclin nechorme4pwr</span></code></pre></div>
 <p>Now we have two model sets, an <em>NEC</em> set and a mixed <em>NEC</em> and <em>ECx</em> set. Of course before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. For the “all” set, the model with the highest weight is <strong>nec4param</strong>.</p>
 <p>Now we can use the <code>ecx</code> function to get EC10 and ec50 values. We can do this using our all model set, because it is valid to use <em>NEC</em> models for estimating <em>ECx</em> (see more information in the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ECx10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
 <span class="va">ECx50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span>
 <span class="va">ECx10</span>
@@ -211,7 +263,7 @@
 <span class="co">#    ec_50 ec_50_lw ec_50_up </span>
 <span class="co"># 2.004610 1.956740 2.052481</span></code></pre></div>
 <p>The weighted <em>NEC</em> estimates can be extracted directly from the <em>NEC</em> model set object, as they are an explicit parameter in these models.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_nec</span>
 <span class="va">NECvals</span>
 <span class="co"># Estimate     Q2.5    Q97.5 </span>
@@ -221,7 +273,7 @@
 <h3 class="hasAnchor">
 <a href="#putting-it-all-together" class="anchor"></a>Putting it all together</h3>
 <p>Now we can make a combined plot of our output, showing the model averaged “<em>NEC</em>” model and the “all averaged model”, along with the relevant thresholds.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">preds</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_pred_vals</span><span class="op">$</span><span class="va">data</span>
 
 <span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span>
