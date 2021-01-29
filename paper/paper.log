@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.999992 (TeX Live 2020/W32TeX) (preloaded format=xelatex 2021.1.19)  28 JAN 2021 20:53
+This is XeTeX, Version 3.14159265-2.6-0.999992 (TeX Live 2020/W32TeX) (preloaded format=xelatex 2021.1.19)  29 JAN 2021 08:42
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1366,6 +1366,19 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 (fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
 
 [2]
+File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
+S-logo.png Graphic file (type bmp)
+<C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOSS-log
+o.png>
+
+Package fancyhdr Warning: \headheight is too small (62.59596pt): 
+(fancyhdr)                Make it at least 63.55022pt, for example:
+(fancyhdr)                \setlength{\headheight}{63.55022pt}.
+(fancyhdr)                You might also make \topmargin smaller to compensate:
+
+(fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
+
+[3]
 File: brms_plot.png Graphic file (type bmp)
 <brms_plot.png>
 File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
@@ -1380,20 +1393,14 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 
 (fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
 
-[3]
-File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
-S-logo.png Graphic file (type bmp)
-<C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOSS-log
-o.png>
-
-Package fancyhdr Warning: \headheight is too small (62.59596pt): 
-(fancyhdr)                Make it at least 63.55022pt, for example:
-(fancyhdr)                \setlength{\headheight}{63.55022pt}.
-(fancyhdr)                You might also make \topmargin smaller to compensate:
-
-(fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
-
 [4]
+File: base_plot.png Graphic file (type bmp)
+<base_plot.png>
+
+Overfull \hbox (64.30984pt too wide) in paragraph at lines 604--611
+[]\TU/lmr/m/n/10 \begin{figure} []
+ []
+
 File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
 S-logo.png Graphic file (type bmp)
 <C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOSS-log
@@ -1407,15 +1414,8 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 (fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
 
 [5]
-File: base_plot.png Graphic file (type bmp)
-<base_plot.png>
-
-Overfull \hbox (64.30984pt too wide) in paragraph at lines 582--589
-[]\TU/lmr/m/n/10 \begin{figure} []
- []
-
 LaTeX Font Info:    Font shape `TU/lmtt/bx/n' in size <12> not available
-(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 598.
+(Font)              Font shape `TU/lmtt/b/n' tried instead on input line 620.
 File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
 S-logo.png Graphic file (type bmp)
 <C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOSS-log
@@ -1430,7 +1430,7 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 
 [6]
 LaTeX Font Info:    Font shape `TU/lmss/bx/it' in size <10> not available
-(Font)              Font shape `TU/lmss/bx/sl' tried instead on input line 686.
+(Font)              Font shape `TU/lmss/bx/sl' tried instead on input line 708.
 
 File: C:/Users/rfisher/Rpackages/rticles/rmarkdown/templates/joss/resources/JOS
 S-logo.png Graphic file (type bmp)
@@ -1474,14 +1474,14 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 File: sample_prior.png Graphic file (type bmp)
 <sample_prior.png>
 
-Overfull \hbox (64.30984pt too wide) in paragraph at lines 887--893
+Overfull \hbox (64.30984pt too wide) in paragraph at lines 909--915
 []\TU/lmr/m/n/10 \begin{figure} []
  []
 
 File: check_prior.png Graphic file (type bmp)
 <check_prior.png>
 
-Overfull \hbox (64.32468pt too wide) in paragraph at lines 915--921
+Overfull \hbox (64.32468pt too wide) in paragraph at lines 937--943
 []\TU/lmr/m/n/10 \begin{figure} []
  []
 
@@ -1524,7 +1524,7 @@ Package fancyhdr Warning: \headheight is too small (62.59596pt):
 (fancyhdr)                \addtolength{\topmargin}{-0.95425pt}.
 
 [12]
-Underfull \hbox (badness 1019) in paragraph at lines 1079--1084
+Underfull \hbox (badness 1019) in paragraph at lines 1101--1106
 \TU/lmr/m/n/10 erage Bayesian Predictive Distributions (with Discussion). \TU/l
 mr/m/it/10 Bayesian Analysis\TU/lmr/m/n/10 .
  []
@@ -1551,7 +1551,7 @@ Package logreq Info: Writing requests to 'paper.run.xml'.
 Here is how much of TeX's memory you used:
  35503 strings out of 479212
  714407 string characters out of 5873009
- 1504197 words of memory out of 5000000
+ 1503197 words of memory out of 5000000
  54496 multiletter control sequences out of 15000+600000
  410350 words of font info for 81 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
