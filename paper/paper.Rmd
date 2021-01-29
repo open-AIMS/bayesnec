@@ -261,7 +261,7 @@ At this time `bnec` does not allow inclusion of an interaction with a fixed fact
 
 # Conclusions, caveats and future directions
 
-The `bayesnec` package is a work in progress, and we welcome suggestions and feedback that will improve the package performance and function. Please submit requests through the package [Issues](https://github.com/open-AIMS/bayesnec/issues) on github. Some existing future enhancements include the addition of other custom families, such as the tweedie distribution for data that are `0` to `+Inf` on the continuous scale, and the addition of random offsets for accommodating hierarchical designs.
+The `bayesnec` package is a work in progress, and we welcome suggestions and feedback that will improve the package performance and function. Please submit requests through the package [Issues](https://github.com/open-AIMS/bayesnec/issues) on github. Some existing future enhancements include the addition of other custom families, such as the tweedie distribution for data that are `0` to `+Inf` on the continuous scale, the addition of random offsets for accommodating hierarchical designs as well as potentially a hypothesis method for testing for if toxicity (as measured through NEC, or ECx for example) is greater than a pre-defined threshold.
 
 Where possible we have tried to set default values to align with those in `brms`. Wherever we deviate  we have tended towards being more conservative (for example in the default `iter`) and/or clearly explained our reasoning above (e.g. use of pseudobma rather than stacking weights). We welcome constructive criticism of our selections and users must expect that default settings may change accordingly in later releases.
 
