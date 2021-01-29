@@ -166,7 +166,7 @@
 <span class="co"># ecxll5             ecxll5 -317.7844 1.723062e-03                  NA              NA               NA</span>
 <span class="co"># ecxll4             ecxll4 -302.9171 3.615674e-06                  NA              NA               NA</span>
 <span class="co"># ecxhormebc5   ecxhormebc5 -310.2534 4.644824e-05                  NA              NA               NA</span></code></pre></div>
-<p>We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the <strong>ecxll5</strong> model may have convergence issues according to the default brms Rhat criteria.</p>
+<p>We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the <strong>ecxll5</strong> model may have convergence issues according to the default <code>brms</code> Rhat criteria.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span>
 <span class="co"># Object of class bayesmanecfit containing the following non-linear models:</span>
@@ -235,25 +235,30 @@
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span>, filename <span class="op">=</span> <span class="st">"example_5_all_priors"</span><span class="op">)</span>
 <span class="co">#Probability density plots saved to file example_5_all_priors.pdf</span></code></pre></div>
+<p>Where a large number models are failing to converge, obviously it would be better to adjust <code>iter</code> and <code>warmup</code> in the <code>bnec</code> call, as well as some of the other arguments to <code>brms</code> such as <code>adapt_delta</code>. See the <code>brms</code> documentation for more details. In the example above only a single model had poor convergence according to <code>rhat</code> criteria. It is pssible to exclude such models from the model set using amend and the <code>bayesmanecfit</code> rhat method, via:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">exp_5_new</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/amend.html">amend</a></span><span class="op">(</span><span class="va">exp_5</span>, drop <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/diagnostic-quantities.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span><span class="op">$</span><span class="va">failed</span><span class="op">)</span>
+<span class="co">#Fitted models are:  nec4param nechorme4 neclin neclinhorme nechorme4pwr ecxlin ecx4param ecxwb1 ecxwb2 ecxll4 ecxhormebc5</span></code></pre></div>
+<p>This will drop all models that fail the default <code>rhat_cutoff</code> value of 1.05 from the model set, and adjust the model averaged predictions accordingly. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value.</p>
 </div>
 <div id="extracting-endpoint-values" class="section level3">
 <h3 class="hasAnchor">
 <a href="#extracting-endpoint-values" class="anchor"></a>Extracting endpoint values</h3>
-<p>The models prefixed with <code>ecx</code> are all models that do not have the <em>NEC</em> as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The <em>NEC</em> on the plots above for these models are an approximation based on <em>NSEC</em> and should not be used without careful consideration of the validity of this endpoint value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more details. A formal model averaged estimate of <em>NEC</em> should be obtained with <code>model = "nec"</code>. We can use the helper functions <code>pull_out</code> and <code>amend</code> to alter the model set as required. pull_out has a <code>model</code> argument and can be used to pull out a single model (as above) or to pull out a specific types of models.</p>
+<p>The models prefixed with <code>ecx</code> are all models that do not have the <em>NEC</em> as a parameter in the model. That is they are smooth curves as a function of concentration and have no breakpoint. The <em>NEC</em> on the plots above for these models are an approximation based on <em>NSEC</em> and should not be used without careful consideration of the validity of this endpoint value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more details. A formal model averaged estimate of <em>NEC</em> should be obtained with <code>model = "nec"</code>. We can use the helper functions <code>pull_out</code> and <code>amend</code> to alter the model set as required. pull_out has a <code>model</code> argument and can be used to pull out a single model (as above) or to pull out a specific set of models.</p>
 <p>We can use this to obtain first a set of <em>NEC</em> only models from the existing set.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>
 <span class="co"># Model(s) nec3param, nechorme, necsigm, nechormepwr, nechormepwr01 non-existent in current set of models: nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr, ecxlin, ecx4param, ecxwb1, ecxwb2, ecxll5, ecxll4, ecxhormebc5.</span>
 <span class="co"># If needed, add desired model(s) via function amend (see ?amend)</span>
 <span class="co"># Pulling out model(s): nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr</span></code></pre></div>
 <p>In this case, because we have already fitted “all” models, we can ignore the message regarding the missing nec models - these are all models that are not appropriate for a <code>Beta</code> family with a <code>logit</code> link function.</p>
 <p>We can drop other models from the set if desired, for example let’s drop the <strong>neclinhorme</strong> model using the <code>amend</code> function.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/amend.html">amend</a></span><span class="op">(</span><span class="va">exp_5_nec</span>, drop <span class="op">=</span> <span class="st">"neclinhorme"</span><span class="op">)</span>
 <span class="co">#Fitted models are:  nec4param nechorme4 neclin nechorme4pwr</span></code></pre></div>
 <p>Now we have two model sets, an <em>NEC</em> set and a mixed <em>NEC</em> and <em>ECx</em> set. Of course before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. For the “all” set, the model with the highest weight is <strong>nec4param</strong>.</p>
 <p>Now we can use the <code>ecx</code> function to get EC10 and ec50 values. We can do this using our all model set, because it is valid to use <em>NEC</em> models for estimating <em>ECx</em> (see more information in the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">ECx10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
 <span class="va">ECx50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span>
 <span class="va">ECx10</span>
@@ -263,7 +268,7 @@
 <span class="co">#    ec_50 ec_50_lw ec_50_up </span>
 <span class="co"># 2.004610 1.956740 2.052481</span></code></pre></div>
 <p>The weighted <em>NEC</em> estimates can be extracted directly from the <em>NEC</em> model set object, as they are an explicit parameter in these models.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_nec</span>
 <span class="va">NECvals</span>
 <span class="co"># Estimate     Q2.5    Q97.5 </span>
@@ -273,7 +278,7 @@
 <h3 class="hasAnchor">
 <a href="#putting-it-all-together" class="anchor"></a>Putting it all together</h3>
 <p>Now we can make a combined plot of our output, showing the model averaged “<em>NEC</em>” model and the “all averaged model”, along with the relevant thresholds.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">preds</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_pred_vals</span><span class="op">$</span><span class="va">data</span>
 
 <span class="fu"><a href="https://rdrr.io/r/graphics/par.html">par</a></span><span class="op">(</span>mfrow<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span>
