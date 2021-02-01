@@ -11,6 +11,13 @@ TODO.md
 docs/
 ignore/
 pdfs/
+paper/output
+paper/paper_cache
+paper/*.log
+paper/*.aux
+paper/*.bcf
+paper/*.out
+paper/*.xml
 
 # package development
 bayesnec.Rcheck/
