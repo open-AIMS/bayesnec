@@ -10,14 +10,14 @@
 \item{object}{An object of class \code{\link{bayesnecfit}}
 returned by \code{\link{bnec}}.}
 
-\item{...}{Additional arguments to \code{\link{check_priors}}}
+\item{...}{Unused.}
 }
 \value{
 A plot of the prior and posterior parameter probability densities
 }
 \description{
-Plots the prior and posterior parameter probability densities from an object of class
-\code{\link{bayesnecfit}}.
+Plots the prior and posterior parameter probability densities from an
+object of class \code{\link{bayesnecfit}}.
 }
 \examples{
 \dontrun{

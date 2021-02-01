@@ -7,8 +7,12 @@
 \method{check_priors}{bayesmanecfit}(object, ..., filename = NA)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
-#' @param filename An optional character vector to be used as a pdf filename
+\item{object}{An object of class \code{\link{bayesmanecfit}} returned by
+\code{\link{bnec}}.}
+
+\item{...}{Unused.}
+
+\item{filename}{An optional character vector to be used as a pdf filename
 in the case of a \code{\link{bayesmanecfit}}. Any non empty character
 string will indicate the user wants to save the plots.}
 }
@@ -16,8 +20,8 @@ string will indicate the user wants to save the plots.}
 A plot of the prior and posterior parameter probability densities
 }
 \description{
-Plots the prior and posterior parameter probability densities from an object of class
-\code{\link{bayesmanecfit}}.
+Plots the prior and posterior parameter probability densities from an
+object of class \code{\link{bayesmanecfit}}.
 }
 \examples{
 \dontrun{

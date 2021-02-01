@@ -1,15 +1,16 @@
 #' check_priors.default
 #'
-#' Plots the prior and posterior parameter probability densities from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' Plots the prior and posterior parameter probability densities from an
+#' object of class \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
-#' @param ... Optional arguments passed to specific methods.
+#' @param object An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
+#' @param ... Unused.
 #'
 #' @seealso \code{\link{bnec}}
-#' 
+#'
 #' @return A plot of the prior and posterior parameter probability densities
-#' 
+#'
 #' @importFrom ggplot2 ggplot geom_density facet_wrap scale_fill_manual theme_bw
 #' @importFrom brms hypothesis
 #'
@@ -50,13 +51,13 @@ check_priors.default <- function(object, ...) {
 
 #' check_priors
 #'
-#' Plots the prior and posterior parameter probability densities from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' Plots the prior and posterior parameter probability densities from an
+#' object of class \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
 #' @inheritParams check_priors.default
-#' 
+#'
 #' @inherit check_priors.default return details seealso examples
-#' 
+#'
 #' @export
 check_priors <- function(object, ...) {
   UseMethod("check_priors")
@@ -64,26 +65,27 @@ check_priors <- function(object, ...) {
 
 #' check_priors.bayesnecfit
 #'
-#' Plots the prior and posterior parameter probability densities from an object of class
-#' \code{\link{bayesnecfit}}.
+#' Plots the prior and posterior parameter probability densities from an
+#' object of class \code{\link{bayesnecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}}
 #' returned by \code{\link{bnec}}.
+#' @param ... Unused.
 #'
 #' @inherit check_priors return details seealso examples
 #' @export
-check_priors.bayesnecfit <- function(object) {
+check_priors.bayesnecfit <- function(object, ...) {
   check_priors.default(object)
 }
 
 #' check_priors.bayesmanecfit
 #'
-#' Plots the prior and posterior parameter probability densities from an object of class
-#' \code{\link{bayesmanecfit}}.
+#' Plots the prior and posterior parameter probability densities from an
+#' object of class \code{\link{bayesmanecfit}}.
 #'
-#' @inheritParams check_priors
-#'
-#' @param object An object of class \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
+#' @param object An object of class \code{\link{bayesmanecfit}} returned by
+#' \code{\link{bnec}}.
+#' @param ... Unused.
 #' @param filename An optional character vector to be used as a pdf filename
 #' in the case of a \code{\link{bayesmanecfit}}. Any non empty character
 #' string will indicate the user wants to save the plots.
@@ -93,11 +95,13 @@ check_priors.bayesnecfit <- function(object) {
 #' @importFrom ggplot2 ggtitle
 #' @importFrom grDevices devAskNewPage pdf
 #' @export
-check_priors.bayesmanecfit <- function(object, filename = NA) {
-  
+check_priors.bayesmanecfit <- function(object, ..., filename = NA) {
   if (!is.na(filename)) {
-    pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE, width = 12, height = 4)
-  }else{devAskNewPage(ask = TRUE)}
+    pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE,
+        width = 12, height = 4)
+  } else {
+    devAskNewPage(ask = TRUE)
+  }
   for (m in seq_len(length(object$mod_fits))) {
    out_plot <- check_priors.default(object = object$mod_fits[[m]]) +
      ggtitle(names(object$mod_fits)[m])
@@ -108,5 +112,4 @@ check_priors.bayesmanecfit <- function(object, filename = NA) {
     message("Probability density plots saved to file ", filename, ".pdf")
   }
   devAskNewPage(ask = FALSE)
-
 }

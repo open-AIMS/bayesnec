@@ -7,14 +7,17 @@
 check_priors(object, ...)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesnecfit}} or
+\code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
+
+\item{...}{Unused.}
 }
 \value{
 A plot of the prior and posterior parameter probability densities
 }
 \description{
-Plots the prior and posterior parameter probability densities from an object of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+Plots the prior and posterior parameter probability densities from an
+object of class \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 }
 \examples{
 \dontrun{
