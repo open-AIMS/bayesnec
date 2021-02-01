@@ -8,7 +8,7 @@ bnec(
   data,
   x_var,
   y_var,
-  model,
+  model = "all",
   trials_var = NA,
   family = NULL,
   priors,
