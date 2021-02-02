@@ -17,5 +17,5 @@ my_modified_joss <- function(journal = "JOSS", keep_md = TRUE,
   fmt
 }
 
-rmarkdown::render(input = "paper.Rmd", output_dir = "output/",
+rmarkdown::render(input = "paper/paper.Rmd", output_dir = "output/",
                   intermediates_dir = "output/", clean = FALSE)
