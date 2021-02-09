@@ -24,8 +24,10 @@ Imports:
 Suggests:
     knitr,
     rmarkdown,
-    tidyverse
+    tidyverse,
+    testthat (>= 3.0.0)
 VignetteBuilder: knitr
 URL: https://open-aims.github.io/bayesnec
 BugReports: https://github.com/open-aims/bayesnec/issues
 Roxygen: list(markdown = TRUE)
+Config/testthat/edition: 3
