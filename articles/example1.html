@@ -176,8 +176,8 @@
 <pre><code>## 
 ## SAMPLING FOR MODEL 'e082550ebfed36471483e1dd361fd67b' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 8.1e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.81 seconds.
+## Chain 1: Gradient evaluation took 8.3e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.83 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -194,15 +194,15 @@
 ## Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 1.87052 seconds (Warm-up)
-## Chain 1:                0.266024 seconds (Sampling)
-## Chain 1:                2.13655 seconds (Total)
+## Chain 1:  Elapsed Time: 1.93659 seconds (Warm-up)
+## Chain 1:                0.274991 seconds (Sampling)
+## Chain 1:                2.21158 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL 'e082550ebfed36471483e1dd361fd67b' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 3e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.3 seconds.
+## Chain 2: Gradient evaluation took 2.9e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.29 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -219,9 +219,9 @@
 ## Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 1.91342 seconds (Warm-up)
-## Chain 2:                0.287085 seconds (Sampling)
-## Chain 2:                2.20051 seconds (Total)
+## Chain 2:  Elapsed Time: 1.96335 seconds (Warm-up)
+## Chain 2:                0.293511 seconds (Sampling)
+## Chain 2:                2.25686 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL 'e082550ebfed36471483e1dd361fd67b' NOW (CHAIN 3).
@@ -244,15 +244,15 @@
 ## Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 1.90717 seconds (Warm-up)
-## Chain 3:                0.269319 seconds (Sampling)
-## Chain 3:                2.17649 seconds (Total)
+## Chain 3:  Elapsed Time: 1.9553 seconds (Warm-up)
+## Chain 3:                0.278921 seconds (Sampling)
+## Chain 3:                2.23422 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL 'e082550ebfed36471483e1dd361fd67b' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 2.8e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.28 seconds.
+## Chain 4: Gradient evaluation took 3.1e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.31 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -269,9 +269,9 @@
 ## Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 1.95826 seconds (Warm-up)
-## Chain 4:                0.261878 seconds (Sampling)
-## Chain 4:                2.22014 seconds (Total)
+## Chain 4:  Elapsed Time: 2.01223 seconds (Warm-up)
+## Chain 4:                0.264219 seconds (Sampling)
+## Chain 4:                2.27645 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code><a href="https://rdrr.io/r/graphics/plot.default.html">plot(exp_1$fit)</a></code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
