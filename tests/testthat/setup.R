@@ -2,11 +2,15 @@ library(bayesnec)
 library(dplyr)
 library(testthat)
 
-is_on_cran <- test_that("model is always properly specified as character", {
+is_on_cran <- test_that("Is on CRAN", {
   skip_on_cran()
 })
 
-if (!is_on_cran) {
+is_on_ci <- test_that("Is on CI", {
+  skip_on_ci()
+})
+
+if (!any(c(is_on_cran, is_on_ci))) {
   suppress_bnec <- function(...) {
     bnec(...) %>%
       suppressWarnings %>%
@@ -19,14 +23,14 @@ if (!is_on_cran) {
   manec_gausian_identity <- nec_data %>%
     mutate(y = logit(y)) %>%
     suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
-                   iter = 50, chains = 2)
+                  iter = 50, chains = 2)
   # beta
   manec_beta_logit <- nec_data %>%
-      suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
-                    iter = 50, chains = 2)
+    suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
+                  iter = 50, chains = 2)
   manec_beta_identity <- nec_data %>%
-      suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
-                    iter = 50, chains = 2, family = Beta(link = "identity"))
+    suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
+                  iter = 50, chains = 2, family = Beta(link = "identity"))
   # binomial
   manec_binomial_logit <- nec_data %>%
     mutate(trials = 10, y = as.integer(round(y * trials))) %>%
