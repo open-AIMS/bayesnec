@@ -9,6 +9,8 @@ bayesnec <img src="man/figures/logo.png" width = 180 alt="bayesnec Logo" align="
 maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://www.tidyverse.org/lifecycle/#maturing)
 [![R build
 status](https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg)](https://github.com/open-AIMS/bayesnec/actions)
+[![Codecov test
+coverage](https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg)](https://codecov.io/gh/open-aims/bayesnec?branch=master)
 ![pkgdown](https://github.com/open-AIMS/bayesnec/workflows/pkgdown/badge.svg)
 [![license](https://img.shields.io/badge/license-MIT%20+%20file%20LICENSE-lightgrey.svg)](https://choosealicense.com/)
 [![packageversion](https://img.shields.io/badge/Package%20version-1.0.1-orange.svg)](commits/master)
