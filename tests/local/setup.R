@@ -16,18 +16,6 @@ expect_range <- function(object, lower = -Inf, upper = Inf, ...) {
   expect_true(all(object >= lower & object <= upper), ...)
 }
 
-linear_rescale <- function(x, r_out) {
-  p <- (x - min(x)) / (max(x) - min(x))
-  r_out[[1]] + p * (r_out[[2]] - r_out[[1]])
-}
-
-fct <- bayesnec:::pred_nec4param
-set.seed(10)
-x <- abs(rnorm(100, 1))
-y <- fct(b_beta = 1.2, b_bot = 0.01, b_nec = 1.5, b_top = 0.95, x)
-y <- linear_rescale(y + rnorm(100, sd = 0.01), c(0.001, 0.98))
-nec_data <- data.frame(x, y)
-
 message("\n\n\nTemporarily caching models for local tests\n\n\n")
 
 message("\n# Gaussian\n")
