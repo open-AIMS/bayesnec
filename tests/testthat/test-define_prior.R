@@ -21,7 +21,7 @@ test_that("model is always properly specified as character", {
                             predictor = rnorm(100), response = 1:100))
   expect_s3_class(gamma_y_prior, "brmsprior")
 
-  expect_s3_class(model_fits:::manec_gausian_identity, "bayesmanecfit")
+  expect_s3_class(bayesnec:::model_fits$manec_gausian_identity, "bayesmanecfit")
 })
 
 test_that("check proper output structure", {
