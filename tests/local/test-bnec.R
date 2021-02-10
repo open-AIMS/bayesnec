@@ -24,5 +24,4 @@ test_that("gaussian model with identity works correctly", {
   expect_range(fixef(fit2)["top_Intercept", 1], 2.1, 2.4)
   expect_range(fixef(fit2)["beta_Intercept", 1], 0.8, 1.0)
   expect_warning(expect_range(waic(fit2)$estimates[3, 1], 175, 215))  
-  
 })
