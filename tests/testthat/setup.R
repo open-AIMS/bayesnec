@@ -2,6 +2,12 @@ library(bayesnec)
 library(dplyr)
 library(testthat)
 
+add_na <- function(x, n = 3) {
+  x_b <- x
+  x_b[sample(seq_along(x), n)] <- NA
+  x_b
+}
+
 suppress_bnec <- function(...) {
   bnec(...) %>%
     suppressWarnings %>%

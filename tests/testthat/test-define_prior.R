@@ -2,11 +2,9 @@ library(bayesnec)
 library(brms)
 
 pred_a <- rnorm(100)
-pred_na <- pred_a
-pred_na[c(1, 10, 30)] <- NA
+pred_na <- add_na(pred_a)
 resp_a <- 1:100
-resp_na <- resp_a
-resp_na[c(5, 7, 95)] <- NA
+resp_na <- add_na(resp_a)
 pred_b <- pred_a[-1]
 resp_b <- resp_a[-1]
 p_a <- define_prior(model = "nec3param", family = gaussian(),
