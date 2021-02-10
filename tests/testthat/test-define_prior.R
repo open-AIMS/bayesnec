@@ -1,36 +1,86 @@
 library(bayesnec)
+library(brms)
 
-gamma_y_prior <- define_prior(model = "nec3param", family = gaussian(),
-                              predictor = rnorm(100), response = 1:100)
-
+pred_a <- rnorm(100)
+pred_na <- pred_a
+pred_na[c(1, 10, 30)] <- NA
+resp_a <- 1:100
+resp_na <- resp_a
+resp_na[c(5, 7, 95)] <- NA
+pred_b <- pred_a[-1]
+resp_b <- resp_a[-1]
+p_a <- define_prior(model = "nec3param", family = gaussian(),
+                    predictor = pred_a, response = resp_a)
+p_b <- define_prior(model = "nec4param", family = Beta(link = "logit"),
+                    predictor = pred_a, response = rbeta(100, 1, 5))
+p_c <- define_prior(model = "nec4param", family = Beta(link = "identity"),
+                    predictor = pred_a, response = rbeta(100, 1, 5))
 test_that("model is always properly specified as character", {
-  # model
   expect_error(define_prior(family = gaussian(),
-                            predictor = rnorm(100), response = 1:100))
+                            predictor = pred_a, response = resp_a))
   expect_error(define_prior(model = NULL, family = gaussian(),
-                            predictor = rnorm(100), response = 1:100))
+                            predictor = pred_a, response = resp_a))
   expect_error(define_prior(model = NA, family = gaussian(),
-                            predictor = rnorm(100), response = 1:100))
+                            predictor = pred_a, response = resp_a))
   expect_error(define_prior(model = FALSE, family = gaussian(),
-                            predictor = rnorm(100), response = 1:100))
+                            predictor = pred_a, response = resp_a))
   expect_error(define_prior(model = 10, family = gaussian(),
-                            predictor = rnorm(100), response = 1:100))
+                            predictor = pred_a, response = resp_a))
   expect_error(define_prior(model = "none", family = gaussian(),
-                            predictor = rnorm(100), response = 1:100))
+                            predictor = pred_a, response = resp_a))
   expect_error(define_prior(model = "all", family = gaussian(),
-                            predictor = rnorm(100), response = 1:100))
+                            predictor = pred_a, response = resp_a))
   expect_error(define_prior(model = "ecx", family = gaussian(),
-                            predictor = rnorm(100), response = 1:100))
-  expect_s3_class(gamma_y_prior, "brmsprior")
+                            predictor = pred_a, response = resp_a))
+  expect_s3_class(p_a, "brmsprior")
   expect_s3_class(manec_gausian_identity, "bayesmanecfit")
 })
 
-test_that("check proper output structure", {
-  expect_identical(sort(gamma_y_prior$nlpar), c("beta", "nec", "top"))
+test_that("family is a family object of correct family", {
+  expect_error(define_prior(model = "nec3param", family = "gaussian",
+                            predictor = pred_a, response = resp_a))
+  expect_error(define_prior(model = "nec3param", family = gaussian,
+                            predictor = pred_a, response = resp_a))
+  expect_error(define_prior(model = "nec3param", family = inverse.gaussian(),
+                            predictor = pred_a, response = resp_a))
+  expect_s3_class(define_prior(model = "nec3param", family = poisson(),
+                               predictor = pred_a, response = resp_a),
+                  "brmsprior")
+  expect_s3_class(define_prior(model = "nec3param", family = binomial(),
+                               predictor = pred_a, response = resp_a),
+                  "brmsprior")
+  expect_s3_class(define_prior(model = "nec3param", family = Gamma(),
+                               predictor = pred_a, response = resp_a),
+                  "brmsprior")
 })
 
-# family is a string
-# family is not a family object
-# either predictor or response is not numeric
-# either predictor or response contains NA
-# predictor and response have different lengths
+test_that("either predictor or response contains NA", {
+  expect_error(define_prior(model = "nec3param", family = gaussian(),
+                            predictor = pred_na, response = resp_a))
+  expect_error(define_prior(model = "nec3param", family = gaussian(),
+                            predictor = pred_a, response = resp_na))
+})
+
+test_that("predictor and response have different lengths", {
+  expect_s3_class(define_prior(model = "nec3param", family = gaussian(),
+                               predictor = pred_b, response = resp_a),
+                  "brmsprior")
+  expect_s3_class(define_prior(model = "nec3param", family = gaussian(),
+                               predictor = pred_a, response = resp_b),
+                  "brmsprior")
+})
+
+test_that("check proper output structure", {
+  expect_identical(sort(p_a$nlpar), c("beta", "nec", "top"))
+  expect_true(grepl("normal", p_a$prior[p_a$nlpar == "beta"]))
+  expect_true(grepl("normal", p_a$prior[p_a$nlpar == "nec"]))
+  expect_true(grepl("normal", p_a$prior[p_a$nlpar == "top"]))
+  expect_true(p_b$bound[p_b$nlpar == "top"] == "")
+  expect_true(p_b$bound[p_b$nlpar == "bot"] == "")
+  expect_true(grepl("normal", p_b$prior[p_b$nlpar == "top"]))
+  expect_true(grepl("normal", p_b$prior[p_b$nlpar == "bot"]))
+  expect_false(p_c$bound[p_c$nlpar == "top"] == "")
+  expect_false(p_c$bound[p_c$nlpar == "bot"] == "")
+  expect_true(grepl("beta", p_c$prior[p_c$nlpar == "top"]))
+  expect_true(grepl("beta", p_c$prior[p_c$nlpar == "bot"]))
+})
