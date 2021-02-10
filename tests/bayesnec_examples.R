@@ -80,3 +80,4 @@ usethis::use_data(
   manec_fits,
   internal = TRUE, overwrite = TRUE
 )
+load("R/sysdata.rda")
