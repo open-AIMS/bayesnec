@@ -58,4 +58,6 @@ test_that("gaussian model with identity works correctly", ){
 #   mutate(y = exp(y * 3)) %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"), iter = 50,
 #                 chains = 2, family = Gamma(link = "identity"))
-# }
+
+
+
