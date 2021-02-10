@@ -19,6 +19,9 @@ paper/*.bcf
 paper/*.out
 paper/*.xml
 
+tests/*.rds
+tests/*.rda
+
 # package development
 bayesnec.Rcheck/
 bayesnec*tar.gz
