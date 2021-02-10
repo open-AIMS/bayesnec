@@ -65,16 +65,16 @@ manec_gamma_identity <- nec_data %>%
   bnec("x", "y", model = c("nec4param", "ecx4param"), iter = 50,
        chains = 2, family = Gamma(link = "identity"))
 # collate output
-manec_fits <- list(manec_gausian_identity = manec_gausian_identity,
-                   manec_beta_logit = manec_beta_logit,
-                   manec_beta_identity = manec_beta_identity,
-                   manec_betabinomial = manec_betabinomial,
-                   manec_poisson_log = manec_poisson_log,
-                   manec_poisson_identity = manec_poisson_identity,
-                   manec_negbinomial_log = manec_negbinomial_log,
-                   manec_negbinomial_identity = manec_negbinomial_identity,
-                   manec_gamma_log = manec_gamma_log,
-                   manec_gamma_identity = manec_gamma_identity)
+manec_fits <- list(manec_gausian_identity = manec_gausian_identity)#,
+                   # manec_beta_logit = manec_beta_logit,
+                   # manec_beta_identity = manec_beta_identity,
+                   # manec_betabinomial = manec_betabinomial,
+                   # manec_poisson_log = manec_poisson_log,
+                   # manec_poisson_identity = manec_poisson_identity,
+                   # manec_negbinomial_log = manec_negbinomial_log,
+                   # manec_negbinomial_identity = manec_negbinomial_identity,
+                   # manec_gamma_log = manec_gamma_log,
+                   # manec_gamma_identity = manec_gamma_identity)
 
 usethis::use_data(
   manec_fits,
