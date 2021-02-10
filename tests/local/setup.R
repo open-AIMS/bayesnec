@@ -12,13 +12,17 @@ logit <- function(x) {
   log(x / (1 - x))
 }
 
+expect_range <- function(object, lower = -Inf, upper = Inf, ...) {
+  testthat::expect_true(all(object >= lower & object <= upper), ...)
+}
+
 message("\n\n\nTemporarily caching models for local tests\n\n\n")
 
 message("\n# Gaussian\n")
 manec_gausian_identity <- nec_data %>%
   mutate(y = logit(y)) %>%
-  suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
-                iter = 50, chains = 2)
+  suppress_bnec("x", "y", model = c("nec4param", "ecx4param"), chains = 2)
+
 # message("\n# Beta\n")
 # manec_beta_logit <- nec_data %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),

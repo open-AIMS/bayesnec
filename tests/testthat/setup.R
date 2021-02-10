@@ -23,3 +23,4 @@ manec_gausian_identity <- nec_data %>%
   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
                 iter = 50, chains = 2)
 nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
+
