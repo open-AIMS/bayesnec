@@ -5,6 +5,8 @@ gamma_y_prior <- define_prior(model = "nec3param", family = gaussian(),
 
 test_that("model is always properly specified as character", {
   # model
+  expect_error(define_prior(family = gaussian(),
+                            predictor = rnorm(100), response = 1:100))
   expect_error(define_prior(model = NULL, family = gaussian(),
                             predictor = rnorm(100), response = 1:100))
   expect_error(define_prior(model = NA, family = gaussian(),
@@ -20,8 +22,7 @@ test_that("model is always properly specified as character", {
   expect_error(define_prior(model = "ecx", family = gaussian(),
                             predictor = rnorm(100), response = 1:100))
   expect_s3_class(gamma_y_prior, "brmsprior")
-
-  expect_s3_class(bayesnec:::model_fits$manec_gausian_identity, "bayesmanecfit")
+  expect_s3_class(manec_gausian_identity, "bayesmanecfit")
 })
 
 test_that("check proper output structure", {

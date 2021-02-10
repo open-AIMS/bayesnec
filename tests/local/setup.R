@@ -1,21 +1,32 @@
-source("setup_local_tests.R")
+library(bayesnec)
+library(dplyr)
+library(testthat)
 
-test_that("gaussian model with identity works correctly", ){
-  manec_gausian_identity <- nec_data %>%
+suppress_bnec <- function(...) {
+  bnec(...) %>%
+    suppressWarnings %>%
+    suppressMessages
+}
+
+logit <- function(x) {
+  log(x / (1 - x))
+}
+
+message("\n\n\nTemporarily caching models for local tests\n\n\n")
+
+message("\n# Gaussian\n")
+manec_gausian_identity <- nec_data %>%
   mutate(y = logit(y)) %>%
   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
                 iter = 50, chains = 2)
-} 
-
-
-# # beta
+# message("\n# Beta\n")
 # manec_beta_logit <- nec_data %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
 #                 iter = 50, chains = 2)
 # manec_beta_identity <- nec_data %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
 #                 iter = 50, chains = 2, family = Beta(link = "identity"))
-# # binomial
+# message("\n# Binomial\n")
 # manec_binomial_logit <- nec_data %>%
 #   mutate(trials = 10, y = as.integer(round(y * trials))) %>%
 #   suppress_bnec("x", "y", trials_var = "trials",
@@ -25,13 +36,13 @@ test_that("gaussian model with identity works correctly", ){
 #   suppress_bnec("x", "y", trials_var = "trials",
 #                 model = c("nec4param", "ecx4param"), iter = 50, chains = 2,
 #                 family = binomial(link = "identity"))
-# # betabinomial
+# message("\n# Betabinomial\n")
 # manec_betabinomial <- nec_data %>%
 #   mutate(trials = 10, y = round(y * trials)) %>%
 #   suppress_bnec("x", "y", trials_var = "trials",
 #                 model = c("nec4param", "ecx4param"), iter = 50, chains = 2,
 #                 family = "beta_binomial2")
-# # poisson
+# message("\n# Poisson\n")
 # manec_poisson_log <- nec_data %>%
 #   mutate(y = as.integer(round(exp(y * 3)))) %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
@@ -40,7 +51,7 @@ test_that("gaussian model with identity works correctly", ){
 #   mutate(y = as.integer(round(exp(y * 3)))) %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
 #                 iter = 50, chains = 2, family = poisson(link = "identity"))
-# # negative binomial
+# message("\n# Negative binomial\n")
 # manec_negbinomial_log <- nec_data %>%
 #   mutate(y = as.integer(round(exp(y * 3)))) %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"), iter = 50,
@@ -49,7 +60,7 @@ test_that("gaussian model with identity works correctly", ){
 #   mutate(y = as.integer(round(exp(y * 3)))) %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"), iter = 50,
 #                 chains = 2, family = negbinomial(link = "identity"))
-# # gamma
+# message("\n# Gamma\n")
 # manec_gamma_log <- nec_data %>%
 #   mutate(y = exp(y * 3)) %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"),
@@ -58,6 +69,3 @@ test_that("gaussian model with identity works correctly", ){
 #   mutate(y = exp(y * 3)) %>%
 #   suppress_bnec("x", "y", model = c("nec4param", "ecx4param"), iter = 50,
 #                 chains = 2, family = Gamma(link = "identity"))
-
-
-
