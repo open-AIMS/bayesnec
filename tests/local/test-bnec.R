@@ -3,12 +3,15 @@ library(bayesnec)
 nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
 fit1 <- manec_gausian_identity$mod_fits$nec4param$fit
 fit2 <- manec_gausian_identity$mod_fits$ecx4param$fit
+ec10 <- ecx(manec_gausian_identity, type = "relative")
+#ec90 <- ecx(manec_gausian_identity, prob_vals = 0.9, type = "relative")
 
 test_that("gaussian model with identity works correctly", {
   expect_s3_class(manec_gausian_identity, "bayesmanecfit")
   expect_s3_class(nec_gausian_identity, "bayesnecfit")
   expect_equal(summary(manec_gausian_identity)$family, "gaussian")  
   expect_range(manec_gausian_identity$mod_stats[1,"wi"], 0.7, 0.9)
+  expect_range(ec10[1], 1.38, 1.64)
   
   expect_range(fixef(fit1)["bot_Intercept", 1], -12, -5)
   expect_range(fixef(fit1)["top_Intercept", 1], 2.1, 2.2)
