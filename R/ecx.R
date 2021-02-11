@@ -89,8 +89,10 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   label <- paste("ec", ecx_val, sep = "_")
   ecx_estimate <- quantile(unlist(ecx_out), probs = prob_vals)
   names(ecx_estimate) <- paste(label, clean_names(ecx_estimate), sep = "_")
+  attr(ecx_estimate, 'precision') <- precision      
+  attr(ecx_out, 'precision') <- precision
   if (!posterior) {
-    ecx_estimate
+    ecx_estimate        
   } else {
     ecx_out
   }
@@ -173,6 +175,8 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
     ecx_estimate <- xform(ecx_estimate)
     ecx_out <- xform(ecx_out)
   }
+    attr(ecx_estimate, 'precision') <- precision      
+    attr(ecx_out, 'precision') <- precision     
   if (!posterior) {
     ecx_estimate
   } else {

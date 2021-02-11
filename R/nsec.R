@@ -86,6 +86,10 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
   label <- paste("ec", sig_val, sep = "_")
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals)
   names(nsec_estimate) <- paste(label, clean_names(nsec_estimate), sep = "_")
+  attr(nsec_estimate, 'precision') <- precision      
+  attr(nsec_out, 'precision') <- precision
+  attr(nsec_estimate, 'sig_val') <- sig_val      
+  attr(nsec_out, 'sig_val') <- sig_val
   if (!posterior) {
     nsec_estimate
   } else {
@@ -149,7 +153,9 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   sample_nsec <- function(x, object, sig_val, precision,
                           posterior, hormesis_def,
                           x_range, xform, prob_vals, sample_size) {
-    out <- nsec.default(object$mod_fits[[x]], sig_val = sig_val,
+    mod <- names(object$mod_fits)[x]
+    target <- suppressMessages(pull_out(object, model = mod))
+    out <- nsec.default(target, sig_val = sig_val,
                         precision = precision, posterior = posterior,
                         hormesis_def = hormesis_def, x_range = x_range,
                         xform = xform, prob_vals = prob_vals)
@@ -166,10 +172,10 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   nsec_estimate <- quantile(nsec_out, probs = prob_vals)
   names(nsec_estimate) <- c(label, paste(label, "lw", sep = "_"),
                            paste(label, "up", sep = "_"))
-  if (inherits(xform, "function")) {
-    nsec_estimate <- xform(nsec_estimate)
-    nsec_out <- xform(nsec_out)
-  }
+  attr(nsec_estimate, 'precision') <- precision      
+  attr(nsec_out, 'precision') <- precision
+  attr(nsec_estimate, 'sig_val') <- sig_val      
+  attr(nsec_out, 'sig_val') <- sig_val
   if (!posterior) {
     nsec_estimate
   } else {
