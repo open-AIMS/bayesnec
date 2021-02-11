@@ -3,6 +3,7 @@
 ^.*tmp
 README.Rmd
 ^_pkgdown\.yml$
+^codecov\.yml$
 ^docs$
 ^pdfs$
 ^ignore$
