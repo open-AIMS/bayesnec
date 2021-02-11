@@ -23,13 +23,13 @@ manec_gausian_identity <- nec_data %>%
   mutate(y = logit(y)) %>%
   muted_bnec("x", "y", model = c("nec4param", "ecx4param"), chains = 2)
 
-# message("\n# Beta\n")
-# manec_beta_logit <- nec_data %>%
-#   muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
-#              iter = 50, chains = 2)
-# manec_beta_identity <- nec_data %>%
-#   muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
-#              iter = 50, chains = 2, family = Beta(link = "identity"))
+message("\n# Beta\n")
+manec_beta_logit <- nec_data %>%
+  muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
+             iter = 50, chains = 2)
+manec_beta_identity <- nec_data %>%
+  muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
+             iter = 50, chains = 2, family = Beta(link = "identity"))
 # message("\n# Binomial\n")
 # manec_binomial_logit <- nec_data %>%
 #   mutate(trials = 10, y = as.integer(round(y * trials))) %>%
