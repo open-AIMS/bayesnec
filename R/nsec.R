@@ -16,8 +16,6 @@
 #' just the median and 95 credible intervals.
 #' @param hormesis_def A \code{\link[base]{character}} vector, taking values
 #' of "max" or "control". See Details.
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
 #' @param x_range A range of x values over which to consider extracting nsec.
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated nsec value. Defaults to 0.5 (median) and 0.025 and
@@ -54,7 +52,7 @@
 #' @export
 nsec.default <- function(object, sig_val = 0.01, precision = 1000,
                          posterior = FALSE, x_range = NA,
-                         hormesis_def = "control", xform = NA,
+                         hormesis_def = "control",
                          prob_vals = c(0.5, 0.025, 0.975)) {
   if(length(prob_vals)<3 | prob_vals[1]<prob_vals[1] | prob_vals[1]>prob_vals[3] | prob_vals[2]>prob_vals[3]){
     stop("prob_vals must include central, lower and upper quantiles, in that order")
@@ -152,13 +150,13 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
                                prob_vals = c(0.5, 0.025, 0.975)) {
   sample_nsec <- function(x, object, sig_val, precision,
                           posterior, hormesis_def,
-                          x_range, xform, prob_vals, sample_size) {
+                          x_range, prob_vals, sample_size) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
     out <- nsec.default(target, sig_val = sig_val,
                         precision = precision, posterior = posterior,
                         hormesis_def = hormesis_def, x_range = x_range,
-                        xform = xform, prob_vals = prob_vals)
+                        prob_vals = prob_vals)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
     sample(out, n_s)
   }
@@ -166,7 +164,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   to_iter <- seq_len(length(object$success_models))
   nsec_out <- sapply(to_iter, sample_nsec, object, sig_val, precision,
                      posterior = TRUE, hormesis_def, x_range,
-                     xform, prob_vals, sample_size)
+                     prob_vals, sample_size)
   nsec_out <- unlist(nsec_out)
   label <- paste("ec", sig_val, sep = "_")
   nsec_estimate <- quantile(nsec_out, probs = prob_vals)
