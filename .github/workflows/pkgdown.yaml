@@ -18,6 +18,11 @@ jobs:
           saveRDS(remotes::dev_package_deps(dependencies = TRUE), ".github/depends.Rds", version = 2)
         shell: Rscript {0}
 
+      - name: textshaping fix
+        run: |
+          brew install harfbuzz
+          brew install fribidi
+
       - name: Install dependencies
         run: |
           install.packages(c("ps", "remotes", "tidyverse", "anytime", "brms"))
