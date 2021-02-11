@@ -56,6 +56,9 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
                          posterior = FALSE, x_range = NA,
                          hormesis_def = "control", xform = NA,
                          prob_vals = c(0.5, 0.025, 0.975)) {
+  if(length(prob_vals)<3 | prob_vals[1]<prob_vals[1] | prob_vals[1]>prob_vals[3] | prob_vals[2]>prob_vals[3]){
+    stop("prob_vals must include central, lower and upper quantiles, in that order")
+  }
   if (length(grep("ecx", object$model)) > 0) {
     mod_class <- "ecx"
   } else {
@@ -80,9 +83,6 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
     }
   }
   nsec_out <- apply(p_samples, 1, nsec_fct,  reference, x_vec)
-  if (inherits(xform, "function")) {
-    nsec_out <- xform(nsec_out)
-  }
   label <- paste("ec", sig_val, sep = "_")
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals)
   names(nsec_estimate) <- paste(label, clean_names(nsec_estimate), sep = "_")
@@ -112,7 +112,7 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
 #' @export
 nsec <- function(object, sig_val = 0.01, precision = 1000,
                  posterior = FALSE, x_range = NA, hormesis_def = "control",
-                 xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+                 prob_vals = c(0.5, 0.025, 0.975)) {
   UseMethod("nsec")
 }
 
@@ -148,7 +148,7 @@ nsec.bayesnecfit <- function(object, ...) {
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
                                posterior = FALSE, x_range = NA,
-                               hormesis_def = "control", xform = NA,
+                               hormesis_def = "control",
                                prob_vals = c(0.5, 0.025, 0.975)) {
   sample_nsec <- function(x, object, sig_val, precision,
                           posterior, hormesis_def,
