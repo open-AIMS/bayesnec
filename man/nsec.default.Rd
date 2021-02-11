@@ -11,7 +11,6 @@
   posterior = FALSE,
   x_range = NA,
   hormesis_def = "control",
-  xform = NA,
   prob_vals = c(0.5, 0.025, 0.975)
 )
 }
@@ -35,9 +34,6 @@ just the median and 95 credible intervals.}
 
 \item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
 of "max" or "control". See Details.}
-
-\item{xform}{A function to apply to the returned estimated concentration
-values.}
 
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated nsec value. Defaults to 0.5 (median) and 0.025 and
