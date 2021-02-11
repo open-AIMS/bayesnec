@@ -50,6 +50,9 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
                         posterior = FALSE, type = "absolute",
                         hormesis_def = "control", x_range = NA,
                         xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+  if(length(prob_vals)<3 | prob_vals[1]<prob_vals[1] | prob_vals[1]>prob_vals[3] | prob_vals[2]>prob_vals[3]){
+    stop("prob_vals must include central, lower and upper quantiles, in that order")
+    }
   if (type != "direct") {
     if (ecx_val < 1 | ecx_val > 99) {
       stop("Supplied ecx_val is not in the required range. ",
@@ -163,6 +166,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   ecx_out <- unlist(ecx_out)
   label <- paste("ec", ecx_val, sep = "_")
   ecx_estimate <- quantile(ecx_out, probs = prob_vals)
+  
   names(ecx_estimate) <- c(label, paste(label, "lw", sep = "_"),
                            paste(label, "up", sep = "_"))
   if (inherits(xform, "function")) {
