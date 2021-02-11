@@ -171,10 +171,6 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   
   names(ecx_estimate) <- c(label, paste(label, "lw", sep = "_"),
                            paste(label, "up", sep = "_"))
-  if (inherits(xform, "function")) {
-    ecx_estimate <- xform(ecx_estimate)
-    ecx_out <- xform(ecx_out)
-  }
     attr(ecx_estimate, 'precision') <- precision      
     attr(ecx_out, 'precision') <- precision     
   if (!posterior) {
