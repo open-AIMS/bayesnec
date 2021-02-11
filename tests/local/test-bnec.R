@@ -33,6 +33,8 @@ test_that("beta model with identity works correctly", {
   expect_s3_class(nec_beta_identity, "bayesnecfit")
   expect_equal(summary(manec_beta_identity)$family, "beta")  
   expect_range(manec_beta_identity$mod_stats[1,"wi"], 0.7, 0.99)
+  expect_range(manec_beta_identity$w_nec[1,"Estimate"], 1.4, 1.6)
   expect_range(ecx(manec_beta_identity)[1], 1.38, 1.64)
   expect_range(ecx(manec_beta_identity, ecx_val = 90, type = "relative")[1], 2.5, 2.97)
+  
 })
