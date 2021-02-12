@@ -2,7 +2,6 @@ library(bayesnec)
 library(brms)
 
 pred.p <- predict(nec_gausian_identity)
-plot.p <- plot(nec_gausian_identity)
 summary.p <- summary(nec_gausian_identity)
 
 

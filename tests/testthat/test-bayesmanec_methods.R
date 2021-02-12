@@ -3,7 +3,6 @@ library(brms)
 
 
 pred.p <- predict(manec_gausian_identity)
-plot.p <- plot(manec_gausian_identity)
 rhat.p <- rhat(manec_gausian_identity)
 rhat2.p <-  rhat(manec_gausian_identity, rhat_cutoff = 1)
 summary.p <- summary(manec_gausian_identity)
