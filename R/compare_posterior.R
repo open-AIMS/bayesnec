@@ -44,9 +44,7 @@
 compare_posterior <- function(x, comparison = "nec", ecx_val = 10, 
                               type = "absolute", hormesis_def = "control",
                               sig_val = 0.01, precision, x_range = NA) {
-  if (is.null(comparison)){
-    stop("You must specify a comparison type")
-    }
+  
   if (class(x) != "list" | is.null(names(x))){
     stop("Argument x must be a named list")
   }
