@@ -59,7 +59,7 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
   if (missing(loo_controls)) {
    
     loo_controls <-  list(method = c("stacking", "pseudobma")[sapply(c("stacking", "pseudobma"), 
-                        function(x){grepl(x, attributes(manec_gausian_identity$mod_stats$wi)$class)})])
+                        function(x){grepl(x, attributes(objects$mod_stats$wi)$class)})])
   }
   model_set <- names(object$mod_fits)
   if (!missing(drop)) {
