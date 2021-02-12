@@ -45,23 +45,22 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
             "Returning original model set and weights")
     return(object)
   }
-  if (missing(drop) && missing(add) && !missing(loo_controls)) {
-    if (grepl(loo_controls$method, class(object$mod_stats$wi))) {
-      message("Returning original model set")     
-      message("weighting method specified is the same as the original.")
-    }
-    return(object)   
-  }
   if (!missing(loo_controls) && !loo_controls %in% c("stacking", "pseudobma")) {
     stop("The weighting method you have supplied is invalid,",
          " it must be one of \"stacking\" or \"pseudobma\"")
   }
-  if (missing(loo_controls)) {
-    wi_method <- c("stacking", "pseudobma")[sapply(c("stacking", "pseudobma"), 
-                        function(x){grepl(x, attributes(manec_gausian_identity$mod_stats$wi)$class)})] 
-    loo_controls <-  list(method = wi_method)
+  if (missing(drop) && missing(add) && !missing(loo_controls)) {
+    if (grepl(loo_controls$method, class(object$mod_stats$wi))) {
+      message("Returning original model set")     
+      message("weighting method specified is the same as the original.")
+      return(object)         
+    }
   }
-
+  if (missing(loo_controls)) {
+   
+    loo_controls <-  list(method = c("stacking", "pseudobma")[sapply(c("stacking", "pseudobma"), 
+                        function(x){grepl(x, attributes(manec_gausian_identity$mod_stats$wi)$class)})])
+  }
   model_set <- names(object$mod_fits)
   if (!missing(drop)) {
     model_set <- handle_set(model_set, drop = drop)
@@ -84,7 +83,6 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
   model_set <- check_models(model_set, family)
   fam_tag <- family$family
   link_tag <- family$link
-  
   if (missing(pointwise)) {
     if (fam_tag == "custom") {pointwise <-  FALSE} else {pointwise <- TRUE}
   } else {
@@ -92,10 +90,8 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
       stop("You cannot currently set pointwise = TRUE for custom families")
     }
   }
-  
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
-  
   for (m in seq_along(model_set)) {
     model <- model_set[m]
     mod_m <- try(object$mod_fits[[model]], silent = TRUE)
@@ -148,9 +144,9 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
 #' @inherit amend.default return examples
 #'
 #' @export
-amend <- function(object, drop, add, x_range = NA,
+amend <- function(object, drop, add, loo_controls, x_range = NA,
                   precision = 1000, sig_val = 0.01,
-                  priors, loo_controls = list(wi_method = "pseudobma")) {
+                  priors) {
   UseMethod("amend")
 }
 
