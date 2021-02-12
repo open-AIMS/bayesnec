@@ -12,4 +12,5 @@ test_that("x must be a named list", {
 test_that("output is a list of appropriately name elements", {
   expect_equal(class(ce), "list")
   expect_equal(length(ce), 5)  
+  expect_equal(names(ce), c("posterior_list", "posterior_data", "diff_list", "diff_data", "prob_diff"))
 })
