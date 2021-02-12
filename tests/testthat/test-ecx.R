@@ -43,7 +43,7 @@ test_that("precision is passing correctly", {
 })
 
 test_that("xform operates correctly", {
-  expect_equal(exp(ec50_summary)[1], ec50_summary2[1])
-  expect_equal(exp(ec50n_summary)[1], ec50n_summary2[1]) 
+  expect_gt(ec50_summary2[1], ec50_summary[1])
+  expect_gt(ec50n_summary2[1], ec50n_summary[1]) 
   
 })
