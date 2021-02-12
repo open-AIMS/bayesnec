@@ -8,11 +8,12 @@
   object,
   drop,
   add,
+  loo_controls,
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
   priors,
-  loo_controls = list(method = "pseudobma")
+  pointwise
 )
 }
 \arguments{
@@ -24,6 +25,11 @@ model types you which to drop for the modified fit.}
 
 \item{add}{A \code{\link[base]{character}} vector containing the names of
 model types to add to the modified fit.}
+
+\item{loo_controls}{A named \code{\link[base]{list}} containing the desired
+arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
+the default wi_method to "pseudobma". See help documentation
+?loo_model_weights from package loo.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -43,9 +49,14 @@ parameter. It can also be specified as a named \code{\link[base]{list}}
 where each name needs to correspond to the same string as "model". See
 details.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} containing the desired
-arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
-the default wi_method to "pseudobma". See help documentation
+\item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
+at once or separately for each observation. The latter approach is usually considerably slower but requires
+much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
+but will not work for the custom family beta_binomial2}
+
+\item{A}{named \code{\link[base]{list}} containing the desired
+arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It can be used to change
+the default method from "pseudobma". See help documentation
 ?loo_model_weights from package loo.}
 }
 \value{
