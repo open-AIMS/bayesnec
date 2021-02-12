@@ -11,7 +11,11 @@
 #' model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of
 #' model types to add to the modified fit.
-#'
+#' @param A named \code{\link[base]{list}} containing the desired
+#' arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It can be used to change
+#' the default method from "pseudobma". See help documentation
+#' ?loo_model_weights from package loo.
+#' 
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'
 #' @examples
@@ -33,20 +37,29 @@
 #' }
 #'
 #' @export
-amend.default <- function(object, drop, add, x_range = NA,
-                          precision = 1000, sig_val = 0.01, priors,
-                          loo_controls = list(method = "pseudobma")) {
-  wi_method <- loo_controls$method
-  if (missing(drop) && missing(add)) {
+amend.default <- function(object, drop, add, loo_controls, x_range = NA,
+                          precision = 1000, sig_val = 0.01, priors, pointwise) {
+  if (missing(drop) && missing(add) && missing(loo_controls)) {
     message("Nothing to amend, please specify a model to ",
-            "either add or drop, or a wi_method;\n",
+            "either add or drop, or a weighting method via loo_controls;\n",
             "Returning original model set and weights")
     return(object)
   }
-
-  if (!is.null(wi_method) && !wi_method %in% c("stacking", "pseudobma")) {
+  if (missing(drop) && missing(add) && !missing(loo_controls)) {
+    if (grepl(loo_controls$method, class(object$mod_stats$wi))) {
+      message("Returning original model set")     
+      message("weighting method specified is the same as the original.")
+    }
+    return(object)   
+  }
+  if (!missing(loo_controls) && !loo_controls %in% c("stacking", "pseudobma")) {
     stop("The weighting method you have supplied is invalid,",
          " it must be one of \"stacking\" or \"pseudobma\"")
+  }
+  if (missing(loo_controls)) {
+    wi_method <- c("stacking", "pseudobma")[sapply(c("stacking", "pseudobma"), 
+                        function(x){grepl(x, attributes(manec_gausian_identity$mod_stats$wi)$class)})] 
+    loo_controls <-  list(method = wi_method)
   }
 
   model_set <- names(object$mod_fits)
@@ -58,9 +71,9 @@ amend.default <- function(object, drop, add, x_range = NA,
   }
   if (is.logical(model_set)) {
      message("Returning original model set")
-    if (!grepl(wi_method, class(object$mod_stats$wi))) {
-     message("wi_method not modified, please call amend and specify only",
-             " wi_method if you do not need to drop or add any models and",
+    if (grepl(loo_controls$method, class(object$mod_stats$wi))) {
+     message("weighting method not modified, please call amend and specify only",
+             " loo_controls if you do not need to drop or add any models and",
              " simply want to update the weighting method.")
     }
     return(object)
@@ -68,9 +81,21 @@ amend.default <- function(object, drop, add, x_range = NA,
   simdat <- extract_simdat(object$mod_fits[[1]])
   data <- object$mod_fits[[1]]$fit$data
   family <- object$mod_fits[[1]]$fit$family
+  model_set <- check_models(model_set, family)
+  fam_tag <- family$family
+  link_tag <- family$link
+  
+  if (missing(pointwise)) {
+    if (fam_tag == "custom") {pointwise <-  FALSE} else {pointwise <- TRUE}
+  } else {
+    if(pointwise & fam_tag == "custom") {
+      stop("You cannot currently set pointwise = TRUE for custom families")
+    }
+  }
+  
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
-
+  
   for (m in seq_along(model_set)) {
     model <- model_set[m]
     mod_m <- try(object$mod_fits[[model]], silent = TRUE)
@@ -84,6 +109,7 @@ amend.default <- function(object, drop, add, x_range = NA,
                      thin = simdat$thin,
                      warmup = simdat$warmup,
                      inits = simdat$inits,
+                     pointwise = pointwise,
                      chains = simdat$chains,
                      priors = priors),
         silent = FALSE)
