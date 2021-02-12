@@ -1,11 +1,11 @@
 pandoc: 2.7.3
 pkgdown: 1.6.1.9000
-pkgdown_sha: 3f63608c375fe9d13a4f00815caf477736566581
+pkgdown_sha: 48dabb1d46a5859ddb118a3b94d946c89919c25d
 articles:
   example1: example1.html
   example2: example2.html
   example2b: example2b.html
   example3: example3.html
   example4: example4.html
-last_built: 2021-02-11T23:17Z
+last_built: 2021-02-12T04:54Z
 
