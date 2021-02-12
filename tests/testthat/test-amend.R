@@ -9,7 +9,7 @@ test_that("input checks work correctly and return appropriate messages", {
  expect_message(expect_message(expect_message(amend(manec_gausian_identity, drop = "nec3param"), 
                  "Nothing to amend, please specify a model to either add or drop that differs from the original set"),
                  "Returning original model set"),  "weighting method not modified, please call amend and specify only loo_controls if you do not need to drop or add any models and simply want to update the weighting method.")
- expect_error(amend(manec_gausian_identity, loo_control = list("somethingwrong")), 
+ expect_error(amend(manec_gausian_identity, loo_controls = list(method="somethingwrong")), 
               'The weighting method you have supplied is invalid, it must be one of "stacking" or "pseudobma"')
  expect_message(amend(manec_gausian_identity, drop = "nec4param"))
  expect_message(expect_message(amend(manec_gausian_identity, add = "nec3param")), "Fitted models are:  nec4param ecx4param")  
