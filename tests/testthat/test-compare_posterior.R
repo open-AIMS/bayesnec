@@ -1,7 +1,5 @@
 require(bayesnec)
 
-ecx4param <- pull_out(manec_gausian_identity, model = "ecx4param")
-nec4param <- nec_gausian_identity
 cp <- compare_posterior(list(ecx4param = ecx4param, nec4param = nec4param))
 
 test_that("input errors work as intended", {
