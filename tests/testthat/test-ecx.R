@@ -42,7 +42,7 @@ test_that("precision is passing correctly", {
   expect_equal(attributes(ec50n_posterior)$precision, 50)
 })
 
-test_that("xform operates corrected", {
+test_that("xform operates correctly", {
   expect_equal(exp(ec50_summary)[1], ec50_summary2[1])
   expect_equal(exp(ec50n_summary)[1], ec50n_summary2[1]) 
   
