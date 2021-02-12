@@ -155,11 +155,12 @@ adding or removing fitted models.</p>
   <span class='va'>object</span>,
   <span class='va'>drop</span>,
   <span class='va'>add</span>,
+  <span class='va'>loo_controls</span>,
   x_range <span class='op'>=</span> <span class='cn'>NA</span>,
   precision <span class='op'>=</span> <span class='fl'>1000</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
   <span class='va'>priors</span>,
-  loo_controls <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>method <span class='op'>=</span> <span class='st'>"pseudobma"</span><span class='op'>)</span>
+  <span class='va'>pointwise</span>
 <span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -179,6 +180,13 @@ model types you which to drop for the modified fit.</p></td>
       <th>add</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of
 model types to add to the modified fit.</p></td>
+    </tr>
+    <tr>
+      <th>loo_controls</th>
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
+arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It sets
+the default wi_method to "pseudobma". See help documentation
+?loo_model_weights from package loo.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -207,10 +215,17 @@ where each name needs to correspond to the same string as "model". See
 details.</p></td>
     </tr>
     <tr>
-      <th>loo_controls</th>
-      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
-arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It sets
-the default wi_method to "pseudobma". See help documentation
+      <th>pointwise</th>
+      <td><p>A flag indicating whether to compute the full log-likelihood matrix
+at once or separately for each observation. The latter approach is usually considerably slower but requires
+much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
+but will not work for the custom family beta_binomial2</p></td>
+    </tr>
+    <tr>
+      <th>A</th>
+      <td><p>named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
+arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It can be used to change
+the default method from "pseudobma". See help documentation
 ?loo_model_weights from package loo.</p></td>
     </tr>
     </table>
