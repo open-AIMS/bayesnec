@@ -67,9 +67,15 @@ adding or removing fitted models." />
 
 
 
+  
+
+  
+
   </head>
 
   <body data-spy="scroll" data-target="#toc">
+    
+
     <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -154,11 +160,11 @@ adding or removing fitted models.</p>
   <span class='va'>object</span>,
   <span class='va'>drop</span>,
   <span class='va'>add</span>,
+  <span class='va'>loo_controls</span>,
   x_range <span class='op'>=</span> <span class='cn'>NA</span>,
   precision <span class='op'>=</span> <span class='fl'>1000</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
-  <span class='va'>priors</span>,
-  loo_controls <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>wi_method <span class='op'>=</span> <span class='st'>"pseudobma"</span><span class='op'>)</span>
+  <span class='va'>priors</span>
 <span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -178,6 +184,13 @@ model types you which to drop for the modified fit.</p></td>
       <th>add</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of
 model types to add to the modified fit.</p></td>
+    </tr>
+    <tr>
+      <th>loo_controls</th>
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
+arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It sets
+the default wi_method to "pseudobma". See help documentation
+?loo_model_weights from package loo.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -204,13 +217,6 @@ If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline
 parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
 where each name needs to correspond to the same string as "model". See
 details.</p></td>
-    </tr>
-    <tr>
-      <th>loo_controls</th>
-      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
-arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It sets
-the default wi_method to "pseudobma". See help documentation
-?loo_model_weights from package loo.</p></td>
     </tr>
     </table>
 
@@ -260,6 +266,8 @@ the default wi_method to "pseudobma". See help documentation
 
   
 
+
+  
 
   </body>
 </html>
