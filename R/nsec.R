@@ -56,6 +56,9 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
                          posterior = FALSE, x_range = NA,
                          hormesis_def = "control", xform = NA,
                          prob_vals = c(0.5, 0.025, 0.975)) {
+  if(length(prob_vals)<3 | prob_vals[1]<prob_vals[1] | prob_vals[1]>prob_vals[3] | prob_vals[2]>prob_vals[3]){
+    stop("prob_vals must include central, lower and upper quantiles, in that order")
+  }
   if (length(grep("ecx", object$model)) > 0) {
     mod_class <- "ecx"
   } else {
