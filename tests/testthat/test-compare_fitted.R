@@ -1,7 +1,5 @@
 require(bayesnec)
 
-ecx4param <- pull_out(manec_gausian_identity, model = "ecx4param")
-nec4param <- nec_gausian_identity
 cf <- compare_fitted(list(ecx4param = ecx4param, nec4param = nec4param), precision = 10)
 
 test_that("x must be a named list", {

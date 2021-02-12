@@ -27,3 +27,6 @@ manec_gausian_identity <- nec_data %>%
   muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
              iter = 50, chains = 2)
 nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
+
+ecx4param <- pull_out(manec_gausian_identity, model = "ecx4param")
+nec4param <- nec_gausian_identity
