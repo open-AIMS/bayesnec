@@ -57,7 +57,6 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
     }
   }
   if (missing(loo_controls)) {
-   
     loo_controls <-  list(method = c("stacking", "pseudobma")[sapply(c("stacking", "pseudobma"), 
                         function(x){grepl(x, attributes(object$mod_stats$wi)$class)})])
   }
