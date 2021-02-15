@@ -27,8 +27,8 @@ model types you which to drop for the modified fit.}
 model types to add to the modified fit.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} containing the desired
-arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
-the default wi_method to "pseudobma". See help documentation
+arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It can be used to change
+the default method from "pseudobma". See help documentation
 ?loo_model_weights from package loo.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
@@ -53,11 +53,6 @@ details.}
 at once or separately for each observation. The latter approach is usually considerably slower but requires
 much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
 but will not work for the custom family beta_binomial2}
-
-\item{A}{named \code{\link[base]{list}} containing the desired
-arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It can be used to change
-the default method from "pseudobma". See help documentation
-?loo_model_weights from package loo.}
 }
 \value{
 All successfully fitted \code{\link{bayesmanecfit}} model fits.

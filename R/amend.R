@@ -11,7 +11,7 @@
 #' model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of
 #' model types to add to the modified fit.
-#' @param A named \code{\link[base]{list}} containing the desired
+#' @param loo_controls A named \code{\link[base]{list}} containing the desired
 #' arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It can be used to change
 #' the default method from "pseudobma". See help documentation
 #' ?loo_model_weights from package loo.
