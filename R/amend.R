@@ -11,7 +11,7 @@
 #' model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of
 #' model types to add to the modified fit.
-#' @param A named \code{\link[base]{list}} containing the desired
+#' @param loo_controls A named \code{\link[base]{list}} containing the desired
 #' arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It can be used to change
 #' the default method from "pseudobma". See help documentation
 #' ?loo_model_weights from package loo.
@@ -137,15 +137,12 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
 #'
 #' @inheritParams amend.default
 #'
-#' @param object An object of class \code{\link{bayesmanecfit}}, as returned
-#' by \code{\link{bnec}}.
-#'
 #' @inherit amend.default return examples
 #'
 #' @export
 amend <- function(object, drop, add, loo_controls, x_range = NA,
                   precision = 1000, sig_val = 0.01,
-                  priors) {
+                  priors, pointwise) {
   UseMethod("amend")
 }
 
@@ -160,6 +157,10 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #'
 #' @inherit amend return examples
 #' @export
-amend.bayesmanecfit <- function(object, ...) {
-  amend.default(object, ...)
+amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
+                                precision = 1000, sig_val = 0.01,
+                                priors, pointwise) {
+  amend.default(object, drop, add, loo_controls, x_range = NA,
+                precision = 1000, sig_val = 0.01,
+                priors, pointwise)
 }
