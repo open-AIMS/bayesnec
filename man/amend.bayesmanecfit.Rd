@@ -4,11 +4,55 @@
 \alias{amend.bayesmanecfit}
 \title{amend.bayesmanecfit}
 \usage{
-\method{amend}{bayesmanecfit}(object, ...)
+\method{amend}{bayesmanecfit}(
+  object,
+  drop,
+  add,
+  loo_controls,
+  x_range = NA,
+  precision = 1000,
+  sig_val = 0.01,
+  priors,
+  pointwise
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesmanecfit}}, as returned
 by \code{\link{bnec}}.}
+
+\item{drop}{A \code{\link[base]{character}} vector containing the names of
+model types you which to drop for the modified fit.}
+
+\item{add}{A \code{\link[base]{character}} vector containing the names of
+model types to add to the modified fit.}
+
+\item{loo_controls}{A named \code{\link[base]{list}} containing the desired
+arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It can be used to change
+the default method from "pseudobma". See help documentation
+?loo_model_weights from package loo.}
+
+\item{x_range}{A range of x values over which to consider extracting ECx.}
+
+\item{precision}{The length of the x vector used for posterior predictions,
+and over which to extract ECx values. Large values will be slower but more
+precise.}
+
+\item{sig_val}{Probability value to use as the lower quantile to test
+significance of the predicted posterior values
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+
+\item{priors}{An object of class \code{\link[brms]{brmsprior}} which
+specifies user-desired prior distributions of model parameters.
+If missing, \code{\link{bnec}} will figure out a baseline prior for each
+parameter. It can also be specified as a named \code{\link[base]{list}}
+where each name needs to correspond to the same string as "model". See
+details.}
+
+\item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
+at once or separately for each observation. The latter approach is usually considerably slower but requires
+much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
+but will not work for the custom family beta_binomial2}
 
 \item{...}{Additional arguments to \code{\link{amend}}}
 }
