@@ -1,8 +1,8 @@
 require(bayesnec)
 require(ggplot2)
-p <- check_priors(nec_gausian_identity)
 
 test_that("returns ggplot for baysnec objects", {
+  p <- check_priors(nec_gausian_identity)  
   expect_error(print(p), NA)
   expect_silent(check_priors(nec_gausian_identity))
   expect_equal(class(p),c("gg", "ggplot") )

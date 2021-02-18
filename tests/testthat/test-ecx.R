@@ -1,14 +1,6 @@
 library(bayesnec)
 library(brms)
 
-ec50_summary <- ecx(manec_gausian_identity, ecx_val = 50, type = "relative", precision = 50)
-ec50_summary2 <- ecx(manec_gausian_identity, ecx_val = 50, type = "relative", precision = 50, xform=exp)
-ec50_posterior <- ecx(manec_gausian_identity, ecx_val = 50, type = "relative", posterior = TRUE, precision = 50)
-
-ec50n_summary <- ecx(nec_gausian_identity, ecx_val = 50, type = "relative", precision = 50)
-ec50n_summary2 <- ecx(nec_gausian_identity, ecx_val = 50, type = "relative", precision = 50, xform=exp)
-ec50n_posterior <- ecx(nec_gausian_identity, ecx_val = 50, type = "relative", posterior = TRUE, precision = 50)
-
 test_that("gaussian absolute ecx values are not returned", {
  expect_error(ecx(manec_gausian_identity))
   expect_error(ecx(nec_gausian_identity))
@@ -28,22 +20,21 @@ test_that("ecx_val warnings behave as expected", {
   expect_error(ecx(nec_gausian_identity, ecx_val = 0.9, type = "relative"))  
 })
 
-test_that("ecx returns expected object types", {
- expect_equal(length(ec50_summary), 3)
- expect_gt(length(ec50_posterior), 3)  
- expect_equal(length(ec50n_summary), 3)
- expect_gt(length(ec50n_posterior), 3) 
-})
-
-test_that("precision is passing correctly", {
+test_that("ecx returns expected object types and arguments pass correctly", {
+  ec50_summary <- ecx(manec_gausian_identity, ecx_val = 50, type = "relative", precision = 50)
+  ec50_summary2 <- ecx(manec_gausian_identity, ecx_val = 50, type = "relative", precision = 50, xform=exp)
+  ec50_posterior <- ecx(manec_gausian_identity, ecx_val = 50, type = "relative", posterior = TRUE, precision = 50)
+  ec50n_summary <- ecx(nec_gausian_identity, ecx_val = 50, type = "relative", precision = 50)
+  ec50n_summary2 <- ecx(nec_gausian_identity, ecx_val = 50, type = "relative", precision = 50, xform=exp)
+  ec50n_posterior <- ecx(nec_gausian_identity, ecx_val = 50, type = "relative", posterior = TRUE, precision = 50)  
+  expect_equal(length(ec50_summary), 3)
+  expect_gt(length(ec50_posterior), 3)  
+  expect_equal(length(ec50n_summary), 3)
+  expect_gt(length(ec50n_posterior), 3)
   expect_equal(attributes(ec50_summary)$precision, 50)
   expect_equal(attributes(ec50_posterior)$precision, 50)
   expect_equal(attributes(ec50n_summary)$precision, 50)
-  expect_equal(attributes(ec50n_posterior)$precision, 50)
-})
-
-test_that("xform operates correctly", {
+  expect_equal(attributes(ec50n_posterior)$precision, 50)  
   expect_gt(ec50_summary2[1], ec50_summary[1])
-  expect_gt(ec50n_summary2[1], ec50n_summary[1]) 
-  
+  expect_gt(ec50n_summary2[1], ec50n_summary[1])   
 })
