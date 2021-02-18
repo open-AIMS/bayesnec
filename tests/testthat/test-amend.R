@@ -1,7 +1,4 @@
 require(bayesnec)
-  
-a1 <- amend(manec_gausian_identity, loo_controls = list(method = "stacking"))
-a2 <- amend(manec_gausian_identity, add = "ecxlin")
 
 test_that("input checks work correctly and return appropriate messages", {
  expect_message(amend(manec_gausian_identity), 
@@ -26,11 +23,12 @@ expect_message(
 })
 
 test_that("loo_controls pass correctly", {
+  a1 <- amend(manec_gausian_identity, loo_controls = list(method = "stacking"))
   expect_equal(class(a1$mod_stats$wi), "stacking_weights")
 })
 
 test_that("models drop and add work correctly", {
-  expect_equal(class(a1$mod_stats$wi), "stacking_weights")
+  a2 <- amend(manec_gausian_identity, add = "ecxlin")
   expect_message(amend(a2, drop = "nec4param"), "Fitted models are:  ecx4param ecxlin")
   expect_equal(names(a2$mod_fits), c("nec4param", "ecx4param", "ecxlin"))
 })

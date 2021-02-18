@@ -7,13 +7,10 @@ resp_a <- 1:100
 resp_na <- add_na(resp_a)
 pred_b <- pred_a[-1]
 resp_b <- resp_a[-1]
-p_a <- define_prior(model = "nec3param", family = gaussian(),
-                    predictor = pred_a, response = resp_a)
-p_b <- define_prior(model = "nec4param", family = Beta(link = "logit"),
-                    predictor = pred_a, response = rbeta(100, 1, 5))
-p_c <- define_prior(model = "nec4param", family = Beta(link = "identity"),
-                    predictor = pred_a, response = rbeta(100, 1, 5))
+
 test_that("model is always properly specified as character", {
+  p_a <- define_prior(model = "nec3param", family = gaussian(),
+                      predictor = pred_a, response = resp_a)  
   expect_error(define_prior(family = gaussian(),
                             predictor = pred_a, response = resp_a))
   expect_error(define_prior(model = NULL, family = gaussian(),
@@ -69,6 +66,12 @@ test_that("predictor and response have different lengths", {
 })
 
 test_that("check proper output structure", {
+  p_a <- define_prior(model = "nec3param", family = gaussian(),
+                      predictor = pred_a, response = resp_a)    
+  p_b <- define_prior(model = "nec4param", family = Beta(link = "logit"),
+                      predictor = pred_a, response = rbeta(100, 1, 5))  
+  p_c <- define_prior(model = "nec4param", family = Beta(link = "identity"),
+                      predictor = pred_a, response = rbeta(100, 1, 5)) 
   expect_identical(sort(p_a$nlpar), c("beta", "nec", "top"))
   expect_true(grepl("normal", p_a$prior[p_a$nlpar == "beta"]))
   expect_true(grepl("normal", p_a$prior[p_a$nlpar == "nec"]))
