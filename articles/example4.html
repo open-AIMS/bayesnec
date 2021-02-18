@@ -79,7 +79,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/open-aims/bayesnec/">
+  <a href="https://github.com/open-aims/bayesnec/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
      
   </a>
@@ -100,7 +100,7 @@
       <h1 data-toc-skip>Comparing posterior predictions</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/master/vignettes/example4.Rmd"><code>vignettes/example4.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/master/vignettes/example4.Rmd" class="external-link"><code>vignettes/example4.Rmd</code></a></small>
       <div class="hidden name"><code>example4.Rmd</code></div>
 
     </div>
@@ -115,23 +115,23 @@
 <h2 class="hasAnchor">
 <a href="#comparing-posterior-endpoint-values" class="anchor"></a>Comparing posterior endpoint values</h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms">brms</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec">bayesnec</a></span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec" class="external-link">bayesnec</a></span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>
 
 <span class="co"># Fit a set of models</span>
 <span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">nec_data</span>, x_var <span class="op">=</span> <span class="st">"x"</span>, y_var <span class="op">=</span> <span class="st">"y"</span>, model <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span>
 
-<span class="fu"><a href="https://rdrr.io/r/base/class.html">class</a></span><span class="op">(</span><span class="va">exmp</span><span class="op">)</span> <span class="co"># bayesmanecfit</span></code></pre></div>
+<span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp</span><span class="op">)</span> <span class="co"># bayesmanecfit</span></code></pre></div>
 <p>This call fits all models that are suitable for modelling beta response data using a logit link. We can pull out the <strong>nec</strong> models and the <strong>ecx</strong> models separately, to create two more alternative model fits of this data.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exmp_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exmp</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>
 <span class="va">exmp_ecx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exmp</span>, model <span class="op">=</span> <span class="st">"ecx"</span><span class="op">)</span></code></pre></div>
 <p>Now we have three different averaged model fits, all of class <code>bayemanec</code> in this case (because they all contain multiple fits). We can compare their posterior estimates of the ex10 values using <code>compare_posterior</code>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span>
-<span class="va">post_comp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="st">"all"</span> <span class="op">=</span> <span class="va">exmp</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">exmp_ecx</span>, <span class="st">"nec"</span> <span class="op">=</span> <span class="va">exmp_nec</span><span class="op">)</span>, comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/names.html">names</a></span><span class="op">(</span><span class="va">post_comp</span><span class="op">)</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span>
+<span class="va">post_comp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"all"</span> <span class="op">=</span> <span class="va">exmp</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">exmp_ecx</span>, <span class="st">"nec"</span> <span class="op">=</span> <span class="va">exmp_nec</span><span class="op">)</span>, comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">post_comp</span><span class="op">)</span>
 <span class="co"># "posterior_list" </span>
 <span class="co"># "posterior_data" </span>
 <span class="co"># "diff_list"      </span>
@@ -162,12 +162,12 @@
 <a href="#comparing-posterior-fitted-values" class="anchor"></a>Comparing posterior fitted values</h2>
 <p>The user can also compare posterior fitted values across the full range of x values, using <code>comparison = "fitted"</code>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec">bayesnec</a></span><span class="op">)</span>
-<span class="va">post_comp_fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="st">"all"</span> <span class="op">=</span> <span class="va">exmp</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">exmp_ecx</span>, <span class="st">"nec"</span> <span class="op">=</span> <span class="va">exmp_nec</span><span class="op">)</span>, comparison <span class="op">=</span> <span class="st">"fitted"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec" class="external-link">bayesnec</a></span><span class="op">)</span>
+<span class="va">post_comp_fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"all"</span> <span class="op">=</span> <span class="va">exmp</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">exmp_ecx</span>, <span class="st">"nec"</span> <span class="op">=</span> <span class="va">exmp_nec</span><span class="op">)</span>, comparison <span class="op">=</span> <span class="st">"fitted"</span><span class="op">)</span></code></pre></div>
 <p>In the case of <code>comparison = "fitted"</code> most of the elements returned by compare_posterior are class <code>data.frame</code>, with summary values for the posteriors, difference values and probabilities returned for each value of x, for each model, or model comparison.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span>
 <span class="co">#   model          x  Estimate      Q2.5     Q97.5</span>
 <span class="co"># 1   all 0.03234801 0.8865920 0.8609242 0.8987086</span>
 <span class="co"># 2   all 0.09741274 0.8868260 0.8676755 0.8987086</span>
@@ -176,7 +176,7 @@
 <span class="co"># 5   all 0.29260692 0.8877217 0.8746777 0.8988511</span>
 <span class="co"># 6   all 0.35767165 0.8880612 0.8760193 0.8988571</span>
 
-<span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span>
 <span class="co">#   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x</span>
 <span class="co"># 1    all-ecx  -0.005726618 -0.03212779 0.01120134 0.03234801</span>
 <span class="co"># 2    all-ecx  -0.005424647 -0.02608475 0.01123945 0.09741274</span>
@@ -220,7 +220,7 @@
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.9000.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 1.6.1.9000.</p>
 </div>
 
       </footer>
