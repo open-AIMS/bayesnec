@@ -189,7 +189,6 @@ clean_names <- function(x) {
 modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
   posterior_sample <- p_samples[n, ]
   if (hormesis_def == "max") {
-    #target <- object$nec_posterior[n]
     target <- x_vec[which.max(posterior_sample)]
     change <- x_vec < target
   } else if (hormesis_def == "control") {
