@@ -1,6 +1,6 @@
 
 pred_neclin <- function(b_slope, b_nec, b_top, x) {
-  b_top - b_slope * (x - b_nec) * ifelse(x - b_nec < 0, 0, 1)
+  b_top - exp(b_slope) * (x - b_nec) * ifelse(x - b_nec < 0, 0, 1)
 }
 
 pred_nec3param <- function(b_beta, b_nec, b_top, x) {

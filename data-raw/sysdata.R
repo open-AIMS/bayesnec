@@ -38,7 +38,7 @@ mod_fams <- c(gaussian = "gaussian",
 # NEC MODELS
 ############
 # neclin
-bf_neclin <- brms::bf(y ~ top - slope * (x - nec) * step(x - nec),
+bf_neclin <- brms::bf(y ~ top - exp(slope) * (x - nec) * step(x - nec),
                       top + slope + nec ~ 1,
                       nl = TRUE)
 

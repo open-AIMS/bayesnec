@@ -177,7 +177,7 @@ While very similar the **ecxwb1**, according to [@Ritz2016] fitted **ecxwb1** an
 
 
 ### ecxll5
-The **ecxll5** model is a 5 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.5 model of [@Ritz2016], given by the equation
+The **ecxll5** model is a 5 parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.5 model of [@Ritz2016], given by the equation
 $$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
@@ -185,7 +185,7 @@ show_params("ecxll5")
 ```
 
 ### ecxll4
-The **ecxll4** model is a 4 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.4 model of [@Ritz2016], given by the equation
+The **ecxll4** model is a 4 parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.4 model of [@Ritz2016], given by the equation
 $$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
@@ -193,7 +193,7 @@ show_params("ecxll4")
 ```
 
 ### ecxll3
-The **ecxll3** model is a 3 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.3 model of [@Ritz2016], given by the equation
+The **ecxll3** model is a 3 parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.3 model of [@Ritz2016], given by the equation
 $$y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
@@ -202,7 +202,7 @@ show_params("ecxll3")
 The model is `0` bounded, thus not suitable for gaussian response data or the use of a logit or log link function.
 
 ### ecxhormebc5
-The **ecxhormebc5** model is a 5 parameter log-logisitic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the "Brain-Cousens" (BC.5) model of [@Ritz2016], given by the equation
+The **ecxhormebc5** model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the "Brain-Cousens" (BC.5) model of [@Ritz2016], given by the equation
 $$y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
@@ -210,7 +210,7 @@ show_params("ecxhormebc5")
 ```
 
 ### ecxhormebc4
-The **ecxhormebc4** model is a 5 parameter log-logisitic model similar to the exchormebc5 model but with a lower bound of 0, given by the equation
+The **ecxhormebc4** model is a 5 parameter log-logistic model similar to the exchormebc5 model but with a lower bound of 0, given by the equation
 $$y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
@@ -223,7 +223,7 @@ The model is `0` bounded, thus not suitable for gaussian response data or the us
 
 ### neclin
 The **neclin** model is a basic linear decay model equivalent to **ecxlin** with the addition of the "nec" step function, given by the equation
-$$y_i = \tau - \alpha \left(x_i - \eta \right) f(x_i, \eta)$$
+$$y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)$$
 and fitted in R via `brms` using the formula
 ```{r, echo=FALSE}
 show_params("neclin")
