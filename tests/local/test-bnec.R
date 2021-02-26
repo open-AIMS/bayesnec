@@ -1,10 +1,15 @@
 library(bayesnec)
 
-nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
-fit1 <- manec_gausian_identity$mod_fits$nec4param$fit
-fit2 <- manec_gausian_identity$mod_fits$ecx4param$fit
-ec10 <- ecx(manec_gausian_identity, type = "relative")
-ec90 <- ecx(manec_gausian_identity, ecx_val = 90, type = "relative")
+test_that("models fit correctly", {
+  nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
+  fit1 <- manec_gausian_identity$mod_fits$nec4param$fit
+  fit2 <- manec_gausian_identity$mod_fits$ecx4param$fit
+})
+
+test_that("ecx works", {
+ ec10 <- ecx(manec_gausian_identity, type = "relative")
+ ec90 <- ecx(manec_gausian_identity, ecx_val = 90, type = "relative") 
+})
 
 test_that("gaussian model with identity works correctly", {
   expect_equal(summary(manec_gausian_identity)$family, "gaussian")  
