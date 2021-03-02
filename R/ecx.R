@@ -91,14 +91,19 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   names(ecx_estimate) <- paste(label, clean_names(ecx_estimate), sep = "_")
   attr(ecx_estimate, 'precision') <- precision      
   attr(ecx_out, 'precision') <- precision
-
+  
   if (signif(ecx_estimate[1], 3)==signif(ecx_estimate[3], 3)){
-    warning("The estimated mean is identical or nearly identical to your upper credible interval. ",
-            "This suggests the ecx estimate lies beyond the upper bound of your x_range and should be reported as greater than. ",
+    warning(paste("The estimated mean is identical or nearly identical to your upper credible interval for the",
+                  object$model,"model.") ,
+            "This suggests the ecx estimate lies beyond the upper bound of your x_range and should be reported as greater than, and used as a censored value. ",
             "You could try increasing x_range, although extrapolation beyond the data range should be done with caution.")
   } else if (signif(ecx_estimate[3], 3)==signif(max(x_vec), 3)) {
-    warning("The estimated upper credible interval is identical or nearly identical to the upper bound of your x_range value and suggests the estimated uncertainty may be constrained. You could try increasing x_range to ensure this is not the case.")
+    warning(paste("The estimated upper credible interval is identical or nearly identical to the upper bound of your x_range
+              value for the", object$model, "model."), 
+            "This suggests the estimated uncertainty may be constrained. You could try increasing x_range to ensure
+              this is not the case.")
   }
+  
   if (!posterior) {
     ecx_estimate        
   } else {
@@ -180,7 +185,8 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   names(ecx_estimate) <- c(label, paste(label, "lw", sep = "_"),
                            paste(label, "up", sep = "_"))
     attr(ecx_estimate, 'precision') <- precision      
-    attr(ecx_out, 'precision') <- precision     
+    attr(ecx_out, 'precision') <- precision    
+    
   if (!posterior) {
     ecx_estimate
   } else {
