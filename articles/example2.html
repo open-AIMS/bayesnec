@@ -232,7 +232,7 @@
 <span class="co">#Chain plots saved to file example_5_all_chains.pdf, in your working directory.</span></code></pre></div>
 <p>We can also make a plot to compare the posterior probability density to that of the prior using the <code>check_priors</code> function, for an individual model fit, but also saving all fits to a file in the working directory.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_fits</span><span class="op">$</span><span class="va">nec4param</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_fits</span><span class="op">$</span><span class="va">nec4param</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example2f.jpeg" width="100%"></p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span>, filename <span class="op">=</span> <span class="st">"example_5_all_priors"</span><span class="op">)</span>
