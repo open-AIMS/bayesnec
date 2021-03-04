@@ -1,5 +1,5 @@
 ---
-title: "Multi model usage"
+title: "Multi-model usage"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Multi model usage}
