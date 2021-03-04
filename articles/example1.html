@@ -111,16 +111,16 @@
 <h1 class="hasAnchor">
 <a href="#bayesnec" class="anchor"></a><code>bayesnec</code>
 </h1>
-<p>The <code>bayesnec</code> is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage ‘x’, <em>ECx</em>) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span> and <code>stan</code>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which was based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
+<p>The <code>bayesnec</code> is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage ‘x’, <em>ECx</em>) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span> and <code>stan</code>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which was based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
 </div>
 <div id="background" class="section level1">
 <h1 class="hasAnchor">
 <a href="#background" class="anchor"></a>Background</h1>
-<p>Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for <em>NEC</em> estimation (or even <em>ECx</em> estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The <code>bayesnec</code> package provides an accessible interface specifically for fitting <em>NEC</em> models and other concentration-response models using Bayesian methods. A range of models are specified based on the known distribution of the “concentration” or “dose” variable (the predictor, x) as well as the “response” (y) variable. The model formula, including priors and initial values required to call a <code>brms</code> model are automatically generated based on information contained in the supplied data. While the distribution of the x and y variables can be specified directly, <code>bayesnec</code> will automatically ‘guess’ the correct distribution to use based on the characteristics of the provided data.</p>
-<p>This project started with an implementation of the <em>NEC</em> model based on that described in <span class="citation">(Fox 2010)</span> using R2jags. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original <code>jagsNEC</code> implementation supported gaussian, poisson, binomial, gamma, negative binomial and beta response data <code>bayesnec</code> additionally supports the betabinomial, and can be easily extended to include any of the available <code>brms</code> families. We have since also further added a range of alternative <em>NEC</em> model types, as well as a range of typically used concentration-response models (such as 4-parameter logistic and weibull models) that have no <em>NEC</em> ‘step’ function but simply model the response as a smooth function of concentration, as can be fit using other commonly used frequentist packages such as <code>drc</code> <span class="citation">(Ritz et al. 2016)</span>.</p>
-<p>Specific models can be fit directly using <code>bnec</code>, which is what we discuss here. Alternatively it is possible to fit a custom model set, specific model set or all of the available models. Further information on fitting multi models using <code>bayesnec</code> can be found in the <a href="https://open-aims.github.io/bayesnec/articles/example2.html" class="external-link">Multi model usage</a> vignette. For detailed information on the models available in <code>bayesnec</code> see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette.</p>
+<p>Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for <em>NEC</em> estimation (or even <em>ECx</em> estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The <code>bayesnec</code> package provides an accessible interface specifically for fitting <em>NEC</em> models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the “concentration” or “dose” variable (the predictor, x) as well as the “response” (y) variable. The model formula, including priors and initial values required to call a <code>brms</code> model are automatically generated based on information contained in the supplied data. While the distribution of the x and y variables can be specified directly, <code>bayesnec</code> will automatically ‘guess’ the correct distribution to use based on the characteristics of the provided data.</p>
+<p>This project started with an implementation of the <em>NEC</em> model based on that described in (Pires et al. 2002) and <span class="citation">(Fox 2010)</span> using R2jags <span class="citation">(Fisher, Ricardo, and Fox 2020)</span>. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original <code>jagsNEC</code> implementation supported Gaussian, Poisson, Binomial, Gamma, Negative Binomial and beta response data <code>bayesnec</code> additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available <code>brms</code> families. We have since also further added a range of alternative <em>NEC</em> model types, as well as a range of concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist packages such as <code>drc</code><span class="citation">(Ritz et al. 2016)</span>. These models do not employ segmented regression (i.e., use of a ‘step’ function) but simply models the response as a smooth function of concentration.</p>
+<p>Specific models can be fit directly using <code>bnec</code>, which is what we discuss here. Alternatively, it is possible to fit a custom model set, a specific model set, or all the available models. Further information on fitting multi-models using <code>bayesnec</code> can be found in the <a href="https://open-aims.github.io/bayesnec/articles/example2.html" class="external-link">Multi model usage</a> vignette. For detailed information on the models available in <code>bayesnec</code> see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette.</p>
 <p>Important information on the current package is contained in the <code>bayesnec</code> help-files and the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette.</p>
-<p>This package is currently under development. We are keen on any feedback regarding usage, and especially bug reporting that includes an easy to run self contained reproducible example of unexpected behaviour or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy to run reproducible example is not supplied.</p>
+<p>This package is currently under development. We are keen to receive any feedback regarding usage, and especially bug reporting that includes an easy to run self-contained reproducible example of unexpected behaviour, or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy-to-run reproducible example is not supplied.</p>
 </div>
 <div id="installation" class="section level1">
 <h1 class="hasAnchor">
@@ -129,7 +129,7 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span>
 <span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"open-AIMS/bayesnec"</span><span class="op">)</span></code></pre></div>
-<p>To run this vignette we will also need some additional packages, which are made available via <code>tidyverse</code></p>
+<p>To run this vignette, we will also need some additional packages, which are made available via <code>tidyverse</code></p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></code></pre></div>
 </div>
@@ -140,11 +140,11 @@
 <h2 class="hasAnchor">
 <a href="#fitting-the-neclin-model-using-bnec" class="anchor"></a>Fitting the neclin model using <code>bnec</code>
 </h2>
-<p>Here we include some examples showing how to use the package to fit an <em>NEC</em> model to binomial, proportional, count and continuous response (y) data. The examples are those used by Gerard Ricardo at: <a href="https://github.com/gerard-ricardo/NECs/blob/master/NECs" class="external-link uri">https://github.com/gerard-ricardo/NECs/blob/master/NECs</a>. Here we show how to run a similar <code>jags</code> models using the <code>bayesnec</code> package. Note however, the default behaviour in <code>bayesnec</code> is to use native link functions for each family, thus we fit the “neclin” model for these examples, rather than the “nec3param” model which is not valid for use with the logit or log link (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette for more information and the models available in <code>bayesnec</code>).</p>
+<p>Here we include some examples showing how to use the package to fit an <em>NEC</em> model to binomial, proportional, count and continuous response (y) data. The examples are those used at: <a href="https://github.com/gerard-ricardo/NECs/blob/master/NECs" class="external-link uri">https://github.com/gerard-ricardo/NECs/blob/master/NECs</a>, but here we are showing how to fit models to these data using the <code>bayesnec</code> package. Note however, the default behaviour in <code>bayesnec</code> is to use native link functions for each family, thus we fit the “neclin” model for these examples, rather than the “nec3param” model which is not valid for use with the logit or log link (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette for more information and the models available in <code>bayesnec</code>).</p>
 <div id="binomial-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#binomial-data" class="anchor"></a>Binomial data</h3>
-<p>The response variable <code>y</code> is considered to follow a binomial distribution when it is a count out of a total (such as the percentage survival of individuals, for example). First we read in the binomial example from <a href="https://pastebin.com/tools" class="external-link">pastebin</a>, prepare the data for analysis, and then inspect the dataset as well as the “concentration” or x variable, in this case <code>raw_x</code>.</p>
+<p>The response variable <code>y</code> is considered to follow a binomial distribution when it is a count out of a total (such as the percentage survival of individuals, for example). First, we read in the binomial example from <a href="https://pastebin.com/tools" class="external-link">pastebin</a>, prepare the data for analysis, and then inspect the dataset as well as the “concentration” or x variable, in this case <code>raw_x</code>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">binom_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/zfrUha88"</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -164,7 +164,7 @@
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
-<p>In this case for x, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the x data are common for concentration response experiments, where the x ‘concentration’ data are the concentration of contaminants, or dilutions. The current default in <code>bayesnec</code> is to estimate the appropriate distribution(s) and priors for the <code>family</code> argument, but it is possible to supply <code>family</code> directly. We are going to model this with the x data on a log scale, as this is the scaling clearly used in the experimental design and the will provide more stable results.</p>
+<p>In this case for x, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the x data are common for concentration—response experiments, where the x ‘concentration’ data are the concentration of contaminants, or dilutions. The current default in <code>bayesnec</code> is to estimate the appropriate distribution(s) and priors for the <code>family</code> argument, but it is possible to supply <code>family</code> directly. We are going to model this with the x data on a log scale, as this is the scaling clearly used in the experimental design and thus will provide more stable results.</p>
 <p>The data are clearly binomial, with the column <code>suc</code>—indicating the number of ‘successes’ in the binomial call, with <code>tot</code> clearly indicating the number of trials.</p>
 <p>The main ‘working’ function in <code>bayesnec</code> is the function <code>bnec</code>, which calls the other necessary functions and fits the <code>brms</code> model. We run <code>bnec</code> by supplying <code>data</code>: a data.frame containing the data for the model fitting, here, <code>binom_data</code>; <code>x_var</code>: the name of the column in <code>data</code> which contains the concentration data or ‘x’ data to be used in the <em>NEC</em> model fit, and <code>y_var</code>: the name of the column in <code>data</code> which contains the response or ‘y’ data to be used in the <em>NEC</em> model fit. In our example here, as this is binomial, we must also supply <code>trials_var</code>, which is the name of the column in <code>data</code> which contains the number of trials in the binomial call.</p>
 <p><code>bnec</code> will guess the data types for use, although as mentioned above we could manually specify <code>family</code> as “binomial”. <code>bnec</code> will also generate appropriate priors for the <code>brms</code> model call, although these can also be specified manually (see the <a href="https://open-aims.github.io/bayesnec/articles/example3.html" class="external-link">Priors</a> vignette for more details).</p>
@@ -178,8 +178,8 @@
 <pre><code>## 
 ## SAMPLING FOR MODEL 'e082550ebfed36471483e1dd361fd67b' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 8.6e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.86 seconds.
+## Chain 1: Gradient evaluation took 9.1e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.91 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -196,15 +196,15 @@
 ## Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 1.99522 seconds (Warm-up)
-## Chain 1:                0.282053 seconds (Sampling)
-## Chain 1:                2.27727 seconds (Total)
+## Chain 1:  Elapsed Time: 1.98962 seconds (Warm-up)
+## Chain 1:                0.281506 seconds (Sampling)
+## Chain 1:                2.27113 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL 'e082550ebfed36471483e1dd361fd67b' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 3.3e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.33 seconds.
+## Chain 2: Gradient evaluation took 3.2e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.32 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -221,15 +221,15 @@
 ## Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 2.01129 seconds (Warm-up)
-## Chain 2:                0.298932 seconds (Sampling)
-## Chain 2:                2.31022 seconds (Total)
+## Chain 2:  Elapsed Time: 2.0042 seconds (Warm-up)
+## Chain 2:                0.298537 seconds (Sampling)
+## Chain 2:                2.30273 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL 'e082550ebfed36471483e1dd361fd67b' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 3.2e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.32 seconds.
+## Chain 3: Gradient evaluation took 3.3e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.33 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -246,15 +246,15 @@
 ## Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 1.98858 seconds (Warm-up)
-## Chain 3:                0.283719 seconds (Sampling)
-## Chain 3:                2.2723 seconds (Total)
+## Chain 3:  Elapsed Time: 1.98577 seconds (Warm-up)
+## Chain 3:                0.283135 seconds (Sampling)
+## Chain 3:                2.2689 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL 'e082550ebfed36471483e1dd361fd67b' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 3.9e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.39 seconds.
+## Chain 4: Gradient evaluation took 4e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.4 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -271,15 +271,15 @@
 ## Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.05487 seconds (Warm-up)
-## Chain 4:                0.274886 seconds (Sampling)
-## Chain 4:                2.32975 seconds (Total)
+## Chain 4:  Elapsed Time: 2.05497 seconds (Warm-up)
+## Chain 4:                0.273119 seconds (Sampling)
+## Chain 4:                2.32809 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot(exp_1$fit)</a></code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-7-1.png" width="672"></p>
-<p>In our example, the chains are well mixed and the probability density plots look good. We can also do a pairs plot that can help to assess issues with identifiability, which also looks ok. There are a range of other model diagnostics that can be explored for brms model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (<a href="https://github.com/paul-buerkner/brms" class="external-link uri">https://github.com/paul-buerkner/brms</a>) models.</p>
+<p>In our example, the chains are well mixed, and the probability density plots look good. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks ok. There are a range of other model diagnostics that can be explored for [brms] model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (<a href="https://github.com/paul-buerkner/brms" class="external-link uri">https://github.com/paul-buerkner/brms</a>) models.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/pairs.html" class="external-link">pairs</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-8-1.png" width="672"></p>
@@ -308,7 +308,7 @@
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
 ## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
 <p>Note the Rhat values in this example are one, indicating convergence.</p>
-<p>The function <code>plot</code> can be used to plot the fitted model. You can also make your own plot from the data included in the returned <code>bayesnecfit</code> object from the call to <code>bnec</code>. Here we use the default plot method from <code>bayesnec</code>, where we add the exp function to plot the tick labels on the original scaling of the concentration data.</p>
+<p>The function <code>plot</code> can be used to plot the fitted model. You can also make your own plot from the data included in the returned <code>bayesnecfit</code> object from the call to <code>bnec</code>. Here we use the default plot method from <code>bayesnec</code>, where we add the ‘exp’ function to plot the tick labels on the original scaling of the concentration data.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1</span>, lxform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-10-1.png" width="672"></p>
@@ -320,7 +320,7 @@
      <span class="fu">geom_point</span><span class="op">(</span>data <span class="op">=</span> <span class="va">df</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">prop</span><span class="op">)</span>,
                 inherit.aes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-11-1.png" width="672"><img src="example1_files/figure-html/unnamed-chunk-11-2.png" width="672"></p>
-<p>This model fit doesn’t look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by <code>bayesnec</code>, and this can be extracted using <code>exp_1$dispersion</code>. Values &gt;1 indicate over-dispersion and values &lt;1 indicate under-dispersion. In this case the over-dispersion value is much bigger than 1, suggesting extreme over-dispersion (meaning our model doesn’t properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the beta-binomial.</p>
+<p>This model fit doesn’t look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by <code>bayesnec</code>, and this can be extracted using <code>exp_1$dispersion</code>. Values &gt;1 indicate overdispersion and values &lt;1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model doesn’t properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></code></pre></div>
 <pre><code>## Estimate     Q2.5    Q97.5 
@@ -328,21 +328,21 @@
 </div>
 <div id="beta-binomial" class="section level3">
 <h3 class="hasAnchor">
-<a href="#beta-binomial" class="anchor"></a>Beta binomial</h3>
-<p>The beta binomial model can be useful for over dispersed binomial data.</p>
+<a href="#beta-binomial" class="anchor"></a>Beta-Binomial</h3>
+<p>The Beta-Binomial model can be useful for overdispersed Binomial data.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_1b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">binom_data</span>, x_var <span class="op">=</span> <span class="st">"log_x"</span>,
               y_var <span class="op">=</span> <span class="st">"suc"</span>, model <span class="op">=</span> <span class="st">"neclin"</span>,
               family <span class="op">=</span> <span class="va">beta_binomial2</span>,
               trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span></code></pre></div>
-<p>Fitting this data with the betabinomial2 yields a much more realistic fit in terms of the confidence bounds and the spread in the data. Note that no dispersion estimate is provided here, as overdispersion is only relevant for poisson and binomial data.</p>
+<p>Fitting this data with the betabinomial2 yields a much more realistic fit in terms of the confidence bounds and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1b</span>, lxform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span>
 <span class="va">exp_1b</span><span class="op">$</span><span class="va">dispersion</span>
 <span class="co">#[1] NA NA NA</span></code></pre></div>
 <p><img src="example1a.jpeg" width="100%"></p>
-<p>Now we have a good fit to these data, we can interpret the results. The estimated <em>NEC</em> value can be obtained directly from the fitted model object, using <code>exp_1b$nec</code>, or we can plot the posterior distribution of the nec values.</p>
+<p>Now we have a good fit to these data, we can interpret the results. The estimated <em>NEC</em> value can be obtained directly from the fitted model object, using <code>exp_1b$nec</code>, or we can plot the posterior distribution of the <em>NEC</em> values.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec</span>
 <span class="co">#Estimate     Q2.5    Q97.5 </span>
@@ -387,7 +387,7 @@
 <div id="beta-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#beta-data" class="anchor"></a>Beta data</h3>
-<p>Sometimes the response variable is distributed between <code>0</code> and <code>1</code> but is not a straight forward binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical ‘trials’ and the data must be modelled using a beta distribution.</p>
+<p>Sometimes the response variable is distributed between <code>0</code> and <code>1</code> but is not a straight-forward Binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical ‘trials’ and the data must be modelled using a beta distribution.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">prop_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/123jq46d"</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -408,7 +408,7 @@
 <div id="poisson-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#poisson-data" class="anchor"></a>Poisson data</h3>
-<p>Where data are a count (of, for example, individuals or cells) y is poisson. Such data are distributed from <code>0</code> to <code>Inf</code> and are integers. First we read in the count data example from <a href="https://pastebin.com/tools" class="external-link">pastebin</a>, and then plot the “concentration” or x data, Again, this is <code>raw_x</code>, and distributed as in our binomial example above.</p>
+<p>Where data are a count (of, for example, individuals or cells) y is Poisson. Such data are distributed from <code>0</code> to <code>Inf</code> and are integers. First we read in the count data example from <a href="https://pastebin.com/tools" class="external-link">pastebin</a>, and then plot the “concentration” or x data, Again, this is <code>raw_x</code>, and distributed as in our binomial example above.</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec" class="external-link">bayesnec</a></span><span class="op">)</span>
@@ -431,7 +431,7 @@
 <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">raw_x</span>, xlab <span class="op">=</span> <span class="st">"'x' variable"</span>, main <span class="op">=</span> <span class="st">""</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">count</span>, xlab <span class="op">=</span> <span class="st">"Total counts"</span>, main <span class="op">=</span> <span class="st">""</span><span class="op">)</span></code></pre></div>
 <p><img src="example1_files/figure-html/unnamed-chunk-25-1.png" width="960"></p>
-<p>First we supply <code>bnec</code> with <code>data</code> (count_data), and specify <code>x_var</code> and <code>y_var</code>. As we have integers of 0 and greater <code>family</code> is “poisson”. The default behaviour to guess the variable types works for this example.</p>
+<p>First, we supply <code>bnec</code> with <code>data</code> (count_data), and specify <code>x_var</code> and <code>y_var</code>. As we have integers of 0 and greater, the <code>family</code> is “poisson”. The default behaviour to guess the variable types works for this example.</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">count_data</span>, x_var <span class="op">=</span> <span class="st">"sqrt_x"</span>,
@@ -446,7 +446,7 @@
 <span class="co">#Estimate     Q2.5    Q97.5 </span>
 <span class="co">#2.915520 1.927265 4.526432 </span></code></pre></div>
 <p><img src="example1e.jpeg" width="100%"></p>
-<p>The chains look ok, however our plot of the fit is not very convincing. The error bars are very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try a negative binomial family.</p>
+<p>The chains look ok; however, our plot of the fit is not very convincing. The error bars are very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try a negative binomial family.</p>
 </div>
 <div id="negative-binomial" class="section level3">
 <h3 class="hasAnchor">
@@ -456,7 +456,7 @@
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_3b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">count_data</span>, x_var <span class="op">=</span> <span class="st">"sqrt_x"</span>,
               y_var <span class="op">=</span> <span class="st">"count"</span>, family <span class="op">=</span> <span class="st">"negbinomial"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span></code></pre></div>
-<p>The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it it still does not seem to be a good model for these data. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html" class="external-link">Multi model usage</a> vignettes for options to fit other models to these data.</p>
+<p>The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it still does not seem to be a good model for these data. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html" class="external-link">Multi model usage</a> vignettes for options to fit other models to these data.</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">)</span></code></pre></div>
 <p><img src="example1f.jpeg" width="100%"></p>
@@ -467,7 +467,7 @@
 <div id="measure-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#measure-data" class="anchor"></a>Measure data</h3>
-<p>Where data are a measured variable y is family gamma. Good examples of <code>gamma</code> distributed data include measures of body size, such as length, weight or area. Such data are distributed from <code>0+</code> to <code>Inf</code> and are continuous. Here we use the nec_data supplied with <code>bayesnec</code> with y on the exponential scale to ensure the right data range for a gamma as an example.</p>
+<p>Where data are a measured variable y is family gamma. Good examples of <code>gamma</code> distributed data include measures of body size, such as length, weight, or area. Such data are distributed from <code>0+</code> to <code>Inf</code> and are continuous. Here we use the nec_data supplied with <code>bayesnec</code> with y on the exponential scale to ensure the right data range for a gamma as an example.</p>
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>
 <span class="va">measure_data</span> <span class="op">&lt;-</span> <span class="va">nec_data</span> <span class="op">%&gt;%</span>
