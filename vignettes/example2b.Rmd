@@ -76,8 +76,8 @@ In addition to the model parameters, all `nec...`  models have a step function u
 
 $$
 f(x_i, \eta) = \begin{cases} 
-      x_i - \eta < 0, & 0 \\
-      x_i - \eta \geq 0, & 1 \\
+      0, & x_i - \eta < 0 \\
+      1, & x_i - \eta \geq 0 \\
    \end{cases}
 $$
 
