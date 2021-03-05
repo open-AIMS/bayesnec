@@ -77,19 +77,19 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
       axis(side = 1, at = signif(xticks, 2))
     }
     legend_nec <- paste("NEC: ", signif(nec["Estimate"], 2),
-                        " (", signif(nec["Q2.5"], 2), "—",
+                        " (", signif(nec["Q2.5"], 2), "-",
                         signif(nec["Q97.5"], 2), ")", sep = "")
     legend_ec10 <- paste("EC10: ", signif(ec10[1], 2),
-                         " (", signif(ec10[2], 2), "—",
+                         " (", signif(ec10[2], 2), "-",
                          signif(ec10[3], 2), ")", sep = "")
   } else {
     x_labs <- signif(lxform(x_ticks), 2)
     axis(side = 1, at = x_ticks, labels = x_labs)
     legend_nec <- paste("NEC: ", signif(lxform(nec["Estimate"]), 2),
-                        " (", signif(lxform(nec["Q2.5"]), 2), "—",
+                        " (", signif(lxform(nec["Q2.5"]), 2), "-",
                         signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
     legend_ec10 <- paste("EC10: ", signif(lxform(ec10[1]), 2),
-                         " (", signif(lxform(ec10[2]), 2), "—",
+                         " (", signif(lxform(ec10[2]), 2), "-",
                          signif(lxform(ec10[3]), 2), ")", sep = "")
   }
 

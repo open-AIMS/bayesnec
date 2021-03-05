@@ -19,7 +19,9 @@ test_that("plot returns null, is invisible, and is silent", {
 })
 
 test_that("summary behaves as expected", {
-  summary.p <- summary(nec_gausian_identity)
+  summary.p <- expect_warning(summary(nec_gausian_identity))
   expect_equal(class(summary.p), "necsummary")
   expect_equal(names(summary.p), c("brmssummary", "model", "is_ecx", "ecs"))
 })
+
+
