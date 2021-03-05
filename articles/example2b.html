@@ -131,8 +131,8 @@
 <p>In addition to the model parameters, all <code>nec...</code> models have a step function used to define the breakpoint in the regression, which can be defined as</p>
 <p><span class="math display">\[
 f(x_i, \eta) = \begin{cases} 
-      x_i - \eta &lt; 0, &amp; 0 \\
-      x_i - \eta \geq 0, &amp; 1 \\
+      0, &amp; x_i - \eta &lt; 0 \\
+      1, &amp; x_i - \eta \geq 0 \\
    \end{cases}
 \]</span></p>
 </div>
@@ -237,7 +237,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxll5" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxll5" class="anchor"></a>ecxll5</h3>
-<p>The <strong>ecxll5</strong> model is a 5 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.5 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxll5</strong> model is a 5 parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.5 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^f 
 ## bot ~ 1
 ## top ~ 1
@@ -248,7 +248,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxll4" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxll4" class="anchor"></a>ecxll4</h3>
-<p>The <strong>ecxll4</strong> model is a 4 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.4 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxll4</strong> model is a 4 parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.4 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) 
 ## bot ~ 1
 ## top ~ 1
@@ -258,7 +258,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxll3" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxll3" class="anchor"></a>ecxll3</h3>
-<p>The <strong>ecxll3</strong> model is a 3 parameter sigmoidal log-logisitic decay model which is a slight reformulation of the LL.3 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxll3</strong> model is a 3 parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.3 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) 
 ## top ~ 1
 ## beta ~ 1
@@ -268,7 +268,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxhormebc5" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxhormebc5" class="anchor"></a>ecxhormebc5</h3>
-<p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logisitic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the “Brain-Cousens” (BC.5) model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the “Brain-Cousens” (BC.5) model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation <span class="math display">\[y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
 ## bot ~ 1
 ## top ~ 1
@@ -279,7 +279,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxhormebc4" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxhormebc4" class="anchor"></a>ecxhormebc4</h3>
-<p>The <strong>ecxhormebc4</strong> model is a 5 parameter log-logisitic model similar to the exchormebc5 model but with a lower bound of 0, given by the equation <span class="math display">\[y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxhormebc4</strong> model is a 5 parameter log-logistic model similar to the exchormebc5 model but with a lower bound of 0, given by the equation <span class="math display">\[y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>## y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
 ## top ~ 1
 ## beta ~ 1
@@ -294,8 +294,8 @@ f(x_i, \eta) = \begin{cases}
 <div id="neclin" class="section level3">
 <h3 class="hasAnchor">
 <a href="#neclin" class="anchor"></a>neclin</h3>
-<p>The <strong>neclin</strong> model is a basic linear decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i = \tau - \alpha \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula</p>
-<pre><code>## y ~ top - slope * (x - nec) * step(x - nec) 
+<p>The <strong>neclin</strong> model is a basic linear decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation <span class="math display">\[y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<pre><code>## y ~ top - exp(slope) * (x - nec) * step(x - nec) 
 ## top ~ 1
 ## slope ~ 1
 ## nec ~ 1</code></pre>

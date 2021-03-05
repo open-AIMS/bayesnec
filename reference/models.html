@@ -255,7 +255,7 @@ If missing all available models and their groups are listed.</p></td>
 #&gt; d ~ 1
 #&gt; 
 #&gt; $neclin
-#&gt; y ~ top - slope * (x - nec) * step(x - nec) 
+#&gt; y ~ top - exp(slope) * (x - nec) * step(x - nec) 
 #&gt; top ~ 1
 #&gt; slope ~ 1
 #&gt; nec ~ 1
