@@ -39,6 +39,8 @@ estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 precise.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx}
+
+\item{xform}{A function to apply to the returned estimated concentration values}
 }
 \value{
 A named list containing bootstrapped differences in posterior
