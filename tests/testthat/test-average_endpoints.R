@@ -12,8 +12,8 @@ test_that("output is a vector of appropriately name elements", {
 })
 
 test_that("xform passes correctly", {
+  ae1 <- average_endpoints(list(ecx4param = ecx4param, nec4param = nec4param)) 
   ae2 <- average_endpoints(list(ecx4param = ecx4param, nec4param = nec4param), xform=exp) 
-  expect_equal(length(ae3), 10) 
   expect_gt(ae2[1], ae1[2])
 })
 
