@@ -38,3 +38,37 @@ test_that("ecx returns expected object types and arguments pass correctly", {
   expect_gt(ec50_summary2[1], ec50_summary[1])
   expect_gt(ec50n_summary2[1], ec50n_summary[1])   
 })
+
+test_that("works for bayesnecfit", {
+  ecx1 <- ecx(ecx4param)
+  expect_equal(length(ecx1), 3)
+  expect_equal(names(ecx1), c("ec_10", "ec_10_lw", "ec_10_up"))
+})
+
+test_that("works for bayesmanecfit", {
+  ecx1 <- ecx(manec_gausian_identity)
+  expect_equal(length(ecx1), 3)
+  expect_equal(names(ecx1), c("ec_10", "ec_10_lw", "ec_10_up"))
+})
+
+
+test_that("xform passes correctly", {
+  ecx1 <- ecx(ecx4param)
+  ecx2 <- ecx(ecx4param, xform=exp)
+  expect_gt(ecx2[1], ecx1[2])
+})
+
+test_that("posterior passes correctly", {
+  ecx3 <- ecx(ecx4param, posterior = TRUE)
+  expect_equal(length(ecx3), 10)
+})
+
+test_that("prob_vals passes correctly", {
+  ecx4 <- ecx(ecx4param, prob_vals = c(0.3, 0.5, 0.7))
+  expect_equal(names(ecx4), c("ec_0.01_Q30", "ec_0.01_Q50", "ec_0.01_Q70"))
+})
+
+test_that("ecx_val passes correctly", {
+  ecx4 <- ecx(ecx4param, prob_vals = c(0.3, 0.5, 0.7), ecx_val = 20)
+  expect_equal(names(ecx4), c("ec_20_Q30", "ec_20_Q50", "ec_20_Q70"))
+})
