@@ -69,7 +69,7 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   } else {
     m4param <- 0
   }
-  if (object$fit$family$family == "gaussian" & type == "absolute") {
+  if (object$fit$family$family == "gaussian" & type == "absolute" &  m4param ==0) {
     stop("Absolute ECx values are not valid for a gaussian ",
          "response variable unless a model with a bot parameter is fit")
   }
