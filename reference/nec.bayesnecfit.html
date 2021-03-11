@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>compare_endpoints — compare_endpoints • bayesnec</title>
+<title>nec.bayesnecfit — nec.bayesnecfit • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,10 +46,9 @@
 
 
 
-<meta property="og:title" content="compare_endpoints — compare_endpoints" />
-<meta property="og:description" content="Extracts posterior predicted values from a list of class
-bayesnecfit or bayesnecfit model fits and
-compares these via bootstrap re sampling." />
+<meta property="og:title" content="nec.bayesnecfit — nec.bayesnecfit" />
+<meta property="og:description" content="Extracts the predicted nec value as desired from an object of class
+bayesnecfit." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -147,82 +146,37 @@ compares these via bootstrap re sampling." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>compare_endpoints</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/compare_endpoints.R'><code>R/compare_endpoints.R</code></a></small>
-    <div class="hidden name"><code>compare_endpoints.Rd</code></div>
+    <h1>nec.bayesnecfit</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/nec.R'><code>R/nec.R</code></a></small>
+    <div class="hidden name"><code>nec.bayesnecfit.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Extracts posterior predicted values from a list of class
-<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> model fits and
-compares these via bootstrap re sampling.</p>
+    <p>Extracts the predicted nec value as desired from an object of class
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>compare_endpoints</span><span class='op'>(</span>
-  <span class='va'>x</span>,
-  comparison <span class='op'>=</span> <span class='st'>"nec"</span>,
-  ecx_val <span class='op'>=</span> <span class='fl'>10</span>,
-  type <span class='op'>=</span> <span class='st'>"absolute"</span>,
-  hormesis_def <span class='op'>=</span> <span class='st'>"control"</span>,
-  sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
-  <span class='va'>precision</span>,
-  x_range <span class='op'>=</span> <span class='cn'>NA</span>
-<span class='op'>)</span></pre>
+    <pre class="usage"><span class='co'># S3 method for bayesnecfit</span>
+<span class='fu'><a href='nec.html'>nec</a></span><span class='op'>(</span><span class='va'>object</span>, <span class='va'>...</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>x</th>
-      <td><p>A named list <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of objects of class
-<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> returned by
-<code><a href='bnec.html'>bnec</a></code>.</p></td>
+      <th>object</th>
+      <td><p>An object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>
+returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>comparison</th>
-      <td><p>The posterior predictions to compare, takes values of
-"nec", "nsec", "ecx" or "fitted".</p></td>
-    </tr>
-    <tr>
-      <th>ecx_val</th>
-      <td><p>The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
-and "absolute"), defaults to 10.</p></td>
-    </tr>
-    <tr>
-      <th>type</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "relative", "absolute" (the default) or "direct". See Details.</p></td>
-    </tr>
-    <tr>
-      <th>hormesis_def</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "max" or "control". See Details.</p></td>
-    </tr>
-    <tr>
-      <th>sig_val</th>
-      <td><p>Probability value to use as the lower quantile to test
-significance of the predicted posterior values.
-against the lowest observed concentration (assumed to be the control), to
-estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
-    </tr>
-    <tr>
-      <th>precision</th>
-      <td><p>The number of unique x values over which to find ECx - large values will make the ECx estimate more
-precise.</p></td>
-    </tr>
-    <tr>
-      <th>x_range</th>
-      <td><p>A range of x values over which to consider extracting ECx</p></td>
-    </tr>
-    <tr>
-      <th>xform</th>
-      <td><p>A function to apply to the returned estimated concentration values</p></td>
+      <th>...</th>
+      <td><p>Additional arguments to <code><a href='nec.html'>nec</a></code></p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A named list containing bootstrapped differences in posterior
-predictions of the <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>
-model fits contained in x. See Details.</p>
+    <p>A vector containing the estimated nec value, including upper and
+lower 95% credible interval bounds (or other interval as specified by prob_vals).</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
@@ -235,12 +189,12 @@ model fits contained in x. See Details.</p>
 <span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span>
 
 <span class='va'>exmp</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,
-             model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"ecx4param"</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>,
+             model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec4param"</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>,
              family <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span><span class='op'>(</span>link <span class='op'>=</span> <span class='st'>"identity"</span><span class='op'>)</span>, priors <span class='op'>=</span> <span class='va'>my_priors</span>,
              iter <span class='op'>=</span> <span class='fl'>1e4</span>, control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>adapt_delta <span class='op'>=</span> <span class='fl'>0.99</span><span class='op'>)</span><span class='op'>)</span>
-<span class='va'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>
-<span class='va'>exmp_3</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>
-<span class='fu'><a href='compare_posterior.html'>compare_posterior</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='va'>exmp_2</span>, <span class='va'>exmp_3</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span>
+<span class='va'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>
+<span class='fu'><a href='nec.html'>nec</a></span><span class='op'>(</span><span class='va'>exmp</span><span class='op'>)</span>
+<span class='fu'><a href='nec.html'>nec</a></span><span class='op'>(</span><span class='va'>exmp_2</span><span class='op'>)</span>
 <span class='op'>}</span>
 
 </div></pre>
