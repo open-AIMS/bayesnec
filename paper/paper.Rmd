@@ -14,18 +14,30 @@ authors:
   - name: Diego Barneche
     orcid: 0000-0002-4568-2362
     affiliation: "1, 2"
+  - name: Gerard Ricardo
+    orcid: 0000-0002-7761-0806
+    affiliation: "1"
+  - name: David Fox
+    orcid: 0000-0000-0000-0000
+    affiliation: "1, 2"
+  
+  
 affiliations:
  - name: Australian Institute of Marine Science, Australia
    index: 1
- - names: The Indian Ocean Marine Research Centre, University of Western Australia, Australia
+ - name: The Indian Ocean Marine Research Centre, University of Western Australia, Australia
    index: 2
+ - name: Environmetrics Australia, Beaumaris, Victoria, Australia
+   index: 3
+ - name: University of Melbourne, Parkville, Victoria, Australia
+   index: 4
 
-citation_author: Fisher & Barneche
-date: 20 January 2021
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 bibliography: paper.bib
 output:
-  my_modified_joss:
-    fig_caption: yes
+  #rmarkdown::word_document
+ my_modified_joss:
+   fig_caption: yes
 csl: apa.csl
 journal: JOSS
 ---
@@ -72,7 +84,7 @@ Specific models can be fit directly using `bnec`, in which case an object of cla
 
 When multiple models are fitted using `bnec`, an object of class `bayesmanecfit` is returned that includes a model weighted estimate of predicted posterior values. `bayesnec` also includes a set of `bayesmanecfit` methods for predicting, plotting and extracting effect concentrations and related threshold values that return model weighted estimates. 
 
-Multi-model inference can be useful where there are a range of plausible models that could be used [@Burnham2002] and has been recently adopted in ecotoxicology for Species Sensitivity Distribution (SSD) model inference [@Thorley2018; @fox2020]. The approach may have considerable value in C-R modelling because there is often no a priori knowledge of the functional form that the response relationship should take. In this case model averaging can be a useful way of allowing the data to drive the model selection process, with weights proportional to how well the individual models fit the data. Well-fitting models will have high weights, dominating the model averaged outcome. Conversely, poorly fitting models will have very low model weights and will therefore have little influence on the outcome. Where multiple models fit the data equally well, these can equally influence the outcome, and the resultant posterior predictions reflect that model uncertainty. It is possible to specify the "stacking" method [@Yao2018] for model weights if desired (through the argument `loo_controls`) which aims to minimise prediction error. We do not currently recommend using stacking weights given the typical sample sizes associated with most C-R experiments, and because the main motivation for model averaging within the `bayesnec` package is to properly capture model uncertainty rather than reduce prediction error. By default `bayesnec` uses the  "pseudobma" method using the Bayesian bootstrap through `loo_model_weights` [@vehtari2020; @vehtari2017]. These are reasonably analogous to the way model weights are generated using AIC or AICc [@Burnham2002].
+Multi-model inference can be useful where there are a range of plausible models that could be used [@Burnham2002] and has been recently adopted in ecotoxicology for Species Sensitivity Distribution (SSD) model inference [@Thorley2018; @fox2020; @Dalgarno]. The approach may have considerable value in C-R modelling because there is often no a priori knowledge of the functional form that the response relationship should take. In this case model averaging can be a useful way of allowing the data to drive the model selection process, with weights proportional to how well the individual models fit the data. Well-fitting models will have high weights, dominating the model averaged outcome. Conversely, poorly fitting models will have very low model weights and will therefore have little influence on the outcome. Where multiple models fit the data equally well, these can equally influence the outcome, and the resultant posterior predictions reflect that model uncertainty. It is possible to specify the "stacking" method [@Yao2018] for model weights if desired (through the argument `loo_controls`) which aims to minimise prediction error. We do not currently recommend using stacking weights given the typical sample sizes associated with most C-R experiments, and because the main motivation for model averaging within the `bayesnec` package is to properly capture model uncertainty rather than reduce prediction error. By default `bayesnec` uses the  "pseudobma" method using the Bayesian bootstrap through `loo_model_weights` [@vehtari2020; @vehtari2017]. These are reasonably analogous to the way model weights are generated using AIC or AICc [@Burnham2002].
 
 ### Model diagnostics
 
