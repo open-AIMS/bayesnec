@@ -1,11 +1,6 @@
 library(bayesnec)
 library(brms)
 
-test_that("gaussian absolute ecx values are not returned", {
- expect_error(ecx(manec_gausian_identity))
-  expect_error(ecx(nec_gausian_identity))
-})
-
 test_that("prob_vals warnings behave as expected", {
   expect_length(ecx(manec_gausian_identity, prob_vals = c(0.6, 0.1, 0.9), type = "relative"), 3)
   expect_error(ecx(manec_gausian_identity, prob_vals = 0.9, type = "relative"))
@@ -42,7 +37,7 @@ test_that("ecx returns expected object types and arguments pass correctly", {
 test_that("works for bayesnecfit", {
   ecx1 <- ecx(ecx4param)
   expect_equal(length(ecx1), 3)
-  expect_equal(names(ecx1), c("ec_10", "ec_10_lw", "ec_10_up"))
+  expect_equal(names(ecx1), c("ec_10_Q50", "ec_10_Q2.5", "ec_10_Q97.5"))
 })
 
 test_that("works for bayesmanecfit", {
@@ -65,7 +60,7 @@ test_that("posterior passes correctly", {
 
 test_that("prob_vals passes correctly", {
   ecx4 <- ecx(ecx4param, prob_vals = c(0.3, 0.5, 0.7))
-  expect_equal(names(ecx4), c("ec_0.01_Q30", "ec_0.01_Q50", "ec_0.01_Q70"))
+  expect_equal(names(ecx4), c("ec_10_Q30",   "ec_10_Q50",  "ec_10_Q70"))
 })
 
 test_that("ecx_val passes correctly", {
