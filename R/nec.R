@@ -114,7 +114,7 @@ nec.bayesnecfit <- function(object, ...) {
 #' @importFrom stats quantile
 #'
 #' @export
-nec.bayesmanecfit <- function(object, posterior = FALSE, x_range = NA,
+nec.bayesmanecfit <- function(object, posterior = FALSE,
                                xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
   if(max(grepl("ecx", names(object$mod_fits)))==1) {
     warning("Bayesmanecfit contains ecx model types and therefore nec estimate includes nsec values.")
