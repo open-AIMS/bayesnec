@@ -12,13 +12,17 @@ average_endpoints(
   type = "absolute",
   hormesis_def = "control",
   sig_val = 0.01,
-  precision,
+  precision = 1000,
   x_range = NA,
   xform = NA,
   prob_vals = c(0.5, 0.025, 0.975)
 )
 }
 \arguments{
+\item{x}{A named list \code{\link[base]{list}} of objects of class
+\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
+\code{\link{bnec}}.}
+
 \item{endpoint}{The type of endpoint to use in the mean. Takes values "nec", "ecx" or "nsec"}
 
 \item{ecx_val}{The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
@@ -30,6 +34,11 @@ instead of just the median and 95 credible intervals}
 \item{type}{A \code{\link[base]{character}} vector, taking values of "relative", "absolute" (the default) or "direct". See Details.}
 
 \item{hormesis_def}{A \code{\link[base]{character}} vector, taking values of "max" or "control". See Details.}
+
+\item{sig_val}{Probability value to use as the lower quantile to test
+significance of the predicted posterior values.
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
 \item{precision}{The number of unique x values over which to find ECx - large values will make the ECx estimate more
 precise.}
@@ -51,7 +60,7 @@ Extracts posterior predicted endpoint values from a list of class
 calculates a geometric mean.
 }
 \details{
-The goemetric mean of values are simply the mean calculated on a log scale and back transformed through exp, although we have added the capacity to accommodate zero values. Note that the function assumes that x has been modelled on the natural scale. Often C-R models are more stable on a log transformed of sqrt scaling. If the input \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits are already based on a re-scaling of the x (concentration) axis, it is important to pass an appropriate xform argument to ensure these are back transformed before the the geometric mean calculation is applied.
+The goemetric mean of values are simply the mean calculated on a log scale and back transformed through exp(), although we have added the capacity to accommodate zero values. Note that the function assumes that x has been modelled on the natural scale. Often C-R models are more stable on a log transformed or sqrt scaling. If the input \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits are already based on a re-scaling of the x (concentration) axis, it is important to pass an appropriate xform argument to ensure these are back transformed before the the geometric mean calculation is applied.
 }
 \examples{
 \dontrun{

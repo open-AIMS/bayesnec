@@ -4,13 +4,7 @@
 \alias{nec.bayesmanecfit}
 \title{nec.bayesmanecfit}
 \usage{
-\method{nec}{bayesmanecfit}(
-  object,
-  posterior = FALSE,
-  x_range = NA,
-  xform = NA,
-  prob_vals = c(0.5, 0.025, 0.975)
-)
+\method{nec}{bayesmanecfit}(object, posterior = FALSE, xform = NA, prob_vals = c(0.5, 0.025, 0.975))
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesmanecfit}} returned by

@@ -4,12 +4,13 @@
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
 #' calculates a geometric mean.
 #' 
-#' 
+#' @inheritParams compare_posterior
 #' @inheritParams ecx
+#' @inheritParams nsec
 #' 
 #' @param endpoint The type of endpoint to use in the mean. Takes values "nec", "ecx" or "nsec"
 #' 
-#' @details The goemetric mean of values are simply the mean calculated on a log scale and back transformed through exp, although we have added the capacity to accommodate zero values. Note that the function assumes that x has been modelled on the natural scale. Often C-R models are more stable on a log transformed of sqrt scaling. If the input \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits are already based on a re-scaling of the x (concentration) axis, it is important to pass an appropriate xform argument to ensure these are back transformed before the the geometric mean calculation is applied.
+#' @details The goemetric mean of values are simply the mean calculated on a log scale and back transformed through exp(), although we have added the capacity to accommodate zero values. Note that the function assumes that x has been modelled on the natural scale. Often C-R models are more stable on a log transformed or sqrt scaling. If the input \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits are already based on a re-scaling of the x (concentration) axis, it is important to pass an appropriate xform argument to ensure these are back transformed before the the geometric mean calculation is applied.
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -42,7 +43,7 @@
 #' @export
 average_endpoints <- function(x, endpoint = "nec", ecx_val = 10, posterior = FALSE,
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision, x_range = NA, xform = NA,
+                              sig_val = 0.01, precision = 1000, x_range = NA, xform = NA,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   
   if (class(x) != "list" | is.null(names(x))){

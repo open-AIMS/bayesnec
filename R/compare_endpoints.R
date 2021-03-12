@@ -5,8 +5,6 @@
 #' compares these via bootstrap re sampling.
 #' 
 #' @inheritParams compare_posterior
-#' 
-#' @param xform A function to apply to the returned estimated concentration values
 #'
 #' @seealso \code{\link{bnec}}
 #'
