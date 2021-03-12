@@ -166,7 +166,7 @@ calculates a geometric mean.</p>
   type <span class='op'>=</span> <span class='st'>"absolute"</span>,
   hormesis_def <span class='op'>=</span> <span class='st'>"control"</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
-  <span class='va'>precision</span>,
+  precision <span class='op'>=</span> <span class='fl'>1000</span>,
   x_range <span class='op'>=</span> <span class='cn'>NA</span>,
   xform <span class='op'>=</span> <span class='cn'>NA</span>,
   prob_vals <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>0.5</span>, <span class='fl'>0.025</span>, <span class='fl'>0.975</span><span class='op'>)</span>
@@ -175,6 +175,12 @@ calculates a geometric mean.</p>
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>x</th>
+      <td><p>A named list <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of objects of class
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> returned by
+<code><a href='bnec.html'>bnec</a></code>.</p></td>
+    </tr>
     <tr>
       <th>endpoint</th>
       <td><p>The type of endpoint to use in the mean. Takes values "nec", "ecx" or "nsec"</p></td>
@@ -196,6 +202,13 @@ instead of just the median and 95 credible intervals</p></td>
     <tr>
       <th>hormesis_def</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector, taking values of "max" or "control". See Details.</p></td>
+    </tr>
+    <tr>
+      <th>sig_val</th>
+      <td><p>Probability value to use as the lower quantile to test
+significance of the predicted posterior values.
+against the lowest observed concentration (assumed to be the control), to
+estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
       <th>precision</th>
@@ -223,7 +236,7 @@ of the <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a
 model fits contained in x. See Details.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>The goemetric mean of values are simply the mean calculated on a log scale and back transformed through exp, although we have added the capacity to accommodate zero values. Note that the function assumes that x has been modelled on the natural scale. Often C-R models are more stable on a log transformed of sqrt scaling. If the input <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> model fits are already based on a re-scaling of the x (concentration) axis, it is important to pass an appropriate xform argument to ensure these are back transformed before the the geometric mean calculation is applied.</p>
+    <p>The goemetric mean of values are simply the mean calculated on a log scale and back transformed through exp(), although we have added the capacity to accommodate zero values. Note that the function assumes that x has been modelled on the natural scale. Often C-R models are more stable on a log transformed or sqrt scaling. If the input <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> model fits are already based on a re-scaling of the x (concentration) axis, it is important to pass an appropriate xform argument to ensure these are back transformed before the the geometric mean calculation is applied.</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
