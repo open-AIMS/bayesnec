@@ -92,7 +92,6 @@ define_prior <- function(model, family, predictor, response) {
   pr_beta <- prior_string("normal(0, 1)", nlpar = "beta")
   pr_f <- prior_string("normal(0, 1)", nlpar = "f")
   pr_slope <- prior_string("normal(0, 1)", nlpar = "slope")
-  
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d

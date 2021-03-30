@@ -49,6 +49,6 @@ NULL
 #' @param x An \R object
 #'
 #' @export
-is.manecsummary <- function(x) {
+is_manecsummary <- function(x) {
   inherits(x, "manecsummary")
 }

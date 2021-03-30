@@ -17,7 +17,8 @@
 #' @seealso \code{\link{bnec}}
 #'
 #' @return A vector containing the estimated nec value, including upper and
-#' lower 95% credible interval bounds (or other interval as specified by prob_vals).
+#' lower 95% credible interval bounds
+#' (or other interval as specified by prob_vals).
 #'
 #' @importFrom stats quantile predict
 #'
@@ -39,26 +40,25 @@
 #'
 #' @export
 nec.default <- function(object, posterior = FALSE,  xform = NA,
-                         prob_vals = c(0.5, 0.025, 0.975)) {
-  if(length(prob_vals)<3 | prob_vals[1]<prob_vals[1] | prob_vals[1]>prob_vals[3] | prob_vals[2]>prob_vals[3]){
-    stop("prob_vals must include central, lower and upper quantiles, in that order")
+                        prob_vals = c(0.5, 0.025, 0.975)) {
+  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
+        prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order.")
   }
   if (length(grep("ecx", object$model)) > 0) {
     mod_class <- "ecx"
   } else {
     mod_class <- "nec"
   }
-  
   if (mod_class == "ecx") {
     stop("nec is not a parameter in ecx model types.")
   }
-
   nec_out <- object$nec_posterior
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
   }
   nec_estimate <- quantile(unlist(nec_out), probs = prob_vals)
-  
   if (!posterior) {
     nec_estimate
   } else {
@@ -116,15 +116,15 @@ nec.bayesnecfit <- function(object, ...) {
 #' @export
 nec.bayesmanecfit <- function(object, posterior = FALSE,
                                xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
-  if(max(grepl("ecx", names(object$mod_fits)))==1) {
-    warning("Bayesmanecfit contains ecx model types and therefore nec estimate includes nsec values.")
+  if (max(grepl("ecx", names(object$mod_fits))) == 1) {
+    message("bayesmanecfit contains ecx model types and therefore nec",
+            " estimate includes nsec values.")
   }
   nec_out <- object$w_nec_posterior
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
   }
   nec_estimate <- quantile(unlist(nec_out), probs = prob_vals)
-  
   if (!posterior) {
     nec_estimate
   } else {

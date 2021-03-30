@@ -1,14 +1,15 @@
 #' Sets distribution based on vector
 #'
 #' @param x A \code{\link[base]{numeric}} vector.
-#' 
-#' @param support_integer Logical. Should \code{\link[base]{integer}} vectors be supported? Defaults to FALSE.
-#' 
-#' @param trials A \code{\link[base]{numeric}} vector containing the number of trials. Defaults to NULL.
-#' 
+#' @param support_integer Logical. Should \code{\link[base]{integer}} vectors
+#' be supported? Defaults to FALSE.
+#' @param trials A \code{\link[base]{numeric}} vector containing the number of
+#' trials. Defaults to NULL.
+#'
 #' @details Checks a vector and recommends a family distribution.
-#' 
+#'
 #' @return A \code{\link[base]{character}} vector.
+#'
 #' @examples
 #' \dontrun{
 #' library(bayesnec)

@@ -40,6 +40,6 @@ NULL
 #' @param x An \R object
 #'
 #' @export
-is.necsummary <- function(x) {
+is_necsummary <- function(x) {
   inherits(x, "necsummary")
 }

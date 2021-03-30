@@ -23,7 +23,6 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
-  
   new_dat <- data.frame(x = x_seq)
   fam_tag <- fit$family$family
   custom_name <- check_custom_name(fit$family)
@@ -51,15 +50,12 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
   } else {
     nec_posterior <- unlist(posterior_samples(fit, pars = "nec_Intercept"))
   }
-
   pred_vals <- list(data = pred_data,
                     posterior = pred_posterior)
-
   od <- dispersion(fit, summary = TRUE)
   if (is.null(od)) {
     od <- c(NA, NA, NA)
   }
-
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
   c(object, list(pred_vals = pred_vals), extracted_params,
@@ -119,24 +115,18 @@ expand_manec <- function(object, x_range = NA, precision = 1000,
   mod_stats$wi <- do.call(loo_model_weights, loo_mw_args)
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- extract_simdat(object[[1]])$n_samples
-
   nec_posterior <- unlist(lapply(success_models, w_nec_calc,
                                  object, sample_size, mod_stats))
-
   y_pred <- rowSums(do_wrapper(success_models, w_pred_calc,
                                object, mod_stats))
-
   post_pred <- do_wrapper(success_models, w_post_pred_calc,
                           object, sample_size, mod_stats,
                           fct = "rbind")
-
   x <- object[[success_models[1]]]$pred_vals$data$x
   pred_data <- cbind(x = x,
                      data.frame(t(apply(post_pred, 2,
                                         estimates_summary))))
-
   nec <- estimates_summary(nec_posterior)
-
   list(mod_fits = mod_fits, success_models = success_models,
        mod_stats = mod_stats, sample_size = sample_size,
        w_nec_posterior = nec_posterior, w_predicted_y = y_pred,
