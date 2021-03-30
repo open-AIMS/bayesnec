@@ -1,7 +1,9 @@
 #' The 'bayesnec' package.
 #'
-#' @description A No-Effect-Concentration estimation package that uses brms (https://github.com/paul-buerkner/brms) to fit concentration
-#' (dose)-response data using Bayesian methods for the purpose of estimating both ECX values, but more particularly NEC. Please see ?bnec 
+#' @description A No-Effect-Concentration estimation package that uses brms
+#' (https://github.com/paul-buerkner/brms) to fit concentration
+#' (dose)-response data using Bayesian methods for the purpose of estimating
+#' both ECX values, but more particularly NEC. Please see ?bnec
 #' for more details.
 #'
 #' @docType package
