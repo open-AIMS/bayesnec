@@ -24,6 +24,7 @@ tests/*.rda
 
 # package development
 bayesnec.Rcheck/
+check/
 bayesnec*tar.gz
 ..Rcheck/
 .Rproj.user

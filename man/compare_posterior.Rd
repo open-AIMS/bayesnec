@@ -23,22 +23,24 @@ compare_posterior(
 \item{comparison}{The posterior predictions to compare, takes values of
 "nec", "nsec", "ecx" or "fitted".}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
-and "absolute"), defaults to 10.}
+\item{ecx_val}{The desired percentage effect value. This must be a value
+between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
 
-\item{type}{A \code{\link[base]{character}} vector, taking values of "relative", "absolute" (the default) or "direct". See Details.}
+\item{type}{A \code{\link[base]{character}} vector, taking values of
+"relative", "absolute" (the default) or "direct". See Details.}
 
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values of "max" or "control". See Details.}
+\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
+of "max" or "control". See Details.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.
 against the lowest observed concentration (assumed to be the control), to
 estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
-\item{precision}{The number of unique x values over which to find ECx - large values will make the ECx estimate more
-precise.}
+\item{precision}{The number of unique x values over which to find ECx -
+large values will make the ECx estimate more precise.}
 
-\item{x_range}{A range of x values over which to consider extracting ECx}
+\item{x_range}{A range of x values over which to consider extracting ECx.}
 }
 \value{
 A named list containing bootstrapped differences in posterior

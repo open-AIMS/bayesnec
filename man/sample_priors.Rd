@@ -9,11 +9,11 @@ sample_priors(priors, n_samples = 10000, plot = "ggplot")
 \arguments{
 \item{priors}{an object of class "brmsprior" from package \pkg{brms}.}
 
-\item{n_samples}{the number of prior samples to return}
+\item{n_samples}{the number of prior samples to return.}
 
 \item{plot}{NA returns a list of numeric vectors of sampled priors,
-"ggplot" returns a ggplot and
-"base" returns a histogram in base R}
+"ggplot" (default) returns a ggplot and "base" returns a histogram in
+base R.}
 }
 \value{
 A \code{\link[base]{list}} containing the initialisation values.

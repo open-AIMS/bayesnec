@@ -6,25 +6,31 @@
 \alias{bayesnecfit}
 \title{Class \code{bayesnecfit} of models fitted with the \pkg{brms} package}
 \description{
-Models fitted with the \code{\link[bayesnec:bayesnec-package]{bayesnec}} package are
-represented as a \code{bayesnecfit} object, which contain the original \code{\link[brms]{brmsfit}}
-fitted object, list of initialisation values used, name of non-linear model that was fitted, posterior predictions,
-posterior parameter estimates and a series of other statistics.
+Models fitted with the \code{\link[bayesnec:bayesnec-package]{bayesnec}}
+package are represented as a \code{bayesnecfit} object, which contain the
+original \code{\link[brms]{brmsfit}} fitted object, list of initialisation
+values used, name of non-linear model that was fitted, posterior
+predictions, posterior parameter estimates and a series of other statistics.
 }
 \details{
-See \code{methods(class = "bayesnecfit")} for an overview of available methods.
+See \code{methods(class = "bayesnecfit")} for an overview of
+available methods.
 }
 \section{Slots}{
 
 \describe{
 \item{\code{fit}}{The fitted Bayesian model of class \code{\link[brms]{brmsfit}}.}
 
-\item{\code{model}}{A \code{\link[base]{character}} string indicating the name of the fitted model.}
+\item{\code{model}}{A \code{\link[base]{character}} string indicating the name of
+the fitted model.}
 
-\item{\code{inits}}{A \code{\link[base]{list}} containing the initialisation values for to fit the model.}
+\item{\code{inits}}{A \code{\link[base]{list}} containing the initialisation values
+for to fit the model.}
 
-\item{\code{pred_vals}}{A \code{\link[base]{list}} containing a \code{\link[base]{data.frame}} of summary posterior predicted values
-and a vector containing based on the supplied \code{precision} and \code{x_range}.}
+\item{\code{pred_vals}}{A \code{\link[base]{list}} containing a
+\code{\link[base]{data.frame}} of summary posterior predicted values
+and a vector containing based on the supplied \code{precision} and
+\code{x_range}.}
 
 \item{\code{top}}{The estimate for parameter "top" in the fitted model.}
 
@@ -32,13 +38,17 @@ and a vector containing based on the supplied \code{precision} and \code{x_range
 
 \item{\code{nec}}{The estimated NEC.}
 
-\item{\code{bot}}{The estimate for parameter "bot" in the fitted model, NA if absent for the fitted model type.}
+\item{\code{bot}}{The estimate for parameter "bot" in the fitted model, NA if
+absent for the fitted model type.}
 
-\item{\code{d}}{The estimate for parameter "d" in the fitted model, NA if absent for the fitted model type.}
+\item{\code{d}}{The estimate for parameter "d" in the fitted model, NA if absent
+for the fitted model type.}
 
-\item{\code{slope}}{The estimate for parameter "slope" in the fitted model, NA if absent for the fitted model type.}
+\item{\code{slope}}{The estimate for parameter "slope" in the fitted model, NA if
+absent for the fitted model type.}
 
-\item{\code{ec50}}{The estimate for parameter "ec50" in the fitted model, NA if absent for the fitted model type.}
+\item{\code{ec50}}{The estimate for parameter "ec50" in the fitted model, NA if
+absent for the fitted model type.}
 
 \item{\code{dispersion}}{An estimate of dispersion.}
 

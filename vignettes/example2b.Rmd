@@ -18,12 +18,9 @@ library("bayesnec")
 plat <- Sys.info()["sysname"]
 if (plat == "Windows") {
   library(rstan)
-  example(stan_model,
-          run.dontrun = TRUE,
-          verbose = TRUE)
+  example(stan_model, run.dontrun = TRUE, verbose = TRUE)
 }
 ```
-
 
 ```{r echo = FALSE}
 e1 <- "https://open-aims.github.io/bayesnec/articles/example1.html"
