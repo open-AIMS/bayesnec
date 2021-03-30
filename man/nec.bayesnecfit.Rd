@@ -14,7 +14,8 @@ returned by \code{\link{bnec}}.}
 }
 \value{
 A vector containing the estimated nec value, including upper and
-lower 95\% credible interval bounds (or other interval as specified by prob_vals).
+lower 95\% credible interval bounds
+(or other interval as specified by prob_vals).
 }
 \description{
 Extracts the predicted nec value as desired from an object of class

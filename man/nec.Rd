@@ -23,7 +23,8 @@ return the estimated nec value. Defaults to 0.5 (median) and 0.025 and
 }
 \value{
 A vector containing the estimated nec value, including upper and
-lower 95\% credible interval bounds (or other interval as specified by prob_vals).
+lower 95\% credible interval bounds
+(or other interval as specified by prob_vals).
 }
 \description{
 Extracts the predicted nec value as desired from an object of class

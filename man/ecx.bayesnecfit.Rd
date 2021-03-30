@@ -13,19 +13,26 @@ returned by \code{\link{bnec}}.}
 \item{...}{Additional arguments to \code{\link{ecx}}}
 }
 \value{
-A vector containing the estimated ECx value, including upper and lower 95\% credible interval bounds.
+A vector containing the estimated ECx value, including upper and
+lower 95\% credible interval bounds.
 }
 \description{
 Extracts the predicted ECx value as desired from an object of class
 \code{\link{bayesnecfit}}.
 }
 \details{
-\code{type} "relative" is calculated as the percentage decrease from the maximum predicted value of the response (top) to the minimum predicted value
-of the response. Type "absolute" (the default) is calculated as the percentage decrease from the maximum value of the response (top)
-to 0 (or bot for a 4 parameter model fit). Type "direct" provides a direct estimate of the x value for a given y.
-Note that for the current version, ECx for an "nechorme" (NEC Hormesis) model is estimated at a percent decline from the control.
-For \code{hormesis_def}, if "max", then ECx values are calculated as a decline from the maximum estimates (i.e. the peak at nec);
-if "control", then ECx values are calculated relative to the control, which is assumed to be the lowest observed concentration.
+\code{type} "relative" is calculated as the percentage decrease
+from the maximum predicted value of the response (top) to the minimum
+predicted value of the response. Type "absolute" (the default) is
+calculated as the percentage decrease from the maximum value of the
+response (top) to 0 (or bot for a 4 parameter model fit). Type "direct"
+provides a direct estimate of the x value for a given y.
+Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
+model is estimated at a percent decline from the control.
+For \code{hormesis_def}, if "max", then ECx values are calculated as a
+decline from the maximum estimates (i.e. the peak at nec);
+if "control", then ECx values are calculated relative to the control, which
+is assumed to be the lowest observed concentration.
 }
 \examples{
 \dontrun{

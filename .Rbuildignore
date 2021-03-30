@@ -11,6 +11,7 @@ README.Rmd
 ^pkgdown$
 ^\.github$
 ^.*Rcheck$
+^check$
 ^LICENSE\.md$
 ^TODO\.md$
 ^bayesnec\.Rproj$

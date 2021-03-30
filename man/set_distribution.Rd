@@ -9,9 +9,11 @@ set_distribution(x, support_integer = FALSE, trials = NULL)
 \arguments{
 \item{x}{A \code{\link[base]{numeric}} vector.}
 
-\item{support_integer}{Logical. Should \code{\link[base]{integer}} vectors be supported? Defaults to FALSE.}
+\item{support_integer}{Logical. Should \code{\link[base]{integer}} vectors
+be supported? Defaults to FALSE.}
 
-\item{trials}{A \code{\link[base]{numeric}} vector containing the number of trials. Defaults to NULL.}
+\item{trials}{A \code{\link[base]{numeric}} vector containing the number of
+trials. Defaults to NULL.}
 }
 \value{
 A \code{\link[base]{character}} vector.

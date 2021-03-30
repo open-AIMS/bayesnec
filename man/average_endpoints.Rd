@@ -23,31 +23,38 @@ average_endpoints(
 \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
 \code{\link{bnec}}.}
 
-\item{endpoint}{The type of endpoint to use in the mean. Takes values "nec", "ecx" or "nsec"}
+\item{endpoint}{The type of endpoint to use in the mean. Takes values
+"nec", "ecx" or "nsec".}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value between 1 and 99 (for type = "relative"
-and "absolute"), defaults to 10.}
+\item{ecx_val}{The desired percentage effect value. This must be a value
+between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
 
-\item{posterior}{A \code{\link[base]{logical}} value indicating if the full posterior sample of calculated ECx values should be returned
-instead of just the median and 95 credible intervals}
+\item{posterior}{A \code{\link[base]{logical}} value indicating if the full
+posterior sample of calculated ECx values should be returned instead of
+just the median and 95 credible intervals.}
 
-\item{type}{A \code{\link[base]{character}} vector, taking values of "relative", "absolute" (the default) or "direct". See Details.}
+\item{type}{A \code{\link[base]{character}} vector, taking values of
+"relative", "absolute" (the default) or "direct". See Details.}
 
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values of "max" or "control". See Details.}
+\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
+of "max" or "control". See Details.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.
 against the lowest observed concentration (assumed to be the control), to
 estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
-\item{precision}{The number of unique x values over which to find ECx - large values will make the ECx estimate more
-precise.}
+\item{precision}{The number of unique x values over which to find ECx -
+large values will make the ECx estimate more precise.}
 
-\item{x_range}{A range of x values over which to consider extracting ECx}
+\item{x_range}{A range of x values over which to consider extracting ECx.}
 
-\item{xform}{A function to apply to the returned estimated concentration values}
+\item{xform}{A function to apply to the returned estimated concentration
+values.}
 
-\item{prob_vals}{A vector indicating the probability values over which to return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and 0.975 (95 percent credible intervals).}
+\item{prob_vals}{A vector indicating the probability values over which to
+return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
+0.975 (95 percent credible intervals).}
 }
 \value{
 The geometric mean of the endpoints estimate values
@@ -60,7 +67,15 @@ Extracts posterior predicted endpoint values from a list of class
 calculates a geometric mean.
 }
 \details{
-The goemetric mean of values are simply the mean calculated on a log scale and back transformed through exp(), although we have added the capacity to accommodate zero values. Note that the function assumes that x has been modelled on the natural scale. Often C-R models are more stable on a log transformed or sqrt scaling. If the input \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits are already based on a re-scaling of the x (concentration) axis, it is important to pass an appropriate xform argument to ensure these are back transformed before the the geometric mean calculation is applied.
+The geometric mean of values are simply the mean calculated on a
+log scale and back transformed through exp(), although we have added the
+capacity to accommodate zero values. Note that the function assumes that x
+has been modelled on the natural scale. Often C-R models are more stable on
+a log transformed or sqrt scaling. If the input \code{\link{bayesnecfit}} or
+\code{\link{bayesnecfit}} model fits are already based on a re-scaling of
+the x (concentration) axis, it is important to pass an appropriate xform
+argument to ensure these are back transformed before the the geometric mean
+calculation is applied.
 }
 \examples{
 \dontrun{

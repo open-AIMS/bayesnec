@@ -11,10 +11,10 @@ compare_fitted(x, precision, x_range = NA)
 \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
 \code{\link{bnec}}.}
 
-\item{precision}{The number of unique x values over which to find ECx - large values will make the ECx estimate more
-precise.}
+\item{precision}{The number of unique x values over which to find ECx -
+large values will make the ECx estimate more precise.}
 
-\item{x_range}{A range of x values over which to consider extracting ECx}
+\item{x_range}{A range of x values over which to consider extracting ECx.}
 }
 \value{
 A named list containing bootstrapped differences in posterior

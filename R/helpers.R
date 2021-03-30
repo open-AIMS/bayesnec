@@ -140,12 +140,12 @@ handle_set <- function(x, add, drop) {
     if (length(tmp) == 0) {
       stop("All models removed, nothing to return;\n",
            "Perhaps try calling function bnec with another ",
-           "model set")
+           "model set.")
     }
   }
   if (identical(sort(x), sort(tmp))) {
     message("Nothing to amend, please specify a model to ",
-            "either add or drop that differs from the original set")
+            "either add or drop that differs from the original set.")
     FALSE
   } else {
     tmp
@@ -312,7 +312,7 @@ return_x_range <- function(x) {
     } else if (is_bayesnecfit(object)) {
       object$pred_vals$data$x
     } else {
-      stop("Not all objects in x are of class bayesnecfit or bayesmanecfit")
+      stop("Not all objects in x are of class bayesnecfit or bayesmanecfit.")
     }
   }
   lapply(x, return_x) %>%

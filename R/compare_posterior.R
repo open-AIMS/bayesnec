@@ -45,10 +45,10 @@ compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
                               sig_val = 0.01, precision, x_range = NA) {
   if (!is.list(x) | is.null(names(x))) {
-    stop("Argument x must be a named list")
+    stop("Argument x must be a named list.")
   }
   if (!is.character(comparison)) {
-    stop("Argument comparison must be a character vector")
+    stop("Argument comparison must be a character vector.")
   }
   if (comparison != "fitted") {
     if (missing(precision)) {

@@ -22,6 +22,7 @@ Imports:
     ggplot2,
     evaluate
 Suggests:
+    rstan,
     knitr,
     rmarkdown,
     tidyverse,

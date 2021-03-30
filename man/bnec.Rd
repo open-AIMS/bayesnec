@@ -19,7 +19,6 @@ bnec(
   warmup = floor(iter/10) * 9,
   inits,
   pointwise,
-  sample_prior = "yes",
   loo_controls = list(method = "pseudobma"),
   ...
 )
@@ -78,14 +77,12 @@ The number of warmup should not be larger than "iter" and the default is
 number of chains, and names correspond to the parameter names of a given
 model.}
 
-\item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
-at once or separately for each observation. The latter approach is usually considerably slower but requires
-much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
-but will not work for the custom family beta_binomial2}
-
-\item{sample_prior}{Indicate if samples from priors should be drawn additionally to the posterior samples.
-Options are "no", "yes" (the default), and "only".
-Among others, these samples can be used to calculate Bayes factors for point hypotheses via hypothesis.}
+\item{pointwise}{A flag indicating whether to compute the full
+log-likelihood matrix at once or separately for each observation. The
+latter approach is usually considerably slower but requires
+much less working memory. Accordingly, if one runs into memory issues,
+pointwise = TRUE is the way to go, but will not work for the custom family
+beta_binomial2.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} containing the desired
 arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
@@ -214,13 +211,15 @@ pull_prior(exmp_b)
 
 # multiple models; user-specified priors are not necessary
 # though we show it here in case this is wanted
-my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
-                                prior_string("normal(1.3, 2.7)", nlpar = "nec"),
-                                prior_string("gamma(0.5, 2)", nlpar = "beta")),
-                  nec4param = c(prior_string("beta(5, 1)", nlpar = "top"),
-                                prior_string("normal(1.3, 2.7)", nlpar = "nec"),
-                                prior_string("gamma(0.5, 2)", nlpar = "beta"),
-                                prior_string("beta(1, 5)", nlpar = "bot")))
+my_priors <- list(
+  nec3param = prior("beta(5, 1)", nlpar = "top") +
+                prior("normal(1.3, 2.7)", nlpar = "nec") +
+                prior("gamma(0.5, 2)", nlpar = "beta"),
+  nec4param = prior("beta(5, 1)", nlpar = "top") +
+                prior("normal(1.3, 2.7)", nlpar = "nec") +
+                prior("gamma(0.5, 2)", nlpar = "beta") +
+                prior("beta(1, 5)", nlpar = "bot")
+)
 
 exmp_c <- bnec(data = nec_data, x_var = "x", y_var = "y",
                model = c("nec3param", "nec4param"),
