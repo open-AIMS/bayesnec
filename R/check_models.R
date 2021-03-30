@@ -32,7 +32,7 @@ check_models <- function(model, family) {
     }
   }
   if (link_tag == "identity" & fam_tag %in% c("beta", "binomial", "custom")) {
-    use_model <-  model[!model %in% c("neclin", "neclinhorme","ecxlin")]
+    use_model <-  model[!model %in% c("neclin", "neclinhorme", "ecxlin")]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
       message(paste("Dropping the model(s)",
@@ -49,7 +49,8 @@ check_models <- function(model, family) {
   }
   if (link_tag == "identity" &
         fam_tag %in% c("Gamma", "poisson", "negbinomial")) {
-    use_model <-  model[!model %in% c("neclin", "neclinhorme", "ecxlin", "nechormepwr01")]
+    use_model <-  model[!model %in% c("neclin", "neclinhorme",
+                                      "ecxlin", "nechormepwr01")]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
       message(paste("Dropping the model", paste0(drop_model, collapse = ", "),

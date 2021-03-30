@@ -56,21 +56,20 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
                          posterior = FALSE, x_range = NA,
                          hormesis_def = "control", xform = NA,
                          prob_vals = c(0.5, 0.025, 0.975)) {
-  if(length(prob_vals)<3 | prob_vals[1]<prob_vals[1] | prob_vals[1]>prob_vals[3] | prob_vals[2]>prob_vals[3]){
-    stop("prob_vals must include central, lower and upper quantiles, in that order")
+  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
+        prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order.")
   }
   if (length(grep("ecx", object$model)) > 0) {
     mod_class <- "ecx"
   } else {
     mod_class <- "nec"
   }
-  
   pred_vals <- predict(object, precision = precision, x_range = x_range)
   p_samples <- pred_vals$posterior
   x_vec <- pred_vals$data$x
-  
   reference <- quantile(p_samples[, 1], sig_val)
-  
   if (grepl("horme", object$model)) {
     n <- seq_len(nrow(p_samples))
     p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
@@ -89,10 +88,10 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
   label <- paste("ec", sig_val, sep = "_")
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals)
   names(nsec_estimate) <- paste(label, clean_names(nsec_estimate), sep = "_")
-  attr(nsec_estimate, 'precision') <- precision      
-  attr(nsec_out, 'precision') <- precision
-  attr(nsec_estimate, 'sig_val') <- sig_val      
-  attr(nsec_out, 'sig_val') <- sig_val
+  attr(nsec_estimate, "precision") <- precision
+  attr(nsec_out, "precision") <- precision
+  attr(nsec_estimate, "sig_val") <- sig_val
+  attr(nsec_out, "sig_val") <- sig_val
   if (!posterior) {
     nsec_estimate
   } else {
@@ -175,10 +174,10 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   nsec_estimate <- quantile(nsec_out, probs = prob_vals)
   names(nsec_estimate) <- c(label, paste(label, "lw", sep = "_"),
                             paste(label, "up", sep = "_"))
-  attr(nsec_estimate, 'precision') <- precision      
-  attr(nsec_out, 'precision') <- precision
-  attr(nsec_estimate, 'sig_val') <- sig_val      
-  attr(nsec_out, 'sig_val') <- sig_val
+  attr(nsec_estimate, "precision") <- precision
+  attr(nsec_out, "precision") <- precision
+  attr(nsec_estimate, "sig_val") <- sig_val
+  attr(nsec_out, "sig_val") <- sig_val
   if (!posterior) {
     nsec_estimate
   } else {

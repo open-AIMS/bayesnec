@@ -41,31 +41,31 @@ pull_out <- function(manec, model, ...) {
     message("Model(s) ", paste0(model, collapse = ", "),
             " non-existent in current set of models: ",
             paste0(existing, collapse = ", "), ".\n",
-            "They may have been removed due to incombatiblity with the modelled response distribution. If needed, add desired model(s) via function ",
-            "amend (see ?amend)\n",
-            "Returning original object")
+            "They may have been removed due to incompatibility with the",
+            " modelled response distribution. If needed, add desired model(s)",
+            " via function amend (see ?amend).\n Returning original object.")
     return(manec)
   } else if (!all(model %in% existing)) {
     non_existing <- setdiff(model, existing)
     message("Model(s) ", paste0(non_existing, collapse = ", "),
             " non-existent in current set of models: ",
             paste0(existing, collapse = ", "), ".\n",
-            "They may have been removed due to incombatiblity with the modelled response distribution. If needed, add desired model(s) via function ",
-            "amend (see ?amend)")
+            "They may have been removed due to incompatibility with the",
+            " modelled response distribution. If needed, add desired model(s)",
+            " via function amend (see ?amend).")
   }
   if (all(existing %in% to_go)) {
     message("Current model(s) are 100% contained ",
-            "within target model(s) to pull out\n",
-            "Returning original object")
+            "within target model(s) to pull out.\n",
+            "Returning original object.")
     return(manec)
   } else if (all(!(to_go %in% existing))) {
     message("Target model(s) are 100% contained ",
-            "within target model(s) to pull out\n",
-            "Returning original object")
+            "within target model(s) to pull out.\n",
+            "Returning original object.")
   }
   mod_fits <- suppressMessages(expand_manec(manec$mod_fits[to_go], ...))
-  message("Pulling out model(s): ",
-          paste0(to_go, collapse = ", "))
+  message("Pulling out model(s): ", paste0(to_go, collapse = ", "))
   if (!inherits(mod_fits, "prebayesnecfit")) {
     allot_class(mod_fits, "bayesmanecfit")
   } else {

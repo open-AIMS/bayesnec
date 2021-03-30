@@ -2,17 +2,21 @@
 #'
 #' Calculates posterior dispersion metric
 #'
-#' @param model An object of class \code{\link[brms]{brmsfit}} whose distribution family
-#' is either \code{\link[stats]{gaussian}}, \code{\link[stats]{poisson}} or \code{\link[stats]{binomial}}.
-#' @param summary Logical. Should summary stats be returned instead of full vector? Defaults to FALSE.
-#' 
-#' @details This function calculates a dispersion metric which takes the ratio between the observed relative to simulated
-#' Pearson residuals sums of squares.
+#' @param model An object of class \code{\link[brms]{brmsfit}} whose
+#' distribution family is either \code{\link[stats]{gaussian}},
+#' \code{\link[stats]{poisson}} or \code{\link[stats]{binomial}}.
+#' @param summary Logical. Should summary stats be returned instead of full
+#' vector? Defaults to FALSE.
 #'
-#' @return If \code{summary} is FALSE, an n-long \code{\link[base]{numeric}} vector containing the dispersion metric, 
-#' where n is the number of post warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If TRUE, then a 
-#' \code{\link[base]{data.frame}} containing the summary stats (mean, median, 95% highest density intervals).
-#' of the dispersion metric.
+#' @details This function calculates a dispersion metric which takes the ratio
+#' between the observed relative to simulated Pearson residuals sums of
+#' squares.
+#'
+#' @return If \code{summary} is FALSE, an n-long \code{\link[base]{numeric}}
+#' vector containing the dispersion metric, where n is the number of post
+#' warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If
+#' TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
+#' (mean, median, 95% highest density intervals). of the dispersion metric.
 #'
 #' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
 #' @importFrom stats median
@@ -47,7 +51,6 @@ dispersion <- function(model, summary = FALSE) {
     lpd_out <- posterior_linpred(model)
     prd_out <- posterior_epred(model)
     ppd_out <- posterior_predict(model)
-
     prd_sr <- matrix(0, nrow(prd_out), ncol(prd_out))
     sim_sr <- matrix(0, nrow(prd_out), ncol(prd_out))
     for (i in seq_len(nrow(prd_out))) {
