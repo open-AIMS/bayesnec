@@ -41,30 +41,28 @@
 #' }
 #'
 #' @export
-compare_posterior <- function(x, comparison = "nec", ecx_val = 10, 
+compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
                               sig_val = 0.01, precision, x_range = NA) {
-  
-  if (class(x) != "list" | is.null(names(x))){
+  if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list")
   }
-  if (class(comparison) != "character"){
+  if (!is.character(comparison)) {
     stop("Argument comparison must be a character vector")
   }
   if (comparison != "fitted") {
-    if (missing(precision)) { precision <- 500 }
+    if (missing(precision)) {
+      precision <- 500
+    }
     out <- compare_endpoints(x = x, comparison = comparison, ecx_val = ecx_val,
                              type = type, hormesis_def = hormesis_def,
-                             sig_val = sig_val, precision = precision, x_range = x_range)
-     } else {
-       if (missing(precision)) { precision <- 50 }
-       out <- compare_fitted(x = x, precision = precision, x_range = x_range)
-
+                             sig_val = sig_val, precision = precision,
+                             x_range = x_range)
+  } else {
+    if (missing(precision)) {
+      precision <- 50
+    }
+    out <- compare_fitted(x = x, precision = precision, x_range = x_range)
   }
- return(out)
+  out
 }
-
-summarise_posterior <- function(mat, x_vec) {
-  cbind(x = x_vec, data.frame(t(apply(mat, 2, estimates_summary))))
-}
-
