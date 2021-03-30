@@ -273,17 +273,23 @@ rounded <- function(value, precision = 1) {
   sprintf(paste0("%.", precision, "f"), round(value, precision))
 }
 
-return_x <- function(l) {
-  if (is_bayesmanecfit(l)) {
-    l$w_pred_vals$data$x
-  } else if (is_bayesnecfit(l)) {
-    l$pred_vals$data$x
-  } else {
-    stop("Not all objects in x are of class bayesnecfit or bayesmanecfit")
+#' @importFrom dplyr %>%
+return_x_range <- function(x) {
+  return_x <- function(object) {
+    if (is_bayesmanecfit(object)) {
+      object$w_pred_vals$data$x
+    } else if (is_bayesnecfit(object)) {
+      object$pred_vals$data$x
+    } else {
+      stop("Not all objects in x are of class bayesnecfit or bayesmanecfit")
+    }
   }
+  lapply(x, return_x) %>%
+    unlist %>%
+    range(na.rm = TRUE)
 }
 
-return_nec_post <- function(m) {
+return_nec_post <- function(m, xform) {
   if (is_bayesnecfit(m)) {
     out <- unname(m$nec_posterior)
   }
@@ -308,4 +314,8 @@ gm_mean <- function(x, na_rm = TRUE, zero_propagate = FALSE) {
   } else {
     exp(sum(log(x[x > 0]), na.rm = na_rm) / length(x))
   }
+}
+
+summarise_posterior <- function(mat, x_vec) {
+  cbind(x = x_vec, data.frame(t(apply(mat, 2, estimates_summary))))
 }

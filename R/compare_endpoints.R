@@ -3,7 +3,7 @@
 #' Extracts posterior predicted values from a list of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
 #' compares these via bootstrap re sampling.
-#' 
+#'
 #' @inheritParams compare_posterior
 #'
 #' @seealso \code{\link{bnec}}
@@ -35,30 +35,14 @@
 #' }
 #'
 #' @export
-compare_endpoints <- function(x, comparison = "nec", ecx_val = 10, 
+compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
                               sig_val = 0.01, precision, x_range = NA) {
-  if (is.na(x_range)){
-    x_range <- range(unlist(
-     lapply(x, FUN=function(l){
-       if (class(l)=="bayesmanecfit"){l$w_pred_vals$data$x} else if 
-         (class(l)=="bayesnecfit"){l$pred_vals$data$x} else {
-           stop("Not all objects in x are of class bayesnecfit or bayesmanecfit")
-         }
-      })
-    ), na.rm=TRUE)
+  if (is.na(x_range)) {
+    x_range <- return_x_range(x)
   }
- 
   if (comparison == "nec") {
-    posterior_list <- lapply(x, function(m) {
-      if (class(m) == "bayesnecfit") {
-        out <- unname(m$nec_posterior)
-      }
-      if (class(m) == "bayesmanecfit") {
-        out <- unname(m$w_nec_posterior)
-      }
-      return(out)
-    })
+    posterior_list <- lapply(x, return_nec_post, xform = NA)
   }
   if (comparison == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
@@ -70,38 +54,32 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
                              posterior = TRUE, hormesis_def = hormesis_def,
                              x_range = x_range)
   }
-
   names(posterior_list) <- names(x)
-  n_samples <- min(sapply(posterior_list, length)) 
-  r_posterior_list <- lapply(posterior_list, FUN = function(m){m[sample(seq_len(n_samples), replace = FALSE)]})
+  n_samples <- min(sapply(posterior_list, length))
+  r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
+    m[sample(seq_len(n_samples), replace = FALSE)]
+  }, n_samples = n_samples)
   posterior_data <- do.call("cbind", r_posterior_list) %>%
-      data.frame %>%
-      pivot_longer(cols = everything(), names_to = "model") %>% 
-      arrange(model) %>% 
-      data.frame() 
-  
+    data.frame %>%
+    pivot_longer(cols = everything(), names_to = "model") %>%
+    arrange(model) %>%
+    data.frame
   all_combn <- combn(names(x), 2, simplify = FALSE)
-  diff_list <- lapply(all_combn, FUN = function(a){
-    r_posterior_list[[a[1]]]-r_posterior_list[[a[2]]]})
-  names(diff_list) <- sapply(all_combn, FUN=function(m){paste(m[1], m[2], sep="-")})
-  
-  diff_data_out <- bind_rows(diff_list, .id = "comparison") %>% 
-    pivot_longer(everything(), names_to = "comparison", values_to = "diff") %>% 
-    data.frame()
-
-  prob_diff <- lapply(diff_list, FUN = function(m){
-    m[m>0] <- 1
-    m[m<=0] <- 0
-    prob=mean(m) 
+  diff_list <- lapply(all_combn, function(a, r_list) {
+    r_list[[a[1]]] - r_list[[a[2]]]
+  }, r_list = r_posterior_list)
+  names(diff_list) <- sapply(all_combn, function(m) paste0(m[1], "-", m[2]))
+  diff_data_out <- bind_rows(diff_list, .id = "comparison") %>%
+    pivot_longer(everything(), names_to = "comparison", values_to = "diff") %>%
+    data.frame
+  prob_diff <- lapply(diff_list, function(m) {
+    m[m > 0] <- 1
+    m[m <= 0] <- 0
+    data.frame(prob = mean(m))
   })
-
-  prob_diff_out <- bind_rows(prob_diff, .id = "comparison") %>% 
-    data.frame()
-
-  return(list(posterior_list = posterior_list,
-       posterior_data = posterior_data,
-       diff_list = diff_list,
-       diff_data = diff_data_out,
-       prob_diff = prob_diff_out))
+  prob_diff_out <- bind_rows(prob_diff, .id = "comparison") %>%
+    data.frame
+  list(posterior_list = posterior_list, posterior_data = posterior_data,
+       diff_list = diff_list, diff_data = diff_data_out,
+       prob_diff = prob_diff_out)
 }
-

@@ -62,12 +62,10 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
     stop("Argument endpoint must be a character vector")
   }
   if (is.na(x_range)) {
-    x_range <- lapply(x, return_x) %>%
-      unlist %>%
-      range(na.rm = TRUE)
+    x_range <- return_x_range(x)
   }
   if (endpoint == "nec") {
-    posterior_list <- lapply(x, return_nec_post)
+    posterior_list <- lapply(x, return_nec_post, xform = xform)
   }
   if (endpoint == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
