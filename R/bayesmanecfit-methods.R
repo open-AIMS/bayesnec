@@ -1,11 +1,13 @@
 #' plot.bayesmanecfit
 #'
-#' Generates a plot of a fitted \code{\link{bayesmanecfit}} object, as returned by \code{\link{bnec}}.
+#' Generates a plot of a fitted \code{\link{bayesmanecfit}} object, as
+#' returned by \code{\link{bnec}}.
 #'
 #' @inheritParams plot.bayesnecfit
 #'
-#' @param all_models A \code{\link[base]{logical}} value indicating if all models in the
-#' model set should be plotted simultaneously, or if a model average plot should be returned.
+#' @param all_models A \code{\link[base]{logical}} value indicating if all
+#' models in the model set should be plotted simultaneously, or if a model
+#' average plot should be returned.
 #'
 #' @export
 #' @importFrom graphics par plot mtext legend
@@ -21,7 +23,6 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     mod_fits <- x$mod_fits
     par(mfrow = c(ceiling(length(mod_fits) / 2), 2),
         mar = c(1.5, 1.5, 1.5, 1.5), oma = c(3, 3, 0, 0))
-
     for (m in seq_along(mod_fits)) {
       mod_fits[[m]] <- expand_and_assign_nec(mod_fits[[m]])
       plot(x = mod_fits[[m]],
@@ -38,7 +39,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     }
   } else {
     universal <- x$mod_fits[[1]]
-    mod_dat <- universal$fit$data    
+    mod_dat <- universal$fit$data
     family <- universal$fit$family$family
     custom_name <- check_custom_name(universal$fit$family)
     if (family == "binomial" | custom_name == "beta_binomial2") {
@@ -46,7 +47,6 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     } else {
       y_dat <- mod_dat$y
     }
-
     ec10 <- c(NA, NA, NA)
     if (add_ec10 & family != "gaussian") {
       ec10 <- ecx(x)
@@ -54,7 +54,6 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     if (add_ec10 & family == "gaussian") {
       ec10 <- ecx(x, type = "relative")
     }
-
     if (inherits(xform, "function")) {
       x_dat <- xform(mod_dat$x)
       nec <- xform(x$w_nec)
@@ -65,24 +64,20 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
       nec <- x$w_nec
       x_vec <- x$w_pred_vals$data$x
     }
-
     if (jitter_x) {
       x_dat <- jitter(x_dat)
     }
     if (jitter_y) {
       y_dat <- jitter(y_dat)
     }
-
     if (length(xticks) == 1) {
       x_ticks <- seq(min(x_dat), max(x_dat), length = 7)
     } else {
       x_ticks <- xticks
     }
-
     plot(x_dat, y_dat, ylab = ylab, xlab = xlab,
          pch = 16, xaxt = "n", cex = 1.5,
          col = adjustcolor(1, alpha.f = 0.25), ...)
-
     if (!inherits(lxform, "function")) {
       if (length(xticks) == 1) {
         axis(side = 1)
@@ -105,14 +100,11 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                            " (", signif(lxform(ec10[2]), 2), "-",
                            signif(lxform(ec10[3]), 2), ")", sep = "")
     }
-
     if (CI) {
       lines(x_vec, x$w_pred_vals$data$Q97.5, lty = 2)
       lines(x_vec, x$w_pred_vals$data$Q2.5, lty = 2)
     }
-
     lines(x_vec, x$w_pred_vals$data$Estimate)
-
     if (add_nec & !add_ec10) {
       abline(v = nec, col = "red", lty = c(1, 3, 3))
       legend(position_legend, bty = "n",
@@ -143,6 +135,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @return A list containing x and fitted y, with up and lw values
 #'
+#' @importFrom dplyr %>%
 #' @importFrom brms posterior_epred
 #'
 #' @export
@@ -152,14 +145,12 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
   model_set <- names(mod_fits)
   mod_dat <- object$mod_fits[[1]]$fit$data
   mod_stats <- object$mod_stats
-
   if (any(is.na(x_range))) {
     x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length = precision)
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
-
-  pred_list <- lapply(mod_fits, FUN=function(m){
+  pred_list <- lapply(mod_fits, FUN = function(m) {
     fit <- m$fit
     new_dat <- data.frame(x = x_seq)
     fam_tag <- fit$family$family
@@ -167,43 +158,39 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
     if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
       new_dat$trials <- 1
     }
-        posterior_epred(fit, newdata = new_dat, re_formula = NA)})
-  names(pred_list)
-  
+    posterior_epred(fit, newdata = new_dat, re_formula = NA)
+  })
   sample_size <- min(sapply(pred_list, nrow))
-  
-  pred_out <- do_wrapper(model_set, w_pred_list_calc,
-                          pred_list, sample_size, mod_stats,
-                          fct = "rbind")
-  pred_data <- cbind(x = x_seq,
-                     data.frame(t(apply(pred_out, 2,
-                                        estimates_summary))))
-  list(data = pred_data,
-       posterior = pred_out)  
+  pred_out <- do_wrapper(model_set, w_pred_list_calc, pred_list, sample_size,
+                         mod_stats, fct = "rbind")
+  pred_data <- cbind(x = x_seq, apply(pred_out, 2, estimates_summary) %>%
+                                  t %>%
+                                  data.frame)
+  list(data = pred_data, posterior = pred_out)
 }
-
 
 #' rhat.bayesmanecfit
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
 #' @param ... Unused.
-#' 
-#' @param rhat_cutoff A numeric vector indicating the rhat criteria used to test for model convergence.
+#' @param rhat_cutoff A numeric vector indicating the rhat criteria used to
+#' test for model convergence.
 #'
-#' @return A list containing a vector or rhat values as returned for a brm fit for each parameter, for each of the fitted models
+#' @return A list containing a vector or rhat values as returned for a brm fit
+#' for each parameter, for each of the fitted models.
 #'
 #' @importFrom brms rhat
 #'
 #' @export
 rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
- rhat_vals <- lapply(object$mod_fits, FUN=function(x){rhat(x$fit)})
- failed <- names(rhat_vals)[lapply(rhat_vals, FUN = function(x){max(x>rhat_cutoff)})==1]
-
- if(length(failed) == length(rhat_vals)){
-   warning(paste("All models failed the rhat_cutoff of", rhat_cutoff))
- }
- return(list(rhat_vals = rhat_vals, failed=failed)) 
+  rhat_vals <- lapply(object$mod_fits, function(x) rhat(x$fit))
+  check <- lapply(rhat_vals, function(x, rhat_cutoff) max(x > rhat_cutoff))
+  failed <- names(rhat_vals)[check == 1]
+  if (length(failed) == length(rhat_vals)) {
+    message(paste("All models failed the rhat_cutoff of", rhat_cutoff))
+  }
+  list(rhat_vals = rhat_vals, failed = failed)
 }
 
 #' summary.bayesmanecfit
@@ -219,7 +206,8 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 #' @return A list containing a summary of the model fit as returned a
 #' brmsfit for each model.
 #'
-#' @importFrom plyr llply
+#' @importFrom dplyr %>%
+#' @importFrom purrr map
 #' @export
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90)) {
@@ -246,7 +234,8 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     ecx_mods = ecx_mods,
     nec_vals = clean_nec_vals(x),
     ecs = ecs,
-    rhat_issues = llply(x$mod_fits, function(y)has_r_hat_warnings(y$fit))
+    rhat_issues = map(test$mod_fits, "fit") %>%
+      map(has_r_hat_warnings)
   )
   allot_class(out, "manecsummary")
 }

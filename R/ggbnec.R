@@ -338,18 +338,19 @@ ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' @inherit ggbnec.default return
 #'
 #' @importFrom dplyr %>% mutate
-#' @importFrom plyr ldply
+#' @importFrom purrr map_dfr
 #' @importFrom grDevices devAskNewPage
 #' @export
 ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = TRUE,
                                  plot = TRUE, ask = TRUE, newpage = TRUE,
                                  multi_facet = FALSE) {
   if (all) {
-    all_fits <- suppressMessages(lapply(x$success_models, pull_out, manec = x))
+    all_fits <- lapply(x$success_models, pull_out, manec = x) %>%
+      suppressMessages
     if (multi_facet) {
       names(all_fits) <- x$success_models
-      ldply(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
-            ..., .id = "model") %>%
+      map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx, ...,
+              .id = "model") %>%
         ggbnec.default(nec = nec, ecx = ecx)
     } else {
       if (plot) {
