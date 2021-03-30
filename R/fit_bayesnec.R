@@ -56,6 +56,9 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   if (!("chains" %in% names(add_args))) {
     add_args[["chains"]] <- 4
   }
+  if (!("sample_prior" %in% names(add_args))) {
+    add_args[["sample_prior"]] <- "yes"
+  }
   chs <- add_args$chains
   if (family$family == "custom") {
     msg_tag <- custom_name
@@ -85,9 +88,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     stop(paste0("Failed to fit model ", model, "."),
          call. = FALSE)
   }
-  
   fit$loo <- loo(fit)
-
   fit$waic <- suppressWarnings(waic(fit, pointwise = pointwise))
   message(paste0("Response variable modelled as a ",
                  model, " model using a ", msg_tag,

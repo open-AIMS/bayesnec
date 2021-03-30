@@ -43,15 +43,12 @@
 #' \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the
 #' number of chains, and names correspond to the parameter names of a given
 #' model.
-#' @param pointwise A flag indicating whether to compute the full log-likelihood matrix 
-#' at once or separately for each observation. The latter approach is usually considerably slower but requires
-#' much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
-#' but will not work for the custom family beta_binomial2
-#' 
-#' @param sample_prior Indicate if samples from priors should be drawn additionally to the posterior samples. 
-#' Options are "no", "yes" (the default), and "only". 
-#' Among others, these samples can be used to calculate Bayes factors for point hypotheses via hypothesis. 
-#' 
+#' @param pointwise A flag indicating whether to compute the full
+#' log-likelihood matrix at once or separately for each observation. The
+#' latter approach is usually considerably slower but requires
+#' much less working memory. Accordingly, if one runs into memory issues,
+#' pointwise = TRUE is the way to go, but will not work for the custom family
+#' beta_binomial2.
 #' @param loo_controls A named \code{\link[base]{list}} containing the desired
 #' arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
 #' the default wi_method to "pseudobma". See help documentation
@@ -122,9 +119,9 @@
 #' All models provide an estimate for NEC. For model types with "nec" as a
 #' prefix, NEC is directly estimated as parameter "nec"
 #' in the model. Models with "ecx" as a prefix are continuous curve models,
-#' typically used for extracting ECx values 
+#' typically used for extracting ECx values
 #' from concentration response data. In this instance the NEC value is defined
-#' as the concentration at which there is 
+#' as the concentration at which there is
 #' a user supplied (see \code{sig_val}) percentage certainty (based on the
 #' Bayesian posterior estimate) that the response
 #' falls below the estimated value of the upper asymptote (top) of the
@@ -172,14 +169,16 @@
 #'
 #' # multiple models; user-specified priors are not necessary
 #' # though we show it here in case this is wanted
-#' my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
-#'                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
-#'                                 prior_string("gamma(0.5, 2)", nlpar = "beta")),
-#'                   nec4param = c(prior_string("beta(5, 1)", nlpar = "top"),
-#'                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
-#'                                 prior_string("gamma(0.5, 2)", nlpar = "beta"),
-#'                                 prior_string("beta(1, 5)", nlpar = "bot")))
-#' 
+#' my_priors <- list(
+#'   nec3param = prior("beta(5, 1)", nlpar = "top") +
+#'                 prior("normal(1.3, 2.7)", nlpar = "nec") +
+#'                 prior("gamma(0.5, 2)", nlpar = "beta"),
+#'   nec4param = prior("beta(5, 1)", nlpar = "top") +
+#'                 prior("normal(1.3, 2.7)", nlpar = "nec") +
+#'                 prior("gamma(0.5, 2)", nlpar = "beta") +
+#'                 prior("beta(1, 5)", nlpar = "bot")
+#' )
+#'
 #' exmp_c <- bnec(data = nec_data, x_var = "x", y_var = "y",
 #'                model = c("nec3param", "nec4param"),
 #'                family = Beta(link = "identity"), priors = my_priors,
@@ -193,12 +192,10 @@
 #'
 #' @export
 bnec <- function(data, x_var, y_var, model = "all", trials_var = NA,
-                 family = NULL, priors, x_range = NA,
-                 precision = 1000, sig_val = 0.01,
-                 iter = 10e3, warmup = floor(iter / 10) * 9,
-                 inits, pointwise, 
-                 sample_prior = "yes",
-                 loo_controls = list(method = "pseudobma"), ...) {
+                 family = NULL, priors, x_range = NA, precision = 1000,
+                 sig_val = 0.01, iter = 10e3, warmup = floor(iter / 10) * 9,
+                 inits, pointwise, loo_controls = list(method = "pseudobma"),
+                 ...) {
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
@@ -239,7 +236,7 @@ bnec <- function(data, x_var, y_var, model = "all", trials_var = NA,
                      trials_var = trials_var, family = family,
                      priors = priors, model = model_m,
                      iter = iter, warmup = warmup, inits = inits,
-                     pointwise = pointwise, sample_prior = sample_prior, ...),
+                     pointwise = pointwise, ...),
         silent = FALSE)
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
@@ -263,8 +260,7 @@ bnec <- function(data, x_var, y_var, model = "all", trials_var = NA,
                             trials_var = trials_var, family = family,
                             priors = priors, model = model,
                             iter = iter, warmup = warmup,
-                            inits = inits, pointwise = pointwise, 
-                            sample_prior = sample_prior, ...)
+                            inits = inits, pointwise = pointwise, ...)
     mod_fit <- expand_nec(mod_fit, x_range = x_range,
                           precision = precision,
                           sig_val = sig_val)
