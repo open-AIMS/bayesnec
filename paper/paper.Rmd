@@ -106,7 +106,7 @@ which yields a plot of the posterior densities and chains plot for each paramete
 
 The default number of total iterations in `bayesnec` is 10,000 per chain, with 9,000 of these used as warm-up (or burn-in) across 4 chains. If the `bnec` call returns `brms` warning messages the number of iterations and warm-up samples can be adjusted through arguments `iter` and `warmup`. A range of other arguments can be further adjusted to improve convergence, see the rich set of [Resources](https://github.com/paul-buerkner/brms available) available for the `brms` package for further information.
 
-Several helper functions have been included that allow the user to add or drop models from a `bayesmanecfit` object, or change the model weighting method (`amend`); extract a single or subset of models from the `bayesmanecfit` object (`pull_out`); and examine the priors used for model fitting (`pull_prior`, `sample_prior` and `check_priors`).
+Several helper functions have been included that allow the user to add or drop models from a `bayesmanecfit` object, or change the model weighting method (`amend`); extract a single or subset of models from the `bayesmanecfit` object (`pull_out`); and examine the priors used for model fitting (`pull_prior`, `sample_priors` and `check_priors`).
 
 ### Model inference
 
