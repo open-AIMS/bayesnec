@@ -272,3 +272,40 @@ response_link_scale <- function(response, family) {
 rounded <- function(value, precision = 1) {
   sprintf(paste0("%.", precision, "f"), round(value, precision))
 }
+
+return_x <- function(l) {
+  if (is_bayesmanecfit(l)) {
+    l$w_pred_vals$data$x
+  } else if (is_bayesnecfit(l)) {
+    l$pred_vals$data$x
+  } else {
+    stop("Not all objects in x are of class bayesnecfit or bayesmanecfit")
+  }
+}
+
+return_nec_post <- function(m) {
+  if (is_bayesnecfit(m)) {
+    out <- unname(m$nec_posterior)
+  }
+  if (is_bayesmanecfit(m)) {
+    out <- unname(m$w_nec_posterior)
+  }
+  if (inherits(xform, "function")) {
+    out <- xform(out)
+  }
+  out
+}
+
+gm_mean <- function(x, na_rm = TRUE, zero_propagate = FALSE) {
+  if (any(x < 0, na.rm = TRUE)) {
+    return(NaN)
+  }
+  if (zero_propagate) {
+    if (any(x == 0, na.rm = TRUE)) {
+      return(0)
+    }
+    exp(mean(log(x), na.rm = na_rm))
+  } else {
+    exp(sum(log(x[x > 0]), na.rm = na_rm) / length(x))
+  }
+}
