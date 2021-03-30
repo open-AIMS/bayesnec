@@ -14,9 +14,9 @@ Biarch: true
 Imports:
     loo,
     extraDistr,
-    plyr,
     dplyr,
     tidyr,
+    purrr,
     tidyselect,
     lazyeval,
     ggplot2,
