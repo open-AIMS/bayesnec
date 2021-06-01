@@ -166,6 +166,8 @@
   <span class='va'>inits</span>,
   skip_check <span class='op'>=</span> <span class='cn'>FALSE</span>,
   <span class='va'>pointwise</span>,
+  random <span class='op'>=</span> <span class='cn'>NA</span>,
+  random_vars <span class='op'>=</span> <span class='cn'>NA</span>,
   <span class='va'>...</span>
 <span class='op'>)</span></code></pre></div>
 
@@ -228,12 +230,20 @@ Defaults to FALSE.</p></td>
     </tr>
     <tr>
       <th>pointwise</th>
-      <td><p>A flag indicating whether to compute the full
-log-likelihood matrix at once or separately for each observation. The
-latter approach is usually considerably slower but requires
-much less working memory. Accordingly, if one runs into memory issues,
-pointwise = TRUE is the way to go, but will not work for the custom family
-beta_binomial2.</p></td>
+      <td><p>A flag indicating whether to compute the full log-likelihood matrix
+at once or separately for each observation. The latter approach is usually considerably slower but requires
+much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
+but will not work for the custom family beta_binomial2</p></td>
+    </tr>
+    <tr>
+      <th>random</th>
+      <td><p>= A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the random model
+formula to apply to model parameters.</p></td>
+    </tr>
+    <tr>
+      <th>random_vars</th>
+      <td><p>= A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of
+the columns containing the variables used in the random model formula.</p></td>
     </tr>
     <tr>
       <th>...</th>
