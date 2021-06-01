@@ -17,7 +17,7 @@
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                          family = NULL, priors, model = NA,
-                         inits, skip_check = FALSE, pointwise, ...) {
+                         inits, skip_check = FALSE, pointwise, random = NA, random_vars = NA, ...) {
   if (skip_check) {
     mod_dat <- data
     custom_name <- check_custom_name(family)
@@ -34,7 +34,7 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
                              trials_var = trials_var, family = family,
-                             model = model)
+                             model = model, random_vars = random_vars)
     mod_dat <- data_check$mod_dat
     family <- data_check$family
     priors <- validate_priors(priors, model)
@@ -74,6 +74,17 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                              response_link, priors = priors,
                              chains = chs)
   }
+  if(!is.na(random[1])){
+    form_text <- as.character(brms_bf)
+    rand_forms <- eval(parse(text=form_text[2]))
+    rand_list <- intersect(names(random), names(rand_forms))
+    if(length(rand_list)>0){
+      rand_forms[rand_list] <- random[rand_list]
+      brms_bf <- bf(as.formula(form_text[1]), rand_forms, nl = TRUE)
+    }
+    
+  }
+
   all_args <- c(list(formula = brms_bf, data = mod_dat,
                      family = family, prior = priors,
                      inits = inits),
