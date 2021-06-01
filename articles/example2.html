@@ -109,7 +109,7 @@
     
 <div id="bayesnec" class="section level1">
 <h1 class="hasAnchor">
-<a href="#bayesnec" class="anchor"></a><code>bayesnec</code>
+<a href="#bayesnec" class="anchor" aria-hidden="true"></a><code>bayesnec</code>
 </h1>
 <p>The background of <code>bayesnec</code> is covered in the <a href="https://open-aims.github.io/bayesnec/articles/example1.html" class="external-link">Single model usage</a> vignette. Here we explain multi model usage using <code>bayesnec</code>. In <code>bayesnec</code> it is possible to fit a custom model set, specific model set, or all of the available models. When multiple models are specified the <code>bnec</code> function returns a model weighted estimate of predicted posterior values, based on the “pseudobma” using Bayesian bootstrap through <code>loo_model_weights</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry 2017)</span>. These are reasonably analogous to the way model weights are generated using AIC or AICc <span class="citation">(Burnham and Anderson 2002)</span>.</p>
 <p>It is also possible to obtain all individual model fits from the fitted <code>bayesnecfit</code> model object if required using the <code>pull_out</code> function, and also to update an existing model fit with additional models, or to drop models using the function <code>amend</code>.</p>
@@ -117,24 +117,24 @@
 </div>
 <div id="installation" class="section level1">
 <h1 class="hasAnchor">
-<a href="#installation" class="anchor"></a>Installation</h1>
+<a href="#installation" class="anchor" aria-hidden="true"></a>Installation</h1>
 <p>To install the latest version from GitHub (<a href="https://github.com/open-AIMS/bayesnec" class="external-link uri">https://github.com/open-AIMS/bayesnec</a>) use:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span>
 <span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"open-AIMS/bayesnec"</span><span class="op">)</span></code></pre></div>
 <p>To run this vignette we will also need some additional packages, which are made available via <code>tidyverse</code></p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></code></pre></div>
 </div>
 <div id="examples" class="section level1">
 <h1 class="hasAnchor">
-<a href="#examples" class="anchor"></a>Examples</h1>
+<a href="#examples" class="anchor" aria-hidden="true"></a>Examples</h1>
 <div id="fitting-multiple-models-and-model-averaging-using-the-bnec-function" class="section level2">
 <h2 class="hasAnchor">
-<a href="#fitting-multiple-models-and-model-averaging-using-the-bnec-function" class="anchor"></a>Fitting multiple models and model averaging using the <code>bnec</code> function</h2>
+<a href="#fitting-multiple-models-and-model-averaging-using-the-bnec-function" class="anchor" aria-hidden="true"></a>Fitting multiple models and model averaging using the <code>bnec</code> function</h2>
 <div id="fitting-a-bnec-model" class="section level3">
 <h3 class="hasAnchor">
-<a href="#fitting-a-bnec-model" class="anchor"></a>Fitting a <code>bnec</code> model</h3>
+<a href="#fitting-a-bnec-model" class="anchor" aria-hidden="true"></a>Fitting a <code>bnec</code> model</h3>
 <p>So far we have explored how to fit individual models via the function <code>bnec</code>. The <code>bayesnec</code> package also has the capacity to fit a custom selection of models, pre-specified sets of models, or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains, using <code>bnec</code> can be very slow when fitting <code>models = "all"</code>. See details under <code><a href="../reference/bnec.html">?bnec</a></code> for more information on the models, and model sets that can be specified, as well as the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette which contains considerable information on the available models in <code>bnec</code> and their appropriate usage. In general it is safe to call <code>models = "all"</code>, because by default <code>bnec</code> will discard invalid models.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec" class="external-link">bayesnec</a></span><span class="op">)</span>
@@ -148,7 +148,7 @@
 </div>
 <div id="exploring-a-bayesmanecfit-model" class="section level3">
 <h3 class="hasAnchor">
-<a href="#exploring-a-bayesmanecfit-model" class="anchor"></a>Exploring a <code>bayesmanecfit</code> model</h3>
+<a href="#exploring-a-bayesmanecfit-model" class="anchor" aria-hidden="true"></a>Exploring a <code>bayesmanecfit</code> model</h3>
 <p>We have created some plotting method functions for our <code>bayesnec</code> model types, so we can plot a <code>bayesmanecfit</code> model object simply with <code>plot</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></code></pre></div>
@@ -245,7 +245,7 @@
 </div>
 <div id="extracting-endpoint-values" class="section level3">
 <h3 class="hasAnchor">
-<a href="#extracting-endpoint-values" class="anchor"></a>Extracting endpoint values</h3>
+<a href="#extracting-endpoint-values" class="anchor" aria-hidden="true"></a>Extracting endpoint values</h3>
 <p>The models prefixed with <code>ecx</code> are all models that do not have the <em>NEC</em> as a parameter in the model. That is, they are smooth curves as a function of concentration and have no breakpoint. The <em>NEC</em> on the plots above for these models are an approximation based on <em>NSEC</em> and should not be used without careful consideration of the validity of this endpoint value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette for more details). A formal model averaged estimate of <em>NEC</em> should be obtained with <code>model = "nec"</code>. We can use the helper functions <code>pull_out</code> and <code>amend</code> to alter the model set as required. pull_out has a <code>model</code> argument and can be used to pull out a single model (as above) or to pull out a specific set of models.</p>
 <p>We can use this to obtain first a set of <em>NEC</em> only models from the existing set.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -278,7 +278,7 @@
 </div>
 <div id="putting-it-all-together" class="section level3">
 <h3 class="hasAnchor">
-<a href="#putting-it-all-together" class="anchor"></a>Putting it all together</h3>
+<a href="#putting-it-all-together" class="anchor" aria-hidden="true"></a>Putting it all together</h3>
 <p>Now we can make a combined plot of our output, showing the model averaged “<em>NEC</em>” model and the “all averaged model”, along with the relevant thresholds.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">preds</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_pred_vals</span><span class="op">$</span><span class="va">data</span>
@@ -301,7 +301,7 @@
 </div>
 <div id="references" class="section level1 unnumbered">
 <h1 class="hasAnchor">
-<a href="#references" class="anchor"></a>References</h1>
+<a href="#references" class="anchor" aria-hidden="true"></a>References</h1>
 <div id="refs" class="references">
 <div id="ref-Burnham2002">
 <p>Burnham, K P, and D R Anderson. 2002. <em>Model Selection and Multimodel Inference; A Practical Information-Theoretic Approach</em>. 2nd ed. New York: Springer.</p>
