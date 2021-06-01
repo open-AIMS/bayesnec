@@ -49,12 +49,10 @@ parameter. It can also be specified as a named \code{\link[base]{list}}
 where each name needs to correspond to the same string as "model". See
 details.}
 
-\item{pointwise}{A flag indicating whether to compute the full
-log-likelihood matrix at once or separately for each observation. The
-latter approach is usually considerably slower but requires
-much less working memory. Accordingly, if one runs into memory issues,
-pointwise = TRUE is the way to go, but will not work for the custom family
-beta_binomial2.}
+\item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
+at once or separately for each observation. The latter approach is usually considerably slower but requires
+much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
+but will not work for the custom family beta_binomial2}
 }
 \value{
 All successfully fitted \code{\link{bayesmanecfit}} model fits.
