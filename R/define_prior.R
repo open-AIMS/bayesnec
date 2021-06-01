@@ -88,10 +88,12 @@ define_prior <- function(model, family, predictor, response) {
   pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50",
                           lb = min(predictor), ub = max(predictor))
   # x- and y-independent priors
-  pr_d <- prior_string("normal(0, 1)", nlpar = "d")
-  pr_beta <- prior_string("normal(0, 1)", nlpar = "beta")
-  pr_f <- prior_string("normal(0, 1)", nlpar = "f")
-  pr_slope <- prior_string("normal(0, 1)", nlpar = "slope")
+
+  pr_d <- prior_string("normal(0, 2)", nlpar = "d")
+  pr_beta <- prior_string("normal(0, 2)", nlpar = "beta")
+  pr_f <- prior_string("normal(0, 2)", nlpar = "f")
+  pr_slope <- prior_string("normal(0, 2)", nlpar = "slope")
+
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d
