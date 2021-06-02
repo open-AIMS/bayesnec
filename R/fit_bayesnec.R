@@ -77,12 +77,17 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
   if(!is.na(random[1])){
     form_text <- as.character(brms_bf)
     rand_forms <- eval(parse(text=form_text[2]))
+    nl_form <- form_text[1]
     rand_list <- intersect(names(random), names(rand_forms))
+    add_ost <- max(grepl("ost", names(random)))==1
     if(length(rand_list)>0){
       rand_forms[rand_list] <- random[rand_list]
-      brms_bf <- bf(as.formula(form_text[1]), rand_forms, nl = TRUE)
     }
-    
+    if(add_ost){
+      rand_forms <- c(rand_forms, list(ost = random$ost))
+      nl_form <- gsub("~", "~ ost + ", nl_form, fixed= TRUE)
+    }
+    brms_bf <- bf(as.formula(nl_form), rand_forms, nl = TRUE)
   }
 
   all_args <- c(list(formula = brms_bf, data = mod_dat,
