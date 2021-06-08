@@ -86,7 +86,7 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
   posterior_data <- do.call("cbind", r_posterior_list) %>%
       data.frame
   post_mean <- apply(posterior_data, MARGIN = 1, FUN = gm_mean)
-  mean_estimate <- quantile(unlist(post_mean), probs = prob_vals)
+  mean_estimate <- quantile(unlist(post_mean), na.rm = TRUE, probs = prob_vals)
   if (!posterior) {
     mean_estimate
   } else {
