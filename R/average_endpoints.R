@@ -42,11 +42,11 @@
 #'
 #' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
 #'              model = c("ecx4param", "nec4param"),
-#'              family = Beta(link = "identity"), priors = my_priors,
+#'              family = Beta(link = "identity"),
 #'              iter = 1e4, control = list(adapt_delta = 0.99))
 #' exmp_2 <- pull_out(exmp, "nec4param")
 #' exmp_3 <- pull_out(exmp, "ecx4param")
-#' average_endpoints(list(exmp_2, exmp_3), ecx_val = 50)
+#' average_endpoints(list("nec" = exmp_2, "ecx" = exmp_3), ecx_val = 50)
 #' }
 #'
 #' @export
