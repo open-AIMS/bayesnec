@@ -16,6 +16,10 @@ my_modified_joss <- function(journal = "JOSS", keep_md = TRUE,
   fmt$inherits <- "pdf_book"
   fmt
 }
-
+# delete cache folders first
+# on a unix machine
+# system("rm -rf paper/paper_cache")
 rmarkdown::render(input = "paper/paper.Rmd", output_dir = "ignore/output/",
                   intermediates_dir = "ignore/output/", clean = FALSE)
+# on a unix machine
+# system("mv ignore/output/paper.md paper/paper.md")
