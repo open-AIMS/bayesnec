@@ -221,7 +221,7 @@ modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
   posterior_sample
 }
 
-#' find_warnings
+#' extract_warnings
 #'
 #' Extract warnings from brmsfit object
 #'
