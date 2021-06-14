@@ -1,6 +1,5 @@
 library(rmarkdown)
 library(rticles)
-dir.create("ignore/output")
 
 my_modified_joss <- function(journal = "JOSS", keep_md = TRUE,
                              latex_engine = "xelatex", ...) {
@@ -19,6 +18,8 @@ my_modified_joss <- function(journal = "JOSS", keep_md = TRUE,
 # delete cache folders first
 # on a unix machine
 # system("rm -rf paper/paper_cache")
+# system("rm -rf ignore/output")
+dir.create("ignore/output", recursive = TRUE, showWarnings = FALSE)
 rmarkdown::render(input = "paper/paper.Rmd", output_dir = "ignore/output/",
                   intermediates_dir = "ignore/output/", clean = FALSE)
 # on a unix machine

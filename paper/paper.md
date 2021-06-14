@@ -18,8 +18,8 @@ authors:
     orcid: 0000-0002-7761-0806
     affiliation: "1"
   - name: David Fox
-    orcid: 0000-0000-0000-0000
-    affiliation: "1, 2"
+    orcid: 0000-0002-3178-7243
+    affiliation: "3, 4"
   
   
 affiliations:
@@ -32,10 +32,10 @@ affiliations:
  - name: University of Melbourne, Parkville, Victoria, Australia
    index: 4
 
-date: "11 June, 2021"
+citation_author: Fisher et al.
+date: "2021-06-14"
 bibliography: paper.bib
 output:
-  #rmarkdown::word_document
  my_modified_joss:
    fig_caption: yes
 csl: apa.csl
@@ -99,11 +99,7 @@ All diagnostic functions available in `brms` and `rstan` can be used on the unde
 plot(exmp_fit$mod_fits$nec4param$fit)
 ```
 
-(ref:fig-brmsplot) Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters.
-
-\begin{figure}
-\includegraphics[width=1\linewidth]{brms_plot} \caption{(ref:fig-brmsplot)}(\#fig:brmsplot)
-\end{figure}
+![Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters.\label{fig:brmsplot}](brms_plot.png)
 
 which yields a plot of the posterior densities and chains plot for each parameter in the specified model as shown in Fig. \@ref(fig:brmsplot).
 
@@ -169,11 +165,7 @@ Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict meth
 plot(exmp_fit)
 ```
 
-(ref:fig-baseplot) Base plot of the `exmp_fit` model averaged curve, showing the fitted median of the posterior prediction (solid line), 95% credible intervals (dashed lines), and the estimated *NEC* value (red vertical lines).
-
-\begin{figure}
-\includegraphics[width=1\linewidth]{base_plot} \caption{(ref:fig-baseplot)}(\#fig:baseplot)
-\end{figure}
+![Base plot of the `exmp_fit` model averaged curve, showing the fitted median of the posterior prediction (solid line), 95% credible intervals (dashed lines), and the estimated *NEC* value (red vertical lines).\label{fig:baseplot}](base_plot.png)
 
 By default the plot shows the fitted posterior curve with 95% credible intervals, along with an estimate of the $\eta = \text{NEC}$ value. Please see the [vignettes](https://open-aims.github.io/bayesnec/articles/) for more examples using `bayesnec` models for inference.
 
@@ -264,11 +256,7 @@ There may be situations where the default `bayesnec` priors do not behave as des
 sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 ```
 
-(ref:fig-priorsplot) Frequency histograms of samples of the default priors used by `bnec` for fitting the `nec4param` model to the example `nec_data`.
-
-\begin{figure}
-\includegraphics[width=1\linewidth]{sample_prior} \caption{(ref:fig-priorsplot)}(\#fig:priorsplot)
-\end{figure}
+![Frequency histograms of samples of the default priors used by `bnec` for fitting the `nec4param` model to the example `nec_data`.\label{fig:priorsplot}](sample_prior.png)
 
 We can also use the function `check_priors` (based on the `hypothesis` function of `brms`) to assess how the posterior probability density for each parameter differs from that of the prior. Here we show the prior and posterior probability densities for the parameters in the **nec4param** model, extracted from our example fit (see Fig. \@ref(fig:checkpriorsplot)). There is also a class `bayesmanecfit` method that can be used to sequentially view all plots in a `bnec` call with multiple models, or write to a pdf as in `check_chains`. 
 
@@ -282,12 +270,7 @@ check_priors(exmp_fit_nec4param)
 check_priors(exmp_fit, filename = "Check_priors_plots")
 ```
 
-(ref:fig-checkpriorsplot) A comparison of the prior and posterior parameter probability densities for the `nec4param` model fit to the example `nec_data`.
-
-\begin{figure}
-\includegraphics[width=1\linewidth]{check_prior} \caption{(ref:fig-checkpriorsplot)}(\#fig:checkpriorsplot)
-\end{figure}
-
+![A comparison of the prior and posterior parameter probability densities for the `nec4param` model fit to the example `nec_data`.\label{fig:checkpriorsplot}](check_prior.png)
 
 ## Model comparison
 
