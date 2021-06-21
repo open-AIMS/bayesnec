@@ -1,3 +1,4 @@
+---
 title: 'bayesnec: An R package for C-R modelling and estimation of No-Effect-Concentrations'
 tags:
   - R
