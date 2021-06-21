@@ -45,4 +45,3 @@ journal: JOSS
 
 # Summary
 
-stan [@rstan2020]
