@@ -39,6 +39,7 @@ output:
    fig_caption: yes
 csl: apa.csl
 journal: JOSS
+
 ---
 
 # Summary
