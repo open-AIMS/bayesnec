@@ -33,7 +33,7 @@ affiliations:
    index: 4
 
 citation_author: Fisher et al.
-date: "2021-06-14"
+date: "2021-06-22"
 bibliography: paper.bib
 output:
  my_modified_joss:
@@ -101,7 +101,7 @@ plot(exmp_fit$mod_fits$nec4param$fit)
 
 ![Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters.\label{fig:brmsplot}](brms_plot.png)
 
-which yields a plot of the posterior densities and chains plot for each parameter in the specified model as shown in Fig. \@ref(fig:brmsplot).
+which yields a plot of the posterior densities and chains plot for each parameter in the specified model as shown in \autoref{fig:brmsplot}.
 
 The default number of total iterations in `bayesnec` is 10,000 per chain, with 9,000 of these used as warm-up (or burn-in) across 4 chains. If the `bnec` call returns `brms` warning messages the number of iterations and warm-up samples can be adjusted through arguments `iter` and `warmup`. A range of other arguments can be further adjusted to improve convergence, see the rich set of [Resources](https://github.com/paul-buerkner/brms available) available for the `brms` package for further information.
 
@@ -158,7 +158,7 @@ summary(exmp_fit)
 # Consider dropping them (see ?amend)
 ```
 
-Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method-based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the `brms` package. An example base plot of a `bayesmanecfit` model fit can be seen in Fig. \@ref(fig:baseplot).
+Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method-based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the `brms` package. An example base plot of a `bayesmanecfit` model fit can be seen in \autoref{fig:baseplot}.
 
 
 ```r
@@ -249,7 +249,7 @@ For the parameters $\beta = \text{beta}$, $\alpha = \text{slope}$ and $\epsilon 
 
 ### User specified priors
 
-There may be situations where the default `bayesnec` priors do not behave as desired, or the user wants to provide informative priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the `x_var` data). Conversely, priors may be too vague, leading to poor model convergence.  Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for `bayesnec` to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual `brms` model fits through the function `sample_priors` which samples directly from the `prior` element in the `brm` model fit (see Fig. \@ref(fig:priorsplot)).
+There may be situations where the default `bayesnec` priors do not behave as desired, or the user wants to provide informative priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the `x_var` data). Conversely, priors may be too vague, leading to poor model convergence.  Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for `bayesnec` to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual `brms` model fits through the function `sample_priors` which samples directly from the `prior` element in the `brm` model fit (see \autoref{fig:priorsplot}).
 
 
 ```r
@@ -258,7 +258,7 @@ sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 
 ![Frequency histograms of samples of the default priors used by `bnec` for fitting the `nec4param` model to the example `nec_data`.\label{fig:priorsplot}](sample_prior.png)
 
-We can also use the function `check_priors` (based on the `hypothesis` function of `brms`) to assess how the posterior probability density for each parameter differs from that of the prior. Here we show the prior and posterior probability densities for the parameters in the **nec4param** model, extracted from our example fit (see Fig. \@ref(fig:checkpriorsplot)). There is also a class `bayesmanecfit` method that can be used to sequentially view all plots in a `bnec` call with multiple models, or write to a pdf as in `check_chains`. 
+We can also use the function `check_priors` (based on the `hypothesis` function of `brms`) to assess how the posterior probability density for each parameter differs from that of the prior. Here we show the prior and posterior probability densities for the parameters in the **nec4param** model, extracted from our example fit (see \autoref{fig:checkpriorsplot}). There is also a class `bayesmanecfit` method that can be used to sequentially view all plots in a `bnec` call with multiple models, or write to a pdf as in `check_chains`. 
 
 
 ```r
@@ -305,7 +305,7 @@ The `bayesnec` package is a work in progress, and we welcome suggestions and fee
   
 # Acknowledgements
 
-The development of `bayesnec` was supported by an AIMS internal grant. David Fox and Gerard Ricardo developed some of the initial code on which the `bayesnec` predecessor `jagsNEC` was based. Usage, testing and functionality of both the `jagsNEC` and `bayesnec` packages were substantially aided through input from Joost van Dam, Andrew Negri, Florita Flores, Heidi Luter, Marie Thomas and Mikaela Nordborg. Florita Flores and Murray Logan provided valuable comments on the manuscript text. 
+The development of `bayesnec` was supported by an AIMS internal grant. David Fox and Gerard Ricardo developed some of the initial code on which the `bayesnec` predecessor `jagsNEC` was based. Usage, testing and functionality of both the `jagsNEC` and `bayesnec` packages were substantially aided through input from Joost van Dam, Andrew Negri, Florita Flores, Heidi Luter, Marie Thomas and Mikaela Nordborg. Florita Flores and Murray Logan provided valuable comments on the manuscript text. Ron Jones resolved issues with the paper.bib file that was causing compilation to fail. 
 
 
 # References
