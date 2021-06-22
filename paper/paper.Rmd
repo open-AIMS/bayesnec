@@ -298,7 +298,7 @@ The `bayesnec` package is a work in progress, and we welcome suggestions and fee
   
 # Acknowledgements
 
-The development of `bayesnec` was supported by an AIMS internal grant. David Fox and Gerard Ricardo developed some of the initial code on which the `bayesnec` predecessor `jagsNEC` was based. Usage, testing and functionality of both the `jagsNEC` and `bayesnec` packages were substantially aided through input from Joost van Dam, Andrew Negri, Florita Flores, Heidi Luter, Marie Thomas and Mikaela Nordborg. Florita Flores and Murray Logan provided valuable comments on the manuscript text. 
+The development of `bayesnec` was supported by an AIMS internal grant. David Fox and Gerard Ricardo developed some of the initial code on which the `bayesnec` predecessor `jagsNEC` was based. Usage, testing and functionality of both the `jagsNEC` and `bayesnec` packages were substantially aided through input from Joost van Dam, Andrew Negri, Florita Flores, Heidi Luter, Marie Thomas and Mikaela Nordborg. Florita Flores and Murray Logan provided valuable comments on the manuscript text. Ron Jones resolved issues with the paper.bib file that was causing compilation to fail. 
 
 
 # References
