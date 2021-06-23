@@ -12,7 +12,7 @@ status](https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg)](
 [![Codecov test
 coverage](https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg)](https://codecov.io/gh/open-aims/bayesnec?branch=master)
 ![pkgdown](https://github.com/open-AIMS/bayesnec/workflows/pkgdown/badge.svg)
-[![license](https://img.shields.io/badge/license-MIT%20+%20file%20LICENSE-lightgrey.svg)](https://choosealicense.com/)
+[![license](https://img.shields.io/badge/license-GPL--2-lightgrey.svg)](https://choosealicense.com/)
 [![packageversion](https://img.shields.io/badge/Package%20version-1.0.1-orange.svg)](commits/master)
 [![Ask Us Anything
 !](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/open-AIMS/bayesnec/issues/new)
@@ -64,8 +64,8 @@ Further Information
 -------------------
 
 `bayesnec` is provided by the [Australian Institute of Marine
-Science](https://www.aims.gov.au) under the MIT License
-([MIT](http://opensource.org/licenses/MIT)).
+Science](https://www.aims.gov.au) under the GPL-2 License
+([GPL-2](https://opensource.org/licenses/GPL-2.0)).
 
 AIMS R package logos
 --------------------
