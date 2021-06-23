@@ -79,7 +79,7 @@
 #' calling these families.
 #'
 #' Other families can be added as required, please raise an
-#' \href{https://github.com/AIMS/bayesnec/issues}{issue} on the GitHub
+#' \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
 #' development site if your required family is not currently available.
 #'
 #' If not supplied, the appropriate distribution will be guessed based on the
