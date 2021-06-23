@@ -27,6 +27,41 @@ e4 <- "https://open-aims.github.io/bayesnec/articles/example4.html"
 [e3]: `r e3`
 [e4]: `r e4`
 
+# `bayesnec`
+
+The `bayesnec` is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via `brms` [@Burkner2017; @Burkner2018] and `stan`. The package is an adaptation and extension of an initial package `jagsNEC` [@Fisher2020] which was based on the `R2jags` package [@Su2015] and `jags` [@Plummer2003].
+
+# Background
+
+Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for *NEC* estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting *NEC* models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor, x) as well as the "response" (y) variable. The model formula, including priors and initial values required to call a `brms` model are automatically generated based on information contained in the supplied data. While the distribution of the x and y variables can be specified directly, `bayesnec` will automatically 'guess' the correct distribution to use based on the characteristics of the provided data.
+
+This project started with an implementation of the *NEC* model based on that described in (Pires et al. 2002) and [@Fox2010] using R2jags [@Fisher2020]. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported Gaussian, Poisson, Binomial, Gamma, Negative Binomial and beta response data `bayesnec` additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of  concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist packages such as `drc`[@Ritz2016]. These models do not employ segmented regression (i.e., use of a ‘step’ function) but simply models the response as a smooth function of concentration.  
+
+Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively, it is possible to fit a custom model set, a specific model set, or all the available models. Further information on fitting multi-models using `bayesnec` can be found in the [Multi model usage][e2] vignette. For detailed information on the models available in `bayesnec` see the [Model details][e2b] vignette.
+
+Important information on the current package is contained in the `bayesnec` help-files and the [Model details][e2b] vignette.
+
+This package is currently under development. We are keen to receive any feedback regarding usage, and especially bug reporting that includes an easy to run self-contained reproducible example of unexpected behaviour, or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy-to-run reproducible example is not supplied.
+
+# Installation
+
+To install the latest version from GitHub (https://github.com/open-AIMS/bayesnec) use:
+
+```{r, eval = FALSE}
+install.packages("remotes")
+remotes::install_github("open-AIMS/bayesnec")
+```
+
+To run this vignette, we will also need some additional packages, which are made available via `tidyverse`
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+```
+
+```{r, warning = FALSE, message = FALSE}
+library(tidyverse)
+```
+
 # Examples
 ## Fitting the neclin model using `bnec`
 
