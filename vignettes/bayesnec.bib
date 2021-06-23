@@ -86,7 +86,7 @@ year = {2018}
   author = {Aki Vehtari and Jonah Gabry and Mans Magnusson and Yuling Yao and Paul-Christian Bürkner and Topi Paananen and Andrew Gelman},
   year = {2020},
   note = {R package version 2.3.1},
-  url = {https://mc-stan.org/loo},
+  url = {https://mc-stan.org/loo/},
 }
 @article{vehtari2017,
   title = {Practical Bayesian model evaluation using leave-one-out cross-validation and WAIC},
@@ -97,13 +97,6 @@ year = {2018}
   issue = {5},
   pages = {1413--1432},
   doi = {10.1007/s11222-016-9696-4},
-}
-@article{yao2017,
-  title = {Using stacking to average Bayesian predictive distributions},
-  author = {Yuling Yao and Aki Vehtari and Daniel Simpson and Andrew Gelman},
-  year = {2017},
-  journal = {Bayesian Analysis},
-  doi = {10.1214/17-BA1091},
 }
 @misc{Mattson2008,
 abstract = {Hormesis is a term used by toxicologists to refer to a biphasic dose-response to an environmental agent characterized by a low dose stimulation or beneficial effect and a high dose inhibitory or toxic effect. In the fields of biology and medicine hormesis is defined as an adaptive response of cells and organisms to a moderate (usually intermittent) stress. Examples include ischemic preconditioning, exercise, dietary energy restriction and exposures to low doses of certain phytochemicals. Recent findings have elucidated the cellular signaling pathways and molecular mechanisms that mediate hormetic responses which typically involve enzymes such as kinases and deacetylases, and transcription factors such as Nrf-2 and NF-$\kappa$B. As a result, cells increase their production of cytoprotective and restorative proteins including growth factors, phase 2 and antioxidant enzymes, and protein chaperones. A better understanding of hormesis mechanisms at the cellular and molecular levels is leading to and to novel approaches for the prevention and treatment of many different diseases.},
@@ -132,11 +125,13 @@ year = {2008}
   author = {{Stan Development Team}},
    note = {R package version 2.21.2},
   year = {2020},
-   url = {http://mc-stan.org/},
+   url = {https://mc-stan.org/},
 }
 @article{Yao2018,
-abstract = {The widely recommended procedure of Bayesian model averaging is flawed in the M-open setting in which the true data-generating process is not one of the candidate models being fit. We take the idea of stacking from the point estimation literature and generalize to the combination of predictive distributions, extending the utility function to any proper scoring rule, using Pareto smoothed importance sampling to efficiently compute the required leave-one-out posterior distributions and regularization to get more stability. We compare stacking of predictive distributions to several alternatives: stacking of means, Bayesian model averaging (BMA), pseudo-BMA using AIC-type weighting, and a variant of pseudo-BMA that is stabilized using the Bayesian bootstrap. Based on simulations and real-data applications, we recommend stacking of predictive distributions, with BB-pseudo-BMA as an approximate alternative when computation cost is an issue.},
 author = {Yao, Yuling and Vehtari, Aki and Simpson, Daniel and Gelman, Andrew},
+volume = {13},
+issue = {3},
+pages = {917--1007},
 doi = {10.1214/17-ba1091},
 issn = {1936-0975},
 journal = {Bayesian Analysis},
