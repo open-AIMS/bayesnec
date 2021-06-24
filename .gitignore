@@ -28,3 +28,4 @@ check/
 bayesnec*tar.gz
 ..Rcheck/
 .Rproj.user
+/Meta/

@@ -1,6 +1,10 @@
 library(bayesnec)
 library(brms)
 
+manec_gausian_identity <- bayesnec:::manec_gausian_identity
+nec_gausian_identity <- bayesnec:::nec_gausian_identity
+ecx4param <- bayesnec:::ecx4param
+
 test_that("prob_vals warnings behave as expected", {
   expect_length(nsec(manec_gausian_identity, prob_vals = c(0.6, 0.1, 0.9)), 3)
   expect_error(nsec(manec_gausian_identity, prob_vals = 0.9))

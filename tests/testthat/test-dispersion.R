@@ -1,5 +1,7 @@
 library(bayesnec)
 
+nec4param <- bayesnec:::nec4param
+
 test_fam <- nec4param$fit
 test_fam$family$family <- "other"
 

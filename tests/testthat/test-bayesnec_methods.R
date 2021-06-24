@@ -1,6 +1,8 @@
 library(bayesnec)
 library(brms)
 
+nec_gausian_identity <- bayesnec:::nec_gausian_identity
+
 test_that("predict is silent", {
   expect_silent(predict(nec_gausian_identity))
 })

@@ -1,5 +1,8 @@
 library(bayesnec)
 
+ecx4param <- bayesnec:::ecx4param
+nec4param <- bayesnec:::nec4param
+
 test_that("x must be a named list", {
   expect_error(compare_fitted(list(ecx4param, nec4param)))
   expect_error(compare_fitted(ecx4param, nec4param))

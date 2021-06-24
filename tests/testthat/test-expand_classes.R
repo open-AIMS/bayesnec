@@ -1,5 +1,9 @@
 library(bayesnec)
 
+manec_gausian_identity <- bayesnec:::manec_gausian_identity
+ecx4param <- bayesnec:::ecx4param
+nec4param <- bayesnec:::nec4param
+
 fit1 <- nec4param$fit
 fit2 <- ecx4param$fit
 

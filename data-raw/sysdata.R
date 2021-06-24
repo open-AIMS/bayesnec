@@ -214,56 +214,71 @@ pred_functions <- list(nec3param = pred_nec3param,
                        ecxhormebc4 = pred_ecxhormebc4,
                        ecxhormebc5 = pred_ecxhormebc5)
 
+#######################
+# SOURCE EXAMPLE MODELS
+#######################
+source("tests/bayesnec_examples.R")
+
 ####################
 # SAVE INTERNAL DATA
 ####################
-save(mod_groups, mod_fams,
-     # neclin
-     bf_neclin,
-     # nec3param
-     bf_nec3param,
-     # nec4param
-     bf_nec4param,
-     # nechorme
-     bf_nechorme,
-     # nechormepwr
-     bf_nechormepwr,
-     # nechormepwr01
-     bf_nechormepwr01,
-     # neclinhorme
-     bf_neclinhorme,
-     # nechorme4
-     bf_nechorme4,
-     # nechorme4pwr
-     bf_nechorme4pwr,
-     # necsigm
-     bf_necsigm,
-     # ecxlin
-     bf_ecxlin,
-     # ecxexp
-     bf_ecxexp,
-     # ecxsigm
-     bf_ecxsigm,
-     # ecx4param
-     bf_ecx4param,
-     # ecxwb1
-     bf_ecxwb1,
-     # ecxwb2
-     bf_ecxwb2,
-     # ecxwb1p3
-     bf_ecxwb1p3,
-     # ecxwb2p3
-     bf_ecxwb2p3,
-     #ecxll5
-     bf_ecxll5,
-     #ecxll4
-     bf_ecxll4,
-     #ecxll3
-     bf_ecxll3,
-     #ecxhormebc5
-     bf_ecxhormebc5,
-     #ecxhormebc4
-     bf_ecxhormebc4,
-     stan_funs, stanvars,
-     pred_functions,
-     file = "R/sysdata.rda")
+usethis::use_data(
+  mod_groups, mod_fams,
+  # neclin
+  bf_neclin,
+  # nec3param
+  bf_nec3param,
+  # nec4param
+  bf_nec4param,
+  # nechorme
+  bf_nechorme,
+  # nechormepwr
+  bf_nechormepwr,
+  # nechormepwr01
+  bf_nechormepwr01,
+  # neclinhorme
+  bf_neclinhorme,
+  # nechorme4
+  bf_nechorme4,
+  # nechorme4pwr
+  bf_nechorme4pwr,
+  # necsigm
+  bf_necsigm,
+  # ecxlin
+  bf_ecxlin,
+  # ecxexp
+  bf_ecxexp,
+  # ecxsigm
+  bf_ecxsigm,
+  # ecx4param
+  bf_ecx4param,
+  # ecxwb1
+  bf_ecxwb1,
+  # ecxwb2
+  bf_ecxwb2,
+  # ecxwb1p3
+  bf_ecxwb1p3,
+  # ecxwb2p3
+  bf_ecxwb2p3,
+  #ecxll5
+  bf_ecxll5,
+  #ecxll4
+  bf_ecxll4,
+  #ecxll3
+  bf_ecxll3,
+  #ecxhormebc5
+  bf_ecxhormebc5,
+  #ecxhormebc4
+  bf_ecxhormebc4,
+  stan_funs,
+  stanvars,
+  pred_functions,
+  # objects from test folder
+  manec_gausian_identity,
+  nec_gausian_identity,
+  ecx4param,
+  nec4param,
+  a1,
+  a2,
+  internal = TRUE, overwrite = TRUE
+)

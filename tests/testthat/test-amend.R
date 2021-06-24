@@ -1,11 +1,9 @@
 library(bayesnec)
 library(dplyr)
 
-a1 <- amend(manec_gausian_identity,
-            loo_controls = list(method = "stacking")) %>%
-  suppressWarnings
-a2 <- amend(manec_gausian_identity, add = "ecxlin") %>%
-  suppressWarnings
+manec_gausian_identity <- bayesnec:::manec_gausian_identity
+a1 <- bayesnec:::a1
+a2 <- bayesnec:::a2
 
 test_that("input checks work correctly and return appropriate messages", {
   m_0 <- paste0("Nothing to amend, please specify a model to either add or",

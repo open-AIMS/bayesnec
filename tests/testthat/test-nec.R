@@ -1,6 +1,10 @@
 library(bayesnec)
 library(brms)
 
+manec_gausian_identity <- bayesnec:::manec_gausian_identity
+ecx4param <- bayesnec:::ecx4param
+nec4param <- bayesnec:::nec4param
+
 test_that("nec returns expected object types", {
   nec_summary <- nec(manec_gausian_identity)
   expect_equal(length(nec_summary), 3)

@@ -1,6 +1,8 @@
 library(bayesnec)
 library(brms)
 
+manec_gausian_identity <- bayesnec:::manec_gausian_identity
+
 test_that("predict is silent", {
   expect_silent(predict(manec_gausian_identity))
 })
