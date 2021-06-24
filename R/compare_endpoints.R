@@ -17,6 +17,7 @@
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect everything
 #' @importFrom utils combn
+#' @importFrom rlang .data
 #'
 #' @examples
 #' \dontrun{
@@ -62,7 +63,7 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
   posterior_data <- do.call("cbind", r_posterior_list) %>%
     data.frame %>%
     pivot_longer(cols = everything(), names_to = "model") %>%
-    arrange(model) %>%
+    arrange(.data$model) %>%
     data.frame
   all_combn <- combn(names(x), 2, simplify = FALSE)
   diff_list <- lapply(all_combn, function(a, r_list) {

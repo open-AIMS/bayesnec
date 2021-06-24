@@ -5,6 +5,7 @@
 #' @return A \code{\link[base]{data.frame}}.
 #'
 #' @importFrom dplyr %>% mutate select
+#' @importFrom rlang .data
 prep_raw_data <- function(brms_fit) {
   r_df <- brms_fit$data
   family <- brms_fit$family
@@ -15,8 +16,8 @@ prep_raw_data <- function(brms_fit) {
     r_df$y <- r_df$y
   }
   r_df %>%
-    mutate(x_e = NA, y_e = NA, y_ci = NA, x_r = x, y_r = y) %>%
-    select(x_e, y_e, y_ci, x_r, y_r)
+    mutate(x_e = NA, y_e = NA, y_ci = NA, x_r = .data$x, y_r = .data$y) %>%
+    select(.data$x_e, .data$y_e, .data$y_ci, .data$x_r, .data$y_r)
 }
 
 #' bind_nec
@@ -197,31 +198,32 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
 #' @importFrom ggplot2 geom_vline geom_text theme_classic facet_wrap theme
 #' @importFrom ggplot2 element_text element_blank element_rect labs
 #' @importFrom dplyr %>% filter
+#' @importFrom rlang .data
 #'
 #' @export
 ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
   out <- ggplot() +
-    geom_polygon(data = x %>% filter(!is.na(y_ci)),
-                 mapping = aes(x = x_e, y = y_ci),
+    geom_polygon(data = x %>% filter(!is.na(.data$y_ci)),
+                 mapping = aes(x = .data$x_e, y = .data$y_ci),
                  fill = "grey75", alpha = 0.5) +
-    geom_line(data = x %>% filter(!is.na(y_e)),
-              mapping = aes(x = x_e, y = y_e),
+    geom_line(data = x %>% filter(!is.na(.data$y_e)),
+              mapping = aes(x = .data$x_e, y = .data$y_e),
               colour = "black", linetype = 2) +
-    geom_point(data = x %>% filter(!is.na(y_r)),
-               mapping = aes(x = x_r, y = y_r), fill = "grey30",
+    geom_point(data = x %>% filter(!is.na(.data$y_r)),
+               mapping = aes(x = .data$x_r, y = .data$y_r), fill = "grey30",
                shape = 21)
   if (nec) {
     ltys <- rep(c(1, 2, 2), length(unique(x$model)))
     lwds <- rep(c(0.5, 0.2, 0.2), length(unique(x$model)))
     out <- out +
-      geom_vline(data = x %>% filter(!is.na(nec_vals)),
-                 mapping = aes(xintercept = nec_vals),
+      geom_vline(data = x %>% filter(!is.na(.data$nec_vals)),
+                 mapping = aes(xintercept = .data$nec_vals),
                  linetype = ltys, colour = "grey50",
                  lwd = lwds) +
-      geom_text(data = x %>% filter(!is.na(nec_labs)),
-                mapping = aes(label = paste0("NEC: ", nec_labs, " (",
-                                             nec_labs_l, "-", nec_labs_u,
-                                             ")")),
+      geom_text(data = x %>% filter(!is.na(.data$nec_labs)),
+                mapping = aes(label = paste0("NEC: ", .data$nec_labs, " (",
+                                             .data$nec_labs_l, "-",
+                                             .data$nec_labs_u, ")")),
                 x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, size = 3,
                 colour = "grey50")
   }
@@ -229,20 +231,21 @@ ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
     ltys <- rep(c(1, 2, 2), length(unique(x$model)))
     lwds <- rep(c(0.5, 0.2, 0.2), length(unique(x$model)))
     out <- out +
-      geom_vline(data = x %>% filter(!is.na(ecx_vals)),
-                 mapping = aes(xintercept = ecx_vals),
+      geom_vline(data = x %>% filter(!is.na(.data$ecx_vals)),
+                 mapping = aes(xintercept = .data$ecx_vals),
                  linetype = ltys, colour = "dodgerblue4",
                  lwd = lwds) +
-      geom_text(data = x %>% filter(!is.na(ecx_labs)),
-                mapping = aes(label = paste0("EC[", ecx_int, "]", ": ",
-                                             ecx_labs, " (", ecx_labs_l,
-                                             "-", ecx_labs_u, ")")),
+      geom_text(data = x %>% filter(!is.na(.data$ecx_labs)),
+                mapping = aes(label = paste0("EC[", .data$ecx_int, "]", ": ",
+                                             .data$ecx_labs, " (",
+                                             .data$ecx_labs_l, "-",
+                                             .data$ecx_labs_u, ")")),
                 x = Inf, y = Inf, hjust = 1.1, vjust = 5.5, size = 3,
                 colour = "dodgerblue4")
   }
   out +
     theme_classic() +
-    facet_wrap(~model, scales = "free", ncol = 2) +
+    facet_wrap(~.data$model, scales = "free", ncol = 2) +
     theme(strip.text = element_text(hjust = 0),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
