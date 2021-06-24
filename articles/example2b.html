@@ -121,7 +121,7 @@
 <p>Model averaging is achieved through a weighted sample of each fitted models’ posterior predictions, with weights derived using the <code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry 2017)</span>. Individual <code>brms</code> model fits can be extracted from the <code>mod_fits</code> element and can be examined individually.</p>
 <p>The <code>model</code> argument may also be one of “all”, meaning all of the available models will be fit; “ecx” meaning only models excluding the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter will be fit; or “nec” meaning only models with the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter (see below <strong>Model parameters</strong>) will be fit. There are a range of other pre-defined model groups available. The full list of currently implemented model groups can be seen using:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st"><a href="https://open-aims.github.io/bayesnec/" class="external-link">"bayesnec"</a></span><span class="op">)</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span>
 <span class="fu"><a href="../reference/models.html">models</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 </div>
 <div id="parameter-definitions" class="section level1">
@@ -146,8 +146,8 @@ f(x_i, \eta) = \begin{cases}
 <div id="model-suitability-for-response-types" class="section level1">
 <h1 class="hasAnchor">
 <a href="#model-suitability-for-response-types" class="anchor" aria-hidden="true"></a>Model suitability for response types</h1>
-<p>Models that have an exponential decay (most models with parameter <span class="math inline">\(\beta = \text{beta}\)</span>) with no <span class="math inline">\(\delta = \text{bottom}\)</span> parameter are <code>0</code> bounded and are not suitable for the Gaussian family, or any family modelled using a logit or log link because they cannot generate predictions of negative y-values (response). Conversely models with a linear decay (containing the string “lin” in their name) are not suitable for modelling families that are <code>0</code> bounded (gamma, Poisson, negative binomial, beta, binomial, beta-binomial) using an identity link. These restrictions do not need to be controlled by the user, as a call to <code>bnec</code> with <code>models = "all"</code> will simply exclude inappropriate models, albeit with a warning.</p>
-<p>Strictly speaking, models with a linear hormesis increase are not suitable for modelling families that are <code>0</code>, <code>1</code> bounded (binomial, beta and betabinomial2), however they are currently allowed in <code>bayesnec</code>, with a reasonable fit achieved through a combination of the appropriate family being applied to the response, and the <code>bayesnec</code> <code>make_inits</code> function that ensures initial values passed to <code>brms</code> yield response values within the range of the observed <code>y_var</code> data.</p>
+<p>Models that have an exponential decay (most models with parameter <span class="math inline">\(\beta = \text{beta}\)</span>) with no <span class="math inline">\(\delta = \text{bottom}\)</span> parameter are 0-bounded and are not suitable for the Gaussian family, or any family modelled using a logit or log link because they cannot generate predictions of negative y-values (response). Conversely models with a linear decay (containing the string “lin” in their name) are not suitable for modelling families that are 0-bounded (gamma, Poisson, negative binomial, beta, binomial, beta-binomial) using an identity link. These restrictions do not need to be controlled by the user, as a call to <code>bnec</code> with <code>models = "all"</code> will simply exclude inappropriate models, albeit with a warning.</p>
+<p>Strictly speaking, models with a linear hormesis increase are not suitable for modelling families that are 0, 1-bounded (binomial, beta and betabinomial2), however they are currently allowed in <code>bayesnec</code>, with a reasonable fit achieved through a combination of the appropriate family being applied to the response, and the <code>bayesnec</code> <code>make_inits</code> function that ensures initial values passed to <code>brms</code> yield response values within the range of the observed <code>y_var</code> data.</p>
 </div>
 <div id="model-definitions" class="section level1">
 <h1 class="hasAnchor">
@@ -162,7 +162,7 @@ f(x_i, \eta) = \begin{cases}
 <pre><code>## y ~ top - exp(slope) * x 
 ## top ~ 1
 ## slope ~ 1</code></pre>
-<p>Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for <code>0</code>, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
+<p>Because the model contains linear predictors it is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
 </div>
 <div id="ecxexp" class="section level3">
 <h3 class="hasAnchor">
@@ -171,7 +171,7 @@ f(x_i, \eta) = \begin{cases}
 <pre><code>## y ~ top * exp(-exp(beta) * x) 
 ## top ~ 1
 ## beta ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="ecxsigm" class="section level3">
 <h3 class="hasAnchor">
@@ -181,7 +181,7 @@ f(x_i, \eta) = \begin{cases}
 ## d ~ 1
 ## top ~ 1
 ## beta ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="ecx4param" class="section level3">
 <h3 class="hasAnchor">
@@ -211,7 +211,7 @@ f(x_i, \eta) = \begin{cases}
 ## ec50 ~ 1
 ## top ~ 1
 ## beta ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="ecxwb2" class="section level3">
 <h3 class="hasAnchor">
@@ -232,7 +232,7 @@ f(x_i, \eta) = \begin{cases}
 ## ec50 ~ 1
 ## top ~ 1
 ## beta ~ 1</code></pre>
-<p>While very similar to the <strong>ecxwb1p3</strong> (according to <span class="citation">(Ritz et al. 2016)</span>), fitted <strong>ecxwb1p3</strong> and <strong>ecxwb2p3</strong> models can differ slightly. The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+<p>While very similar to the <strong>ecxwb1p3</strong> (according to <span class="citation">(Ritz et al. 2016)</span>), fitted <strong>ecxwb1p3</strong> and <strong>ecxwb2p3</strong> models can differ slightly. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="ecxll5" class="section level3">
 <h3 class="hasAnchor">
@@ -263,7 +263,7 @@ f(x_i, \eta) = \begin{cases}
 ## top ~ 1
 ## beta ~ 1
 ## ec50 ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="ecxhormebc5" class="section level3">
 <h3 class="hasAnchor">
@@ -285,7 +285,7 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## ec50 ~ 1
 ## slope ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
 </div>
 </div>
 <div id="nec-models" class="section level2">
@@ -299,7 +299,7 @@ f(x_i, \eta) = \begin{cases}
 ## top ~ 1
 ## slope ~ 1
 ## nec ~ 1</code></pre>
-<p>Because the model contains linear predictors it is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for <code>0</code>, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
+<p>Because the model contains linear predictors it is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
 </div>
 <div id="nec3param" class="section level3">
 <h3 class="hasAnchor">
@@ -309,7 +309,7 @@ f(x_i, \eta) = \begin{cases}
 ## top ~ 1
 ## beta ~ 1
 ## nec ~ 1</code></pre>
-<p>For binomial data in the case of identity link this model is equivalent to that in <span class="citation">(Fox 2010)</span>. The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+<p>For binomial data in the case of identity link this model is equivalent to that in <span class="citation">(Fox 2010)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
 </div>
 <div id="nec4param" class="section level3">
 <h3 class="hasAnchor">
@@ -330,7 +330,7 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>The <strong>nechorme</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
+<p>The <strong>nechorme</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
 </div>
 <div id="nechormepwr" class="section level3">
 <h3 class="hasAnchor">
@@ -341,7 +341,7 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>The <strong>nechormepwr</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. Because the model can generate predictions &gt; <code>1</code> it should not be used for binomial and beta families with identity link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
+<p>The <strong>nechormepwr</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. Because the model can generate predictions &gt; 1 it should not be used for binomial and beta families with identity link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
 </div>
 <div id="neclinhorme" class="section level3">
 <h3 class="hasAnchor">
@@ -352,7 +352,7 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>The <strong>neclinhorme</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. This model contains linear predictors and is not suitable for <code>0</code>, <code>1</code> bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for <code>0</code>, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
+<p>The <strong>neclinhorme</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. This model contains linear predictors and is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
 </div>
 <div id="nechorme4" class="section level3">
 <h3 class="hasAnchor">
@@ -376,7 +376,7 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>The <strong>nechorme4pwr</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial power increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. Because the model can generate predictions &gt; <code>1</code> it should not be used for binomial and beta families with identity link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
+<p>The <strong>nechorme4pwr</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial power increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. Because the model can generate predictions &gt; 1 it should not be used for binomial and beta families with identity link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
 </div>
 <div id="nechormepwr01" class="section level3">
 <h3 class="hasAnchor">
@@ -388,7 +388,7 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## slope ~ 1</code></pre>
-<p>The <strong>nechormepwr01</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
+<p>The <strong>nechormepwr01</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
 </div>
 <div id="necsigm" class="section level3">
 <h3 class="hasAnchor">
@@ -399,7 +399,7 @@ f(x_i, \eta) = \begin{cases}
 ## beta ~ 1
 ## nec ~ 1
 ## d ~ 1</code></pre>
-<p>The model is <code>0</code> bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an “nec” step function because where there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an “nec” step function because where there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.</p>
 </div>
 </div>
 </div>
