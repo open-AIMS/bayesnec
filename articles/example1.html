@@ -179,8 +179,8 @@
 <pre><code>## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 8.2e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.82 seconds.
+## Chain 1: Gradient evaluation took 9.4e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.94 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -197,15 +197,15 @@
 ## Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 2.15854 seconds (Warm-up)
-## Chain 1:                0.326438 seconds (Sampling)
-## Chain 1:                2.48497 seconds (Total)
+## Chain 1:  Elapsed Time: 2.09207 seconds (Warm-up)
+## Chain 1:                0.312708 seconds (Sampling)
+## Chain 1:                2.40477 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 3.4e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.34 seconds.
+## Chain 2: Gradient evaluation took 3.2e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.32 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -222,15 +222,15 @@
 ## Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 2.14828 seconds (Warm-up)
-## Chain 2:                0.282244 seconds (Sampling)
-## Chain 2:                2.43052 seconds (Total)
+## Chain 2:  Elapsed Time: 2.05004 seconds (Warm-up)
+## Chain 2:                0.278139 seconds (Sampling)
+## Chain 2:                2.32818 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 3.9e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.39 seconds.
+## Chain 3: Gradient evaluation took 3.3e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.33 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -247,15 +247,15 @@
 ## Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 2.14456 seconds (Warm-up)
-## Chain 3:                0.296049 seconds (Sampling)
-## Chain 3:                2.44061 seconds (Total)
+## Chain 3:  Elapsed Time: 2.04652 seconds (Warm-up)
+## Chain 3:                0.283328 seconds (Sampling)
+## Chain 3:                2.32985 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 3.8e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.38 seconds.
+## Chain 4: Gradient evaluation took 3.3e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.33 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -272,9 +272,9 @@
 ## Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.16975 seconds (Warm-up)
-## Chain 4:                0.296407 seconds (Sampling)
-## Chain 4:                2.46616 seconds (Total)
+## Chain 4:  Elapsed Time: 2.07377 seconds (Warm-up)
+## Chain 4:                0.281153 seconds (Sampling)
+## Chain 4:                2.35492 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code>plot(exp_1$fit)</code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -534,7 +534,7 @@
 <p>Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard. 2016. “Dose-Response Analysis Using R.” <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021" class="external-link">https://doi.org/10.1371/journal.pone.0146021</a>.</p>
 </div>
 <div id="ref-Su2015">
-<p>Su, Yu-Sung, and Masanao Yajima. 2015. <em>R2jags: Using R to Run ’JAGS’</em>. <a href="http://CRAN.R-project.org/package=R2jags" class="external-link">http://CRAN.R-project.org/package=R2jags</a>.</p>
+<p>Su, Yu-Sung, and Masanao Yajima. 2015. <em>R2jags: Using R to Run ’JAGS’</em>. <a href="https://cran.r-project.org/web/packages/R2jags/index.html" class="external-link">https://cran.r-project.org/web/packages/R2jags/index.html</a>.</p>
 </div>
 </div>
 </div>
