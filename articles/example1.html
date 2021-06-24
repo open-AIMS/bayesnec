@@ -197,15 +197,15 @@
 ## Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 2.08 seconds (Warm-up)
-## Chain 1:                0.313558 seconds (Sampling)
-## Chain 1:                2.39356 seconds (Total)
+## Chain 1:  Elapsed Time: 2.23292 seconds (Warm-up)
+## Chain 1:                0.323402 seconds (Sampling)
+## Chain 1:                2.55632 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 3.7e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.37 seconds.
+## Chain 2: Gradient evaluation took 4.9e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.49 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -222,15 +222,15 @@
 ## Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 2.05292 seconds (Warm-up)
-## Chain 2:                0.275052 seconds (Sampling)
-## Chain 2:                2.32797 seconds (Total)
+## Chain 2:  Elapsed Time: 2.24587 seconds (Warm-up)
+## Chain 2:                0.297059 seconds (Sampling)
+## Chain 2:                2.54293 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 3.4e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.34 seconds.
+## Chain 3: Gradient evaluation took 3.7e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.37 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -247,15 +247,15 @@
 ## Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 2.06535 seconds (Warm-up)
-## Chain 3:                0.283992 seconds (Sampling)
-## Chain 3:                2.34935 seconds (Total)
+## Chain 3:  Elapsed Time: 2.11489 seconds (Warm-up)
+## Chain 3:                0.292117 seconds (Sampling)
+## Chain 3:                2.40701 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 4.1e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.41 seconds.
+## Chain 4: Gradient evaluation took 5.3e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.53 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -272,9 +272,9 @@
 ## Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.10577 seconds (Warm-up)
-## Chain 4:                0.290414 seconds (Sampling)
-## Chain 4:                2.39619 seconds (Total)
+## Chain 4:  Elapsed Time: 2.16842 seconds (Warm-up)
+## Chain 4:                0.299348 seconds (Sampling)
+## Chain 4:                2.46777 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code>plot(exp_1$fit)</code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
