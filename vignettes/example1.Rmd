@@ -52,14 +52,11 @@ install.packages("remotes")
 remotes::install_github("open-AIMS/bayesnec")
 ```
 
-To run this vignette, we will also need some additional packages, which are made available via `tidyverse`
-
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
-install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-```
+To run this vignette, we will also need some additional packages
 
 ```{r, warning = FALSE, message = FALSE}
-library(tidyverse)
+library(dplyr)
+library(ggplot2)
 ```
 
 # Examples
@@ -160,6 +157,7 @@ plot(exp_1b, lxform = exp)
 exp_1b$dispersion
 #[1] NA NA NA
 ```
+
 ```{r echo=FALSE, out.width='100%'}
 knitr::include_graphics('example1a.jpeg')
 ```
@@ -258,8 +256,6 @@ Where data are a count (of, for example, individuals or cells) y is Poisson. Suc
 
 
 ```{r, warning = FALSE, fig.width = 10, fig.height = 4.7}
-require(tidyverse)
-require(bayesnec)
 count_data <- "https://pastebin.com/raw/ENgNSgf7" %>%
   read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
   dplyr::rename(raw_x = raw.x) %>%
