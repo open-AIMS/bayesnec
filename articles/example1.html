@@ -169,7 +169,7 @@
 <p>The main ‘working’ function in <code>bayesnec</code> is the function <code>bnec</code>, which calls the other necessary functions and fits the <code>brms</code> model. We run <code>bnec</code> by supplying <code>data</code>: a data.frame containing the data for the model fitting, here, <code>binom_data</code>; <code>x_var</code>: the name of the column in <code>data</code> which contains the concentration data or ‘x’ data to be used in the <em>NEC</em> model fit, and <code>y_var</code>: the name of the column in <code>data</code> which contains the response or ‘y’ data to be used in the <em>NEC</em> model fit. In our example here, as this is binomial, we must also supply <code>trials_var</code>, which is the name of the column in <code>data</code> which contains the number of trials in the binomial call.</p>
 <p><code>bnec</code> will guess the data types for use, although as mentioned above we could manually specify <code>family</code> as “binomial”. <code>bnec</code> will also generate appropriate priors for the <code>brms</code> model call, although these can also be specified manually (see the <a href="https://open-aims.github.io/bayesnec/articles/example3.html" class="external-link">Priors</a> vignette for more details).</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec" class="external-link">bayesnec</a></span><span class="op">)</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">binom_data</span>, x_var <span class="op">=</span> <span class="st">"log_x"</span>,
@@ -178,8 +178,8 @@
 <pre><code>## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 8.3e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.83 seconds.
+## Chain 1: Gradient evaluation took 8.1e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.81 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -196,15 +196,15 @@
 ## Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 2.28986 seconds (Warm-up)
-## Chain 1:                0.329187 seconds (Sampling)
-## Chain 1:                2.61905 seconds (Total)
+## Chain 1:  Elapsed Time: 2.05189 seconds (Warm-up)
+## Chain 1:                0.306757 seconds (Sampling)
+## Chain 1:                2.35865 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 3.6e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.36 seconds.
+## Chain 2: Gradient evaluation took 3.3e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.33 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -221,15 +221,15 @@
 ## Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 2.12804 seconds (Warm-up)
-## Chain 2:                0.282444 seconds (Sampling)
-## Chain 2:                2.41048 seconds (Total)
+## Chain 2:  Elapsed Time: 2.04888 seconds (Warm-up)
+## Chain 2:                0.269461 seconds (Sampling)
+## Chain 2:                2.31834 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 3.5e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.35 seconds.
+## Chain 3: Gradient evaluation took 3.3e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.33 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -246,15 +246,15 @@
 ## Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 2.19373 seconds (Warm-up)
-## Chain 3:                0.333191 seconds (Sampling)
-## Chain 3:                2.52693 seconds (Total)
+## Chain 3:  Elapsed Time: 2.02332 seconds (Warm-up)
+## Chain 3:                0.277657 seconds (Sampling)
+## Chain 3:                2.30098 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 3.4e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.34 seconds.
+## Chain 4: Gradient evaluation took 3.5e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.35 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -271,9 +271,9 @@
 ## Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.23367 seconds (Warm-up)
-## Chain 4:                0.35853 seconds (Sampling)
-## Chain 4:                2.5922 seconds (Total)
+## Chain 4:  Elapsed Time: 2.07853 seconds (Warm-up)
+## Chain 4:                0.284378 seconds (Sampling)
+## Chain 4:                2.3629 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code>plot(exp_1$fit)</code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -411,7 +411,7 @@
 <p>Where data are a count (of, for example, individuals or cells) y is Poisson. Such data are distributed from <code>0</code> to <code>Inf</code> and are integers. First we read in the count data example from <a href="https://pastebin.com/tools" class="external-link">pastebin</a>, and then plot the “concentration” or x data, Again, this is <code>raw_x</code>, and distributed as in our binomial example above.</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec" class="external-link">bayesnec</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span>
 <span class="va">count_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/ENgNSgf7"</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
@@ -517,7 +517,7 @@
 <a href="#references" class="anchor" aria-hidden="true"></a>References</h1>
 <div id="refs" class="references">
 <div id="ref-Burkner2017">
-<p>Bürkner, Paul Christian. 2017. “brms: An R package for Bayesian multilevel models using Stan.” <em>Journal of Statistical Software</em>. <a href="https://doi.org/10.18637/jss.v080.i01" class="external-link">https://doi.org/10.18637/jss.v080.i01</a>.</p>
+<p>Bürkner, Paul Christian. 2017. “brms: An R package for Bayesian multilevel models using Stan.” <em>Journal of Statistical Software</em> 80 (1): 1–28. <a href="https://doi.org/10.18637/jss.v080.i01" class="external-link">https://doi.org/10.18637/jss.v080.i01</a>.</p>
 </div>
 <div id="ref-Burkner2018">
 <p>Bürkner, Paul-Christian. 2018. “Advanced Bayesian Multilevel Modeling with the R Package brms.” <em>The R Journal</em> 10 (1): 395–411. <a href="https://doi.org/10.32614/RJ-2018-017" class="external-link">https://doi.org/10.32614/RJ-2018-017</a>.</p>
@@ -529,13 +529,13 @@
 <p>Fox, David R. 2010. “A Bayesian approach for determining the no effect concentration and hazardous concentration in ecotoxicology.” <em>Ecotoxicology and Environmental Safety</em> 73 (2): 123–31.</p>
 </div>
 <div id="ref-Plummer2003">
-<p>Plummer, Martyn. 2003. “ JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling. http://citeseer.ist.psu.edu/plummer03jags.html.”</p>
+<p>Plummer, Martyn. 2003. “JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling.” In <em>Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003)</em>, 1–10. Technische Universität Wien, Vienna, Austria: Achim Zeileis.</p>
 </div>
 <div id="ref-Ritz2016">
 <p>Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard. 2016. “Dose-Response Analysis Using R.” <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021" class="external-link">https://doi.org/10.1371/journal.pone.0146021</a>.</p>
 </div>
 <div id="ref-Su2015">
-<p>Su, Yu-Sung, and Masanao Yajima. 2015. “R2jags: Using R to Run ’JAGS’. R package version 0.5-6. http://CRAN.R-project.org/package=R2jags.”</p>
+<p>Su, Yu-Sung, and Masanao Yajima. 2015. <em>R2jags: Using R to Run ’JAGS’</em>. <a href="http://CRAN.R-project.org/package=R2jags" class="external-link">http://CRAN.R-project.org/package=R2jags</a>.</p>
 </div>
 </div>
 </div>

@@ -137,7 +137,7 @@
 <a href="#fitting-a-bnec-model" class="anchor" aria-hidden="true"></a>Fitting a <code>bnec</code> model</h3>
 <p>So far we have explored how to fit individual models via the function <code>bnec</code>. The <code>bayesnec</code> package also has the capacity to fit a custom selection of models, pre-specified sets of models, or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains, using <code>bnec</code> can be very slow when fitting <code>models = "all"</code>. See details under <code><a href="../reference/bnec.html">?bnec</a></code> for more information on the models, and model sets that can be specified, as well as the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette which contains considerable information on the available models in <code>bnec</code> and their appropriate usage. In general it is safe to call <code>models = "all"</code>, because by default <code>bnec</code> will discard invalid models.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec" class="external-link">bayesnec</a></span><span class="op">)</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"nec_data"</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
@@ -307,16 +307,16 @@
 <p>Burnham, K P, and D R Anderson. 2002. <em>Model Selection and Multimodel Inference; A Practical Information-Theoretic Approach</em>. 2nd ed. New York: Springer.</p>
 </div>
 <div id="ref-Thorley2018">
-<p>Thorley, Joe, and Carl Schwarz. 2018. “ssdtools: Species Sensitivity Distributions. R package version 0.0.3. https://CRAN.R-project.org/package=ssdtools.”</p>
+<p>Thorley, Joe, and Carl Schwarz. 2018. <em>ssdtools: Species Sensitivity Distributions</em>. <a href="https://CRAN.R-project.org/package=ssdtools" class="external-link">https://CRAN.R-project.org/package=ssdtools</a>.</p>
 </div>
 <div id="ref-vehtari2020">
-<p>Vehtari, Aki, Jonah Gabry, Mans Magnusson, Yuling Yao, Paul-Christian Bürkner, Topi Paananen, and Andrew Gelman. 2020. “Loo: Efficient Leave-One-Out Cross-Validation and Waic for Bayesian Models.” <a href="https://mc-stan.org/loo" class="external-link">https://mc-stan.org/loo</a>.</p>
+<p>Vehtari, Aki, Jonah Gabry, Mans Magnusson, Yuling Yao, Paul-Christian Bürkner, Topi Paananen, and Andrew Gelman. 2020. <em>Loo: Efficient Leave-One-Out Cross-Validation and Waic for Bayesian Models</em>. <a href="https://mc-stan.org/loo/" class="external-link">https://mc-stan.org/loo/</a>.</p>
 </div>
 <div id="ref-vehtari2017">
 <p>Vehtari, Aki, Andrew Gelman, and Jonah Gabry. 2017. “Practical Bayesian Model Evaluation Using Leave-One-Out Cross-Validation and Waic.” <em>Statistics and Computing</em> 27 (5): 1413–32. <a href="https://doi.org/10.1007/s11222-016-9696-4" class="external-link">https://doi.org/10.1007/s11222-016-9696-4</a>.</p>
 </div>
 <div id="ref-Yao2018">
-<p>Yao, Yuling, Aki Vehtari, Daniel Simpson, and Andrew Gelman. 2018. “Using Stacking to Average Bayesian Predictive Distributions (with Discussion).” <em>Bayesian Analysis</em>. <a href="https://doi.org/10.1214/17-ba1091" class="external-link">https://doi.org/10.1214/17-ba1091</a>.</p>
+<p>Yao, Yuling, Aki Vehtari, Daniel Simpson, and Andrew Gelman. 2018. “Using Stacking to Average Bayesian Predictive Distributions (with Discussion).” <em>Bayesian Analysis</em> 13 (3): 917–1007. <a href="https://doi.org/10.1214/17-ba1091" class="external-link">https://doi.org/10.1214/17-ba1091</a>.</p>
 </div>
 </div>
 </div>

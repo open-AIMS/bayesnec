@@ -121,7 +121,7 @@
 <p>Model averaging is achieved through a weighted sample of each fitted models’ posterior predictions, with weights derived using the <code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry 2017)</span>. Individual <code>brms</code> model fits can be extracted from the <code>mod_fits</code> element and can be examined individually.</p>
 <p>The <code>model</code> argument may also be one of “all”, meaning all of the available models will be fit; “ecx” meaning only models excluding the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter will be fit; or “nec” meaning only models with the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter (see below <strong>Model parameters</strong>) will be fit. There are a range of other pre-defined model groups available. The full list of currently implemented model groups can be seen using:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st"><a href="https://open-aims.github.io/bayesnec" class="external-link">"bayesnec"</a></span><span class="op">)</span>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st"><a href="https://open-aims.github.io/bayesnec/" class="external-link">"bayesnec"</a></span><span class="op">)</span>
 <span class="fu"><a href="../reference/models.html">models</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 </div>
 <div id="parameter-definitions" class="section level1">
@@ -408,7 +408,7 @@ f(x_i, \eta) = \begin{cases}
 <a href="#references" class="anchor" aria-hidden="true"></a>References</h1>
 <div id="refs" class="references">
 <div id="ref-Burkner2017">
-<p>Bürkner, Paul Christian. 2017. “brms: An R package for Bayesian multilevel models using Stan.” <em>Journal of Statistical Software</em>. <a href="https://doi.org/10.18637/jss.v080.i01" class="external-link">https://doi.org/10.18637/jss.v080.i01</a>.</p>
+<p>Bürkner, Paul Christian. 2017. “brms: An R package for Bayesian multilevel models using Stan.” <em>Journal of Statistical Software</em> 80 (1): 1–28. <a href="https://doi.org/10.18637/jss.v080.i01" class="external-link">https://doi.org/10.18637/jss.v080.i01</a>.</p>
 </div>
 <div id="ref-Burkner2018">
 <p>Bürkner, Paul-Christian. 2018. “Advanced Bayesian Multilevel Modeling with the R Package brms.” <em>The R Journal</em> 10 (1): 395–411. <a href="https://doi.org/10.32614/RJ-2018-017" class="external-link">https://doi.org/10.32614/RJ-2018-017</a>.</p>
@@ -420,22 +420,22 @@ f(x_i, \eta) = \begin{cases}
 <p>Fox, David R. 2010. “A Bayesian approach for determining the no effect concentration and hazardous concentration in ecotoxicology.” <em>Ecotoxicology and Environmental Safety</em> 73 (2): 123–31.</p>
 </div>
 <div id="ref-Mattson2008">
-<p>Mattson, Mark P. 2008. “Hormesis defined.” <a href="https://doi.org/10.1016/j.arr.2007.08.007" class="external-link">https://doi.org/10.1016/j.arr.2007.08.007</a>.</p>
+<p>Mattson, Mark P. 2008. “Hormesis Defined.” <em>Ageing Research Reviews</em> 7 (1): 1–7. <a href="https://doi.org/https://doi.org/10.1016/j.arr.2007.08.007" class="external-link">https://doi.org/https://doi.org/10.1016/j.arr.2007.08.007</a>.</p>
 </div>
 <div id="ref-Plummer2003">
-<p>Plummer, Martyn. 2003. “ JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling. http://citeseer.ist.psu.edu/plummer03jags.html.”</p>
+<p>Plummer, Martyn. 2003. “JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling.” In <em>Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003)</em>, 1–10. Technische Universität Wien, Vienna, Austria: Achim Zeileis.</p>
 </div>
 <div id="ref-Ritz2016">
 <p>Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard. 2016. “Dose-Response Analysis Using R.” <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021" class="external-link">https://doi.org/10.1371/journal.pone.0146021</a>.</p>
 </div>
 <div id="ref-stan2020">
-<p>Stan Development Team. 2020. “RStan: The R Interface to Stan.” <a href="http://mc-stan.org/" class="external-link">http://mc-stan.org/</a>.</p>
+<p>Stan Development Team. 2020. <em>RStan: The R Interface to Stan</em>. <a href="https://mc-stan.org/" class="external-link">https://mc-stan.org/</a>.</p>
 </div>
 <div id="ref-Su2015">
-<p>Su, Yu-Sung, and Masanao Yajima. 2015. “R2jags: Using R to Run ’JAGS’. R package version 0.5-6. http://CRAN.R-project.org/package=R2jags.”</p>
+<p>Su, Yu-Sung, and Masanao Yajima. 2015. <em>R2jags: Using R to Run ’JAGS’</em>. <a href="http://CRAN.R-project.org/package=R2jags" class="external-link">http://CRAN.R-project.org/package=R2jags</a>.</p>
 </div>
 <div id="ref-vehtari2020">
-<p>Vehtari, Aki, Jonah Gabry, Mans Magnusson, Yuling Yao, Paul-Christian Bürkner, Topi Paananen, and Andrew Gelman. 2020. “Loo: Efficient Leave-One-Out Cross-Validation and Waic for Bayesian Models.” <a href="https://mc-stan.org/loo" class="external-link">https://mc-stan.org/loo</a>.</p>
+<p>Vehtari, Aki, Jonah Gabry, Mans Magnusson, Yuling Yao, Paul-Christian Bürkner, Topi Paananen, and Andrew Gelman. 2020. <em>Loo: Efficient Leave-One-Out Cross-Validation and Waic for Bayesian Models</em>. <a href="https://mc-stan.org/loo/" class="external-link">https://mc-stan.org/loo/</a>.</p>
 </div>
 <div id="ref-vehtari2017">
 <p>Vehtari, Aki, Andrew Gelman, and Jonah Gabry. 2017. “Practical Bayesian Model Evaluation Using Leave-One-Out Cross-Validation and Waic.” <em>Statistics and Computing</em> 27 (5): 1413–32. <a href="https://doi.org/10.1007/s11222-016-9696-4" class="external-link">https://doi.org/10.1007/s11222-016-9696-4</a>.</p>
