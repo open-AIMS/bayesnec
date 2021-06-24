@@ -14,6 +14,7 @@
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect starts_with
 #' @importFrom dplyr %>%
+#' @importFrom rlang .data
 #'
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
@@ -67,9 +68,9 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
       data.frame %>%
       pivot_longer(names_to = "param", values_to = "value",
                    cols = starts_with("b_")) %>%
-      ggplot(aes(value)) +
+      ggplot(mapping = aes(x = .data$value)) +
         geom_histogram() +
-        facet_wrap(~param, scales = "free_x")
+        facet_wrap(~.data$param, scales = "free_x")
     return(plot)
   }
   if (is.na(plot)) {

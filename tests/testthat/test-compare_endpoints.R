@@ -1,5 +1,9 @@
 library(bayesnec)
 
+manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
+ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
+nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+
 test_that("x must be a named list", {
   expect_error(compare_endpoints(list(ecx4param, nec4param)))
   expect_error(compare_endpoints(ecx4param, nec4param))
