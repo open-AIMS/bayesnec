@@ -1,6 +1,7 @@
 library(bayesnec)
 
-nec4param <- bayesnec:::nec4param
+manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
+nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
 
 test_fam <- nec4param$fit
 test_fam$family$family <- "other"

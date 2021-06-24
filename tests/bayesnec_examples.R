@@ -24,17 +24,7 @@ logit <- function(x) {
 }
 
 data("nec_data")
-manec_gausian_identity <- nec_data %>%
+manec_gauss_id_2 <- nec_data %>%
   mutate(y = logit(y)) %>%
   muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
              iter = 50, chains = 2)
-
-nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
-ecx4param <- pull_out(manec_gausian_identity, model = "ecx4param")
-nec4param <- nec_gausian_identity
-
-a1 <- amend(manec_gausian_identity,
-            loo_controls = list(method = "stacking")) %>%
-  suppressWarnings
-a2 <- amend(manec_gausian_identity, add = "ecxlin") %>%
-  suppressWarnings

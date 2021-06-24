@@ -274,11 +274,6 @@ usethis::use_data(
   stanvars,
   pred_functions,
   # objects from test folder
-  manec_gausian_identity,
-  nec_gausian_identity,
-  ecx4param,
-  nec4param,
-  a1,
-  a2,
+  manec_gauss_id_2,
   internal = TRUE, overwrite = TRUE
 )
