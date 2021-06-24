@@ -44,16 +44,6 @@ install.packages("remotes")
 remotes::install_github("open-AIMS/bayesnec")
 ```
 
-To run this vignette we will also need some additional packages, which are made available via `tidyverse`
-
-```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "hide", eval = FALSE}
-install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-```
-
-```{r, warning = FALSE, message = FALSE}
-library(tidyverse)
-```
-
 # Examples
 
 ## Fitting multiple models and model averaging using the `bnec` function
@@ -62,14 +52,12 @@ library(tidyverse)
 
 So far we have explored how to fit individual models via the function `bnec`. The `bayesnec` package also has the capacity to fit a custom selection of models, pre-specified sets of models, or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains, using `bnec` can be very slow when fitting `models = "all"`. See details under `?bnec` for more information on the models, and model sets that can be specified, as well as the [Model details][e2b] vignette which contains considerable information on the available models in `bnec` and their appropriate usage. In general it is safe to call `models = "all"`, because by default `bnec` will discard invalid models.
 
-```{r, results = "hide", eval=FALSE}
+```{r, results = "hide", eval = FALSE}
 library(bayesnec)
 data("nec_data")
 
 set.seed(333)
-exp_5 <- bnec(data = nec_data, x_var = "x",
-               y_var = "y", model = "all")
-# save(exp_5, file = "exp_5.RData")
+exp_5 <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "all")
 ```
 
 Here we run `bnec` using `model =  "all"` using a simulated data example for a beta response variable and save the output as an `.RData` file. Saving an `.RData` file of the *all* model `bnec` output can be a useful way of fitting all the models at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
