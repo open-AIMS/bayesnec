@@ -13,6 +13,7 @@
 #'
 #' @importFrom ggplot2 ggplot geom_density facet_wrap scale_fill_manual theme_bw
 #' @importFrom brms hypothesis
+#' @importFrom rlang .data
 #'
 #' @examples
 #' \dontrun{
@@ -42,9 +43,9 @@ check_priors.default <- function(object, ...) {
   }
   all_data <- do.call("rbind.data.frame", all_data)
   ggplot(data = all_data) +
-    geom_density(mapping = aes(x = values, fill = Type), adjust = 2,
+    geom_density(mapping = aes(x = .data$values, fill = .data$Type), adjust = 2,
                  alpha = 0.5) +
-    facet_wrap(~ind, scales = "free") +
+    facet_wrap(~.data$ind, scales = "free") +
     scale_fill_manual(values = c(Prior = "grey90", Posterior = "grey30")) +
     theme_bw()
 }
