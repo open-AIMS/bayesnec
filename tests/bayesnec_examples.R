@@ -13,4 +13,18 @@ add_na <- function(x, n = 3) {
   x_b
 }
 
+muted_bnec <- function(...) {
+  bnec(...) %>%
+    suppressWarnings %>%
+    suppressMessages
+}
+
+logit <- function(x) {
+  log(x / (1 - x))
+}
+
 data("nec_data")
+manec_gauss_id_2 <- nec_data %>%
+  mutate(y = logit(y)) %>%
+  muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
+             iter = 50, chains = 2)

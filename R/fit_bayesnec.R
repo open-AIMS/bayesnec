@@ -9,7 +9,7 @@
 #' Defaults to FALSE.
 #'
 #' @importFrom brms brm loo waic
-#' @importFrom stats update
+#' @importFrom stats update as.formula
 #'
 #' @seealso \code{\link{bnec}}
 #' @return The fitted \pkg{brms} model, including an estimate of the NEC

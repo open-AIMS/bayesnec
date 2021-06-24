@@ -23,7 +23,7 @@ test_that("when all models dropped an error is returned", {
 })
 
 test_that(paste0("properly drops lin models for identity link for",
-                 " anything but gaussian"), {
+                 " anything but Gaussian"), {
   beta_family_identity <- validate_family(Beta(link = "identity"))
   binomial_family_identity <- validate_family(binomial(link = "identity"))
   poisson_family_identity <- validate_family(poisson(link = "identity"))
@@ -41,12 +41,12 @@ test_that(paste0("properly drops lin models for identity link for",
                    "nechormepwr01"), gamma_family_identity))
   gaussian_family_default <- validate_family("gaussian")
   expect_equal(check_models(c("neclin", "neclinhorme", "ecxlin"),
-                   gaussian_family_default),
+                            gaussian_family_default),
                c("neclin", "neclinhorme", "ecxlin"))
 })
 
-test_that("properly drops zero bounded models for gaussian family", {
+test_that("properly drops zero bounded models for Gaussian family", {
   gaussian_family_default <- validate_family("gaussian")
   expect_equal(check_models(c("nec3param", "nec4param", "ecxexp"),
-                   gaussian_family_default), "nec4param")
+                            gaussian_family_default), "nec4param")
 })

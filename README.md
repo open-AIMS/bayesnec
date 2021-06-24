@@ -6,14 +6,14 @@ bayesnec <img src="man/figures/logo.png" width = 180 alt="bayesnec Logo" align="
 <!-- badges: start -->
 
 [![Lifecycle:
-maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://www.tidyverse.org/lifecycle/#maturing)
+maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 [![R build
 status](https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg)](https://github.com/open-AIMS/bayesnec/actions)
 [![Codecov test
 coverage](https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg)](https://codecov.io/gh/open-aims/bayesnec?branch=master)
 ![pkgdown](https://github.com/open-AIMS/bayesnec/workflows/pkgdown/badge.svg)
 [![license](https://img.shields.io/badge/license-GPL--2-lightgrey.svg)](https://choosealicense.com/)
-[![packageversion](https://img.shields.io/badge/Package%20version-1.0.1-orange.svg)](commits/master)
+[![packageversion](https://img.shields.io/badge/Package%20version-1.0.1-orange.svg)](https://github.com/open-AIMS/bayesnec/blob/master/DESCRIPTION)
 [![Ask Us Anything
 !](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/open-AIMS/bayesnec/issues/new)
 ![Open Source
@@ -55,7 +55,7 @@ Usage
 -----
 
 Usage and further information about `bayesnec` can be seen on the
-[project page](https://open-aims.github.io/bayesnec) and the
+[project page](https://open-aims.github.io/bayesnec/) and the
 [vignettes](https://open-aims.github.io/bayesnec/articles/). Help files
 for the individual functions can be found on the [reference
 page](https://open-aims.github.io/bayesnec/reference/).
@@ -66,14 +66,3 @@ Further Information
 `bayesnec` is provided by the [Australian Institute of Marine
 Science](https://www.aims.gov.au) under the GPL-2 License
 ([GPL-2](https://opensource.org/licenses/GPL-2.0)).
-
-AIMS R package logos
---------------------
-
-Our R package logos use a watercolour map of Australia, obtained with
-the [ggmap](https://CRAN.R-project.org/package=ggmap) R package, which
-downloads original map tiles provided by [Stamen
-Design](http://stamen.com), under [CC BY
-3.0](http://creativecommons.org/licenses/by/3.0), with data from
-[OpenStreetMap](http://openstreetmap.org), under [CC BY
-SA](http://creativecommons.org/licenses/by-sa/3.0).

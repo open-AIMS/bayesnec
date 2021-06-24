@@ -13,7 +13,13 @@ README.Rmd
 ^.*Rcheck$
 ^check$
 ^LICENSE\.md$
+^LICENSE$
 ^TODO\.md$
 ^bayesnec\.Rproj$
 ^.*\.gitattributes$
 ^paper$
+^doc$
+^Meta$
+^tests/testthat/Rplots\.pdf$
+^tests/local$
+^tests/bayesnec_examples\.R$
