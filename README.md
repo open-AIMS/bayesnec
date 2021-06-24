@@ -55,7 +55,7 @@ Usage
 -----
 
 Usage and further information about `bayesnec` can be seen on the
-[project page](https://open-aims.github.io/bayesnec) and the
+[project page](https://open-aims.github.io/bayesnec/) and the
 [vignettes](https://open-aims.github.io/bayesnec/articles/). Help files
 for the individual functions can be found on the [reference
 page](https://open-aims.github.io/bayesnec/reference/).
@@ -73,7 +73,7 @@ AIMS R package logos
 Our R package logos use a watercolour map of Australia, obtained with
 the [ggmap](https://CRAN.R-project.org/package=ggmap) R package, which
 downloads original map tiles provided by [Stamen
-Design](https://stamen.com), under [CC BY
+Design](https://stamen.com/), under [CC BY
 3.0](https://creativecommons.org/licenses/by/3.0), with data from
-[OpenStreetMap](https://openstreetmap.org), under [CC BY
+[OpenStreetMap](https://www.openstreetmap.org/), under [CC BY
 SA](https://creativecommons.org/licenses/by-sa/3.0).
