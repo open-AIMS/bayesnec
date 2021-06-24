@@ -13,22 +13,4 @@ add_na <- function(x, n = 3) {
   x_b
 }
 
-muted_bnec <- function(...) {
-  bnec(...) %>%
-    suppressWarnings %>%
-    suppressMessages
-}
-
-logit <- function(x) {
-  log(x / (1 - x))
-}
-
 data("nec_data")
-manec_gausian_identity <- nec_data %>%
-  mutate(y = logit(y)) %>%
-  muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
-             iter = 50, chains = 2)
-
-nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
-ecx4param <- pull_out(manec_gausian_identity, model = "ecx4param")
-nec4param <- nec_gausian_identity

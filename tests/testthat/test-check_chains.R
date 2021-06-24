@@ -1,6 +1,9 @@
 library(bayesnec)
 library(dplyr)
 
+manec_gausian_identity <- bayesnec:::manec_gausian_identity
+nec_gausian_identity <- bayesnec:::nec_gausian_identity
+
 test_that("returns null", {
   expect_null(check_chains(nec_gausian_identity))
 })

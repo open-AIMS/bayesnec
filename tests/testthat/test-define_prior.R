@@ -8,6 +8,8 @@ resp_na <- add_na(resp_a)
 pred_b <- pred_a[-1]
 resp_b <- resp_a[-1]
 
+manec_gausian_identity <- bayesnec:::manec_gausian_identity
+
 test_that("model is always properly specified as character", {
   p_a <- define_prior(model = "nec3param", family = gaussian(),
                       predictor = pred_a, response = resp_a)

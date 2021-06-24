@@ -1,5 +1,8 @@
 library(bayesnec)
 
+ecx4param <- bayesnec:::ecx4param
+nec4param <- bayesnec:::nec4param
+
 test_that("input errors work as intended", {
   expect_error(compare_posterior(list(ecx4param, nec4param)),
                "Argument x must be a named list.")
