@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Single model usage</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Single model usage</h1>
+
+
+
+<div id="bayesnec" class="section level1">
+<h1><code>bayesnec</code></h1>
+<p>The <code>bayesnec</code> is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage ‘x’, <em>ECx</em>) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span> and <code>stan</code>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which was based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
+</div>
+<div id="background" class="section level1">
+<h1>Background</h1>
+<p>Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for <em>NEC</em> estimation (or even <em>ECx</em> estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The <code>bayesnec</code> package provides an accessible interface specifically for fitting <em>NEC</em> models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the “concentration” or “dose” variable (the predictor, x) as well as the “response” (y) variable. The model formula, including priors and initial values required to call a <code>brms</code> model are automatically generated based on information contained in the supplied data. While the distribution of the x and y variables can be specified directly, <code>bayesnec</code> will automatically ‘guess’ the correct distribution to use based on the characteristics of the provided data.</p>
+<p>This project started with an implementation of the <em>NEC</em> model based on that described in (Pires et al. 2002) and <span class="citation">(Fox 2010)</span> using R2jags <span class="citation">(Fisher, Ricardo, and Fox 2020)</span>. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original <code>jagsNEC</code> implementation supported Gaussian, Poisson, Binomial, Gamma, Negative Binomial and beta response data <code>bayesnec</code> additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available <code>brms</code> families. We have since also further added a range of alternative <em>NEC</em> model types, as well as a range of concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist packages such as <code>drc</code><span class="citation">(Ritz et al. 2016)</span>. These models do not employ segmented regression (i.e., use of a ‘step’ function) but simply models the response as a smooth function of concentration.</p>
+<p>Specific models can be fit directly using <code>bnec</code>, which is what we discuss here. Alternatively, it is possible to fit a custom model set, a specific model set, or all the available models. Further information on fitting multi-models using <code>bayesnec</code> can be found in the <a href="https://open-aims.github.io/bayesnec/articles/example2.html">Multi model usage</a> vignette. For detailed information on the models available in <code>bayesnec</code> see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette.</p>
+<p>Important information on the current package is contained in the <code>bayesnec</code> help-files and the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette.</p>
+<p>This package is currently under development. We are keen to receive any feedback regarding usage, and especially bug reporting that includes an easy to run self-contained reproducible example of unexpected behaviour, or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy-to-run reproducible example is not supplied.</p>
+</div>
+<div id="installation" class="section level1">
+<h1>Installation</h1>
+<p>To install the latest version from GitHub (<a href="https://github.com/open-AIMS/bayesnec" class="uri">https://github.com/open-AIMS/bayesnec</a>) use:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">install.packages</span>(<span class="st">&quot;remotes&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2"></a>remotes<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;open-AIMS/bayesnec&quot;</span>)</span></code></pre></div>
+<p>To run this vignette, we will also need some additional packages</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">library</span>(dplyr)</span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="kw">library</span>(ggplot2)</span></code></pre></div>
+</div>
+<div id="examples" class="section level1">
+<h1>Examples</h1>
+<div id="fitting-the-neclin-model-using-bnec" class="section level2">
+<h2>Fitting the neclin model using <code>bnec</code></h2>
+<p>Here we include some examples showing how to use the package to fit an <em>NEC</em> model to binomial, proportional, count and continuous response (y) data. The examples are those used at: <a href="https://github.com/gerard-ricardo/NECs/blob/master/NECs" class="uri">https://github.com/gerard-ricardo/NECs/blob/master/NECs</a>, but here we are showing how to fit models to these data using the <code>bayesnec</code> package. Note however, the default behaviour in <code>bayesnec</code> is to use native link functions for each family, thus we fit the “neclin” model for these examples, rather than the “nec3param” model which is not valid for use with the logit or log link (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more information and the models available in <code>bayesnec</code>).</p>
+<div id="binomial-data" class="section level3">
+<h3>Binomial data</h3>
+<p>The response variable <code>y</code> is considered to follow a binomial distribution when it is a count out of a total (such as the percentage survival of individuals, for example). First, we read in the binomial example from <a href="https://pastebin.com/tools">pastebin</a>, prepare the data for analysis, and then inspect the dataset as well as the “concentration” or x variable, in this case <code>raw_x</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a>binom_data &lt;-<span class="st"> &quot;https://pastebin.com/raw/zfrUha88&quot;</span> <span class="op">%&gt;%</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a><span class="st">  </span><span class="kw">read.table</span>(<span class="dt">header =</span> <span class="ot">TRUE</span>, <span class="dt">dec =</span> <span class="st">&quot;,&quot;</span>, <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">rename</span>(<span class="dt">raw_x =</span> raw.x) <span class="op">%&gt;%</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">mutate</span>(<span class="dt">raw_x =</span> <span class="kw">as.numeric</span>(<span class="kw">as.character</span>(raw_x)),</span>
+<span id="cb3-5"><a href="#cb3-5"></a>                <span class="dt">log_x =</span> <span class="kw">log</span>(raw_x))</span>
+<span id="cb3-6"><a href="#cb3-6"></a></span>
+<span id="cb3-7"><a href="#cb3-7"></a><span class="kw">str</span>(binom_data)</span>
+<span id="cb3-8"><a href="#cb3-8"></a><span class="kw">range</span>(binom_data<span class="op">$</span>raw_x)</span>
+<span id="cb3-9"><a href="#cb3-9"></a><span class="kw">hist</span>(binom_data<span class="op">$</span>raw_x)</span></code></pre></div>
+<p>In this case for x, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the x data are common for concentration—response experiments, where the x ‘concentration’ data are the concentration of contaminants, or dilutions. The current default in <code>bayesnec</code> is to estimate the appropriate distribution(s) and priors for the <code>family</code> argument, but it is possible to supply <code>family</code> directly. We are going to model this with the x data on a log scale, as this is the scaling clearly used in the experimental design and thus will provide more stable results.</p>
+<p>The data are clearly binomial, with the column <code>suc</code>—indicating the number of ‘successes’ in the binomial call, with <code>tot</code> clearly indicating the number of trials.</p>
+<p>The main ‘working’ function in <code>bayesnec</code> is the function <code>bnec</code>, which calls the other necessary functions and fits the <code>brms</code> model. We run <code>bnec</code> by supplying <code>data</code>: a data.frame containing the data for the model fitting, here, <code>binom_data</code>; <code>x_var</code>: the name of the column in <code>data</code> which contains the concentration data or ‘x’ data to be used in the <em>NEC</em> model fit, and <code>y_var</code>: the name of the column in <code>data</code> which contains the response or ‘y’ data to be used in the <em>NEC</em> model fit. In our example here, as this is binomial, we must also supply <code>trials_var</code>, which is the name of the column in <code>data</code> which contains the number of trials in the binomial call.</p>
+<p><code>bnec</code> will guess the data types for use, although as mentioned above we could manually specify <code>family</code> as “binomial”. <code>bnec</code> will also generate appropriate priors for the <code>brms</code> model call, although these can also be specified manually (see the <a href="https://open-aims.github.io/bayesnec/articles/example3.html">Priors</a> vignette for more details).</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">library</span>(bayesnec)</span>
+<span id="cb4-2"><a href="#cb4-2"></a></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="kw">set.seed</span>(<span class="dv">333</span>)</span>
+<span id="cb4-4"><a href="#cb4-4"></a>exp_<span class="dv">1</span> &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> binom_data, <span class="dt">x_var =</span> <span class="st">&quot;log_x&quot;</span>,</span>
+<span id="cb4-5"><a href="#cb4-5"></a>              <span class="dt">y_var =</span> <span class="st">&quot;suc&quot;</span>, <span class="dt">model =</span> <span class="st">&quot;neclin&quot;</span>,</span>
+<span id="cb4-6"><a href="#cb4-6"></a>              <span class="dt">trials_var =</span> <span class="st">&quot;tot&quot;</span>)</span></code></pre></div>
+<p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code>plot(exp_1$fit)</code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">plot</span>(exp_<span class="dv">1</span><span class="op">$</span>fit)</span></code></pre></div>
+<p>In our example, the chains are well mixed, and the probability density plots look good. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks ok. There are a range of other model diagnostics that can be explored for [brms] model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (<a href="https://github.com/paul-buerkner/brms" class="uri">https://github.com/paul-buerkner/brms</a>) models.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">pairs</span>(exp_<span class="dv">1</span><span class="op">$</span>fit)</span></code></pre></div>
+<p>We can see the summary of our fitted model parameters using:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">summary</span>(exp_<span class="dv">1</span>)</span></code></pre></div>
+<p>Note the Rhat values in this example are one, indicating convergence.</p>
+<p>The function <code>plot</code> can be used to plot the fitted model. You can also make your own plot from the data included in the returned <code>bayesnecfit</code> object from the call to <code>bnec</code>. Here we use the default plot method from <code>bayesnec</code>, where we add the ‘exp’ function to plot the tick labels on the original scaling of the concentration data.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">plot</span>(exp_<span class="dv">1</span>, <span class="dt">lxform =</span> exp)</span></code></pre></div>
+<p>Alternatively, we can use the built in <code>brms</code> methods to plot the <code>brms</code> fit directly. For example:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>df &lt;-<span class="st"> </span>exp_<span class="dv">1</span><span class="op">$</span>fit<span class="op">$</span>data <span class="op">%&gt;%</span></span>
+<span id="cb9-2"><a href="#cb9-2"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">mutate</span>(<span class="dt">prop =</span> y <span class="op">/</span><span class="st"> </span>trials)</span>
+<span id="cb9-3"><a href="#cb9-3"></a><span class="kw">plot</span>(brms<span class="op">::</span><span class="kw">conditional_effects</span>(exp_<span class="dv">1</span><span class="op">$</span>fit))[[<span class="dv">1</span>]] <span class="op">+</span></span>
+<span id="cb9-4"><a href="#cb9-4"></a><span class="st">     </span><span class="kw">geom_point</span>(<span class="dt">data =</span> df, <span class="kw">aes</span>(<span class="dt">x =</span> x, <span class="dt">y =</span> prop),</span>
+<span id="cb9-5"><a href="#cb9-5"></a>                <span class="dt">inherit.aes =</span> <span class="ot">FALSE</span>)</span></code></pre></div>
+<p>This model fit doesn’t look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by <code>bayesnec</code>, and this can be extracted using <code>exp_1$dispersion</code>. Values &gt;1 indicate overdispersion and values &lt;1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model doesn’t properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>exp_<span class="dv">1</span><span class="op">$</span>dispersion</span></code></pre></div>
+</div>
+<div id="beta-binomial" class="section level3">
+<h3>Beta-Binomial</h3>
+<p>The Beta-Binomial model can be useful for overdispersed Binomial data.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">set.seed</span>(<span class="dv">333</span>)</span>
+<span id="cb11-2"><a href="#cb11-2"></a>exp_1b &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> binom_data, <span class="dt">x_var =</span> <span class="st">&quot;log_x&quot;</span>,</span>
+<span id="cb11-3"><a href="#cb11-3"></a>              <span class="dt">y_var =</span> <span class="st">&quot;suc&quot;</span>, <span class="dt">model =</span> <span class="st">&quot;neclin&quot;</span>,</span>
+<span id="cb11-4"><a href="#cb11-4"></a>              <span class="dt">family =</span> beta_binomial2,</span>
+<span id="cb11-5"><a href="#cb11-5"></a>              <span class="dt">trials_var =</span> <span class="st">&quot;tot&quot;</span>)</span></code></pre></div>
+<p>Fitting this data with the betabinomial2 yields a much more realistic fit in terms of the confidence bounds and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="kw">plot</span>(exp_1b, <span class="dt">lxform =</span> exp)</span>
+<span id="cb12-2"><a href="#cb12-2"></a>exp_1b<span class="op">$</span>dispersion</span>
+<span id="cb12-3"><a href="#cb12-3"></a><span class="co">#[1] NA NA NA</span></span></code></pre></div>
+<p>Now we have a good fit to these data, we can interpret the results. The estimated <em>NEC</em> value can be obtained directly from the fitted model object, using <code>exp_1b$nec</code>, or we can plot the posterior distribution of the <em>NEC</em> values.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a>exp_1b<span class="op">$</span>nec</span>
+<span id="cb13-2"><a href="#cb13-2"></a><span class="co">#Estimate     Q2.5    Q97.5 </span></span>
+<span id="cb13-3"><a href="#cb13-3"></a><span class="co">#3.436315 2.674583 4.00693</span></span>
+<span id="cb13-4"><a href="#cb13-4"></a></span>
+<span id="cb13-5"><a href="#cb13-5"></a><span class="kw">hist</span>(exp_1b<span class="op">$</span>nec_posterior)</span></code></pre></div>
+<p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em> model fit, using the function <code>ecx</code>. Note these may differ from a typical 4-parameter non-linear model, as the <em>NEC</em> model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example4.html">Comparing posterior predictions</a> vignettes for more information.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a><span class="kw">ecx</span>(exp_1b)</span>
+<span id="cb14-2"><a href="#cb14-2"></a><span class="co">#  ec_10_Q50  ec_10_Q2.5 ec_10_Q97.5 </span></span>
+<span id="cb14-3"><a href="#cb14-3"></a><span class="co">#   3.799644    3.276595    4.223064 </span></span></code></pre></div>
+<p>A summary method has also been developed for <code>bayesnecfit</code> objects that gives an overall summary of the model statistics, which also include the estimate for <strong>NEC</strong>, as the nec_intercept population level effect in the model.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a><span class="kw">summary</span>(exp_1b)</span>
+<span id="cb15-2"><a href="#cb15-2"></a><span class="co"># Object of class bayesnecfit containing the following non-linear model: neclin</span></span>
+<span id="cb15-3"><a href="#cb15-3"></a><span class="co"># </span></span>
+<span id="cb15-4"><a href="#cb15-4"></a><span class="co">#  Family: beta_binomial2 </span></span>
+<span id="cb15-5"><a href="#cb15-5"></a><span class="co">#   Links: mu = logit; phi = identity </span></span>
+<span id="cb15-6"><a href="#cb15-6"></a><span class="co"># Formula: y | trials(trials) ~ top - slope * (x - nec) * step(x - nec) </span></span>
+<span id="cb15-7"><a href="#cb15-7"></a><span class="co">#          top ~ 1</span></span>
+<span id="cb15-8"><a href="#cb15-8"></a><span class="co">#          slope ~ 1</span></span>
+<span id="cb15-9"><a href="#cb15-9"></a><span class="co">#          nec ~ 1</span></span>
+<span id="cb15-10"><a href="#cb15-10"></a><span class="co">#    Data: structure(list(x = c(-2.30258509299405, -2.3025850 (Number of observations: 48) </span></span>
+<span id="cb15-11"><a href="#cb15-11"></a><span class="co"># Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;</span></span>
+<span id="cb15-12"><a href="#cb15-12"></a><span class="co">#          total post-warmup samples = 4000</span></span>
+<span id="cb15-13"><a href="#cb15-13"></a><span class="co"># </span></span>
+<span id="cb15-14"><a href="#cb15-14"></a><span class="co"># Population-Level Effects: </span></span>
+<span id="cb15-15"><a href="#cb15-15"></a><span class="co">#                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
+<span id="cb15-16"><a href="#cb15-16"></a><span class="co"># top_Intercept       1.83      0.23     1.38     2.34 1.00     1667     1751</span></span>
+<span id="cb15-17"><a href="#cb15-17"></a><span class="co"># slope_Intercept     1.52      0.24     1.06     2.04 1.00     1947     2129</span></span>
+<span id="cb15-18"><a href="#cb15-18"></a><span class="co"># nec_Intercept       3.41      0.30     2.67     3.94 1.00     1625     1618</span></span>
+<span id="cb15-19"><a href="#cb15-19"></a><span class="co"># </span></span>
+<span id="cb15-20"><a href="#cb15-20"></a><span class="co"># Family Specific Parameters: </span></span>
+<span id="cb15-21"><a href="#cb15-21"></a><span class="co">#     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
+<span id="cb15-22"><a href="#cb15-22"></a><span class="co"># phi     5.74      1.30     3.55     8.75 1.00     2276     2206</span></span>
+<span id="cb15-23"><a href="#cb15-23"></a><span class="co"># </span></span>
+<span id="cb15-24"><a href="#cb15-24"></a><span class="co"># Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
+<span id="cb15-25"><a href="#cb15-25"></a><span class="co"># and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
+<span id="cb15-26"><a href="#cb15-26"></a><span class="co"># scale reduction factor on split chains (at convergence, Rhat = 1).</span></span></code></pre></div>
+</div>
+<div id="beta-data" class="section level3">
+<h3>Beta data</h3>
+<p>Sometimes the response variable is distributed between <code>0</code> and <code>1</code> but is not a straight-forward Binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical ‘trials’ and the data must be modelled using a beta distribution.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a>prop_data &lt;-<span class="st"> &quot;https://pastebin.com/raw/123jq46d&quot;</span> <span class="op">%&gt;%</span></span>
+<span id="cb16-2"><a href="#cb16-2"></a><span class="st">  </span><span class="kw">read.table</span>(<span class="dt">header =</span> <span class="ot">TRUE</span>, <span class="dt">dec =</span> <span class="st">&quot;,&quot;</span>, <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span></span>
+<span id="cb16-3"><a href="#cb16-3"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">rename</span>(<span class="dt">raw_x =</span> raw.x) <span class="op">%&gt;%</span></span>
+<span id="cb16-4"><a href="#cb16-4"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">mutate</span>(<span class="dt">raw_x =</span> <span class="kw">log</span>(<span class="kw">as.numeric</span>(<span class="kw">as.character</span>(raw_x)) <span class="op">+</span><span class="st"> </span><span class="dv">1</span>),</span>
+<span id="cb16-5"><a href="#cb16-5"></a>                <span class="dt">resp =</span> <span class="kw">as.numeric</span>(<span class="kw">as.character</span>(resp)))</span>
+<span id="cb16-6"><a href="#cb16-6"></a></span>
+<span id="cb16-7"><a href="#cb16-7"></a><span class="kw">set.seed</span>(<span class="dv">333</span>)</span>
+<span id="cb16-8"><a href="#cb16-8"></a>exp_<span class="dv">2</span> &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> prop_data, <span class="dt">x_var =</span> <span class="st">&quot;raw_x&quot;</span>,</span>
+<span id="cb16-9"><a href="#cb16-9"></a>              <span class="dt">y_var =</span> <span class="st">&quot;resp&quot;</span>, <span class="dt">model =</span> <span class="st">&quot;neclin&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1"></a><span class="kw">plot</span>(exp_<span class="dv">2</span><span class="op">$</span>fit)</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1"></a><span class="kw">plot</span>(exp_<span class="dv">2</span>)</span></code></pre></div>
+</div>
+<div id="poisson-data" class="section level3">
+<h3>Poisson data</h3>
+<p>Where data are a count (of, for example, individuals or cells) y is Poisson. Such data are distributed from <code>0</code> to <code>Inf</code> and are integers. First we read in the count data example from <a href="https://pastebin.com/tools">pastebin</a>, and then plot the “concentration” or x data, Again, this is <code>raw_x</code>, and distributed as in our binomial example above.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1"></a>count_data &lt;-<span class="st"> &quot;https://pastebin.com/raw/ENgNSgf7&quot;</span> <span class="op">%&gt;%</span></span>
+<span id="cb19-2"><a href="#cb19-2"></a><span class="st">  </span><span class="kw">read.table</span>(<span class="dt">header =</span> <span class="ot">TRUE</span>, <span class="dt">dec =</span> <span class="st">&quot;,&quot;</span>, <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span></span>
+<span id="cb19-3"><a href="#cb19-3"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">rename</span>(<span class="dt">raw_x =</span> raw.x) <span class="op">%&gt;%</span></span>
+<span id="cb19-4"><a href="#cb19-4"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">mutate</span>(<span class="dt">raw_x =</span> <span class="kw">as.numeric</span>(<span class="kw">as.character</span>(raw_x)),</span>
+<span id="cb19-5"><a href="#cb19-5"></a>                <span class="dt">sqrt_x =</span> <span class="kw">sqrt</span>(raw_x))</span>
+<span id="cb19-6"><a href="#cb19-6"></a></span>
+<span id="cb19-7"><a href="#cb19-7"></a><span class="kw">str</span>(count_data)</span>
+<span id="cb19-8"><a href="#cb19-8"></a><span class="kw">range</span>(count_data<span class="op">$</span>raw_x)</span>
+<span id="cb19-9"><a href="#cb19-9"></a></span>
+<span id="cb19-10"><a href="#cb19-10"></a><span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb19-11"><a href="#cb19-11"></a><span class="kw">hist</span>(count_data<span class="op">$</span>raw_x, <span class="dt">xlab =</span> <span class="st">&quot;&#39;x&#39; variable&quot;</span>, <span class="dt">main =</span> <span class="st">&quot;&quot;</span>)</span>
+<span id="cb19-12"><a href="#cb19-12"></a><span class="kw">hist</span>(count_data<span class="op">$</span>count, <span class="dt">xlab =</span> <span class="st">&quot;Total counts&quot;</span>, <span class="dt">main =</span> <span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<p>First, we supply <code>bnec</code> with <code>data</code> (count_data), and specify <code>x_var</code> and <code>y_var</code>. As we have integers of 0 and greater, the <code>family</code> is “poisson”. The default behaviour to guess the variable types works for this example.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1"></a><span class="kw">set.seed</span>(<span class="dv">333</span>)</span>
+<span id="cb20-2"><a href="#cb20-2"></a>exp_<span class="dv">3</span> &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> count_data, <span class="dt">x_var =</span> <span class="st">&quot;sqrt_x&quot;</span>,</span>
+<span id="cb20-3"><a href="#cb20-3"></a>              <span class="dt">y_var =</span> <span class="st">&quot;count&quot;</span>, <span class="dt">model =</span> <span class="st">&quot;neclin&quot;</span>)</span></code></pre></div>
+<p>We first plot the model chains and parameter estimates to check the fit.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1"></a><span class="kw">plot</span>(exp_<span class="dv">3</span><span class="op">$</span>fit)</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1"></a><span class="kw">plot</span>(exp_<span class="dv">3</span>)</span>
+<span id="cb22-2"><a href="#cb22-2"></a>exp_<span class="dv">3</span><span class="op">$</span>dispersion</span>
+<span id="cb22-3"><a href="#cb22-3"></a><span class="co">#Estimate     Q2.5    Q97.5 </span></span>
+<span id="cb22-4"><a href="#cb22-4"></a><span class="co">#2.915520 1.927265 4.526432 </span></span></code></pre></div>
+<p>The chains look ok; however, our plot of the fit is not very convincing. The error bars are very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try a negative binomial family.</p>
+</div>
+<div id="negative-binomial" class="section level3">
+<h3>Negative binomial</h3>
+<p>When count data are overdispersed and cannot be modelled using the poisson family, the negative binomial family is generally used. We can do this by calling <code>family = &quot;negbinomial&quot;</code>.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1"></a><span class="kw">set.seed</span>(<span class="dv">333</span>)</span>
+<span id="cb23-2"><a href="#cb23-2"></a>exp_3b &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> count_data, <span class="dt">x_var =</span> <span class="st">&quot;sqrt_x&quot;</span>,</span>
+<span id="cb23-3"><a href="#cb23-3"></a>              <span class="dt">y_var =</span> <span class="st">&quot;count&quot;</span>, <span class="dt">family =</span> <span class="st">&quot;negbinomial&quot;</span>, <span class="dt">model =</span> <span class="st">&quot;neclin&quot;</span>)</span></code></pre></div>
+<p>The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it still does not seem to be a good model for these data. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html">Multi model usage</a> vignettes for options to fit other models to these data.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1"></a><span class="kw">plot</span>(exp_3b)</span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1"></a><span class="kw">plot</span>(exp_3b<span class="op">$</span>fit)</span></code></pre></div>
+</div>
+<div id="measure-data" class="section level3">
+<h3>Measure data</h3>
+<p>Where data are a measured variable y is family gamma. Good examples of <code>gamma</code> distributed data include measures of body size, such as length, weight, or area. Such data are distributed from <code>0+</code> to <code>Inf</code> and are continuous. Here we use the nec_data supplied with <code>bayesnec</code> with y on the exponential scale to ensure the right data range for a gamma as an example.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1"></a><span class="kw">data</span>(nec_data)</span>
+<span id="cb26-2"><a href="#cb26-2"></a>measure_data &lt;-<span class="st"> </span>nec_data <span class="op">%&gt;%</span></span>
+<span id="cb26-3"><a href="#cb26-3"></a><span class="st">  </span>dplyr<span class="op">::</span><span class="kw">mutate</span>(<span class="dt">measure =</span> <span class="kw">exp</span>(y))</span></code></pre></div>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1"></a><span class="kw">set.seed</span>(<span class="dv">333</span>)</span>
+<span id="cb27-2"><a href="#cb27-2"></a>exp_<span class="dv">4</span> &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> measure_data, <span class="dt">x_var =</span> <span class="st">&quot;x&quot;</span>,</span>
+<span id="cb27-3"><a href="#cb27-3"></a>              <span class="dt">y_var =</span> <span class="st">&quot;measure&quot;</span>, <span class="dt">model =</span> <span class="st">&quot;neclin&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1"></a><span class="kw">plot</span>(exp_<span class="dv">4</span><span class="op">$</span>fit)</span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1"></a><span class="kw">plot</span>(exp_<span class="dv">4</span>)</span>
+<span id="cb29-2"><a href="#cb29-2"></a><span class="kw">summary</span>(exp_<span class="dv">4</span>)</span>
+<span id="cb29-3"><a href="#cb29-3"></a><span class="co">#Object of class bayesnecfit containing the following non-linear model: neclin</span></span>
+<span id="cb29-4"><a href="#cb29-4"></a><span class="co">#</span></span>
+<span id="cb29-5"><a href="#cb29-5"></a><span class="co"># Family: gamma </span></span>
+<span id="cb29-6"><a href="#cb29-6"></a><span class="co">#  Links: mu = log; shape = identity </span></span>
+<span id="cb29-7"><a href="#cb29-7"></a><span class="co">#Formula: y ~ top - slope * (x - nec) * step(x - nec) </span></span>
+<span id="cb29-8"><a href="#cb29-8"></a><span class="co">#         top ~ 1</span></span>
+<span id="cb29-9"><a href="#cb29-9"></a><span class="co">#         slope ~ 1</span></span>
+<span id="cb29-10"><a href="#cb29-10"></a><span class="co">#         nec ~ 1</span></span>
+<span id="cb29-11"><a href="#cb29-11"></a><span class="co">#   Data: structure(list(x = c(1.01874617094183, 0.815747457 (Number of observations: 100) </span></span>
+<span id="cb29-12"><a href="#cb29-12"></a><span class="co">#Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;</span></span>
+<span id="cb29-13"><a href="#cb29-13"></a><span class="co">#         total post-warmup samples = 4000</span></span>
+<span id="cb29-14"><a href="#cb29-14"></a><span class="co">#</span></span>
+<span id="cb29-15"><a href="#cb29-15"></a><span class="co">#Population-Level Effects: </span></span>
+<span id="cb29-16"><a href="#cb29-16"></a><span class="co">#                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
+<span id="cb29-17"><a href="#cb29-17"></a><span class="co">#top_Intercept       0.89      0.01     0.88     0.91 1.00     2625     2290</span></span>
+<span id="cb29-18"><a href="#cb29-18"></a><span class="co">#slope_Intercept     0.55      0.03     0.50     0.60 1.00     1970     2145</span></span>
+<span id="cb29-19"><a href="#cb29-19"></a><span class="co">#nec_Intercept       1.31      0.04     1.23     1.38 1.00     1648     2038</span></span>
+<span id="cb29-20"><a href="#cb29-20"></a><span class="co">#</span></span>
+<span id="cb29-21"><a href="#cb29-21"></a><span class="co">#Family Specific Parameters: </span></span>
+<span id="cb29-22"><a href="#cb29-22"></a><span class="co">#      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
+<span id="cb29-23"><a href="#cb29-23"></a><span class="co">#shape   248.66     36.61   185.55   328.96 1.00     2690     2229</span></span>
+<span id="cb29-24"><a href="#cb29-24"></a><span class="co">#</span></span>
+<span id="cb29-25"><a href="#cb29-25"></a><span class="co">#Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
+<span id="cb29-26"><a href="#cb29-26"></a><span class="co">#and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
+<span id="cb29-27"><a href="#cb29-27"></a><span class="co">#scale reduction factor on split chains (at convergence, Rhat = 1).</span></span></code></pre></div>
+<p>In this case our model has converged well, although it is perhaps not the best model to fit. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html">Multi model usage</a> vignettes for options to fit other models to these data.</p>
+</div>
+</div>
+</div>
+<div id="references" class="section level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references hanging-indent">
+<div id="ref-Burkner2017">
+<p>Bürkner, Paul Christian. 2017. “brms: An R package for Bayesian multilevel models using Stan.” <em>Journal of Statistical Software</em> 80 (1): 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>.</p>
+</div>
+<div id="ref-Burkner2018">
+<p>Bürkner, Paul-Christian. 2018. “Advanced Bayesian Multilevel Modeling with the R Package brms.” <em>The R Journal</em> 10 (1): 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>.</p>
+</div>
+<div id="ref-Fisher2020">
+<p>Fisher, Rebecca, Gerard Ricardo, and David Fox. 2020. “Bayesian concentration-response modelling using jagsNEC.” <a href="https://doi.org/10.5281/ZENODO.3966864">https://doi.org/10.5281/ZENODO.3966864</a>.</p>
+</div>
+<div id="ref-Fox2010">
+<p>Fox, David R. 2010. “A Bayesian approach for determining the no effect concentration and hazardous concentration in ecotoxicology.” <em>Ecotoxicology and Environmental Safety</em> 73 (2): 123–31.</p>
+</div>
+<div id="ref-Plummer2003">
+<p>Plummer, Martyn. 2003. “JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling.” In <em>Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003)</em>, 1–10. Technische Universität Wien, Vienna, Austria: Achim Zeileis.</p>
+</div>
+<div id="ref-Ritz2016">
+<p>Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard. 2016. “Dose-Response Analysis Using R.” <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021">https://doi.org/10.1371/journal.pone.0146021</a>.</p>
+</div>
+<div id="ref-Su2015">
+<p>Su, Yu-Sung, and Masanao Yajima. 2015. <em>R2jags: Using R to Run ’JAGS’</em>. <a href="https://CRAN.R-project.org/package=R2jags">https://CRAN.R-project.org/package=R2jags</a>.</p>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

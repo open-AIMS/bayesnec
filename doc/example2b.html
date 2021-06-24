@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Model details</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Model details</h1>
+
+
+
+<div id="background" class="section level1">
+<h1>Background</h1>
+<p>The <code>bayesnec</code> is an R package to fit concentration(dose) - response curves to toxicity data, and derive No-Effect-Concentration (“nec”), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage ‘x’, ecx) thresholds from non-linear models fitted using Bayesian MCMC fitting methods via <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span> and <code>stan</code> <span class="citation">(Stan Development Team 2020)</span>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which was based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
+</div>
+<div id="models-in-bayesnec" class="section level1">
+<h1>Models in <code>bayesnec</code></h1>
+<p>There are a range of models available in <code>bayesnec</code> and the working <code>bnec</code> function supports individual model fitting, as well as multi-model fitting with Bayesian model averaging.</p>
+<p>The argument <code>model</code> in the function <code>bnec</code> is a character string indicating the name(s) of the desired model (see ?models for more details, and the list of models available). If a recognised model name is provided, a single model of the specified type is fit, and <code>bnec</code> returns a model object of class <code>bayesnecfit</code>. If a vector of two or more of the available models are supplied, <code>bnec</code> returns a model object of class <code>bayesmanecfit</code> containing Bayesian model averaged predictions for the supplied models, providing they were successfully fitted.</p>
+<p>Model averaging is achieved through a weighted sample of each fitted models’ posterior predictions, with weights derived using the <code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry 2017)</span>. Individual <code>brms</code> model fits can be extracted from the <code>mod_fits</code> element and can be examined individually.</p>
+<p>The <code>model</code> argument may also be one of “all”, meaning all of the available models will be fit; “ecx” meaning only models excluding the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter will be fit; or “nec” meaning only models with the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter (see below <strong>Model parameters</strong>) will be fit. There are a range of other pre-defined model groups available. The full list of currently implemented model groups can be seen using:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">library</span>(bayesnec)</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="kw">models</span>()</span></code></pre></div>
+</div>
+<div id="parameter-definitions" class="section level1">
+<h1>Parameter definitions</h1>
+<p>Where possible we have aimed for consistency in the interpretable meaning of the individual parameters across models. Across the currently implemented model set, models contain from two (basic linear or exponential decay, see <strong>ecxlin</strong> or <strong>ecxexp</strong>) to five possible parameters (<strong>nechorme4</strong>), including: <span class="math inline">\(\tau = \text{top}\)</span>, usually interpretable as either the y-intercept or the upper plateau representing the mean concentration of the response at zero concentration; <span class="math inline">\(\eta = \text{NEC}\)</span>, the No-Effect-Concentration value (the x concentration value where the breakpoint in the regression is estimated at, see <strong>Model types for NEC and ECx estimation</strong> and <span class="citation">(Fox 2010)</span> for more details on parameter based NEC estimation); <span class="math inline">\(\beta = \text{beta}\)</span>, generally the exponential decay rate of response, either from 0 concentration or from the estimated <span class="math inline">\(\eta\)</span> value, with the exception of the <strong>neclinhorme</strong> model where it represents a linear decay from <span class="math inline">\(\eta\)</span> because slope (<span class="math inline">\(\alpha\)</span>) is required for the linear increase; <span class="math inline">\(\delta = \text{bottom}\)</span>, representing the lower plateau for the response at infinite concentration; <span class="math inline">\(\alpha = \text{slope}\)</span>, the linear decay rate in the models <strong>neclin</strong> and <strong>ecxlin</strong>, or the linear increase rate prior to <span class="math inline">\(\eta\)</span> for all hormesis models; <span class="math inline">\(\text{ec50}\)</span> notionally the 50% effect concentration but may be influenced by scaling and should therefore not be strictly interpreted, and<br />
+<span class="math inline">\(\epsilon = \text{d}\)</span>, the exponent in the <strong>ecxsigm</strong> and <strong>necisgm</strong> models.</p>
+<p>In addition to the model parameters, all <code>nec...</code> models have a step function used to define the breakpoint in the regression, which can be defined as</p>
+<p><span class="math display">\[
+f(x_i, \eta) = \begin{cases} 
+      0, &amp; x_i - \eta &lt; 0 \\
+      1, &amp; x_i - \eta \geq 0 \\
+   \end{cases}
+\]</span></p>
+</div>
+<div id="model-types-for-nec-and-ecx-estimation" class="section level1">
+<h1>Model types for NEC and ECx estimation</h1>
+<p>All models provide an estimate for the No-Effect-Concentration (NEC). For model types with “nec” as a prefix, the NEC is directly estimated as parameter <span class="math inline">\(\eta = \text{NEC}\)</span> in the model, as per <span class="citation">(Fox 2010)</span>. Models with “ecx” as a prefix are continuous curve models, typically used for extracting ECx values from concentration-response data. In this instance the NEC reported is actually the No-Significant-Effect-Concentration (NSEC), defined as the concentration at which there is a user supplied (see <code>sig_val</code>) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote (<span class="math inline">\(\tau = \text{top}\)</span>) of the response (i.e. the response value is significantly lower than that expected in the case of no exposure). The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha value (Type 1 error rate) of 0.01 for a one-sided test of significance. See <code>?nsec</code> for more details. We currently recommend only using the “nec” model set for estimation of NEC values, as the NSEC concept has yet to be formally peer-reviewed.</p>
+<p>ECx estimates can be equally obtained from both “nec” and “ecx” models. ECx estimates will usually be lower (more conservative) for “ecx” models fitted to the same data as “nec” models (see the <a href="https://open-aims.github.io/bayesnec/articles/example4.html">Comparing posterior predictions</a>) vignette for an example. However, we recommend using “all” models where ECx estimation is required because “nec” models can fit some datasets better than “ecx” models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield ECx estimates that are the most representative of the underlying relationship in the dataset.</p>
+<p>There is ambiguity in the definition of ECx estimates from hormesis models (these allow an initial increase in the response (see <span class="citation">(Mattson 2008)</span>) and include models with the character string <code>horme</code> in their name), as well as those that have no natural lower bound on the scale of the response (models with the string <code>lin</code> in their name, in the case of Gaussian response data). For this reason the <code>ecx</code> function has arguments <code>hormesis_def</code> and <code>type</code>, both character vectors indicating the desired behaviour. For <code>hormesis_def = &quot;max&quot;</code>, ECx values are calculated as a decline from the maximum estimates (i.e. the peak at <span class="math inline">\(\eta = \text{NEC}\)</span>); and <code>hormesis_def = &quot;control&quot;</code> (the default) indicates ECx values should be calculated relative to the control, which is assumed to be the lowest observed concentration. For <code>type = &quot;relative&quot;</code> ECx is calculated as the percentage decrease from the maximum predicted value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to the minimum predicted value of the response (i.e., ‘relative’ to the observed data). For <code>type = &quot;absolute&quot;</code> (the default) ECx is calculated as the percentage decrease from the maximum value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to 0 (or <span class="math inline">\(\delta = \text{bottom}\)</span> for models with that parameter). For <code>type = &quot;direct&quot;</code>, a direct interpolation of y on x is obtained.</p>
+</div>
+<div id="model-suitability-for-response-types" class="section level1">
+<h1>Model suitability for response types</h1>
+<p>Models that have an exponential decay (most models with parameter <span class="math inline">\(\beta = \text{beta}\)</span>) with no <span class="math inline">\(\delta = \text{bottom}\)</span> parameter are 0-bounded and are not suitable for the Gaussian family, or any family modelled using a logit or log link because they cannot generate predictions of negative y-values (response). Conversely models with a linear decay (containing the string “lin” in their name) are not suitable for modelling families that are 0-bounded (gamma, Poisson, negative binomial, beta, binomial, beta-binomial) using an identity link. These restrictions do not need to be controlled by the user, as a call to <code>bnec</code> with <code>models = &quot;all&quot;</code> will simply exclude inappropriate models, albeit with a warning.</p>
+<p>Strictly speaking, models with a linear hormesis increase are not suitable for modelling families that are 0, 1-bounded (binomial, beta and betabinomial2), however they are currently allowed in <code>bayesnec</code>, with a reasonable fit achieved through a combination of the appropriate family being applied to the response, and the <code>bayesnec</code> <code>make_inits</code> function that ensures initial values passed to <code>brms</code> yield response values within the range of the observed <code>y_var</code> data.</p>
+</div>
+<div id="model-definitions" class="section level1">
+<h1>Model definitions</h1>
+<div id="ecx-models" class="section level2">
+<h2>ECx models</h2>
+<div id="ecxlin" class="section level3">
+<h3>ecxlin</h3>
+<p>The <strong>ecxlin</strong> model is a basic linear decay model, given by the equation: <span class="math display">\[y_i = \tau - e^{\alpha} x_i\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>Because the model contains linear predictors it is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
+</div>
+<div id="ecxexp" class="section level3">
+<h3>ecxexp</h3>
+<p>The <strong>ecxexp</strong> model is a basic exponential decay model, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} x_i}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+</div>
+<div id="ecxsigm" class="section level3">
+<h3>ecxsigm</h3>
+<p>The <strong>ecxsigm</strong> model is a simple sigmoidal decay model, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} x_i^{e^\epsilon}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+</div>
+<div id="ecx4param" class="section level3">
+<h3>ecx4param</h3>
+<p>The <strong>ecx4param</strong> model is a 4-parameter sigmoidal decay model, given by the equation: <span class="math display">\[y_i = \frac{\tau + (\delta - \tau)}{1 + e^{e^{\beta} (\text{EC}_{50} - x_i)}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+</div>
+<div id="ecxwb1" class="section level3">
+<h3>ecxwb1</h3>
+<p>The <strong>ecxwb1</strong> model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+</div>
+<div id="ecxwb1p3" class="section level3">
+<h3>ecxwb1p3</h3>
+<p>The <strong>ecxwb1p3</strong> model is a 3-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+</div>
+<div id="ecxwb2" class="section level3">
+<h3>ecxwb2</h3>
+<p>The <strong>ecxwb2</strong> model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>While very similar to the <strong>ecxwb1</strong> (according to <span class="citation">(Ritz et al. 2016)</span>), fitted <strong>ecxwb1</strong> and <strong>ecxwb2</strong> models can differ slightly.</p>
+</div>
+<div id="ecxwb2p3" class="section level3">
+<h3>ecxwb2p3</h3>
+<p>The <strong>ecxwb2p3</strong> model is a 3-parameter sigmoidal decay model, which is a slight reformulation of the Weibull2 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>While very similar to the <strong>ecxwb1p3</strong> (according to <span class="citation">(Ritz et al. 2016)</span>), fitted <strong>ecxwb1p3</strong> and <strong>ecxwb2p3</strong> models can differ slightly. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+</div>
+<div id="ecxll5" class="section level3">
+<h3>ecxll5</h3>
+<p>The <strong>ecxll5</strong> model is a 5-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.5 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+</div>
+<div id="ecxll4" class="section level3">
+<h3>ecxll4</h3>
+<p>The <strong>ecxll4</strong> model is a 4-parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.4 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+</div>
+<div id="ecxll3" class="section level3">
+<h3>ecxll3</h3>
+<p>The <strong>ecxll3</strong> model is a 3-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.3 model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+</div>
+<div id="ecxhormebc5" class="section level3">
+<h3>ecxhormebc5</h3>
+<p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the “Brain-Cousens” (BC.5) model of <span class="citation">(Ritz et al. 2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+</div>
+<div id="ecxhormebc4" class="section level3">
+<h3>ecxhormebc4</h3>
+<p>The <strong>ecxhormebc4</strong> model is a 5-parameter log-logistic model similar to the exchormebc5 model but with a lower bound of 0, given by the equation: <span class="math display">\[y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+</div>
+</div>
+<div id="nec-models" class="section level2">
+<h2>NEC models</h2>
+<div id="neclin" class="section level3">
+<h3>neclin</h3>
+<p>The <strong>neclin</strong> model is a basic linear decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation: <span class="math display">\[y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>Because the model contains linear predictors it is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
+</div>
+<div id="nec3param" class="section level3">
+<h3>nec3param</h3>
+<p>The <strong>nec3param</strong> model is a basic exponential decay model equivalent to <strong>ecxexp</strong> with the addition of the “nec” step function, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>For binomial data in the case of identity link this model is equivalent to that in <span class="citation">(Fox 2010)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+</div>
+<div id="nec4param" class="section level3">
+<h3>nec4param</h3>
+<p>The <strong>nec4param</strong> model is a 3-parameter decay model with the addition of the “nec” step function, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+</div>
+<div id="nechorme" class="section level3">
+<h3>nechorme</h3>
+<p>The <strong>nechorme</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + \alpha x_i) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>nechorme</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
+</div>
+<div id="nechormepwr" class="section level3">
+<h3>nechormepwr</h3>
+<p>The <strong>nechormepwr</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + x_i^{1/(1+e^{alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>nechormepwr</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. Because the model can generate predictions &gt; 1 it should not be used for binomial and beta families with identity link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
+</div>
+<div id="neclinhorme" class="section level3">
+<h3>neclinhorme</h3>
+<p>The <strong>neclinhorme</strong> model is a basic linear decay model with an “nec” step function equivalent to <strong>neclin</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + e^{\alpha} x_i) - e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)\]</span> and fitted in R via <code>brms</code> using the formula.</p>
+<p>The <strong>neclinhorme</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. This model contains linear predictors and is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (gamma, Poisson, negative binomial with identity link).</p>
+</div>
+<div id="nechorme4" class="section level3">
+<h3>nechorme4</h3>
+<p>The <strong>nechorme4</strong> model is 4 parameter decay model with an “nec” step function equivalent to <strong>nec4param</strong> with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + \alpha x_i) - \delta ) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>nechorme4</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>.</p>
+</div>
+<div id="nechorme4pwr" class="section level3">
+<h3>nechorme4pwr</h3>
+<p>The <strong>nechorme4pwr</strong> model is 4 parameter decay model with an “nec” step function equivalent to <strong>nec4param</strong> with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + x_i^{1/(1+e^{\alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>nechorme4pwr</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial power increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. Because the model can generate predictions &gt; 1 it should not be used for binomial and beta families with identity link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
+</div>
+<div id="nechormepwr01" class="section level3">
+<h3>nechormepwr01</h3>
+<p>The <strong>nechormepwr01</strong> model is a basic exponential decay model with an “nec” step function equivalent to <strong>nec3param</strong>, with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span></p>
+<p>and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>nechormepwr01</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
+</div>
+<div id="necsigm" class="section level3">
+<h3>necsigm</h3>
+<p>The <strong>necsigm</strong> model is a basic exponential decay model equivalent to <strong>ecxlin</strong> with the addition of the “nec” step function, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} \left(x_i^{e^\epsilon} - \eta \right) f(x_i, \eta)}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an “nec” step function because where there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.</p>
+</div>
+</div>
+</div>
+<div id="references" class="section level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references hanging-indent">
+<div id="ref-Burkner2017">
+<p>Bürkner, Paul Christian. 2017. “brms: An R package for Bayesian multilevel models using Stan.” <em>Journal of Statistical Software</em> 80 (1): 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>.</p>
+</div>
+<div id="ref-Burkner2018">
+<p>Bürkner, Paul-Christian. 2018. “Advanced Bayesian Multilevel Modeling with the R Package brms.” <em>The R Journal</em> 10 (1): 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>.</p>
+</div>
+<div id="ref-Fisher2020">
+<p>Fisher, Rebecca, Gerard Ricardo, and David Fox. 2020. “Bayesian concentration-response modelling using jagsNEC.” <a href="https://doi.org/10.5281/ZENODO.3966864">https://doi.org/10.5281/ZENODO.3966864</a>.</p>
+</div>
+<div id="ref-Fox2010">
+<p>Fox, David R. 2010. “A Bayesian approach for determining the no effect concentration and hazardous concentration in ecotoxicology.” <em>Ecotoxicology and Environmental Safety</em> 73 (2): 123–31.</p>
+</div>
+<div id="ref-Mattson2008">
+<p>Mattson, Mark P. 2008. “Hormesis Defined.” <em>Ageing Research Reviews</em> 7 (1): 1–7. <a href="https://doi.org/https://doi.org/10.1016/j.arr.2007.08.007">https://doi.org/https://doi.org/10.1016/j.arr.2007.08.007</a>.</p>
+</div>
+<div id="ref-Plummer2003">
+<p>Plummer, Martyn. 2003. “JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling.” In <em>Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003)</em>, 1–10. Technische Universität Wien, Vienna, Austria: Achim Zeileis.</p>
+</div>
+<div id="ref-Ritz2016">
+<p>Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard. 2016. “Dose-Response Analysis Using R.” <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021">https://doi.org/10.1371/journal.pone.0146021</a>.</p>
+</div>
+<div id="ref-stan2020">
+<p>Stan Development Team. 2020. <em>RStan: The R Interface to Stan</em>. <a href="https://mc-stan.org/">https://mc-stan.org/</a>.</p>
+</div>
+<div id="ref-Su2015">
+<p>Su, Yu-Sung, and Masanao Yajima. 2015. <em>R2jags: Using R to Run ’JAGS’</em>. <a href="https://CRAN.R-project.org/package=R2jags">https://CRAN.R-project.org/package=R2jags</a>.</p>
+</div>
+<div id="ref-vehtari2020">
+<p>Vehtari, Aki, Jonah Gabry, Mans Magnusson, Yuling Yao, Paul-Christian Bürkner, Topi Paananen, and Andrew Gelman. 2020. <em>Loo: Efficient Leave-One-Out Cross-Validation and Waic for Bayesian Models</em>. <a href="https://mc-stan.org/loo/">https://mc-stan.org/loo/</a>.</p>
+</div>
+<div id="ref-vehtari2017">
+<p>Vehtari, Aki, Andrew Gelman, and Jonah Gabry. 2017. “Practical Bayesian Model Evaluation Using Leave-One-Out Cross-Validation and Waic.” <em>Statistics and Computing</em> 27 (5): 1413–32. <a href="https://doi.org/10.1007/s11222-016-9696-4">https://doi.org/10.1007/s11222-016-9696-4</a>.</p>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
