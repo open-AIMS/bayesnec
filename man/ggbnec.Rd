@@ -40,7 +40,7 @@ A \code{\link[ggplot2]{ggplot}} object.
 \donttest{
 library(brms)
 library(bayesnec)
-options(mc.cores = parallel::detectCores())
+options(mc.cores = 2)
 data(nec_data)
 
 test <- bnec(data = nec_data, x_var = "x", y_var = "y",

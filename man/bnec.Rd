@@ -191,7 +191,7 @@ value of 0.01 for a one-sided test of significance.
 \donttest{
 library(brms)
 library(bayesnec)
-options(mc.cores = parallel::detectCores())
+options(mc.cores = 2)
 data(nec_data)
 
 # a single model

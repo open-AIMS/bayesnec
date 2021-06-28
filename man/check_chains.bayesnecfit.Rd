@@ -23,7 +23,7 @@ by \code{\link{bnec}}.
 \donttest{
 library(brms)
 library(bayesnec)
-options(mc.cores = parallel::detectCores())
+options(mc.cores = 2)
 data(nec_data)
 
 # multiple models; user-specified priors are not necessary

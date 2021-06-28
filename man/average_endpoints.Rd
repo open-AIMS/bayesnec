@@ -81,13 +81,12 @@ calculation is applied.
 \donttest{
 library(brms)
 library(bayesnec)
-options(mc.cores = parallel::detectCores())
+options(mc.cores = 2)
 data(nec_data)
 
 exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
              model = c("ecx4param", "nec4param"),
-             family = Beta(link = "identity"),
-             iter = 1e4, control = list(adapt_delta = 0.99))
+             iter = 1e4)
 exmp_2 <- pull_out(exmp, "nec4param")
 exmp_3 <- pull_out(exmp, "ecx4param")
 average_endpoints(list("nec" = exmp_2, "ecx" = exmp_3), ecx_val = 50)
