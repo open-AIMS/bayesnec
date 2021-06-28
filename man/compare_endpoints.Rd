@@ -53,7 +53,7 @@ Extracts posterior predicted values from a list of class
 compares these via bootstrap re sampling.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

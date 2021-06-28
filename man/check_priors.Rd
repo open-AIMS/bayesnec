@@ -20,7 +20,7 @@ Plots the prior and posterior parameter probability densities from an
 object of class \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

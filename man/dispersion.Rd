@@ -30,7 +30,7 @@ between the observed relative to simulated Pearson residuals sums of
 squares.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 set.seed(10)
 

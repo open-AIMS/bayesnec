@@ -19,7 +19,7 @@
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = parallel::detectCores())

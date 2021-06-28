@@ -117,7 +117,7 @@ ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE, ...) {
 #' @inherit ggbnec_data.default return
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = parallel::detectCores())
@@ -269,7 +269,7 @@ ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' @inherit ggbnec.default return
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = parallel::detectCores())

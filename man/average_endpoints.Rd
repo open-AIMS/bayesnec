@@ -78,7 +78,7 @@ argument to ensure these are back transformed before the the geometric mean
 calculation is applied.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

@@ -58,7 +58,7 @@ if "control", then ECx values are calculated relative to the control, which
 is assumed to be the lowest observed concentration.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

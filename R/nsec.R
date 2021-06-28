@@ -36,7 +36,7 @@
 #' @importFrom stats quantile predict
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = parallel::detectCores())

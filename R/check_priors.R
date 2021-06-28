@@ -16,7 +16,7 @@
 #' @importFrom rlang .data
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = parallel::detectCores())

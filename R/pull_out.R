@@ -12,7 +12,7 @@
 #' @return An object of class bayesnecfit.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = parallel::detectCores())

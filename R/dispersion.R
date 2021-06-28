@@ -21,7 +21,7 @@
 #' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
 #' @importFrom stats median
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' set.seed(10)
 #'

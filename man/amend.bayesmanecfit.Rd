@@ -62,7 +62,7 @@ Modifies an existing \code{\link{bayesmanecfit}} object, for example, by
 adding or removing fitted models.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

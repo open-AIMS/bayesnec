@@ -18,7 +18,7 @@ Extracts the priors from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())
