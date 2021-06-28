@@ -38,6 +38,8 @@
 #'
 #' @export
 check_chains.default <- function(x, ...) {
+  oldpar <- par(no.readonly = TRUE)
+  on.exit(par(oldpar))      
   params <- gsub("_Intercept", "", rownames(fixef(x$fit)))
   sims_array <- posterior_samples(x$fit, pars = params, as.array = TRUE)
   num_chains <- ncol(sims_array[, , 1])

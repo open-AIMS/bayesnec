@@ -58,6 +58,8 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   }
   names(out) <- par_names
   if (plot == "base") {
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar))      
     par(mfrow = c(ceiling(nrow(priors) / 2), 2))
     for (j in seq_along(out)) {
       hist(out[[j]], main = names(out)[j])
