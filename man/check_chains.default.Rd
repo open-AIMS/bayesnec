@@ -23,7 +23,7 @@ Plots mcmc chains for a \code{\link{bayesnecfit}} or
 \donttest{
 library(brms)
 library(bayesnec)
-options(mc.cores = parallel::detectCores())
+options(mc.cores = 2)
 data(nec_data)
 
 # multiple models; user-specified priors are not necessary

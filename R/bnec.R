@@ -145,7 +145,7 @@
 #' \donttest{
 #' library(brms)
 #' library(bayesnec)
-#' options(mc.cores = parallel::detectCores())
+#' options(mc.cores = 2)
 #' data(nec_data)
 #'
 #' # a single model
