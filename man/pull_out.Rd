@@ -23,7 +23,7 @@ Pulls a single model from an existing bayesmanecfit object,
 and converts into a bayesnecfit object.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

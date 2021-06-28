@@ -11,7 +11,7 @@
 #' @return A \code{\link[base]{character}} vector.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(bayesnec)
 #' set_distribution(rpois(1000, lambda=10), support_integer = TRUE)
 #' set_distribution(rnorm(1000))

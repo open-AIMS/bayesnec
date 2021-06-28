@@ -14,7 +14,7 @@
 #' @return No return value, generates a plot or writes a pdf to file.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = parallel::detectCores())

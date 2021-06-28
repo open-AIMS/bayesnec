@@ -24,7 +24,7 @@ Plots mcmc chains for a \code{\link{bayesnecfit}} model fit as returned
 by \code{\link{bnec}}.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

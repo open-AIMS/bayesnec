@@ -31,7 +31,7 @@ Extracts the predicted nec value as desired from an object of class
 \code{\link{bayesmanecfit}}.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

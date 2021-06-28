@@ -37,7 +37,7 @@ A \code{\link[ggplot2]{ggplot}} object.
 \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

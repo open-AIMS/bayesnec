@@ -25,7 +25,7 @@ Creates the data.frame that feeds into the plotting function
 \code{\link{ggbnec}}.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

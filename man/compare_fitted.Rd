@@ -27,7 +27,7 @@ Extracts posterior predicted values from a list of class
 compares these across a vector of fitted values.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())
