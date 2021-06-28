@@ -13,6 +13,9 @@ posterior_predict_beta_binomial2(i, prep, ...)
 
 \item{...}{unused.}
 }
+\value{
+A \code{\link[base]{numeric}} value or vector containing predicted probability values of the beta binomial distribution
+}
 \description{
 Beta-binomial wrapper posterior_predict method
 }

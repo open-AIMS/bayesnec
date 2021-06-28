@@ -11,6 +11,9 @@ log_lik_beta_binomial2(i, prep)
 
 \item{prep}{data with posterior.}
 }
+\value{
+Log likelihood of the beta binomial distribution
+}
 \description{
 Beta-binomial wrapper LL
 }

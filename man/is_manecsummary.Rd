@@ -9,6 +9,9 @@ is_manecsummary(x)
 \arguments{
 \item{x}{An \R object}
 }
+\value{
+A \code{\link[base]{logical}}
+}
 \description{
 Checks if argument is a \code{manecsummary} object
 }

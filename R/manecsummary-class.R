@@ -47,6 +47,8 @@ NULL
 #' Checks if argument is a \code{manecsummary} object
 #'
 #' @param x An \R object
+#' 
+#' @return A \code{\link[base]{logical}}
 #'
 #' @export
 is_manecsummary <- function(x) {

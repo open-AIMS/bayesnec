@@ -188,7 +188,7 @@ The default value for \code{sig_val} is 0.01, which corresponds to an alpha
 value of 0.01 for a one-sided test of significance.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())

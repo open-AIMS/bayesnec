@@ -15,7 +15,7 @@ values which the models should be able to handle (see details).
 If missing all available models and their groups are listed.}
 }
 \value{
-A list of the available or fitted models
+A \code{\link[base]{list}} of the available or fitted models
 }
 \description{
 Lists the fitted or available models

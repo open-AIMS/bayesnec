@@ -13,6 +13,9 @@ beta_binomial2_rng(mu, phi, trials)
 
 \item{trials}{vector of observation trials..}
 }
+\value{
+A \code{\link[base]{numeric}} value or vector containing random values of the beta binomial distribution
+}
 \description{
 Beta-binomial wrapper RNG
 }

@@ -10,6 +10,8 @@
 #' @importFrom brms fixef posterior_samples
 #' @importFrom stats acf
 #' @importFrom graphics axis lines mtext
+#' 
+#' @return No return value, generates a plot or writes a pdf to file.
 #'
 #' @examples
 #' \dontrun{
