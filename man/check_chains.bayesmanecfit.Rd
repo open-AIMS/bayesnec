@@ -16,6 +16,9 @@
 in the case of a \code{\link{bayesmanecfit}}. Any non empty character
 string will indicate the user wants to save the plots.}
 }
+\value{
+No return value, generates a plot or writes a pdf to file.
+}
 \description{
 Plots mcmc chains for a \code{\link{bayesnecfit}} model fit as returned
 by \code{\link{bnec}}.

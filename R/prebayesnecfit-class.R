@@ -30,6 +30,8 @@ NULL
 #' Checks if argument is a \code{prebayesnecfit} object
 #'
 #' @param x An \R object
+#' 
+#' @return A \code{\link[base]{logical}} vector.
 #'
 #' @export
 is_prebayesnecfit <- function(x) {

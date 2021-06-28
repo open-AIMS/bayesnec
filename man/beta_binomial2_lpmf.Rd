@@ -15,6 +15,9 @@ beta_binomial2_lpmf(y, mu, phi, trials)
 
 \item{trials}{vector of observation trials.}
 }
+\value{
+A \code{\link[base]{numeric}} value or vector containing the probability density of the beta binomial distribution
+}
 \description{
 Beta-binomial wrapper LPMF
 }

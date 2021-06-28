@@ -9,6 +9,9 @@ is_prebayesnecfit(x)
 \arguments{
 \item{x}{An \R object}
 }
+\value{
+A \code{\link[base]{logical}} vector.
+}
 \description{
 Checks if argument is a \code{prebayesnecfit} object
 }

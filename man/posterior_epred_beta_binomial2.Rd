@@ -9,6 +9,9 @@ posterior_epred_beta_binomial2(prep)
 \arguments{
 \item{prep}{data with posterior.}
 }
+\value{
+A \code{\link[base]{numeric}} value or vector containing predicted random values of the beta binomial distribution
+}
 \description{
 Beta-binomial wrapper posterior_epred method
 }

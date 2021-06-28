@@ -37,7 +37,7 @@
 #' controlled by the user and a call to \code{\link{bnec}} with
 #' \code{models = "all"} will simply exclude inappropriate models.
 #'
-#' @return A list of the available or fitted models
+#' @return A \code{\link[base]{list}} of the available or fitted models
 #' @examples
 #' library(bayesnec)
 #' # default to all models and model groups

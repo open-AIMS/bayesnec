@@ -8,6 +8,8 @@
 #' @param phi posterior phi.
 #'
 #' @importFrom extraDistr dbbinom
+#' 
+#' @return A \code{\link[base]{numeric}} value or vector containing the probability density of the beta binomial distribution
 #'
 #' @export
 beta_binomial2_lpmf <- function(y, mu, phi, trials) {
@@ -26,6 +28,8 @@ beta_binomial2_lpmf <- function(y, mu, phi, trials) {
 #'
 #' @importFrom extraDistr rbbinom
 #'
+#' @return A \code{\link[base]{numeric}} value or vector containing random values of the beta binomial distribution
+#'
 #' @export
 beta_binomial2_rng <- function(mu, phi, trials) {
   a <- mu * phi
@@ -43,6 +47,9 @@ beta_binomial2_rng <- function(mu, phi, trials) {
 #'
 #' @param i observation i.
 #' @param prep data with posterior.
+#' 
+#'
+#' @return Log likelihood of the beta binomial distribution
 #'
 #' @export
 log_lik_beta_binomial2 <- function(i, prep) {
@@ -60,6 +67,8 @@ log_lik_beta_binomial2 <- function(i, prep) {
 #' @param i observation i.
 #' @param prep data with posterior.
 #' @param ... unused.
+#' 
+#' @return A \code{\link[base]{numeric}} value or vector containing predicted probability values of the beta binomial distribution
 #'
 #' @export
 posterior_predict_beta_binomial2 <- function(i, prep, ...) {
@@ -74,6 +83,8 @@ posterior_predict_beta_binomial2 <- function(i, prep, ...) {
 #' Beta-binomial wrapper posterior_epred method
 #'
 #' @param prep data with posterior.
+#' 
+#' @return A \code{\link[base]{numeric}} value or vector containing predicted random values of the beta binomial distribution
 #'
 #' @export
 posterior_epred_beta_binomial2 <- function(prep) {
