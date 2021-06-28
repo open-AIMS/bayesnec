@@ -257,20 +257,34 @@ calculation is applied.</p>
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span></span>
+    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='co'># \donttest{</span></span>
 <span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/paul-buerkner/brms'>brms</a></span><span class='op'>)</span></span>
 <span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span><span class='op'>(</span>mc.cores <span class='op'>=</span> <span class='fu'>parallel</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/parallel/detectCores.html'>detectCores</a></span><span class='op'>(</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span><span class='op'>(</span>mc.cores <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span></span>
 <span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span></span>
 <span class='r-in'></span>
 <span class='r-in'><span class='va'>exmp</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,</span>
 <span class='r-in'>             model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"ecx4param"</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>,</span>
-<span class='r-in'>             family <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span><span class='op'>(</span>link <span class='op'>=</span> <span class='st'>"identity"</span><span class='op'>)</span>,</span>
-<span class='r-in'>             iter <span class='op'>=</span> <span class='fl'>1e4</span>, control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>adapt_delta <span class='op'>=</span> <span class='fl'>0.99</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-in'>             iter <span class='op'>=</span> <span class='fl'>1e4</span><span class='op'>)</span></span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a ecx4param model and a beta distribution.</span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Start sampling</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'fit'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a ecx4param model using a beta distribution.</span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a beta distribution.</span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Start sampling</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'fit'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a beta distribution.</span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Fitted models are:  ecx4param nec4param</span>
 <span class='r-in'><span class='va'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"nec4param"</span><span class='op'>)</span></span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): nec4param</span>
 <span class='r-in'><span class='va'>exmp_3</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span></span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): ecx4param</span>
 <span class='r-in'><span class='fu'>average_endpoints</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='st'>"nec"</span> <span class='op'>=</span> <span class='va'>exmp_2</span>, <span class='st'>"ecx"</span> <span class='op'>=</span> <span class='va'>exmp_3</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span></span>
-<span class='r-in'><span class='op'>}</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>       50%      2.5%     97.5% </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 1.1782987 0.8611752 1.2860306 </span>
+<span class='r-in'><span class='co'># }</span></span>
 <span class='r-in'></span>
 </code></pre></div>
   </div>
@@ -284,7 +298,7 @@ calculation is applied.</p>
 
       <footer>
       <div class="copyright">
-  <p><p>Developed by Rebecca Fisher, Diego Barneche.</p></p>
+  <p><p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p></p>
 </div>
 
 <div class="pkgdown">

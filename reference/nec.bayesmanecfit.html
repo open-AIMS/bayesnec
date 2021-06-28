@@ -196,20 +196,27 @@ lower 95% credible interval bounds
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span></span>
+    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='co'># \donttest{</span></span>
 <span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/paul-buerkner/brms'>brms</a></span><span class='op'>)</span></span>
 <span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span><span class='op'>(</span>mc.cores <span class='op'>=</span> <span class='fu'>parallel</span><span class='fu'>::</span><span class='fu'><a href='https://rdrr.io/r/parallel/detectCores.html'>detectCores</a></span><span class='op'>(</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span><span class='op'>(</span>mc.cores <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span></span>
 <span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span></span>
 <span class='r-in'></span>
 <span class='r-in'><span class='va'>exmp</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,</span>
 <span class='r-in'>             model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec4param"</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>,</span>
 <span class='r-in'>             family <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span><span class='op'>(</span>link <span class='op'>=</span> <span class='st'>"identity"</span><span class='op'>)</span>, priors <span class='op'>=</span> <span class='va'>my_priors</span>,</span>
 <span class='r-in'>             iter <span class='op'>=</span> <span class='fl'>1e4</span>, control <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>adapt_delta <span class='op'>=</span> <span class='fl'>0.99</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Error in validate_priors(priors, model) : object 'my_priors' not found</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>restarting interrupted promise evaluation</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Error in validate_priors(priors, model) : object 'my_priors' not found</span>
+<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in expand_manec(mod_fits, x_range = x_range, precision = precision,     sig_val = sig_val, loo_controls = loo_controls)</span> None of the models fit successfully, try using bnec with a single model (e.g. ecxexp) using the default settings as a starting point for trouble shooting, or check ?show_params to make sure you have the correct parameter names for your priors.</span>
 <span class='r-in'><span class='va'>exmp_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>exmp</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span></span>
+<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in pull_out(exmp, "ecx4param")</span> object 'exmp' not found</span>
 <span class='r-in'><span class='fu'><a href='nec.html'>nec</a></span><span class='op'>(</span><span class='va'>exmp</span><span class='op'>)</span></span>
+<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in nec(exmp)</span> object 'exmp' not found</span>
 <span class='r-in'><span class='fu'><a href='nec.html'>nec</a></span><span class='op'>(</span><span class='va'>exmp_2</span><span class='op'>)</span></span>
-<span class='r-in'><span class='op'>}</span></span>
+<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in nec(exmp_2)</span> object 'exmp_2' not found</span>
+<span class='r-in'><span class='co'># }</span></span>
 <span class='r-in'></span>
 </code></pre></div>
   </div>
@@ -223,7 +230,7 @@ lower 95% credible interval bounds
 
       <footer>
       <div class="copyright">
-  <p><p>Developed by Rebecca Fisher, Diego Barneche.</p></p>
+  <p><p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p></p>
 </div>
 
 <div class="pkgdown">

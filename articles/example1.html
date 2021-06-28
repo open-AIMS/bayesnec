@@ -176,11 +176,32 @@
 <span class="va">exp_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">binom_data</span>, x_var <span class="op">=</span> <span class="st">"log_x"</span>,
               y_var <span class="op">=</span> <span class="st">"suc"</span>, model <span class="op">=</span> <span class="st">"neclin"</span>,
               trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span></code></pre></div>
-<pre><code>## 
+<pre><code>## Running /Library/Frameworks/R.framework/Resources/bin/R CMD SHLIB foo.c
+## clang -mmacosx-version-min=10.13 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG   -I"/Users/runner/work/_temp/Library/Rcpp/include/"  -I"/Users/runner/work/_temp/Library/RcppEigen/include/"  -I"/Users/runner/work/_temp/Library/RcppEigen/include/unsupported"  -I"/Users/runner/work/_temp/Library/BH/include" -I"/Users/runner/work/_temp/Library/StanHeaders/include/src/"  -I"/Users/runner/work/_temp/Library/StanHeaders/include/"  -I"/Users/runner/work/_temp/Library/RcppParallel/include/"  -I"/Users/runner/work/_temp/Library/rstan/include" -DEIGEN_NO_DEBUG  -DBOOST_DISABLE_ASSERTS  -DBOOST_PENDING_INTEGER_LOG2_HPP  -DSTAN_THREADS  -DBOOST_NO_AUTO_PTR  -include '/Users/runner/work/_temp/Library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp'  -D_REENTRANT -DRCPP_PARALLEL_USE_TBB=1   -I/usr/local/include   -fPIC  -Wall -g -O2  -c foo.c -o foo.o
+## In file included from &lt;built-in&gt;:1:
+## In file included from /Users/runner/work/_temp/Library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp:13:
+## In file included from /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/Dense:1:
+## In file included from /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/Core:88:
+## /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/src/Core/util/Macros.h:628:1: error: unknown type name 'namespace'
+## namespace Eigen {
+## ^
+## /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/src/Core/util/Macros.h:628:16: error: expected ';' after top level declarator
+## namespace Eigen {
+##                ^
+##                ;
+## In file included from &lt;built-in&gt;:1:
+## In file included from /Users/runner/work/_temp/Library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp:13:
+## In file included from /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/Dense:1:
+## /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/Core:96:10: fatal error: 'complex' file not found
+## #include &lt;complex&gt;
+##          ^~~~~~~~~
+## 3 errors generated.
+## make: *** [foo.o] Error 1
+## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 1).
 ## Chain 1: 
-## Chain 1: Gradient evaluation took 8.6e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.86 seconds.
+## Chain 1: Gradient evaluation took 9e-05 seconds
+## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.9 seconds.
 ## Chain 1: Adjust your expectations accordingly!
 ## Chain 1: 
 ## Chain 1: 
@@ -197,15 +218,15 @@
 ## Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 1: 
-## Chain 1:  Elapsed Time: 2.23292 seconds (Warm-up)
-## Chain 1:                0.323402 seconds (Sampling)
-## Chain 1:                2.55632 seconds (Total)
+## Chain 1:  Elapsed Time: 2.24105 seconds (Warm-up)
+## Chain 1:                0.305423 seconds (Sampling)
+## Chain 1:                2.54647 seconds (Total)
 ## Chain 1: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 2).
 ## Chain 2: 
-## Chain 2: Gradient evaluation took 4.9e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.49 seconds.
+## Chain 2: Gradient evaluation took 4.5e-05 seconds
+## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.45 seconds.
 ## Chain 2: Adjust your expectations accordingly!
 ## Chain 2: 
 ## Chain 2: 
@@ -222,15 +243,15 @@
 ## Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 2: 
-## Chain 2:  Elapsed Time: 2.24587 seconds (Warm-up)
-## Chain 2:                0.297059 seconds (Sampling)
-## Chain 2:                2.54293 seconds (Total)
+## Chain 2:  Elapsed Time: 2.25952 seconds (Warm-up)
+## Chain 2:                0.321015 seconds (Sampling)
+## Chain 2:                2.58053 seconds (Total)
 ## Chain 2: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 3).
 ## Chain 3: 
-## Chain 3: Gradient evaluation took 3.7e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.37 seconds.
+## Chain 3: Gradient evaluation took 4.7e-05 seconds
+## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.47 seconds.
 ## Chain 3: Adjust your expectations accordingly!
 ## Chain 3: 
 ## Chain 3: 
@@ -247,15 +268,15 @@
 ## Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 3: 
-## Chain 3:  Elapsed Time: 2.11489 seconds (Warm-up)
-## Chain 3:                0.292117 seconds (Sampling)
-## Chain 3:                2.40701 seconds (Total)
+## Chain 3:  Elapsed Time: 2.18143 seconds (Warm-up)
+## Chain 3:                0.299945 seconds (Sampling)
+## Chain 3:                2.48137 seconds (Total)
 ## Chain 3: 
 ## 
 ## SAMPLING FOR MODEL '4a243744b7493660dc3a4a366b116b5a' NOW (CHAIN 4).
 ## Chain 4: 
-## Chain 4: Gradient evaluation took 5.3e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.53 seconds.
+## Chain 4: Gradient evaluation took 3.9e-05 seconds
+## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.39 seconds.
 ## Chain 4: Adjust your expectations accordingly!
 ## Chain 4: 
 ## Chain 4: 
@@ -272,9 +293,9 @@
 ## Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
 ## Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
 ## Chain 4: 
-## Chain 4:  Elapsed Time: 2.16842 seconds (Warm-up)
-## Chain 4:                0.299348 seconds (Sampling)
-## Chain 4:                2.46777 seconds (Total)
+## Chain 4:  Elapsed Time: 2.17274 seconds (Warm-up)
+## Chain 4:                0.340601 seconds (Sampling)
+## Chain 4:                2.51334 seconds (Total)
 ## Chain 4:</code></pre>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code>plot(exp_1$fit)</code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -301,9 +322,9 @@
 ## 
 ## Population-Level Effects: 
 ##                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## top_Intercept       1.69      0.05     1.59     1.79 1.00     2051     2174
-## slope_Intercept     0.66      0.04     0.58     0.73 1.00     1888     1923
-## nec_Intercept       3.72      0.06     3.60     3.82 1.00     1669     1549
+## top_Intercept       1.69      0.05     1.59     1.80 1.00     1761     1672
+## slope_Intercept     0.66      0.04     0.58     0.73 1.01     1371     1442
+## nec_Intercept       3.72      0.06     3.60     3.82 1.01     1301     1602
 ## 
 ## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -325,7 +346,7 @@
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></code></pre></div>
 <pre><code>## Estimate     Q2.5    Q97.5 
-## 19.47908 13.00834 30.38918</code></pre>
+## 19.52793 13.18496 29.82219</code></pre>
 </div>
 <div id="beta-binomial" class="section level3">
 <h3 class="hasAnchor">
@@ -552,7 +573,7 @@
 
       <footer><div class="copyright">
   <p></p>
-<p>Developed by Rebecca Fisher, Diego Barneche.</p>
+<p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p>
 </div>
 
 <div class="pkgdown">
