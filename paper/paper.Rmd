@@ -34,12 +34,10 @@ affiliations:
 
 citation_author: Fisher et al.
 date: "`r Sys.Date()`"
-bibliography: paper.bib
-output:
- my_modified_joss:
-   fig_caption: yes
-csl: apa.csl
-journal: JOSS
+bibliography: refs.bib
+output: jss_article
+  
+
 ---
 
 # Summary
