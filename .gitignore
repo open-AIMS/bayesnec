@@ -22,5 +22,6 @@ bayesnec*tar.gz
 ..Rcheck/
 .Rproj.user
 /Meta/
-/paper
-/article/article_cache
+paper/
+article/article_cache/
+article/article_files/
