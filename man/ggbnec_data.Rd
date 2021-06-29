@@ -25,10 +25,12 @@ Creates the data.frame that feeds into the plotting function
 \code{\link{ggbnec}}.
 }
 \examples{
+\donttest{
 library(bayesnec)
 
 test <- bayesnec:::manec_gauss_id_2
 ggbnec_data(test)
 ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
+}
 
 }

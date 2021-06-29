@@ -123,14 +123,7 @@ ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE, ...) {
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}}.
 #'
-#' @inherit ggbnec_data.default return
-#'
-#' @examples
-#' library(bayesnec)
-#'
-#' test <- bayesnec:::manec_gauss_id_2
-#' ggbnec_data(test)
-#' ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
+#' @inherit ggbnec_data.default return examples
 #'
 #' @export
 ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, ...) {
