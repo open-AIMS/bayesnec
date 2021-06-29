@@ -72,7 +72,7 @@ test_that("expand_ecx arguments work for ecx model", {
 
 test_that("expand_ecx sig_val argument work for ecx model", {
   ecx_fit_a <- expand_nec(fit2)
-  ecx_fit_b <- expand_nec(fit2, sig_val = 0.1)
+  ecx_fit_b <- expand_nec(fit2, sig_val = 0.2)
   expect_gt(ecx_fit_a$nec["Estimate"], ecx_fit_b$nec["Estimate"])
 })
 
