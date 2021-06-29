@@ -30,25 +30,8 @@ between the observed relative to simulated Pearson residuals sums of
 squares.
 }
 \examples{
-\donttest{
-library(brms)
-set.seed(10)
+library(bayesnec)
+exmp_brmsfit <- bayesnec:::manec_gauss_id_2$mod_fits$nec4param$fit
+dispersion(exmp_brmsfit, summary = TRUE)
 
-dt <- data.frame(predictor = rpois(60, lambda = 15))
-dt$response <- dt$predictor + round(rnorm(nrow(dt), 0, 1))
-# mimic overdispersion
-dt$response_od <- abs(dt$predictor + round(rnorm(nrow(dt), 0, 10)))
-mod_pois <- brm(response ~ predictor, dt, family = poisson(), cores = 2)
-mod_pois_od <- brm(response_od~predictor, dt, family = poisson(), cores = 2)
-
-dispersion(mod_pois)
-dispersion(mod_pois_od)
-
-# compare with regular dispersion parameter
-# from quasipoisson glm
-dispersion(mod_pois, summary = TRUE)
-summary(glm(response ~ predictor, data = dt, family = quasipoisson))
-dispersion(mod_pois_od, summary = TRUE)
-summary(glm(response_od ~ predictor, data = dt, family = quasipoisson))
-}
 }

@@ -49,10 +49,12 @@ A \code{\link[ggplot2]{ggplot}} object.
 \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
 }
 \examples{
+\donttest{
 library(bayesnec)
 
 test <- bayesnec:::manec_gauss_id_2
 ggbnec_data(test)
 ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
+}
 
 }

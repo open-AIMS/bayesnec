@@ -82,11 +82,13 @@ bind_ecx <- function(data, ecx_vals) {
 #' @importFrom brms conditional_effects
 #' 
 #' @examples
+#' \donttest{
 #' library(bayesnec)
 #'
 #' test <- bayesnec:::manec_gauss_id_2
 #' ggbnec_data(test)
 #' ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
+#' }
 #'
 #' @export
 ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE, ...) {
@@ -199,11 +201,13 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
 #' @importFrom rlang .data
 #' 
 #' @examples
+#' \donttest{
 #' library(bayesnec)
 #'
 #' test <- bayesnec:::manec_gauss_id_2
 #' ggbnec_data(test)
 #' ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
+#' }
 #'
 #' @export
 ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
