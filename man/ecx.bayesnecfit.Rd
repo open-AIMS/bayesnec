@@ -35,11 +35,13 @@ if "control", then ECx values are calculated relative to the control, which
 is assumed to be the lowest observed concentration.
 }
 \examples{
+\donttest{
 library(brms)
 library(bayesnec)
 exmp <- bayesnec:::manec_gauss_id_2
 ecx(exmp, ecx_val = 50)
 ecx(exmp)
+}
 
 }
 \seealso{
