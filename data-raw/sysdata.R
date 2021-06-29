@@ -24,7 +24,12 @@ mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
                    zero_bounded = c("nec3param", "nechorme", "necsigm",
                                     "nechormepwr", "nechormepwr01", "ecxexp",
                                     "ecxsigm", "ecxwb1p3", "ecxwb2p3",
-                                    "ecxll3", "ecxhormebc4"))
+                                    "ecxll3", "ecxhormebc4"),
+                   decline = c("nec3param", "nec4param",
+                               "necsigm", "neclin",
+                               "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
+                               "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3",
+                               "ecxll5", "ecxll4", "ecxll3"))
 
 mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",
