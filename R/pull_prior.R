@@ -8,18 +8,9 @@
 #' @return A list containing the priors
 #'
 #' @examples
-#' \donttest{
-#' library(brms)
 #' library(bayesnec)
-#' options(mc.cores = 2)
-#' data(nec_data)
-#'
-#' exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
-#'                model = "nec3param",
-#'                family = Beta(link = "identity"),
-#'                iter = 1e4, control = list(adapt_delta = 0.99))
-#' pull_prior(exmp_a)
-#' }
+#' exmp <- bayesnec:::manec_gauss_id_2
+#' pull_prior(exmp)
 #'
 #' @export
 pull_prior <- function(object) {

@@ -20,19 +20,9 @@ Plots the prior and posterior parameter probability densities from an
 object of class \code{\link{bayesnecfit}}.
 }
 \examples{
-\donttest{
-library(brms)
 library(bayesnec)
-options(mc.cores = 2)
-data(nec_data)
-
-exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
-             model = c("neclin", "ecxlin"),
-             iter = 1e4, control = list(adapt_delta = 0.99))
-exmp_2 <- pull_out(exmp, "necline")
+exmp <- manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
 check_priors(exmp)
-check_priors(exmp_2)
-}
 
 }
 \seealso{

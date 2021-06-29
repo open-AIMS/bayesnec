@@ -14,27 +14,12 @@
 #' @return No return value, generates a plot or writes a pdf to file.
 #'
 #' @examples
-#' \donttest{
-#' library(brms)
 #' library(bayesnec)
-#' options(mc.cores = 2)
-#' data(nec_data)
 #'
-#' # multiple models; user-specified priors are not necessary
-#' # though we show it here in case this is wanted
-#'
-#' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
-#'              model = c("ecx4param", "neclin"),
-#'              family = Beta, iter = 1e4)
+#' exmp <- bayesnec:::manec_gauss_id_2
 #'
 #' # print to device
 #' check_chains(exmp)
-#' # save to output, only available to bayesmanecfit class
-#' check_chains(exmp, filename = "something")
-#' # print to device, bayesnecfit class
-#' neclin <- pull_out(exmp, "nec")
-#' check_chains(neclin)
-#' }
 #'
 #' @export
 check_chains.default <- function(x, ...) {

@@ -27,20 +27,11 @@ Extracts posterior predicted values from a list of class
 compares these across a vector of fitted values.
 }
 \examples{
-\donttest{
-library(brms)
 library(bayesnec)
-options(mc.cores = 2)
-data(nec_data)
-
-exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
-             model = c("ecx4param", "nec4param"),
-             family = Beta(link = "identity"), priors = my_priors,
-             iter = 1e4, control = list(adapt_delta = 0.99))
-exmp_2 <- pull_out(exmp, "nec4param")
-exmp_3 <- pull_out(exmp, "ecx4param")
-compare_fitted(list(exmp_2, exmp_3))
-}
+manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
+ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
+nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+compare_fitted(list("nec" = ecx4param, "ecx" = nec4param))
 
 }
 \seealso{

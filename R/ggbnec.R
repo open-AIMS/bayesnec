@@ -80,6 +80,13 @@ bind_ecx <- function(data, ecx_vals) {
 #'
 #' @importFrom dplyr %>%
 #' @importFrom brms conditional_effects
+#' 
+#' @examples
+#' library(bayesnec)
+#'
+#' test <- bayesnec:::manec_gauss_id_2
+#' ggbnec_data(test)
+#' ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
 #'
 #' @export
 ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE, ...) {
@@ -117,20 +124,11 @@ ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE, ...) {
 #' @inherit ggbnec_data.default return
 #'
 #' @examples
-#' \donttest{
-#' library(brms)
 #' library(bayesnec)
-#' options(mc.cores = 2)
-#' data(nec_data)
 #'
-#' test <- bnec(data = nec_data, x_var = "x", y_var = "y",
-#'              model = c("nec3param", "nec4param"), iter = 2e2,
-#'              family = Beta(link = "identity"))
-#' test2 <- pull_out(test, "nec3param")
+#' test <- bayesnec:::manec_gauss_id_2
 #' ggbnec_data(test)
-#' ggbnec_data(test2)
 #' ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
-#' }
 #'
 #' @export
 ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, ...) {
@@ -144,7 +142,7 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, ...) {
 #'
 #' @inheritParams ggbnec_data.default
 #'
-#' @inherit ggbnec_data.default return
+#' @inherit ggbnec_data.default return examples
 #'
 #' @export
 ggbnec_data.bayesnecfit <- function(x, ...) {
@@ -161,7 +159,7 @@ ggbnec_data.bayesnecfit <- function(x, ...) {
 #' @param x An object of class \code{\link{bayesmanecfit}}, as returned by
 #' function \code{\link{bnec}}.
 #'
-#' @inherit ggbnec_data.default return
+#' @inherit ggbnec_data.default return examples
 #'
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
@@ -199,6 +197,13 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
 #' @importFrom ggplot2 element_text element_blank element_rect labs
 #' @importFrom dplyr %>% filter
 #' @importFrom rlang .data
+#' 
+#' @examples
+#' library(bayesnec)
+#'
+#' test <- bayesnec:::manec_gauss_id_2
+#' ggbnec_data(test)
+#' ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
 #'
 #' @export
 ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
@@ -266,7 +271,7 @@ ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
 #'
-#' @inherit ggbnec.default return
+#' @inherit ggbnec.default return examples
 #'
 #' @examples
 #' \donttest{
@@ -306,7 +311,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' function \code{\link{bnec}}.
 #' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #'
-#' @inherit ggbnec.default return
+#' @inherit ggbnec.default return examples
 #'
 #' @importFrom dplyr mutate
 #'
@@ -338,7 +343,7 @@ ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' @param multi_facet Should all plots be plotted in one single panel via
 #' facets? Defaults to FALSE.
 #'
-#' @inherit ggbnec.default return
+#' @inherit ggbnec.default return examples
 #'
 #' @importFrom dplyr %>% mutate
 #' @importFrom purrr map_dfr

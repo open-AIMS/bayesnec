@@ -44,20 +44,11 @@
 #' @importFrom stats quantile predict
 #'
 #' @examples
-#' \donttest{
 #' library(brms)
 #' library(bayesnec)
-#' options(mc.cores = 2)
-#' data(nec_data)
-#'
-#' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
-#'              model = c("nec3param", "nec4param"),
-#'              family = Beta(link = "identity"), priors = my_priors,
-#'              iter = 1e4, control = list(adapt_delta = 0.99))
-#' exmp_2 <- pull_out(exmp, "nec3param")
+#' exmp <- bayesnec:::manec_gauss_id_2
 #' ecx(exmp, ecx_val = 50)
-#' ecx(exmp_2)
-#' }
+#' ecx(exmp)
 #'
 #' @export
 ecx.default <- function(object, ecx_val = 10, precision = 1000,
