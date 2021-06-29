@@ -29,8 +29,8 @@
 #' dt$response <- dt$predictor + round(rnorm(nrow(dt), 0, 1))
 #' # mimic overdispersion
 #' dt$response_od <- abs(dt$predictor + round(rnorm(nrow(dt), 0, 10)))
-#' mod_pois <- brm(response ~ predictor, dt, family = poisson())
-#' mod_pois_od <- brm(response_od~predictor, dt, family = poisson())
+#' mod_pois <- brm(response ~ predictor, dt, family = poisson(), cores = 2)
+#' mod_pois_od <- brm(response_od~predictor, dt, family = poisson(), cores = 2)
 #'
 #' dispersion(mod_pois)
 #' dispersion(mod_pois_od)

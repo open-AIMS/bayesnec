@@ -25,19 +25,10 @@ Creates the data.frame that feeds into the plotting function
 \code{\link{ggbnec}}.
 }
 \examples{
-\donttest{
-library(brms)
 library(bayesnec)
-options(mc.cores = 2)
-data(nec_data)
 
-test <- bnec(data = nec_data, x_var = "x", y_var = "y",
-             model = c("nec3param", "nec4param"), iter = 2e2,
-             family = Beta(link = "identity"))
-test2 <- pull_out(test, "nec3param")
+test <- bayesnec:::manec_gauss_id_2
 ggbnec_data(test)
-ggbnec_data(test2)
 ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
-}
 
 }

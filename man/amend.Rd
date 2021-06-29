@@ -61,3 +61,8 @@ All successfully fitted \code{\link{bayesmanecfit}} model fits.
 Amends an existing \code{\link{bayesmanecfit}} object, for example, by
 adding or removing fitted models.
 }
+\examples{
+library(bayesnec)
+exmp <- amend(bayesnec:::manec_gauss_id_2, drop = "nec3param")
+
+}

@@ -19,15 +19,8 @@
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'
 #' @examples
-#' \donttest{
-#' library(brms)
 #' library(bayesnec)
-#' options(mc.cores = 2)
-#' data(nec_data)
-#'
-#' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
-#'              model = c("nec3param", "nec4param"),
-#'              iter = 1e3)
+#' exmp <- amend(bayesnec:::manec_gauss_id_2, drop = "nec3param")
 #'
 #' @export
 amend.default <- function(object, drop, add, loo_controls, x_range = NA,

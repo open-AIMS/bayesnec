@@ -28,18 +28,10 @@ is assumed to be the lowest observed concentration.
 }
 \examples{
 \donttest{
-library(brms)
 library(bayesnec)
-options(mc.cores = 2)
-data(nec_data)
 
-exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
-             model = c("nec4param", "ecx4param"),
-             family = Beta(link = "identity"), priors = my_priors,
-             iter = 1e4, control = list(adapt_delta = 0.99))
-exmp_2 <- pull_out(exmp, "ecx4param")
-nsec(exmp, sig_val = 0.05)
-nsec(exmp_2)
+exmp <- manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
+nsec(exmp)
 }
 
 }

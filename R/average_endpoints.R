@@ -34,19 +34,12 @@
 #' @importFrom utils combn
 #'
 #' @examples
-#' \donttest{
 #' library(brms)
 #' library(bayesnec)
-#' options(mc.cores = 2)
-#' data(nec_data)
-#'
-#' exmp <- bnec(data = nec_data, x_var = "x", y_var = "y",
-#'              model = c("ecx4param", "nec4param"),
-#'              iter = 1e4)
-#' exmp_2 <- pull_out(exmp, "nec4param")
-#' exmp_3 <- pull_out(exmp, "ecx4param")
-#' average_endpoints(list("nec" = exmp_2, "ecx" = exmp_3), ecx_val = 50)
-#' }
+#' manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
+#' ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
+#' nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+#' average_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 #'
 #' @export
 average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
