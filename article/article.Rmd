@@ -71,7 +71,7 @@ The main working function in pkg{bayesnec} is `bnec`. We have attempted to make 
 ```{r fit}
 library(bayesnec)
 data(nec_data)
-exmp_fit <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "all")
+exmp_fit <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "decline")
 ```
 
 Only three arguments must be supplied, including: `data`---a `data.frame` containing the data to use for the model; `x_var`---a `character` indicating the column heading containing the concentration (x) variable; and `y_var`---a `character` indicating the column heading containing the response (y) variable. The next argument `model` is a `character` indicating the desired model (or model-set, see details below) and currently defaults to "all" models available. A large range of arguments to be passed to pkg{brms} or model weighting via `loo` can be specified manually by the user as required for more advanced users.
@@ -131,7 +131,7 @@ plot(exmp_fit)
 
 By default the plot shows the fitted posterior curve with 95% credible intervals, along with an estimate of the $\eta = \text{NEC}$ value. Please see the [vignettes](https://open-aims.github.io/bayesnec/articles/) for more examples using pkg{bayesnec} models for inference.
 
-## Models in pkg{bayesnec}
+## Models in \pkg{bayesnec}
 
 The argument `model` in the function `bnec` is a character string indicating the name(s) of the desired model. If a recognised model name is provided, a single model of the specified type is fit, and `bnec` returns a model object of class `bayesnecfit`. If a vector of two or more of the available models are supplied, `bnec` returns a model object of class `bayesmanecfit` containing Bayesian model averaged predictions for the supplied models, providing they were successfully fitted.
 
