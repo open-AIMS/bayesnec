@@ -11,13 +11,6 @@ TODO.md
 docs/
 ignore/
 pdfs/
-paper/output
-paper/paper_cache
-paper/*.log
-paper/*.aux
-paper/*.bcf
-paper/*.out
-paper/*.xml
 
 tests/*.rds
 tests/*.rda
@@ -29,3 +22,4 @@ bayesnec*tar.gz
 ..Rcheck/
 .Rproj.user
 /Meta/
+/paper
