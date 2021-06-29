@@ -19,13 +19,13 @@ author:
     affiliation: Environmetrics Australia, Beaumaris, Victoria, Australia
     affiliation2: University of Melbourne, Parkville, Victoria, Australia
 title:
-  formatted: "\\pkg{bayesnec}: An R Package For C-R Modelling And Estimation Of No-Effect-Concentrations"
-  plain:     "bayesnec: An R Package For C-R Modelling And Estimation Of No-Effect-Concentrations"
+  formatted: "\\pkg{bayesnec}: An R Package for C-R Modelling and Estimation of No-Effect-Concentrations"
+  plain:     "bayesnec: An R Package for C-R Modelling and Estimation of No-Effect-Concentrations"
   short:     "C-R Modelling With \\pkg{bayesnec}"
 abstract: >
   The pkg{bayesnec} package in R has been developed to fit concentration(dose) - response curves (C-R) to 
-  toxicity data for the purpose of deriving No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration 
-  (*NSEC*), and Effect-Concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models 
+  toxicity data for the purpose of deriving no-effect-concentration (*NEC*), no-significant-effect-concentration 
+  (*NSEC*), and effect-concentration (of specified percentage 'x', *ECx*) thresholds from non-linear models 
   fitted using Bayesian MCMC fitting methods via pkg{brms} [@Burkner2017; @Burkner2018] and pkg{rstan} [@rstan2020]. 
   In pkg{bayesnec} it is possible to fit a single model, custom model-set, specific model-set or all of the 
   available models. When multiple models are specified the `bnec` function returns a model weighted average 
@@ -49,9 +49,9 @@ pkgdown:
   extension: pdf
 ---
 
-```{r, setup, include=FALSE}
+```{r setup, include=FALSE}
 options(prompt = 'R> ', continue = '+ ')
-knitr::opts_chunk$set(purl = TRUE)
+knitr::opts_chunk$set(purl = TRUE, warning = FALSE, message = FALSE, echo = TRUE, cache = TRUE, include = TRUE, eval = TRUE)
 ```
 
 # Introduction
@@ -62,13 +62,13 @@ Bayesian model fitting can be difficult to automate across a broad range of usag
 
 # Technical details and Usage
 
-This project started with an implementation of the *NEC* model based on that described in [@Fox2010; @Pires2002] using R2jags [@Su2015]. Code for fitting this initial model was developed into the R package `jagsNEC` and  expanded to include several C-R models and further generalised to allow a large range of response variables to be modelled using their appropriate statistical distribution. While the original `jagsNEC` implementation supported Gaussian, Poisson, Binomial, Gamma, Negative-binomial and Beta response data, pkg{bayesnec} supports all of these in addition to the Beta-binomial family. Furthermore, the new structure implemented using pkg{brms} means pkg{bayesnec} can be readily extended to include any of the pkg{brms} families. In addition to greater flexibility in the available response families, pkg{bayesnec} includes a larger range of alternative *NEC* model types, as well as most typically used smooth C-R models (such as 4-parameter logistic and Weibull models) that have no *NEC* 'step' function but simply model the response as a smooth function of concentration. We have now incorporated most of the commonly used models in frequentist packages such as `drc` [@Ritz2016] (please see the [Model details](https://open-aims.github.io/bayesnec/articles/example2b.html) vignette for more information on the full list of models currently available in pkg{bayesnec}).
+This project started with an implementation of the *NEC* model based on that described in [@Fox2010; @Pires2002] using R2jags [@Su2015]. Code for fitting this initial model was developed into the R package pkg{jagsNEC} and  expanded to include several C-R models and further generalised to allow a large range of response variables to be modelled using their appropriate statistical distribution. While the original pkg{jagsNEC} implementation supported Gaussian, Poisson, Binomial, Gamma, Negative-binomial and Beta response data, pkg{bayesnec} supports all of these in addition to the Beta-binomial family. Furthermore, the new structure implemented using pkg{brms} means pkg{bayesnec} can be readily extended to include any of the pkg{brms} families. In addition to greater flexibility in the available response families, pkg{bayesnec} includes a larger range of alternative *NEC* model types, as well as most typically used smooth C-R models (such as 4-parameter logistic and Weibull models) that have no *NEC* 'step' function but simply model the response as a smooth function of concentration. We have now incorporated most of the commonly used models in frequentist packages such as pkg{drc} [@Ritz2016] (please see the [Model details](https://open-aims.github.io/bayesnec/articles/example2b.html) vignette for more information on the full list of models currently available in pkg{bayesnec}).
 
 ## Model specification
 
 The main working function in pkg{bayesnec} is `bnec`. We have attempted to make the `bnec` function as easy to use as possible, targeting the novice R user. A pkg{bayesnec} model can be fit as simply as:
 
-```{r fit, eval=FALSE}
+```{r fit}
 library(bayesnec)
 data(nec_data)
 exmp_fit <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "all")
@@ -80,7 +80,7 @@ While the statistical distribution of the response variable (y) can be specified
 
 If not supplied, the appropriate family to use will be determined based on the characteristics of the input data. This includes evaluation of class (integer or numeric) as well as the observed range via the function `check_data`. Family predictions include all of the available families (see above) except Negative-binomial and Beta-binomial because these require knowledge on whether the data are overdispersed, which are not assessed prior to model fitting. By default pkg{bayesnec} will use the default link function for the predicted family. Note that in `bnec` the default link for the Gamma family has been set to `log`. If other link functions are required for any of the implemented families, such as `identity` in the case of a Beta family for example, this will need to be specified manually using:
 
-```{r, eval=FALSE}
+```{r family, eval=FALSE, include=FALSE}
 family = Beta(link = "identity")
 ```
 
@@ -100,7 +100,7 @@ A range of tools are available to assess model fit, including an estimate of ove
 
 All diagnostic functions available in pkg{brms} and pkg{rstan} can be used on the underlying `brm` model fit by extracting the fitted pkg{brms} model from the `bayenecfit` or `bayesmanecfit` model object. For example, we can use the default pkg{brms} plotting method to obtain a diagnostic plot of the individual fit of the **nec4param** model using:
 
-```{r brms-plot, eval=FALSE}
+```{r brms-plot}
 plot(exmp_fit$mod_fits$nec4param$fit)
 ```
 
@@ -116,55 +116,13 @@ Several helper functions have been included that allow the user to add or drop m
 
 pkg{bayesnec} includes a summary method for both `bayesnecfit` and `bayesmanecfit` model objects, providing the usual summary of model parameters and any relevant model fit statistics as returned in the underlying `brm` model fits. This includes a list of fitted models, their respective model weights, and a model-averaged *NEC*---which is reported with a warning in case it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default pkg{brms} $\widehat{R}$ criteria:
 
-```{r, eval=FALSE}
+```{r summary}
 summary(exmp_fit)
-# Object of class bayesmanecfit containing the following non-linear models:
-#   -  nec4param
-#   -  nechorme4
-#   -  neclin
-#   -  neclinhorme
-#   -  nechorme4pwr
-#   -  ecxlin
-#   -  ecx4param
-#   -  ecxwb1
-#   -  ecxwb2
-#   -  ecxll5
-#   -  ecxll4
-#   -  ecxhormebc5
-# 
-# Distribution family: beta
-# Number of posterior draws per model:  4000
-# 
-# Model weights (Method: pseudobma_bb_weights):
-#                 waic   wi
-# nec4param    -332.75 0.37
-# nechorme4    -330.31 0.13
-# neclin       -332.05 0.29
-# neclinhorme  -329.80 0.14
-# nechorme4pwr -328.40 0.06
-# ecxlin       -188.03 0.00
-# ecx4param    -302.35 0.00
-# ecxwb1       -294.30 0.00
-# ecxwb2       -317.12 0.00
-# ecxll5       -317.78 0.00
-# ecxll4       -302.92 0.00
-# ecxhormebc5  -310.25 0.00
-# 
-# Summary of weighted NEC posterior estimates:
-# NB: model-set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4;ecxhormebc5; weighted NEC estimates include NSEC surrogates for NEC
-#     Estimate Q2.5 Q97.5
-# NEC     1.39 1.26  1.48
-# 
-# Warning message:
-# In print.manecsummary(x) :
-#   The following model had Rhats > 1.05 (no convergence):
-#   -  ecxll5
-# Consider dropping them (see ?amend)
 ```
 
 Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method-based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the pkg{brms} package. An example base plot of a `bayesmanecfit` model fit can be seen in \autoref{fig:baseplot}.
 
-```{r base-plot, eval=FALSE}
+```{r base-plot}
 plot(exmp_fit)
 ```
 
@@ -186,7 +144,7 @@ Where possible we have aimed for consistency in the interpretable meaning of the
 
  - $\tau = \text{top}$, usually interpretable as either the y-intercept or the upper plateau representing the mean concentration of the response at zero concentration;
  
- - $\eta = \text{NEC}$, the No-Effect-Concentration value (the x concentration value where the breakpoint in the regression is estimated at, see **Model types for *NEC* and *ECx* estimation** and [@Fox2010] for more details on parameter based *NEC* estimation); 
+ - $\eta = \text{NEC}$, the no-effect-concentration value (the x concentration value where the breakpoint in the regression is estimated at, see **Model types for *NEC* and *ECx* estimation** and [@Fox2010] for more details on parameter based *NEC* estimation); 
   
  - $\beta = \text{beta}$, generally the exponential decay rate of response, either from 0 concentration or from the estimated $\eta$ value, with the exception of the **neclinhorme** model where it represents a linear decay from $\eta$ because slope ($\alpha$) is required for the linear increase;
   
@@ -209,7 +167,7 @@ $$
 
 ### Model types for *NEC* and *ECx* estimation
 
-All models provide an estimate of the No-Effect-Concentration (*NEC*). For model types with "nec" as a prefix, the *NEC* is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per @Fox2010. Models with "ecx" as a prefix are continuous curve models, typically used for extracting *ECx* values from C-R data. In this instance the *NEC* reported is actually the No-Significant-Effect-Concentration (*NSEC*), defined as the concentration at which the predicted response is now "significantly" lower than the values observed at the lowest treatment concentration (typically the 'control'). The desired level of "significance" can be controlled by the user through the argument `sig_val`, which is passed as a probability to `quantile` and used to calculate the lower bound of the posterior predictions at the lowest treatment concentration. The default value for `sig_val` is 0.01, which is analogous to an alpha value (Type 1 error rate) of 0.01 for a one-sided test of significance. See `?nsec` for more details. We currently recommend only using the "nec" model-set for estimation of *NEC* values, as the *NSEC* concept has yet to be formally peer-reviewed, and likely suffers from at least some of the same issues as the No-Observed-Effect-Concentration [@Warne2008a; @Fox2008].
+All models provide an estimate of the no-effect-concentration (*NEC*). For model types with "nec" as a prefix, the *NEC* is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per @Fox2010. Models with "ecx" as a prefix are continuous curve models, typically used for extracting *ECx* values from C-R data. In this instance the *NEC* reported is actually the no-significant-effect-concentration (*NSEC*), defined as the concentration at which the predicted response is now "significantly" lower than the values observed at the lowest treatment concentration (typically the 'control'). The desired level of "significance" can be controlled by the user through the argument `sig_val`, which is passed as a probability to `quantile` and used to calculate the lower bound of the posterior predictions at the lowest treatment concentration. The default value for `sig_val` is 0.01, which is analogous to an alpha value (Type 1 error rate) of 0.01 for a one-sided test of significance. See `?nsec` for more details. We currently recommend only using the "nec" model-set for estimation of *NEC* values, as the *NSEC* concept has yet to be formally peer-reviewed, and likely suffers from at least some of the same issues as the No-observed-effect-concentration (*NOEC*, [@Warne2008a; @Fox2008]).
 
 *ECx* estimates can be equally validly obtained from both "nec" and "ecx" models. *ECx* estimates will usually be lower (more conservative) for "ecx" models fitted to the same data as "nec" models (see the [Comparing posterior predictions](https://open-aims.github.io/bayesnec/articles/example4.html) vignette for an example. However, we recommend using "all" models where *ECx* estimation is required because "nec" models can fit some datasets better than "ecx" models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield *ECx* estimates that are the most representative of the underlying relationship in the dataset.
 
@@ -253,7 +211,7 @@ For the parameters $\beta = \text{beta}$, $\alpha = \text{slope}$ and $\epsilon 
 
 There may be situations where the default pkg{bayesnec} priors do not behave as desired, or the user wants to provide informative priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the `x_var` data). Conversely, priors may be too vague, leading to poor model convergence.  Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brm` model fit (see \autoref{fig:priorsplot}).
 
-```{r sample-prior, eval=FALSE}
+```{r sample-prior}
 sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 ```
 
@@ -261,12 +219,13 @@ sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 
 We can also use the function `check_priors` (based on the `hypothesis` function of pkg{brms}) to assess how the posterior probability density for each parameter differs from that of the prior. Here we show the prior and posterior probability densities for the parameters in the **nec4param** model, extracted from our example fit (see \autoref{fig:checkpriorsplot}). There is also a class `bayesmanecfit` method that can be used to sequentially view all plots in a `bnec` call with multiple models, or write to a pdf as in `check_chains`. 
 
-```{r check-prior, eval=FALSE}
-# for a single model
+This can be done for a single model using:
+```{r check-priorsingle}
 exmp_fit_nec4param <- pull_out(exmp_fit, model = "nec4param")
 check_priors(exmp_fit_nec4param)
-
-# for all models, writing to a pdf file named Check_priors_plots.pdf
+```
+or for all models, writing to a pdf file named Check_priors_plots.pdf:
+```{r check-priorall}
 check_priors(exmp_fit, filename = "Check_priors_plots")
 ```
 
@@ -305,6 +264,10 @@ The pkg{bayesnec} package is a work in progress, and we welcome suggestions and 
   
 # Acknowledgements
 
-The development of pkg{bayesnec} was supported by an AIMS internal grant. David Fox and Gerard Ricardo developed some of the initial code on which the pkg{bayesnec} predecessor `jagsNEC` was based. Usage, testing and functionality of both the `jagsNEC` and pkg{bayesnec} packages were substantially aided through input from Joost van Dam, Andrew Negri, Florita Flores, Heidi Luter, Marie Thomas and Mikaela Nordborg. Florita Flores and Murray Logan provided valuable comments on the manuscript text. Ron Jones resolved issues with the paper.bib file that was causing compilation to fail. 
+The development of pkg{bayesnec} was supported by an AIMS internal grant. David Fox and Gerard Ricardo developed some of the initial code on which the pkg{bayesnec} predecessor pkg{jagsNEC} was based. Usage, testing and functionality of both the pkg{jagsNEC} and pkg{bayesnec} packages were substantially aided through input from Joost van Dam, Andrew Negri, Florita Flores, Heidi Luter, Marie Thomas and Mikaela Nordborg. Florita Flores and Murray Logan provided valuable comments on the manuscript text. Ron Jones resolved issues with the paper.bib file that was causing compilation to fail. 
 
 # References
+
+```{r sessioninfo, eval=TRUE, include=FALSE}
+sessionInfo()
+```
