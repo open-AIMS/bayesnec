@@ -107,7 +107,7 @@ plot(exmp_fit$mod_fits$nec4param$fit)
 ```
 
 
-which yields a plot of the posterior densities and chains plot for each parameter in the specified model as shown in \autoref{fig:brmsplot}.
+which yields a plot of the posterior densities and chains plot for each parameter in the specified model as shown in \autoref{fig:brms-plot}.
 
 The default number of total iterations in pkg{bayesnec} is 10,000 per chain, with 9,000 of these used as warm-up (or burn-in) across 4 chains. If the `bnec` call returns pkg{brms} warning messages the number of iterations and warm-up samples can be adjusted through arguments `iter` and `warmup`. A range of other arguments can be further adjusted to improve convergence, see the rich set of [Resources](https://github.com/paul-buerkner/brms) available for the pkg{brms} package for further information.
 
@@ -115,13 +115,13 @@ Several helper functions have been included that allow the user to add or drop m
 
 ### Model inference
 
-pkg{bayesnec} includes a summary method for both `bayesnecfit` and `bayesmanecfit` model objects, providing the usual summary of model parameters and any relevant model fit statistics as returned in the underlying `brm` model fits. This includes a list of fitted models, their respective model weights, and a model-averaged *NEC*---which is reported with a warning in case it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default pkg{brms} $\widehat{R}$ criteria:
+pkg{bayesnec} includes a summary method for both `bayesnecfit` and `bayesmanecfit` model objects, providing the usual summary of model parameters and any relevant model fit statistics as returned in the underlying `brm` model fits. This includes a list of fitted models, their respective model weights, and a model-averaged *NEC*---which is reported with a warning when it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default pkg{brms} $\widehat{R}$ criteria:
 
 ```{r summary, dependson="fit"}
 summary(exmp_fit)
 ```
 
-Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method-based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the pkg{brms} package. An example base plot of a `bayesmanecfit` model fit can be seen in \autoref{fig:baseplot}.
+Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method-based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the pkg{brms} package. An example base plot of a `bayesmanecfit` model fit can be seen in \autoref{fig:base-plot}.
 
 (ref:fig-cap2) Base plot of the `exmp_fit` model averaged curve, showing the fitted median of the posterior prediction (solid line), 95% credible intervals (dashed lines), and the estimated *NEC* value (red vertical lines).
 
@@ -210,21 +210,20 @@ For the parameters $\beta = \text{beta}$, $\alpha = \text{slope}$ and $\epsilon 
 
 ### User specified priors
 
-There may be situations where the default pkg{bayesnec} priors do not behave as desired, or the user wants to provide informative priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the `x_var` data). Conversely, priors may be too vague, leading to poor model convergence.  Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brm` model fit (see \autoref{fig:priorsplot}).
+There may be situations where the default pkg{bayesnec} priors do not behave as desired, or the user wants to provide informative priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the `x_var` data). Conversely, priors may be too vague, leading to poor model convergence.  Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brm` model fit (see \autoref{fig:smple-prior}).
 
-(ref:fig-cap3)
+(ref:fig-cap3) Frequency histograms of samples of the default priors used by `bnec` for fitting the `nec4param` model to the example `nec_data`.
 
 ```{r sample-prior, fig.cap="(ref:fig-cap3)", dependson="fit"}
 sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 ```
 
-![Frequency histograms of samples of the default priors used by `bnec` for fitting the `nec4param` model to the example `nec_data`.\label{fig:priorsplot}](sample_prior.png)
-
-We can also use the function `check_priors` (based on the `hypothesis` function of pkg{brms}) to assess how the posterior probability density for each parameter differs from that of the prior. Here we show the prior and posterior probability densities for the parameters in the **nec4param** model, extracted from our example fit (see \autoref{fig:checkpriorsplot}). There is also a class `bayesmanecfit` method that can be used to sequentially view all plots in a `bnec` call with multiple models, or write to a pdf as in `check_chains`. 
+We can also use the function `check_priors` (based on the `hypothesis` function of pkg{brms}) to assess how the posterior probability density for each parameter differs from that of the prior. Here we show the prior and posterior probability densities for the parameters in the **nec4param** model, extracted from our example fit (see \autoref{fig:check-priorsingle}). There is also a class `bayesmanecfit` method that can be used to sequentially view all plots in a `bnec` call with multiple models, or write to a pdf as in `check_chains`. 
 
 This can be done for a single model using:
 
 (ref:fig-cap4) A comparison of the prior and posterior parameter probability densities for the `nec4param` model fit to the example `nec_data`.
+
 ```{r check-priorsingle, fig.cap="(ref:fig-cap4)", dependson="fit"}
 exmp_fit_nec4param <- pull_out(exmp_fit, model = "nec4param")
 check_priors(exmp_fit_nec4param)
