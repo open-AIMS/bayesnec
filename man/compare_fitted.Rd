@@ -4,7 +4,7 @@
 \alias{compare_fitted}
 \title{compare_fitted}
 \usage{
-compare_fitted(x, precision, x_range = NA)
+compare_fitted(x, precision = 50, x_range = NA)
 }
 \arguments{
 \item{x}{A named list \code{\link[base]{list}} of objects of class

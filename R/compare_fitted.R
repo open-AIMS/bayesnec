@@ -24,7 +24,7 @@
 #' compare_fitted(list("nec" = ecx4param, "ecx" = nec4param))
 #'
 #' @export
-compare_fitted <- function(x, precision, x_range = NA) {
+compare_fitted <- function(x, precision = 50, x_range = NA) {
   if (is.na(x_range)) {
     x_range <- return_x_range(x)
   }
