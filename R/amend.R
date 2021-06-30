@@ -146,7 +146,7 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #'
 #' @inheritParams amend
 #'
-#' @inherit amend return examples
+#' @inherit amend.default return examples
 #' @export
 amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
                                 precision = 1000, sig_val = 0.01,

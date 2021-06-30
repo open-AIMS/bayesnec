@@ -38,8 +38,6 @@ NULL
 #' Checks if argument is a \code{necsummary} object
 #'
 #' @param x An \R object
-#'
-#' @export
 is_necsummary <- function(x) {
   inherits(x, "necsummary")
 }
