@@ -44,8 +44,6 @@ NULL
 #' Checks if argument is a \code{bayesmanecfit} object
 #'
 #' @param x An \R object
-#'
-#' @export
 is_bayesmanecfit <- function(x) {
   inherits(x, "bayesmanecfit")
 }
