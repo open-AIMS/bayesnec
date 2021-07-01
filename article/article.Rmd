@@ -19,13 +19,13 @@ author:
       | Australian Institute of Marine Science,
       | Crawley, WA, Australia
     affiliation: |
-      | Australian Institute of Marine Science 
+      | Australian Institute of Marine Science \AND
     affiliation2: |
       | The Indian Ocean Marine Research Centre,
       | University of Western Australia, 
       | Crawley, WA, Australia
     orcid: |
-      | 0000-0002-4568-2362 \AND
+      | 0000-0002-4568-2362
   - name: Gerard Ricardo
     address: |
       | The University of Queensland, 
@@ -34,14 +34,14 @@ author:
       | The University of Queensland    
     affiliation2: |
       | Australian Institute of Marine Science,
-      | Crawley, WA, Australia
+      | Townsville, Qld, Australia
     orcid: 0000-0002-7761-0806
   - name: David Fox
     address: |
       | Environmetrics Australia, 
       | Beaumaris, Victoria, Australia
     affiliation: |
-      | Environmetrics Australia,     
+      | Environmetrics Australia     
     affiliation2: |
       | University of Melbourne, 
       | Parkville, Victoria, Australia
@@ -141,12 +141,9 @@ A range of tools are available to assess model fit, including an estimate of ove
 
 All diagnostic functions available in \pkg{brms} and \pkg{rstan} can be used on the underlying `brm` model fit by extracting the fitted \pkg{brms} model from the `bayenecfit` or `bayesmanecfit` model object. For example, we can use the default \pkg{brms} plotting method to obtain a diagnostic plot of the individual fit of the **nec4param** model using:
 
-(ref:fig-cap1) Default \pkg{brms} plot of the `nec4param` model showing the posterior probability densities and chain mixing for each of the included parameters.
-
-```{r brms-plot, fig.height=7, fig.cap="(ref:fig-cap1)", dependson="fit"}
+```{r brms-plot, fig.height=7, fig.cap="Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters.", dependson="fit"}
 plot(exmp_fit$mod_fits$nec4param$fit)
 ```
-
 
 which yields a plot of the posterior densities and chains plot for each parameter in the specified model \autoref{fig:brms-plot}.
 
@@ -164,9 +161,7 @@ summary(exmp_fit)
 
 Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method-based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the \pkg{brms} package. An example base plot of a `bayesmanecfit` model fit can be seen in \autoref{fig:base-plot}.
 
-(ref:fig-cap2) Base plot of the `exmp_fit` model averaged curve, showing the fitted median of the posterior prediction (solid line), 95% credible intervals (dashed lines), and the estimated *NEC* value (red vertical lines).
-
-```{r base-plot, fig.cap="(ref:fig-cap2)", dependson="fit"}
+```{r base-plot, fig.height=5, fig.cap="Base plot of the example fit model averaged curve. The solid black line is the fitted median of the posterior prediction, dashed black lines are the 95 percent credible intervals, and the red vertical lines show the estimated NEC value.", dependson="fit"}
 plot(exmp_fit)
 ```
 
@@ -253,9 +248,7 @@ For the parameters $\beta = \text{beta}$, $\alpha = \text{slope}$ and $\epsilon 
 
 There may be situations where the default \pkg{bayesnec} priors do not behave as desired, or the user wants to provide informative priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the `x_var` data). Conversely, priors may be too vague, leading to poor model convergence.  Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for \pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual \pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brm` model fit (see \autoref{fig:sample-prior}).
 
-(ref:fig-cap3) Frequency histograms of samples of the default priors used by `bnec` for fitting the `nec4param` model to the example `nec_data`.
-
-```{r sample-prior, fig.cap="(ref:fig-cap3)", dependson="fit"}
+```{r sample-prior, fig.cap="Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example data.", dependson="fit"}
 sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 ```
 
@@ -263,9 +256,7 @@ We can also use the function `check_priors` (based on the `hypothesis` function 
 
 This can be done for a single model using:
 
-(ref:fig-cap4) A comparison of the prior and posterior parameter probability densities for the `nec4param` model fit to the example `nec_data`.
-
-```{r check-priorsingle, fig.cap="(ref:fig-cap4)", dependson="fit"}
+```{r check-priorsingle, fig.cap="A comparison of the prior and posterior parameter probability densities for the nec4param model fit to the example data.", dependson="fit"}
 exmp_fit_nec4param <- pull_out(exmp_fit, model = "nec4param")
 check_priors(exmp_fit_nec4param)
 ```
@@ -274,8 +265,6 @@ or for all models, writing to a pdf file named Check_priors_plots.pdf:
 ```{r check-priorall, dependson="fit"}
 check_priors(exmp_fit, filename = "Check_priors_plots")
 ```
-
-
 
 ## Model comparison
 

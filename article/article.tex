@@ -8,9 +8,9 @@
 
 \author{
 Rebecca Fisher\\Australian Institute of Marine Science \And Diego
-Barneche\\Australian Institute of Marine Science \And Gerard
+Barneche\\Australian Institute of Marine Science \AND Gerard
 Ricardo\\The University of Queensland \And David Fox\\Environmetrics
-Australia,
+Australia
 }
 \title{\pkg{bayesnec}: An R Package for C-R Modelling and Estimation of
 No-Effect-Concentrations}
@@ -74,7 +74,7 @@ Crawley, WA, Australia\\
   
       Gerard Ricardo\\
     Australian Institute of Marine Science,\\
-Crawley, WA, Australia\\
+Townsville, Qld, Australia\\
     The University of Queensland,\\
 St Lucia, Qld, Australia\\
   
@@ -350,10 +350,6 @@ model object. For example, we can use the default \pkg{brms} plotting
 method to obtain a diagnostic plot of the individual fit of the
 \textbf{nec4param} model using:
 
-(ref:fig-cap1) Default \pkg{brms} plot of the \texttt{nec4param} model
-showing the posterior probability densities and chain mixing for each of
-the included parameters.
-
 \begin{CodeChunk}
 \begin{CodeInput}
 R> plot(exmp_fit$mod_fits$nec4param$fit)
@@ -364,7 +360,7 @@ R> plot(exmp_fit$mod_fits$nec4param$fit)
 
 }
 
-\caption[(ref:fig-cap1)]{(ref:fig-cap1)}\label{fig:brms-plot}
+\caption[Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters]{Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters.}\label{fig:brms-plot}
 \end{figure}
 \end{CodeChunk}
 
@@ -448,11 +444,6 @@ that underpin these functions are achieved through
 plot of a \texttt{bayesmanecfit} model fit can be seen in
 \autoref{fig:base-plot}.
 
-(ref:fig-cap2) Base plot of the \texttt{exmp\_fit} model averaged curve,
-showing the fitted median of the posterior prediction (solid line), 95\%
-credible intervals (dashed lines), and the estimated \emph{NEC} value
-(red vertical lines).
-
 \begin{CodeChunk}
 \begin{CodeInput}
 R> plot(exmp_fit)
@@ -463,7 +454,7 @@ R> plot(exmp_fit)
 
 }
 
-\caption[(ref:fig-cap2)]{(ref:fig-cap2)}\label{fig:base-plot}
+\caption[Base plot of the example fit model averaged curve]{Base plot of the example fit model averaged curve. The solid black line is the fitted median of the posterior prediction, dashed black lines are the 95 percent credible intervals, and the red vertical lines show the estimated NEC value.}\label{fig:base-plot}
 \end{figure}
 \end{CodeChunk}
 
@@ -802,10 +793,6 @@ obtained from the individual \pkg{brms} model fits through the function
 \texttt{sample\_priors} which samples directly from the \texttt{prior}
 element in the \texttt{brm} model fit (see \autoref{fig:sample-prior}).
 
-(ref:fig-cap3) Frequency histograms of samples of the default priors
-used by \texttt{bnec} for fitting the \texttt{nec4param} model to the
-example \texttt{nec\_data}.
-
 \begin{CodeChunk}
 \begin{CodeInput}
 R> sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
@@ -816,7 +803,7 @@ R> sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 
 }
 
-\caption[(ref:fig-cap3)]{(ref:fig-cap3)}\label{fig:sample-prior}
+\caption[Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example data]{Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example data.}\label{fig:sample-prior}
 \end{figure}
 \end{CodeChunk}
 
@@ -832,10 +819,6 @@ in \texttt{check\_chains}.
 
 This can be done for a single model using:
 
-(ref:fig-cap4) A comparison of the prior and posterior parameter
-probability densities for the \texttt{nec4param} model fit to the
-example \texttt{nec\_data}.
-
 \begin{CodeChunk}
 \begin{CodeInput}
 R> exmp_fit_nec4param <- pull_out(exmp_fit, model = "nec4param")
@@ -847,7 +830,7 @@ R> check_priors(exmp_fit_nec4param)
 
 }
 
-\caption[(ref:fig-cap4)]{(ref:fig-cap4)}\label{fig:check-priorsingle}
+\caption[A comparison of the prior and posterior parameter probability densities for the nec4param model fit to the example data]{A comparison of the prior and posterior parameter probability densities for the nec4param model fit to the example data.}\label{fig:check-priorsingle}
 \end{figure}
 \end{CodeChunk}
 
