@@ -31,7 +31,7 @@ NULL
 #' to make sure that package size was below 5 Mb. See help files for function
 #' \code{\link{bnec}} and class \code{\link{bayesmanecfit}} for details.
 #'
-#' @source Code used to generate these models can be downloaded from \url{https://github.com/open-AIMS/bayesnec/tree/master/data-raw/manec_example.R}
+#' @source Code used to generate these models can be downloaded from \url{https://github.com/open-AIMS/bayesnec/blob/master/data-raw/manec_example.R}
 #'
 #' @name manec_example
 #' @docType data
