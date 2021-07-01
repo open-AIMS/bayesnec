@@ -17,11 +17,13 @@
 #' @importFrom utils combn
 #'
 #' @examples
+#' \donttest{
 #' library(bayesnec)
 #' data(manec_example)
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' compare_fitted(list("nec" = ecx4param, "ecx" = nec4param))
+#' }
 #'
 #' @export
 compare_fitted <- function(x, precision = 50, x_range = NA) {
