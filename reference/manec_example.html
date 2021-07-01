@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>check_chains.bayesnecfit — check_chains.bayesnecfit • bayesnec</title>
+<title>Example bayesmanecfit object — manec_example • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,9 +46,8 @@
 
 
 
-<meta property="og:title" content="check_chains.bayesnecfit — check_chains.bayesnecfit" />
-<meta property="og:description" content="Plots mcmc chains for a bayesnecfit model fit as returned
-by bnec." />
+<meta property="og:title" content="Example bayesmanecfit object — manec_example" />
+<meta property="og:description" content="Example bayesmanecfit object" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -146,47 +145,29 @@ by bnec." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>check_chains.bayesnecfit</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/check_chains.R'><code>R/check_chains.R</code></a></small>
-    <div class="hidden name"><code>check_chains.bayesnecfit.Rd</code></div>
+    <h1>Example bayesmanecfit object</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/data.R'><code>R/data.R</code></a></small>
+    <div class="hidden name"><code>manec_example.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Plots mcmc chains for a <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> model fit as returned
-by <code><a href='bnec.html'>bnec</a></code>.</p>
+    <p>Example bayesmanecfit object</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bayesnecfit</span>
-<span class='fu'><a href='check_chains.html'>check_chains</a></span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>...</span><span class='op'>)</span></code></pre></div>
 
-    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
-    <table class="ref-arguments">
-    <colgroup><col class="name" /><col class="desc" /></colgroup>
-    <tr>
-      <th>x</th>
-      <td><p>An object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or
-<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> as returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>arguments used when class is <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p></td>
-    </tr>
-    </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+    <h2 class="hasAnchor" id="format"><a class="anchor" href="#format"></a>Format</h2>
 
-    <p>No return value, generates a plot or writes a pdf to file.</p>
+    <p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>. This was created
+To reduce run time in examples and tests, and to give the user an example
+to toy with. This was fitted to <code><a href='bayesnec-package.html'>bayesnec</a></code> built-in mock dataset
+(see ?<code><a href='nec_data.html'>nec_data</a></code>), using models "nec4param" and "ecx4param". See
+help files for function <code><a href='bnec.html'>bnec</a></code> and class
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> for details.</p>
+    <h2 class="hasAnchor" id="source"><a class="anchor" href="#source"></a>Source</h2>
 
-    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
-<span class='r-in'></span>
-<span class='r-in'><span class='co'># print to device</span></span>
-<span class='r-in'><span class='fu'><a href='check_chains.html'>check_chains</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
-<span class='r-plt'><img src='check_chains.bayesnecfit-1.png' alt='' width='700' height='433' /></span>
-<span class='r-plt'><img src='check_chains.bayesnecfit-2.png' alt='' width='700' height='433' /></span>
-<span class='r-in'></span>
-</code></pre></div>
+    <p>Code used to generate these models can be downloaded from <a href='https://github.com/open-AIMS/bayesnec/tree/master/data-raw/manec_example.R'>https://github.com/open-AIMS/bayesnec/tree/master/data-raw/manec_example.R</a></p>
+
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

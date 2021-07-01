@@ -187,10 +187,11 @@ squares.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>exmp_brmsfit</span> <span class='op'>&lt;-</span> <span class='fu'>bayesnec</span><span class='fu'>:::</span><span class='va'>manec_gauss_id_2</span><span class='op'>$</span><span class='va'>mod_fits</span><span class='op'>$</span><span class='va'>nec4param</span><span class='op'>$</span><span class='va'>fit</span></span>
+<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
+<span class='r-in'><span class='va'>exmp_brmsfit</span> <span class='op'>&lt;-</span> <span class='va'>manec_example</span><span class='op'>$</span><span class='va'>mod_fits</span><span class='op'>$</span><span class='va'>nec4param</span><span class='op'>$</span><span class='va'>fit</span></span>
 <span class='r-in'><span class='fu'>dispersion</span><span class='op'>(</span><span class='va'>exmp_brmsfit</span>, summary <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span></span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span>  Estimate      Q2.5     Q97.5 </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 0.9934830 0.8434143 1.2341561 </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 0.9502746 0.7341926 1.4727612 </span>
 <span class='r-in'></span>
 </code></pre></div>
   </div>

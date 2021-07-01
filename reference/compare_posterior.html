@@ -227,63 +227,63 @@ model fits contained in x. See Details.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>manec_gauss_id_2</span> <span class='op'>&lt;-</span> <span class='fu'>bayesnec</span><span class='fu'>:::</span><span class='va'>manec_gauss_id_2</span></span>
-<span class='r-in'><span class='va'>ecx4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_gauss_id_2</span>, model <span class='op'>=</span> <span class='st'>"ecx4param"</span><span class='op'>)</span></span>
+<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
+<span class='r-in'><span class='va'>ecx4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_example</span>, model <span class='op'>=</span> <span class='st'>"ecx4param"</span><span class='op'>)</span></span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): ecx4param</span>
-<span class='r-in'><span class='va'>nec4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_gauss_id_2</span>, model <span class='op'>=</span> <span class='st'>"nec4param"</span><span class='op'>)</span></span>
+<span class='r-in'><span class='va'>nec4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_example</span>, model <span class='op'>=</span> <span class='st'>"nec4param"</span><span class='op'>)</span></span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): nec4param</span>
 <span class='r-in'><span class='fu'>compare_posterior</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='st'>"nec"</span> <span class='op'>=</span> <span class='va'>ecx4param</span>, <span class='st'>"ecx"</span> <span class='op'>=</span> <span class='va'>nec4param</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span></span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $posterior_list</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $posterior_list$nec</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [1] 0.40254612 0.67062062 0.40573749 0.03553938 0.54296610 0.03234801</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [7] 0.52700928 0.51105247 0.55254018 0.65466380</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>  [1] 0.80146650 0.60998472 0.89720739 0.66423789 0.20149025 0.83338013</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>  [7] 0.76636151 0.78231832 0.03234801 1.01528782</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $posterior_list$ecx</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [1] 1.375285 1.413673 1.508799 1.583274 1.516812 1.473901 1.444768 1.458241</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [9] 1.503794 1.499591</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>  [1] 1.489062 1.440430 1.479199 1.431213 1.452121 1.484886 1.496575 1.494816</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>  [9] 1.482509 1.450397</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $posterior_data</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span>    model      value</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1    ecx 1.44476802</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2    ecx 1.41367264</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 3    ecx 1.58327384</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 4    ecx 1.51681216</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 5    ecx 1.50379437</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 6    ecx 1.45824104</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 7    ecx 1.49959058</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 8    ecx 1.37528538</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 9    ecx 1.47390106</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 10   ecx 1.50879934</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 11   nec 0.52700928</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 12   nec 0.55254018</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 13   nec 0.67062062</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 14   nec 0.03553938</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 15   nec 0.54296610</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 16   nec 0.51105247</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 17   nec 0.65466380</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 18   nec 0.03234801</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 19   nec 0.40254612</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 20   nec 0.40573749</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 1    ecx 1.45039656</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 2    ecx 1.48906221</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 3    ecx 1.48488565</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 4    ecx 1.49481563</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 5    ecx 1.49657533</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 6    ecx 1.44043043</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 7    ecx 1.48250941</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 8    ecx 1.45212058</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 9    ecx 1.43121273</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 10   ecx 1.47919892</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 11   nec 0.80146650</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 12   nec 0.60998472</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 13   nec 0.03234801</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 14   nec 0.78231832</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 15   nec 0.89720739</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 16   nec 0.66423789</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 17   nec 0.83338013</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 18   nec 0.76636151</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 19   nec 1.01528782</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 20   nec 0.20149025</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $diff_list</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $diff_list$`nec-ecx`</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [1] -0.9177587 -0.8611325 -0.9126532 -1.4812728 -0.9608283 -0.9471886</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [7] -0.8449268 -1.3429374 -1.0713549 -1.1030619</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>  [1] -0.6489301 -0.8790775 -1.4525376 -0.7124973 -0.5993679 -0.7761925</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>  [7] -0.6491293 -0.6857591 -0.4159249 -1.2777087</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $diff_data</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span>    comparison       diff</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1     nec-ecx -0.9177587</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2     nec-ecx -0.8611325</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 3     nec-ecx -0.9126532</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 4     nec-ecx -1.4812728</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 5     nec-ecx -0.9608283</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 6     nec-ecx -0.9471886</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 7     nec-ecx -0.8449268</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 8     nec-ecx -1.3429374</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 9     nec-ecx -1.0713549</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 10    nec-ecx -1.1030619</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 1     nec-ecx -0.6489301</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 2     nec-ecx -0.8790775</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 3     nec-ecx -1.4525376</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 4     nec-ecx -0.7124973</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 5     nec-ecx -0.5993679</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 6     nec-ecx -0.7761925</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 7     nec-ecx -0.6491293</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 8     nec-ecx -0.6857591</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 9     nec-ecx -0.4159249</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 10    nec-ecx -1.2777087</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $prob_diff</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span>   comparison prob</span>
