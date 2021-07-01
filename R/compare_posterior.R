@@ -26,9 +26,9 @@
 #'
 #' @examples
 #' library(bayesnec)
-#' manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-#' ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
-#' nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+#' data(manec_example)
+#' ecx4param <- pull_out(manec_example, model = "ecx4param")
+#' nec4param <- pull_out(manec_example, model = "nec4param")
 #' compare_posterior(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 #'
 #' @export

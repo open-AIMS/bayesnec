@@ -15,11 +15,10 @@
 #'
 #' @examples
 #' library(bayesnec)
-#'
-#' exmp <- bayesnec:::manec_gauss_id_2
+#' data(manec_example)
 #'
 #' # print to device
-#' check_chains(exmp)
+#' check_chains(manec_example)
 #'
 #' @export
 check_chains.default <- function(x, ...) {

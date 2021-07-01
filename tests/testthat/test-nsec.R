@@ -1,30 +1,30 @@
 library(bayesnec)
 library(brms)
 
-manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
-nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+data(manec_example)
+ecx4param <- pull_out(manec_example, model = "ecx4param")
+nec4param <- pull_out(manec_example, model = "nec4param")
 
 test_that("prob_vals warnings behave as expected", {
-  expect_length(nsec(manec_gauss_id_2, prob_vals = c(0.6, 0.1, 0.9)), 3)
-  expect_error(nsec(manec_gauss_id_2, prob_vals = 0.9))
-  expect_error(nsec(manec_gauss_id_2, prob_vals = c(0.6, 0.9, 0.1)))
+  expect_length(nsec(manec_example, prob_vals = c(0.6, 0.1, 0.9)), 3)
+  expect_error(nsec(manec_example, prob_vals = 0.9))
+  expect_error(nsec(manec_example, prob_vals = c(0.6, 0.9, 0.1)))
   expect_length(nsec(nec4param, prob_vals = c(0.6, 0.1, 0.9)), 3)
   expect_error(nsec(nec4param, prob_vals = 0.9))
   expect_error(nsec(nec4param, prob_vals = c(0.6, 0.9, 0.1)))
 })
 
 test_that("ecx_val warnings behave as expected", {
-  expect_error(nsec(manec_gauss_id_2, ecx_val = 0.9))
+  expect_error(nsec(manec_example, ecx_val = 0.9))
   expect_error(nsec(nec4param, ecx_val = 0.9))
 })
 
 test_that(paste0("nsec returns expected object types and precision is",
                  " passing correctly"), {
-  nsec_summary <- nsec(manec_gauss_id_2, sig_val = 0.01, precision = 50)
-  nsec_summary2 <- nsec(manec_gauss_id_2, sig_val = 0.01, precision = 50,
+  nsec_summary <- nsec(manec_example, sig_val = 0.01, precision = 50)
+  nsec_summary2 <- nsec(manec_example, sig_val = 0.01, precision = 50,
                         xform = exp)
-  nsec_posterior <- nsec(manec_gauss_id_2, sig_val = 0.01,
+  nsec_posterior <- nsec(manec_example, sig_val = 0.01,
                          posterior = TRUE, precision = 50)
   nsecn_summary <- nsec(nec4param, sig_val = 0.01, precision = 50)
   nsecn_summary2 <- nsec(nec4param, sig_val = 0.01, precision = 50,
@@ -48,7 +48,7 @@ test_that("works for bayesnecfit", {
 })
 
 test_that("works for bayesmanecfit", {
-  nsec1 <- nsec(manec_gauss_id_2)
+  nsec1 <- nsec(manec_example)
   expect_equal(length(nsec1), 3)
   expect_equal(names(nsec1), c("ec_0.01", "ec_0.01_lw", "ec_0.01_up"))
 })

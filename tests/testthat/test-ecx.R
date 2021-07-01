@@ -2,17 +2,17 @@ library(bayesnec)
 library(dplyr)
 library(brms)
 
-manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
-ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
+data(manec_example)
+nec4param <- pull_out(manec_example, model = "nec4param")
+ecx4param <- pull_out(manec_example, model = "ecx4param")
 
 test_that("prob_vals warnings behave as expected", {
-  ecx(manec_gauss_id_2, prob_vals = c(0.6, 0.1, 0.9),
+  ecx(manec_example, prob_vals = c(0.6, 0.1, 0.9),
       type = "relative") %>%
     expect_length(3)
-  ecx(manec_gauss_id_2, prob_vals = 0.9, type = "relative") %>%
+  ecx(manec_example, prob_vals = 0.9, type = "relative") %>%
     expect_error
-  ecx(manec_gauss_id_2, prob_vals = c(0.6, 0.9, 0.1),
+  ecx(manec_example, prob_vals = c(0.6, 0.9, 0.1),
       type = "relative") %>%
     expect_error
   ecx(nec4param, prob_vals = c(0.6, 0.1, 0.9),
@@ -24,16 +24,16 @@ test_that("prob_vals warnings behave as expected", {
 })
 
 test_that("ecx_val warnings behave as expected", {
-  expect_error(ecx(manec_gauss_id_2, ecx_val = 0.9, type = "relative"))
+  expect_error(ecx(manec_example, ecx_val = 0.9, type = "relative"))
   expect_error(ecx(nec4param, ecx_val = 0.9, type = "relative"))
 })
 
 test_that("ecx returns expected object types and arguments pass correctly", {
-  ec50_summary <- ecx(manec_gauss_id_2, ecx_val = 50, type = "relative",
+  ec50_summary <- ecx(manec_example, ecx_val = 50, type = "relative",
                       precision = 50)
-  ec50_summary2 <- ecx(manec_gauss_id_2, ecx_val = 50, type = "relative",
+  ec50_summary2 <- ecx(manec_example, ecx_val = 50, type = "relative",
                        precision = 50, xform = exp)
-  ec50_posterior <- ecx(manec_gauss_id_2, ecx_val = 50,
+  ec50_posterior <- ecx(manec_example, ecx_val = 50,
                         type = "relative", posterior = TRUE, precision = 50)
   ec50n_summary <- ecx(nec4param, ecx_val = 50, type = "relative",
                        precision = 50)
@@ -60,7 +60,7 @@ test_that("works for bayesnecfit", {
 })
 
 test_that("works for bayesmanecfit", {
-  ecx1 <- ecx(manec_gauss_id_2)
+  ecx1 <- ecx(manec_example)
   expect_equal(length(ecx1), 3)
   expect_equal(names(ecx1), c("ec_10", "ec_10_lw", "ec_10_up"))
 })

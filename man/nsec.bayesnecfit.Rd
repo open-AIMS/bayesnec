@@ -30,8 +30,8 @@ is assumed to be the lowest observed concentration.
 \donttest{
 library(bayesnec)
 
-exmp <- manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-nsec(exmp)
+data(manec_example)
+nsec(manec_example)
 }
 
 }

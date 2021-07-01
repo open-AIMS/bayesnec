@@ -8,7 +8,7 @@ resp_na <- add_na(resp_a)
 pred_b <- pred_a[-1]
 resp_b <- resp_a[-1]
 
-manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
+data(manec_example)
 
 test_that("model is always properly specified as character", {
   p_a <- define_prior(model = "nec3param", family = gaussian(),
@@ -30,7 +30,7 @@ test_that("model is always properly specified as character", {
   expect_error(define_prior(model = "ecx", family = gaussian(),
                             predictor = pred_a, response = resp_a))
   expect_s3_class(p_a, "brmsprior")
-  expect_s3_class(manec_gauss_id_2, "bayesmanecfit")
+  expect_s3_class(manec_example, "bayesmanecfit")
 })
 
 test_that("family is a family object of correct family", {

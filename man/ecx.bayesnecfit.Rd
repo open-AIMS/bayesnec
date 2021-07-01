@@ -38,9 +38,9 @@ is assumed to be the lowest observed concentration.
 \donttest{
 library(brms)
 library(bayesnec)
-exmp <- bayesnec:::manec_gauss_id_2
-ecx(exmp, ecx_val = 50)
-ecx(exmp)
+data(manec_example)
+ecx(manec_example, ecx_val = 50)
+ecx(manec_example)
 }
 
 }
