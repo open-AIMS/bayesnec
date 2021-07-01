@@ -1,8 +1,8 @@
 library(bayesnec)
 
-manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
-nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+data(manec_example)
+ecx4param <- pull_out(manec_example, model = "ecx4param")
+nec4param <- pull_out(manec_example, model = "nec4param")
 
 test_that("input errors work as intended", {
   expect_error(compare_posterior(list(ecx4param, nec4param)),

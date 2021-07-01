@@ -24,8 +24,8 @@
 #'
 #' @examples
 #' library(bayesnec)
-#' exmp <- bayesnec:::manec_gauss_id_2
-#' nec(exmp)
+#' data(manec_example)
+#' nec(manec_example)
 #'
 #' @export
 nec.default <- function(object, posterior = FALSE,  xform = NA,

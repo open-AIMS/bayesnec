@@ -23,8 +23,8 @@ Extracts the predicted nec value as desired from an object of class
 }
 \examples{
 library(bayesnec)
-exmp <- bayesnec:::manec_gauss_id_2
-nec(exmp)
+data(manec_example)
+nec(manec_example)
 
 }
 \seealso{

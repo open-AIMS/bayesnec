@@ -63,6 +63,7 @@ adding or removing fitted models.
 }
 \examples{
 library(bayesnec)
-exmp <- amend(bayesnec:::manec_gauss_id_2, drop = "nec3param")
+data(manec_example)
+exmp <- amend(manec_example, drop = "nec4param")
 
 }

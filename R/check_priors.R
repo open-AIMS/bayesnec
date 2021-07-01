@@ -17,8 +17,8 @@
 #'
 #' @examples
 #' library(bayesnec)
-#' exmp <- manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-#' check_priors(exmp)
+#' data(manec_example)
+#' check_priors(manec_example)
 #' 
 #' @export
 check_priors.default <- function(object, ...) {

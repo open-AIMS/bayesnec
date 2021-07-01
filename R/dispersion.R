@@ -22,7 +22,8 @@
 #' @importFrom stats median
 #' @examples
 #' library(bayesnec)
-#' exmp_brmsfit <- bayesnec:::manec_gauss_id_2$mod_fits$nec4param$fit
+#' data(manec_example)
+#' exmp_brmsfit <- manec_example$mod_fits$nec4param$fit
 #' dispersion(exmp_brmsfit, summary = TRUE)
 #' 
 #' @export

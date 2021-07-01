@@ -9,8 +9,8 @@
 #'
 #' @examples
 #' library(bayesnec)
-#' exmp <- bayesnec:::manec_gauss_id_2
-#' pull_prior(exmp)
+#' data(manec_example)
+#' pull_prior(manec_example)
 #'
 #' @export
 pull_prior <- function(object) {

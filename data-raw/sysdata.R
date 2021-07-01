@@ -219,11 +219,6 @@ pred_functions <- list(nec3param = pred_nec3param,
                        ecxhormebc4 = pred_ecxhormebc4,
                        ecxhormebc5 = pred_ecxhormebc5)
 
-#######################
-# SOURCE EXAMPLE MODELS
-#######################
-source("tests/bayesnec_examples.R")
-
 ####################
 # SAVE INTERNAL DATA
 ####################
@@ -278,7 +273,5 @@ usethis::use_data(
   stan_funs,
   stanvars,
   pred_functions,
-  # objects from test folder
-  manec_gauss_id_2,
   internal = TRUE, overwrite = TRUE
 )

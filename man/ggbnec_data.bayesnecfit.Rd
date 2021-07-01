@@ -23,10 +23,10 @@ Creates the data.frame that feeds into the plotting function
 \examples{
 \donttest{
 library(bayesnec)
+data(manec_example)
 
-test <- bayesnec:::manec_gauss_id_2
-ggbnec_data(test)
-ggbnec_data(test, add_ecx = TRUE, ecx_val = 50)
+ggbnec_data(manec_example)
+ggbnec_data(manec_example, add_ecx = TRUE, ecx_val = 50)
 }
 
 }

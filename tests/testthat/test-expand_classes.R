@@ -1,8 +1,8 @@
 library(bayesnec)
 
-manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
-nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+data(manec_example)
+ecx4param <- pull_out(manec_example, model = "ecx4param")
+nec4param <- pull_out(manec_example, model = "nec4param")
 
 fit1 <- nec4param$fit
 fit2 <- ecx4param$fit
@@ -76,7 +76,7 @@ test_that("expand_ecx sig_val argument work for ecx model", {
   expect_gt(ecx_fit_a$nec["Estimate"], ecx_fit_b$nec["Estimate"])
 })
 
-tt1 <- manec_gauss_id_2$mod_fits
+tt1 <- manec_example$mod_fits
 test_null <- NULL
 tt2 <- tt1["nec4param"]
 

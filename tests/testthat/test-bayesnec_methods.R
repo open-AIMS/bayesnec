@@ -1,8 +1,8 @@
 library(bayesnec)
 library(brms)
 
-manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+data(manec_example)
+nec4param <- pull_out(manec_example, model = "nec4param")
 
 test_that("predict is silent", {
   expect_silent(predict(nec4param))

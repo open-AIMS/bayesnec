@@ -19,7 +19,7 @@ Extracts the priors from an object of class
 }
 \examples{
 library(bayesnec)
-exmp <- bayesnec:::manec_gauss_id_2
-pull_prior(exmp)
+data(manec_example)
+pull_prior(manec_example)
 
 }

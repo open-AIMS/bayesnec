@@ -22,5 +22,4 @@ README.Rmd
 ^Meta$
 ^tests/testthat/Rplots\.pdf$
 ^tests/local$
-^tests/bayesnec_examples\.R$
 ^article$

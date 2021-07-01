@@ -1,8 +1,8 @@
 library(bayesnec)
 library(dplyr)
 
-manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-manec_gauss_id_3 <- amend(manec_gauss_id_2, add = "ecxlin") %>%
+data(manec_example)
+manec_gauss_id_3 <- amend(manec_example, add = "ecxlin") %>%
   suppressWarnings
 
 test_that("models drop and add work correctly", {

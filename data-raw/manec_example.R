@@ -24,7 +24,9 @@ logit <- function(x) {
 }
 
 data("nec_data")
-manec_gauss_id_2 <- nec_data %>%
+manec_example <- nec_data %>%
   mutate(y = logit(y)) %>%
   muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
              iter = 50, chains = 2)
+
+usethis::use_data(manec_example, overwrite = TRUE)

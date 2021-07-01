@@ -1,12 +1,12 @@
 library(bayesnec)
 library(brms)
 
-manec_gauss_id_2 <- bayesnec:::manec_gauss_id_2
-ecx4param <- pull_out(manec_gauss_id_2, model = "ecx4param")
-nec4param <- pull_out(manec_gauss_id_2, model = "nec4param")
+data(manec_example)
+ecx4param <- pull_out(manec_example, model = "ecx4param")
+nec4param <- pull_out(manec_example, model = "nec4param")
 
 test_that("nec returns expected object types", {
-  nec_summary <- nec(manec_gauss_id_2)
+  nec_summary <- nec(manec_example)
   expect_equal(length(nec_summary), 3)
 })
 
@@ -23,7 +23,7 @@ test_that("works for bayesnecfit", {
 test_that("works for bayesmanecfit", {
   mes <- paste0("bayesmanecfit contains ecx model types and therefore nec",
                 " estimate includes nsec values.")
-  nec1 <- expect_message(nec(manec_gauss_id_2), mes)
+  nec1 <- expect_message(nec(manec_example), mes)
   expect_equal(length(nec1), 3)
   expect_equal(names(nec1), c("50%", "2.5%", "97.5%"))
 })
