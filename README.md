@@ -46,12 +46,12 @@ The current development version can be downloaded from GitHub via
     remotes::install_github("open-aims/bayesnec")
 
 Because `bayesnec` is based on `brms` and [Stan](https://mc-stan.org/),
-a C++ compiler is required. The program Rtools (available on
-<a href="https://cran.r-project.org/bin/windows/Rtools/" class="uri">https://cran.r-project.org/bin/windows/Rtools/</a>)
-comes with a C++ compiler for Windows. On Mac, you should install Xcode.
-For further instructions on how to get the compilers running, see the
-prerequisites section on
-<a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="uri">https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started</a>.
+a C++ compiler is required. The program
+[Rtools](https://cran.r-project.org/bin/windows/Rtools/) comes with a
+C++ compiler for Windows. On Mac, you should install Xcode. See the
+prerequisites section on this
+[link](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started) for
+further instructions on how to get the compilers running.
 
 Usage
 -----
