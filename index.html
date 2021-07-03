@@ -102,24 +102,22 @@
 </h1></div>
 <!-- badges: start -->
 
-<div id="warning" class="section level2">
-<h2 class="hasAnchor">
-<a href="#warning" class="anchor" aria-hidden="true"></a>Warning</h2>
-<p><strong>This package is a work in progress. So, for the moment, we advise cautionary usage as some of the functionalities may change or become deprecated in future versions.</strong></p>
-</div>
 <div id="overview" class="section level2">
 <h2 class="hasAnchor">
 <a href="#overview" class="anchor" aria-hidden="true"></a>Overview</h2>
-<p><code>bayesnec</code> is a No-Effect-Concentration estimation package that uses <a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a> to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating both ECX values, but more particularly NEC. Please see <code><a href="reference/bnec.html">?bnec</a></code> for a more detailed help file.</p>
+<p><code>bayesnec</code> is a No-Effect-Concentration estimation package that uses <a href="https://github.com/paul-buerkner/brms" class="external-link"><code>brms</code></a> to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating both ECX values, but more particularly NEC. Please see <code><a href="reference/bnec.html">?bnec</a></code> for a more detailed help file.</p>
 </div>
 <div id="installation" class="section level2">
 <h2 class="hasAnchor">
 <a href="#installation" class="anchor" aria-hidden="true"></a>Installation</h2>
-<p>At this stage <code>bayesnec</code> is not hosted on the CRAN R package network. An alternative method of installation is to use the R <code>devtools</code> package.</p>
-<p>R <code>devtools</code> can be installed using the following command:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">install.packages</span>(<span class="st">"devtools"</span>)</span></code></pre></div>
-<p>After <code>devtools</code> has been installed <code>bayesnec</code> can be installed directly from GitHub using the following command:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>devtools<span class="op">::</span><span class="kw">install_github</span>(<span class="st">"https://github.com/open-AIMS/bayesnec"</span>)</span></code></pre></div>
+<p>To install the latest release version from CRAN use</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">install.packages</span>(<span class="st">"bayesnec"</span>)</span></code></pre></div>
+<p>The current development version can be downloaded from GitHub via</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(<span class="st">"remotes"</span>)) {</span>
+<span id="cb2-2"><a href="#cb2-2"></a>  <span class="kw">install.packages</span>(<span class="st">"remotes"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3"></a>}</span>
+<span id="cb2-4"><a href="#cb2-4"></a>remotes<span class="op">::</span><span class="kw">install_github</span>(<span class="st">"open-aims/bayesnec"</span>)</span></code></pre></div>
+<p>Because <code>bayesnec</code> is based on <code>brms</code> and <a href="https://mc-stan.org/" class="external-link">Stan</a>, a C++ compiler is required. The program Rtools (available on <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link uri">https://cran.r-project.org/bin/windows/Rtools/</a>) comes with a C++ compiler for Windows. On Mac, you should install Xcode. For further instructions on how to get the compilers running, see the prerequisites section on <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="external-link uri">https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started</a>.</p>
 </div>
 <div id="usage" class="section level2">
 <h2 class="hasAnchor">
@@ -172,8 +170,9 @@
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html" class="external-link"><img src="https://img.shields.io/badge/lifecycle-maturing-blue.svg" alt="Lifecycle: maturing"></a></li>
 <li><a href="https://github.com/open-AIMS/bayesnec/actions" class="external-link"><img src="https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg" alt="R build status"></a></li>
 <li><a href="https://codecov.io/gh/open-aims/bayesnec?branch=master" class="external-link"><img src="https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg" alt="Codecov test coverage"></a></li>
+<li><a href="https://cran.r-project.org/package=bayesnec" class="external-link"><img src="https://www.r-pkg.org/badges/version/bayesnec" alt="CRAN Version"></a></li>
+<li><a href="https://CRAN.R-project.org/package=bayesnec" class="external-link"><img src="https://cranlogs.r-pkg.org/badges/bayesnec?color=brightgreen" alt="Downloads"></a></li>
 <li><a href="https://choosealicense.com/" class="external-link"><img src="https://img.shields.io/badge/license-GPL--2-lightgrey.svg" alt="license"></a></li>
-<li><a href="https://github.com/open-AIMS/bayesnec/blob/master/DESCRIPTION" class="external-link"><img src="https://img.shields.io/badge/Package%20version-1.0.1-orange.svg" alt="packageversion"></a></li>
 <li><a href="https://github.com/open-AIMS/bayesnec/issues/new" class="external-link"><img src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg" alt="Ask Us Anything !"></a></li>
 </ul>
 </div>
