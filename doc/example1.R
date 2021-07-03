@@ -8,9 +8,14 @@ knitr::opts_chunk$set(
   eval = ifelse(isTRUE(exists("params")), params$EVAL, FALSE)
 )
 
-## ---- eval = FALSE------------------------------------------------------------
-#  install.packages("remotes")
-#  remotes::install_github("open-AIMS/bayesnec")
+## ----eval=FALSE---------------------------------------------------------------
+#  install.packages("bayesnec")
+
+## ----eval=FALSE---------------------------------------------------------------
+#  if (!requireNamespace("remotes")) {
+#    install.packages("remotes")
+#  }
+#  remotes::install_github("open-aims/bayesnec")
 
 ## ---- warning = FALSE, message = FALSE----------------------------------------
 #  library(dplyr)

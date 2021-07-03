@@ -34,12 +34,27 @@ Multi-model inference can be useful where there are a range of plausible models 
 
 # Installation
 
-To install the latest version from GitHub (https://github.com/open-AIMS/bayesnec) use:
+To install the latest release version from CRAN use
 
-```{r, eval = FALSE}
-install.packages("remotes")
-remotes::install_github("open-AIMS/bayesnec")
+```{r eval=FALSE}
+install.packages("bayesnec")
 ```
+
+The current development version can be downloaded from GitHub via
+
+```{r eval=FALSE}
+if (!requireNamespace("remotes")) {
+  install.packages("remotes")
+}
+remotes::install_github("open-aims/bayesnec")
+```
+
+Because `bayesnec` is based on `brms` and [Stan](https://mc-stan.org/), a C++
+compiler is required. The program Rtools
+(available on https://cran.r-project.org/bin/windows/Rtools/) comes with a C++
+compiler for Windows. On Mac, you should install Xcode. For further
+instructions on how to get the compilers running, see the prerequisites section
+on https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started.
 
 # Examples
 
