@@ -356,9 +356,14 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 </div>
 <div id="installation" class="section level1">
 <h1>Installation</h1>
-<p>To install the latest version from GitHub (<a href="https://github.com/open-AIMS/bayesnec" class="uri">https://github.com/open-AIMS/bayesnec</a>) use:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">install.packages</span>(<span class="st">&quot;remotes&quot;</span>)</span>
-<span id="cb1-2"><a href="#cb1-2"></a>remotes<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;open-AIMS/bayesnec&quot;</span>)</span></code></pre></div>
+<p>To install the latest release version from CRAN use</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">install.packages</span>(<span class="st">&quot;bayesnec&quot;</span>)</span></code></pre></div>
+<p>The current development version can be downloaded from GitHub via</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(<span class="st">&quot;remotes&quot;</span>)) {</span>
+<span id="cb2-2"><a href="#cb2-2"></a>  <span class="kw">install.packages</span>(<span class="st">&quot;remotes&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3"></a>}</span>
+<span id="cb2-4"><a href="#cb2-4"></a>remotes<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;open-aims/bayesnec&quot;</span>)</span></code></pre></div>
+<p>Because <code>bayesnec</code> is based on <code>brms</code> and <a href="https://mc-stan.org/">Stan</a>, a C++ compiler is required. The program Rtools (available on <a href="https://cran.r-project.org/bin/windows/Rtools/" class="uri">https://cran.r-project.org/bin/windows/Rtools/</a>) comes with a C++ compiler for Windows. On Mac, you should install Xcode. For further instructions on how to get the compilers running, see the prerequisites section on <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="uri">https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started</a>.</p>
 </div>
 <div id="examples" class="section level1">
 <h1>Examples</h1>
@@ -367,142 +372,142 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div id="fitting-a-bnec-model" class="section level3">
 <h3>Fitting a <code>bnec</code> model</h3>
 <p>So far we have explored how to fit individual models via the function <code>bnec</code>. The <code>bayesnec</code> package also has the capacity to fit a custom selection of models, pre-specified sets of models, or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains, using <code>bnec</code> can be very slow when fitting <code>models = &quot;all&quot;</code>. See details under <code>?bnec</code> for more information on the models, and model sets that can be specified, as well as the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette which contains considerable information on the available models in <code>bnec</code> and their appropriate usage. In general it is safe to call <code>models = &quot;all&quot;</code>, because by default <code>bnec</code> will discard invalid models.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">library</span>(bayesnec)</span>
-<span id="cb2-2"><a href="#cb2-2"></a><span class="kw">data</span>(<span class="st">&quot;nec_data&quot;</span>)</span>
-<span id="cb2-3"><a href="#cb2-3"></a></span>
-<span id="cb2-4"><a href="#cb2-4"></a><span class="kw">set.seed</span>(<span class="dv">333</span>)</span>
-<span id="cb2-5"><a href="#cb2-5"></a>exp_<span class="dv">5</span> &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> nec_data, <span class="dt">x_var =</span> <span class="st">&quot;x&quot;</span>, <span class="dt">y_var =</span> <span class="st">&quot;y&quot;</span>, <span class="dt">model =</span> <span class="st">&quot;all&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">library</span>(bayesnec)</span>
+<span id="cb3-2"><a href="#cb3-2"></a><span class="kw">data</span>(<span class="st">&quot;nec_data&quot;</span>)</span>
+<span id="cb3-3"><a href="#cb3-3"></a></span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="kw">set.seed</span>(<span class="dv">333</span>)</span>
+<span id="cb3-5"><a href="#cb3-5"></a>exp_<span class="dv">5</span> &lt;-<span class="st"> </span><span class="kw">bnec</span>(<span class="dt">data =</span> nec_data, <span class="dt">x_var =</span> <span class="st">&quot;x&quot;</span>, <span class="dt">y_var =</span> <span class="st">&quot;y&quot;</span>, <span class="dt">model =</span> <span class="st">&quot;all&quot;</span>)</span></code></pre></div>
 <p>Here we run <code>bnec</code> using <code>model =  &quot;all&quot;</code> using a simulated data example for a beta response variable and save the output as an <code>.RData</code> file. Saving an <code>.RData</code> file of the <em>all</em> model <code>bnec</code> output can be a useful way of fitting all the models at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.</p>
 </div>
 <div id="exploring-a-bayesmanecfit-model" class="section level3">
 <h3>Exploring a <code>bayesmanecfit</code> model</h3>
 <p>We have created some plotting method functions for our <code>bayesnec</code> model types, so we can plot a <code>bayesmanecfit</code> model object simply with <code>plot</code>.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">plot</span>(exp_<span class="dv">5</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">plot</span>(exp_<span class="dv">5</span>)</span></code></pre></div>
 <p>The default plot looks exactly the same as our regular <code>bayesnecfit</code> plot, but the output is based on a weighted average of all the model fits. The <em>NEC</em> estimate on this plot (and in the summary output below) is based on a mix of actual <em>NEC</em> estimates, as well as the <em>NSEC</em> estimates that are used as an approximation to <em>NEC</em> for all the <code>ecx</code> models in the set. Note that we do not currently recommend reporting these values as the <em>NEC</em> (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more information). The fitted <code>bayesmanecfit</code> object contains different elements to the <code>bayesnecfit</code>. In particular, <code>mod_stats</code> contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from <code>brms</code>), wi (the model weight, currently defaulting to “pseudobma” using Bayesian bootstrap from <code>loo</code>), pD, and the overdispersion estimate (in this case blank because we have fitted a beta family). For this example, the <strong>nec4param</strong> model has the highest weight, followed by the <strong>neclin</strong> and the <strong>neclinhorme</strong> models.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>exp_<span class="dv">5</span><span class="op">$</span>mod_stats</span>
-<span id="cb4-2"><a href="#cb4-2"></a><span class="co">#                     model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span></span>
-<span id="cb4-3"><a href="#cb4-3"></a><span class="co"># nec4param       nec4param -332.7474 3.747495e-01                  NA              NA               NA</span></span>
-<span id="cb4-4"><a href="#cb4-4"></a><span class="co"># nechorme4       nechorme4 -330.3145 1.275786e-01                  NA              NA               NA</span></span>
-<span id="cb4-5"><a href="#cb4-5"></a><span class="co"># neclin             neclin -332.0511 2.903177e-01                  NA              NA               NA</span></span>
-<span id="cb4-6"><a href="#cb4-6"></a><span class="co"># neclinhorme   neclinhorme -329.7996 1.448851e-01                  NA              NA               NA</span></span>
-<span id="cb4-7"><a href="#cb4-7"></a><span class="co"># nechorme4pwr nechorme4pwr -328.3958 6.005012e-02                  NA              NA               NA</span></span>
-<span id="cb4-8"><a href="#cb4-8"></a><span class="co"># ecxlin             ecxlin -188.0340 1.468296e-24                  NA              NA               NA</span></span>
-<span id="cb4-9"><a href="#cb4-9"></a><span class="co"># ecx4param       ecx4param -302.3491 2.512591e-06                  NA              NA               NA</span></span>
-<span id="cb4-10"><a href="#cb4-10"></a><span class="co"># ecxwb1             ecxwb1 -294.3010 7.113960e-08                  NA              NA               NA</span></span>
-<span id="cb4-11"><a href="#cb4-11"></a><span class="co"># ecxwb2             ecxwb2 -317.1199 6.432912e-04                  NA              NA               NA</span></span>
-<span id="cb4-12"><a href="#cb4-12"></a><span class="co"># ecxll5             ecxll5 -317.7844 1.723062e-03                  NA              NA               NA</span></span>
-<span id="cb4-13"><a href="#cb4-13"></a><span class="co"># ecxll4             ecxll4 -302.9171 3.615674e-06                  NA              NA               NA</span></span>
-<span id="cb4-14"><a href="#cb4-14"></a><span class="co"># ecxhormebc5   ecxhormebc5 -310.2534 4.644824e-05                  NA              NA               NA</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a>exp_<span class="dv">5</span><span class="op">$</span>mod_stats</span>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="co">#                     model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="co"># nec4param       nec4param -332.7474 3.747495e-01                  NA              NA               NA</span></span>
+<span id="cb5-4"><a href="#cb5-4"></a><span class="co"># nechorme4       nechorme4 -330.3145 1.275786e-01                  NA              NA               NA</span></span>
+<span id="cb5-5"><a href="#cb5-5"></a><span class="co"># neclin             neclin -332.0511 2.903177e-01                  NA              NA               NA</span></span>
+<span id="cb5-6"><a href="#cb5-6"></a><span class="co"># neclinhorme   neclinhorme -329.7996 1.448851e-01                  NA              NA               NA</span></span>
+<span id="cb5-7"><a href="#cb5-7"></a><span class="co"># nechorme4pwr nechorme4pwr -328.3958 6.005012e-02                  NA              NA               NA</span></span>
+<span id="cb5-8"><a href="#cb5-8"></a><span class="co"># ecxlin             ecxlin -188.0340 1.468296e-24                  NA              NA               NA</span></span>
+<span id="cb5-9"><a href="#cb5-9"></a><span class="co"># ecx4param       ecx4param -302.3491 2.512591e-06                  NA              NA               NA</span></span>
+<span id="cb5-10"><a href="#cb5-10"></a><span class="co"># ecxwb1             ecxwb1 -294.3010 7.113960e-08                  NA              NA               NA</span></span>
+<span id="cb5-11"><a href="#cb5-11"></a><span class="co"># ecxwb2             ecxwb2 -317.1199 6.432912e-04                  NA              NA               NA</span></span>
+<span id="cb5-12"><a href="#cb5-12"></a><span class="co"># ecxll5             ecxll5 -317.7844 1.723062e-03                  NA              NA               NA</span></span>
+<span id="cb5-13"><a href="#cb5-13"></a><span class="co"># ecxll4             ecxll4 -302.9171 3.615674e-06                  NA              NA               NA</span></span>
+<span id="cb5-14"><a href="#cb5-14"></a><span class="co"># ecxhormebc5   ecxhormebc5 -310.2534 4.644824e-05                  NA              NA               NA</span></span></code></pre></div>
 <p>We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition, the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the <strong>ecxll5</strong> model may have convergence issues according to the default <code>brms</code> Rhat criteria.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">summary</span>(exp_<span class="dv">5</span>)</span>
-<span id="cb5-2"><a href="#cb5-2"></a><span class="co"># Object of class bayesmanecfit containing the following non-linear models:</span></span>
-<span id="cb5-3"><a href="#cb5-3"></a><span class="co">#   -  nec4param</span></span>
-<span id="cb5-4"><a href="#cb5-4"></a><span class="co">#   -  nechorme4</span></span>
-<span id="cb5-5"><a href="#cb5-5"></a><span class="co">#   -  neclin</span></span>
-<span id="cb5-6"><a href="#cb5-6"></a><span class="co">#   -  neclinhorme</span></span>
-<span id="cb5-7"><a href="#cb5-7"></a><span class="co">#   -  nechorme4pwr</span></span>
-<span id="cb5-8"><a href="#cb5-8"></a><span class="co">#   -  ecxlin</span></span>
-<span id="cb5-9"><a href="#cb5-9"></a><span class="co">#   -  ecx4param</span></span>
-<span id="cb5-10"><a href="#cb5-10"></a><span class="co">#   -  ecxwb1</span></span>
-<span id="cb5-11"><a href="#cb5-11"></a><span class="co">#   -  ecxwb2</span></span>
-<span id="cb5-12"><a href="#cb5-12"></a><span class="co">#   -  ecxll5</span></span>
-<span id="cb5-13"><a href="#cb5-13"></a><span class="co">#   -  ecxll4</span></span>
-<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#   -  ecxhormebc5</span></span>
-<span id="cb5-15"><a href="#cb5-15"></a><span class="co"># </span></span>
-<span id="cb5-16"><a href="#cb5-16"></a><span class="co"># Distribution family: beta</span></span>
-<span id="cb5-17"><a href="#cb5-17"></a><span class="co"># Number of posterior draws per model:  4000</span></span>
-<span id="cb5-18"><a href="#cb5-18"></a><span class="co"># </span></span>
-<span id="cb5-19"><a href="#cb5-19"></a><span class="co"># Model weights (Method: pseudobma_bb_weights):</span></span>
-<span id="cb5-20"><a href="#cb5-20"></a><span class="co">#                 waic   wi</span></span>
-<span id="cb5-21"><a href="#cb5-21"></a><span class="co"># nec4param    -332.75 0.37</span></span>
-<span id="cb5-22"><a href="#cb5-22"></a><span class="co"># nechorme4    -330.31 0.13</span></span>
-<span id="cb5-23"><a href="#cb5-23"></a><span class="co"># neclin       -332.05 0.29</span></span>
-<span id="cb5-24"><a href="#cb5-24"></a><span class="co"># neclinhorme  -329.80 0.14</span></span>
-<span id="cb5-25"><a href="#cb5-25"></a><span class="co"># nechorme4pwr -328.40 0.06</span></span>
-<span id="cb5-26"><a href="#cb5-26"></a><span class="co"># ecxlin       -188.03 0.00</span></span>
-<span id="cb5-27"><a href="#cb5-27"></a><span class="co"># ecx4param    -302.35 0.00</span></span>
-<span id="cb5-28"><a href="#cb5-28"></a><span class="co"># ecxwb1       -294.30 0.00</span></span>
-<span id="cb5-29"><a href="#cb5-29"></a><span class="co"># ecxwb2       -317.12 0.00</span></span>
-<span id="cb5-30"><a href="#cb5-30"></a><span class="co"># ecxll5       -317.78 0.00</span></span>
-<span id="cb5-31"><a href="#cb5-31"></a><span class="co"># ecxll4       -302.92 0.00</span></span>
-<span id="cb5-32"><a href="#cb5-32"></a><span class="co"># ecxhormebc5  -310.25 0.00</span></span>
-<span id="cb5-33"><a href="#cb5-33"></a><span class="co"># </span></span>
-<span id="cb5-34"><a href="#cb5-34"></a><span class="co"># </span></span>
-<span id="cb5-35"><a href="#cb5-35"></a><span class="co"># Summary of weighted NEC posterior estimates:</span></span>
-<span id="cb5-36"><a href="#cb5-36"></a><span class="co"># NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4;ecxhormebc5; weighted NEC estimates include NSEC surrogates for NEC</span></span>
-<span id="cb5-37"><a href="#cb5-37"></a><span class="co">#     Estimate Q2.5 Q97.5</span></span>
-<span id="cb5-38"><a href="#cb5-38"></a><span class="co"># NEC     1.39 1.26  1.48</span></span>
-<span id="cb5-39"><a href="#cb5-39"></a><span class="co"># </span></span>
-<span id="cb5-40"><a href="#cb5-40"></a><span class="co"># Warning message:</span></span>
-<span id="cb5-41"><a href="#cb5-41"></a><span class="co"># In print.manecsummary(x) :</span></span>
-<span id="cb5-42"><a href="#cb5-42"></a><span class="co">#   The following model had Rhats &gt; 1.05 (no convergence):</span></span>
-<span id="cb5-43"><a href="#cb5-43"></a><span class="co">#   -  ecxll5</span></span>
-<span id="cb5-44"><a href="#cb5-44"></a><span class="co"># Consider dropping them (see ?amend)</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">summary</span>(exp_<span class="dv">5</span>)</span>
+<span id="cb6-2"><a href="#cb6-2"></a><span class="co"># Object of class bayesmanecfit containing the following non-linear models:</span></span>
+<span id="cb6-3"><a href="#cb6-3"></a><span class="co">#   -  nec4param</span></span>
+<span id="cb6-4"><a href="#cb6-4"></a><span class="co">#   -  nechorme4</span></span>
+<span id="cb6-5"><a href="#cb6-5"></a><span class="co">#   -  neclin</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a><span class="co">#   -  neclinhorme</span></span>
+<span id="cb6-7"><a href="#cb6-7"></a><span class="co">#   -  nechorme4pwr</span></span>
+<span id="cb6-8"><a href="#cb6-8"></a><span class="co">#   -  ecxlin</span></span>
+<span id="cb6-9"><a href="#cb6-9"></a><span class="co">#   -  ecx4param</span></span>
+<span id="cb6-10"><a href="#cb6-10"></a><span class="co">#   -  ecxwb1</span></span>
+<span id="cb6-11"><a href="#cb6-11"></a><span class="co">#   -  ecxwb2</span></span>
+<span id="cb6-12"><a href="#cb6-12"></a><span class="co">#   -  ecxll5</span></span>
+<span id="cb6-13"><a href="#cb6-13"></a><span class="co">#   -  ecxll4</span></span>
+<span id="cb6-14"><a href="#cb6-14"></a><span class="co">#   -  ecxhormebc5</span></span>
+<span id="cb6-15"><a href="#cb6-15"></a><span class="co"># </span></span>
+<span id="cb6-16"><a href="#cb6-16"></a><span class="co"># Distribution family: beta</span></span>
+<span id="cb6-17"><a href="#cb6-17"></a><span class="co"># Number of posterior draws per model:  4000</span></span>
+<span id="cb6-18"><a href="#cb6-18"></a><span class="co"># </span></span>
+<span id="cb6-19"><a href="#cb6-19"></a><span class="co"># Model weights (Method: pseudobma_bb_weights):</span></span>
+<span id="cb6-20"><a href="#cb6-20"></a><span class="co">#                 waic   wi</span></span>
+<span id="cb6-21"><a href="#cb6-21"></a><span class="co"># nec4param    -332.75 0.37</span></span>
+<span id="cb6-22"><a href="#cb6-22"></a><span class="co"># nechorme4    -330.31 0.13</span></span>
+<span id="cb6-23"><a href="#cb6-23"></a><span class="co"># neclin       -332.05 0.29</span></span>
+<span id="cb6-24"><a href="#cb6-24"></a><span class="co"># neclinhorme  -329.80 0.14</span></span>
+<span id="cb6-25"><a href="#cb6-25"></a><span class="co"># nechorme4pwr -328.40 0.06</span></span>
+<span id="cb6-26"><a href="#cb6-26"></a><span class="co"># ecxlin       -188.03 0.00</span></span>
+<span id="cb6-27"><a href="#cb6-27"></a><span class="co"># ecx4param    -302.35 0.00</span></span>
+<span id="cb6-28"><a href="#cb6-28"></a><span class="co"># ecxwb1       -294.30 0.00</span></span>
+<span id="cb6-29"><a href="#cb6-29"></a><span class="co"># ecxwb2       -317.12 0.00</span></span>
+<span id="cb6-30"><a href="#cb6-30"></a><span class="co"># ecxll5       -317.78 0.00</span></span>
+<span id="cb6-31"><a href="#cb6-31"></a><span class="co"># ecxll4       -302.92 0.00</span></span>
+<span id="cb6-32"><a href="#cb6-32"></a><span class="co"># ecxhormebc5  -310.25 0.00</span></span>
+<span id="cb6-33"><a href="#cb6-33"></a><span class="co"># </span></span>
+<span id="cb6-34"><a href="#cb6-34"></a><span class="co"># </span></span>
+<span id="cb6-35"><a href="#cb6-35"></a><span class="co"># Summary of weighted NEC posterior estimates:</span></span>
+<span id="cb6-36"><a href="#cb6-36"></a><span class="co"># NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4;ecxhormebc5; weighted NEC estimates include NSEC surrogates for NEC</span></span>
+<span id="cb6-37"><a href="#cb6-37"></a><span class="co">#     Estimate Q2.5 Q97.5</span></span>
+<span id="cb6-38"><a href="#cb6-38"></a><span class="co"># NEC     1.39 1.26  1.48</span></span>
+<span id="cb6-39"><a href="#cb6-39"></a><span class="co"># </span></span>
+<span id="cb6-40"><a href="#cb6-40"></a><span class="co"># Warning message:</span></span>
+<span id="cb6-41"><a href="#cb6-41"></a><span class="co"># In print.manecsummary(x) :</span></span>
+<span id="cb6-42"><a href="#cb6-42"></a><span class="co">#   The following model had Rhats &gt; 1.05 (no convergence):</span></span>
+<span id="cb6-43"><a href="#cb6-43"></a><span class="co">#   -  ecxll5</span></span>
+<span id="cb6-44"><a href="#cb6-44"></a><span class="co"># Consider dropping them (see ?amend)</span></span></code></pre></div>
 <p>The <code>bayesmanecfit</code> object also contains all of the original fits, which can be extracted using the <code>pull_out</code> function. For example, we can pull out the highest weighted model, <strong>nec4param</strong>.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>exp_<span class="dv">5</span>_nec4param &lt;-<span class="st"> </span><span class="kw">pull_out</span>(exp_<span class="dv">5</span>, <span class="dt">model =</span> <span class="st">&quot;nec4param&quot;</span>)</span>
-<span id="cb6-2"><a href="#cb6-2"></a><span class="kw">plot</span>(exp_<span class="dv">5</span>_nec4param)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>exp_<span class="dv">5</span>_nec4param &lt;-<span class="st"> </span><span class="kw">pull_out</span>(exp_<span class="dv">5</span>, <span class="dt">model =</span> <span class="st">&quot;nec4param&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2"></a><span class="kw">plot</span>(exp_<span class="dv">5</span>_nec4param)</span></code></pre></div>
 <p>This would extract the <strong>nec4param</strong> model from the <code>bayesmanecfit</code> and create a new object that contains just this <code>bayesnecfit</code> fit. This would be identical to fitting the <strong>nec4param</strong> as a single model using <code>bnec</code>. All of the models in the <code>bayesmanecfit</code> can be simultaneously plotted using the argument <code>all_models = TRUE</code>.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">plot</span>(exp_<span class="dv">5</span>, <span class="dt">all_models =</span> <span class="ot">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">plot</span>(exp_<span class="dv">5</span>, <span class="dt">all_models =</span> <span class="ot">TRUE</span>)</span></code></pre></div>
 <p>You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the <strong>ecxlin</strong> model in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.</p>
 <p>We can assess the chains for the best model to make sure this is good.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">plot</span>(exp_<span class="dv">5</span><span class="op">$</span>mod_fits<span class="op">$</span>nec4param<span class="op">$</span>fit)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="kw">plot</span>(exp_<span class="dv">5</span><span class="op">$</span>mod_fits<span class="op">$</span>nec4param<span class="op">$</span>fit)</span></code></pre></div>
 <p>Assessing chains for all the models in <code>bayesmanecfit</code> doesn’t work as well using the default <code>brms</code> plotting method. Instead use <code>check_chains</code> and make sure to pass a <code>filename</code> argument, which means plots are automatically saved to pdf with a message.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="kw">check_chains</span>(exp_<span class="dv">5</span>, <span class="dt">filename =</span> <span class="st">&quot;example_5_all_chains&quot;</span>)</span>
-<span id="cb9-2"><a href="#cb9-2"></a><span class="co">#Chain plots saved to file example_5_all_chains.pdf, in your working directory.</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a><span class="kw">check_chains</span>(exp_<span class="dv">5</span>, <span class="dt">filename =</span> <span class="st">&quot;example_5_all_chains&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2"></a><span class="co">#Chain plots saved to file example_5_all_chains.pdf, in your working directory.</span></span></code></pre></div>
 <p>We can also make a plot to compare the posterior probability density to that of the prior using the <code>check_priors</code> function, for an individual model fit, but also saving all fits to a file in the working directory.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a><span class="kw">check_priors</span>(exp_<span class="dv">5</span><span class="op">$</span>mod_fits<span class="op">$</span>nec4param)</span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">check_priors</span>(exp_<span class="dv">5</span>, <span class="dt">filename =</span> <span class="st">&quot;example_5_all_priors&quot;</span>)</span>
-<span id="cb11-2"><a href="#cb11-2"></a><span class="co">#Probability density plots saved to file example_5_all_priors.pdf</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">check_priors</span>(exp_<span class="dv">5</span><span class="op">$</span>mod_fits<span class="op">$</span>nec4param)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="kw">check_priors</span>(exp_<span class="dv">5</span>, <span class="dt">filename =</span> <span class="st">&quot;example_5_all_priors&quot;</span>)</span>
+<span id="cb12-2"><a href="#cb12-2"></a><span class="co">#Probability density plots saved to file example_5_all_priors.pdf</span></span></code></pre></div>
 <p>Where a large number of models are failing to converge, obviously it would be better to adjust <code>iter</code> and <code>warmup</code> in the <code>bnec</code> call, as well as some of the other arguments to <code>brms</code> such as <code>adapt_delta</code>. See the <code>brms</code> documentation for more details. In the example above, only a single model had poor convergence according to <code>rhat</code> criteria. It is possible to exclude such models from the model set using <code>amend</code> and the <code>bayesmanecfit</code> rhat method, via:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a>exp_<span class="dv">5</span>_new &lt;-<span class="st"> </span><span class="kw">amend</span>(exp_<span class="dv">5</span>, <span class="dt">drop =</span> <span class="kw">rhat</span>(exp_<span class="dv">5</span>)<span class="op">$</span>failed)</span>
-<span id="cb12-2"><a href="#cb12-2"></a><span class="co">#Fitted models are:  nec4param nechorme4 neclin neclinhorme nechorme4pwr ecxlin ecx4param ecxwb1 ecxwb2 ecxll4 ecxhormebc5</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a>exp_<span class="dv">5</span>_new &lt;-<span class="st"> </span><span class="kw">amend</span>(exp_<span class="dv">5</span>, <span class="dt">drop =</span> <span class="kw">rhat</span>(exp_<span class="dv">5</span>)<span class="op">$</span>failed)</span>
+<span id="cb13-2"><a href="#cb13-2"></a><span class="co">#Fitted models are:  nec4param nechorme4 neclin neclinhorme nechorme4pwr ecxlin ecx4param ecxwb1 ecxwb2 ecxll4 ecxhormebc5</span></span></code></pre></div>
 <p>This will drop all models that fail the default <code>rhat_cutoff</code> value of 1.05 from the model set, and adjust the model averaged predictions accordingly. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value.</p>
 </div>
 <div id="extracting-endpoint-values" class="section level3">
 <h3>Extracting endpoint values</h3>
 <p>The models prefixed with <code>ecx</code> are all models that do not have the <em>NEC</em> as a parameter in the model. That is, they are smooth curves as a function of concentration and have no breakpoint. The <em>NEC</em> on the plots above for these models are an approximation based on <em>NSEC</em> and should not be used without careful consideration of the validity of this endpoint value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette for more details). A formal model averaged estimate of <em>NEC</em> should be obtained with <code>model = &quot;nec&quot;</code>. We can use the helper functions <code>pull_out</code> and <code>amend</code> to alter the model set as required. pull_out has a <code>model</code> argument and can be used to pull out a single model (as above) or to pull out a specific set of models.</p>
 <p>We can use this to obtain first a set of <em>NEC</em> only models from the existing set.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a>exp_<span class="dv">5</span>_nec &lt;-<span class="st"> </span><span class="kw">pull_out</span>(exp_<span class="dv">5</span>, <span class="dt">model =</span> <span class="st">&quot;nec&quot;</span>)</span>
-<span id="cb13-2"><a href="#cb13-2"></a><span class="co"># Model(s) nec3param, nechorme, necsigm, nechormepwr, nechormepwr01 non-existent in current set of models: nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr, ecxlin, ecx4param, ecxwb1, ecxwb2, ecxll5, ecxll4, ecxhormebc5.</span></span>
-<span id="cb13-3"><a href="#cb13-3"></a><span class="co"># If needed, add desired model(s) via function amend (see ?amend)</span></span>
-<span id="cb13-4"><a href="#cb13-4"></a><span class="co"># Pulling out model(s): nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a>exp_<span class="dv">5</span>_nec &lt;-<span class="st"> </span><span class="kw">pull_out</span>(exp_<span class="dv">5</span>, <span class="dt">model =</span> <span class="st">&quot;nec&quot;</span>)</span>
+<span id="cb14-2"><a href="#cb14-2"></a><span class="co"># Model(s) nec3param, nechorme, necsigm, nechormepwr, nechormepwr01 non-existent in current set of models: nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr, ecxlin, ecx4param, ecxwb1, ecxwb2, ecxll5, ecxll4, ecxhormebc5.</span></span>
+<span id="cb14-3"><a href="#cb14-3"></a><span class="co"># If needed, add desired model(s) via function amend (see ?amend)</span></span>
+<span id="cb14-4"><a href="#cb14-4"></a><span class="co"># Pulling out model(s): nec4param, nechorme4, neclin, neclinhorme, nechorme4pwr</span></span></code></pre></div>
 <p>In this case, because we have already fitted “all” models, we can ignore the message regarding the missing <em>NEC</em> models — these are all models that are not appropriate for a <code>Beta</code> family with a <code>logit</code> link function.</p>
 <p>We can drop other models from the set if desired; for example, let’s drop the <strong>neclinhorme</strong> model using the <code>amend</code> function.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a>exp_<span class="dv">5</span>_nec &lt;-<span class="st"> </span><span class="kw">amend</span>(exp_<span class="dv">5</span>_nec, <span class="dt">drop =</span> <span class="st">&quot;neclinhorme&quot;</span>)</span>
-<span id="cb14-2"><a href="#cb14-2"></a><span class="co">#Fitted models are:  nec4param nechorme4 neclin nechorme4pwr</span></span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a>exp_<span class="dv">5</span>_nec &lt;-<span class="st"> </span><span class="kw">amend</span>(exp_<span class="dv">5</span>_nec, <span class="dt">drop =</span> <span class="st">&quot;neclinhorme&quot;</span>)</span>
+<span id="cb15-2"><a href="#cb15-2"></a><span class="co">#Fitted models are:  nec4param nechorme4 neclin nechorme4pwr</span></span></code></pre></div>
 <p>Now we have two model sets, an <em>NEC</em> set, and a mixed <em>NEC</em> and <em>ECx</em> set. Of course, before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. For the “all” set, the model with the highest weight is <strong>nec4param</strong>.</p>
 <p>Now we can use the <code>ecx</code> function to get EC10 and EC50 values. We can do this using our all model set, because it is valid to use <em>NEC</em> models for estimating <em>ECx</em> (see more information in the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a>ECx10 &lt;-<span class="st"> </span><span class="kw">ecx</span>(exp_<span class="dv">5</span>, <span class="dt">ecx_val =</span> <span class="dv">10</span>)</span>
-<span id="cb15-2"><a href="#cb15-2"></a>ECx50 &lt;-<span class="st"> </span><span class="kw">ecx</span>(exp_<span class="dv">5</span>, <span class="dt">ecx_val =</span> <span class="dv">50</span>)</span>
-<span id="cb15-3"><a href="#cb15-3"></a>ECx10</span>
-<span id="cb15-4"><a href="#cb15-4"></a><span class="co">#    ec_10 ec_10_lw ec_10_up </span></span>
-<span id="cb15-5"><a href="#cb15-5"></a><span class="co"># 1.567394 1.503566 1.621647 </span></span>
-<span id="cb15-6"><a href="#cb15-6"></a>ECx50</span>
-<span id="cb15-7"><a href="#cb15-7"></a><span class="co">#    ec_50 ec_50_lw ec_50_up </span></span>
-<span id="cb15-8"><a href="#cb15-8"></a><span class="co"># 2.004610 1.956740 2.052481</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a>ECx10 &lt;-<span class="st"> </span><span class="kw">ecx</span>(exp_<span class="dv">5</span>, <span class="dt">ecx_val =</span> <span class="dv">10</span>)</span>
+<span id="cb16-2"><a href="#cb16-2"></a>ECx50 &lt;-<span class="st"> </span><span class="kw">ecx</span>(exp_<span class="dv">5</span>, <span class="dt">ecx_val =</span> <span class="dv">50</span>)</span>
+<span id="cb16-3"><a href="#cb16-3"></a>ECx10</span>
+<span id="cb16-4"><a href="#cb16-4"></a><span class="co">#    ec_10 ec_10_lw ec_10_up </span></span>
+<span id="cb16-5"><a href="#cb16-5"></a><span class="co"># 1.567394 1.503566 1.621647 </span></span>
+<span id="cb16-6"><a href="#cb16-6"></a>ECx50</span>
+<span id="cb16-7"><a href="#cb16-7"></a><span class="co">#    ec_50 ec_50_lw ec_50_up </span></span>
+<span id="cb16-8"><a href="#cb16-8"></a><span class="co"># 2.004610 1.956740 2.052481</span></span></code></pre></div>
 <p>The weighted <em>NEC</em> estimates can be extracted directly from the <em>NEC</em> model set object, as they are an explicit parameter in these models.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a>NECvals &lt;-<span class="st"> </span>exp_<span class="dv">5</span>_nec<span class="op">$</span>w_nec</span>
-<span id="cb16-2"><a href="#cb16-2"></a>NECvals</span>
-<span id="cb16-3"><a href="#cb16-3"></a><span class="co"># Estimate     Q2.5    Q97.5 </span></span>
-<span id="cb16-4"><a href="#cb16-4"></a><span class="co"># 1.382239 1.274046 1.466245 </span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1"></a>NECvals &lt;-<span class="st"> </span>exp_<span class="dv">5</span>_nec<span class="op">$</span>w_nec</span>
+<span id="cb17-2"><a href="#cb17-2"></a>NECvals</span>
+<span id="cb17-3"><a href="#cb17-3"></a><span class="co"># Estimate     Q2.5    Q97.5 </span></span>
+<span id="cb17-4"><a href="#cb17-4"></a><span class="co"># 1.382239 1.274046 1.466245 </span></span></code></pre></div>
 </div>
 <div id="putting-it-all-together" class="section level3">
 <h3>Putting it all together</h3>
 <p>Now we can make a combined plot of our output, showing the model averaged “<em>NEC</em>” model and the “all averaged model”, along with the relevant thresholds.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1"></a>preds &lt;-<span class="st"> </span>exp_<span class="dv">5</span>_nec<span class="op">$</span>w_pred_vals<span class="op">$</span>data</span>
-<span id="cb17-2"><a href="#cb17-2"></a></span>
-<span id="cb17-3"><a href="#cb17-3"></a><span class="kw">par</span>(<span class="dt">mfrow=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>))</span>
-<span id="cb17-4"><a href="#cb17-4"></a><span class="kw">plot</span>(exp_<span class="dv">5</span>, <span class="dt">add_nec =</span> <span class="ot">FALSE</span>)</span>
-<span id="cb17-5"><a href="#cb17-5"></a><span class="kw">abline</span>(<span class="dt">v =</span> ECx10, <span class="dt">col =</span> <span class="st">&quot;orange&quot;</span>, <span class="dt">lty =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">3</span>))</span>
-<span id="cb17-6"><a href="#cb17-6"></a><span class="kw">abline</span>(<span class="dt">v =</span> ECx50, <span class="dt">col =</span> <span class="st">&quot;blue&quot;</span>, <span class="dt">lty =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">3</span>))</span>
-<span id="cb17-7"><a href="#cb17-7"></a><span class="kw">abline</span>(<span class="dt">v =</span> NECvals, <span class="dt">col =</span> <span class="st">&quot;darkgrey&quot;</span>, <span class="dt">lty =</span> <span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">1</span>, <span class="dv">3</span>))</span>
-<span id="cb17-8"><a href="#cb17-8"></a><span class="kw">lines</span>(preds<span class="op">$</span>x, preds<span class="op">$</span>Estimate, <span class="dt">col =</span> <span class="st">&quot;darkgrey&quot;</span>)</span>
-<span id="cb17-9"><a href="#cb17-9"></a><span class="kw">lines</span>(preds<span class="op">$</span>x, preds<span class="op">$</span>Q2<span class="fl">.5</span>, <span class="dt">col =</span> <span class="st">&quot;darkgrey&quot;</span>, <span class="dt">lty =</span> <span class="dv">3</span>)</span>
-<span id="cb17-10"><a href="#cb17-10"></a><span class="kw">lines</span>(preds<span class="op">$</span>x, preds<span class="op">$</span>Q97<span class="fl">.5</span>, <span class="dt">col =</span> <span class="st">&quot;darkgrey&quot;</span>, <span class="dt">lty =</span> <span class="dv">3</span>)</span>
-<span id="cb17-11"><a href="#cb17-11"></a><span class="kw">legend</span>(<span class="st">&quot;bottomleft&quot;</span>,</span>
-<span id="cb17-12"><a href="#cb17-12"></a>  <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;Complete averaged model&quot;</span>, <span class="st">&quot;ec10&quot;</span>, <span class="st">&quot;ec50&quot;</span>, <span class="st">&quot;NEC&quot;</span>),</span>
-<span id="cb17-13"><a href="#cb17-13"></a>  <span class="dt">col =</span> <span class="kw">c</span>(<span class="st">&quot;black&quot;</span>, <span class="st">&quot;orange&quot;</span>, <span class="st">&quot;blue&quot;</span>, <span class="st">&quot;darkgrey&quot;</span>), <span class="dt">lty =</span> <span class="dv">1</span>, <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span></span>
-<span id="cb17-14"><a href="#cb17-14"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1"></a>preds &lt;-<span class="st"> </span>exp_<span class="dv">5</span>_nec<span class="op">$</span>w_pred_vals<span class="op">$</span>data</span>
+<span id="cb18-2"><a href="#cb18-2"></a></span>
+<span id="cb18-3"><a href="#cb18-3"></a><span class="kw">par</span>(<span class="dt">mfrow=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>))</span>
+<span id="cb18-4"><a href="#cb18-4"></a><span class="kw">plot</span>(exp_<span class="dv">5</span>, <span class="dt">add_nec =</span> <span class="ot">FALSE</span>)</span>
+<span id="cb18-5"><a href="#cb18-5"></a><span class="kw">abline</span>(<span class="dt">v =</span> ECx10, <span class="dt">col =</span> <span class="st">&quot;orange&quot;</span>, <span class="dt">lty =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">3</span>))</span>
+<span id="cb18-6"><a href="#cb18-6"></a><span class="kw">abline</span>(<span class="dt">v =</span> ECx50, <span class="dt">col =</span> <span class="st">&quot;blue&quot;</span>, <span class="dt">lty =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">3</span>))</span>
+<span id="cb18-7"><a href="#cb18-7"></a><span class="kw">abline</span>(<span class="dt">v =</span> NECvals, <span class="dt">col =</span> <span class="st">&quot;darkgrey&quot;</span>, <span class="dt">lty =</span> <span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">1</span>, <span class="dv">3</span>))</span>
+<span id="cb18-8"><a href="#cb18-8"></a><span class="kw">lines</span>(preds<span class="op">$</span>x, preds<span class="op">$</span>Estimate, <span class="dt">col =</span> <span class="st">&quot;darkgrey&quot;</span>)</span>
+<span id="cb18-9"><a href="#cb18-9"></a><span class="kw">lines</span>(preds<span class="op">$</span>x, preds<span class="op">$</span>Q2<span class="fl">.5</span>, <span class="dt">col =</span> <span class="st">&quot;darkgrey&quot;</span>, <span class="dt">lty =</span> <span class="dv">3</span>)</span>
+<span id="cb18-10"><a href="#cb18-10"></a><span class="kw">lines</span>(preds<span class="op">$</span>x, preds<span class="op">$</span>Q97<span class="fl">.5</span>, <span class="dt">col =</span> <span class="st">&quot;darkgrey&quot;</span>, <span class="dt">lty =</span> <span class="dv">3</span>)</span>
+<span id="cb18-11"><a href="#cb18-11"></a><span class="kw">legend</span>(<span class="st">&quot;bottomleft&quot;</span>,</span>
+<span id="cb18-12"><a href="#cb18-12"></a>  <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;Complete averaged model&quot;</span>, <span class="st">&quot;ec10&quot;</span>, <span class="st">&quot;ec50&quot;</span>, <span class="st">&quot;NEC&quot;</span>),</span>
+<span id="cb18-13"><a href="#cb18-13"></a>  <span class="dt">col =</span> <span class="kw">c</span>(<span class="st">&quot;black&quot;</span>, <span class="st">&quot;orange&quot;</span>, <span class="st">&quot;blue&quot;</span>, <span class="st">&quot;darkgrey&quot;</span>), <span class="dt">lty =</span> <span class="dv">1</span>, <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span></span>
+<span id="cb18-14"><a href="#cb18-14"></a>)</span></code></pre></div>
 </div>
 </div>
 </div>
