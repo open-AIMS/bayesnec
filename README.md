@@ -12,26 +12,21 @@ status](https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg)](
 [![Codecov test
 coverage](https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg)](https://codecov.io/gh/open-aims/bayesnec?branch=master)
 ![pkgdown](https://github.com/open-AIMS/bayesnec/workflows/pkgdown/badge.svg)
+[![CRAN
+Version](https://www.r-pkg.org/badges/version/bayesnec)](https://cran.r-project.org/package=bayesnec)
+[![Downloads](https://cranlogs.r-pkg.org/badges/bayesnec?color=brightgreen)](https://CRAN.R-project.org/package=bayesnec)
 [![license](https://img.shields.io/badge/license-GPL--2-lightgrey.svg)](https://choosealicense.com/)
-[![packageversion](https://img.shields.io/badge/Package%20version-1.0.1-orange.svg)](https://github.com/open-AIMS/bayesnec/blob/master/DESCRIPTION)
 [![Ask Us Anything
 !](https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg)](https://github.com/open-AIMS/bayesnec/issues/new)
 ![Open Source
 Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)
 <!-- badges: end -->
 
-Warning
--------
-
-**This package is a work in progress. So, for the moment, we advise
-cautionary usage as some of the functionalities may change or become
-deprecated in future versions.**
-
 Overview
 --------
 
 `bayesnec` is a No-Effect-Concentration estimation package that uses
-[brms](https://github.com/paul-buerkner/brms) to fit
+[`brms`](https://github.com/paul-buerkner/brms) to fit
 concentration(dose)-response data using Bayesian methods for the purpose
 of estimating both ECX values, but more particularly NEC. Please see
 `?bnec` for a more detailed help file.
@@ -39,17 +34,24 @@ of estimating both ECX values, but more particularly NEC. Please see
 Installation
 ------------
 
-At this stage `bayesnec` is not hosted on the CRAN R package network. An
-alternative method of installation is to use the R `devtools` package.
+To install the latest release version from CRAN use
 
-R `devtools` can be installed using the following command:
+    install.packages("bayesnec")
 
-    install.packages("devtools")
+The current development version can be downloaded from GitHub via
 
-After `devtools` has been installed `bayesnec` can be installed directly
-from GitHub using the following command:
+    if (!requireNamespace("remotes")) {
+      install.packages("remotes")
+    }
+    remotes::install_github("open-aims/bayesnec")
 
-    devtools::install_github("https://github.com/open-AIMS/bayesnec")
+Because `bayesnec` is based on `brms` and [Stan](https://mc-stan.org/),
+a C++ compiler is required. The program Rtools (available on
+<a href="https://cran.r-project.org/bin/windows/Rtools/" class="uri">https://cran.r-project.org/bin/windows/Rtools/</a>)
+comes with a C++ compiler for Windows. On Mac, you should install Xcode.
+For further instructions on how to get the compilers running, see the
+prerequisites section on
+<a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="uri">https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started</a>.
 
 Usage
 -----
