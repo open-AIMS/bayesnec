@@ -7,7 +7,7 @@
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
 \author{
-Rebecca Fisher\\Australian Institute of Marine Science \And Diego
+Rebecca Fisher\\Australian Institute of Marine Science \And Diego R.
 Barneche\\Australian Institute of Marine Science \AND Gerard
 Ricardo\\The University of Queensland \And David Fox\\Environmetrics
 Australia
@@ -15,7 +15,8 @@ Australia
 \title{\pkg{bayesnec}: An R Package for C-R Modelling and Estimation of
 No-Effect-Concentrations}
 
-\Plainauthor{Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox}
+\Plainauthor{Rebecca Fisher, Diego R. Barneche, Gerard Ricardo, David
+Fox}
 \Plaintitle{bayesnec: An R Package for C-R Modelling and Estimation of
 No-Effect-Concentrations}
 \Shorttitle{C-R Modelling With \pkg{bayesnec}}
@@ -34,7 +35,7 @@ models. When multiple models are specified the \texttt{bnec} function
 returns a model weighted average estimate of predicted posterior values.
 A range of support functions and methods are also included to work with
 the returned single, or multi- model objects that allow extraction of
-raw, or model averaged predicted, \emph{ECx}, \emph{NEC} and \emph{NSEC}
+raw, or model averaged predicted, \emph{NEC}, \emph{NSEC} and \emph{ECx}
 values and to interrogate the fitted model or model-set. The statistical
 methods used mean that the uncertainty in derived threshold values can
 be robustly quantified, including uncertainty in individual model fits
@@ -43,9 +44,9 @@ functional form.
 }
 
 \Keywords{ecotoxicology, effect concentration, threshold
-derivation, nec, \proglang{brms}}
+derivation, \textit{NEC}, \proglang{brms}}
 \Plainkeywords{ecotoxicology, effect concentration, threshold
-derivation, nec, brms}
+derivation, NEC, brms}
 
 %% publication information
 %% \Volume{50}
@@ -64,7 +65,7 @@ Crawley, WA, Australia\\
 Crawley, WA, Australia\\
   E-mail: \email{r.fisher@aims.gov.au}\\
   
-      Diego Barneche\\
+      Diego R. Barneche\\
     The Indian Ocean Marine Research Centre,\\
 University of Western Australia,\\
 Crawley, WA, Australia\\
@@ -107,35 +108,36 @@ environment. It is widely used in the disciplines of pharmacology,
 toxicology and ecotoxicology, where parametric non-linear regression
 methods are used to model response data of interest, with the resulting
 fitted models used to estimate critical thresholds of concern. These
-thresholds may be used directly to assess risk (e.g see
-\citep{fisher2018c}), or are subsequently incorporated into a broader
-population-level risk assessment framework (e.g. \citep{Warne2015}).
+thresholds may be used directly to assess risk \citep[e.g
+see][]{fisher2018c}, or are subsequently incorporated into a broader
+population-level risk assessment framework \citep[e.g.~][]{Warne2015}.
 Typical thresholds derived from C-R modelling include the
-effect-concentration of defined percentage \texttt{x} (ECx) and the
-no-effect-concentration (NEC), the latter being the generally accepted
-preferred option \citep{Fox2008, Warne2015}.
+effect-concentration of defined percentage `x' (ECx) and the
+no-effect-concentration (NEC), the latter being the generally preferred
+option \citep{Fox2008, Warne2015}.
 
 Typically C-R relationships are non-linear, which increases the
 complexity of model fitting. There are a wide array of packages for
 fitting non-linear models in \proglang{R}, including the \texttt{nls}
 function in \pkg{stats} which uses least squares minimisation and
-extensions in the \pkg{nlme} \citep{pinheiro2021} package based on
-maximum likelihood estimation that also allows random effects. While C-R
-modelling can be carried out using multi-purpose software packages, this
-can be cumbersome in practice, requiring extensive manual programming to
-obtain the necessary, often relatively standard outputs. The \pkg{drc}
-package \citep{Ritz2016} was developed as a user friendly frequentist
-based solution to C-R modelling in \proglang{R}, and is currently widely
-used across a range of disciplines. \pkg{drc} implements a broad range
-of non-linear C-R models, provides facilities for ranking model fit
-based on AIC \citep{Burnham2002}, joint modelling of multiple response
-curves, and supports a range of estimation procedures \citep{Ritz2016}.
+extensions in the \pkg{nlme} package \citep{pinheiro2021} based on
+maximum likelihood estimation that also allows for the consideration
+hierarchical effects. While C-R modelling can be carried out using
+multi-purpose software packages, this can be cumbersome in practice,
+requiring extensive manual programming to obtain the necessary, often
+relatively standard outputs. The \pkg{drc} package \citep{Ritz2016} was
+developed as a user friendly frequentist based solution to C-R modelling
+in \proglang{R}, and is currently widely used across a range of
+disciplines. \pkg{drc} implements a broad range of non-linear C-R
+models, provides facilities for ranking model fit based on AIC
+\citep{Burnham2002}, joint modelling of multiple response curves, and
+supports a range of estimation procedures \citep{Ritz2016}.
 
 Estimates of uncertainty in parameters and derived thresholds are
 critical for effective integration of threshold estimates into risk
 assessment and formal decision frameworks \citep{fisher2018c}. Bayesian
 methods allow robust quantification of uncertainty with intuitive and
-direct probabilistic meaning \citep{Ellison1996} and are therefore an
+direct probabilistic meaning \citep{Ellison1996}, and are therefore an
 excellent platform for C-R modelling in most settings. Furthermore, the
 posterior samples generated through Bayesian model fitting methods
 provides a rich resource that can be used to explore synergistic and
@@ -144,17 +146,17 @@ uncertainty \citep{Charles2020a, Gottschalk2013}, and for testing
 hypotheses of no-effect \citep{Thomas2006}.
 
 There are a wide array of packages available for Bayesian model fitting
-via Markov-Chain-Monte-Carlo (MCMC, or similar), including
-\proglang{WinBUGS} \citep{Lunn2000}, \proglang{jags} \citep{Plummer2003}
-and \proglang{stan} \citep{Carpenter2017}, that seamlessly interface
+via Monte-Carlo based simulation methods (e.g.~MCMC, HMC), including
+\proglang{WinBUGS} \citep{Lunn2000}, \proglang{JAGS} \citep{Plummer2003}
+and \proglang{Stan} \citep{Carpenter2017}, that seamlessly interface
 with \proglang{R} through packages such as \pkg{R2WinBUGS}, \pkg{R2jags}
 \citep{Su2015} and \pkg{rstan} \citep{rstan2020}. These packages
 generally require many lines of code to fit even a single model, along
 with extensive debugging and optimisation that is often time consuming
 and requires specialist expertise. Several extension packages are
 becoming available, such as \pkg{brms} \citep{Burkner2017}, that allow a
-broad range of models to be easily fit using Bayesian methods using
-simple, \pkg{lme4}-like formula syntax. However, even with packages like
+broad range of models to be easily fit using Bayesian methods through
+simple \pkg{lme4}-like formula syntax. However, even with packages like
 \pkg{brms}, Bayesian model fitting can be difficult to automate across
 all potential usage cases, particularly with respect to specifying valid
 initial parameter values and appropriate priors. In addition, as was the
@@ -177,8 +179,8 @@ initial values required to call \pkg{brms} are automatically generated
 based on information contained in the supplied data. A range of tools
 are supplied to aid the user in interrogating model fits, plotting and
 generating predicted values, as well as extracting the standard outputs,
-such as NEC and ECx - either as a full posterior sample or in summary
-form.
+such as \emph{NEC} and \emph{ECx} - either as a full posterior sample or
+in summary form.
 
 \hypertarget{technical-details-and-usage}{%
 \section{Technical details and
@@ -214,7 +216,7 @@ currently available in \pkg{bayesnec}).
 The main working function in \pkg{bayesnec} is \texttt{bnec}. We have
 attempted to make the \texttt{bnec} function as easy to use as possible,
 targeting the novice R user. While the package is available on CRAN,
-here we use the development version by installing directly from github
+here we use the development version by installing directly from GitHub
 using the package \pkg{devtools}:
 
 \begin{CodeChunk}
@@ -222,6 +224,8 @@ using the package \pkg{devtools}:
 R> devtools::install_github("https://github.com/open-AIMS/bayesnec")
 \end{CodeInput}
 \end{CodeChunk}
+
+\newpage
 
 A \pkg{bayesnec} model can be fit as simply as:
 
@@ -268,8 +272,9 @@ overdispersed, which are not assessed prior to model fitting. By default
 family. Note that in \texttt{bnec} the default link for the Gamma family
 has been set to \texttt{log}. If other link functions are required for
 any of the implemented families, such as \texttt{identity} in the case
-of a Beta family for example, this will need to be specified manually
-using:
+of a Beta family for example, this will need to be specified manually by
+adding the argument \texttt{family\ =\ Beta(link\ =\ "identity")} in the
+\texttt{bnec} call.
 
 Data that are numeric and scaled from 0 to 1, or 0 to \(\infty\) are
 assumed to be Beta- and Gamma-distributed respectively. Because both
@@ -311,7 +316,7 @@ adopted in ecotoxicology for Species Sensitivity Distribution (SSD)
 model inference \citep{Thorley2018, fox2020, Dalgarno}. The approach may
 have considerable value in C-R modelling because there is often no a
 priori knowledge of the functional form that the response relationship
-should take. In this case model averaging can be a useful way of
+should take. In this case, model averaging can be a useful way of
 allowing the data to drive the model selection process, with weights
 proportional to how well the individual models fit the data.
 Well-fitting models will have high weights, dominating the model
@@ -360,12 +365,15 @@ R> plot(exmp_fit$mod_fits$nec4param$fit)
 
 }
 
-\caption[Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters]{Default brms plot of the nec4param model showing the posterior probability densities and chain mixing for each of the included parameters.}\label{fig:brms-plot}
+\caption[Default \pkg{brms} plot of the \texttt{nec4param} model showing the posterior probability densities and chain mixing for each of the included parameters]{Default \pkg{brms} plot of the \texttt{nec4param} model showing the posterior probability densities and chain mixing for each of the included parameters.}\label{fig:brms-plot}
 \end{figure}
 \end{CodeChunk}
 
-which yields a plot of the posterior densities and chains plot for each
-parameter in the specified model \autoref{fig:brms-plot}.
+\newpage
+
+which yields a plot of the posterior densities as well as trace plots of
+chains for each parameter in the specified model
+(\autoref{fig:brms-plot}).
 
 The default number of total iterations in \pkg{bayesnec} is 10,000 per
 chain, with 9,000 of these used as warm-up (or burn-in) across 4 chains.
@@ -393,7 +401,7 @@ the underlying \texttt{brm} model fits. This includes a list of fitted
 models, their respective model weights, and a model-averaged
 \emph{NEC}---which is reported with a warning when it contains NSEC
 values (see more information below). A warning message also indicates
-that the \textbf{ecxll5} model may have convergence issues according to
+that the \texttt{ecxll5} model may have convergence issues according to
 the default \pkg{brms} \(\widehat{R}\) criteria:
 
 \begin{CodeChunk}
@@ -416,20 +424,20 @@ Number of posterior draws per model:  4000
 
 Model weights (Method: pseudobma_bb_weights):
              waic   wi
-nec4param -333.37 0.50
-neclin    -332.62 0.41
-ecxlin    -188.23 0.00
-ecx4param -302.53 0.00
-ecxwb1    -294.57 0.00
-ecxwb2    -316.99 0.00
-ecxll5    -329.55 0.09
-ecxll4    -302.34 0.00
+nec4param -333.02 0.58
+neclin    -332.53 0.41
+ecxlin    -188.51 0.00
+ecx4param -302.55 0.00
+ecxwb1    -294.15 0.00
+ecxwb2    -317.22 0.00
+ecxll5    -319.45 0.00
+ecxll4    -302.33 0.00
 
 
 Summary of weighted NEC posterior estimates:
 NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
     Estimate Q2.5 Q97.5
-NEC     1.40 1.28  1.48
+NEC     1.41 1.30  1.48
 \end{CodeOutput}
 \end{CodeChunk}
 
@@ -454,7 +462,7 @@ R> plot(exmp_fit)
 
 }
 
-\caption[Base plot of the example fit model averaged curve]{Base plot of the example fit model averaged curve. The solid black line is the fitted median of the posterior prediction, dashed black lines are the 95 percent credible intervals, and the red vertical lines show the estimated NEC value.}\label{fig:base-plot}
+\caption[Base plot of the example fit model averaged curve]{Base plot of the example fit model averaged curve. The solid black line is the fitted median of the posterior prediction, dashed black lines are the 95\% credible intervals, and the red vertical lines show the estimated \textit{NEC} value.}\label{fig:base-plot}
 \end{figure}
 \end{CodeChunk}
 
@@ -476,18 +484,19 @@ vector of two or more of the available models are supplied,
 containing Bayesian model averaged predictions for the supplied models,
 providing they were successfully fitted.
 
-The \texttt{model} argument may also be one of ``all'', meaning all of
-the available models will be fit; ``ecx'' meaning only models excluding
-the \(\eta = \text{NEC}\) step parameter will be fit; or ``nec'' meaning
-only models with the \(\eta = \text{NEC}\) step parameter (see below
-\textbf{Model parameters}) will be fit. There are a range of other
-pre-defined model groups available. The full list of currently
-implemented model groups can be seen using the function
-\texttt{models()}.
+The \texttt{model} argument may also be one of: \texttt{all}, meaning
+all of the available models will be fit; \texttt{ecx}, meaning only
+models excluding the \(\eta = \text{NEC}\) step parameter will be fit;
+or \texttt{nec}, meaning only models with the \(\eta = \text{NEC}\) step
+parameter (see below
+\protect\hyperlink{parameter-definitions}{\textit{Parameter definitions}})
+will be fit. There are a range of other pre-defined model groups
+available. The full list of currently implemented model groups can be
+seen using the function \texttt{models()}.
 
 Please see the
 \href{https://open-aims.github.io/bayesnec/articles/example2b.html}{Model
-details} vignette or \texttt{?model("all")} for more information on all
+details} vignette or \texttt{?models("all")} for more information on all
 the models available in \pkg{bayesnec} and their specific formulation.
 
 \hypertarget{parameter-definitions}{%
@@ -495,9 +504,11 @@ the models available in \pkg{bayesnec} and their specific formulation.
 
 Where possible we have aimed for consistency in the interpretable
 meaning of the individual parameters across models. Across the currently
-implemented model-set, models contain from two (basic linear or
-exponential decay, see \textbf{ecxlin} or \textbf{ecxexp}) to five
-possible parameters (e.g.~\textbf{nechorme4}, \textbf{ecxhormebc5}),
+implemented model-sets, models contain from two (basic linear or
+exponential decay, see
+e.g.~\texttt{models("all"){[}c("ecxlin",\ "ecxexp"){]}} to five possible
+parameters
+(e.g.~\texttt{models("all"){[}c("nechorme4",\ "ecxhormebc5"){]}}),
 including:
 
 \begin{itemize}
@@ -507,14 +518,15 @@ including:
   response at zero concentration;
 \item
   \(\eta = \text{NEC}\), the no-effect-concentration value (the x
-  concentration value where the breakpoint in the regression is
-  estimated at, see \textbf{Model types for \emph{NEC} and \emph{ECx}
-  estimation} and \citep{Fox2010} for more details on parameter based
-  \emph{NEC} estimation);
+  concentration value at which the breakpoint in the regression is
+  estimated, see
+  \protect\hyperlink{model-types-for-nec-and-ecx-estimation}{\textit{Model types for NEC and ECx estimation}}
+  and \citet{Fox2010} for more details on parameter based \emph{NEC}
+  estimation);
 \item
   \(\beta = \text{beta}\), generally the exponential decay rate of
   response, either from 0 concentration or from the estimated \(\eta\)
-  value, with the exception of the \textbf{neclinhorme} model where it
+  value, with the exception of the \texttt{neclinhorme} model where it
   represents a linear decay from \(\eta\) because slope (\(\alpha\)) is
   required for the linear increase;
 \item
@@ -522,15 +534,15 @@ including:
   response at infinite concentration;
 \item
   \(\alpha = \text{slope}\), the linear decay rate in the models
-  \textbf{neclin} and \textbf{ecxlin}, or the linear increase rate prior
+  \texttt{neclin} and \texttt{ecxlin}, or the linear increase rate prior
   to \(\eta\) for all hormesis models;
 \item
   \(\text{ec50}\) notionally the 50\% effect concentration but may be
   influenced by scaling and should therefore not be strictly
   interpreted; and
 \item
-  \(\epsilon = \text{d}\), the exponent in the \textbf{ecxsigm} and
-  \textbf{necisgm} models.
+  \(\epsilon = \text{d}\), the exponent in the \texttt{ecxsigm} and
+  \texttt{necisgm} models.
 \end{itemize}
 
 In addition to the model parameters, all \texttt{nec...} models have a
@@ -562,13 +574,13 @@ controlled by the user through the argument \texttt{sig\_val}, which is
 passed as a probability to \texttt{quantile} and used to calculate the
 lower bound of the posterior predictions at the lowest treatment
 concentration. The default value for \texttt{sig\_val} is 0.01, which is
-analogous to an alpha value (Type 1 error rate) of 0.01 for a one-sided
+analogous to an alpha value (Type-I error rate) of 0.01 for a one-sided
 test of significance. See \texttt{?nsec} for more details. We currently
 recommend only using the ``nec'' model-set for estimation of \emph{NEC}
 values, as the \emph{NSEC} concept has yet to be formally peer-reviewed,
 and likely suffers from at least some of the same issues as the
-No-observed-effect-concentration (\emph{NOEC},
-\citep{Warne2008a, Fox2008}).
+No-observed-effect-concentration
+\citep[\emph{NOEC},][]{Warne2008a, Fox2008}.
 
 \emph{ECx} estimates can be equally validly obtained from both ``nec''
 and ``ecx'' models. \emph{ECx} estimates will usually be lower (more
@@ -591,12 +603,12 @@ lower bound on the scale of the response (models with the string
 \texttt{lin} in their name, in the case of Gaussian response data). For
 this reason, the \texttt{ecx} function has arguments
 \texttt{hormesis\_def} and \texttt{type}, both character vectors
-indicating the desired behaviour. For \texttt{hormesis\_def\ =\ "max"}
+indicating the desired behaviour. For \texttt{hormesis\_def\ =\ "max"},
 \emph{ECx} values are calculated as a decline from the maximum estimates
 (i.e.~the peak at \(\eta = \text{NEC}\)); and
 \texttt{hormesis\_def\ =\ "control"} (the default) indicates \emph{ECx}
 values should be calculated relative to the control, which is assumed to
-be the lowest observed concentration. For \texttt{type\ =\ "relative"}
+be the lowest observed concentration. For \texttt{type\ =\ "relative"},
 \emph{ECx} is calculated as the percentage decrease from the maximum
 predicted value of the response (\(\tau = \text{top}\)) to the minimum
 predicted value of the response (ie, `relative' to the observed data).
@@ -637,7 +649,7 @@ parameters}\label{priors-on-model-parameters}}
 
 In Bayesian inference, model parameters and their inherent uncertainty
 are estimated as statistical probability distributions. This is achieved
-by combining an a-prior understanding of each parameter's probability
+by combining an a-priori understanding of each parameter's probability
 density function (the `priors') with the likelihood of the observed
 information (data) given the model parameters, to yield a so-called
 posterior probability distribution. Regardless of whether this is done
@@ -695,7 +707,7 @@ to the specific parameter scaling. In the case of parameters that scale
 with \texttt{y\_var} (the response), priors are constructed based on the
 relevant link scaling, whether that be identity, the default (for that
 family), or user specified link function for a specific family. The
-priors are constructed by \texttt{bnec} internally calling the function
+priors are constructed by \texttt{bnec} internally, calling the function
 \texttt{define\_prior}, which takes the arguments \texttt{model},
 \texttt{family} (including the relevant link function),
 \texttt{predictor} (\texttt{x\_var} data), and \texttt{response}
@@ -803,7 +815,7 @@ R> sample_priors(exmp_fit$mod_fits$nec4param$fit$prior)
 
 }
 
-\caption[Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example data]{Frequency histograms of samples of the default priors used by bnec for fitting the nec4param model to the example data.}\label{fig:sample-prior}
+\caption[Frequency histograms of samples of the default priors used by bnec for fitting the \texttt{nec4param} model to the example data]{Frequency histograms of samples of the default priors used by bnec for fitting the \texttt{nec4param} model to the example data.}\label{fig:sample-prior}
 \end{figure}
 \end{CodeChunk}
 
@@ -811,7 +823,7 @@ We can also use the function \texttt{check\_priors} (based on the
 \texttt{hypothesis} function of \pkg{brms}) to assess how the posterior
 probability density for each parameter differs from that of the prior.
 Here we show the prior and posterior probability densities for the
-parameters in the \textbf{nec4param} model, extracted from our example
+parameters in the \texttt{nec4param} model, extracted from our example
 fit (see \autoref{fig:check-priorsingle}). There is also a class
 \texttt{bayesmanecfit} method that can be used to sequentially view all
 plots in a \texttt{bnec} call with multiple models, or write to a pdf as
@@ -830,7 +842,7 @@ R> check_priors(exmp_fit_nec4param)
 
 }
 
-\caption[A comparison of the prior and posterior parameter probability densities for the nec4param model fit to the example data]{A comparison of the prior and posterior parameter probability densities for the nec4param model fit to the example data.}\label{fig:check-priorsingle}
+\caption[A comparison of the prior and posterior parameter probability densities for the \texttt{nec4param} model fit to the example data]{A comparison of the prior and posterior parameter probability densities for the \texttt{nec4param} model fit to the example data.}\label{fig:check-priorsingle}
 \end{figure}
 \end{CodeChunk}
 
@@ -874,40 +886,41 @@ in the short term. In the meantime the greatest flexibility in the
 functional form of individual model fits can be readily obtained using
 models fitted independently to data within each factor level.
 
-\hypertarget{random-effects}{%
-\subsection{Random effects}\label{random-effects}}
+\hypertarget{hierarchical-effects}{%
+\subsection{Hierarchical effects}\label{hierarchical-effects}}
 
 Most ecotoxicological and toxicology experiments include a range of
 grouping elements, such as tanks, vials or batches of samples that
 contain multiple measurements that cannot be considered strictly
-independent (aka they are pseudo-replicates). To avoid criticism around
-potential issues with pseudo-replication, it is often the practice for
-ecotoxicologists to pool such observations and carry out modelling
-using, for example, the group mean. Where the number of within group
-observations varies substantially across groups, this will have the
-undesirable effect of equally weighting the group means even though some
-may be based on far fewer observations than others. In addition there
-are often instances of ecotoxicology data from multiple experiments or
-other grouping factors within an experiment (such as genotype) that
-cover the full range of x concentrations that cannot be averaged prior
-to modelling, resulting in the ecotoxicologist either ignoring the
-potential non-independence, or fitting many independent datasets and
-subsequently needing to aggregate the endpoint estimates. Carrying out
-multiple fits on separate datasets is undesirable because each fit is
-based on fewer data and will have greater uncertainty.
+independent (a.k.a. they are pseudo-replicates). To avoid criticism
+around potential issues with pseudo-replication, it is often the
+practice for ecotoxicologists to pool such observations and carry out
+modelling using, for example, the group mean. Where the number of within
+group observations varies substantially across groups, this will have
+the undesirable effect of equally weighting the group means even though
+some may be based on far fewer observations than others. In addition
+there are often instances of ecotoxicology data from multiple
+experiments or other grouping factors within an experiment (such as
+genotype) that cover the full range of x concentrations that cannot be
+averaged prior to modelling, resulting in the ecotoxicologist either
+ignoring the potential non-independence, or fitting many independent
+datasets and subsequently needing to aggregate the endpoint estimates.
+Carrying out multiple fits on separate datasets is undesirable because
+each fit is based on fewer data and will have greater uncertainty.
 
 The current version of \pkg{bayesnec} harnesses the powerful mixed
 (hierarchical) modelling capabilities of \pkg{brms} for accommodating
 hierarchical designs and other forms of non-independence. This is
-achieved by allowing a list of random terms to be passed through the
+achieved by allowing a list of grouping terms to be passed through the
 argument \emph{random}, which are then used to update the \pkg{brms}
-model formula. Random effects can be in the form of a random offset,
+model formula. Hierarchical effects can be in the form of an offset,
 which effectively allows different mean response levels across groups,
-and is achieved through specifying the random term ``ost'' in the named
-list. Random effects can also be added to any or all of the non-linear
-parameters in the model. Note that implementing random effects in a
-non-linear modelling setting is non-trivial and considerable thought and
-testing should go into selecting an appropriate random structure.
+and is achieved through specifying the term \texttt{ost} in the named
+list. Hierarchical effects can also be added to any or all of the
+non-linear parameters in the model. Note that implementing hierarchical
+effects in a non-linear modelling setting is non-trivial and
+considerable thought and testing should go into selecting an appropriate
+hierarchical structure.
 
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
@@ -955,7 +968,7 @@ example,][]{Shao2014, Thorley2018, fox2020, Wheeler2009}. In
 \pkg{bayesnec} we have implemented a broad range of potential models,
 and the default behaviour is to fit them all, although we discuss above
 situations where this is clearly not recommended (for example, in the
-estimation of \textbf{NEC}). More research is required to understand how
+estimation of \emph{NEC}). More research is required to understand how
 model-set selection influences model inference. While some studies
 suggest using a broad range of models may be optimal
 \citep{Wheeler2009}, others indicate that including multiple models of
@@ -963,9 +976,9 @@ similar shape may overweight the representation of that shape in model
 averaged predictions \citep{fox2020}. In addition, it is important to
 understand that when models are added or removed from the model-set,
 this can sometimes have a substantial influence on model predictions
-(potentially changing estimated \textbf{ECx} values, for example). As
-the model-set in \pkg{bayesnec} may change through time it is important
-to keep a record of the models that were actually fitted in a given
+(potentially changing estimated \emph{ECx} values, for example). As the
+model-set in \pkg{bayesnec} may change through time it is important to
+keep a record of the models that were actually fitted in a given
 analysis, in the event it is necessary to reproduce a set of results. A
 potentially better strategy is to build a
 \href{https://docs.docker.com/get-docker/}{Docker} container, an
@@ -984,11 +997,11 @@ possible, and capable of dealing with most real world C-R modelling
 applications in the hope that Bayesian statistics will become more
 widely used in applied risk assessment. Please submit requests through
 the package \href{https://github.com/open-AIMS/bayesnec/issues}{Issues}
-on github. Some suggested future enhancements include:
+on GitHub. Some suggested future enhancements include:
 
 \begin{itemize}
 \item
-  The addition of other custom families, such as the tweedie
+  The addition of other custom families, such as the Tweedie
   distribution and ordered beta model. Currently \pkg{bayesnec}
   implements adjustments away from 0 (Gamma, Beta) or 1 (Beta) as a
   strategy for allowing modelling with these types of data using the
@@ -1001,7 +1014,7 @@ on github. Some suggested future enhancements include:
   could be readily implemented in the \pkg{brms} customs families
   framework. For data that are 0 to \(\infty\) on the continuous scale
   the Tweedie distribution may prove a much better option than the
-  current zero bounded Gamma, and has been used extensively in fisheries
+  current zero-bounded Gamma, and has been used extensively in fisheries
   research for biomass data \citep{Shono2008}. As this family is not
   currently available in \pkg{brms} this would also need to be
   implemented as a custom family, which for the Tweedie is not trivial.
@@ -1016,9 +1029,9 @@ on github. Some suggested future enhancements include:
   wrapper function could be developed that allows toxicity to be
   assessed, as measured through \emph{NEC}, or \emph{ECx} for example,
   against a required pre-defined threshold. Such a feature may be useful
-  where toxicity testing is used as a trigger in risk management (for
-  example, using whole-effluent-toxicity (WET) testing,
-  \citep{Karman2019}).
+  where toxicity testing is used as a trigger in risk management
+  \citep[for example, using whole-effluent-toxicity (WET)
+  testing,][]{Karman2019}.
 \end{itemize}
 
 \hypertarget{acknowledgements}{%
