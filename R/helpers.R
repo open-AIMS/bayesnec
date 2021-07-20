@@ -281,19 +281,47 @@ nice_ecx_out <- function(ec, ecx_tag) {
 }
 
 #' @noRd
+contains_zero <- function(x) {
+  sum(x == 0, na.rm = TRUE) >= 1
+}
+
+#' @noRd
+contains_one <- function(x) {
+  sum(x == 1, na.rm = TRUE) >= 1
+}
+
+#' @noRd
 response_link_scale <- function(response, family) {
   link_tag <- family$link
+  min_n0val <- min(response[which(response > 0)])/100
+  if (link_tag == "logit") {  
+    max_n1val <- max(response[which(response < 1)]) + (1-max(response[which(response < 1)]))*0.99
+  }  
+  
   custom_name <- check_custom_name(family)
   if (link_tag %in% c("logit", "log")) {
     if (custom_name == "beta_binomial2") {
+      if(contains_zero(response)){
+        response <- linear_rescale(response, r_out = c(min_n0val, max(response)))
+      }
+      if(contains_one(response)){
+        response <- linear_rescale(response, r_out = c(min(response), max_n1val))
+      }
       response <- binomial(link = link_tag)$linkfun(response)
-    } else {
-      if (family$family == "binomial") {
-        response <- linear_rescale(response, r_out = c(0.001, 0.999))
+    } else if (family$family == "binomial") {
+      if(contains_zero(response)){
+        response <- linear_rescale(response, r_out = c(min_n0val, max(response)))
+      }
+      if(contains_one(response)){
+        response <- linear_rescale(response, r_out = c(min(response), max_n1val))
       }
       response <- family$linkfun(response)
+    } else {
+      if(contains_zero(response)){
+        response <- linear_rescale(response, r_out = c(min_n0val, max(response)))
+      }
+      response <- family$linkfun(response)       
     }
-    response <- response[is.finite(response)]
   }
   response
 }

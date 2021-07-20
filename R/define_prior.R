@@ -16,15 +16,6 @@ define_prior <- function(model, family, predictor, response) {
   custom_name <- check_custom_name(family)
   if (link_tag %in% c("logit", "log")) {
     fam_tag <- "gaussian"
-    if (custom_name == "beta_binomial2") {
-      response <- binomial(link = link_tag)$linkfun(response)
-    } else {
-      if (family$family == "binomial") {
-        response <- linear_rescale(response, r_out = c(0.001, 0.999))
-      }
-      response <- family$linkfun(response)
-    }
-    response <- response[is.finite(response)]
   } else {
     if (custom_name == "beta_binomial2") {
       fam_tag <- custom_name
@@ -32,11 +23,13 @@ define_prior <- function(model, family, predictor, response) {
       fam_tag <- family$family
     }
   }
-  if (length(response) == 0) {
-    stop("response vector is empty, most likely caused by Inf values",
-         " on the inverse link scale (i.e. 0 or 1 data) or for containing NAs",
-         " only")
+  if (custom_name == "beta_binomial2" | family$family == "binomial") {
+    if (is.integer(response)|max(response)>1) {
+          stop("response vector must be passed as a proportion to define_prior (not as trials) for the binomial and betabinomial families")
+    }
   }
+  response <- response_link_scale(response, family)
+
   x_type <- set_distribution(predictor)
   u_t_g <- paste0("gamma(2, ",
                   1 / (quantile(response, probs = 0.75) / 2),
