@@ -44,8 +44,10 @@ test_that("family is a family object of correct family", {
                                predictor = pred_a, response = resp_a),
                   "brmsprior")
   expect_s3_class(define_prior(model = "nec3param", family = binomial(),
-                               predictor = pred_a, response = resp_a),
+                               predictor = pred_a, response = resp_a/100),
                   "brmsprior")
+  expect_error(define_prior(model = "nec3param", family = binomial(),
+                               predictor = pred_a, response = resp_a))
   expect_s3_class(define_prior(model = "nec3param", family = Gamma(),
                                predictor = pred_a, response = resp_a),
                   "brmsprior")

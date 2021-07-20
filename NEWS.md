@@ -1,3 +1,7 @@
+# bayesnec development version
+- Corrected error for logit link cases for the betabinomial  where data contain 0 and 1 to ensure appropriate prior values on top and bot
+
+
 # bayesnec 1.0.1
 
 - If link functions are not specified in bnec, then the default link function is used; previous versions of bayesnec used the identity link.

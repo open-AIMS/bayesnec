@@ -1,14 +1,16 @@
 library(bayesnec)
-
-test_that("models fit correctly", {
-  nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
   fit1 <- manec_gausian_identity$mod_fits$nec4param$fit
   fit2 <- manec_gausian_identity$mod_fits$ecx4param$fit
+  
+test_that("models fit correctly", {
+  nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
+
 })
 
 test_that("ecx works", {
  ec10 <- ecx(manec_gausian_identity, type = "relative")
  ec90 <- ecx(manec_gausian_identity, ecx_val = 90, type = "relative") 
+ expect_gt(ec90[1], ec10[1])
 })
 
 test_that("gaussian model with identity works correctly", {
@@ -82,3 +84,4 @@ test_that("gamma model returns expected family and link", {
   expect_equal(manec_gamma_identity$mod_fits$nec4param$fit$family$link, "identity")  
   expect_equal(manec_gamma_log$mod_fits$nec4param$fit$family$link, "log")  
 })
+
