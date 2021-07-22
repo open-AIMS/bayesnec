@@ -46,11 +46,16 @@ library(bayesnec)
 data(nec_data)
 
 # Fit a set of models
-exmp <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "all")
+# set.seed(30)
+x <- seq(0, 10, length = 12)
+y <- bayesnec:::pred_ecx4param(x=x, b_bot=0, b_top=1, b_beta=0.5, b_ec50 = 5)
+dat <- data.frame(y_vec = rnorm(15*12, y, 0.2), x_vec = rep(x, 15))
+exmp <- bnec(data = dat, x_var = "x_vec", y_var = "y_vec", model = "decline", iter=2e3)
+
 class(exmp)
 ```
 
-This call fits all models that are suitable for modelling beta response data using a logit link. We can pull out the **nec** models and the **ecx** models separately, to create two more alternative model fits of this data.
+This call fits all models that are suitable for modelling beta response data using a logit link, excluding all of the hormesis models, which we are not considering here. We can pull out the **nec** models and the **ecx** models separately, to create two alternative model fits of this data to illustrate the posterior comparison functionality.
 
 ```{r}
 exmp_nec <- pull_out(exmp, model = "nec")
@@ -75,7 +80,7 @@ ggplot(data = post_comp$posterior_data, mapping = aes(x = value)) +
   theme_classic()
 ```
 
-From this you can see that the ec10 estimates are very similar for the **nec** and **all**. This is because the **nec** model types dominate the model weights in this **all** fit, see wi in `exmp$mod_stats`. The ec10 estimate is slightly lower (more conservative) for the **ecx** based models.
+From this you can see that the ec10 estimates are very similar for the **ecx** and **all**. This is because the **ecx** model types dominate the model weights in this **all** fit, see wi in `exmp$mod_stats`. The ec10 estimate is slightly lower (more conservative) for the **ecx** based models.
 
 
 The `data.frame` "diff_data" can be used to make a similar plot, but specifically for the differences among models.
@@ -87,7 +92,7 @@ ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
   theme_classic() 
 ```
 
-This shows that the differences among the three estimates. Overall they are all quite similar, but with there no difference in the **nec** and **all** estimates (the probability density overlaps zero), and a tendency for the **ecx** to be lower than **all** and **nec**.
+This shows that the differences among the three estimates. Overall they are all quite similar, but while there is no difference in the **ecx** and **all** estimates (the probability density overlaps zero),there is a tendency for the **ecx** to be lower than **nec**.
 
 Finally, the probability that the endpoint estimate for one model set is greater than the other is obtained in "prob_diff". Here you can see there is ~57% chance that **all** is great than **ecx**, a 46% chance that **all** is greater than **nec** and a 36% chance that **ecx** is greater than **nec**.
 
@@ -112,7 +117,7 @@ head(post_comp_fitted$posterior_data)
 head(post_comp_fitted$diff_data)
 ```
 
-Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** or **all** sets, which are flat prior to the nec step point, and then decline more rapidly.
+Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the set, which is flat prior to the nec step point, and then declines more rapidly.
 
 ```{r}
 ggplot(data = post_comp_fitted$posterior_data) +
@@ -121,7 +126,7 @@ ggplot(data = post_comp_fitted$posterior_data) +
               alpha = 0.3)
 ```
 
-We can plot the differences between pairs of models in the list by plotting "diff.Estimate" from "diff_data" and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest. As we have seen for ec10, the **nec** and **all** model sets are relatively similar across the entire range of concentrations (x) (green band overlaps zero). The red band is the difference between **ecx** and **all** and shows that the **ecx** set has slightly higher estimates than **all** at low to moderate x values, although really these curves are very similar as we saw from such small differences in the ec10 estimates above.
+We can plot the differences between pairs of models in the list by plotting "diff.Estimate" from "diff_data" and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest. As we have seen for ec10, the **ecx** and **all** model sets are relatively similar across the entire range of concentrations (x) (red band overlaps zero). The green band is the difference between **nec** and **all** and shows that the **nec** set has slightly higher estimates than **all** and **ecx** at low to moderate x values, although really these curves are very similar as we saw from such small differences in the ec10 estimates above.
 
 ```{r}
 ggplot(data = post_comp_fitted$diff_data) +
@@ -131,7 +136,7 @@ ggplot(data = post_comp_fitted$diff_data) +
               fill = comparison), alpha = 0.3)
 ```
 
-And finally we can plot the probability that one model is greater than the other by plotting "prob" from "diff_data". The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The green line hovers around 0.5 clearly indicating the lack of significant difference in the **nec** and **all** model sets at any point of the x-curve. The red and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the **ecx** and the **nec** or **all** predictions. The greatest probability of difference among these curves is between values of ~1 and ~1.5 of x, where the probability of difference does tend towards high values, at the point where the *ecx** set deviates from the **nec** set.
+And finally we can plot the probability that one model is greater than the other by plotting "prob" from "diff_data". The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The red line hovers around 0.5 clearly indicating the lack of significant difference in the **ecx** and **all** model sets at any point of the x-curve. The red and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the **ecx** and the **nec** or **all** predictions. The greatest probability of difference among these curves is between values of ~4 and ~6  of x, where the probability of difference does tend towards high values, at the point where the *ecx** set deviates from the **nec** set.
 
 ```{r}
 ggplot(data = post_comp_fitted$prob_diff) +
