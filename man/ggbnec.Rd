@@ -18,7 +18,7 @@ ggbnec(x, nec = TRUE, ecx = FALSE, ...)
   Arguments passed on to \code{\link[=ggbnec.bayesmanecfit]{ggbnec.bayesmanecfit}}
   \describe{
     \item{\code{all}}{Should all individual models be plotted separately (defaults to
-TRUE) or should model averaged predictions be plotted instead?}
+FALSE) or should model averaged predictions be plotted instead?}
     \item{\code{plot}}{Should output \code{\link[ggplot2]{ggplot}} output be plotted?
 Only relevant if \code{all = TRUE} and \code{multi_facet = FALSE}.}
     \item{\code{ask}}{Indicates if the user is prompted before a new page is plotted.
@@ -27,7 +27,7 @@ Only relevant if \code{plot = TRUE} and \code{multi_facet = FALSE}.}
 new page. Only relevant if \code{plot = TRUE} and
 \code{multi_facet = FALSE}.}
     \item{\code{multi_facet}}{Should all plots be plotted in one single panel via
-facets? Defaults to FALSE.}
+facets? Defaults to TRUE.}
   }}
 }
 \value{

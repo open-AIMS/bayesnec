@@ -18,11 +18,10 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                lxform = NA, jitter_x = FALSE,
                                jitter_y = FALSE, ylab = "response",
                                xlab = "concentration", xticks = NA,
-                               all_models = FALSE) {
-  oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))            
-  
+                               all_models = FALSE) {  
   if (all_models) {
+    oldpar <- par(no.readonly = TRUE)
+    on.exit(par(oldpar))
     mod_fits <- x$mod_fits
     par(mfrow = c(ceiling(length(mod_fits) / 2), 2),
         mar = c(1.5, 1.5, 1.5, 1.5), oma = c(3, 3, 0, 0))

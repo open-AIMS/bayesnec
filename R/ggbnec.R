@@ -329,7 +329,7 @@ ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' function \code{\link{bnec}}.
 #' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #' @param all Should all individual models be plotted separately (defaults to
-#' TRUE) or should model averaged predictions be plotted instead?
+#' FALSE) or should model averaged predictions be plotted instead?
 #' @param plot Should output \code{\link[ggplot2]{ggplot}} output be plotted?
 #' Only relevant if \code{all = TRUE} and \code{multi_facet = FALSE}.
 #' @param ask Indicates if the user is prompted before a new page is plotted.
@@ -338,7 +338,7 @@ ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' new page. Only relevant if \code{plot = TRUE} and
 #' \code{multi_facet = FALSE}.
 #' @param multi_facet Should all plots be plotted in one single panel via
-#' facets? Defaults to FALSE.
+#' facets? Defaults to TRUE.
 #'
 #' @inherit ggbnec.default return examples
 #'
@@ -346,9 +346,9 @@ ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' @importFrom purrr map_dfr
 #' @importFrom grDevices devAskNewPage
 #' @export
-ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = TRUE,
+ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = FALSE,
                                  plot = TRUE, ask = TRUE, newpage = TRUE,
-                                 multi_facet = FALSE) {
+                                 multi_facet = TRUE) {
   if (all) {
     all_fits <- lapply(x$success_models, pull_out, manec = x) %>%
       suppressMessages
