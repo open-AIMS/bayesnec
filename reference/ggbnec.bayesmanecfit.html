@@ -88,7 +88,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.2</span>
       </span>
     </div>
 
@@ -160,11 +160,11 @@
   nec <span class='op'>=</span> <span class='cn'>TRUE</span>,
   ecx <span class='op'>=</span> <span class='cn'>FALSE</span>,
   <span class='va'>...</span>,
-  all <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  all <span class='op'>=</span> <span class='cn'>FALSE</span>,
   plot <span class='op'>=</span> <span class='cn'>TRUE</span>,
   ask <span class='op'>=</span> <span class='cn'>TRUE</span>,
   newpage <span class='op'>=</span> <span class='cn'>TRUE</span>,
-  multi_facet <span class='op'>=</span> <span class='cn'>FALSE</span>
+  multi_facet <span class='op'>=</span> <span class='cn'>TRUE</span>
 <span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -190,7 +190,7 @@ function <code><a href='bnec.html'>bnec</a></code>.</p></td>
     <tr>
       <th>all</th>
       <td><p>Should all individual models be plotted separately (defaults to
-TRUE) or should model averaged predictions be plotted instead?</p></td>
+FALSE) or should model averaged predictions be plotted instead?</p></td>
     </tr>
     <tr>
       <th>plot</th>
@@ -211,7 +211,7 @@ new page. Only relevant if <code>plot = TRUE</code> and
     <tr>
       <th>multi_facet</th>
       <td><p>Should all plots be plotted in one single panel via
-facets? Defaults to FALSE.</p></td>
+facets? Defaults to TRUE.</p></td>
     </tr>
     </table>
 
@@ -8645,9 +8645,9 @@ facets? Defaults to FALSE.</p></td>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 2101     1.45       0.31       1.50       NA    &lt;NA&gt;     &lt;NA&gt;       &lt;NA&gt;</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 2102     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt;       NA    &lt;NA&gt;     &lt;NA&gt;       &lt;NA&gt;</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 2103     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt;       NA    &lt;NA&gt;     &lt;NA&gt;       &lt;NA&gt;</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2104     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 1.691857      50     1.69       1.65</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2105     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 1.654997    &lt;NA&gt;     &lt;NA&gt;       &lt;NA&gt;</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2106     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 1.731908    &lt;NA&gt;     &lt;NA&gt;       &lt;NA&gt;</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 2104     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 1.688665      50     1.69       1.65</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 2105     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 1.653560    &lt;NA&gt;     &lt;NA&gt;       &lt;NA&gt;</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 2106     &lt;NA&gt;       &lt;NA&gt;       &lt;NA&gt; 1.729754    &lt;NA&gt;     &lt;NA&gt;       &lt;NA&gt;</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span>      ecx_labs_u</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 1          &lt;NA&gt;</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 2          &lt;NA&gt;</span>

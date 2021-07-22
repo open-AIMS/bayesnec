@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.0.2</span>
       </span>
     </div>
 
@@ -156,10 +156,10 @@
 <p>Finally, the probability that the endpoint estimate for one model set is greater than the other is obtained in “prob_diff”. Here you can see there is ~57% chance that <strong>all</strong> is great than <strong>ecx</strong>, a 46% chance that <strong>all</strong> is greater than <strong>nec</strong> and a 36% chance that <strong>ecx</strong> is greater than <strong>nec</strong>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">post_comp</span><span class="op">$</span><span class="va">prob_diff</span>
-<span class="co">#&gt;   comparison    prob</span>
-<span class="co">#&gt; 1    all-ecx 0.62825</span>
-<span class="co">#&gt; 2    all-nec 0.46700</span>
-<span class="co">#&gt; 3    ecx-nec 0.31850</span></code></pre></div>
+<span class="co">#&gt;   comparison  prob</span>
+<span class="co">#&gt; 1    all-ecx 0.530</span>
+<span class="co">#&gt; 2    all-nec 0.475</span>
+<span class="co">#&gt; 3    ecx-nec 0.413</span></code></pre></div>
 </div>
 <div id="comparing-posterior-fitted-values" class="section level2">
 <h2 class="hasAnchor">
@@ -173,20 +173,20 @@
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span>
 <span class="co">#&gt;   model          x  Estimate      Q2.5     Q97.5</span>
-<span class="co">#&gt; 1   all 0.03234801 0.8868703 0.8682430 0.8982607</span>
-<span class="co">#&gt; 2   all 0.09741274 0.8872478 0.8723473 0.8982907</span>
-<span class="co">#&gt; 3   all 0.16247747 0.8875057 0.8744027 0.8982907</span>
-<span class="co">#&gt; 4   all 0.22754220 0.8877471 0.8755756 0.8983657</span>
-<span class="co">#&gt; 5   all 0.29260692 0.8879315 0.8766390 0.8985790</span>
-<span class="co">#&gt; 6   all 0.35767165 0.8882242 0.8773896 0.8986707</span>
+<span class="co">#&gt; 1   all 0.03234801 0.8871461 0.8669137 0.8983407</span>
+<span class="co">#&gt; 2   all 0.09741274 0.8874614 0.8713959 0.8983637</span>
+<span class="co">#&gt; 3   all 0.16247747 0.8877498 0.8736837 0.8984265</span>
+<span class="co">#&gt; 4   all 0.22754220 0.8879646 0.8750819 0.8984654</span>
+<span class="co">#&gt; 5   all 0.29260692 0.8882508 0.8761676 0.8985759</span>
+<span class="co">#&gt; 6   all 0.35767165 0.8884914 0.8770048 0.8986192</span>
 <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span>
 <span class="co">#&gt;   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x</span>
-<span class="co">#&gt; 1    all-ecx  -0.004376185 -0.02506055 0.01187423 0.03234801</span>
-<span class="co">#&gt; 2    all-ecx  -0.004086470 -0.02226452 0.01188780 0.09741274</span>
-<span class="co">#&gt; 3    all-ecx  -0.003816006 -0.02079475 0.01186980 0.16247747</span>
-<span class="co">#&gt; 4    all-ecx  -0.003593760 -0.01978070 0.01185622 0.22754220</span>
-<span class="co">#&gt; 5    all-ecx  -0.003303964 -0.01891601 0.01188780 0.29260692</span>
-<span class="co">#&gt; 6    all-ecx  -0.002991943 -0.01840719 0.01202248 0.35767165</span></code></pre></div>
+<span class="co">#&gt; 1    all-ecx  -0.004057745 -0.02612760 0.01125497 0.03234801</span>
+<span class="co">#&gt; 2    all-ecx  -0.003659499 -0.02179233 0.01135152 0.09741274</span>
+<span class="co">#&gt; 3    all-ecx  -0.003339460 -0.02008325 0.01132324 0.16247747</span>
+<span class="co">#&gt; 4    all-ecx  -0.003100023 -0.01926193 0.01138954 0.22754220</span>
+<span class="co">#&gt; 5    all-ecx  -0.002899760 -0.01825852 0.01156018 0.29260692</span>
+<span class="co">#&gt; 6    all-ecx  -0.002702336 -0.01781214 0.01173561 0.35767165</span></code></pre></div>
 <p>Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the <strong>ecx</strong> model set begins to decline earlier than the <strong>nec</strong> or <strong>all</strong> sets, which are flat prior to the nec step point, and then decline more rapidly.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span> <span class="op">+</span>
