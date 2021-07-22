@@ -114,11 +114,106 @@ set.seed(333)
 exp_1 <- bnec(data = binom_data, x_var = "log_x",
               y_var = "suc", model = "neclin",
               trials_var = "tot")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58b5c2fb.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58b5c2fb.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
+#> 
+#> SAMPLING FOR MODEL '8a8b3e9e9e97704abf746e2c6f5cd369' NOW (CHAIN 1).
+#> Chain 1: 
+#> Chain 1: Gradient evaluation took 7.2e-05 seconds
+#> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.72 seconds.
+#> Chain 1: Adjust your expectations accordingly!
+#> Chain 1: 
+#> Chain 1: 
+#> Chain 1: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 1: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 1: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 1: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 1: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 1: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 1: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 1: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 1: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 1: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 1: 
+#> Chain 1:  Elapsed Time: 1.31598 seconds (Warm-up)
+#> Chain 1:                0.172262 seconds (Sampling)
+#> Chain 1:                1.48824 seconds (Total)
+#> Chain 1: 
+#> 
+#> SAMPLING FOR MODEL '8a8b3e9e9e97704abf746e2c6f5cd369' NOW (CHAIN 2).
+#> Chain 2: 
+#> Chain 2: Gradient evaluation took 2.4e-05 seconds
+#> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.24 seconds.
+#> Chain 2: Adjust your expectations accordingly!
+#> Chain 2: 
+#> Chain 2: 
+#> Chain 2: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 2: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 2: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 2: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 2: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 2: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 2: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 2: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 2: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 2: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 2: 
+#> Chain 2:  Elapsed Time: 1.31395 seconds (Warm-up)
+#> Chain 2:                0.180111 seconds (Sampling)
+#> Chain 2:                1.49406 seconds (Total)
+#> Chain 2: 
+#> 
+#> SAMPLING FOR MODEL '8a8b3e9e9e97704abf746e2c6f5cd369' NOW (CHAIN 3).
+#> Chain 3: 
+#> Chain 3: Gradient evaluation took 2.5e-05 seconds
+#> Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+#> Chain 3: Adjust your expectations accordingly!
+#> Chain 3: 
+#> Chain 3: 
+#> Chain 3: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 3: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 3: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 3: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 3: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 3: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 3: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 3: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 3: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 3: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 3: 
+#> Chain 3:  Elapsed Time: 1.31919 seconds (Warm-up)
+#> Chain 3:                0.191825 seconds (Sampling)
+#> Chain 3:                1.51101 seconds (Total)
+#> Chain 3: 
+#> 
+#> SAMPLING FOR MODEL '8a8b3e9e9e97704abf746e2c6f5cd369' NOW (CHAIN 4).
+#> Chain 4: 
+#> Chain 4: Gradient evaluation took 2.5e-05 seconds
+#> Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+#> Chain 4: Adjust your expectations accordingly!
+#> Chain 4: 
+#> Chain 4: 
+#> Chain 4: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 4: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 4: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 4: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 4: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 4: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 4: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 4: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 4: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 4: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 4: 
+#> Chain 4:  Elapsed Time: 1.30727 seconds (Warm-up)
+#> Chain 4:                0.187053 seconds (Sampling)
+#> Chain 4:                1.49433 seconds (Total)
+#> Chain 4:
 ```
 
 The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(exp_1$fit)` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially `bayesnec` will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains `bayesnec` with try up to `n_tries` more times to fit the data using either `bayesnec` generated or `brms` default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.
@@ -126,22 +221,44 @@ The function shows the progress of the `brms` fit and returns the usual `brms` o
 
 ```r
 plot(exp_1$fit)
-#> Error in plot(exp_1$fit): object 'exp_1' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-6-1.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" width="100%" />
 
 In our example, the chains are well mixed, and the probability density plots look good. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks ok. There are a range of other model diagnostics that can be explored for [brms] model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (https://github.com/paul-buerkner/brms) models.
 
 
 ```r
 pairs(exp_1$fit)
-#> Error in pairs(exp_1$fit): object 'exp_1' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-7-1.png" title="plot of chunk unnamed-chunk-7" alt="plot of chunk unnamed-chunk-7" width="100%" />
 
 We can see the summary of our fitted model parameters using:
 
 ```r
 summary(exp_1)
-#> Error in summary(exp_1): object 'exp_1' not found
+#> Object of class bayesnecfit containing the following non-linear model: neclin
+#> 
+#>  Family: binomial 
+#>   Links: mu = logit 
+#> Formula: y | trials(trials) ~ top - exp(slope) * (x - nec) * step(x - nec) 
+#>          top ~ 1
+#>          slope ~ 1
+#>          nec ~ 1
+#>    Data: structure(list(x = c(-2.30258509299405, -2.3025850 (Number of observations: 48) 
+#> Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;
+#>          total post-warmup samples = 4000
+#> 
+#> Population-Level Effects: 
+#>                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#> top_Intercept       1.69      0.05     1.59     1.80 1.00     1928     1457
+#> slope_Intercept     0.66      0.04     0.58     0.73 1.00     1272     1284
+#> nec_Intercept       3.72      0.06     3.60     3.82 1.00     1186     1040
+#> 
+#> Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+#> and Tail_ESS are effective sample size measures, and Rhat is the potential
+#> scale reduction factor on split chains (at convergence, Rhat = 1).
 ```
 
 Note the Rhat values in this example are one, indicating convergence.
@@ -151,8 +268,9 @@ The function `plot` can be used to plot the fitted model. You can also make your
 
 ```r
 plot(exp_1, lxform = exp)
-#> Error in plot(exp_1, lxform = exp): object 'exp_1' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-9-1.png" title="plot of chunk unnamed-chunk-9" alt="plot of chunk unnamed-chunk-9" width="100%" />
 
 Alternatively, we can use the built in `brms` methods to plot the `brms` fit directly. For example:
 
@@ -160,19 +278,20 @@ Alternatively, we can use the built in `brms` methods to plot the `brms` fit dir
 ```r
 df <- exp_1$fit$data %>%
   dplyr::mutate(prop = y / trials)
-#> Error in dplyr::mutate(., prop = y/trials): object 'exp_1' not found
 plot(brms::conditional_effects(exp_1$fit))[[1]] +
      geom_point(data = df, aes(x = x, y = prop),
                 inherit.aes = FALSE)
-#> Error in brms::conditional_effects(exp_1$fit): object 'exp_1' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-10-1.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" width="100%" /><img src="vignette-fig-unnamed-chunk-10-2.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" width="100%" />
 
 This model fit doesn't look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values >1 indicate overdispersion and values <1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model doesn't properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
 
 
 ```r
 exp_1$dispersion
-#> Error in eval(expr, envir, enclos): object 'exp_1' not found
+#> Estimate     Q2.5    Q97.5 
+#> 19.51379 13.07776 30.61626
 ```
 
 ### Beta-Binomial
@@ -186,20 +305,119 @@ exp_1b <- bnec(data = binom_data, x_var = "log_x",
                y_var = "suc", model = "neclin",
                family = beta_binomial2,
                trials_var = "tot")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58024da6.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58024da6.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
+#> 
+#> SAMPLING FOR MODEL 'dbe470e6d8427b0eb0462767407ead75' NOW (CHAIN 1).
+#> Chain 1: 
+#> Chain 1: Gradient evaluation took 6.2e-05 seconds
+#> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.62 seconds.
+#> Chain 1: Adjust your expectations accordingly!
+#> Chain 1: 
+#> Chain 1: 
+#> Chain 1: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 1: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 1: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 1: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 1: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 1: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 1: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 1: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 1: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 1: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 1: 
+#> Chain 1:  Elapsed Time: 3.36142 seconds (Warm-up)
+#> Chain 1:                0.413773 seconds (Sampling)
+#> Chain 1:                3.7752 seconds (Total)
+#> Chain 1: 
+#> 
+#> SAMPLING FOR MODEL 'dbe470e6d8427b0eb0462767407ead75' NOW (CHAIN 2).
+#> Chain 2: 
+#> Chain 2: Gradient evaluation took 4e-05 seconds
+#> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.4 seconds.
+#> Chain 2: Adjust your expectations accordingly!
+#> Chain 2: 
+#> Chain 2: 
+#> Chain 2: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 2: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 2: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 2: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 2: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 2: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 2: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 2: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 2: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 2: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 2: 
+#> Chain 2:  Elapsed Time: 3.3744 seconds (Warm-up)
+#> Chain 2:                0.451995 seconds (Sampling)
+#> Chain 2:                3.8264 seconds (Total)
+#> Chain 2: 
+#> 
+#> SAMPLING FOR MODEL 'dbe470e6d8427b0eb0462767407ead75' NOW (CHAIN 3).
+#> Chain 3: 
+#> Chain 3: Gradient evaluation took 3.9e-05 seconds
+#> Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.39 seconds.
+#> Chain 3: Adjust your expectations accordingly!
+#> Chain 3: 
+#> Chain 3: 
+#> Chain 3: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 3: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 3: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 3: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 3: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 3: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 3: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 3: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 3: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 3: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 3: 
+#> Chain 3:  Elapsed Time: 3.39203 seconds (Warm-up)
+#> Chain 3:                0.433083 seconds (Sampling)
+#> Chain 3:                3.82511 seconds (Total)
+#> Chain 3: 
+#> 
+#> SAMPLING FOR MODEL 'dbe470e6d8427b0eb0462767407ead75' NOW (CHAIN 4).
+#> Chain 4: 
+#> Chain 4: Gradient evaluation took 3.7e-05 seconds
+#> Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.37 seconds.
+#> Chain 4: Adjust your expectations accordingly!
+#> Chain 4: 
+#> Chain 4: 
+#> Chain 4: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 4: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 4: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 4: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 4: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 4: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 4: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 4: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 4: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 4: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 4: 
+#> Chain 4:  Elapsed Time: 3.3576 seconds (Warm-up)
+#> Chain 4:                0.460912 seconds (Sampling)
+#> Chain 4:                3.81851 seconds (Total)
+#> Chain 4:
 ```
 Fitting this data with the betabinomial2 yields a much more realistic fit in terms of the confidence bounds and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
 
 
 ```r
 plot(exp_1b, lxform = exp)
-#> Error in plot(exp_1b, lxform = exp): object 'exp_1b' not found
+```
+
+<img src="vignette-fig-unnamed-chunk-13-1.png" title="plot of chunk unnamed-chunk-13" alt="plot of chunk unnamed-chunk-13" width="100%" />
+
+```r
 exp_1b$dispersion
-#> Error in eval(expr, envir, enclos): object 'exp_1b' not found
+#> [1] NA NA NA
 ```
 
 
@@ -208,17 +426,22 @@ Now we have a good fit to these data, we can interpret the results. The estimate
 
 ```r
 exp_1b$nec
-#> Error in eval(expr, envir, enclos): object 'exp_1b' not found
+#> Estimate     Q2.5    Q97.5 
+#> 3.483277 2.703967 4.070901
 hist(exp_1b$nec_posterior)
-#> Error in hist(exp_1b$nec_posterior): object 'exp_1b' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-14-1.png" title="plot of chunk unnamed-chunk-14" alt="plot of chunk unnamed-chunk-14" width="100%" />
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
 
 
 ```r
 ecx(exp_1b)
-#> Error in ecx(exp_1b): object 'exp_1b' not found
+#>   ec_10_Q50  ec_10_Q2.5 ec_10_Q97.5 
+#>    3.849458    3.301503    4.314389 
+#> attr(,"precision")
+#> [1] 1000
 ```
 
 A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for **NEC**, as the nec_intercept population level effect in the model.
@@ -226,7 +449,31 @@ A summary method has also been developed for `bayesnecfit` objects that gives an
 
 ```r
 summary(exp_1b)
-#> Error in summary(exp_1b): object 'exp_1b' not found
+#> Object of class bayesnecfit containing the following non-linear model: neclin
+#> 
+#>  Family: beta_binomial2 
+#>   Links: mu = logit; phi = identity 
+#> Formula: y | trials(trials) ~ top - exp(slope) * (x - nec) * step(x - nec) 
+#>          top ~ 1
+#>          slope ~ 1
+#>          nec ~ 1
+#>    Data: structure(list(x = c(-2.30258509299405, -2.3025850 (Number of observations: 48) 
+#> Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;
+#>          total post-warmup samples = 4000
+#> 
+#> Population-Level Effects: 
+#>                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#> top_Intercept       1.82      0.23     1.37     2.28 1.00     1665     1908
+#> slope_Intercept     0.46      0.18     0.07     0.80 1.00     1836     1954
+#> nec_Intercept       3.48      0.31     2.70     4.07 1.00     1735     1590
+#> 
+#> Family Specific Parameters: 
+#>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#> phi     5.78      1.34     3.65     8.90 1.00     1786     2248
+#> 
+#> Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+#> and Tail_ESS are effective sample size measures, and Rhat is the potential
+#> scale reduction factor on split chains (at convergence, Rhat = 1).
 ```
 
 ### Beta data
@@ -244,24 +491,121 @@ prop_data <- "https://pastebin.com/raw/123jq46d" %>%
 set.seed(333)
 exp_2 <- bnec(data = prop_data, x_var = "raw_x",
               y_var = "resp", model = "neclin")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c337d159a.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c337d159a.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
+#> 
+#> SAMPLING FOR MODEL '8bac138c9ef2061a5ea735609fd6ea64' NOW (CHAIN 1).
+#> Chain 1: 
+#> Chain 1: Gradient evaluation took 0.000101 seconds
+#> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.01 seconds.
+#> Chain 1: Adjust your expectations accordingly!
+#> Chain 1: 
+#> Chain 1: 
+#> Chain 1: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 1: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 1: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 1: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 1: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 1: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 1: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 1: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 1: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 1: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 1: 
+#> Chain 1:  Elapsed Time: 6.27707 seconds (Warm-up)
+#> Chain 1:                0.85706 seconds (Sampling)
+#> Chain 1:                7.13413 seconds (Total)
+#> Chain 1: 
+#> 
+#> SAMPLING FOR MODEL '8bac138c9ef2061a5ea735609fd6ea64' NOW (CHAIN 2).
+#> Chain 2: 
+#> Chain 2: Gradient evaluation took 5.9e-05 seconds
+#> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.59 seconds.
+#> Chain 2: Adjust your expectations accordingly!
+#> Chain 2: 
+#> Chain 2: 
+#> Chain 2: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 2: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 2: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 2: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 2: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 2: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 2: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 2: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 2: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 2: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 2: 
+#> Chain 2:  Elapsed Time: 6.07363 seconds (Warm-up)
+#> Chain 2:                0.941764 seconds (Sampling)
+#> Chain 2:                7.01539 seconds (Total)
+#> Chain 2: 
+#> 
+#> SAMPLING FOR MODEL '8bac138c9ef2061a5ea735609fd6ea64' NOW (CHAIN 3).
+#> Chain 3: 
+#> Chain 3: Gradient evaluation took 5.7e-05 seconds
+#> Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.57 seconds.
+#> Chain 3: Adjust your expectations accordingly!
+#> Chain 3: 
+#> Chain 3: 
+#> Chain 3: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 3: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 3: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 3: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 3: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 3: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 3: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 3: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 3: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 3: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 3: 
+#> Chain 3:  Elapsed Time: 5.95139 seconds (Warm-up)
+#> Chain 3:                0.876905 seconds (Sampling)
+#> Chain 3:                6.82829 seconds (Total)
+#> Chain 3: 
+#> 
+#> SAMPLING FOR MODEL '8bac138c9ef2061a5ea735609fd6ea64' NOW (CHAIN 4).
+#> Chain 4: 
+#> Chain 4: Gradient evaluation took 6.6e-05 seconds
+#> Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.66 seconds.
+#> Chain 4: Adjust your expectations accordingly!
+#> Chain 4: 
+#> Chain 4: 
+#> Chain 4: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 4: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 4: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 4: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 4: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 4: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 4: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 4: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 4: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 4: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 4: 
+#> Chain 4:  Elapsed Time: 5.92945 seconds (Warm-up)
+#> Chain 4:                0.802549 seconds (Sampling)
+#> Chain 4:                6.732 seconds (Total)
+#> Chain 4:
 ```
 
 
 ```r
 plot(exp_2$fit)
-#> Error in plot(exp_2$fit): object 'exp_2' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-18-1.png" title="plot of chunk unnamed-chunk-18" alt="plot of chunk unnamed-chunk-18" width="100%" />
 
 
 ```r
 plot(exp_2)
-#> Error in plot(exp_2): object 'exp_2' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-19-1.png" title="plot of chunk unnamed-chunk-19" alt="plot of chunk unnamed-chunk-19" width="100%" />
 
 ### Poisson data
 
@@ -297,11 +641,106 @@ First, we supply `bnec` with `data` (count_data), and specify `x_var` and `y_var
 set.seed(333)
 exp_3 <- bnec(data = count_data, x_var = "sqrt_x",
               y_var = "count", model = "neclin")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146cdbe2b66.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146cdbe2b66.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
+#> 
+#> SAMPLING FOR MODEL 'b0d7ff4a6b0c9747c0ef05a4b7e89ac8' NOW (CHAIN 1).
+#> Chain 1: 
+#> Chain 1: Gradient evaluation took 4.8e-05 seconds
+#> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.48 seconds.
+#> Chain 1: Adjust your expectations accordingly!
+#> Chain 1: 
+#> Chain 1: 
+#> Chain 1: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 1: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 1: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 1: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 1: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 1: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 1: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 1: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 1: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 1: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 1: 
+#> Chain 1:  Elapsed Time: 2.46017 seconds (Warm-up)
+#> Chain 1:                0.335978 seconds (Sampling)
+#> Chain 1:                2.79615 seconds (Total)
+#> Chain 1: 
+#> 
+#> SAMPLING FOR MODEL 'b0d7ff4a6b0c9747c0ef05a4b7e89ac8' NOW (CHAIN 2).
+#> Chain 2: 
+#> Chain 2: Gradient evaluation took 1.8e-05 seconds
+#> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.18 seconds.
+#> Chain 2: Adjust your expectations accordingly!
+#> Chain 2: 
+#> Chain 2: 
+#> Chain 2: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 2: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 2: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 2: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 2: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 2: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 2: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 2: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 2: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 2: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 2: 
+#> Chain 2:  Elapsed Time: 2.96708 seconds (Warm-up)
+#> Chain 2:                0.327268 seconds (Sampling)
+#> Chain 2:                3.29435 seconds (Total)
+#> Chain 2: 
+#> 
+#> SAMPLING FOR MODEL 'b0d7ff4a6b0c9747c0ef05a4b7e89ac8' NOW (CHAIN 3).
+#> Chain 3: 
+#> Chain 3: Gradient evaluation took 2.1e-05 seconds
+#> Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.21 seconds.
+#> Chain 3: Adjust your expectations accordingly!
+#> Chain 3: 
+#> Chain 3: 
+#> Chain 3: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 3: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 3: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 3: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 3: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 3: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 3: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 3: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 3: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 3: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 3: 
+#> Chain 3:  Elapsed Time: 0.602879 seconds (Warm-up)
+#> Chain 3:                0.077856 seconds (Sampling)
+#> Chain 3:                0.680735 seconds (Total)
+#> Chain 3: 
+#> 
+#> SAMPLING FOR MODEL 'b0d7ff4a6b0c9747c0ef05a4b7e89ac8' NOW (CHAIN 4).
+#> Chain 4: 
+#> Chain 4: Gradient evaluation took 1.9e-05 seconds
+#> Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.19 seconds.
+#> Chain 4: Adjust your expectations accordingly!
+#> Chain 4: 
+#> Chain 4: 
+#> Chain 4: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 4: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 4: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 4: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 4: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 4: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 4: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 4: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 4: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 4: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 4: 
+#> Chain 4:  Elapsed Time: 0.987625 seconds (Warm-up)
+#> Chain 4:                0.498165 seconds (Sampling)
+#> Chain 4:                1.48579 seconds (Total)
+#> Chain 4:
 ```
 
 We first plot the model chains and parameter estimates to check the fit.
@@ -309,15 +748,21 @@ We first plot the model chains and parameter estimates to check the fit.
 
 ```r
 plot(exp_3$fit)
-#> Error in plot(exp_3$fit): object 'exp_3' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-22-1.png" title="plot of chunk unnamed-chunk-22" alt="plot of chunk unnamed-chunk-22" width="100%" />
 
 
 ```r
 plot(exp_3)
-#> Error in plot(exp_3): object 'exp_3' not found
+```
+
+<img src="vignette-fig-unnamed-chunk-23-1.png" title="plot of chunk unnamed-chunk-23" alt="plot of chunk unnamed-chunk-23" width="100%" />
+
+```r
 exp_3$dispersion
-#> Error in eval(expr, envir, enclos): object 'exp_3' not found
+#> Estimate     Q2.5    Q97.5 
+#> 3.361285 1.991797 5.519465
 ```
 
 The chains look ok; however, our plot of the fit is not very convincing. The error bars are very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try a negative binomial family.
@@ -331,11 +776,106 @@ When count data are overdispersed and cannot be modelled using the poisson famil
 set.seed(333)
 exp_3b <- bnec(data = count_data, x_var = "sqrt_x",
               y_var = "count", family = "negbinomial", model = "neclin")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c1e4f6f4.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c1e4f6f4.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
+#> 
+#> SAMPLING FOR MODEL 'b00819b13477ed73c05459704383ad86' NOW (CHAIN 1).
+#> Chain 1: 
+#> Chain 1: Gradient evaluation took 5.4e-05 seconds
+#> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.54 seconds.
+#> Chain 1: Adjust your expectations accordingly!
+#> Chain 1: 
+#> Chain 1: 
+#> Chain 1: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 1: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 1: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 1: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 1: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 1: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 1: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 1: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 1: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 1: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 1: 
+#> Chain 1:  Elapsed Time: 4.599 seconds (Warm-up)
+#> Chain 1:                0.681803 seconds (Sampling)
+#> Chain 1:                5.2808 seconds (Total)
+#> Chain 1: 
+#> 
+#> SAMPLING FOR MODEL 'b00819b13477ed73c05459704383ad86' NOW (CHAIN 2).
+#> Chain 2: 
+#> Chain 2: Gradient evaluation took 2.5e-05 seconds
+#> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.25 seconds.
+#> Chain 2: Adjust your expectations accordingly!
+#> Chain 2: 
+#> Chain 2: 
+#> Chain 2: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 2: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 2: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 2: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 2: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 2: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 2: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 2: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 2: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 2: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 2: 
+#> Chain 2:  Elapsed Time: 4.8448 seconds (Warm-up)
+#> Chain 2:                0.621595 seconds (Sampling)
+#> Chain 2:                5.4664 seconds (Total)
+#> Chain 2: 
+#> 
+#> SAMPLING FOR MODEL 'b00819b13477ed73c05459704383ad86' NOW (CHAIN 3).
+#> Chain 3: 
+#> Chain 3: Gradient evaluation took 2.9e-05 seconds
+#> Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.29 seconds.
+#> Chain 3: Adjust your expectations accordingly!
+#> Chain 3: 
+#> Chain 3: 
+#> Chain 3: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 3: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 3: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 3: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 3: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 3: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 3: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 3: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 3: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 3: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 3: 
+#> Chain 3:  Elapsed Time: 4.88644 seconds (Warm-up)
+#> Chain 3:                0.691177 seconds (Sampling)
+#> Chain 3:                5.57761 seconds (Total)
+#> Chain 3: 
+#> 
+#> SAMPLING FOR MODEL 'b00819b13477ed73c05459704383ad86' NOW (CHAIN 4).
+#> Chain 4: 
+#> Chain 4: Gradient evaluation took 2.9e-05 seconds
+#> Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.29 seconds.
+#> Chain 4: Adjust your expectations accordingly!
+#> Chain 4: 
+#> Chain 4: 
+#> Chain 4: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 4: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 4: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 4: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 4: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 4: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 4: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 4: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 4: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 4: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 4: 
+#> Chain 4:  Elapsed Time: 4.81602 seconds (Warm-up)
+#> Chain 4:                0.548506 seconds (Sampling)
+#> Chain 4:                5.36452 seconds (Total)
+#> Chain 4:
 ```
 
 The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it still does not seem to be a good model for these data. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
@@ -343,14 +883,16 @@ The resultant plot seems to indicate the negative binomial family works better i
 
 ```r
 plot(exp_3b)
-#> Error in plot(exp_3b): object 'exp_3b' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-25-1.png" title="plot of chunk unnamed-chunk-25" alt="plot of chunk unnamed-chunk-25" width="100%" />
 
 
 ```r
 plot(exp_3b$fit)
-#> Error in plot(exp_3b$fit): object 'exp_3b' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-26-1.png" title="plot of chunk unnamed-chunk-26" alt="plot of chunk unnamed-chunk-26" width="100%" />
 
 ### Measure data
 
@@ -368,25 +910,149 @@ measure_data <- nec_data %>%
 set.seed(333)
 exp_4 <- bnec(data = measure_data, x_var = "x",
               y_var = "measure", model = "neclin")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c47cf6267.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c47cf6267.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
+#> 
+#> SAMPLING FOR MODEL '66a3c69058cc57a98f33c1c6d389c60a' NOW (CHAIN 1).
+#> Chain 1: 
+#> Chain 1: Gradient evaluation took 6.2e-05 seconds
+#> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.62 seconds.
+#> Chain 1: Adjust your expectations accordingly!
+#> Chain 1: 
+#> Chain 1: 
+#> Chain 1: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 1: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 1: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 1: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 1: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 1: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 1: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 1: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 1: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 1: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 1: 
+#> Chain 1:  Elapsed Time: 1.68346 seconds (Warm-up)
+#> Chain 1:                0.253453 seconds (Sampling)
+#> Chain 1:                1.93692 seconds (Total)
+#> Chain 1: 
+#> 
+#> SAMPLING FOR MODEL '66a3c69058cc57a98f33c1c6d389c60a' NOW (CHAIN 2).
+#> Chain 2: 
+#> Chain 2: Gradient evaluation took 3.2e-05 seconds
+#> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.32 seconds.
+#> Chain 2: Adjust your expectations accordingly!
+#> Chain 2: 
+#> Chain 2: 
+#> Chain 2: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 2: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 2: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 2: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 2: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 2: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 2: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 2: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 2: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 2: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 2: 
+#> Chain 2:  Elapsed Time: 1.68701 seconds (Warm-up)
+#> Chain 2:                0.251297 seconds (Sampling)
+#> Chain 2:                1.9383 seconds (Total)
+#> Chain 2: 
+#> 
+#> SAMPLING FOR MODEL '66a3c69058cc57a98f33c1c6d389c60a' NOW (CHAIN 3).
+#> Chain 3: 
+#> Chain 3: Gradient evaluation took 3e-05 seconds
+#> Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.3 seconds.
+#> Chain 3: Adjust your expectations accordingly!
+#> Chain 3: 
+#> Chain 3: 
+#> Chain 3: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 3: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 3: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 3: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 3: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 3: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 3: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 3: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 3: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 3: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 3: 
+#> Chain 3:  Elapsed Time: 1.65836 seconds (Warm-up)
+#> Chain 3:                0.243536 seconds (Sampling)
+#> Chain 3:                1.9019 seconds (Total)
+#> Chain 3: 
+#> 
+#> SAMPLING FOR MODEL '66a3c69058cc57a98f33c1c6d389c60a' NOW (CHAIN 4).
+#> Chain 4: 
+#> Chain 4: Gradient evaluation took 3.1e-05 seconds
+#> Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.31 seconds.
+#> Chain 4: Adjust your expectations accordingly!
+#> Chain 4: 
+#> Chain 4: 
+#> Chain 4: Iteration:    1 / 10000 [  0%]  (Warmup)
+#> Chain 4: Iteration: 1000 / 10000 [ 10%]  (Warmup)
+#> Chain 4: Iteration: 2000 / 10000 [ 20%]  (Warmup)
+#> Chain 4: Iteration: 3000 / 10000 [ 30%]  (Warmup)
+#> Chain 4: Iteration: 4000 / 10000 [ 40%]  (Warmup)
+#> Chain 4: Iteration: 5000 / 10000 [ 50%]  (Warmup)
+#> Chain 4: Iteration: 6000 / 10000 [ 60%]  (Warmup)
+#> Chain 4: Iteration: 7000 / 10000 [ 70%]  (Warmup)
+#> Chain 4: Iteration: 8000 / 10000 [ 80%]  (Warmup)
+#> Chain 4: Iteration: 9000 / 10000 [ 90%]  (Warmup)
+#> Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
+#> Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
+#> Chain 4: 
+#> Chain 4:  Elapsed Time: 1.67697 seconds (Warm-up)
+#> Chain 4:                0.240911 seconds (Sampling)
+#> Chain 4:                1.91788 seconds (Total)
+#> Chain 4:
 ```
 
 
 ```r
 plot(exp_4$fit)
-#> Error in plot(exp_4$fit): object 'exp_4' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-29-1.png" title="plot of chunk unnamed-chunk-29" alt="plot of chunk unnamed-chunk-29" width="100%" />
 
 
 ```r
 plot(exp_4)
-#> Error in plot(exp_4): object 'exp_4' not found
+```
+
+<img src="vignette-fig-unnamed-chunk-30-1.png" title="plot of chunk unnamed-chunk-30" alt="plot of chunk unnamed-chunk-30" width="100%" />
+
+```r
 summary(exp_4)
-#> Error in summary(exp_4): object 'exp_4' not found
+#> Object of class bayesnecfit containing the following non-linear model: neclin
+#> 
+#>  Family: gamma 
+#>   Links: mu = log; shape = identity 
+#> Formula: y ~ top - exp(slope) * (x - nec) * step(x - nec) 
+#>          top ~ 1
+#>          slope ~ 1
+#>          nec ~ 1
+#>    Data: structure(list(x = c(1.01874617094183, 0.815747457 (Number of observations: 100) 
+#> Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;
+#>          total post-warmup samples = 4000
+#> 
+#> Population-Level Effects: 
+#>                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#> top_Intercept       0.89      0.01     0.88     0.91 1.00     2491     2484
+#> slope_Intercept    -0.59      0.04    -0.68    -0.51 1.00     2035     2325
+#> nec_Intercept       1.31      0.04     1.23     1.38 1.00     1839     1992
+#> 
+#> Family Specific Parameters: 
+#>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#> shape   248.17     37.37   182.02   323.79 1.00     2846     2125
+#> 
+#> Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
+#> and Tail_ESS are effective sample size measures, and Rhat is the potential
+#> scale reduction factor on split chains (at convergence, Rhat = 1).
 ```
 
 In this case our model has converged well, although it is perhaps not the best model to fit. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
