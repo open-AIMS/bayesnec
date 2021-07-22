@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   fig.path = "vignette-fig-",
   out.width = "100%",
-  dpi = 400,
+  dpi = 150,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -220,29 +220,32 @@ plot(exp_2)
 
 ### Poisson data
 
-Where data are a count (of, for example, individuals or cells) y is Poisson. Such data are distributed from `0` to `Inf` and are integers. First we read in the count data example from [pastebin](https://pastebin.com/tools), and then plot the "concentration" or x data, Again, this is `raw_x`, and distributed as in our binomial example above.
+Where data are a count (of, for example, individuals or cells) y is Poisson. Such data are distributed from `0` to `Inf` and are integers. First we mimic count data based on the package's internal dataset, and make it overdispersed. Then we plot the "concentration" (or `x`) data.
 
 ```{r, warning = FALSE, fig.width = 10, fig.height = 4.7}
-count_data <- "https://pastebin.com/raw/ENgNSgf7" %>%
-  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
-  dplyr::rename(raw_x = raw.x) %>%
-  dplyr::mutate(raw_x = as.numeric(as.character(raw_x)),
-                sqrt_x = sqrt(raw_x))
+data(nec_data)
+set.seed(10)
+count_data <- nec_data %>%
+  dplyr::mutate(
+    y = (y * 100 + rnorm(nrow(nec_data), 0, 15)) %>%
+      round %>%
+      as.integer %>%
+      abs
+  )
 
 str(count_data)
-range(count_data$raw_x)
+range(count_data$x)
 
 par(mfrow = c(1, 2))
-hist(count_data$raw_x, xlab = "'x' variable", main = "")
-hist(count_data$count, xlab = "Total counts", main = "")
+hist(count_data$x, xlab = "'x' variable", main = "")
+hist(count_data$y, xlab = "Total counts", main = "")
 ```
 
-First, we supply `bnec` with `data` (count_data), and specify `x_var` and `y_var`. As we have integers of 0 and greater, the  `family` is "poisson". The default behaviour to guess the variable types works for this example.
+First, we supply `bnec` with `data` (here `count_data`), and specify `x_var` and `y_var`. As we have integers of 0 and greater, the  `family` is `"poisson"`. The default behaviour to guess the variable types works for this example.
 
 ```{r, warning = FALSE}
 set.seed(333)
-exp_3 <- bnec(data = count_data, x_var = "sqrt_x",
-              y_var = "count", model = "neclin")
+exp_3 <- bnec(data = count_data, x_var = "x", y_var = "y", model = "neclin")
 ```
 
 We first plot the model chains and parameter estimates to check the fit.
@@ -256,19 +259,19 @@ plot(exp_3)
 exp_3$dispersion
 ```
 
-The chains look ok; however, our plot of the fit is not very convincing. The error bars are very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try a negative binomial family.
+The chains look ok; however, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try a negative binomial family.
 
 ### Negative binomial
 
-When count data are overdispersed and cannot be modelled using the poisson family, the negative binomial family is generally used. We can do this by calling `family = "negbinomial"`.
+When count data are overdispersed and cannot be modelled using the Poisson family, the Negative binomial family is generally used. We can do this by calling `family = "negbinomial"`.
 
 ```{r, warning = FALSE}
 set.seed(333)
-exp_3b <- bnec(data = count_data, x_var = "sqrt_x",
-              y_var = "count", family = "negbinomial", model = "neclin")
+exp_3b <- bnec(data = count_data, x_var = "x", y_var = "y",
+               family = "negbinomial", model = "neclin")
 ```
 
-The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it still does not seem to be a good model for these data. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
+The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it still does not seem to be a great model for these data. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
 
 ```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_3b)
