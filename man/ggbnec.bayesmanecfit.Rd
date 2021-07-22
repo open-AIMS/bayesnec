@@ -9,11 +9,11 @@
   nec = TRUE,
   ecx = FALSE,
   ...,
-  all = TRUE,
+  all = FALSE,
   plot = TRUE,
   ask = TRUE,
   newpage = TRUE,
-  multi_facet = FALSE
+  multi_facet = TRUE
 )
 }
 \arguments{
@@ -27,7 +27,7 @@ function \code{\link{bnec}}.}
 \item{...}{Additional arguments to be passed to \code{\link{ggbnec_data}}.}
 
 \item{all}{Should all individual models be plotted separately (defaults to
-TRUE) or should model averaged predictions be plotted instead?}
+FALSE) or should model averaged predictions be plotted instead?}
 
 \item{plot}{Should output \code{\link[ggplot2]{ggplot}} output be plotted?
 Only relevant if \code{all = TRUE} and \code{multi_facet = FALSE}.}
@@ -40,7 +40,7 @@ new page. Only relevant if \code{plot = TRUE} and
 \code{multi_facet = FALSE}.}
 
 \item{multi_facet}{Should all plots be plotted in one single panel via
-facets? Defaults to FALSE.}
+facets? Defaults to TRUE.}
 }
 \value{
 A \code{\link[ggplot2]{ggplot}} object.
