@@ -8,7 +8,19 @@ vignette: >
 bibliography: bayesnec.bib
 ---
 
-
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.path = "vignette-fig-",
+  out.width = "100%",
+  dpi = 400,
+  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+)
+```
 
 ## Overview
 
@@ -43,10 +55,13 @@ The priors used in the default model fit can be extracted using `pull_prior`, an
 
 To set specified priors, it is simplest to start by letting `bnec` find the priors on its own, i.e. by not specifying a `priors` argument at all.
 
+```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+library(bayesnec)
+library(brms)
+options(mc.cores = parallel::detectCores())
+```
 
-
-
-```r
+```{r}
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())
@@ -57,36 +72,25 @@ exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
                model = "nec3param",
                family = Beta(link = "identity"),
                iter = 1e4, control = list(adapt_delta = 0.99))
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c29f298df.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c29f298df.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
 
 class(exmp_a)
-#> Error in eval(expr, envir, enclos): object 'exmp_a' not found
 ```
 
 We can view the prior and posterior probability densities of all the parameters in the model using the function `check_prior`, based on the `hypothesis` function of `brms`. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.
 
-
-```r
+```{r, fig.width = 7, fig.height = 7}
 check_priors(exmp_a)
-#> Error in check_priors(exmp_a): object 'exmp_a' not found
 ```
 
 In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function `pull_prior` to inspect what `bnec` came up with on its own, and decide how best to modify those priors to be more desirable.
 
-
-```r
+```{r}
 pull_prior(exmp_a)
-#> Error in pull_prior(exmp_a): object 'exmp_a' not found
 ```
 
 `bnec` chose a `gamma` prior on the NEC parameter of `nec3param` because the x predictor in the data `nec_data` is non-zero positive. However imagine that in theory the x predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
 
-
-```r
+```{r}
 my_prior <- c(prior_string("beta(5, 1)", nlpar = "top"),
               prior_string("normal(1.3, 2.7)", nlpar = "nec"),
               prior_string("gamma(0.5, 2)", nlpar = "beta"))
@@ -95,30 +99,19 @@ exmp_b <- bnec(data = nec_data, x_var = "x", y_var = "y",
                model = "nec3param", priors = my_prior,
                family = Beta(link = "identity"),
                iter = 1e4, control = list(adapt_delta = 0.99))
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c26baa41e.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c26baa41e.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
 ```
 
 Two things are of note. If the user is specifying their own priors, `bnec` requires them to specify priors for **all** parameters. The `pull_prior` function shows the priors *after* the model was fitted, but suppose the user does not know what parameters were comprised in a particular model. In those instances, the user can call the function `show_params(model = "all")` to inspect the parameters of each function, or some targeted function in particular.
 
-
-```r
+```{r}
 show_params(model = "nec3param")
-#> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
 ```
 
 ### bayesmanecfit
 
 The user can also specify a named list of priors when one or more models are being fitted to the same dataset.
 
-
-```r
+```{r}
 my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
                                 prior_string("gamma(0.5, 2)", nlpar = "beta")),
@@ -131,25 +124,18 @@ exmp_c <- bnec(data = nec_data, x_var = "x", y_var = "y",
                model = c("nec3param", "nec4param"),
                family = Beta(link = "identity"), priors = my_priors,
                iter = 1e4, control = list(adapt_delta = 0.99))
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in expand_manec(mod_fits, x_range = x_range, precision = precision, : None of the models fit successfully, try using bnec with a single model (e.g. ecxexp) using the default settings as a starting point for trouble shooting, or check ?show_params to make sure you have the correct parameter names for your priors.
 ```
 
 `pull_prior` also works for an object of class `bayesmanecfit`, as does `check_priors` which allows an option of passing a filename to save the prior and posterior probability density plots to a pdf.
 
-
-```r
+```{r}
 pull_prior(exmp_c)
-#> Error in pull_prior(exmp_c): object 'exmp_c' not found
 check_priors(exmp_c, filename = "Check_priors")
-#> Error in check_priors(exmp_c, filename = "Check_priors"): object 'exmp_c' not found
 ```
 
 The user can also specify priors for one model only out of the entire set, `bayesnec` will return a message stating that it's searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.
 
-
-```r
+```{r}
 my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
                                 prior_string("gamma(0.5, 2)", nlpar = "beta")),
@@ -162,20 +148,14 @@ exmp_d <- bnec(data = nec_data, x_var = "x", y_var = "y",
                model = c("nec3param", "nec4param"),
                family = Beta(link = "identity"), priors = my_priors[1],
                iter = 1e4, control = list(adapt_delta = 0.99))=
-#> Error: <text>:13:0: unexpected end of input
-#> 11:                family = Beta(link = "identity"), priors = my_priors[1],
-#> 12:                iter = 1e4, control = list(adapt_delta = 0.99))=
-#>    ^
 ```
 
 `priors = my_priors[[1]]` would also have worked because the argument priors can either take a `brmsprior` object directly, or a named list containing model-specific `brmsprior` objects.
 
 Finally the user can also extend an existing `bayesmanecfit` object with the function `amend`, also by specifying custom-built priors.
 
-
-```r
+```{r}
 ecxlin_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
                    prior_string("gamma(2, 6.5)", nlpar = "slope"))
 exmp_e <- amend(exmp_d, add = "ecxlin", priors = ecxlin_priors)
-#> Error in amend(exmp_d, add = "ecxlin", priors = ecxlin_priors): object 'exmp_d' not found
 ```

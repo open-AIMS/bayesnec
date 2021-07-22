@@ -8,7 +8,19 @@ vignette: >
 bibliography: bayesnec.bib
 ---
 
-
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.path = "vignette-fig-",
+  out.width = "100%",
+  dpi = 400,
+  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+)
+```
 
 [e1]: https://open-aims.github.io/bayesnec/articles/example1.html
 [e2]: https://open-aims.github.io/bayesnec/articles/example2.html
@@ -36,15 +48,13 @@ This package is currently under development. We are keen to receive any feedback
 
 To install the latest release version from CRAN use
 
-
-```r
+```{r eval = FALSE}
 install.packages("bayesnec")
 ```
 
 The current development version can be downloaded from GitHub via
 
-
-```r
+```{r eval = FALSE}
 if (!requireNamespace("remotes")) {
   install.packages("remotes")
 }
@@ -61,8 +71,7 @@ for further instructions on how to get the compilers running.
 
 To run this vignette, we will also need some additional packages
 
-
-```r
+```{r, warning = FALSE, message = FALSE}
 library(dplyr)
 library(ggplot2)
 ```
@@ -77,8 +86,7 @@ Here we include some examples showing how to use the package to fit an *NEC* mod
 The response variable `y` is considered to follow a binomial distribution when it is a count out of a total (such as the percentage survival of individuals, for example). First, we read in the binomial example from [pastebin](https://pastebin.com/tools), prepare the data for analysis, and then inspect the dataset as well as the "concentration" or x variable, in this case `raw_x`.
 
 
-
-```r
+```{r}
 binom_data <- "https://pastebin.com/raw/zfrUha88" %>%
   read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
   dplyr::rename(raw_x = raw.x) %>%
@@ -86,17 +94,9 @@ binom_data <- "https://pastebin.com/raw/zfrUha88" %>%
                 log_x = log(raw_x))
 
 str(binom_data)
-#> 'data.frame':	48 obs. of  4 variables:
-#>  $ raw_x: num  0.1 0.1 0.1 0.1 0.1 0.1 6.25 6.25 6.25 6.25 ...
-#>  $ suc  : int  101 106 102 112 58 158 95 91 93 113 ...
-#>  $ tot  : int  175 112 103 114 69 165 109 92 99 138 ...
-#>  $ log_x: num  -2.3 -2.3 -2.3 -2.3 -2.3 ...
 range(binom_data$raw_x)
-#> [1]   0.1 400.0
 hist(binom_data$raw_x)
 ```
-
-<img src="vignette-fig-unnamed-chunk-4-1.png" title="plot of chunk unnamed-chunk-4" alt="plot of chunk unnamed-chunk-4" width="100%" />
 
 In this case for x, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the x data are common for concentration—response experiments, where the x 'concentration' data are the concentration of contaminants, or dilutions. The current default in `bayesnec` is to estimate the appropriate distribution(s) and priors for the `family` argument, but it is possible to supply `family` directly. We are going to model this with the x data on a log scale, as this is the scaling clearly used in the experimental design and thus will provide more stable results.
 
@@ -106,135 +106,99 @@ The main 'working' function in `bayesnec` is the function `bnec`, which calls th
 
 `bnec` will guess the data types for use, although as mentioned above we could manually specify `family` as "binomial". `bnec` will also generate appropriate priors for the `brms` model call, although these can also be specified manually (see the [Priors][e3] vignette for more details).
 
-
-```r
+```{r, warning = FALSE, message = FALSE}
 library(bayesnec)
 
 set.seed(333)
 exp_1 <- bnec(data = binom_data, x_var = "log_x",
               y_var = "suc", model = "neclin",
               trials_var = "tot")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58b5c2fb.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58b5c2fb.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
 ```
 
 The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(exp_1$fit)` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially `bayesnec` will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains `bayesnec` with try up to `n_tries` more times to fit the data using either `bayesnec` generated or `brms` default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_1$fit)
-#> Error in plot(exp_1$fit): object 'exp_1' not found
 ```
 
 In our example, the chains are well mixed, and the probability density plots look good. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks ok. There are a range of other model diagnostics that can be explored for [brms] model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (https://github.com/paul-buerkner/brms) models.
 
-
-```r
+```{r, fig.width = 7, fig.height = 7}
 pairs(exp_1$fit)
-#> Error in pairs(exp_1$fit): object 'exp_1' not found
 ```
 
 We can see the summary of our fitted model parameters using:
-
-```r
+```{r}
 summary(exp_1)
-#> Error in summary(exp_1): object 'exp_1' not found
 ```
 
 Note the Rhat values in this example are one, indicating convergence.
 
 The function `plot` can be used to plot the fitted model. You can also make your own plot from the data included in the returned `bayesnecfit` object from the call to `bnec`. Here we use the default plot method from `bayesnec`, where we add the 'exp' function to plot the tick labels on the original scaling of the concentration data.
 
-
-```r
+```{r, fig.width = 7, fig.height = 7}
 plot(exp_1, lxform = exp)
-#> Error in plot(exp_1, lxform = exp): object 'exp_1' not found
 ```
 
 Alternatively, we can use the built in `brms` methods to plot the `brms` fit directly. For example:
 
-
-```r
+```{r, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 7}
 df <- exp_1$fit$data %>%
   dplyr::mutate(prop = y / trials)
-#> Error in dplyr::mutate(., prop = y/trials): object 'exp_1' not found
 plot(brms::conditional_effects(exp_1$fit))[[1]] +
      geom_point(data = df, aes(x = x, y = prop),
                 inherit.aes = FALSE)
-#> Error in brms::conditional_effects(exp_1$fit): object 'exp_1' not found
 ```
 
 This model fit doesn't look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values >1 indicate overdispersion and values <1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model doesn't properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
 
-
-```r
+```{r}
 exp_1$dispersion
-#> Error in eval(expr, envir, enclos): object 'exp_1' not found
 ```
 
 ### Beta-Binomial
 
 The Beta-Binomial model can be useful for overdispersed Binomial data.
 
-
-```r
+```{r}
 set.seed(333)
 exp_1b <- bnec(data = binom_data, x_var = "log_x",
                y_var = "suc", model = "neclin",
                family = beta_binomial2,
                trials_var = "tot")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58024da6.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58024da6.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
 ```
 Fitting this data with the betabinomial2 yields a much more realistic fit in terms of the confidence bounds and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
 
-
-```r
+```{r}
 plot(exp_1b, lxform = exp)
-#> Error in plot(exp_1b, lxform = exp): object 'exp_1b' not found
 exp_1b$dispersion
-#> Error in eval(expr, envir, enclos): object 'exp_1b' not found
 ```
 
 
 Now we have a good fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object, using `exp_1b$nec`, or we can plot the posterior distribution of the *NEC* values.
  
-
-```r
+```{r}
 exp_1b$nec
-#> Error in eval(expr, envir, enclos): object 'exp_1b' not found
 hist(exp_1b$nec_posterior)
-#> Error in hist(exp_1b$nec_posterior): object 'exp_1b' not found
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
 
-
-```r
+```{r, warning = FALSE}
 ecx(exp_1b)
-#> Error in ecx(exp_1b): object 'exp_1b' not found
 ```
 
 A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for **NEC**, as the nec_intercept population level effect in the model.
 
-
-```r
+```{r, warning = FALSE}
 summary(exp_1b)
-#> Error in summary(exp_1b): object 'exp_1b' not found
 ```
 
 ### Beta data
 
 Sometimes the response variable is distributed between `0` and `1` but is not a straight-forward Binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical 'trials' and the data must be modelled using a beta distribution.
 
-
-```r
+```{r}
 prop_data <- "https://pastebin.com/raw/123jq46d" %>%
   read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
   dplyr::rename(raw_x = raw.x) %>%
@@ -244,31 +208,21 @@ prop_data <- "https://pastebin.com/raw/123jq46d" %>%
 set.seed(333)
 exp_2 <- bnec(data = prop_data, x_var = "raw_x",
               y_var = "resp", model = "neclin")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c337d159a.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c337d159a.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
 ```
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_2$fit)
-#> Error in plot(exp_2$fit): object 'exp_2' not found
 ```
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_2)
-#> Error in plot(exp_2): object 'exp_2' not found
 ```
 
 ### Poisson data
 
 Where data are a count (of, for example, individuals or cells) y is Poisson. Such data are distributed from `0` to `Inf` and are integers. First we read in the count data example from [pastebin](https://pastebin.com/tools), and then plot the "concentration" or x data, Again, this is `raw_x`, and distributed as in our binomial example above.
 
-
-```r
+```{r, warning = FALSE, fig.width = 10, fig.height = 4.7}
 count_data <- "https://pastebin.com/raw/ENgNSgf7" %>%
   read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
   dplyr::rename(raw_x = raw.x) %>%
@@ -276,48 +230,30 @@ count_data <- "https://pastebin.com/raw/ENgNSgf7" %>%
                 sqrt_x = sqrt(raw_x))
 
 str(count_data)
-#> 'data.frame':	48 obs. of  3 variables:
-#>  $ raw_x : num  0.1 0.1 0.1 0.1 0.1 0.1 9.67 9.67 9.67 9.67 ...
-#>  $ count : int  164 100 103 102 102 101 131 102 112 100 ...
-#>  $ sqrt_x: num  0.316 0.316 0.316 0.316 0.316 ...
 range(count_data$raw_x)
-#> [1]   0.1 190.0
 
 par(mfrow = c(1, 2))
 hist(count_data$raw_x, xlab = "'x' variable", main = "")
 hist(count_data$count, xlab = "Total counts", main = "")
 ```
 
-<img src="vignette-fig-unnamed-chunk-20-1.png" title="plot of chunk unnamed-chunk-20" alt="plot of chunk unnamed-chunk-20" width="100%" />
-
 First, we supply `bnec` with `data` (count_data), and specify `x_var` and `y_var`. As we have integers of 0 and greater, the  `family` is "poisson". The default behaviour to guess the variable types works for this example.
 
-
-```r
+```{r, warning = FALSE}
 set.seed(333)
 exp_3 <- bnec(data = count_data, x_var = "sqrt_x",
               y_var = "count", model = "neclin")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146cdbe2b66.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146cdbe2b66.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
 ```
 
 We first plot the model chains and parameter estimates to check the fit.
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_3$fit)
-#> Error in plot(exp_3$fit): object 'exp_3' not found
 ```
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_3)
-#> Error in plot(exp_3): object 'exp_3' not found
 exp_3$dispersion
-#> Error in eval(expr, envir, enclos): object 'exp_3' not found
 ```
 
 The chains look ok; however, our plot of the fit is not very convincing. The error bars are very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try a negative binomial family.
@@ -326,67 +262,45 @@ The chains look ok; however, our plot of the fit is not very convincing. The err
 
 When count data are overdispersed and cannot be modelled using the poisson family, the negative binomial family is generally used. We can do this by calling `family = "negbinomial"`.
 
-
-```r
+```{r, warning = FALSE}
 set.seed(333)
 exp_3b <- bnec(data = count_data, x_var = "sqrt_x",
               y_var = "count", family = "negbinomial", model = "neclin")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c1e4f6f4.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c1e4f6f4.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
 ```
 
 The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it still does not seem to be a good model for these data. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_3b)
-#> Error in plot(exp_3b): object 'exp_3b' not found
 ```
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_3b$fit)
-#> Error in plot(exp_3b$fit): object 'exp_3b' not found
 ```
 
 ### Measure data
 
 Where data are a measured variable y is family gamma. Good examples of `gamma` distributed data include measures of body size, such as length, weight, or area. Such data are distributed from `0+` to `Inf` and are continuous. Here we use the nec_data supplied with `bayesnec` with y on the exponential scale to ensure the right data range for a gamma as an example.
 
-
-```r
+```{r}
 data(nec_data)
 measure_data <- nec_data %>%
   dplyr::mutate(measure = exp(y))
 ```
 
-
-```r
+```{r, warning = FALSE}
 set.seed(333)
 exp_4 <- bnec(data = measure_data, x_var = "x",
               y_var = "measure", model = "neclin")
-#> Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c47cf6267.so':
-#>   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c47cf6267.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib
-#>   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib
-#>   Reason: image not found
-#> Error in sink(type = "output"): invalid connection
 ```
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_4$fit)
-#> Error in plot(exp_4$fit): object 'exp_4' not found
 ```
 
-
-```r
+```{r, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_4)
-#> Error in plot(exp_4): object 'exp_4' not found
 summary(exp_4)
-#> Error in summary(exp_4): object 'exp_4' not found
 ```
 
 In this case our model has converged well, although it is perhaps not the best model to fit. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.

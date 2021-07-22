@@ -8,7 +8,19 @@ vignette: >
 bibliography: bayesnec.bib
 ---
 
-
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.path = "vignette-fig-",
+  out.width = "100%",
+  dpi = 400,
+  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+)
+```
 
 [e1]: https://open-aims.github.io/bayesnec/articles/example1.html
 [e2]: https://open-aims.github.io/bayesnec/articles/example2.html
@@ -31,32 +43,9 @@ using the `loo_model_weights` function from `loo` [@vehtari2020; @vehtari2017]. 
 
 The `model` argument may also be one of "all", meaning all of the available models will be fit; "ecx" meaning only models excluding the $\eta = \text{NEC}$ step parameter will be fit; or "nec" meaning only models with the $\eta = \text{NEC}$ step parameter (see below **Model parameters**) will be fit. There are a range of other pre-defined model groups available. The full list of currently implemented model groups can be seen using:
 
-
-```r
+```{r}
 library(bayesnec)
 models()
-#> $nec
-#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"
-#> 
-#> $ecx
-#>  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4"
-#> [13] "ecxhormebc5"
-#> 
-#> $all
-#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"       
-#> [12] "ecxexp"        "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"  
-#> [23] "ecxhormebc5"  
-#> 
-#> $bot_free
-#>  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"        "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"     
-#> [12] "ecxll3"        "ecxhormebc4"   "nechormepwr01"
-#> 
-#> $zero_bounded
-#>  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
-#> 
-#> $decline
-#>  [1] "nec3param" "nec4param" "necsigm"   "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"   
-#> [15] "ecxll3"
 ```
 
 
@@ -108,11 +97,8 @@ Strictly speaking, models with a linear hormesis increase are not suitable for m
 The **ecxlin** model is a basic linear decay model, given by the equation:
 $$y_i = \tau - e^{\alpha} x_i$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ top - exp(slope) * x 
-#> top ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("ecxlin")
 ```
 Because the model contains linear predictors it is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, `Inf` bounded data (gamma, Poisson, negative binomial with identity link).
 
@@ -120,11 +106,8 @@ Because the model contains linear predictors it is not suitable for 0, 1-bounded
 The **ecxexp** model is a basic exponential decay model, given by the equation:
 $$y_i = \tau e^{-e^{\beta} x_i}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ top * exp(-exp(beta) * x) 
-#> top ~ 1
-#> beta ~ 1
+```{r, echo = FALSE}
+show_params("ecxexp")
 ```
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
 
@@ -132,12 +115,8 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 The **ecxsigm** model is a simple sigmoidal decay model, given by the equation:
 $$y_i = \tau e^{-e^{\beta} x_i^{e^\epsilon}}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ top * exp(-exp(beta) * x^exp(d)) 
-#> d ~ 1
-#> top ~ 1
-#> beta ~ 1
+```{r, echo = FALSE}
+show_params("ecxsigm")
 ```
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
 
@@ -145,38 +124,24 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 The **ecx4param** model is a 4-parameter sigmoidal decay model, given by the equation:
 $$y_i = \frac{\tau + (\delta - \tau)}{1 + e^{e^{\beta} (\text{EC}_{50} - x_i)}}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) 
-#> bot ~ 1
-#> ec50 ~ 1
-#> top ~ 1
-#> beta ~ 1
+```{r, echo = FALSE}
+show_params("ecx4param")
 ```
 
 ### ecxwb1
 The **ecxwb1** model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of [@Ritz2016], given by the equation:
 $$y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) 
-#> bot ~ 1
-#> ec50 ~ 1
-#> top ~ 1
-#> beta ~ 1
+```{r, echo = FALSE}
+show_params("ecxwb1")
 ```
 
 ### ecxwb1p3
 The **ecxwb1p3** model is a 3-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of [@Ritz2016], given by the equation:
 $$y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) 
-#> ec50 ~ 1
-#> top ~ 1
-#> beta ~ 1
+```{r, echo = FALSE}
+show_params("ecxwb1p3")
 ```
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
 
@@ -184,13 +149,8 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 The **ecxwb2** model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of [@Ritz2016], given by the equation:
 $$y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}})$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
-#> bot ~ 1
-#> ec50 ~ 1
-#> top ~ 1
-#> beta ~ 1
+```{r, echo = FALSE}
+show_params("ecxwb2")
 ```
 While very similar to the **ecxwb1** (according to [@Ritz2016]), fitted **ecxwb1** and **ecxwb2** models can differ slightly.
 
@@ -198,12 +158,8 @@ While very similar to the **ecxwb1** (according to [@Ritz2016]), fitted **ecxwb1
 The **ecxwb2p3** model is a 3-parameter sigmoidal decay model, which is a slight reformulation of the Weibull2 model of [@Ritz2016], given by the equation:
 $$y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}})$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
-#> ec50 ~ 1
-#> top ~ 1
-#> beta ~ 1
+```{r, echo = FALSE}
+show_params("ecxwb2p3")
 ```
 While very similar to the **ecxwb1p3** (according to [@Ritz2016]), fitted **ecxwb1p3** and **ecxwb2p3** models can differ slightly. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
 
@@ -212,39 +168,24 @@ While very similar to the **ecxwb1p3** (according to [@Ritz2016]), fitted **ecxw
 The **ecxll5** model is a 5-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.5 model of [@Ritz2016], given by the equation:
 $$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^f 
-#> bot ~ 1
-#> top ~ 1
-#> beta ~ 1
-#> ec50 ~ 1
-#> f ~ 1
+```{r, echo = FALSE}
+show_params("ecxll5")
 ```
 
 ### ecxll4
 The **ecxll4** model is a 4-parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.4 model of [@Ritz2016], given by the equation:
 $$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) 
-#> bot ~ 1
-#> top ~ 1
-#> beta ~ 1
-#> ec50 ~ 1
+```{r, echo = FALSE}
+show_params("ecxll4")
 ```
 
 ### ecxll3
 The **ecxll3** model is a 3-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.3 model of [@Ritz2016], given by the equation:
 $$y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) 
-#> top ~ 1
-#> beta ~ 1
-#> ec50 ~ 1
+```{r, echo = FALSE}
+show_params("ecxll3")
 ```
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
 
@@ -252,27 +193,16 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 The **ecxhormebc5** model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the "Brain-Cousens" (BC.5) model of [@Ritz2016], given by the equation:
 $$y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
-#> bot ~ 1
-#> top ~ 1
-#> beta ~ 1
-#> ec50 ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("ecxhormebc5")
 ```
 
 ### ecxhormebc4
 The **ecxhormebc4** model is a 5-parameter log-logistic model similar to the exchormebc5 model but with a lower bound of 0, given by the equation:
 $$y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
-#> top ~ 1
-#> beta ~ 1
-#> ec50 ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("ecxhormebc4")
 ```
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
 
@@ -283,12 +213,8 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 The **neclin** model is a basic linear decay model equivalent to **ecxlin** with the addition of the "nec" step function, given by the equation:
 $$y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ top - exp(slope) * (x - nec) * step(x - nec) 
-#> top ~ 1
-#> slope ~ 1
-#> nec ~ 1
+```{r, echo = FALSE}
+show_params("neclin")
 ```
 Because the model contains linear predictors it is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, `Inf` bounded data (gamma, Poisson, negative binomial with identity link). 
 
@@ -296,12 +222,8 @@ Because the model contains linear predictors it is not suitable for 0, 1-bounded
 The **nec3param** model is a basic exponential decay model equivalent to **ecxexp** with the addition of the "nec" step function, given by the equation:
 $$y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
+```{r, echo = FALSE}
+show_params("nec3param")
 ```
 
 For binomial data in the case of identity link this model is equivalent to that in [@Fox2010]. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
@@ -310,26 +232,16 @@ For binomial data in the case of identity link this model is equivalent to that 
 The **nec4param** model is a 3-parameter decay model with the addition of the "nec" step function, given by the equation:
 $$y_i = \delta + (\tau - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> bot ~ 1
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
+```{r, echo = FALSE}
+show_params("nec4param")
 ```
 
 ### nechorme
 The **nechorme** model is a basic exponential decay model with an "nec" step function equivalent to **nec3param**, with the addition of a linear increase prior to $\eta$, given by the equation
 $$y_i = (\tau + \alpha x_i) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ (top + exp(slope) * x) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("nechorme")
 ```
 The **nechorme** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In this case the linear version (**neclinhorme**) should be used.
@@ -338,13 +250,8 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 The **nechormepwr** model is a basic exponential decay model with an "nec" step function equivalent to **nec3param**, with the addition of a power increase prior to $\eta$, given by the equation:
 $$y_i = (\tau + x_i^{1/(1+e^{alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ (top + x^(1/(1 + exp(slope)))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("nechormepwr")
 ```
 The **nechormepwr** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. Because the model can generate predictions > 1 it should not be used for binomial and beta families with identity link. In this case the **nechromepwr01** model should be used.
@@ -354,13 +261,8 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 The **neclinhorme** model is a basic linear decay model with an "nec" step function equivalent to **neclin**, with the addition of a linear increase prior to $\eta$, given by the equation:
 $$y_i = (\tau + e^{\alpha} x_i) - e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)$$
 and fitted in R via `brms` using the formula. 
-
-```
-#> y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("neclinhorme")
 ```
 The **neclinhorme** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. This model contains linear predictors and is not suitable for 0, 1-bounded data (binomial and beta families with identity link). As the model includes a linear decline with concentration, it is also not suitable for 0, `Inf` bounded data (gamma, Poisson, negative binomial with identity link).
 
@@ -368,14 +270,8 @@ The **neclinhorme** model is a *hormesis* model [@Mattson2008], allowing an init
 The **nechorme4** model is 4 parameter decay model with an "nec" step function equivalent to **nec4param** with the addition of a linear increase prior to $\eta$, given by the equation:
 $$y_i = \delta + ((\tau + \alpha x_i) - \delta ) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> bot ~ 1
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("nechorme4")
 ```
 The **nechorme4** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
 
@@ -383,14 +279,8 @@ The **nechorme4** model is a *hormesis* model [@Mattson2008], allowing an initia
 The **nechorme4pwr** model is 4 parameter decay model with an "nec" step function equivalent to **nec4param** with the addition of a power increase prior to $\eta$, given by the equation:
 $$y_i = \delta + ((\tau + x_i^{1/(1+e^{\alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ bot + ((top + x^(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> bot ~ 1
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("nechorme4pwr")
 ```
 The **nechorme4pwr** model is a *hormesis* model [@Mattson2008], allowing an initial power increase in the response variable at concentrations below $\eta$. Because the model can generate predictions > 1 it should not be used for binomial and beta families with identity link. In this case the **nechromepwr01** model should be used.
 
@@ -399,13 +289,8 @@ The **nechormepwr01** model is a basic exponential decay model with an "nec" ste
 $$y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}$$
 
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> slope ~ 1
+```{r, echo = FALSE}
+show_params("nechormepwr01")
 ```
 The **nechormepwr01** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In this case the linear version (**neclinhorme**) should be used.
@@ -414,13 +299,8 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 The **necsigm** model is a basic exponential decay model equivalent to **ecxlin** with the addition of the "nec" step function, given by the equation:
 $$y_i = \tau e^{-e^{\beta} \left(x_i^{e^\epsilon} - \eta \right) f(x_i, \eta)}$$
 and fitted in R via `brms` using the formula
-
-```
-#> y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
-#> d ~ 1
+```{r, echo = FALSE}
+show_params("necsigm")
 ```
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an "nec" step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.
 
