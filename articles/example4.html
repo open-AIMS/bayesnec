@@ -124,45 +124,55 @@
 
 <span class="co"># Fit a set of models</span>
 <span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">nec_data</span>, x_var <span class="op">=</span> <span class="st">"x"</span>, y_var <span class="op">=</span> <span class="st">"y"</span>, model <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span>
-
-<span class="co"># bayesmanecfit</span>
-<span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp</span><span class="op">)</span></code></pre></div>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in sink(type = "output") : invalid connection</span>
+<span class="co">#&gt; Error in expand_manec(mod_fits, x_range = x_range, precision = precision, : None of the models fit successfully, try using bnec with a single model (e.g. ecxexp) using the default settings as a starting point for trouble shooting, or check ?show_params to make sure you have the correct parameter names for your priors.</span>
+<span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp</span><span class="op">)</span>
+<span class="co">#&gt; Error in eval(expr, envir, enclos): object 'exmp' not found</span></code></pre></div>
 <p>This call fits all models that are suitable for modelling beta response data using a logit link. We can pull out the <strong>nec</strong> models and the <strong>ecx</strong> models separately, to create two more alternative model fits of this data.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exmp_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exmp</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>
-<span class="va">exmp_ecx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exmp</span>, model <span class="op">=</span> <span class="st">"ecx"</span><span class="op">)</span></code></pre></div>
+<span class="co">#&gt; Error in pull_out(exmp, model = "nec"): object 'exmp' not found</span>
+<span class="va">exmp_ecx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exmp</span>, model <span class="op">=</span> <span class="st">"ecx"</span><span class="op">)</span>
+<span class="co">#&gt; Error in pull_out(exmp, model = "ecx"): object 'exmp' not found</span></code></pre></div>
 <p>Now we have three different averaged model fits, all of class <code>bayemanec</code> in this case (because they all contain multiple fits). We can compare their posterior estimates of the ex10 values using <code>compare_posterior</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">post_comp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"all"</span> <span class="op">=</span> <span class="va">exmp</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">exmp_ecx</span>,
                                     <span class="st">"nec"</span> <span class="op">=</span> <span class="va">exmp_nec</span><span class="op">)</span>,
                                comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>
+<span class="co">#&gt; Error in compare_posterior(list(all = exmp, ecx = exmp_ecx, nec = exmp_nec), : object 'exmp' not found</span>
 <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">post_comp</span><span class="op">)</span>
-<span class="co"># "posterior_list" </span>
-<span class="co"># "posterior_data" </span>
-<span class="co"># "diff_list"      </span>
-<span class="co"># "diff_data"      </span>
-<span class="co"># "prob_diff"</span></code></pre></div>
+<span class="co">#&gt; Error in eval(expr, envir, enclos): object 'post_comp' not found</span></code></pre></div>
 <p>The <code>compare_posterior</code> function outputs several elements in a named list. This includes the <strong>posterior_data</strong> for each model in the comparison as a <code>data.frame</code> which we can use to plot a <code>geom_density</code> plot of the posterior estimates, so they can be compared visually.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp</span><span class="op">$</span><span class="va">posterior_data</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> 
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density.html" class="external-link">geom_density</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>group <span class="op">=</span> <span class="va">model</span>, colour <span class="op">=</span> <span class="va">model</span>, fill <span class="op">=</span> <span class="va">model</span><span class="op">)</span>,
                alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<p><img src="example4a.jpeg" width="100%"></p>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span>
+<span class="co">#&gt; Error in ggplot(data = post_comp$posterior_data, mapping = aes(x = value)): object 'post_comp' not found</span></code></pre></div>
 <p>From this you can see that the ec10 estimates are very similar for the <strong>nec</strong> and <strong>all</strong>. This is because the <strong>nec</strong> model types dominate the model weights in this <strong>all</strong> fit, see wi in <code>exmp$mod_stats</code>. The ec10 estimate is slightly lower (more conservative) for the <strong>ecx</strong> based models.</p>
 <p>The <code>data.frame</code> “diff_data” can be used to make a similar plot, but specifically for the differences among models.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp</span><span class="op">$</span><span class="va">diff_data</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">diff</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density.html" class="external-link">geom_density</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>group <span class="op">=</span> <span class="va">comparison</span>, colour <span class="op">=</span> <span class="va">comparison</span>,
                              fill <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span> </code></pre></div>
-<p><img src="example4b.jpeg" width="100%"></p>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span> 
+<span class="co">#&gt; Error in ggplot(data = post_comp$diff_data, mapping = aes(x = diff)): object 'post_comp' not found</span></code></pre></div>
 <p>This shows that the differences among the three estimates. Overall they are all quite similar, but with there no difference in the <strong>nec</strong> and <strong>all</strong> estimates (the probability density overlaps zero), and a tendency for the <strong>ecx</strong> to be lower than <strong>all</strong> and <strong>nec</strong>.</p>
 <p>Finally, the probability that the endpoint estimate for one model set is greater than the other is obtained in “prob_diff”. Here you can see there is ~57% chance that <strong>all</strong> is great than <strong>ecx</strong>, a 46% chance that <strong>all</strong> is greater than <strong>nec</strong> and a 36% chance that <strong>ecx</strong> is greater than <strong>nec</strong>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">post_comp</span><span class="op">$</span><span class="va">prob_diff</span>
-<span class="co">#  all.ecx all.nec ecx.nec</span>
-<span class="co">#1 0.57375    0.46   0.361</span></code></pre></div>
+<span class="co">#&gt; Error in eval(expr, envir, enclos): object 'post_comp' not found</span></code></pre></div>
 </div>
 <div id="comparing-posterior-fitted-values" class="section level2">
 <h2 class="hasAnchor">
@@ -171,46 +181,34 @@
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">post_comp_fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"all"</span> <span class="op">=</span> <span class="va">exmp</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">exmp_ecx</span>,
                                            <span class="st">"nec"</span> <span class="op">=</span> <span class="va">exmp_nec</span><span class="op">)</span>,
-                                      comparison <span class="op">=</span> <span class="st">"fitted"</span><span class="op">)</span></code></pre></div>
+                                      comparison <span class="op">=</span> <span class="st">"fitted"</span><span class="op">)</span>
+<span class="co">#&gt; Error in compare_posterior(list(all = exmp, ecx = exmp_ecx, nec = exmp_nec), : object 'exmp' not found</span></code></pre></div>
 <p>In the case of <code>comparison = "fitted"</code> most of the elements returned by compare_posterior are class <code>data.frame</code>, with summary values for the posteriors, difference values and probabilities returned for each value of x, for each model, or model comparison.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span>
-<span class="co">#   model          x  Estimate      Q2.5     Q97.5</span>
-<span class="co"># 1   all 0.03234801 0.8865920 0.8609242 0.8987086</span>
-<span class="co"># 2   all 0.09741274 0.8868260 0.8676755 0.8987086</span>
-<span class="co"># 3   all 0.16247747 0.8870972 0.8712948 0.8987086</span>
-<span class="co"># 4   all 0.22754220 0.8873789 0.8733017 0.8987346</span>
-<span class="co"># 5   all 0.29260692 0.8877217 0.8746777 0.8988511</span>
-<span class="co"># 6   all 0.35767165 0.8880612 0.8760193 0.8988571</span>
-
+<span class="co">#&gt; Error in head(post_comp_fitted$posterior_data): object 'post_comp_fitted' not found</span>
 <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span>
-<span class="co">#   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x</span>
-<span class="co"># 1    all-ecx  -0.005726618 -0.03212779 0.01120134 0.03234801</span>
-<span class="co"># 2    all-ecx  -0.005424647 -0.02608475 0.01123945 0.09741274</span>
-<span class="co"># 3    all-ecx  -0.005025740 -0.02334368 0.01109118 0.16247747</span>
-<span class="co"># 4    all-ecx  -0.004719021 -0.02135375 0.01119652 0.22754220</span>
-<span class="co"># 5    all-ecx  -0.004280943 -0.02037682 0.01119120 0.29260692</span>
-<span class="co"># 6    all-ecx  -0.003893997 -0.01951922 0.01128307 0.35767165</span></code></pre></div>
+<span class="co">#&gt; Error in head(post_comp_fitted$diff_data): object 'post_comp_fitted' not found</span></code></pre></div>
 <p>Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the <strong>ecx</strong> model set begins to decline earlier than the <strong>nec</strong> or <strong>all</strong> sets, which are flat prior to the nec step point, and then decline more rapidly.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">Estimate</span>, color <span class="op">=</span> <span class="va">model</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">geom_ribbon</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, ymin <span class="op">=</span> <span class="va">Q2.5</span>, ymax <span class="op">=</span> <span class="va">Q97.5</span>, fill <span class="op">=</span> <span class="va">model</span><span class="op">)</span>,
-              alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></code></pre></div>
-<p><img src="example4c.jpeg" width="100%"></p>
+              alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span>
+<span class="co">#&gt; Error in ggplot(data = post_comp_fitted$posterior_data): object 'post_comp_fitted' not found</span></code></pre></div>
 <p>We can plot the differences between pairs of models in the list by plotting “diff.Estimate” from “diff_data” and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest. As we have seen for ec10, the <strong>nec</strong> and <strong>all</strong> model sets are relatively similar across the entire range of concentrations (x) (green band overlaps zero). The red band is the difference between <strong>ecx</strong> and <strong>all</strong> and shows that the <strong>ecx</strong> set has slightly higher estimates than <strong>all</strong> at low to moderate x values, although really these curves are very similar as we saw from such small differences in the ec10 estimates above.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">diff.Estimate</span>, color <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>,
             size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">geom_ribbon</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, ymin  <span class="op">=</span><span class="va">diff.Q2.5</span>, ymax <span class="op">=</span> <span class="va">diff.Q97.5</span>,
-              fill <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></code></pre></div>
-<p><img src="example4d.jpeg" width="100%"></p>
+              fill <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span>
+<span class="co">#&gt; Error in ggplot(data = post_comp_fitted$diff_data): object 'post_comp_fitted' not found</span></code></pre></div>
 <p>And finally we can plot the probability that one model is greater than the other by plotting “prob” from “diff_data”. The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The green line hovers around 0.5 clearly indicating the lack of significant difference in the <strong>nec</strong> and <strong>all</strong> model sets at any point of the x-curve. The red and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the <strong>ecx</strong> and the <strong>nec</strong> or <strong>all</strong> predictions. The greatest probability of difference among these curves is between values of ~1 and ~1.5 of x, where the probability of difference does tend towards high values, at the point where the *ecx<strong> set deviates from the </strong>nec** set.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">prob_diff</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">prob</span>, color <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></code></pre></div>
-<p><img src="example4e.jpeg" width="100%"></p>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">prob</span>, color <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>
+<span class="co">#&gt; Error in ggplot(data = post_comp_fitted$prob_diff): object 'post_comp_fitted' not found</span></code></pre></div>
 </div>
 </div>
   </div>

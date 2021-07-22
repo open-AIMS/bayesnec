@@ -159,264 +159,104 @@
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span><span class="op">)</span>,
                 log_x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span><span class="op">)</span>
 
-<span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">)</span></code></pre></div>
-<pre><code>## 'data.frame':    48 obs. of  4 variables:
-##  $ raw_x: num  0.1 0.1 0.1 0.1 0.1 0.1 6.25 6.25 6.25 6.25 ...
-##  $ suc  : int  101 106 102 112 58 158 95 91 93 113 ...
-##  $ tot  : int  175 112 103 114 69 165 109 92 99 138 ...
-##  $ log_x: num  -2.3 -2.3 -2.3 -2.3 -2.3 ...</code></pre>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></code></pre></div>
-<pre><code>## [1]   0.1 400.0</code></pre>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></code></pre></div>
-<p><img src="example1_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
+<span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">)</span>
+<span class="co">#&gt; 'data.frame':    48 obs. of  4 variables:</span>
+<span class="co">#&gt;  $ raw_x: num  0.1 0.1 0.1 0.1 0.1 0.1 6.25 6.25 6.25 6.25 ...</span>
+<span class="co">#&gt;  $ suc  : int  101 106 102 112 58 158 95 91 93 113 ...</span>
+<span class="co">#&gt;  $ tot  : int  175 112 103 114 69 165 109 92 99 138 ...</span>
+<span class="co">#&gt;  $ log_x: num  -2.3 -2.3 -2.3 -2.3 -2.3 ...</span>
+<span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span>
+<span class="co">#&gt; [1]   0.1 400.0</span>
+<span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-unnamed-chunk-4-1.png" title="plot of chunk unnamed-chunk-4" alt="plot of chunk unnamed-chunk-4" width="100%"></p>
 <p>In this case for x, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the x data are common for concentration—response experiments, where the x ‘concentration’ data are the concentration of contaminants, or dilutions. The current default in <code>bayesnec</code> is to estimate the appropriate distribution(s) and priors for the <code>family</code> argument, but it is possible to supply <code>family</code> directly. We are going to model this with the x data on a log scale, as this is the scaling clearly used in the experimental design and thus will provide more stable results.</p>
 <p>The data are clearly binomial, with the column <code>suc</code>—indicating the number of ‘successes’ in the binomial call, with <code>tot</code> clearly indicating the number of trials.</p>
 <p>The main ‘working’ function in <code>bayesnec</code> is the function <code>bnec</code>, which calls the other necessary functions and fits the <code>brms</code> model. We run <code>bnec</code> by supplying <code>data</code>: a data.frame containing the data for the model fitting, here, <code>binom_data</code>; <code>x_var</code>: the name of the column in <code>data</code> which contains the concentration data or ‘x’ data to be used in the <em>NEC</em> model fit, and <code>y_var</code>: the name of the column in <code>data</code> which contains the response or ‘y’ data to be used in the <em>NEC</em> model fit. In our example here, as this is binomial, we must also supply <code>trials_var</code>, which is the name of the column in <code>data</code> which contains the number of trials in the binomial call.</p>
 <p><code>bnec</code> will guess the data types for use, although as mentioned above we could manually specify <code>family</code> as “binomial”. <code>bnec</code> will also generate appropriate priors for the <code>brms</code> model call, although these can also be specified manually (see the <a href="https://open-aims.github.io/bayesnec/articles/example3.html" class="external-link">Priors</a> vignette for more details).</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">binom_data</span>, x_var <span class="op">=</span> <span class="st">"log_x"</span>,
               y_var <span class="op">=</span> <span class="st">"suc"</span>, model <span class="op">=</span> <span class="st">"neclin"</span>,
-              trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span></code></pre></div>
-<pre><code>## Running /Library/Frameworks/R.framework/Resources/bin/R CMD SHLIB foo.c
-## clang -mmacosx-version-min=10.13 -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG   -I"/Users/runner/work/_temp/Library/Rcpp/include/"  -I"/Users/runner/work/_temp/Library/RcppEigen/include/"  -I"/Users/runner/work/_temp/Library/RcppEigen/include/unsupported"  -I"/Users/runner/work/_temp/Library/BH/include" -I"/Users/runner/work/_temp/Library/StanHeaders/include/src/"  -I"/Users/runner/work/_temp/Library/StanHeaders/include/"  -I"/Users/runner/work/_temp/Library/RcppParallel/include/"  -I"/Users/runner/work/_temp/Library/rstan/include" -DEIGEN_NO_DEBUG  -DBOOST_DISABLE_ASSERTS  -DBOOST_PENDING_INTEGER_LOG2_HPP  -DSTAN_THREADS  -DBOOST_NO_AUTO_PTR  -include '/Users/runner/work/_temp/Library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp'  -D_REENTRANT -DRCPP_PARALLEL_USE_TBB=1   -I/usr/local/include   -fPIC  -Wall -g -O2  -c foo.c -o foo.o
-## In file included from &lt;built-in&gt;:1:
-## In file included from /Users/runner/work/_temp/Library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp:13:
-## In file included from /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/Dense:1:
-## In file included from /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/Core:88:
-## /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/src/Core/util/Macros.h:628:1: error: unknown type name 'namespace'
-## namespace Eigen {
-## ^
-## /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/src/Core/util/Macros.h:628:16: error: expected ';' after top level declarator
-## namespace Eigen {
-##                ^
-##                ;
-## In file included from &lt;built-in&gt;:1:
-## In file included from /Users/runner/work/_temp/Library/StanHeaders/include/stan/math/prim/mat/fun/Eigen.hpp:13:
-## In file included from /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/Dense:1:
-## /Users/runner/work/_temp/Library/RcppEigen/include/Eigen/Core:96:10: fatal error: 'complex' file not found
-## #include &lt;complex&gt;
-##          ^~~~~~~~~
-## 3 errors generated.
-## make: *** [foo.o] Error 1
-## 
-## SAMPLING FOR MODEL '8a8b3e9e9e97704abf746e2c6f5cd369' NOW (CHAIN 1).
-## Chain 1: 
-## Chain 1: Gradient evaluation took 9.6e-05 seconds
-## Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 0.96 seconds.
-## Chain 1: Adjust your expectations accordingly!
-## Chain 1: 
-## Chain 1: 
-## Chain 1: Iteration:    1 / 10000 [  0%]  (Warmup)
-## Chain 1: Iteration: 1000 / 10000 [ 10%]  (Warmup)
-## Chain 1: Iteration: 2000 / 10000 [ 20%]  (Warmup)
-## Chain 1: Iteration: 3000 / 10000 [ 30%]  (Warmup)
-## Chain 1: Iteration: 4000 / 10000 [ 40%]  (Warmup)
-## Chain 1: Iteration: 5000 / 10000 [ 50%]  (Warmup)
-## Chain 1: Iteration: 6000 / 10000 [ 60%]  (Warmup)
-## Chain 1: Iteration: 7000 / 10000 [ 70%]  (Warmup)
-## Chain 1: Iteration: 8000 / 10000 [ 80%]  (Warmup)
-## Chain 1: Iteration: 9000 / 10000 [ 90%]  (Warmup)
-## Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)
-## Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)
-## Chain 1: 
-## Chain 1:  Elapsed Time: 2.20281 seconds (Warm-up)
-## Chain 1:                0.2891 seconds (Sampling)
-## Chain 1:                2.49191 seconds (Total)
-## Chain 1: 
-## 
-## SAMPLING FOR MODEL '8a8b3e9e9e97704abf746e2c6f5cd369' NOW (CHAIN 2).
-## Chain 2: 
-## Chain 2: Gradient evaluation took 4.3e-05 seconds
-## Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.43 seconds.
-## Chain 2: Adjust your expectations accordingly!
-## Chain 2: 
-## Chain 2: 
-## Chain 2: Iteration:    1 / 10000 [  0%]  (Warmup)
-## Chain 2: Iteration: 1000 / 10000 [ 10%]  (Warmup)
-## Chain 2: Iteration: 2000 / 10000 [ 20%]  (Warmup)
-## Chain 2: Iteration: 3000 / 10000 [ 30%]  (Warmup)
-## Chain 2: Iteration: 4000 / 10000 [ 40%]  (Warmup)
-## Chain 2: Iteration: 5000 / 10000 [ 50%]  (Warmup)
-## Chain 2: Iteration: 6000 / 10000 [ 60%]  (Warmup)
-## Chain 2: Iteration: 7000 / 10000 [ 70%]  (Warmup)
-## Chain 2: Iteration: 8000 / 10000 [ 80%]  (Warmup)
-## Chain 2: Iteration: 9000 / 10000 [ 90%]  (Warmup)
-## Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)
-## Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)
-## Chain 2: 
-## Chain 2:  Elapsed Time: 2.24047 seconds (Warm-up)
-## Chain 2:                0.247764 seconds (Sampling)
-## Chain 2:                2.48824 seconds (Total)
-## Chain 2: 
-## 
-## SAMPLING FOR MODEL '8a8b3e9e9e97704abf746e2c6f5cd369' NOW (CHAIN 3).
-## Chain 3: 
-## Chain 3: Gradient evaluation took 3.5e-05 seconds
-## Chain 3: 1000 transitions using 10 leapfrog steps per transition would take 0.35 seconds.
-## Chain 3: Adjust your expectations accordingly!
-## Chain 3: 
-## Chain 3: 
-## Chain 3: Iteration:    1 / 10000 [  0%]  (Warmup)
-## Chain 3: Iteration: 1000 / 10000 [ 10%]  (Warmup)
-## Chain 3: Iteration: 2000 / 10000 [ 20%]  (Warmup)
-## Chain 3: Iteration: 3000 / 10000 [ 30%]  (Warmup)
-## Chain 3: Iteration: 4000 / 10000 [ 40%]  (Warmup)
-## Chain 3: Iteration: 5000 / 10000 [ 50%]  (Warmup)
-## Chain 3: Iteration: 6000 / 10000 [ 60%]  (Warmup)
-## Chain 3: Iteration: 7000 / 10000 [ 70%]  (Warmup)
-## Chain 3: Iteration: 8000 / 10000 [ 80%]  (Warmup)
-## Chain 3: Iteration: 9000 / 10000 [ 90%]  (Warmup)
-## Chain 3: Iteration: 9001 / 10000 [ 90%]  (Sampling)
-## Chain 3: Iteration: 10000 / 10000 [100%]  (Sampling)
-## Chain 3: 
-## Chain 3:  Elapsed Time: 2.25415 seconds (Warm-up)
-## Chain 3:                0.328987 seconds (Sampling)
-## Chain 3:                2.58313 seconds (Total)
-## Chain 3: 
-## 
-## SAMPLING FOR MODEL '8a8b3e9e9e97704abf746e2c6f5cd369' NOW (CHAIN 4).
-## Chain 4: 
-## Chain 4: Gradient evaluation took 3.4e-05 seconds
-## Chain 4: 1000 transitions using 10 leapfrog steps per transition would take 0.34 seconds.
-## Chain 4: Adjust your expectations accordingly!
-## Chain 4: 
-## Chain 4: 
-## Chain 4: Iteration:    1 / 10000 [  0%]  (Warmup)
-## Chain 4: Iteration: 1000 / 10000 [ 10%]  (Warmup)
-## Chain 4: Iteration: 2000 / 10000 [ 20%]  (Warmup)
-## Chain 4: Iteration: 3000 / 10000 [ 30%]  (Warmup)
-## Chain 4: Iteration: 4000 / 10000 [ 40%]  (Warmup)
-## Chain 4: Iteration: 5000 / 10000 [ 50%]  (Warmup)
-## Chain 4: Iteration: 6000 / 10000 [ 60%]  (Warmup)
-## Chain 4: Iteration: 7000 / 10000 [ 70%]  (Warmup)
-## Chain 4: Iteration: 8000 / 10000 [ 80%]  (Warmup)
-## Chain 4: Iteration: 9000 / 10000 [ 90%]  (Warmup)
-## Chain 4: Iteration: 9001 / 10000 [ 90%]  (Sampling)
-## Chain 4: Iteration: 10000 / 10000 [100%]  (Sampling)
-## Chain 4: 
-## Chain 4:  Elapsed Time: 2.18629 seconds (Warm-up)
-## Chain 4:                0.302318 seconds (Sampling)
-## Chain 4:                2.48861 seconds (Total)
-## Chain 4:</code></pre>
+              trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span>
+<span class="co">#&gt; Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58b5c2fb.so':</span>
+<span class="co">#&gt;   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58b5c2fb.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib</span>
+<span class="co">#&gt;   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib</span>
+<span class="co">#&gt;   Reason: image not found</span>
+<span class="co">#&gt; Error in sink(type = "output"): invalid connection</span></code></pre></div>
 <p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code>plot(exp_1$fit)</code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> with try up to <code>n_tries</code> more times to fit the data using either <code>bayesnec</code> generated or <code>brms</code> default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
-<p><img src="example1_files/figure-html/unnamed-chunk-6-1.png" width="672"></p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_1$fit): object 'exp_1' not found</span></code></pre></div>
 <p>In our example, the chains are well mixed, and the probability density plots look good. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks ok. There are a range of other model diagnostics that can be explored for [brms] model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (<a href="https://github.com/paul-buerkner/brms" class="external-link uri">https://github.com/paul-buerkner/brms</a>) models.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/pairs.html" class="external-link">pairs</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
-<p><img src="example1_files/figure-html/unnamed-chunk-7-1.png" width="672"></p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/pairs.html" class="external-link">pairs</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span>
+<span class="co">#&gt; Error in pairs(exp_1$fit): object 'exp_1' not found</span></code></pre></div>
 <p>We can see the summary of our fitted model parameters using:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">)</span></code></pre></div>
-<pre><code>## Object of class bayesnecfit containing the following non-linear model: neclin
-## 
-##  Family: binomial 
-##   Links: mu = logit 
-## Formula: y | trials(trials) ~ top - exp(slope) * (x - nec) * step(x - nec) 
-##          top ~ 1
-##          slope ~ 1
-##          nec ~ 1
-##    Data: structure(list(x = c(-2.30258509299405, -2.3025850 (Number of observations: 48) 
-## Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;
-##          total post-warmup samples = 4000
-## 
-## Population-Level Effects: 
-##                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## top_Intercept       1.69      0.05     1.59     1.79 1.00     1796     1885
-## slope_Intercept     0.66      0.04     0.58     0.73 1.00     1991     1950
-## nec_Intercept       3.72      0.05     3.61     3.82 1.00     1724     1843
-## 
-## Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS
-## and Tail_ESS are effective sample size measures, and Rhat is the potential
-## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">)</span>
+<span class="co">#&gt; Error in summary(exp_1): object 'exp_1' not found</span></code></pre></div>
 <p>Note the Rhat values in this example are one, indicating convergence.</p>
 <p>The function <code>plot</code> can be used to plot the fitted model. You can also make your own plot from the data included in the returned <code>bayesnecfit</code> object from the call to <code>bnec</code>. Here we use the default plot method from <code>bayesnec</code>, where we add the ‘exp’ function to plot the tick labels on the original scaling of the concentration data.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1</span>, lxform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></code></pre></div>
-<p><img src="example1_files/figure-html/unnamed-chunk-9-1.png" width="672"></p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1</span>, lxform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_1, lxform = exp): object 'exp_1' not found</span></code></pre></div>
 <p>Alternatively, we can use the built in <code>brms</code> methods to plot the <code>brms</code> fit directly. For example:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">df</span> <span class="op">&lt;-</span> <span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">$</span><span class="va">data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>prop <span class="op">=</span> <span class="va">y</span> <span class="op">/</span> <span class="va">trials</span><span class="op">)</span>
+<span class="co">#&gt; Error in dplyr::mutate(., prop = y/trials): object 'exp_1' not found</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/conditional_effects.brmsfit.html" class="external-link">conditional_effects</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="op">+</span>
      <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">prop</span><span class="op">)</span>,
-                inherit.aes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
-<p><img src="example1_files/figure-html/unnamed-chunk-10-1.png" width="672"><img src="example1_files/figure-html/unnamed-chunk-10-2.png" width="672"></p>
+                inherit.aes <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>
+<span class="co">#&gt; Error in brms::conditional_effects(exp_1$fit): object 'exp_1' not found</span></code></pre></div>
 <p>This model fit doesn’t look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by <code>bayesnec</code>, and this can be extracted using <code>exp_1$dispersion</code>. Values &gt;1 indicate overdispersion and values &lt;1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model doesn’t properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></code></pre></div>
-<pre><code>## Estimate     Q2.5    Q97.5 
-## 19.50421 13.02151 29.86715</code></pre>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span>
+<span class="co">#&gt; Error in eval(expr, envir, enclos): object 'exp_1' not found</span></code></pre></div>
 </div>
 <div id="beta-binomial" class="section level3">
 <h3 class="hasAnchor">
 <a href="#beta-binomial" class="anchor" aria-hidden="true"></a>Beta-Binomial</h3>
 <p>The Beta-Binomial model can be useful for overdispersed Binomial data.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_1b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">binom_data</span>, x_var <span class="op">=</span> <span class="st">"log_x"</span>,
-              y_var <span class="op">=</span> <span class="st">"suc"</span>, model <span class="op">=</span> <span class="st">"neclin"</span>,
-              family <span class="op">=</span> <span class="va">beta_binomial2</span>,
-              trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span></code></pre></div>
+               y_var <span class="op">=</span> <span class="st">"suc"</span>, model <span class="op">=</span> <span class="st">"neclin"</span>,
+               family <span class="op">=</span> <span class="va">beta_binomial2</span>,
+               trials_var <span class="op">=</span> <span class="st">"tot"</span><span class="op">)</span>
+<span class="co">#&gt; Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58024da6.so':</span>
+<span class="co">#&gt;   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c58024da6.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib</span>
+<span class="co">#&gt;   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib</span>
+<span class="co">#&gt;   Reason: image not found</span>
+<span class="co">#&gt; Error in sink(type = "output"): invalid connection</span></code></pre></div>
 <p>Fitting this data with the betabinomial2 yields a much more realistic fit in terms of the confidence bounds and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1b</span>, lxform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_1b, lxform = exp): object 'exp_1b' not found</span>
 <span class="va">exp_1b</span><span class="op">$</span><span class="va">dispersion</span>
-<span class="co">#[1] NA NA NA</span></code></pre></div>
-<p><img src="example1a.jpeg" width="100%"></p>
+<span class="co">#&gt; Error in eval(expr, envir, enclos): object 'exp_1b' not found</span></code></pre></div>
 <p>Now we have a good fit to these data, we can interpret the results. The estimated <em>NEC</em> value can be obtained directly from the fitted model object, using <code>exp_1b$nec</code>, or we can plot the posterior distribution of the <em>NEC</em> values.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec</span>
-<span class="co">#Estimate     Q2.5    Q97.5 </span>
-<span class="co">#3.436315 2.674583 4.00693</span>
-
-<span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec_posterior</span><span class="op">)</span></code></pre></div>
-<p><img src="example1k.png" width="100%"></p>
+<span class="co">#&gt; Error in eval(expr, envir, enclos): object 'exp_1b' not found</span>
+<span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec_posterior</span><span class="op">)</span>
+<span class="co">#&gt; Error in hist(exp_1b$nec_posterior): object 'exp_1b' not found</span></code></pre></div>
 <p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em> model fit, using the function <code>ecx</code>. Note these may differ from a typical 4-parameter non-linear model, as the <em>NEC</em> model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Comparing posterior predictions</a> vignettes for more information.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">)</span>
-<span class="co">#  ec_10_Q50  ec_10_Q2.5 ec_10_Q97.5 </span>
-<span class="co">#   3.799644    3.276595    4.223064 </span></code></pre></div>
+<span class="co">#&gt; Error in ecx(exp_1b): object 'exp_1b' not found</span></code></pre></div>
 <p>A summary method has also been developed for <code>bayesnecfit</code> objects that gives an overall summary of the model statistics, which also include the estimate for <strong>NEC</strong>, as the nec_intercept population level effect in the model.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">)</span>
-<span class="co"># Object of class bayesnecfit containing the following non-linear model: neclin</span>
-<span class="co"># </span>
-<span class="co">#  Family: beta_binomial2 </span>
-<span class="co">#   Links: mu = logit; phi = identity </span>
-<span class="co"># Formula: y | trials(trials) ~ top - slope * (x - nec) * step(x - nec) </span>
-<span class="co">#          top ~ 1</span>
-<span class="co">#          slope ~ 1</span>
-<span class="co">#          nec ~ 1</span>
-<span class="co">#    Data: structure(list(x = c(-2.30258509299405, -2.3025850 (Number of observations: 48) </span>
-<span class="co"># Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;</span>
-<span class="co">#          total post-warmup samples = 4000</span>
-<span class="co"># </span>
-<span class="co"># Population-Level Effects: </span>
-<span class="co">#                 Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span>
-<span class="co"># top_Intercept       1.83      0.23     1.38     2.34 1.00     1667     1751</span>
-<span class="co"># slope_Intercept     1.52      0.24     1.06     2.04 1.00     1947     2129</span>
-<span class="co"># nec_Intercept       3.41      0.30     2.67     3.94 1.00     1625     1618</span>
-<span class="co"># </span>
-<span class="co"># Family Specific Parameters: </span>
-<span class="co">#     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span>
-<span class="co"># phi     5.74      1.30     3.55     8.75 1.00     2276     2206</span>
-<span class="co"># </span>
-<span class="co"># Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS</span>
-<span class="co"># and Tail_ESS are effective sample size measures, and Rhat is the potential</span>
-<span class="co"># scale reduction factor on split chains (at convergence, Rhat = 1).</span></code></pre></div>
+<span class="co">#&gt; Error in summary(exp_1b): object 'exp_1b' not found</span></code></pre></div>
 </div>
 <div id="beta-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#beta-data" class="anchor" aria-hidden="true"></a>Beta data</h3>
 <p>Sometimes the response variable is distributed between <code>0</code> and <code>1</code> but is not a straight-forward Binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical ‘trials’ and the data must be modelled using a beta distribution.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">prop_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/123jq46d"</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
@@ -425,115 +265,109 @@
 
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">prop_data</span>, x_var <span class="op">=</span> <span class="st">"raw_x"</span>,
-              y_var <span class="op">=</span> <span class="st">"resp"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
-<p><img src="example1b.jpeg" width="100%"></p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">)</span></code></pre></div>
-<p><img src="example1c.jpeg" width="100%"></p>
+              y_var <span class="op">=</span> <span class="st">"resp"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span>
+<span class="co">#&gt; Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c337d159a.so':</span>
+<span class="co">#&gt;   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c337d159a.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib</span>
+<span class="co">#&gt;   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib</span>
+<span class="co">#&gt;   Reason: image not found</span>
+<span class="co">#&gt; Error in sink(type = "output"): invalid connection</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_2$fit): object 'exp_2' not found</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_2): object 'exp_2' not found</span></code></pre></div>
 </div>
 <div id="poisson-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#poisson-data" class="anchor" aria-hidden="true"></a>Poisson data</h3>
 <p>Where data are a count (of, for example, individuals or cells) y is Poisson. Such data are distributed from <code>0</code> to <code>Inf</code> and are integers. First we read in the count data example from <a href="https://pastebin.com/tools" class="external-link">pastebin</a>, and then plot the “concentration” or x data, Again, this is <code>raw_x</code>, and distributed as in our binomial example above.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">count_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/ENgNSgf7"</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span><span class="op">)</span>,
                 sqrt_x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span><span class="op">)</span>
 
-<span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">)</span></code></pre></div>
-<pre><code>## 'data.frame':    48 obs. of  3 variables:
-##  $ raw_x : num  0.1 0.1 0.1 0.1 0.1 0.1 9.67 9.67 9.67 9.67 ...
-##  $ count : int  164 100 103 102 102 101 131 102 112 100 ...
-##  $ sqrt_x: num  0.316 0.316 0.316 0.316 0.316 ...</code></pre>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span></code></pre></div>
-<pre><code>## [1]   0.1 190.0</code></pre>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">)</span>
+<span class="co">#&gt; 'data.frame':    48 obs. of  3 variables:</span>
+<span class="co">#&gt;  $ raw_x : num  0.1 0.1 0.1 0.1 0.1 0.1 9.67 9.67 9.67 9.67 ...</span>
+<span class="co">#&gt;  $ count : int  164 100 103 102 102 101 131 102 112 100 ...</span>
+<span class="co">#&gt;  $ sqrt_x: num  0.316 0.316 0.316 0.316 0.316 ...</span>
+<span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span>
+<span class="co">#&gt; [1]   0.1 190.0</span>
+
+<span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">raw_x</span>, xlab <span class="op">=</span> <span class="st">"'x' variable"</span>, main <span class="op">=</span> <span class="st">""</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">count</span>, xlab <span class="op">=</span> <span class="st">"Total counts"</span>, main <span class="op">=</span> <span class="st">""</span><span class="op">)</span></code></pre></div>
-<p><img src="example1_files/figure-html/unnamed-chunk-24-1.png" width="960"></p>
+<p><img src="vignette-fig-unnamed-chunk-20-1.png" title="plot of chunk unnamed-chunk-20" alt="plot of chunk unnamed-chunk-20" width="100%"></p>
 <p>First, we supply <code>bnec</code> with <code>data</code> (count_data), and specify <code>x_var</code> and <code>y_var</code>. As we have integers of 0 and greater, the <code>family</code> is “poisson”. The default behaviour to guess the variable types works for this example.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">count_data</span>, x_var <span class="op">=</span> <span class="st">"sqrt_x"</span>,
-              y_var <span class="op">=</span> <span class="st">"count"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span></code></pre></div>
+              y_var <span class="op">=</span> <span class="st">"count"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span>
+<span class="co">#&gt; Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146cdbe2b66.so':</span>
+<span class="co">#&gt;   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146cdbe2b66.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib</span>
+<span class="co">#&gt;   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib</span>
+<span class="co">#&gt;   Reason: image not found</span>
+<span class="co">#&gt; Error in sink(type = "output"): invalid connection</span></code></pre></div>
 <p>We first plot the model chains and parameter estimates to check the fit.</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
-<p><img src="example1d.jpeg" width="100%"></p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_3$fit): object 'exp_3' not found</span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_3): object 'exp_3' not found</span>
 <span class="va">exp_3</span><span class="op">$</span><span class="va">dispersion</span>
-<span class="co">#Estimate     Q2.5    Q97.5 </span>
-<span class="co">#2.915520 1.927265 4.526432 </span></code></pre></div>
-<p><img src="example1e.jpeg" width="100%"></p>
+<span class="co">#&gt; Error in eval(expr, envir, enclos): object 'exp_3' not found</span></code></pre></div>
 <p>The chains look ok; however, our plot of the fit is not very convincing. The error bars are very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try a negative binomial family.</p>
 </div>
 <div id="negative-binomial" class="section level3">
 <h3 class="hasAnchor">
 <a href="#negative-binomial" class="anchor" aria-hidden="true"></a>Negative binomial</h3>
 <p>When count data are overdispersed and cannot be modelled using the poisson family, the negative binomial family is generally used. We can do this by calling <code>family = "negbinomial"</code>.</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_3b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">count_data</span>, x_var <span class="op">=</span> <span class="st">"sqrt_x"</span>,
-              y_var <span class="op">=</span> <span class="st">"count"</span>, family <span class="op">=</span> <span class="st">"negbinomial"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span></code></pre></div>
+              y_var <span class="op">=</span> <span class="st">"count"</span>, family <span class="op">=</span> <span class="st">"negbinomial"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span>
+<span class="co">#&gt; Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c1e4f6f4.so':</span>
+<span class="co">#&gt;   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c1e4f6f4.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib</span>
+<span class="co">#&gt;   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib</span>
+<span class="co">#&gt;   Reason: image not found</span>
+<span class="co">#&gt; Error in sink(type = "output"): invalid connection</span></code></pre></div>
 <p>The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it still does not seem to be a good model for these data. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html" class="external-link">Multi model usage</a> vignettes for options to fit other models to these data.</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">)</span></code></pre></div>
-<p><img src="example1f.jpeg" width="100%"></p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
-<p><img src="example1g.jpeg" width="100%"></p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_3b): object 'exp_3b' not found</span></code></pre></div>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_3b$fit): object 'exp_3b' not found</span></code></pre></div>
 </div>
 <div id="measure-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#measure-data" class="anchor" aria-hidden="true"></a>Measure data</h3>
 <p>Where data are a measured variable y is family gamma. Good examples of <code>gamma</code> distributed data include measures of body size, such as length, weight, or area. Such data are distributed from <code>0+</code> to <code>Inf</code> and are continuous. Here we use the nec_data supplied with <code>bayesnec</code> with y on the exponential scale to ensure the right data range for a gamma as an example.</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>
 <span class="va">measure_data</span> <span class="op">&lt;-</span> <span class="va">nec_data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>measure <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">measure_data</span>, x_var <span class="op">=</span> <span class="st">"x"</span>,
-              y_var <span class="op">=</span> <span class="st">"measure"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
-<p><img src="example1h.jpeg" width="100%"></p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+              y_var <span class="op">=</span> <span class="st">"measure"</span>, model <span class="op">=</span> <span class="st">"neclin"</span><span class="op">)</span>
+<span class="co">#&gt; Error in dyn.load(libLFile): unable to load shared object '/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c47cf6267.so':</span>
+<span class="co">#&gt;   dlopen(/var/folders/f7/b7kr96mn3hs8rc5s0gfn_q000000gn/T//RtmpHioqWS/file146c47cf6267.so, 6): Library not loaded: @rpath/libtbbmalloc.2.dylib</span>
+<span class="co">#&gt;   Referenced from: /usr/local/opt/tbb/lib/libtbbmalloc_proxy.2.dylib</span>
+<span class="co">#&gt;   Reason: image not found</span>
+<span class="co">#&gt; Error in sink(type = "output"): invalid connection</span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_4$fit): object 'exp_4' not found</span></code></pre></div>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span>
+<span class="co">#&gt; Error in plot(exp_4): object 'exp_4' not found</span>
 <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span>
-<span class="co">#Object of class bayesnecfit containing the following non-linear model: neclin</span>
-<span class="co">#</span>
-<span class="co"># Family: gamma </span>
-<span class="co">#  Links: mu = log; shape = identity </span>
-<span class="co">#Formula: y ~ top - slope * (x - nec) * step(x - nec) </span>
-<span class="co">#         top ~ 1</span>
-<span class="co">#         slope ~ 1</span>
-<span class="co">#         nec ~ 1</span>
-<span class="co">#   Data: structure(list(x = c(1.01874617094183, 0.815747457 (Number of observations: 100) </span>
-<span class="co">#Samples: 4 chains, each with iter = 10000; warmup = 9000; thin = 1;</span>
-<span class="co">#         total post-warmup samples = 4000</span>
-<span class="co">#</span>
-<span class="co">#Population-Level Effects: </span>
-<span class="co">#                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span>
-<span class="co">#top_Intercept       0.89      0.01     0.88     0.91 1.00     2625     2290</span>
-<span class="co">#slope_Intercept     0.55      0.03     0.50     0.60 1.00     1970     2145</span>
-<span class="co">#nec_Intercept       1.31      0.04     1.23     1.38 1.00     1648     2038</span>
-<span class="co">#</span>
-<span class="co">#Family Specific Parameters: </span>
-<span class="co">#      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span>
-<span class="co">#shape   248.66     36.61   185.55   328.96 1.00     2690     2229</span>
-<span class="co">#</span>
-<span class="co">#Samples were drawn using sampling(NUTS). For each parameter, Bulk_ESS</span>
-<span class="co">#and Tail_ESS are effective sample size measures, and Rhat is the potential</span>
-<span class="co">#scale reduction factor on split chains (at convergence, Rhat = 1).</span></code></pre></div>
-<p><img src="example1i.jpeg" width="100%"></p>
+<span class="co">#&gt; Error in summary(exp_4): object 'exp_4' not found</span></code></pre></div>
 <p>In this case our model has converged well, although it is perhaps not the best model to fit. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html" class="external-link">Multi model usage</a> vignettes for options to fit other models to these data.</p>
 </div>
 </div>
