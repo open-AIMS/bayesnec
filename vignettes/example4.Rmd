@@ -37,21 +37,8 @@ data(nec_data)
 
 # Fit a set of models
 exmp <- bnec(data = nec_data, x_var = "x", y_var = "y", model = "all")
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in sink(type = "output") : invalid connection
-#> Error in expand_manec(mod_fits, x_range = x_range, precision = precision, : None of the models fit successfully, try using bnec with a single model (e.g. ecxexp) using the default settings as a starting point for trouble shooting, or check ?show_params to make sure you have the correct parameter names for your priors.
 class(exmp)
-#> Error in eval(expr, envir, enclos): object 'exmp' not found
+#> [1] "bayesmanecfit"
 ```
 
 This call fits all models that are suitable for modelling beta response data using a logit link. We can pull out the **nec** models and the **ecx** models separately, to create two more alternative model fits of this data.
@@ -59,9 +46,7 @@ This call fits all models that are suitable for modelling beta response data usi
 
 ```r
 exmp_nec <- pull_out(exmp, model = "nec")
-#> Error in pull_out(exmp, model = "nec"): object 'exmp' not found
 exmp_ecx <- pull_out(exmp, model = "ecx")
-#> Error in pull_out(exmp, model = "ecx"): object 'exmp' not found
 ```
 
 Now we have three different averaged model fits, all of class `bayemanec` in this case (because they all contain multiple fits). We can compare their posterior estimates of the ex10 values using `compare_posterior`.
@@ -71,9 +56,8 @@ Now we have three different averaged model fits, all of class `bayemanec` in thi
 post_comp <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx,
                                     "nec" = exmp_nec),
                                comparison = "ecx", ecx_val = 10)
-#> Error in compare_posterior(list(all = exmp, ecx = exmp_ecx, nec = exmp_nec), : object 'exmp' not found
 names(post_comp)
-#> Error in eval(expr, envir, enclos): object 'post_comp' not found
+#> [1] "posterior_list" "posterior_data" "diff_list"      "diff_data"      "prob_diff"
 ```
 
 The `compare_posterior` function outputs several elements in a named list. This includes the **posterior_data** for each model in the comparison as a `data.frame` which we can use to plot a `geom_density` plot of the posterior estimates, so they can be compared visually.
@@ -84,8 +68,9 @@ ggplot(data = post_comp$posterior_data, mapping = aes(x = value)) +
   geom_density(mapping = aes(group = model, colour = model, fill = model),
                alpha = 0.3) +
   theme_classic()
-#> Error in ggplot(data = post_comp$posterior_data, mapping = aes(x = value)): object 'post_comp' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-5-1.png" title="plot of chunk unnamed-chunk-5" alt="plot of chunk unnamed-chunk-5" width="100%" />
 
 From this you can see that the ec10 estimates are very similar for the **nec** and **all**. This is because the **nec** model types dominate the model weights in this **all** fit, see wi in `exmp$mod_stats`. The ec10 estimate is slightly lower (more conservative) for the **ecx** based models.
 
@@ -98,8 +83,9 @@ ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
   geom_density(mapping = aes(group = comparison, colour = comparison,
                              fill = comparison), alpha = 0.3) +
   theme_classic() 
-#> Error in ggplot(data = post_comp$diff_data, mapping = aes(x = diff)): object 'post_comp' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-6-1.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" width="100%" />
 
 This shows that the differences among the three estimates. Overall they are all quite similar, but with there no difference in the **nec** and **all** estimates (the probability density overlaps zero), and a tendency for the **ecx** to be lower than **all** and **nec**.
 
@@ -108,7 +94,10 @@ Finally, the probability that the endpoint estimate for one model set is greater
 
 ```r
 post_comp$prob_diff
-#> Error in eval(expr, envir, enclos): object 'post_comp' not found
+#>   comparison    prob
+#> 1    all-ecx 0.62825
+#> 2    all-nec 0.46700
+#> 3    ecx-nec 0.31850
 ```
 
 ## Comparing posterior fitted values
@@ -120,7 +109,6 @@ The user can also compare posterior fitted values across the full range of x val
 post_comp_fitted <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx,
                                            "nec" = exmp_nec),
                                       comparison = "fitted")
-#> Error in compare_posterior(list(all = exmp, ecx = exmp_ecx, nec = exmp_nec), : object 'exmp' not found
 ```
 
 In the case of `comparison = "fitted"` most of the elements returned by compare_posterior are class `data.frame`, with summary values for the posteriors, difference values and probabilities returned for each value of x, for each model, or model comparison.
@@ -128,9 +116,21 @@ In the case of `comparison = "fitted"` most of the elements returned by compare_
 
 ```r
 head(post_comp_fitted$posterior_data)
-#> Error in head(post_comp_fitted$posterior_data): object 'post_comp_fitted' not found
+#>   model          x  Estimate      Q2.5     Q97.5
+#> 1   all 0.03234801 0.8868703 0.8682430 0.8982607
+#> 2   all 0.09741274 0.8872478 0.8723473 0.8982907
+#> 3   all 0.16247747 0.8875057 0.8744027 0.8982907
+#> 4   all 0.22754220 0.8877471 0.8755756 0.8983657
+#> 5   all 0.29260692 0.8879315 0.8766390 0.8985790
+#> 6   all 0.35767165 0.8882242 0.8773896 0.8986707
 head(post_comp_fitted$diff_data)
-#> Error in head(post_comp_fitted$diff_data): object 'post_comp_fitted' not found
+#>   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x
+#> 1    all-ecx  -0.004376185 -0.02506055 0.01187423 0.03234801
+#> 2    all-ecx  -0.004086470 -0.02226452 0.01188780 0.09741274
+#> 3    all-ecx  -0.003816006 -0.02079475 0.01186980 0.16247747
+#> 4    all-ecx  -0.003593760 -0.01978070 0.01185622 0.22754220
+#> 5    all-ecx  -0.003303964 -0.01891601 0.01188780 0.29260692
+#> 6    all-ecx  -0.002991943 -0.01840719 0.01202248 0.35767165
 ```
 
 Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** or **all** sets, which are flat prior to the nec step point, and then decline more rapidly.
@@ -141,8 +141,9 @@ ggplot(data = post_comp_fitted$posterior_data) +
   geom_line(mapping = aes(x = x, y = Estimate, color = model), size = 0.5) +
   geom_ribbon(mapping = aes(x = x, ymin = Q2.5, ymax = Q97.5, fill = model),
               alpha = 0.3)
-#> Error in ggplot(data = post_comp_fitted$posterior_data): object 'post_comp_fitted' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-10-1.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" width="100%" />
 
 We can plot the differences between pairs of models in the list by plotting "diff.Estimate" from "diff_data" and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest. As we have seen for ec10, the **nec** and **all** model sets are relatively similar across the entire range of concentrations (x) (green band overlaps zero). The red band is the difference between **ecx** and **all** and shows that the **ecx** set has slightly higher estimates than **all** at low to moderate x values, although really these curves are very similar as we saw from such small differences in the ec10 estimates above.
 
@@ -153,8 +154,9 @@ ggplot(data = post_comp_fitted$diff_data) +
             size = 0.5) +
   geom_ribbon(mapping = aes(x = x, ymin  =diff.Q2.5, ymax = diff.Q97.5,
               fill = comparison), alpha = 0.3)
-#> Error in ggplot(data = post_comp_fitted$diff_data): object 'post_comp_fitted' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-11-1.png" title="plot of chunk unnamed-chunk-11" alt="plot of chunk unnamed-chunk-11" width="100%" />
 
 And finally we can plot the probability that one model is greater than the other by plotting "prob" from "diff_data". The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The green line hovers around 0.5 clearly indicating the lack of significant difference in the **nec** and **all** model sets at any point of the x-curve. The red and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the **ecx** and the **nec** or **all** predictions. The greatest probability of difference among these curves is between values of ~1 and ~1.5 of x, where the probability of difference does tend towards high values, at the point where the *ecx** set deviates from the **nec** set.
 
@@ -162,5 +164,6 @@ And finally we can plot the probability that one model is greater than the other
 ```r
 ggplot(data = post_comp_fitted$prob_diff) +
   geom_line(mapping = aes(x = x, y = prob, color = comparison), size = 0.5)
-#> Error in ggplot(data = post_comp_fitted$prob_diff): object 'post_comp_fitted' not found
 ```
+
+<img src="vignette-fig-unnamed-chunk-12-1.png" title="plot of chunk unnamed-chunk-12" alt="plot of chunk unnamed-chunk-12" width="100%" />
