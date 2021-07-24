@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   fig.path = "vignette-fig-",
   out.width = "100%",
-  dpi = 150,
+  dpi = 72,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -78,7 +78,7 @@ class(exmp_a)
 
 We can view the prior and posterior probability densities of all the parameters in the model using the function `check_prior`, based on the `hypothesis` function of `brms`. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.
 
-```{r, fig.width = 7, fig.height = 7}
+```{r exmp3-checkpriors, fig.width = 7, fig.height = 4.5}
 check_priors(exmp_a)
 ```
 

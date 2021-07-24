@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   fig.path = "vignette-fig-",
   out.width = "100%",
-  dpi = 150,
+  dpi = 72,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -46,7 +46,7 @@ library(bayesnec)
 data(nec_data)
 
 # Fit a set of models
-# set.seed(30)
+set.seed(30)
 x <- seq(0, 10, length = 12)
 y <- bayesnec:::pred_ecx4param(x=x, b_bot=0, b_top=1, b_beta=0.5, b_ec50 = 5)
 dat <- data.frame(y_vec = rnorm(15*12, y, 0.2), x_vec = rep(x, 15))
@@ -55,7 +55,9 @@ exmp <- bnec(data = dat, x_var = "x_vec", y_var = "y_vec", model = "decline", it
 class(exmp)
 ```
 
-This call fits all models that are suitable for modelling beta response data using a logit link, excluding all of the hormesis models, which we are not considering here. We can pull out the **nec** models and the **ecx** models separately, to create two alternative model fits of this data to illustrate the posterior comparison functionality.
+This call fits all models that are suitable for modelling beta response data using a logit link, excluding all of the hormesis models, which we are not considering here. We've reduce the iter back to the `brms` default to make the example lighter, but we do not recommend this in practive. Now we have our example fit, we can use this to make different model sets, purely for the purposes of illustrating `compare_posterior` in `bayesnec` and highlighting the rich information that is contained in the Bayesian posterior samples.
+
+We can pull out the **nec** models and the **ecx** models separately, to create two alternative model fits of this data that we can compare to each other, as well as the original **all** model fit.
 
 ```{r}
 exmp_nec <- pull_out(exmp, model = "nec")
@@ -73,7 +75,7 @@ names(post_comp)
 
 The `compare_posterior` function outputs several elements in a named list. This includes the **posterior_data** for each model in the comparison as a `data.frame` which we can use to plot a `geom_density` plot of the posterior estimates, so they can be compared visually.
 
-```{r}
+```{r exmp4-posterior, fig.height=4.5}
 ggplot(data = post_comp$posterior_data, mapping = aes(x = value)) + 
   geom_density(mapping = aes(group = model, colour = model, fill = model),
                alpha = 0.3) +
@@ -85,16 +87,22 @@ From this you can see that the ec10 estimates are very similar for the **ecx** a
 
 The `data.frame` "diff_data" can be used to make a similar plot, but specifically for the differences among models.
 
-```{r}
+```{r emp4-differences, fig.height=4.5}
 ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
   geom_density(mapping = aes(group = comparison, colour = comparison,
                              fill = comparison), alpha = 0.3) +
   theme_classic() 
 ```
+```{r, echo=FALSE}
+probs <- post_comp$prob_diff %>%
+  tibble::column_to_rownames(var = "comparison") %>%
+  dplyr::select(prob) %>% 
+  dplyr::mutate(prob=round(prob, 2))
+```
 
-This shows that the differences among the three estimates. Overall they are all quite similar, but while there is no difference in the **ecx** and **all** estimates (the probability density overlaps zero),there is a tendency for the **ecx** to be lower than **nec**.
+This shows that the differences among the three estimates. There is no difference in the **ecx** and **all** estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth **ecx** type curve and thus those models have high weight. The *nec* based ec10 estimates are than the **ecx** estimates in this case.
 
-Finally, the probability that the endpoint estimate for one model set is greater than the other is obtained in "prob_diff". Here you can see there is ~57% chance that **all** is great than **ecx**, a 46% chance that **all** is greater than **nec** and a 36% chance that **ecx** is greater than **nec**.
+We can formally test the probability that the endpoint estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as "prob_diff". Here you can see there is `r probs["all-ecx", "prob"]*100`% chance that **all** is greater than **ecx**. There is only a `r probs["ecx-nec", "prob"]*100`% chance that **ecx** is greater than **nec**, and the a 1-that chance that the **nec** is greater than **ecx** (ie `r (1-probs["ecx-nec", "prob"])*100`%).
 
 ```{r}
 post_comp$prob_diff
@@ -117,28 +125,36 @@ head(post_comp_fitted$posterior_data)
 head(post_comp_fitted$diff_data)
 ```
 
-Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the set, which is flat prior to the nec step point, and then declines more rapidly.
+Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** set, which is flat prior to the **nec** step point, and then declines more rapidly.
 
-```{r}
+```{r exmp4-fitted, fig.height=4.5}
 ggplot(data = post_comp_fitted$posterior_data) +
   geom_line(mapping = aes(x = x, y = Estimate, color = model), size = 0.5) +
   geom_ribbon(mapping = aes(x = x, ymin = Q2.5, ymax = Q97.5, fill = model),
-              alpha = 0.3)
+              alpha = 0.3)+
+  labs(x = "Concentration", y = "Posterior estimate")
+  theme_classic()
 ```
 
-We can plot the differences between pairs of models in the list by plotting "diff.Estimate" from "diff_data" and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest. As we have seen for ec10, the **ecx** and **all** model sets are relatively similar across the entire range of concentrations (x) (red band overlaps zero). The green band is the difference between **nec** and **all** and shows that the **nec** set has slightly higher estimates than **all** and **ecx** at low to moderate x values, although really these curves are very similar as we saw from such small differences in the ec10 estimates above.
+We can plot the differences between pairs of models in the list by plotting "diff.Estimate" from "diff_data" and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest and explains the differences we see above in the ec10 endpoint estimates. The **ecx** and **all** model sets are relatively similar across the entire range of concentrations (x) (red band overlaps zero). The green band is the difference between **nec** and **all** (specifically **all**-**nec**) and the blue band is the difference between **nec** and **ecx** (specifically **ecx**-**nec**). You can see from the green and blue bands that the **nec** set has slightly lower estimates than **all** and **ecx** at low to moderate x values; the **nec** based curve then crosses the other two, predicting higher values of the response at around a concentration of 4-5;  then drops rapidly, producing lower predictions than the other curves at around 5.
 
-```{r}
+```{r exmp4-fitteddiff, fig.height=4.5}
 ggplot(data = post_comp_fitted$diff_data) +
   geom_line(mapping = aes(x = x, y = diff.Estimate, color = comparison),
             size = 0.5) +
-  geom_ribbon(mapping = aes(x = x, ymin  =diff.Q2.5, ymax = diff.Q97.5,
-              fill = comparison), alpha = 0.3)
+  geom_ribbon(mapping = aes(x = x, ymin  = diff.Q2.5, ymax = diff.Q97.5,
+              fill = comparison), alpha = 0.3) +
+  labs(x = "Concentration", y = "Posterior difference")
 ```
 
-And finally we can plot the probability that one model is greater than the other by plotting "prob" from "diff_data". The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The red line hovers around 0.5 clearly indicating the lack of significant difference in the **ecx** and **all** model sets at any point of the x-curve. The red and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the **ecx** and the **nec** or **all** predictions. The greatest probability of difference among these curves is between values of ~4 and ~6  of x, where the probability of difference does tend towards high values, at the point where the *ecx** set deviates from the **nec** set.
+And finally we can plot the probability that one model is greater than the other by plotting "prob" from "diff_data". The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The red line hovers around 0.5 clearly indicating the lack of significant difference in the **ecx** and **all** model sets at any point of the x-curve. The green and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the **nec** and the **ecx** or **all** predictions. The greatest probability of difference among these curves is between values of ~3 and ~4  of x, where the probability of difference trends towards low values (**ecx* is higher than **nec**), and at around 5, where the probability difference is very high (**nec** is higher than **ecx**). These are the two points where the *ecx** set deviates most from the **nec** set.
 
-```{r}
+```{r exmp4-probplot, fig.height=4.5}
 ggplot(data = post_comp_fitted$prob_diff) +
-  geom_line(mapping = aes(x = x, y = prob, color = comparison), size = 0.5)
+  geom_line(mapping = aes(x = x, y = prob, color = comparison), size = 0.5) +
+  labs(x = "Concentration", y = "Probability of difference")
 ```
+
+Here we use the difference in the **ecx** and **nec** models sets purely to showcase the functionality of 'compare_posterior' and highlight some of the strengths of using a bayesian approach. These differences are expected in this case, because the simulated data we used are from a smooth **exc** function. The **nec** models are fitting a break-point model that has a single mean value up to the *nec**, followed by a relatively sharp decline. When fitted to these smooth curves the **nec** models don't really fit the data well and produces inflated (less conservative) estimates of the ec10 value. Fortunately, the model averaging approach solves this issue by yielding a very low weight to the **nec** based models, and the **all** model set is indistinguishable from the **ecx** set, which contains the underlying true generating model in this case. As such, this is not really an intersting example - other than illustrating the behaviour of **nec** model types in this setting. 
+
+The compare_posterior function was actually developed with the intention of comparing model sets based on different data to assess statistically the difference in either the endpoint estimtates, or across the entire fitted curve, amongst factors of interest. Examples would include assessing for changes in toxicity across different WET tests through time, or comparing different levels of a factor treatment variable (such as climate change scenarios), to look at how these interact with the concentration to impact toxicity.

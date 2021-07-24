@@ -57,9 +57,9 @@ for further instructions on how to get the compilers running.
 
 ### Fitting a `bnec` model
 
-So far we have explored how to fit individual models via the function `bnec`. The `bayesnec` package also has the capacity to fit a custom selection of models, pre-specified sets of models, or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains, using `bnec` can be very slow when fitting `models = "all"`. See details under `?bnec` for more information on the models, and model sets that can be specified, as well as the [Model details][e2b] vignette which contains considerable information on the available models in `bnec` and their appropriate usage. In general it is safe to call `models = "all"`, because by default `bnec` will discard invalid models.
+So far we have explored how to fit individual models via the function `bnec`. The `bayesnec` package also has the capacity to fit a custom selection of models, pre-specified sets of models, or even all the available models in the package. Note that as these are Bayesian methods requiring multiple MCMC chains, using `bnec` can be very slow when fitting `models = "all"`. See details under `?bnec` for more information on the models, and model sets that can be specified, as well as the [Model details][e2b] vignette which contains considerable information on the available models in `bnec` and their appropriate usage. In general it is safe to call `models = "all"`, because by default `bnec` will discard invalid models and the model averaging approach should result in an overall fit that reflects the models that best fit the data. However, because the MCMC can be slow for `models = "all"` we do recommend testing you fit using a single (likely) model in the first instance, to make sure there is no issues with dispersion, the appropriate family is selected and model fitting appears robust (see the model the single model usage [vignette][e1] for more details).
 
-To run this vignette, we will also the `ggplot2` package:
+To run this vignette, we willneed the `ggplot2` package:
 
 
 ```r
@@ -76,10 +76,10 @@ x <- seq(0, 10, length = 12)
 y <- bayesnec:::pred_ecx4param(x = x, b_bot = 0, b_top = 1, b_beta = 0.5,
                                b_ec50 = 5)
 df_ <- data.frame(x = rep(x, 15), y = rnorm(15 * 12, y, 0.2))
-exp_5 <- bnec(data = df_, x_var = "x", y_var = "y", model = "decline")
+exp_5 <- bnec(data = df_, x_var = "x", y_var = "y", model = "decline", iter = 2e3)
 ```
 
-Here we run `bnec` using `model =  "all"` using a simulated data example for a beta response variable and save the output as an `.RData` file. Saving an `.RData` file of the *all* model `bnec` output can be a useful way of fitting all the models at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
+Here we run `bnec` using `model =  "decline"` using a simulated data example for a beta response variable. We are using the decline set here because we are not going to consider hormesis (these allow an initial increase in the response), largely to save time in fitting this example. We save the output as an `.RData` file. Saving an `.RData` file of the `bnec` output can be a useful way of fitting large model sets (ie `model = "all"`, or `model = "decline"`) at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
 
 ### Exploring a `bayesmanecfit` model
 
@@ -90,25 +90,26 @@ We have created some plotting method functions for our `bayesnec` model types, s
 plot(exp_5)
 ```
 
-<img src="vignette-fig-unnamed-chunk-6-1.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" width="100%" />
-
-The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the `ecx` models in the set. Note that we do not currently recommend reporting these values as the *NEC* (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to "pseudobma" using Bayesian bootstrap from `loo`), pD, and the overdispersion estimate (in this case blank because we have fitted a beta family). For this example, the **nec4param** model has the highest weight, followed by the **neclin** and the **neclinhorme** models.
+<img src="vignette-fig-exmp2-base-1.png" title="plot of chunk exmp2-base" alt="plot of chunk exmp2-base" width="100%" />
+The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the `ecx` models in the set. Note that we do not currently recommend reporting these values as the *NEC* (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to "pseudobma" using Bayesian bootstrap from `loo`), pD, and the overdispersion estimate.
 
 
 ```r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-#> nec4param nec4param -40.92728 7.174573e-02           1.0037390       0.7472733         1.343210
-#> neclin       neclin  18.93904 5.633419e-07           0.9927333       0.7381123         1.323705
-#> ecxlin       ecxlin  26.71240 1.548137e-08           0.9950939       0.7289419         1.336223
-#> ecx4param ecx4param -45.53921 1.870971e-01           0.9951894       0.7424944         1.337926
-#> ecxwb1       ecxwb1 -45.81931 2.519042e-01           0.9959100       0.7445269         1.334085
-#> ecxwb2       ecxwb2 -43.02705 8.399252e-02           0.9881679       0.7431564         1.335885
-#> ecxll5       ecxll5 -45.70696 2.027252e-01           0.9923862       0.7321573         1.319936
-#> ecxll4       ecxll4 -45.69926 2.025347e-01           0.9940246       0.7505689         1.329992
+#> nec4param nec4param -40.75272 7.964242e-02           0.9999869       0.7494274         1.371608
+#> neclin       neclin  19.22863 2.638122e-09           0.9814009       0.7260785         1.339236
+#> ecxlin       ecxlin  26.21035 7.084188e-09           0.9918579       0.7350752         1.342485
+#> ecx4param ecx4param -45.03642 1.630890e-01           0.9803532       0.7370959         1.335352
+#> ecxwb1       ecxwb1 -45.81315 2.936186e-01           0.9898812       0.7482757         1.298491
+#> ecxwb2       ecxwb2 -43.17848 9.675897e-02           0.9878522       0.7513852         1.309797
+#> ecxll5       ecxll5 -44.53880 1.319952e-01           0.9879681       0.7440300         1.320565
+#> ecxll4       ecxll4 -45.75654 2.348958e-01           1.0061031       0.7505391         1.342499
 ```
 
-We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. In this case the dispersion estimates are removed because they are irrelevant to the beta family. A list of fitted models, and model weights are provided. In addition, the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default `brms` Rhat criteria.
+We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. A list of fitted models, and model weights are provided. In addition, the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default `brms` Rhat criteria. For this example all the **ecx* type models have quite high weights, which we would expect given that type of model was used to generate the underlying example.
+
+All these models fit quite well despite the relatively low iter set in our example, but the summary would also include a warning if there were fits with divergent transitions.
 
 
 ```r
@@ -124,55 +125,56 @@ summary(exp_5)
 #>   -  ecxll4
 #> 
 #> Distribution family: gaussian
-#> Number of posterior draws per model:  4000
+#> Number of posterior draws per model:  800
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-#> nec4param -40.93 0.07                1.00            0.75             1.34
-#> neclin     18.94 0.00                0.99            0.74             1.32
-#> ecxlin     26.71 0.00                1.00            0.73             1.34
-#> ecx4param -45.54 0.19                1.00            0.74             1.34
-#> ecxwb1    -45.82 0.25                1.00            0.74             1.33
-#> ecxwb2    -43.03 0.08                0.99            0.74             1.34
-#> ecxll5    -45.71 0.20                0.99            0.73             1.32
-#> ecxll4    -45.70 0.20                0.99            0.75             1.33
+#> nec4param -40.75 0.08                1.00            0.75             1.37
+#> neclin     19.23 0.00                0.98            0.73             1.34
+#> ecxlin     26.21 0.00                0.99            0.74             1.34
+#> ecx4param -45.04 0.16                0.98            0.74             1.34
+#> ecxwb1    -45.81 0.29                0.99            0.75             1.30
+#> ecxwb2    -43.18 0.10                0.99            0.75             1.31
+#> ecxll5    -44.54 0.13                0.99            0.74             1.32
+#> ecxll4    -45.76 0.23                1.01            0.75             1.34
 #> 
 #> 
 #> Summary of weighted NEC posterior estimates:
 #> NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
 #>     Estimate Q2.5 Q97.5
-#> NEC     3.28 2.28  4.22
+#> NEC     3.32 2.27  4.20
 ```
 
-The `bayesmanecfit` object also contains all of the original fits, which can be extracted using the `pull_out` function. For example, we can pull out the highest weighted model, **nec4param**.
+The `bayesmanecfit` object also contains all of the original fits, which can be extracted using the `pull_out` function. For example, we can pull out the model **ecx4param**.
+
 
 
 ```r
-exp_5_nec4param <- pull_out(exp_5, model = "nec4param")
+exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
 plot(exp_5_nec4param)
 ```
 
-<img src="vignette-fig-unnamed-chunk-9-1.png" title="plot of chunk unnamed-chunk-9" alt="plot of chunk unnamed-chunk-9" width="100%" />
+<img src="vignette-fig-exmp2-ecx4param-1.png" title="plot of chunk exmp2-ecx4param" alt="plot of chunk exmp2-ecx4param" width="100%" />
 
-This would extract the **nec4param** model from the `bayesmanecfit` and create a new object that contains just this `bayesnecfit` fit. This would be identical to fitting the **nec4param** as a single model using `bnec`. All of the models in the `bayesmanecfit` can be simultaneously plotted using the argument `all_models = TRUE`.
+This would extract the **nec4param** model from the `bayesmanecfit` and create a new object that contains just this `bayesnecfit` fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. All of the models in the `bayesmanecfit` can be simultaneously plotted using the argument `all_models = TRUE`.
 
 
 ```r
 plot(exp_5, all_models = TRUE)
 ```
 
-<img src="vignette-fig-unnamed-chunk-10-1.png" title="plot of chunk unnamed-chunk-10" alt="plot of chunk unnamed-chunk-10" width="100%" />
+<img src="vignette-fig-exmp2-allmods-1.png" title="plot of chunk exmp2-allmods" alt="plot of chunk exmp2-allmods" width="100%" />
 
-You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the **ecxlin** model in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.
+You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the **ecxlin** and **neclin** models in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.
  
-We can assess the chains for the best model to make sure this is good.
+We can assess the chains for one of the higher weighted models to make sure this is good. It is probably good practice to do this for all models with a high weight.
 
 
 ```r
-plot(exp_5$mod_fits$nec4param$fit)
+plot(exp_5$mod_fits$ecxwb1$fit)
 ```
 
-<img src="vignette-fig-unnamed-chunk-11-1.png" title="plot of chunk unnamed-chunk-11" alt="plot of chunk unnamed-chunk-11" width="100%" />
+<img src="vignette-fig-exmp-goodmod-1.png" title="plot of chunk exmp-goodmod" alt="plot of chunk exmp-goodmod" width="100%" />
 
 Assessing chains for all the models in `bayesmanecfit` doesn't work as well using the default `brms` plotting method. Instead use `check_chains` and make sure to pass a `filename` argument, which means plots are automatically saved to pdf with a message.
 
@@ -188,7 +190,7 @@ We can also make a plot to compare the posterior probability density to that of 
 check_priors(exp_5$mod_fits$nec4param)
 ```
 
-<img src="vignette-fig-unnamed-chunk-13-1.png" title="plot of chunk unnamed-chunk-13" alt="plot of chunk unnamed-chunk-13" width="100%" />
+<img src="vignette-fig-exmp2-checkpriors1-1.png" title="plot of chunk exmp2-checkpriors1" alt="plot of chunk exmp2-checkpriors1" width="100%" />
 
 
 ```r
@@ -201,8 +203,13 @@ Where  a large number of models are failing to converge, obviously it would be b
 ```r
 exp_5_new <- amend(exp_5, drop = rhat(exp_5)$failed)
 ```
+Here we get an error because none of our models fail the default rhat criteria. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case quite a lot of models fail, although this is a very stringent criteria, and we have also used less than the default `bayesnec` value of `iter`.
 
-This will drop all models that fail the default `rhat_cutoff` value of 1.05 from the model set, and adjust the model averaged predictions accordingly. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value.
+
+```r
+rhat(exp_5, rhat_cutoff = 1.01)$failed
+#> [1] "nec4param" "ecxll5"
+```
 
 ### Extracting endpoint values
 
@@ -215,14 +222,7 @@ We can use this to obtain first a set of *NEC* only models from the existing set
 exp_5_nec <- pull_out(exp_5, model = "nec")
 ```
 
-In this case, because we have already fitted "all" models, we can ignore the message regarding the missing *NEC* models — these are all models that are not appropriate for a `Beta` family with a `logit` link function.
-
-We can drop other models from the set if desired; for example, let's drop the **neclinhorme** model using the `amend` function.
-
-
-```r
-exp_5_nec <- amend(exp_5_nec, drop = "neclinhorme")
-```
+In this case, because we have already fitted "decline" models, we can ignore the message regarding the missing *NEC* models — these are all models that are not appropriate for a `Beta` family with a `logit` link function, or allow hormesis, which we did not consider in this example.
 
 Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and acf plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
 
@@ -234,12 +234,12 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>    ec_10 ec_10_lw ec_10_up 
-#> 3.582401 2.858313 4.296569 
+#> 3.592320 2.838475 4.306488 
 #> attr(,"precision")
 #> [1] 1000
 ECx50
 #>    ec_50 ec_50_lw ec_50_up 
-#> 4.852034 4.623897 5.080171 
+#> 4.842115 4.623897 5.070500 
 #> attr(,"precision")
 #> [1] 1000
 ```
@@ -251,8 +251,10 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_nec
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 4.152688 3.630390 4.363757
+#> 4.147365 3.620584 4.358790
 ```
+
+Note that the new NEC estimates from the *NEC* only model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in thie simulations here, and is explored in more detail in the Compare posteriors [vigenette][e4].
 
 ### Putting it all together
 
@@ -283,6 +285,6 @@ ggbnec(exp_5, nec = FALSE, all = FALSE) +
         strip.text.x = element_text(size = 16))
 ```
 
-<img src="vignette-fig-unnamed-chunk-20-1.png" title="plot of chunk unnamed-chunk-20" alt="plot of chunk unnamed-chunk-20" width="100%" />
+<img src="vignette-fig-exmp2-pretty-1.png" title="plot of chunk exmp2-pretty" alt="plot of chunk exmp2-pretty" width="100%" />
 
 # References
