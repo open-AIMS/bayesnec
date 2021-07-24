@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   fig.path = "vignette-fig-",
   out.width = "100%",
-  dpi = 150,
+  dpi = 72,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -86,7 +86,7 @@ Here we include some examples showing how to use the package to fit an *NEC* mod
 The response variable `y` is considered to follow a binomial distribution when it is a count out of a total (such as the percentage survival of individuals, for example). First, we read in the binomial example from [pastebin](https://pastebin.com/tools), prepare the data for analysis, and then inspect the dataset as well as the "concentration" or x variable, in this case `raw_x`.
 
 
-```{r}
+```{r exmp1-hist, fig.height=4.5}
 binom_data <- "https://pastebin.com/raw/zfrUha88" %>%
   read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
   dplyr::rename(raw_x = raw.x) %>%
@@ -117,13 +117,13 @@ exp_1 <- bnec(data = binom_data, x_var = "log_x",
 
 The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(exp_1$fit)` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially `bayesnec` will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains `bayesnec` with try up to `n_tries` more times to fit the data using either `bayesnec` generated or `brms` default initial values and obtain a successfully fitted model with good mixing. If no model is successfully fit an error will be returned indicating the model could not be fit successfully.
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+```{r exmp1-brms, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_1$fit)
 ```
 
 In our example, the chains are well mixed, and the probability density plots look good. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks ok. There are a range of other model diagnostics that can be explored for [brms] model fits, using the $fit syntax. We encourage you to explore the rich material already on github regarding use and validation of [brms] (https://github.com/paul-buerkner/brms) models.
 
-```{r, fig.width = 7, fig.height = 7}
+```{r exmp1-brmspairs, fig.width = 7, fig.height = 7}
 pairs(exp_1$fit)
 ```
 
@@ -136,11 +136,11 @@ Note the Rhat values in this example are one, indicating convergence.
 
 The function `plot` can be used to plot the fitted model. You can also make your own plot from the data included in the returned `bayesnecfit` object from the call to `bnec`. Here we use the default plot method from `bayesnec`, where we add the 'exp' function to plot the tick labels on the original scaling of the concentration data.
 
-```{r, fig.width = 7, fig.height = 7}
+```{r exmp1-base, fig.width = 7, fig.height = 4.5}
 plot(exp_1, lxform = exp)
 ```
 
-Alternatively, we can use the built in `brms` methods to plot the `brms` fit directly. For example:
+Alternatively, we can use the built in `brms` methods to plot the `brms` fit directly using their function `conditional_effects`.
 
 ```{r, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 7}
 df <- exp_1$fit$data %>%
@@ -150,7 +150,9 @@ plot(brms::conditional_effects(exp_1$fit))[[1]] +
                 inherit.aes = FALSE)
 ```
 
-This model fit doesn't look great. You can see that the error bounds around the fit are far too narrow for this data, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values >1 indicate overdispersion and values <1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model doesn't properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
+There are many built in methods available for brmsfit objects and we encourage you to make use of these in full.
+
+This model fit doesn't look great. You can see that the error bounds around the fit are far too narrow for this data given the variability among the points, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). An estimate of dispersion is provided by `bayesnec`, and this can be extracted using `exp_1$dispersion`. Values >1 indicate overdispersion and values <1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model doesn't properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.
 
 ```{r}
 exp_1$dispersion
@@ -169,15 +171,13 @@ exp_1b <- bnec(data = binom_data, x_var = "log_x",
 ```
 Fitting this data with the betabinomial2 yields a much more realistic fit in terms of the confidence bounds and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
 
-```{r}
+```{r, exmp1-bbinom, fig.width = 7, fig.height = 4.5}
 plot(exp_1b, lxform = exp)
 exp_1b$dispersion
 ```
-
-
 Now we have a good fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object, using `exp_1b$nec`, or we can plot the posterior distribution of the *NEC* values.
  
-```{r}
+```{r exmp1-nechist, fig.width = 7, fig.height = 4.5}
 exp_1b$nec
 hist(exp_1b$nec_posterior)
 ```
@@ -196,7 +196,7 @@ summary(exp_1b)
 
 ### Beta data
 
-Sometimes the response variable is distributed between `0` and `1` but is not a straight-forward Binomial. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical 'trials' and the data must be modelled using a beta distribution.
+Sometimes the response variable is distributed between `0` and `1` but is not a straight-forward Binomial because it is a proportion on the continuous scale. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical 'trials' and the data must be modelled using a beta distribution.
 
 ```{r}
 prop_data <- "https://pastebin.com/raw/123jq46d" %>%
@@ -210,11 +210,11 @@ exp_2 <- bnec(data = prop_data, x_var = "raw_x",
               y_var = "resp", model = "neclin")
 ```
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+```{r exmp1-betabrms, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_2$fit)
 ```
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+```{r exmp1-betabase, warning = FALSE, fig.width = 7, fig.height = 4.5}
 plot(exp_2)
 ```
 
@@ -222,9 +222,9 @@ plot(exp_2)
 
 Where data are a count (of, for example, individuals or cells) y is Poisson. Such data are distributed from `0` to `Inf` and are integers. First we mimic count data based on the package's internal dataset, and make it overdispersed. Then we plot the "concentration" (or `x`) data.
 
-```{r, warning = FALSE, fig.width = 10, fig.height = 4.7}
+```{r exmp1-poissonhist, warning = FALSE, fig.width = 7, fig.height = 7}
 data(nec_data)
-set.seed(10)
+set.seed(330)
 count_data <- nec_data %>%
   dplyr::mutate(
     y = (y * 100 + rnorm(nrow(nec_data), 0, 15)) %>%
@@ -240,21 +240,19 @@ par(mfrow = c(1, 2))
 hist(count_data$x, xlab = "'x' variable", main = "")
 hist(count_data$y, xlab = "Total counts", main = "")
 ```
-
 First, we supply `bnec` with `data` (here `count_data`), and specify `x_var` and `y_var`. As we have integers of 0 and greater, the  `family` is `"poisson"`. The default behaviour to guess the variable types works for this example.
 
 ```{r, warning = FALSE}
-set.seed(333)
 exp_3 <- bnec(data = count_data, x_var = "x", y_var = "y", model = "neclin")
 ```
 
 We first plot the model chains and parameter estimates to check the fit.
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+```{r exmp1-poissonbrms, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_3$fit)
 ```
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+```{r exmp1-poissonbase, warning = FALSE, fig.width = 7, fig.height = 4.5}
 plot(exp_3)
 exp_3$dispersion
 ```
@@ -266,20 +264,20 @@ The chains look ok; however, our plot of the fit is not very convincing. The mod
 When count data are overdispersed and cannot be modelled using the Poisson family, the Negative binomial family is generally used. We can do this by calling `family = "negbinomial"`.
 
 ```{r, warning = FALSE}
-set.seed(333)
 exp_3b <- bnec(data = count_data, x_var = "x", y_var = "y",
                family = "negbinomial", model = "neclin")
 ```
 
 The resultant plot seems to indicate the negative binomial family works better in terms of dispersion (more sensible wider confidence bands) however it still does not seem to be a great model for these data. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+```{r exmp1-negbinbrms, warning = FALSE, fig.width = 7, fig.height = 7}
+plot(exp_3b$fit)
+```
+
+```{r exmp1-negbinbase, warning = FALSE, fig.width = 7, fig.height = 4.5}
 plot(exp_3b)
 ```
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
-plot(exp_3b$fit)
-```
 
 ### Measure data
 
@@ -292,16 +290,15 @@ measure_data <- nec_data %>%
 ```
 
 ```{r, warning = FALSE}
-set.seed(333)
 exp_4 <- bnec(data = measure_data, x_var = "x",
               y_var = "measure", model = "neclin")
 ```
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+```{r exmp1-gammabrms, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_4$fit)
 ```
 
-```{r, warning = FALSE, fig.width = 7, fig.height = 7}
+```{r exmp1-gammabase, warning = FALSE, fig.width = 7, fig.height = 7}
 plot(exp_4)
 summary(exp_4)
 ```
