@@ -100,15 +100,15 @@ ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
 
 This shows the differences among the three estimates. There is no difference in the **ecx** and **all** estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth **ecx** type curve and thus those models have high weight. The **nec** based ec10 estimates are greater than the **ecx** estimates in this case.
 
-We can formally test the probability that the endpoint estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as "prob_diff". Here you can see there is 52% chance that **all** is greater than **ecx**. There is only a 3% chance that **ecx** is greater than **nec**, and a 1-that chance that the **nec** is greater than **ecx** (ie 97%).
+We can formally test the probability that the endpoint estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as "prob_diff". Here you can see there is 50% chance that **all** is greater than **ecx**. There is only a 1% chance that **ecx** is greater than **nec**, and a 1-that chance that the **nec** is greater than **ecx** (ie 99%).
 
 
 ```r
 post_comp$prob_diff
-#>   comparison       prob
-#> 1    all-ecx 0.52065081
-#> 2    all-nec 0.05131414
-#> 3    ecx-nec 0.02628285
+#>   comparison    prob
+#> 1    all-ecx 0.50125
+#> 2    all-nec 0.04625
+#> 3    ecx-nec 0.01250
 ```
 
 ## Comparing posterior fitted values
@@ -128,20 +128,20 @@ In the case of `comparison = "fitted"` most of the elements returned by compare_
 ```r
 head(post_comp_fitted$posterior_data)
 #>   model          x  Estimate      Q2.5    Q97.5
-#> 1   all 0.09090909 0.9663089 0.9082343 1.030167
-#> 2   all 0.29313544 0.9660590 0.9082343 1.029482
-#> 3   all 0.49536178 0.9656569 0.9082343 1.028503
-#> 4   all 0.69758813 0.9648412 0.9082343 1.027323
-#> 5   all 0.89981447 0.9643711 0.9082343 1.025621
-#> 6   all 1.10204082 0.9635142 0.9082343 1.024097
+#> 1   all 0.09090909 0.9723309 0.9117958 1.031241
+#> 2   all 0.29313544 0.9719546 0.9117946 1.029226
+#> 3   all 0.49536178 0.9715588 0.9117926 1.028423
+#> 4   all 0.69758813 0.9710024 0.9117892 1.027945
+#> 5   all 0.89981447 0.9704699 0.9117834 1.026842
+#> 6   all 1.10204082 0.9694241 0.9117735 1.025497
 head(post_comp_fitted$diff_data)
 #>   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x
-#> 1    all-ecx  -0.003827778 -0.08568933 0.08292121 0.09090909
-#> 2    all-ecx  -0.003877445 -0.08538498 0.08264045 0.29313544
-#> 3    all-ecx  -0.003867668 -0.08374411 0.08270002 0.49536178
-#> 4    all-ecx  -0.003737136 -0.08221835 0.08276112 0.69758813
-#> 5    all-ecx  -0.002980101 -0.07974471 0.08241463 0.89981447
-#> 6    all-ecx  -0.002847507 -0.07963160 0.08073813 1.10204082
+#> 1    all-ecx -9.248350e-05 -0.08136028 0.08399740 0.09090909
+#> 2    all-ecx -7.030651e-05 -0.08112369 0.08386345 0.29313544
+#> 3    all-ecx -7.150385e-05 -0.08038290 0.08346558 0.49536178
+#> 4    all-ecx  2.089157e-05 -0.08024734 0.08330381 0.69758813
+#> 5    all-ecx -5.975389e-04 -0.07906411 0.08170713 0.89981447
+#> 6    all-ecx -8.539462e-04 -0.07743603 0.08100983 1.10204082
 ```
 
 Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** set, which is flat prior to the **nec** step point, and then declines more rapidly.
