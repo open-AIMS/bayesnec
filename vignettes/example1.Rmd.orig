@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   fig.path = "vignette-fig-",
   out.width = "100%",
-  dpi = 72,
+  dpi = 150,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -106,7 +106,7 @@ The main 'working' function in `bayesnec` is the function `bnec`, which calls th
 
 `bnec` will guess the data types for use, although as mentioned above we could manually specify `family` as "binomial". `bnec` will also generate appropriate priors for the `brms` model call, although these can also be specified manually (see the [Priors][e3] vignette for more details).
 
-```{r, warning = FALSE, message = FALSE}
+```{r, warning = FALSE, message = FALSE, results='hide'}
 library(bayesnec)
 
 set.seed(333)
@@ -162,7 +162,7 @@ exp_1$dispersion
 
 The Beta-Binomial model can be useful for overdispersed Binomial data.
 
-```{r}
+```{r, results='hide'}
 set.seed(333)
 exp_1b <- bnec(data = binom_data, x_var = "log_x",
                y_var = "suc", model = "neclin",
@@ -198,7 +198,7 @@ summary(exp_1b)
 
 Sometimes the response variable is distributed between `0` and `1` but is not a straight-forward Binomial because it is a proportion on the continuous scale. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from PAM data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical 'trials' and the data must be modelled using a beta distribution.
 
-```{r}
+```{r, results='hide'}
 prop_data <- "https://pastebin.com/raw/123jq46d" %>%
   read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
   dplyr::rename(raw_x = raw.x) %>%
@@ -242,7 +242,7 @@ hist(count_data$y, xlab = "Total counts", main = "")
 ```
 First, we supply `bnec` with `data` (here `count_data`), and specify `x_var` and `y_var`. As we have integers of 0 and greater, the  `family` is `"poisson"`. The default behaviour to guess the variable types works for this example.
 
-```{r, warning = FALSE}
+```{r, warning = FALSE, results='hide'}
 exp_3 <- bnec(data = count_data, x_var = "x", y_var = "y", model = "neclin")
 ```
 
@@ -263,7 +263,7 @@ The chains look ok; however, our plot of the fit is not very convincing. The mod
 
 When count data are overdispersed and cannot be modelled using the Poisson family, the Negative binomial family is generally used. We can do this by calling `family = "negbinomial"`.
 
-```{r, warning = FALSE}
+```{r, warning = FALSE, results='hide'}
 exp_3b <- bnec(data = count_data, x_var = "x", y_var = "y",
                family = "negbinomial", model = "neclin")
 ```
@@ -289,7 +289,7 @@ measure_data <- nec_data %>%
   dplyr::mutate(measure = exp(y))
 ```
 
-```{r, warning = FALSE}
+```{r, warning = FALSE, results='hide'}
 exp_4 <- bnec(data = measure_data, x_var = "x",
               y_var = "measure", model = "neclin")
 ```
