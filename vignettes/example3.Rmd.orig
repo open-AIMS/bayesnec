@@ -93,7 +93,7 @@ pull_prior(exmp_a)
 
 `bnec` chose a `gamma` prior on the NEC parameter of `nec3param` because the x predictor in the data `nec_data` is non-zero positive. However imagine that in theory the x predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
 
-```{r}
+```{r, results='hide'}
 my_prior <- c(prior_string("beta(5, 1)", nlpar = "top"),
               prior_string("normal(1.3, 2.7)", nlpar = "nec"),
               prior_string("gamma(0.5, 2)", nlpar = "beta"))
