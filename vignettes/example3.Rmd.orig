@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   fig.path = "vignette-fig-",
   out.width = "100%",
-  dpi = 72,
+  dpi = 150,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -61,7 +61,7 @@ library(brms)
 options(mc.cores = parallel::detectCores())
 ```
 
-```{r}
+```{r, results='hide'}
 library(brms)
 library(bayesnec)
 options(mc.cores = parallel::detectCores())
@@ -72,9 +72,12 @@ exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
                model = "nec3param",
                family = Beta(link = "identity"),
                iter = 1e4, control = list(adapt_delta = 0.99))
+```
 
+```{r}
 class(exmp_a)
 ```
+
 
 We can view the prior and posterior probability densities of all the parameters in the model using the function `check_prior`, based on the `hypothesis` function of `brms`. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.
 
