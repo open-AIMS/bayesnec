@@ -162,14 +162,14 @@
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span>
 <span class="co">#&gt;               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span>
-<span class="co">#&gt; nec4param nec4param -40.75272 7.964242e-02           0.9883449       0.7234083         1.322788</span>
-<span class="co">#&gt; neclin       neclin  19.22863 2.638122e-09           0.9940785       0.7432707         1.360072</span>
-<span class="co">#&gt; ecxlin       ecxlin  26.21035 7.084188e-09           1.0005771       0.7495222         1.326133</span>
-<span class="co">#&gt; ecx4param ecx4param -45.03642 1.630890e-01           0.9904447       0.7307188         1.353385</span>
-<span class="co">#&gt; ecxwb1       ecxwb1 -45.81315 2.936186e-01           0.9904277       0.7385810         1.327615</span>
-<span class="co">#&gt; ecxwb2       ecxwb2 -43.17848 9.675897e-02           0.9839620       0.7443513         1.301059</span>
-<span class="co">#&gt; ecxll5       ecxll5 -44.53880 1.319952e-01           0.9828594       0.7416686         1.333926</span>
-<span class="co">#&gt; ecxll4       ecxll4 -45.75654 2.348958e-01           1.0094734       0.7348538         1.332895</span></code></pre></div>
+<span class="co">#&gt; nec4param nec4param -40.75272 7.964242e-02           0.9972053       0.7394068         1.361634</span>
+<span class="co">#&gt; neclin       neclin  19.22863 2.638122e-09           0.9857787       0.7299013         1.360777</span>
+<span class="co">#&gt; ecxlin       ecxlin  26.21035 7.084188e-09           0.9963818       0.7477455         1.334278</span>
+<span class="co">#&gt; ecx4param ecx4param -45.03642 1.630890e-01           0.9907307       0.7311740         1.303045</span>
+<span class="co">#&gt; ecxwb1       ecxwb1 -45.81315 2.936186e-01           0.9871060       0.7607921         1.360727</span>
+<span class="co">#&gt; ecxwb2       ecxwb2 -43.17848 9.675897e-02           0.9945406       0.7403061         1.323164</span>
+<span class="co">#&gt; ecxll5       ecxll5 -44.53880 1.319952e-01           0.9887850       0.7376314         1.329614</span>
+<span class="co">#&gt; ecxll4       ecxll4 -45.75654 2.348958e-01           0.9955036       0.7548386         1.349628</span></code></pre></div>
 <p>We can obtain a neater summary of the model fit by using the summary method for a bayesmanecfit object. A list of fitted models, and model weights are provided. In addition, the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the <strong>ecxll5</strong> model may have convergence issues according to the default <code>brms</code> Rhat criteria. For this example all the **ecx* type models have quite high weights, which we would expect given that type of model was used to generate the underlying example.</p>
 <p>All these models fit quite well despite the relatively low iter set in our example, but the summary would also include a warning if there were fits with divergent transitions.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
@@ -189,14 +189,14 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Model weights (Method: pseudobma_bb_weights):</span>
 <span class="co">#&gt;             waic   wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span>
-<span class="co">#&gt; nec4param -40.75 0.08                0.99            0.72             1.32</span>
-<span class="co">#&gt; neclin     19.23 0.00                0.99            0.74             1.36</span>
+<span class="co">#&gt; nec4param -40.75 0.08                1.00            0.74             1.36</span>
+<span class="co">#&gt; neclin     19.23 0.00                0.99            0.73             1.36</span>
 <span class="co">#&gt; ecxlin     26.21 0.00                1.00            0.75             1.33</span>
-<span class="co">#&gt; ecx4param -45.04 0.16                0.99            0.73             1.35</span>
-<span class="co">#&gt; ecxwb1    -45.81 0.29                0.99            0.74             1.33</span>
-<span class="co">#&gt; ecxwb2    -43.18 0.10                0.98            0.74             1.30</span>
-<span class="co">#&gt; ecxll5    -44.54 0.13                0.98            0.74             1.33</span>
-<span class="co">#&gt; ecxll4    -45.76 0.23                1.01            0.73             1.33</span>
+<span class="co">#&gt; ecx4param -45.04 0.16                0.99            0.73             1.30</span>
+<span class="co">#&gt; ecxwb1    -45.81 0.29                0.99            0.76             1.36</span>
+<span class="co">#&gt; ecxwb2    -43.18 0.10                0.99            0.74             1.32</span>
+<span class="co">#&gt; ecxll5    -44.54 0.13                0.99            0.74             1.33</span>
+<span class="co">#&gt; ecxll4    -45.76 0.23                1.00            0.75             1.35</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Summary of weighted NEC posterior estimates:</span>
