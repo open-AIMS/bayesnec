@@ -5,11 +5,13 @@
 \title{bnec}
 \usage{
 bnec(
+  x,
+  y = NULL,
   data,
   x_var,
   y_var,
   model = "all",
-  trials_var = NA,
+  trials_var,
   family = NULL,
   priors,
   x_range = NA,
@@ -27,6 +29,12 @@ bnec(
 )
 }
 \arguments{
+\item{x}{A \code{\link[base]{numeric}} vector to use for the x-variable (typically concentration) in
+modelling, or a \code{\link[base]{data.frame}} containing both the x and y data.}
+
+\item{y}{A \code{\link[base]{numeric}} vector to use for the y-variable (typically the response) in
+modelling .}
+
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for
 the model.}
 
@@ -39,8 +47,12 @@ containing the response (y) variable.}
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 
-\item{trials_var}{The column heading indicating the column for the number
-of "trials" for binomial or beta_binomial2 response data.
+\item{trials_var}{A \code{\link[base]{character}} indicating the column heading for the number
+of "trials" for binomial or beta_binomial2 response data, as it appears in "data" (if data is supplied).
+Alternatively a \code{\link[base]{numeric}}
+vector representing the trials associated with each observation,
+if data are supplied as an x argument.
+or a \code{\link[base]{numeric}} vector indicating the trials
 If not supplied, the model may run but will not be the model you intended!}
 
 \item{family}{Either a \code{\link[base]{character}} string, a function, or
