@@ -156,7 +156,7 @@
 #' }
 #'
 #' @export
-bnec <- function(data, x_var, y_var, model = "all", trials_var = NA,
+bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 10e3, warmup = floor(iter / 10) * 9,
@@ -164,6 +164,30 @@ bnec <- function(data, x_var, y_var, model = "all", trials_var = NA,
                  sample_prior = "yes",
                  loo_controls = list(method = "pseudobma"), 
                  random = NA, random_vars = NA, ...) {
+ if(!missing(x)){
+     if(!is(x, "formula")){
+        xlabel <- deparse1(substitute(x))
+        ylabel <- if (!missing(y)) 
+          deparse1(substitute(y))
+        xy <- xy.coords(x, y, xlabel, ylabel, log = "")
+        data <- data.frame(xy$x, xy$y)
+        
+        if(nrow(data)==0) stop("Your x input data contains no rows")
+        
+        x_var <- xy$xlab 
+        y_var <- xy$ylab
+        colnames(data) <- c(x_var, y_var)
+
+     } else {
+      
+       stop("bnec does not yet support formula syntax")
+    }
+
+ } else {
+
+   if(missing(data) | missing(x_var) | missing(y_var)) stop("You must supply x, or all of data, x_var and y_var")
+ }
+
   if (missing(model)) {
     stop("You need to define a model type. See ?bnec")
   }
@@ -179,6 +203,7 @@ bnec <- function(data, x_var, y_var, model = "all", trials_var = NA,
     } else {
       m_trials <- data[, trials_var]
     }
+
     family <- set_distribution(data[, y_var], support_integer = TRUE,
                                trials = m_trials)
   }
@@ -193,6 +218,7 @@ bnec <- function(data, x_var, y_var, model = "all", trials_var = NA,
       stop("You cannot currently set pointwise = TRUE for custom families")
     }
   }
+
   model <- check_models(model, family)
   if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
