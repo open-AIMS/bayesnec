@@ -2,7 +2,11 @@
 #'
 #' Fits a variety of NEC models using Bayesian analysis and provides a model
 #' averaged predictions based on WAIC model weights
-#'
+#' 
+#' @param x A \code{\link[base]{numeric}} vector to use for the x-variable (typically concentration) in 
+#' modelling, or a \code{\link[base]{data.frame}} containing both the x and y data.
+#' @param y A \code{\link[base]{numeric}} vector to use for the y-variable (typically the response) in 
+#' modelling .
 #' @param data A \code{\link[base]{data.frame}} containing the data to use for
 #' the model.
 #' @param x_var A \code{\link[base]{character}} indicating the column heading
@@ -11,8 +15,12 @@
 #' containing the response (y) variable.
 #' @param model A \code{\link[base]{character}} vector indicating the model(s)
 #' to fit. See Details for more information.
-#' @param trials_var The column heading indicating the column for the number
-#' of "trials" for binomial or beta_binomial2 response data.
+#' @param trials_var A \code{\link[base]{character}} indicating the column heading for the number
+#' of "trials" for binomial or beta_binomial2 response data, as it appears in "data" (if data is supplied). 
+#' Alternatively a \code{\link[base]{numeric}} 
+#' vector representing the trials associated with each observation, 
+#' if data are supplied as an x argument.
+#' or a \code{\link[base]{numeric}} vector indicating the trials
 #' If not supplied, the model may run but will not be the model you intended!
 #' @param family Either a \code{\link[base]{character}} string, a function, or
 #' an object of class \code{\link[stats]{family}} defining the statistical
@@ -156,7 +164,7 @@
 #' }
 #'
 #' @export
-bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var = NA,
+bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 10e3, warmup = floor(iter / 10) * 9,
@@ -177,6 +185,31 @@ bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var = N
         x_var <- xy$xlab 
         y_var <- xy$ylab
         colnames(data) <- c(x_var, y_var)
+        
+        if(missing(trials_var)){
+          trials_var <- NA
+        } else {
+          data[ , y_var] <- as.integer(round(data[ , y_var]))
+          warning("You have supplied a trials_var argument, forcing your y data to integer.")
+          
+          if(is(trials_var, "numeric")){
+            if(length(trials_var)==nrow(data)){
+              data$trials <- trials_var
+              trials_var <- "trials" 
+              if(max(data[ , y_var])<=1){
+                data[ , y_var] <- as.integer(round(data[ , y_var] * data$trials))
+                warning("The maximum observed value of the response was < 1 and assumed to be a proportion of trials_var.")
+              }
+
+            } else {
+              stop("The length of trials_var must equal length of x")
+            }
+
+          } else {
+            stop("If data are passed using x, trials_var must contain a numeric vector indicating the number of trials for each observation")            
+          }
+
+        }
 
      } else {
       
