@@ -14,3 +14,8 @@ add_na <- function(x, n = 3) {
 }
 
 data("nec_data")
+other_data <- nec_data
+colnames(other_data) <- c("a", "b")
+nec_data <- nec_data %>% 
+  mutate(count = as.integer(round(y*20)),
+         trials = as.integer(20))

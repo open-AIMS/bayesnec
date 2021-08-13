@@ -84,3 +84,13 @@ manec_fits <- list(manec_gausian_identity = manec_gausian_identity,
                    manec_gamma_identity = manec_gamma_identity)
 
 nec_fits <- lapply(manec_fits, pull_out, model = "nec4param")
+
+data("nec_data")
+other_data <- nec_data
+colnames(other_data) <- c("a", "b")
+nec_data <- nec_data %>% 
+  mutate(count = as.integer(round(y*20)),
+         trials = as.integer(20))
+a=nec_data$x
+b=nec_data$y
+j=nec_data$trials

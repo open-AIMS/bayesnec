@@ -85,3 +85,23 @@ test_that("gamma model returns expected family and link", {
   expect_equal(manec_gamma_log$mod_fits$nec4param$fit$family$link, "log")  
 })
 
+test_that("bnec takes model formula input and provides warning for uncessary arguments", {
+  m1 <- "Arguments x_var, y_var, trials_var and model ignored in the case of formula syntax"
+  bnec(y ~ model(x, "ecxlin"), data = nec_data, x_var="x") %>% 
+  expect_warning(m1)
+  bnec(y ~ model(x, "ecxlin"), data = nec_data, model="ecxlin") %>% 
+    expect_warning(m1)
+})
+
+# test <- bnec(y ~ model(x, "ecxlin"), data = nec_data, chains = 2, iter=2e3)
+# # works
+# test <- bnec(nec_data, model="neclin", chains = 2, iter=2e3)
+# # works
+# test <- bnec(x=a, y=b, model="nec", trials_var = j, chains = 2, iter=2e3)
+# # works
+# test <- bnec(data=nec_data, x_var = "x", y_var = "y", model = "ecxlin", chains = 2, iter=2e3)
+# # works
+# test <- bnec(x=nec_data$x, y=nec_data$count, model="ecxlin", trials_var = nec_data$trials, chains = 2, iter=2e3)
+# #works
+# test <- bnec(x=other_data$a, y=other_data$b, model="ecxlin", chains = 2, iter=2e3)
+# #works
