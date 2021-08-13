@@ -164,7 +164,7 @@
 #' }
 #'
 #' @export
-bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var = NA,
+bnec <- function(x, y = NULL, data,  x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 10e3, warmup = floor(iter / 10) * 9,
@@ -173,11 +173,12 @@ bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var = N
                  loo_controls = list(method = "pseudobma"), 
                  random = NA, random_vars = NA, ...) {
  if(!missing(x)){
-   parse_out <- parse_x(x, y = y, data,  x_var, y_var, model = model, trials_var, family = family)
+   parse_out <- parse_x(x, y, data,  x_var, y_var, model, trials_var, family = family)
    data <- parse_out$data
    x_var <- parse_out$x_var
    y_var <- parse_out$y_var
    trials_var <- parse_out$trials_var
+   model <- parse_out$model
 
  } else {
 
