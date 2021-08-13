@@ -164,7 +164,7 @@
 #' }
 #'
 #' @export
-bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var,
+bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var = NA,
                  family = NULL, priors, x_range = NA,
                  precision = 1000, sig_val = 0.01,
                  iter = 10e3, warmup = floor(iter / 10) * 9,
@@ -173,48 +173,11 @@ bnec <- function(x, y = NULL, data,  x_var, y_var, model = "all", trials_var,
                  loo_controls = list(method = "pseudobma"), 
                  random = NA, random_vars = NA, ...) {
  if(!missing(x)){
-     if(!is(x, "formula")){
-        xlabel <- deparse1(substitute(x))
-        ylabel <- if (!missing(y)) 
-          deparse1(substitute(y))
-        xy <- xy.coords(x, y, xlabel, ylabel, log = "")
-        data <- data.frame(xy$x, xy$y)
-        
-        if(nrow(data)==0) stop("Your x input data contains no rows")
-        
-        x_var <- xy$xlab 
-        y_var <- xy$ylab
-        colnames(data) <- c(x_var, y_var)
-        
-        if(missing(trials_var)){
-          trials_var <- NA
-        } else {
-          data[ , y_var] <- as.integer(round(data[ , y_var]))
-          warning("You have supplied a trials_var argument, forcing your y data to integer.")
-          
-          if(is(trials_var, "numeric")){
-            if(length(trials_var)==nrow(data)){
-              data$trials <- trials_var
-              trials_var <- "trials" 
-              if(max(data[ , y_var])<=1){
-                data[ , y_var] <- as.integer(round(data[ , y_var] * data$trials))
-                warning("The maximum observed value of the response was < 1 and assumed to be a proportion of trials_var.")
-              }
-
-            } else {
-              stop("The length of trials_var must equal length of x")
-            }
-
-          } else {
-            stop("If data are passed using x, trials_var must contain a numeric vector indicating the number of trials for each observation")            
-          }
-
-        }
-
-     } else {
-      
-       stop("bnec does not yet support formula syntax")
-    }
+   parse_out <- parse_x(x, y = y, data,  x_var, y_var, model = model, trials_var, family = family)
+   data <- parse_out$data
+   x_var <- parse_out$x_var
+   y_var <- parse_out$y_var
+   trials_var <- parse_out$trials_var
 
  } else {
 
