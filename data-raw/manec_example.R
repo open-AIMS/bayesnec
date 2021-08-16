@@ -25,7 +25,7 @@ logit <- function(x) {
 
 data("nec_data")
 manec_example <- nec_data %>%
-  mutate(y = logit(y)) %>%
+  dplyr::mutate(y = logit(y)) %>%
   muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
              iter = 50, chains = 2)
 
