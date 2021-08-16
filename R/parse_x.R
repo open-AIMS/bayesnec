@@ -1,4 +1,4 @@
-#' parse_xy
+#' parse_x
 #'
 #' Fits a concentration(dose)-response model using brms
 #'
@@ -44,8 +44,8 @@ parse_x <- function(x, y, data,  x_var, y_var, model, trials_var, family){
           }
           
         } else {
-          stop("If data are passed using x, trials_var must contain a numeric vector 
-               indicating the number of trials for each observation")            
+          stop("If data are passed using x, trials_var must contain a numeric",
+               " vector indicating the number of trials for each observation.")
         }        
       }
   
@@ -75,6 +75,6 @@ parse_x <- function(x, y, data,  x_var, y_var, model, trials_var, family){
     }
 
   }
-
-  return(list(data = data, x_var = x_var, y_var = y_var, trials_var = trials_var, model = model))
+  list(data = data, x_var = x_var, y_var = y_var, trials_var = trials_var,
+       model = model)
 }
