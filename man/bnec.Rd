@@ -210,7 +210,7 @@ exmp_a <- bnec(data = nec_data, x_var = "x", y_var = "y",
                model = "nec4param", chains = 2)
 # Two models model
 exmp_b <- bnec(data = nec_data, x_var = "x", y_var = "y",
-               model = c("nec4param", "ecx4param"), chains = 2)                
+               model = c("nec4param", "ecx4param"), chains = 2)
 }
 
 }

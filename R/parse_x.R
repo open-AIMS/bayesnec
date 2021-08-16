@@ -5,6 +5,7 @@
 #' @inheritParams bnec
 #'
 #' @importFrom grDevices xy.coords
+#' @importFrom methods is
 #'
 #' @return A list containing the elements data, x_var, y_var, trials_var
 parse_x <- function(x, y, data,  x_var, y_var, model, trials_var, family){
