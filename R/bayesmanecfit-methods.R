@@ -211,6 +211,7 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 #'
 #' @importFrom dplyr %>%
 #' @importFrom purrr map
+#' @importFrom brms bayes_R2
 #' @export
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90)) {
@@ -237,6 +238,9 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     ecx_mods = ecx_mods,
     nec_vals = clean_nec_vals(x),
     ecs = ecs,
+    bayesr2 = x$mod_fits %>%
+      lapply(function(y)bayes_R2(y$fit)) %>%
+      do.call(what = "rbind.data.frame"),
     rhat_issues = map(x$mod_fits, "fit") %>%
       map(has_r_hat_warnings)
   )
@@ -278,6 +282,9 @@ print.manecsummary <- function(x, ...) {
       "\n\n"
     }
   }
+  cat("Bayesian R2 estimates:\n")
+  print_mat(x$bayesr2)
+  cat("\n\n")
   with_issues <- names(x$rhat_issues[unlist(x$rhat_issues)])
   if (length(with_issues) > 0) {
       warning("The following model had Rhats > 1.05 (no convergence):\n",

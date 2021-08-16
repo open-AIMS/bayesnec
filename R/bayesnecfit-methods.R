@@ -187,6 +187,8 @@ rhat.bayesnecfit <- function(object, ... ) {
 #'
 #' @return A summary of the fitted model as returned for a brmsfit
 #'
+#' @importFrom brms bayes_R2
+#'
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
                                 ecx_vals = c(10, 50, 90)) {
@@ -204,7 +206,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     brmssummary = summary(x$fit, robust = TRUE),
     model = x$model,
     is_ecx = x$model %in% mod_groups$ecx,
-    ecs = ecs
+    ecs = ecs,
+    bayesr2 = bayes_R2(x$fit)
   )
   allot_class(out, "necsummary")
 }
@@ -231,9 +234,14 @@ print.necsummary <- function(x, ...) {
     cat("\n\n")
     for (i in seq_along(x$ecs)) {
       nice_ecx_out(x$ecs[[i]], names(x$ecs)[i])
-      "\n\n"
+      if (i < length(x$ecs)) {
+        cat("\n")
+      }
     }
   }
+  cat("\n\nBayesian R2 estimates:\n")
+  print_mat(x$bayesr2)
+  cat("\n\n")
   invisible(x)
 }
 
