@@ -152,7 +152,7 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
                                 precision = 1000, sig_val = 0.01,
                                 priors, pointwise) {
-  amend.default(object, drop, add, loo_controls, x_range = NA,
-                precision = 1000, sig_val = 0.01,
+  amend.default(object, drop, add, loo_controls, x_range = x_range,
+                precision = precision, sig_val = sig_val,
                 priors, pointwise)
 }
