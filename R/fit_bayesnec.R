@@ -26,8 +26,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     } else {
       response <- data$y
     }
-    priors <- validate_priors(priors, model)
-    if (is.null(priors)) {
+    priors <- try(validate_priors(priors, model), silent = TRUE)
+    if (inherits(priors, "try-error")) {
       priors <- define_prior(model = model, family = family,
                              predictor = data$x, response = response)
     }
@@ -37,8 +37,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                              model = model, random_vars = random_vars)
     mod_dat <- data_check$mod_dat
     family <- data_check$family
-    priors <- validate_priors(priors, model)
-    if (is.null(priors)) {
+    priors <- try(validate_priors(priors, model), silent = TRUE)
+    if (inherits(priors, "try-error")) {
       priors <- data_check$priors
     }
     custom_name <- check_custom_name(family)
