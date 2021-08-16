@@ -8,7 +8,7 @@
 #' \code{\link[brms]{brmsprior}}.
 validate_priors <- function(priors, model) {
   if (missing(priors)) {
-    return(NULL)
+    stop("No valid prior specified")
   }
   if (inherits(priors, "list")) {
     if (!model %in% names(priors)) {
@@ -18,7 +18,7 @@ validate_priors <- function(priors, model) {
     }
     priors <- priors[[model]]
     if (is.null(priors)) {
-      return(NULL)
+      stop("No valid prior specified")
     }
   }
   if (!inherits(priors, "brmsprior")) {
@@ -27,7 +27,7 @@ validate_priors <- function(priors, model) {
             "see ?bnec for argument details ",
             "and example.\n",
             "Using bayesnec default priors.")
-    return(NULL)
+    stop("No valid prior specified")
   }
   priors
 }
