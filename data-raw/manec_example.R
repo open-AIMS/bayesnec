@@ -13,12 +13,6 @@ add_na <- function(x, n = 3) {
   x_b
 }
 
-muted_bnec <- function(...) {
-  bnec(...) %>%
-    suppressWarnings %>%
-    suppressMessages
-}
-
 logit <- function(x) {
   log(x / (1 - x))
 }
@@ -26,7 +20,8 @@ logit <- function(x) {
 data("nec_data")
 manec_example <- nec_data %>%
   dplyr::mutate(y = logit(y)) %>%
-  muted_bnec("x", "y", model = c("nec4param", "ecx4param"),
-             iter = 50, chains = 2)
+  bnec(x_var = "x", y_var = "y", model = c("nec4param", "ecx4param"),
+       data = ., iter = 200, warmup = 150, chains = 2,
+       stan_model_args = list(save_dso = FALSE))
 
 usethis::use_data(manec_example, overwrite = TRUE)

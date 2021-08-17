@@ -74,7 +74,7 @@ test_that("xform passes correctly", {
 
 test_that("posterior passes correctly", {
   ecx3 <- ecx(ecx4param, posterior = TRUE)
-  expect_equal(length(ecx3), 10)
+  expect_equal(length(ecx3), 100)
 })
 
 test_that("prob_vals passes correctly", {

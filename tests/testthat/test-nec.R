@@ -36,7 +36,7 @@ test_that("xform passes correctly", {
 
 test_that("posterior passes correctly", {
   nec3 <- nec(nec4param, posterior = TRUE)
-  expect_equal(length(nec3), 10)
+  expect_equal(length(nec3), 100)
 })
 
 test_that("prob_vals passes correctly", {

@@ -25,7 +25,7 @@ test_that("xform passes correctly", {
 test_that("posterior passes correctly", {
   ae3 <- average_endpoints(list(ecx4param = ecx4param, nec4param = nec4param),
                            posterior = TRUE)
-  expect_equal(length(ae3), 10)
+  expect_equal(length(ae3), 100)
 })
 
 test_that("prob_vals passes correctly", {
