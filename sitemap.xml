@@ -49,6 +49,12 @@
     <loc>/reference/amend.html</loc>
   </url>
   <url>
+    <loc>/reference/autoplot.bayesmanecfit.html</loc>
+  </url>
+  <url>
+    <loc>/reference/autoplot.bayesnecfit.html</loc>
+  </url>
+  <url>
     <loc>/reference/average_endpoints.html</loc>
   </url>
   <url>
@@ -146,15 +152,6 @@
   </url>
   <url>
     <loc>/reference/fit_bayesnec.html</loc>
-  </url>
-  <url>
-    <loc>/reference/ggbnec.bayesmanecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/ggbnec.bayesnecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/ggbnec.default.html</loc>
   </url>
   <url>
     <loc>/reference/ggbnec.html</loc>
