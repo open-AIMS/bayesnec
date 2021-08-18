@@ -383,6 +383,13 @@ response (i.e. the response value is significantly
 lower than that expected in the case of no exposure).
 The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha
 value of 0.01 for a one-sided test of significance.</p>
+<p><strong>NAs are thrown away</strong>
+Stan's default behaviour is to fail when the input data contains NAs. For
+that reason <span class="pkg">brms</span> excludes any NAs from input data prior to fitting,
+and does not allow them back in as is the case with e.g. <code><a href='https://rdrr.io/r/stats/lm.html'>stats::lm</a></code> and
+<code>na.action = exclude</code>. So we advise that you exclude any NAs in your
+data prior to fitting because if you so wish that should facilitate merging
+predictions back onto your original dataset.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='co'># \donttest{</span></span>
@@ -399,8 +406,8 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '0daf4c59b9ad080fa15c62e4f64b603f' NOW (CHAIN 1).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000172 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.72 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000174 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.74 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
@@ -417,15 +424,15 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 25.6185 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.76525 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                29.3837 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 21.8312 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.44154 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                25.2728 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '0daf4c59b9ad080fa15c62e4f64b603f' NOW (CHAIN 2).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 7.6e-05 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.76 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 7.1e-05 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.71 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
@@ -442,9 +449,9 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 25.2685 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.32782 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                28.5964 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 22.5472 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.09473 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                25.6419 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a beta distribution.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
@@ -460,8 +467,8 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '0daf4c59b9ad080fa15c62e4f64b603f' NOW (CHAIN 1).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000145 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.45 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000128 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.28 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
@@ -478,15 +485,15 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 25.4418 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.71117 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                29.1529 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 23.335 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.40079 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                26.7358 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '0daf4c59b9ad080fa15c62e4f64b603f' NOW (CHAIN 2).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 8.4e-05 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.84 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 7.4e-05 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.74 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
@@ -503,9 +510,9 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 25.1631 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.80489 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                28.968 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 23.0623 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.50605 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                26.5683 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a ecx4param model and a beta distribution.</span>
@@ -514,8 +521,8 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '840629d124c9db9e88a478b24250e012' NOW (CHAIN 1).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000125 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.25 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000119 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.19 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
@@ -532,15 +539,15 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 12.0097 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                2.08486 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                14.0945 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 10.7604 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                1.71196 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                12.4723 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '840629d124c9db9e88a478b24250e012' NOW (CHAIN 2).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 9.3e-05 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.93 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 6.5e-05 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.65 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
@@ -557,9 +564,9 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 11.6552 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                1.62061 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                13.2758 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 10.673 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                1.41554 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                12.0885 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a ecx4param model using a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Fitted models are:  nec4param ecx4param</span>
