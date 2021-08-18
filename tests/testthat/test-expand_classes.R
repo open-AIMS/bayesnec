@@ -19,7 +19,7 @@ fit1 <- allot_class(fit1, "prebayesnecfit")
 fit2 <- allot_class(fit2, "prebayesnecfit")
 
 test_that("expand_nec defaults work for nec model", {
-  nec_fit <- expand_nec(fit1)
+  nec_fit <- expand_nec(fit1, model = "nec4param")
   expect_equal(names(nec_fit), c("fit", "model", "inits", "pred_vals", "top",
                                  "beta", "nec", "alpha", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
@@ -32,7 +32,8 @@ test_that("expand_nec defaults work for nec model", {
 })
 
 test_that("expand_nec arguments work for nec model", {
-  nec_fit <- expand_nec(fit1, x_range = c(0.01, 4), precision = 20)
+  nec_fit <- expand_nec(fit1, model = "nec4param", x_range = c(0.01, 4),
+                        precision = 20)
   expect_equal(names(nec_fit), c("fit", "model", "inits", "pred_vals", "top",
                                  "beta", "nec", "alpha", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
@@ -45,7 +46,7 @@ test_that("expand_nec arguments work for nec model", {
 })
 
 test_that("expand_ecx defaults work for ecx model", {
-  ecx_fit <- expand_nec(fit2)
+  ecx_fit <- expand_nec(fit2, model = "ecx4param")
   expect_equal(names(ecx_fit), c("fit", "model", "inits", "pred_vals", "top",
                                  "beta", "nec", "alpha", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
@@ -58,7 +59,8 @@ test_that("expand_ecx defaults work for ecx model", {
 })
 
 test_that("expand_ecx arguments work for ecx model", {
-  ecx_fit <- expand_nec(fit2, x_range = c(0.01, 4), precision = 20)
+  ecx_fit <- expand_nec(fit2, model = "ecx4param", x_range = c(0.01, 4),
+                        precision = 20)
   expect_equal(names(ecx_fit), c("fit", "model", "inits", "pred_vals", "top",
                                  "beta", "nec", "alpha", "bot", "d", "slope",
                                  "ec50", "dispersion", "predicted_y",
@@ -71,8 +73,8 @@ test_that("expand_ecx arguments work for ecx model", {
 })
 
 test_that("expand_ecx sig_val argument work for ecx model", {
-  ecx_fit_a <- expand_nec(fit2)
-  ecx_fit_b <- expand_nec(fit2, sig_val = 0.2)
+  ecx_fit_a <- expand_nec(fit2, model = "ecx4param")
+  ecx_fit_b <- expand_nec(fit2, model = "ecx4param", sig_val = 0.2)
   expect_gt(ecx_fit_a$nec["Estimate"], ecx_fit_b$nec["Estimate"])
 })
 

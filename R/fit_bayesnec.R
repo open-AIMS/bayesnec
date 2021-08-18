@@ -8,16 +8,16 @@
 #' be avoided? Only relevant to function \code{\link{amend}}.
 #' Defaults to FALSE.
 #'
-#' @importFrom brms brm loo waic
+#' @importFrom brms brm bf
 #' @importFrom stats update as.formula
 #'
 #' @seealso \code{\link{bnec}}
 #' @return The fitted \pkg{brms} model, including an estimate of the NEC
 #' value and predicted posterior values.
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
-fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
-                         family = NULL, priors, model = NA,
-                         inits, skip_check = FALSE, pointwise, random = NA, random_vars = NA, ...) {
+fit_bayesnec <- function(data, x_var, y_var, trials_var = NA, family = NULL,
+                         priors, model = NA, inits, skip_check = FALSE,
+                         random = NA, random_vars = NA, ...) {
   if (skip_check) {
     mod_dat <- data
     custom_name <- check_custom_name(family)
@@ -28,8 +28,8 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
     }
     priors <- try(validate_priors(priors, model), silent = TRUE)
     if (inherits(priors, "try-error")) {
-      priors <- define_prior(model = model, family = family,
-                             predictor = data$x, response = response)
+      priors <- define_prior(model = model, family = family, predictor = data$x,
+                             response = response)
     }
   } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
@@ -74,41 +74,33 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA,
                              response_link, priors = priors,
                              chains = chs)
   }
-  if(!is.na(random[1])){
+  if (!is.na(random[1])) {
     form_text <- as.character(brms_bf)
-    rand_forms <- eval(parse(text=form_text[2]))
+    rand_forms <- eval(parse(text = form_text[2]))
     nl_form <- form_text[1]
     rand_list <- intersect(names(random), names(rand_forms))
-    add_ost <- max(grepl("ost", names(random)))==1
-    if(length(rand_list)>0){
+    add_ost <- max(grepl("ost", names(random))) == 1
+    if (length(rand_list) > 0) {
       rand_forms[rand_list] <- random[rand_list]
     }
-    if(add_ost){
+    if (add_ost) {
       rand_forms <- c(rand_forms, list(ost = random$ost))
-      nl_form <- gsub("~", "~ ost + ", nl_form, fixed= TRUE)
+      nl_form <- gsub("~", "~ ost + ", nl_form, fixed = TRUE)
     }
     brms_bf <- bf(as.formula(nl_form), rand_forms, nl = TRUE)
   }
-
-  all_args <- c(list(formula = brms_bf, data = mod_dat,
-                     family = family, prior = priors,
-                     inits = inits),
-                add_args)
+  all_args <- c(list(formula = brms_bf, data = mod_dat, family = family,
+                     prior = priors, inits = inits), add_args)
   if (custom_name == "beta_binomial2") {
-    all_args <- c(list(stanvars = stanvars),
-                  all_args)
+    all_args <- c(list(stanvars = stanvars), all_args)
   }
   fit <- do.call(brm, all_args)
   pass <- are_chains_correct(fit, chs)
   if (!pass) {
-    stop(paste0("Failed to fit model ", model, "."),
-         call. = FALSE)
+    stop(paste0("Failed to fit model ", model, "."), call. = FALSE)
   }
-  fit$loo <- loo(fit)
-  fit$waic <- suppressWarnings(waic(fit, pointwise = pointwise))
-  message(paste0("Response variable modelled as a ",
-                 model, " model using a ", msg_tag,
-                 " distribution."))
+  message(paste0("Response variable modelled as a ", model, " model using a ",
+                 msg_tag, " distribution."))
   out <- list(fit = fit, model = model, inits = inits)
   allot_class(out, "prebayesnecfit")
 }
