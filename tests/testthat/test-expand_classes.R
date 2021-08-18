@@ -102,3 +102,23 @@ test_that("expand_manec defaults work correctly", {
   expect_equal(dim(tt4$w_pred_vals$data), c(20, 4))
   expect_equal(range(tt4$w_pred_vals$data$x), c(0.01, 4))
 })
+
+test_that("new loo_controls are incorporated", {
+  get_new_method <- function(x) {
+    attributes(x$mod_stats$wi)$method
+  }
+  expand_manec(tt1) %>%
+    get_new_method %>%
+    expect_null %>%
+    expect_message    
+  my_ctrls <- list(weights = list(method = "pseudobma"))
+  expand_manec(tt1, loo_controls = my_ctrls)%>%
+    get_new_method %>%
+    expect_message %>%
+    expect_equal("pseudobma")
+  my_ctrls <- list(weights = list(method = "stacking"))
+  expand_manec(tt1, loo_controls = my_ctrls)%>%
+    get_new_method %>%
+    expect_message %>%
+    expect_equal("stacking")
+})
