@@ -146,7 +146,7 @@ handle_set <- function(x, add, drop) {
   if (identical(sort(x), sort(tmp))) {
     message("Nothing to amend, please specify a model to ",
             "either add or drop that differs from the original set.")
-    FALSE
+    "wrong_model_output"
   } else {
     tmp
   }
