@@ -5,9 +5,10 @@ test_that("handle_set works", {
   m_0 <- paste0("Nothing to amend, please specify a model to either add",
                 " or drop that differs from the original set.")
   handle_set(c("nec4param", "nec3param"), add = "nec4param") %>%
-    expect_false %>%
+    expect_equal("wrong_model_output") %>%
     expect_message(m_0)
-  expect_false(handle_set(c("nec4param", "nec3param"))) %>%
+  handle_set(c("nec4param", "nec3param")) %>%
+    expect_equal("wrong_model_output") %>%
     expect_message(m_0)
   handle_set(c("nec4param", "nec3param"),
              drop = c("nec4param", "nec3param")) %>%
