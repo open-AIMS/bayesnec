@@ -146,6 +146,14 @@
 #' The default value for \code{sig_val} is 0.01, which corresponds to an alpha
 #' value of 0.01 for a one-sided test of significance.
 #'
+#' **NAs are thrown away**
+#' Stan's default behaviour is to fail when the input data contains NAs. For
+#' that reason \pkg{brms} excludes any NAs from input data prior to fitting,
+#' and does not allow them back in as is the case with e.g. \code{stats::lm} and
+#' \code{na.action = exclude}. So we advise that you exclude any NAs in your
+#' data prior to fitting because if you so wish that should facilitate merging
+#' predictions back onto your original dataset.
+#'
 #' @return If argument model is a single string, then an object of class
 #' \code{\link{bayesnecfit}}; if many strings or a set,
 #' an object of class \code{\link{bayesmanecfit}}.
