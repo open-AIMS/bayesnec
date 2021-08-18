@@ -11,7 +11,6 @@ test_that("input checks work correctly and return appropriate messages", {
     "Nothing to amend, please specify a proper model to either add or drop, or",
     "changes to loo_controls;\n Returning original model set."
   )
-
   m_1 <- paste0("Nothing to amend, please specify a model to either add or",
                 " drop that differs from the original set")
   m_2 <- "Returning original model set."
@@ -26,10 +25,12 @@ test_that("input checks work correctly and return appropriate messages", {
     amend(loo_controls = list(method = "somethingwrong")) %>%
     expect_message(m_4) %>%
     expect_error
-  expect_message(amend(manec_example, drop = "nec4param"))
+  expect_message(amend(manec_example, drop = "nec4param")) %>%
+    suppressWarnings
   amend(manec_example, add = "nec3param") %>%
     expect_message %>%
-    expect_message("Fitted models are:  nec4param ecx4param")
+    expect_message("Fitted models are:  nec4param ecx4param") %>%
+    suppressWarnings
   amend(manec_example, add = "nec4param",
         loo_controls = list(weights = list(method = "pseudobma"))) %>%
     expect_message(general_error) %>%
@@ -52,29 +53,10 @@ test_that("new loo_controls are incorporated", {
   expect_equal(get_new_method(manec_example), "pseudobma")
   my_ctrls <- list(weights = list(method = "stacking"))
   manec_example_stack <- amend(manec_example, loo_controls = my_ctrls) %>%
-    expect_message
+    expect_message %>%
+    suppressWarnings
   expect_equal(get_new_method(manec_example_stack), "stacking")
-  my_ctrls <- list(fitting = list(moment_match = TRUE),
-                   weights = list(method = "stacking"))
-  manec_example_stack2 <- amend(manec_example, loo_controls = my_ctrls) %>%
-    expect_message
-  expect_equal(get_new_method(manec_example_stack2), "stacking")
-  # changing original to moment match alters weights
-  my_ctrls <- list(fitting = list(moment_match = TRUE))
-  manec_example_stack3 <- amend(manec_example, loo_controls = my_ctrls) %>%
-    expect_message
-  expect_equal(get_new_method(manec_example_stack3), "pseudobma")
   expect_false(
     all(manec_example$mod_stats$wi == manec_example_stack$mod_stats$wi)
-  )
-  expect_false(
-    all(manec_example$mod_stats$wi == manec_example_stack2$mod_stats$wi)
-  )
-  # stacking doesn't depend on moment_match??
-  expect_true(
-    all(manec_example_stack$mod_stats$wi == manec_example_stack2$mod_stats$wi)
-  )
-  expect_false(
-    all(manec_example$mod_stats$wi == manec_example_stack3$mod_stats$wi)
   )
 })

@@ -2,11 +2,16 @@ library(bayesnec)
 library(brms)
 
 data(manec_example)
-ecx4param <- pull_out(manec_example, model = "ecx4param")
-nec4param <- pull_out(manec_example, model = "nec4param")
+ecx4param <- pull_out(manec_example, model = "ecx4param") %>%
+    suppressMessages %>%
+    suppressWarnings
+nec4param <- pull_out(manec_example, model = "nec4param") %>%
+    suppressMessages %>%
+    suppressWarnings
 
 test_that("nec returns expected object types", {
-  nec_summary <- nec(manec_example)
+  nec_summary <- nec(manec_example) %>%
+    suppressMessages
   expect_equal(length(nec_summary), 3)
 })
 
