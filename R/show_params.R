@@ -26,14 +26,14 @@ show_params <- function(model = "all") {
   }
   msets <- names(mod_groups)
   if (any(model %in% msets)) {
-      group_mods <- intersect(model, msets)
-      model <- union(model, unname(unlist(mod_groups[group_mods])))
-      model <- setdiff(model, msets)
-      names(model) <- model
+    group_mods <- intersect(model, msets)
+    model <- union(model, unname(unlist(mod_groups[group_mods])))
+    model <- setdiff(model, msets)
+    names(model) <- model
   }
   if (length(model) > 1) {
     lapply(model, display)
   } else if (length(model) == 1) {
-    display(model)
+    list(display(model))
   }
 }
