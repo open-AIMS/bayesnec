@@ -7,6 +7,7 @@
 #' \code{\link[stats]{poisson}} or \code{\link[stats]{binomial}}.
 #' @param summary Logical. Should summary stats be returned instead of full
 #' vector? Defaults to FALSE.
+#' @param seed Change seed for reproducible purposes.
 #'
 #' @details This function calculates a dispersion metric which takes the ratio
 #' between the observed relative to simulated Pearson residuals sums of
@@ -27,7 +28,7 @@
 #' dispersion(exmp_brmsfit, summary = TRUE)
 #' 
 #' @export
-dispersion <- function(model, summary = FALSE) {
+dispersion <- function(model, summary = FALSE, seed = 10) {
   allowed_fams <- c("gaussian", "binomial", "poisson")
   fam <- model$family$family
   if (fam %in% c(allowed_fams)) {
@@ -35,6 +36,7 @@ dispersion <- function(model, summary = FALSE) {
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
     prd_out <- posterior_epred(model)
+    set.seed(seed)
     ppd_out <- posterior_predict(model)
     prd_sr <- matrix(0, nrow(prd_out), ncol(prd_out))
     sim_sr <- matrix(0, nrow(prd_out), ncol(prd_out))
