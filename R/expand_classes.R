@@ -5,12 +5,20 @@
 #' @inheritParams bnec
 #'
 #' @param object An object of class prebayesnecfit.
+#' @param ... Further arguments to \code{\link{add_criteria}}.
 #'
 #' @return An object of class bayesnecfit.
 #' @importFrom brms posterior_epred posterior_samples
 #' @importFrom stats quantile fitted residuals
-expand_nec <- function(object, x_range = NA, precision = 1000,
-                       sig_val = 0.01) {
+expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
+                       loo_controls, ...) {
+  fam_tag <- object$fit$family$family
+  if (missing(loo_controls)) {
+    loo_controls <- list(fitting = list(), weights = list())
+  } else {
+    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
+  }
+  object <- add_criteria(object, loo_controls$fitting, ...)
   fit <- object$fit
   mod_dat <- fit$data
   extract_params <- c("top", "beta", "nec", "alpha",
@@ -24,7 +32,6 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
   new_dat <- data.frame(x = x_seq)
-  fam_tag <- fit$family$family
   custom_name <- check_custom_name(fit$family)
   if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
     new_dat$trials <- 1
@@ -75,9 +82,15 @@ expand_nec <- function(object, x_range = NA, precision = 1000,
 #' @return A list of model statistical output derived from the input model list
 #' @importFrom loo loo_model_weights
 #' @importFrom stats quantile
-expand_manec <- function(object, x_range = NA, precision = 1000,
-                         sig_val = 0.01,
-                         loo_controls = list(method = "pseudobma")) {
+expand_manec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
+                         loo_controls) {
+  if (missing(loo_controls)) {
+    loo_controls <- list(fitting = list(), weights = list())
+  } else {
+    fam_tag <- object[[1]]$fit$family$family
+    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
+  }
+  loo_w_controls <- loo_controls$weights
   model_set <- names(object)
   success_models <- model_set[sapply(object, class) == "prebayesnecfit"]
   if (length(success_models) == 0) {
@@ -93,7 +106,7 @@ expand_manec <- function(object, x_range = NA, precision = 1000,
             "priors, or check ?show_params to make sure you have ",
             "the correct parameter names for your priors.\n",
             "Returning ", success_models)
-    return(object[[success_models]])
+    return(object[success_models])
   } else {
     message(paste("Fitted models are: ",
                   paste(success_models, collapse = " ")))
@@ -102,17 +115,19 @@ expand_manec <- function(object, x_range = NA, precision = 1000,
   object <- object[success_models]
   for (i in seq_along(object)) {
     object[[i]] <- expand_nec(object[[i]], x_range = x_range,
-                              precision = precision,
-                              sig_val = sig_val)
+                              precision = precision, sig_val = sig_val,
+                              loo_controls = loo_controls,
+                              model = success_models[i])
   }
   mod_dat <- object[[1]]$fit$data
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")
   colnames(disp) <- c("dispersion_Estimate",
                       "dispersion_Q2.5", "dispersion_Q97.5")
   mod_stats <- data.frame(model = success_models)
-  mod_stats$waic <- sapply(object, extract_waic)
-  loo_mw_args <- c(list(x = lapply(object, extract_loo)), loo_controls)
+  mod_stats$waic <- sapply(object, extract_waic_estimate)
+  loo_mw_args <- c(list(x = lapply(object, extract_loo)), loo_w_controls)
   mod_stats$wi <- do.call(loo_model_weights, loo_mw_args)
+  attr(mod_stats$wi, "method") <- loo_w_controls$method
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- extract_simdat(object[[1]])$n_samples
   nec_posterior <- unlist(lapply(success_models, w_nec_calc,

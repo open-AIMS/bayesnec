@@ -12,8 +12,7 @@
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
-  priors,
-  pointwise
+  priors
 )
 }
 \arguments{
@@ -26,10 +25,16 @@ model types you which to drop for the modified fit.}
 \item{add}{A \code{\link[base]{character}} vector containing the names of
 model types to add to the modified fit.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} containing the desired
-arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It can
-be used to change the default method from "pseudobma". See help
-documentation ?loo_model_weights from package loo.}
+\item{loo_controls}{A named \code{\link[base]{list}} of two elements
+("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+containing the desired arguments to be passed on to \code{\link[brms]{loo}}
+(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
+If "fitting" is provided with argument \code{pointwise = TRUE}
+(due to memory issues) and \code{family = "beta_binomial2"}, the
+\code{\link{bnec}} will fail because that is a custom family. If "weights" is
+not provided by the user, \code{\link{bnec}} will set the default
+\code{method} argument in \code{\link[loo]{loo_model_weights}} to
+"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -48,11 +53,6 @@ If missing, \code{\link{bnec}} will figure out a baseline prior for each
 parameter. It can also be specified as a named \code{\link[base]{list}}
 where each name needs to correspond to the same string as "model". See
 details.}
-
-\item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
-at once or separately for each observation. The latter approach is usually considerably slower but requires
-much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
-but will not work for the custom family beta_binomial2}
 }
 \value{
 All successfully fitted \code{\link{bayesmanecfit}} model fits.

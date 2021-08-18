@@ -4,7 +4,14 @@
 \alias{expand_nec}
 \title{expand_nec}
 \usage{
-expand_nec(object, x_range = NA, precision = 1000, sig_val = 0.01)
+expand_nec(
+  object,
+  x_range = NA,
+  precision = 1000,
+  sig_val = 0.01,
+  loo_controls,
+  ...
+)
 }
 \arguments{
 \item{object}{An object of class prebayesnecfit.}
@@ -19,6 +26,19 @@ precise.}
 significance of the predicted posterior values
 against the lowest observed concentration (assumed to be the control), to
 estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+
+\item{loo_controls}{A named \code{\link[base]{list}} of two elements
+("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+containing the desired arguments to be passed on to \code{\link[brms]{loo}}
+(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
+If "fitting" is provided with argument \code{pointwise = TRUE}
+(due to memory issues) and \code{family = "beta_binomial2"}, the
+\code{\link{bnec}} will fail because that is a custom family. If "weights" is
+not provided by the user, \code{\link{bnec}} will set the default
+\code{method} argument in \code{\link[loo]{loo_model_weights}} to
+"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
+
+\item{...}{Further arguments to \code{\link{add_criteria}}.}
 }
 \value{
 An object of class bayesnecfit.

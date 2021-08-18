@@ -4,7 +4,7 @@
 \alias{pull_out}
 \title{pull_out}
 \usage{
-pull_out(manec, model, ...)
+pull_out(manec, model, loo_controls, ...)
 }
 \arguments{
 \item{manec}{An object of class bayesmanecfit output list
@@ -13,7 +13,19 @@ as returned by \code{\link{bnec}}.}
 \item{model}{A \code{\link[base]{character}} string indicating
 which model or class of models to pull out.}
 
-\item{...}{Additional arguments to \code{\link{expand_nec}}.}
+\item{loo_controls}{A named \code{\link[base]{list}} of two elements
+("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+containing the desired arguments to be passed on to \code{\link[brms]{loo}}
+(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
+If "fitting" is provided with argument \code{pointwise = TRUE}
+(due to memory issues) and \code{family = "beta_binomial2"}, the
+\code{\link{bnec}} will fail because that is a custom family. If "weights" is
+not provided by the user, \code{\link{bnec}} will set the default
+\code{method} argument in \code{\link[loo]{loo_model_weights}} to
+"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
+
+\item{...}{Additional arguments to \code{\link{expand_nec}} or
+\code{\link{expand_manec}}.}
 }
 \value{
 An object of class bayesnecfit.

@@ -20,9 +20,8 @@ bnec(
   iter = 10000,
   warmup = floor(iter/10) * 9,
   inits,
-  pointwise,
   sample_prior = "yes",
-  loo_controls = list(method = "pseudobma"),
+  loo_controls,
   random = NA,
   random_vars = NA,
   ...
@@ -92,19 +91,21 @@ The number of warmup should not be larger than "iter" and the default is
 number of chains, and names correspond to the parameter names of a given
 model.}
 
-\item{pointwise}{A flag indicating whether to compute the full log-likelihood matrix
-at once or separately for each observation. The latter approach is usually considerably slower but requires
-much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
-but will not work for the custom family beta_binomial2}
+\item{sample_prior}{Indicate if samples from priors should be drawn
+additionally to the posterior samples. Options are "no", "yes"
+(the default), and "only". Among others, these samples can be used to
+calculate Bayes factors for point hypotheses via hypothesis.}
 
-\item{sample_prior}{Indicate if samples from priors should be drawn additionally to the posterior samples.
-Options are "no", "yes" (the default), and "only".
-Among others, these samples can be used to calculate Bayes factors for point hypotheses via hypothesis.}
-
-\item{loo_controls}{A named \code{\link[base]{list}} containing the desired
-arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
-the default wi_method to "pseudobma". See help documentation
-?loo_model_weights from package loo.}
+\item{loo_controls}{A named \code{\link[base]{list}} of two elements
+("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+containing the desired arguments to be passed on to \code{\link[brms]{loo}}
+(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
+If "fitting" is provided with argument \code{pointwise = TRUE}
+(due to memory issues) and \code{family = "beta_binomial2"}, the
+\code{\link{bnec}} will fail because that is a custom family. If "weights" is
+not provided by the user, \code{\link{bnec}} will set the default
+\code{method} argument in \code{\link[loo]{loo_model_weights}} to
+"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
 
 \item{random}{= A named \code{\link[base]{list}} containing the random model
 formula to apply to model parameters.}
@@ -149,8 +150,8 @@ characteristics of the input data through \code{\link{check_data}}. Guesses
 include all of the above families but "negbinomial" and "betabinomimal2"
 because these requires knowledge on whether the data is over-dispersed. As
 explained below in the Return section, the user can extract the dispersion
-parameter from a bnec call, and if they so wish, can refit the model using
-the "negbinomial" family.
+parameter from a \code{\link{bnec}} call, and if they so wish, can refit the
+model using the "negbinomial" family.
 
 The argument \code{model} may be a character string indicating the names of
 the desired model. see ?models for more details, and the list of models

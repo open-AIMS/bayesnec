@@ -73,12 +73,12 @@ extract_dispersion <- function(x) {
 
 #' @noRd
 extract_loo <- function(x) {
-  x$fit$loo
+  x$fit$criteria$loo
 }
 
 #' @noRd
-extract_waic <- function(x) {
-  x$fit$waic$estimates["waic", "Estimate"]
+extract_waic_estimate <- function(x) {
+  x$fit$criteria$waic$estimates["waic", "Estimate"]
 }
 
 #' @noRd

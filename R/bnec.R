@@ -51,19 +51,20 @@
 #' \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the
 #' number of chains, and names correspond to the parameter names of a given
 #' model.
-#' @param pointwise A flag indicating whether to compute the full log-likelihood matrix 
-#' at once or separately for each observation. The latter approach is usually considerably slower but requires
-#' much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
-#' but will not work for the custom family beta_binomial2
-#' 
-#' @param sample_prior Indicate if samples from priors should be drawn additionally to the posterior samples. 
-#' Options are "no", "yes" (the default), and "only". 
-#' Among others, these samples can be used to calculate Bayes factors for point hypotheses via hypothesis. 
-#' 
-#' @param loo_controls A named \code{\link[base]{list}} containing the desired
-#' arguments to be passed on to \code{\link[loo]{loo_model_weights}}. It sets
-#' the default wi_method to "pseudobma". See help documentation
-#' ?loo_model_weights from package loo.
+#' @param sample_prior Indicate if samples from priors should be drawn
+#' additionally to the posterior samples. Options are "no", "yes"
+#' (the default), and "only". Among others, these samples can be used to
+#' calculate Bayes factors for point hypotheses via hypothesis.
+#' @param loo_controls A named \code{\link[base]{list}} of two elements
+#' ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
+#' containing the desired arguments to be passed on to \code{\link[brms]{loo}}
+#' (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
+#' If "fitting" is provided with argument \code{pointwise = TRUE}
+#' (due to memory issues) and \code{family = "beta_binomial2"}, the
+#' \code{\link{bnec}} will fail because that is a custom family. If "weights" is
+#' not provided by the user, \code{\link{bnec}} will set the default
+#' \code{method} argument in \code{\link[loo]{loo_model_weights}} to
+#' "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.
 #' @param random = A named \code{\link[base]{list}} containing the random model 
 #' formula to apply to model parameters.
 #' @param random_vars = A \code{\link[base]{character}} vector containing the names of 
@@ -95,8 +96,8 @@
 #' include all of the above families but "negbinomial" and "betabinomimal2"
 #' because these requires knowledge on whether the data is over-dispersed. As
 #' explained below in the Return section, the user can extract the dispersion
-#' parameter from a bnec call, and if they so wish, can refit the model using
-#' the "negbinomial" family.
+#' parameter from a \code{\link{bnec}} call, and if they so wish, can refit the
+#' model using the "negbinomial" family.
 #'
 #' The argument \code{model} may be a character string indicating the names of
 #' the desired model. see ?models for more details, and the list of models
@@ -164,35 +165,29 @@
 #' }
 #'
 #' @export
-bnec <- function(x, y = NULL, data,  x_var, y_var, model, trials_var = NA,
-                 family = NULL, priors, x_range = NA,
-                 precision = 1000, sig_val = 0.01,
-                 iter = 10e3, warmup = floor(iter / 10) * 9,
-                 inits, pointwise, 
-                 sample_prior = "yes",
-                 loo_controls = list(method = "pseudobma"), 
-                 random = NA, random_vars = NA, ...) {
- if(!missing(x)){
-   parse_out <- parse_x(x, y, data,  x_var, y_var, model, trials_var, family = family)
-   data <- parse_out$data
-   x_var <- parse_out$x_var
-   y_var <- parse_out$y_var
-   trials_var <- parse_out$trials_var
-   model <- parse_out$model
-
- } else {
-
-   if(missing(data) | missing(x_var) | missing(y_var)) stop("You must supply x, or all of data, x_var and y_var")
- }
-
-  if (missing(model)) {
-    stop("You need to define a model type. See ?bnec")
+bnec <- function(x, y = NULL, data, x_var, y_var, model, trials_var = NA,
+                 family = NULL, priors, x_range = NA, precision = 1000,
+                 sig_val = 0.01, iter = 10e3, warmup = floor(iter / 10) * 9,
+                 inits, sample_prior = "yes", loo_controls, random = NA,
+                 random_vars = NA, ...) {
+  if (!missing(x)) {
+    parse_out <- parse_x(x, y, data, x_var, y_var, model, trials_var, family)
+    data <- parse_out$data
+    x_var <- parse_out$x_var
+    y_var <- parse_out$y_var
+    trials_var <- parse_out$trials_var
+    model <- parse_out$model
+  } else {
+    if (missing(data) | missing(x_var) | missing(y_var) | missing(model)) {
+      stop("You must supply x, or all of data, x_var, y_var and model.",
+           " See ?bnec")
+    }
   }
   msets <- names(mod_groups)
   if (any(model %in% msets)) {
-      group_mods <- intersect(model, msets)
-      model <- union(model, unname(unlist(mod_groups[group_mods])))
-      model <- setdiff(model, msets)
+    group_mods <- intersect(model, msets)
+    model <- union(model, unname(unlist(mod_groups[group_mods])))
+    model <- setdiff(model, msets)
   }
   if (is.null(family)) {
     if (is.na(trials_var)) {
@@ -200,22 +195,20 @@ bnec <- function(x, y = NULL, data,  x_var, y_var, model, trials_var = NA,
     } else {
       m_trials <- data[, trials_var]
     }
-
     family <- set_distribution(data[, y_var], support_integer = TRUE,
                                trials = m_trials)
   }
   family <- validate_family(family)
   fam_tag <- family$family
   link_tag <- family$link
-
-  if (missing(pointwise)) {
-    if (fam_tag == "custom") {pointwise <-  FALSE} else {pointwise <- TRUE}
+  if (missing(loo_controls)) {
+    loo_controls <- list(fitting = list(), weights = list(method = "pseudobma"))
   } else {
-    if(pointwise & fam_tag == "custom") {
-      stop("You cannot currently set pointwise = TRUE for custom families")
+    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
+    if (!"method" %in% names(loo_controls$weights)) {
+      loo_controls$weights$method <- "pseudobma"
     }
   }
-
   model <- check_models(model, family)
   if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
@@ -223,41 +216,40 @@ bnec <- function(x, y = NULL, data,  x_var, y_var, model, trials_var = NA,
     for (m in seq_along(model)) {
       model_m <- model[m]
       fit_m <- try(
-        fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
-                     trials_var = trials_var, family = family,
-                     priors = priors, model = model_m,
+        fit_bayesnec(data = data, x_var = x_var, y_var = y_var, family = family,
+                     trials_var = trials_var, priors = priors, model = model_m,
                      iter = iter, warmup = warmup, inits = inits,
-                     pointwise = pointwise, sample_prior = sample_prior, 
-                     random = random, random_vars = random_vars, ...),
-        silent = FALSE)
+                     sample_prior = sample_prior, random = random,
+                     random_vars = random_vars, ...),
+        silent = FALSE
+      )
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
       } else {
         mod_fits[[m]] <- NA
       }
     }
-    mod_fits <- expand_manec(mod_fits, x_range = x_range,
-                             precision = precision,
+    mod_fits <- expand_manec(mod_fits, x_range = x_range, precision = precision,
                              sig_val = sig_val, loo_controls = loo_controls)
-    if (!inherits(mod_fits, "prebayesnecfit")) {
+    if (length(mod_fits) > 1) {
       allot_class(mod_fits, "bayesmanecfit")
     } else {
-      mod_fits <- expand_nec(mod_fits, x_range = x_range,
-                             precision = precision,
-                             sig_val = sig_val)
+      mod_fits <- expand_nec(mod_fits[[1]], x_range = x_range,
+                             precision = precision, sig_val = sig_val,
+                             loo_controls = loo_controls,
+                             model = names(mod_fits))
       allot_class(mod_fits, "bayesnecfit")
     }
   } else {
     mod_fit <- fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
                             trials_var = trials_var, family = family,
-                            priors = priors, model = model,
-                            iter = iter, warmup = warmup,
-                            inits = inits, pointwise = pointwise, 
-                            sample_prior = sample_prior, 
-                            random = random, random_vars = random_vars, ...)
-    mod_fit <- expand_nec(mod_fit, x_range = x_range,
-                          precision = precision,
-                          sig_val = sig_val)
+                            priors = priors, model = model, iter = iter,
+                            warmup = warmup, inits = inits,
+                            sample_prior = sample_prior, random = random,
+                            random_vars = random_vars, ...)
+    mod_fit <- expand_nec(mod_fit, x_range = x_range, precision = precision,
+                          sig_val = sig_val, loo_controls = loo_controls,
+                          model = model)
     allot_class(mod_fit, "bayesnecfit")
   }
 }
