@@ -7,11 +7,11 @@
 pull_out(manec, model, loo_controls, ...)
 }
 \arguments{
-\item{manec}{An object of class bayesmanecfit output list
-as returned by \code{\link{bnec}}.}
+\item{manec}{An object of class \code{\link{bayesmanecfit}} as returned by
+\code{\link{bnec}}.}
 
 \item{model}{A \code{\link[base]{character}} string indicating
-which model or class of models to pull out.}
+which model or suite of models to pull out.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} of two elements
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
@@ -28,15 +28,20 @@ not provided by the user, \code{\link{bnec}} will set the default
 \code{\link{expand_manec}}.}
 }
 \value{
-An object of class bayesnecfit.
+If \code{model} is a string representing a single model, an object
+of class \code{\link{bayesnecfit}}; If \code{model} is instead a string
+depicting a suite of models, and object of class \code{\link{bayesmanecfit}}.
 }
 \description{
-Pulls a single model from an existing bayesmanecfit object,
-and converts into a bayesnecfit object.
+Subsets model(s) from an existing object of class \code{\link{bayesmanecfit}}
 }
 \examples{
 library(bayesnec)
 data(manec_example)
 ecx4param <- pull_out(manec_example, model = "ecx4param")
+necmodels <- pull_out(manec_example, model = "nec")
 
+}
+\seealso{
+\code{\link{bnec}}, \code{\link{models}}.
 }
