@@ -47,10 +47,10 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
                               hormesis_def = "control", sig_val = 0.01,
                               precision = 1000, x_range = NA, xform = NA,
                               prob_vals = c(0.5, 0.025, 0.975)) {
-  if (class(x) != "list" | is.null(names(x))) {
+  if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list")
   }
-  if (class(endpoint) != "character") {
+  if (!is.character(endpoint)) {
     stop("Argument endpoint must be a character vector")
   }
   if (is.na(x_range)) {

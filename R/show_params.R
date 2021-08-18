@@ -18,7 +18,7 @@
 #'
 #' @export
 show_params <- function(model = "all") {
-  if (class(model) != "character") {
+  if (!is.character(model)) {
     stop("Not a valid model name")
   }
   display <- function(x) {
