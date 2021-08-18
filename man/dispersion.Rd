@@ -4,7 +4,7 @@
 \alias{dispersion}
 \title{Posterior dispersion}
 \usage{
-dispersion(model, summary = FALSE)
+dispersion(model, summary = FALSE, seed = 10)
 }
 \arguments{
 \item{model}{An object of class \code{\link[brms]{brmsfit}} whose
@@ -13,6 +13,8 @@ distribution family is either \code{\link[stats]{gaussian}},
 
 \item{summary}{Logical. Should summary stats be returned instead of full
 vector? Defaults to FALSE.}
+
+\item{seed}{Change seed for reproducible purposes.}
 }
 \value{
 If \code{summary} is FALSE, an n-long \code{\link[base]{numeric}}
