@@ -159,7 +159,7 @@
   x_range <span class='op'>=</span> <span class='cn'>NA</span>,
   precision <span class='op'>=</span> <span class='fl'>1000</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
-  loo_controls <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>method <span class='op'>=</span> <span class='st'>"pseudobma"</span><span class='op'>)</span>
+  <span class='va'>loo_controls</span>
 <span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -189,10 +189,16 @@ estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
       <th>loo_controls</th>
-      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
-arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It sets
-the default wi_method to "pseudobma". See help documentation
-?loo_model_weights from package loo.</p></td>
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of two elements
+("fitting" and/or "weights"), each being a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
+containing the desired arguments to be passed on to <code><a href='https://rdrr.io/pkg/brms/man/loo.brmsfit.html'>loo</a></code>
+(via "fitting") or to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> (via "weights").
+If "fitting" is provided with argument <code>pointwise = TRUE</code>
+(due to memory issues) and <code>family = "beta_binomial2"</code>, the
+<code><a href='bnec.html'>bnec</a></code> will fail because that is a custom family. If "weights" is
+not provided by the user, <code><a href='bnec.html'>bnec</a></code> will set the default
+<code>method</code> argument in <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> to
+"pseudobma". See ?<code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> for further info.</p></td>
     </tr>
     </table>
 

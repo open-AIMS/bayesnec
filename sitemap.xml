@@ -37,6 +37,9 @@
     <loc>/news/index.html</loc>
   </url>
   <url>
+    <loc>/reference/add_criteria.html</loc>
+  </url>
+  <url>
     <loc>/reference/amend.bayesmanecfit.html</loc>
   </url>
   <url>
@@ -235,6 +238,9 @@
     <loc>/reference/nsec.html</loc>
   </url>
   <url>
+    <loc>/reference/parse_x.html</loc>
+  </url>
+  <url>
     <loc>/reference/plot.bayesmanecfit.html</loc>
   </url>
   <url>
@@ -299,6 +305,9 @@
   </url>
   <url>
     <loc>/reference/validate_family.html</loc>
+  </url>
+  <url>
+    <loc>/reference/validate_loo_controls.html</loc>
   </url>
   <url>
     <loc>/reference/validate_priors.html</loc>

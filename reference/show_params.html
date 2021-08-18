@@ -332,10 +332,12 @@ to fit. See Details for more information.</p></td>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-in'><span class='co'># single model</span></span>
 <span class='r-in'><span class='fu'>show_params</span><span class='op'>(</span>model <span class='op'>=</span> <span class='st'>"nec3param"</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> [[1]]</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> nec ~ 1</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-in'><span class='co'># group of models</span></span>
 <span class='r-in'><span class='fu'>show_params</span><span class='op'>(</span>model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec3param"</span>, <span class='st'>"ecx"</span><span class='op'>)</span><span class='op'>)</span></span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $nec3param</span>

@@ -157,10 +157,12 @@ averaged predictions based on WAIC model weights</p>
     </div>
 
     <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>bnec</span><span class='op'>(</span>
+  <span class='va'>x</span>,
+  y <span class='op'>=</span> <span class='cn'>NULL</span>,
   <span class='va'>data</span>,
   <span class='va'>x_var</span>,
   <span class='va'>y_var</span>,
-  model <span class='op'>=</span> <span class='st'>"all"</span>,
+  <span class='va'>model</span>,
   trials_var <span class='op'>=</span> <span class='cn'>NA</span>,
   family <span class='op'>=</span> <span class='cn'>NULL</span>,
   <span class='va'>priors</span>,
@@ -170,9 +172,8 @@ averaged predictions based on WAIC model weights</p>
   iter <span class='op'>=</span> <span class='fl'>10000</span>,
   warmup <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>floor</a></span><span class='op'>(</span><span class='va'>iter</span><span class='op'>/</span><span class='fl'>10</span><span class='op'>)</span> <span class='op'>*</span> <span class='fl'>9</span>,
   <span class='va'>inits</span>,
-  <span class='va'>pointwise</span>,
   sample_prior <span class='op'>=</span> <span class='st'>"yes"</span>,
-  loo_controls <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span>method <span class='op'>=</span> <span class='st'>"pseudobma"</span><span class='op'>)</span>,
+  <span class='va'>loo_controls</span>,
   random <span class='op'>=</span> <span class='cn'>NA</span>,
   random_vars <span class='op'>=</span> <span class='cn'>NA</span>,
   <span class='va'>...</span>
@@ -181,6 +182,16 @@ averaged predictions based on WAIC model weights</p>
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>x</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the x-variable (typically concentration) in
+modelling, or a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing both the x and y data.</p></td>
+    </tr>
+    <tr>
+      <th>y</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the y-variable (typically the response) in
+modelling .</p></td>
+    </tr>
     <tr>
       <th>data</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for
@@ -203,8 +214,12 @@ to fit. See Details for more information.</p></td>
     </tr>
     <tr>
       <th>trials_var</th>
-      <td><p>The column heading indicating the column for the number
-of "trials" for binomial or beta_binomial2 response data.
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading for the number
+of "trials" for binomial or beta_binomial2 response data, as it appears in "data" (if data is supplied).
+Alternatively a <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code>
+vector representing the trials associated with each observation,
+if data are supplied as an x argument.
+or a <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials
 If not supplied, the model may run but will not be the model you intended!</p></td>
     </tr>
     <tr>
@@ -261,24 +276,24 @@ number of chains, and names correspond to the parameter names of a given
 model.</p></td>
     </tr>
     <tr>
-      <th>pointwise</th>
-      <td><p>A flag indicating whether to compute the full log-likelihood matrix
-at once or separately for each observation. The latter approach is usually considerably slower but requires
-much less working memory. Accordingly, if one runs into memory issues, pointwise = TRUE is the way to go,
-but will not work for the custom family beta_binomial2</p></td>
-    </tr>
-    <tr>
       <th>sample_prior</th>
-      <td><p>Indicate if samples from priors should be drawn additionally to the posterior samples.
-Options are "no", "yes" (the default), and "only".
-Among others, these samples can be used to calculate Bayes factors for point hypotheses via hypothesis.</p></td>
+      <td><p>Indicate if samples from priors should be drawn
+additionally to the posterior samples. Options are "no", "yes"
+(the default), and "only". Among others, these samples can be used to
+calculate Bayes factors for point hypotheses via hypothesis.</p></td>
     </tr>
     <tr>
       <th>loo_controls</th>
-      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the desired
-arguments to be passed on to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code>. It sets
-the default wi_method to "pseudobma". See help documentation
-?loo_model_weights from package loo.</p></td>
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of two elements
+("fitting" and/or "weights"), each being a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
+containing the desired arguments to be passed on to <code><a href='https://rdrr.io/pkg/brms/man/loo.brmsfit.html'>loo</a></code>
+(via "fitting") or to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> (via "weights").
+If "fitting" is provided with argument <code>pointwise = TRUE</code>
+(due to memory issues) and <code>family = "beta_binomial2"</code>, the
+<code>bnec</code> will fail because that is a custom family. If "weights" is
+not provided by the user, <code>bnec</code> will set the default
+<code>method</code> argument in <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> to
+"pseudobma". See ?<code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> for further info.</p></td>
     </tr>
     <tr>
       <th>random</th>
@@ -325,8 +340,8 @@ characteristics of the input data through <code><a href='check_data.html'>check_
 include all of the above families but "negbinomial" and "betabinomimal2"
 because these requires knowledge on whether the data is over-dispersed. As
 explained below in the Return section, the user can extract the dispersion
-parameter from a bnec call, and if they so wish, can refit the model using
-the "negbinomial" family.</p>
+parameter from a <code>bnec</code> call, and if they so wish, can refit the
+model using the "negbinomial" family.</p>
 <p>The argument <code>model</code> may be a character string indicating the names of
 the desired model. see ?models for more details, and the list of models
 available. If a recongised model name is provided a single model of the
@@ -384,8 +399,8 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '0daf4c59b9ad080fa15c62e4f64b603f' NOW (CHAIN 1).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000174 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.74 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000172 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.72 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
@@ -402,9 +417,9 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 22.6079 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.03737 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                25.6453 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 25.6185 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.76525 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                29.3837 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '0daf4c59b9ad080fa15c62e4f64b603f' NOW (CHAIN 2).</span>
@@ -427,15 +442,17 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 22.2929 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.02571 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                25.3186 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 25.2685 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.32782 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                28.5964 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'fit'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a beta distribution.</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class='r-in'><span class='co'># Two models model</span></span>
 <span class='r-in'><span class='va'>exmp_b</span> <span class='op'>&lt;-</span> <span class='fu'>bnec</span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,</span>
-<span class='r-in'>               model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec4param"</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>, chains <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span>                </span>
+<span class='r-in'>               model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec4param"</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>, chains <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span></span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> recompiling to avoid crashing R session</span>
@@ -443,8 +460,8 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '0daf4c59b9ad080fa15c62e4f64b603f' NOW (CHAIN 1).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000133 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.33 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000145 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.45 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
@@ -461,15 +478,15 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 22.8176 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.42141 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                26.239 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 25.4418 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.71117 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                29.1529 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '0daf4c59b9ad080fa15c62e4f64b603f' NOW (CHAIN 2).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 7.3e-05 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.73 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 8.4e-05 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.84 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
@@ -486,11 +503,10 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 23.157 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.24783 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                26.4049 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 25.1631 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.80489 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                28.968 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'fit'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a ecx4param model and a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
@@ -498,8 +514,8 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '840629d124c9db9e88a478b24250e012' NOW (CHAIN 1).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000122 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.22 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000125 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.25 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
@@ -516,15 +532,15 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 10.9354 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                1.73208 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                12.6675 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 12.0097 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                2.08486 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                14.0945 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '840629d124c9db9e88a478b24250e012' NOW (CHAIN 2).</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 6.5e-05 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.65 seconds.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 9.3e-05 seconds</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.93 seconds.</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Adjust your expectations accordingly!</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
@@ -541,13 +557,18 @@ value of 0.01 for a one-sided test of significance.</p>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 9001 / 10000 [ 90%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 10.9721 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                1.74686 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                12.7189 seconds (Total)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 11.6552 seconds (Warm-up)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                1.62061 seconds (Sampling)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                13.2758 seconds (Total)</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'fit'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a ecx4param model using a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Fitted models are:  nec4param ecx4param</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'ecx4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 4 (4.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class='r-in'><span class='co'># }</span></span>
 <span class='r-in'></span>
 </code></pre></div>
