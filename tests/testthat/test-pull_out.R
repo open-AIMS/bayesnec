@@ -19,24 +19,23 @@ test_that("rejects wrong model names/structure, returns original", {
 
 test_that("returns correct class for proper model names", {
   expect_identical(pull_out(manec_example, model = "nec"),
-                   pull_out(manec_example, model = "nec4param"))
-  expect_s3_class(pull_out(manec_example, model = "nec"), "bayesnecfit")
-  expect_s3_class(pull_out(manec_example, model = "ecx"), "bayesnecfit")
+                   pull_out(manec_example, model = "nec4param")) %>%
+    suppressWarnings %>%
+    suppressMessages
+  expect_s3_class(pull_out(manec_example, model = "nec"), "bayesnecfit") %>%
+    suppressWarnings %>%
+    suppressMessages
+  expect_s3_class(pull_out(manec_example, model = "ecx"), "bayesnecfit") %>%
+    suppressWarnings %>%
+    suppressMessages
 })
 
 test_that("loo_controls ignore weights", {
   msg <- "You have specified a list of arguments in loo_control"
   my_ctrls <- list(weights = list(method = "stacking"))
   pull_out(manec_example, model = "nec", loo_controls = my_ctrls) %>%
-    expect_warning %>%
+    suppressWarnings %>%
     expect_message(msg) %>%
-    expect_message
-})
-
-test_that("loo_controls work", {
-  my_ctrls <- list(fitting = list(moment_match = TRUE))
-  pull_out(manec_example, model = "nec", loo_controls = my_ctrls) %>%
-    expect_s3_class("bayesnecfit") %>%
-    expect_warning %>%
+    expect_message %>%
     expect_message
 })

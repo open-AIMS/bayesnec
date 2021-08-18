@@ -1,8 +1,12 @@
 library(bayesnec)
 
 data(manec_example)
-ecx4param <- pull_out(manec_example, model = "ecx4param")
-nec4param <- pull_out(manec_example, model = "nec4param")
+ecx4param <- pull_out(manec_example, model = "ecx4param") %>%
+    suppressMessages %>%
+    suppressWarnings
+nec4param <- pull_out(manec_example, model = "nec4param") %>%
+    suppressMessages %>%
+    suppressWarnings
 
 fit1 <- nec4param$fit
 fit2 <- ecx4param$fit
@@ -86,18 +90,23 @@ test_that("expand_manec warnings work correctly", {
   expect_error(expand_manec(test_null))
   expect_message(expand_manec(tt2),
                  "Only nec4param is fitted, no model averaging done.")
-  expect_message(expand_manec(tt1), "Fitted models are:  nec4param ecx4param")
+  expect_message(expand_manec(tt1), "Fitted models are:  nec4param ecx4param") %>%
+    suppressWarnings
 })
 
 test_that("expand_manec defaults work correctly", {
-  tt3 <- expand_manec(tt1)
+  tt3 <- expand_manec(tt1) %>%
+    suppressMessages %>%
+    suppressWarnings
   expect_equal(dim(tt3$w_pred_vals$posterior), c(100, 1000))
   expect_equal(dim(tt3$w_pred_vals$data), c(1000, 4))
   expect_equal(range(tt3$w_pred_vals$data$x), c(0.03234801, 3.22051966))
 })
 
 test_that("expand_manec defaults work correctly", {
-  tt4 <- expand_manec(tt1, x_range = c(0.01, 4), precision = 20)
+  tt4 <- expand_manec(tt1, x_range = c(0.01, 4), precision = 20) %>%
+    suppressMessages %>%
+    suppressWarnings
   expect_equal(dim(tt4$w_pred_vals$posterior), c(100, 20))
   expect_equal(dim(tt4$w_pred_vals$data), c(20, 4))
   expect_equal(range(tt4$w_pred_vals$data$x), c(0.01, 4))
@@ -110,15 +119,18 @@ test_that("new loo_controls are incorporated", {
   expand_manec(tt1) %>%
     get_new_method %>%
     expect_null %>%
-    expect_message    
+    expect_message %>%
+    suppressWarnings
   my_ctrls <- list(weights = list(method = "pseudobma"))
   expand_manec(tt1, loo_controls = my_ctrls)%>%
     get_new_method %>%
     expect_message %>%
-    expect_equal("pseudobma")
+    expect_equal("pseudobma") %>%
+    suppressWarnings
   my_ctrls <- list(weights = list(method = "stacking"))
   expand_manec(tt1, loo_controls = my_ctrls)%>%
     get_new_method %>%
     expect_message %>%
-    expect_equal("stacking")
+    expect_equal("stacking") %>%
+    suppressWarnings
 })

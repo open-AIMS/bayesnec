@@ -2,13 +2,20 @@ library(bayesnec)
 library(brms)
 
 data(manec_example)
-ecx4param <- pull_out(manec_example, model = "ecx4param")
-nec4param <- pull_out(manec_example, model = "nec4param")
+ecx4param <- pull_out(manec_example, model = "ecx4param") %>%
+    suppressMessages %>%
+    suppressWarnings
+nec4param <- pull_out(manec_example, model = "nec4param") %>%
+    suppressMessages %>%
+    suppressWarnings
 
 test_that("prob_vals warnings behave as expected", {
-  expect_length(nsec(manec_example, prob_vals = c(0.6, 0.1, 0.9)), 3)
-  expect_error(nsec(manec_example, prob_vals = 0.9))
-  expect_error(nsec(manec_example, prob_vals = c(0.6, 0.9, 0.1)))
+  expect_length(nsec(manec_example, prob_vals = c(0.6, 0.1, 0.9)), 3) %>%
+    suppressWarnings
+  expect_error(nsec(manec_example, prob_vals = 0.9)) %>%
+    suppressWarnings
+  expect_error(nsec(manec_example, prob_vals = c(0.6, 0.9, 0.1))) %>%
+    suppressWarnings
   expect_length(nsec(nec4param, prob_vals = c(0.6, 0.1, 0.9)), 3)
   expect_error(nsec(nec4param, prob_vals = 0.9))
   expect_error(nsec(nec4param, prob_vals = c(0.6, 0.9, 0.1)))
@@ -21,16 +28,22 @@ test_that("ecx_val warnings behave as expected", {
 
 test_that(paste0("nsec returns expected object types and precision is",
                  " passing correctly"), {
-  nsec_summary <- nsec(manec_example, sig_val = 0.01, precision = 50)
+  nsec_summary <- nsec(manec_example, sig_val = 0.01, precision = 50) %>%
+    suppressWarnings
   nsec_summary2 <- nsec(manec_example, sig_val = 0.01, precision = 50,
-                        xform = exp)
+                        xform = exp) %>%
+    suppressWarnings
   nsec_posterior <- nsec(manec_example, sig_val = 0.01,
-                         posterior = TRUE, precision = 50)
-  nsecn_summary <- nsec(nec4param, sig_val = 0.01, precision = 50)
+                         posterior = TRUE, precision = 50) %>%
+    suppressWarnings
+  nsecn_summary <- nsec(nec4param, sig_val = 0.01, precision = 50) %>%
+    suppressWarnings
   nsecn_summary2 <- nsec(nec4param, sig_val = 0.01, precision = 50,
-                         xform = exp)
+                         xform = exp) %>%
+    suppressWarnings
   nsecn_posterior <- nsec(nec4param, sig_val = 0.01,
-                          posterior = TRUE, precision = 50)
+                          posterior = TRUE, precision = 50) %>%
+    suppressWarnings
   expect_equal(length(nsec_summary), 3)
   expect_gt(length(nsec_posterior), 3)
   expect_equal(length(nsecn_summary), 3)
@@ -48,7 +61,8 @@ test_that("works for bayesnecfit", {
 })
 
 test_that("works for bayesmanecfit", {
-  nsec1 <- nsec(manec_example)
+  nsec1 <- nsec(manec_example) %>%
+    suppressWarnings
   expect_equal(length(nsec1), 3)
   expect_equal(names(nsec1), c("ec_0.01", "ec_0.01_lw", "ec_0.01_up"))
 })

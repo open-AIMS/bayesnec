@@ -1,7 +1,9 @@
 library(bayesnec)
 
 data(manec_example)
-nec4param <- pull_out(manec_example, model = "nec4param")
+nec4param <- pull_out(manec_example, model = "nec4param") %>%
+  suppressMessages %>%
+  suppressWarnings
 
 test_fam <- nec4param$fit
 test_fam$family$family <- "other"

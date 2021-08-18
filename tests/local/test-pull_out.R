@@ -20,7 +20,13 @@ data("nec_data")
 manec_example <- nec_data %>%
   dplyr::mutate(y = logit(y)) %>%
   bnec(x_var = "x", y_var = "y", model = c("nec4param", "ecx4param"),
-       data = ., iter = 200, warmup = 150, chains = 2,
-       stan_model_args = list(save_dso = FALSE))
+       data = ., iter = 200, warmup = 150, chains = 2)
 
-usethis::use_data(manec_example, overwrite = TRUE)
+test_that("loo_controls work", {
+  my_ctrls <- list(fitting = list(moment_match = TRUE))
+  pull_out(manec_example, model = "nec", loo_controls = my_ctrls) %>%
+    expect_s3_class("bayesnecfit") %>%
+    suppressWarnings %>%
+    expect_message %>%
+    expect_message
+})

@@ -2,7 +2,9 @@ library(bayesnec)
 library(dplyr)
 
 data(manec_example)
-nec4param <- pull_out(manec_example, model = "nec4param")
+nec4param <- pull_out(manec_example, model = "nec4param") %>%
+  suppressMessages %>%
+  suppressWarnings
 
 test_that("returns null", {
   expect_null(check_chains(nec4param))
