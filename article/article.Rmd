@@ -157,7 +157,7 @@ Several helper functions have been included that allow the user to add or drop m
 summary(exmp_fit)
 ```
 
-Base R (`plot`) and ggplot2 (`ggbnec`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method-based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the \pkg{brms} package. An example base plot of a `bayesmanecfit` model fit can be seen in \autoref{fig:base-plot}.
+Base R (`plot`) and ggplot2 (`autoplot`) plotting methods, as well as predict methods have also been developed for both `bayesnecfit` and `bayesmanecfit` model classes. In addition, there are method-based functions for extracting *ECx* (`ecx`), *NEC* (`nec`) and *NSEC* (`nsec`) threshold values. In all cases the posterior samples that underpin these functions are achieved through `posterior_epred` from the \pkg{brms} package. An example base plot of a `bayesmanecfit` model fit can be seen in \autoref{fig:base-plot}.
 
 ```{r base-plot, fig.height=5, fig.cap="Base plot of the example fit model averaged curve. The solid black line is the fitted median of the posterior prediction, dashed black lines are the 95\\% credible intervals, and the red vertical lines show the estimated \\textit{NEC} value.", dependson="fit"}
 plot(exmp_fit)

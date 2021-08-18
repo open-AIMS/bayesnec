@@ -6,6 +6,7 @@ Description: Implementation of No-Effect-Concentration estimation that uses 'brm
 Depends:
     R (>= 4.0),
     brms,
+    ggplot2,
     methods
 License: GPL-2
 Encoding: UTF-8
@@ -20,7 +21,6 @@ Imports:
     purrr,
     tidyselect,
     lazyeval,
-    ggplot2,
     evaluate,
     rlang
 Suggests:
