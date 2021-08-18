@@ -176,14 +176,13 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
   out
 }
 
-#' ggbnec.default
+#' ggbnec
 #'
 #' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
 #'
 #' @param x A data.frame created by function \code{\link{ggbnec_data}}.
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
-#' @param ... Unused.
 #'
 #' @return A \code{\link[ggplot2]{ggplot}} object.
 #'
@@ -192,18 +191,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
 #' @importFrom ggplot2 element_text element_blank element_rect labs
 #' @importFrom dplyr %>% filter
 #' @importFrom rlang .data
-#' 
-#' @examples
-#' \donttest{
-#' library(bayesnec)
-#' data(manec_example)
-#'
-#' ggbnec_data(manec_example)
-#' ggbnec_data(manec_example, add_ecx = TRUE, ecx_val = 50)
-#' }
-#'
-#' @export
-ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
+ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
   out <- ggplot() +
     geom_polygon(data = x %>% filter(!is.na(.data$y_ci)),
                  mapping = aes(x = .data$x_e, y = .data$y_ci),
@@ -257,18 +245,20 @@ ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
          y = "Response")
 }
 
-#' ggbnec
+#' autoplot.bayesnecfit
 #'
 #' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
 #'
-#' @inheritDotParams ggbnec.bayesmanecfit
+#' @inheritParams ggbnec
 #'
-#' @param x An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}}.
-#' @param nec Should NEC values be added to the plot? Defaults to TRUE.
-#' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
+#' @param object An object of class \code{\link{bayesnecfit}} as returned by
+#' function \code{\link{bnec}}.
+#' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #'
-#' @inherit ggbnec.default return examples
+#' @inherit ggbnec return
+#'
+#' @importFrom dplyr mutate
+#' @family autoplot methods
 #'
 #' @examples
 #' \donttest{
@@ -281,51 +271,32 @@ ggbnec.default <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #'              model = c("nec3param", "nec4param"), iter = 2e2,
 #'              family = Beta(link = "identity"))
 #' test2 <- pull_out(test, "nec3param")
-#' ggbnec(test2)
-#' ggbnec(test2, nec = FALSE)
-#' ggbnec(test2, ecx = TRUE, ecx_val = 50)
+#' autoplot(test2)
+#' autoplot(test2, nec = FALSE)
+#' autoplot(test2, ecx = TRUE, ecx_val = 50)
 #'
 #' # plots multiple models, one at a time, with interactive prompt
-#' ggbnec(test)
+#' autoplot(test)
 #' # plot model averaged predictions
-#' ggbnec(test, all = FALSE)
+#' autoplot(test, all = FALSE)
 #' # plot all panels together
-#' ggbnec(test, ecx = TRUE, ecx_val = 50, multi_facet = TRUE)
+#' autoplot(test, ecx = TRUE, ecx_val = 50, multi_facet = TRUE)
 #' }
-#'
 #' @export
-ggbnec <- function(x, nec = TRUE, ecx = FALSE, ...) {
-  UseMethod("ggbnec")
-}
-
-#' ggbnec.bayesnecfit
-#'
-#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
-#'
-#' @inheritParams ggbnec.default
-#'
-#' @param x An object of class \code{\link{bayesnecfit}} as returned by
-#' function \code{\link{bnec}}.
-#' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
-#'
-#' @inherit ggbnec.default return examples
-#'
-#' @importFrom dplyr mutate
-#'
-#' @export
-ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
+autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE) {
+  x <- object
   ggbnec_data(x, add_nec = nec, add_ecx = ecx, ...) %>%
     mutate(model = x$model) %>%
-    ggbnec.default(nec = nec, ecx = ecx)
+    ggbnec(nec = nec, ecx = ecx)
 }
 
-#' ggbnec.bayesmanecfit
+#' autoplot.bayesmanecfit
 #'
 #' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
 #'
-#' @inheritParams ggbnec.default
+#' @inheritParams ggbnec
 #'
-#' @param x An object of class \code{\link{bayesmanecfit}} as returned by
+#' @param object An object of class \code{\link{bayesmanecfit}} as returned by
 #' function \code{\link{bnec}}.
 #' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #' @param all Should all individual models be plotted separately (defaults to
@@ -340,15 +311,18 @@ ggbnec.bayesnecfit <- function(x, nec = TRUE, ecx = FALSE, ...) {
 #' @param multi_facet Should all plots be plotted in one single panel via
 #' facets? Defaults to TRUE.
 #'
-#' @inherit ggbnec.default return examples
+#' @inherit ggbnec return
+#' @inherit autoplot.bayesnecfit examples
+#' @family autoplot methods
 #'
 #' @importFrom dplyr %>% mutate
 #' @importFrom purrr map_dfr
 #' @importFrom grDevices devAskNewPage
 #' @export
-ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = FALSE,
-                                 plot = TRUE, ask = TRUE, newpage = TRUE,
-                                 multi_facet = TRUE) {
+autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
+                                   all = FALSE, plot = TRUE, ask = TRUE,
+                                   newpage = TRUE, multi_facet = TRUE) {
+  x <- object
   if (all) {
     all_fits <- lapply(x$success_models, pull_out, manec = x) %>%
       suppressMessages
@@ -356,7 +330,7 @@ ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = FALSE,
       names(all_fits) <- x$success_models
       map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx, ...,
               .id = "model") %>%
-        ggbnec.default(nec = nec, ecx = ecx)
+        ggbnec(nec = nec, ecx = ecx)
     } else {
       if (plot) {
         default_ask <- devAskNewPage()
@@ -368,7 +342,7 @@ ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = FALSE,
         plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec,
                                   add_ecx = ecx, ...) %>%
           mutate(model = x$success_models[i]) %>%
-          ggbnec.default(nec = nec, ecx = ecx)
+          ggbnec(nec = nec, ecx = ecx)
         plot(plots[[i]], newpage = newpage || i > 1)
         if (i == 1) {
           devAskNewPage(ask = ask)
@@ -379,6 +353,6 @@ ggbnec.bayesmanecfit <- function(x, nec = TRUE, ecx = FALSE, ..., all = FALSE,
   } else {
     ggbnec_data(x, add_nec = nec, add_ecx = ecx, ...) %>%
       mutate(model = "Model averaged predictions") %>%
-      ggbnec.default(nec = nec, ecx = ecx)
+      ggbnec(nec = nec, ecx = ecx)
   }
 }
