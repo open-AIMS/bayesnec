@@ -185,13 +185,14 @@ averaged predictions based on WAIC model weights</p>
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>x</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the x-variable (typically concentration) in
-modelling, or a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing both the x and y data.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the x-variable
+(typically concentration) in modelling, or a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>
+containing both the x and y data.</p></td>
     </tr>
     <tr>
       <th>y</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the y-variable (typically the response) in
-modelling .</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the y-variable
+(typically the response) in modelling.</p></td>
     </tr>
     <tr>
       <th>data</th>
@@ -215,13 +216,13 @@ to fit. See Details for more information.</p></td>
     </tr>
     <tr>
       <th>trials_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading for the number
-of "trials" for binomial or beta_binomial2 response data, as it appears in "data" (if data is supplied).
-Alternatively a <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code>
-vector representing the trials associated with each observation,
-if data are supplied as an x argument.
-or a <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials
-If not supplied, the model may run but will not be the model you intended!</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column
+heading for the number of "trials" for binomial or beta_binomial2 response
+data, as it appears in "data" (if data is supplied). Alternatively a
+<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector representing the trials associated with
+each observation, if data are supplied as an <code>x</code> argument. Or a
+<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials. If not supplied,
+the model may run but will not be the model you intended!</p></td>
     </tr>
     <tr>
       <th>family</th>
@@ -235,7 +236,7 @@ distribution (family) to use for the y (response) data. See details.</p></td>
 specifies user-desired prior distributions of model parameters.
 If missing, <code>bnec</code> will figure out a baseline prior for each
 parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
-where each name needs to correspond to the same string as "model". See
+where each name needs to correspond to the same string as <code>model</code>. See
 details.</p></td>
     </tr>
     <tr>
@@ -251,28 +252,27 @@ precise.</p></td>
     <tr>
       <th>sig_val</th>
       <td><p>Probability value to use as the lower quantile to test
-significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to
-estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
+significance of the predicted posterior values against the lowest observed
+concentration (assumed to be the control), to estimate NEC as an
+interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
       <th>iter</th>
       <td><p>The number of iterations to be passed to
-<code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>. Defaults to 2e3 to be consistent with brms
-defaults.</p></td>
+<code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>. Defaults to 1e4.</p></td>
     </tr>
     <tr>
       <th>warmup</th>
-      <td><p>A positive integer specifying number of warmup (a.k.a.
+      <td><p>A positive integer specifying number of warmup (similar to
 burnin) iterations. This also specifies the number of iterations used for
 stepsize adaptation, so warmup samples should not be used for inference.
-The number of warmup should not be larger than "iter" and the default is
-"floor(iter / 5) * 4".</p></td>
+The number of warmup should not be larger than <code>iter</code> and the default is
+<code>floor(iter / 5) * 4</code>.</p></td>
     </tr>
     <tr>
       <th>inits</th>
       <td><p>Optional. Initialisation values. Must be a
-<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the
+<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" named lists, where "n" corresponds to the
 number of chains, and names correspond to the parameter names of a given
 model.</p></td>
     </tr>
@@ -281,7 +281,8 @@ model.</p></td>
       <td><p>Indicate if samples from priors should be drawn
 additionally to the posterior samples. Options are "no", "yes"
 (the default), and "only". Among others, these samples can be used to
-calculate Bayes factors for point hypotheses via hypothesis.</p></td>
+calculate Bayes factors for point hypotheses via
+<code><a href='https://rdrr.io/pkg/brms/man/hypothesis.brmsfit.html'>hypothesis</a></code>.</p></td>
     </tr>
     <tr>
       <th>loo_controls</th>
@@ -311,8 +312,7 @@ formula.</p></td>
       <th>weights</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
 name of the column which should be used as weights on the model likelihood.
-It must be a non-negative numeric column.
-See details.</p></td>
+It must be a non-negative numeric column. See details.</p></td>
     </tr>
     <tr>
       <th>...</th>
@@ -368,13 +368,15 @@ individually.</p>
 <p><code>model</code> may also be one of "all", meaning all of the available models
 will be fit; "ecx" meaning only models excluding a specific NEC step
 parameter will be fit; "nec" meaning only models with a specific NEC step
-parameter will be fit; or "bot_free" meaning only models without a "bot"
-parameter (without a bottom plateau) will be fit. Notice that
-if one of these group strings is provided together with a user-specified
+parameter will be fit; "bot_free" meaning only models without a "bot"
+parameter (without a bottom plateau) will be fit; "zero_bounded" are models
+that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
+only allows a strict decline in response across the whole x range. Notice
+that if one of these group strings is provided together with a user-specified
 named list for the argument <code>priors</code>, the list names need to contain
 the actual model names, and not the group string , e.g. if
 <code>model = "ecx"</code> and <code>priors = my_priors</code> then
-<code>names(my_priors)</code> must #' contain <code>models("ecx")</code>. To check
+<code>names(my_priors)</code> must contain <code>models("ecx")</code>. To check
 available models and associated parameters for each group,
 use the function <code><a href='models.html'>models</a></code> or to check the parameters of a
 specific model use the function <code><a href='show_params.html'>show_params</a></code>.</p>

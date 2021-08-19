@@ -190,13 +190,13 @@ containing the response (y) variable.</p></td>
     </tr>
     <tr>
       <th>trials_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading for the number
-of "trials" for binomial or beta_binomial2 response data, as it appears in "data" (if data is supplied).
-Alternatively a <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code>
-vector representing the trials associated with each observation,
-if data are supplied as an x argument.
-or a <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials
-If not supplied, the model may run but will not be the model you intended!</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column
+heading for the number of "trials" for binomial or beta_binomial2 response
+data, as it appears in "data" (if data is supplied). Alternatively a
+<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector representing the trials associated with
+each observation, if data are supplied as an <code>x</code> argument. Or a
+<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials. If not supplied,
+the model may run but will not be the model you intended!</p></td>
     </tr>
     <tr>
       <th>family</th>
@@ -210,7 +210,7 @@ distribution (family) to use for the y (response) data. See details.</p></td>
 specifies user-desired prior distributions of model parameters.
 If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline prior for each
 parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
-where each name needs to correspond to the same string as "model". See
+where each name needs to correspond to the same string as <code>model</code>. See
 details.</p></td>
     </tr>
     <tr>
@@ -221,7 +221,7 @@ to fit. See Details for more information.</p></td>
     <tr>
       <th>inits</th>
       <td><p>Optional. Initialisation values. Must be a
-<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" names lists, where "n" corresponds to the
+<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" named lists, where "n" corresponds to the
 number of chains, and names correspond to the parameter names of a given
 model.</p></td>
     </tr>
@@ -246,8 +246,7 @@ formula.</p></td>
       <th>weights</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
 name of the column which should be used as weights on the model likelihood.
-It must be a non-negative numeric column.
-See details.</p></td>
+It must be a non-negative numeric column. See details.</p></td>
     </tr>
     <tr>
       <th>...</th>
@@ -258,9 +257,7 @@ See details.</p></td>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>The fitted <span class="pkg">brms</span> model, including an estimate of the NEC
-value and predicted posterior values.
-A posterior sample of the NEC is also available under <code>nec_posterior</code></p>
+    <p>An object of class <code><a href='prebayesnecfit-class.html'>prebayesnecfit</a></code>.</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>

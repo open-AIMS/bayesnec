@@ -47,7 +47,8 @@
 
 
 <meta property="og:title" content="expand_manec — expand_manec" />
-<meta property="og:description" content="Extracts a range of statistics from a list of bayesnecfit model fits." />
+<meta property="og:description" content="Extracts a range of statistics from a list of bayesnecfit
+model fits." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -151,7 +152,8 @@
     </div>
 
     <div class="ref-description">
-    <p>Extracts a range of statistics from a list of bayesnecfit model fits.</p>
+    <p>Extracts a range of statistics from a list of <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>
+model fits.</p>
     </div>
 
     <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>expand_manec</span><span class='op'>(</span>
@@ -167,8 +169,8 @@
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>object</th>
-      <td><p>a bayesmanecfit mod_fits output list, as returned by
-<code><a href='bnec.html'>bnec</a></code> when more than one model is supplied.</p></td>
+      <td><p>a <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> mod_fits output list, as
+returned by <code><a href='bnec.html'>bnec</a></code> when more than one model is supplied.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -183,9 +185,9 @@ precise.</p></td>
     <tr>
       <th>sig_val</th>
       <td><p>Probability value to use as the lower quantile to test
-significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to
-estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></td>
+significance of the predicted posterior values against the lowest observed
+concentration (assumed to be the control), to estimate NEC as an
+interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
       <th>loo_controls</th>
@@ -204,7 +206,8 @@ not provided by the user, <code><a href='bnec.html'>bnec</a></code> will set the
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A list of model statistical output derived from the input model list</p>
+    <p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of model statistical output derived from
+the input model list.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

@@ -47,7 +47,7 @@
 
 
 <meta property="og:title" content="extract_simdat — extract_simdat" />
-<meta property="og:description" content="Extracts a range of statistics from a list of bayesnecfit model fits." />
+<meta property="og:description" content="Extracts a range of statistics from a prebayesnecfit object." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -151,7 +151,7 @@
     </div>
 
     <div class="ref-description">
-    <p>Extracts a range of statistics from a list of bayesnecfit model fits.</p>
+    <p>Extracts a range of statistics from a <code><a href='prebayesnecfit-class.html'>prebayesnecfit</a></code> object.</p>
     </div>
 
     <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>extract_simdat</span><span class='op'>(</span><span class='va'>modfit</span><span class='op'>)</span></code></pre></div>
@@ -161,14 +161,15 @@
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>modfit</th>
-      <td><p>a bayesnecfit, as returned by fit_bayesnec</p></td>
+      <td><p>An object of class <code><a href='prebayesnecfit-class.html'>prebayesnecfit</a></code>, as returned
+by <code><a href='fit_bayesnec.html'>fit_bayesnec</a></code>.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A list of model simulation statistics including
-iter, thin, warmup and chains</p>
+    <p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of model simulation statistics including
+iter, thin, warmup, chains, inits and nsamples.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

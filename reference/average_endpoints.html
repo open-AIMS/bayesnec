@@ -177,7 +177,7 @@ calculates a geometric mean.</p>
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>x</th>
-      <td><p>A named list <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of objects of class
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of objects of class
 <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> returned by
 <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
@@ -239,19 +239,19 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
     <p>The geometric mean of the endpoints estimate values
-of the <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>
-model fits contained in x. See Details.</p>
+of the <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>
+model fits contained in <code>x</code>. See Details.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
     <p>The geometric mean of values are simply the mean calculated on a
-log scale and back transformed through exp(), although we have added the
-capacity to accommodate zero values. Note that the function assumes that x
-has been modelled on the natural scale. Often C-R models are more stable on
-a log transformed or sqrt scaling. If the input <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or
-<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> model fits are already based on a re-scaling of
-the x (concentration) axis, it is important to pass an appropriate xform
-argument to ensure these are back transformed before the the geometric mean
-calculation is applied.</p>
+log scale and back transformed through <code><a href='https://rdrr.io/r/base/Log.html'>exp</a></code>, although we
+have added the capacity to accommodate zero values. Note that the function
+assumes that <code>x</code> has been modelled on the natural scale. Often C-R
+models are more stable on a log transformed or sqrt scaling. If the input
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> model fits are
+already based on a re-scaling of the x (concentration) axis, it is important
+to pass an appropriate xform argument to ensure these are back transformed
+before the the geometric mean calculation is applied.</p>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
@@ -272,8 +272,8 @@ calculation is applied.</p>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 4 (4.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
 <span class='r-in'><span class='fu'>average_endpoints</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='st'>"nec"</span> <span class='op'>=</span> <span class='va'>ecx4param</span>, <span class='st'>"ecx"</span> <span class='op'>=</span> <span class='va'>nec4param</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span></span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>      50%     2.5%    97.5% </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1.143610 0.754964 1.297009 </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>       50%      2.5%     97.5% </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 1.1476146 0.7614944 1.2920923 </span>
 <span class='r-in'></span>
 </code></pre></div>
   </div>
