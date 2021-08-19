@@ -173,7 +173,8 @@ expand_and_assign_nec <- function(x, ...) {
 
 #' are_chains_correct
 #'
-#' Checks if number of chains in brmsfit object is correct
+#' Checks if number of chains in a \code{\link[brms]{brmsfit}} object are
+#' correct.
 #'
 #' @param brms_fit An object of class \code{\link[brms]{brmsfit}}.
 #' @param chains The expected number of correct chains.
@@ -223,7 +224,7 @@ modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
 
 #' extract_warnings
 #'
-#' Extract warnings from brmsfit object
+#' Extract warnings from a \code{\link[brms]{brmsfit}} object.
 #'
 #' @param x An object of class \code{\link[brms]{brmsfit}}.
 #'

@@ -19,9 +19,8 @@ distribution (family) to use for the y (response) data. See details.}
 \item{response}{The response variable for the NEC model fit.}
 }
 \value{
-A \code{\link[base]{list}} containing the \code{\link[brms]{prior}}
-and the string defining response distribution family to use.
+An object of class \code{\link[brms]{brmsprior}}.
 }
 \description{
-Generates prior model objects to pass to brms
+Generates prior model objects to pass to \pkg{brms}
 }

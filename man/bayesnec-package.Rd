@@ -9,7 +9,7 @@
 A No-Effect-Concentration estimation package that uses brms
 (https://github.com/paul-buerkner/brms) to fit concentration
 (dose)-response data using Bayesian methods for the purpose of estimating
-both ECX values, but more particularly NEC. Please see ?bnec
+both ECx values, but more particularly NEC. Please see ?bnec
 for more details.
 }
 \references{

@@ -32,7 +32,7 @@
 #' Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
 #' model is estimated at a percent decline from the control.
 #' For \code{hormesis_def}, if "max", then ECx values are calculated as a
-#' decline from the maximum estimates (i.e. the peak at nec);
+#' decline from the maximum estimates (i.e. the peak at NEC);
 #' if "control", then ECx values are calculated relative to the control, which
 #' is assumed to be the lowest observed concentration.
 #'
@@ -147,7 +147,7 @@ ecx <- function(object, ecx_val = 10, precision = 1000,
 #'
 #' @param object An object of class \code{\link{bayesnecfit}}
 #' returned by \code{\link{bnec}}.
-#' @param ... Additional arguments to \code{\link{ecx}}
+#' @param ... Additional arguments to \code{\link{ecx}}.
 #'
 #' @inherit ecx return details seealso examples
 #' @export
@@ -205,6 +205,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   }
 }
 
+#' @noRd
 ecx_x_relative <- function(y, ecx_val, x_vec) {
   if (length(which(!is.na(y))) == 0) {
     outval <- max(x_vec)
@@ -216,6 +217,7 @@ ecx_x_relative <- function(y, ecx_val, x_vec) {
   outval
 }
 
+#' @noRd
 ecx_x_absolute <- function(y, ecx_val, x_vec) {
   if (length(which(!is.na(y))) == 0) {
     outval <- max(x_vec)
@@ -227,6 +229,7 @@ ecx_x_absolute <- function(y, ecx_val, x_vec) {
  outval
 }
 
+#' @noRd
 ecx_x_direct <- function(y, ecx_val, x_vec) {
   if (length(which(!is.na(y))) == 0) {
     outval <- max(x_vec)

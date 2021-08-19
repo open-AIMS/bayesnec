@@ -1,6 +1,6 @@
 #' check_chains.default
 #'
-#' Plots mcmc chains for a \code{\link{bayesnecfit}} or
+#' Plots HMC chains for a \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}.
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
@@ -61,7 +61,7 @@ check_chains.default <- function(x, ...) {
 
 #' check_chains
 #'
-#' Plots mcmc chains for a \code{\link{bayesnecfit}} or
+#' Plots HMC chains for a \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}.
 #'
 #' @inheritParams check_chains.default
@@ -75,7 +75,7 @@ check_chains <- function(x, ...) {
 
 #' check_chains.bayesnecfit
 #'
-#' Plots mcmc chains for a \code{\link{bayesnecfit}} model fit as returned
+#' Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
 #' by \code{\link{bnec}}.
 #'
 #' @inheritParams check_chains.default
@@ -89,14 +89,14 @@ check_chains.bayesnecfit <- function(x, ...) {
 
 #' check_chains.bayesmanecfit
 #'
-#' Plots mcmc chains for a \code{\link{bayesnecfit}} model fit as returned
+#' Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
 #' by \code{\link{bnec}}.
 #'
 #' @inheritParams check_chains.default
 #'
-#' @param filename An optional character vector to be used as a pdf filename
-#' in the case of a \code{\link{bayesmanecfit}}. Any non empty character
-#' string will indicate the user wants to save the plots.
+#' @param filename An optional \code{\link[base]{character}} vector to be used
+#' as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non
+#' empty character string will indicate the user wants to save the plots.
 #'
 #' @importFrom grDevices pdf dev.off
 #'

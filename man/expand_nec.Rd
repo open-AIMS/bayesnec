@@ -14,7 +14,7 @@ expand_nec(
 )
 }
 \arguments{
-\item{object}{An object of class prebayesnecfit.}
+\item{object}{An object of class \code{\link{prebayesnecfit}}.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -23,9 +23,9 @@ and over which to extract ECx values. Large values will be slower but more
 precise.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to
-estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+significance of the predicted posterior values against the lowest observed
+concentration (assumed to be the control), to estimate NEC as an
+interpolated NOEC value from smooth ECx curves.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} of two elements
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
@@ -41,8 +41,9 @@ not provided by the user, \code{\link{bnec}} will set the default
 \item{...}{Further arguments to \code{\link{add_criteria}}.}
 }
 \value{
-An object of class bayesnecfit.
+A \code{\link[base]{list}} of model statistical output derived from
+the input model object.
 }
 \description{
-Assigns class to a prebayesnecfit object
+Assigns class to a \code{\link{prebayesnecfit}} object
 }

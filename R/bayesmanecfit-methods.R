@@ -13,9 +13,8 @@
 #' @importFrom graphics par plot mtext legend
 #' @return a plot of the fitted model
 plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
-                               position_legend = "topright",
-                               add_ec10 = FALSE, xform = NA,
-                               lxform = NA, jitter_x = FALSE,
+                               position_legend = "topright", add_ec10 = FALSE,
+                               xform = NA, lxform = NA, jitter_x = FALSE,
                                jitter_y = FALSE, ylab = "response",
                                xlab = "concentration", xticks = NA,
                                all_models = FALSE) {  
@@ -132,17 +131,22 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #' @param object An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
 #' @param ... Unused.
-#' @param precision the number of x values over which to predict values.
-#' @param x_range The range of x values over which to make predictions.
+#' @param precision A \code{\link[base]{numeric}} vector of length 1 indicating
+#' the number of x values over which to predict values.
+#' @param x_range A \code{\link[base]{numeric}} vector of length 2 indicating
+#' the range of x values over which to make predictions.
 #'
-#' @return A list containing x and fitted y, with up and lw values
+#' @return A \code{\link[base]{list}} containing two elements: a
+#' \code{\link[base]{data.frame}} with predictor x and fitted y values plus
+#' lower and upper credible intervals; a \code{\link[base]{matrix}} of M x N,
+#' with M being the number of posterior draws and N being the number of
+#' observations in the input data.
 #'
 #' @importFrom dplyr %>%
 #' @importFrom brms posterior_epred
 #'
 #' @export
-predict.bayesmanecfit <- function(object, ..., precision = 100,
-                                x_range = NA) {
+predict.bayesmanecfit <- function(object, ..., precision = 100, x_range = NA) {
   mod_fits <- object$mod_fits
   model_set <- names(mod_fits)
   mod_dat <- object$mod_fits[[1]]$fit$data
@@ -176,11 +180,12 @@ predict.bayesmanecfit <- function(object, ..., precision = 100,
 #' @param object An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
 #' @param ... Unused.
-#' @param rhat_cutoff A numeric vector indicating the rhat criteria used to
-#' test for model convergence.
+#' @param rhat_cutoff A \code{\link[base]{numeric}} vector indicating the Rhat
+#' cut-off used to test for model convergence.
 #'
-#' @return A list containing a vector or rhat values as returned for a brm fit
-#' for each parameter, for each of the fitted models.
+#' @return A \code{\link[base]{list}} containing a vector or Rhat values
+#' returned for each parameter for a \code{\link[brms]{brmsfit}} object,
+#' for each of the fitted models.
 #'
 #' @importFrom brms rhat
 #'
@@ -200,14 +205,14 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} as
 #' returned by \code{\link{bnec}}.
-#' @param ecx Should summary EC values be calculated? Defaults to FALSE.
-#' @param ecx_vals EC targets (between 1 and 99). Only relevant if ecx = TRUE.
+#' @param ecx Should summary ECx values be calculated? Defaults to FALSE.
+#' @param ecx_vals ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
 #' If no value is specified by the user, returns calculations for EC10, EC50,
 #' and EC90.
 #' @param ... Unused.
 #'
-#' @return A list containing a summary of the model fit as returned a
-#' brmsfit for each model.
+#' @return A \code{\link[base]{list}} containing a summary of the model fit as
+#' returned by a \code{\link[brms]{brmsfit}} object for each model.
 #'
 #' @importFrom dplyr %>%
 #' @importFrom purrr map
@@ -300,8 +305,8 @@ print.manecsummary <- function(x, ...) {
 #' returned by \code{\link{bnec}}.
 #' @param ... Further arguments to function summary.
 #'
-#' @return A list containing a summary of the model fit as returned a
-#' brmsfit for each model.
+#' @return A \code{\link[base]{list}} containing a summary of the model fit as
+#' returned by a \code{\link[brms]{brmsfit}} object for each model.
 #'
 #' @export
 print.bayesmanecfit <- function(x, ...) {

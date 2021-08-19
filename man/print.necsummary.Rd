@@ -13,7 +13,8 @@ returned by \code{\link{summary.bayesnecfit}}.}
 \item{...}{Unused.}
 }
 \value{
-A list containing a summary of model features and statistics.
+A \code{\link[base]{list}} containing a summary of model features
+and statistics.
 }
 \description{
 print.necsummary

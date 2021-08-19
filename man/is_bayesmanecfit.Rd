@@ -2,7 +2,7 @@
 % Please edit documentation in R/bayesmanecfit-class.R
 \name{is_bayesmanecfit}
 \alias{is_bayesmanecfit}
-\title{Checks if argument is a \code{bayesmanecfit} object}
+\title{Checks if argument is a \code{\link{bayesmanecfit}} object}
 \usage{
 is_bayesmanecfit(x)
 }
@@ -10,5 +10,5 @@ is_bayesmanecfit(x)
 \item{x}{An \R object}
 }
 \description{
-Checks if argument is a \code{bayesmanecfit} object
+Checks if argument is a \code{\link{bayesmanecfit}} object
 }

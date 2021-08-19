@@ -5,7 +5,7 @@
 #'
 #' @param object An object of class \code{\link{bayesnecfit}}
 #' or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
-#' @return A list containing the priors
+#' @return A \code{\link[base]{list}} containing the priors.
 #'
 #' @examples
 #' library(bayesnec)
@@ -23,7 +23,7 @@ pull_prior <- function(object) {
     }
     out
   } else if (inherits(object, "bayesnecfit")) {
-    object$fit$prior
+    list(object$fit$prior)
   } else {
     stop("Object is not of class bayesnecfit or bayesmanecfit")
   }

@@ -1,13 +1,14 @@
 #' expand_nec
 #'
-#' Assigns class to a prebayesnecfit object
+#' Assigns class to a \code{\link{prebayesnecfit}} object
 #'
 #' @inheritParams bnec
 #'
-#' @param object An object of class prebayesnecfit.
+#' @param object An object of class \code{\link{prebayesnecfit}}.
 #' @param ... Further arguments to \code{\link{add_criteria}}.
 #'
-#' @return An object of class bayesnecfit.
+#' @return A \code{\link[base]{list}} of model statistical output derived from
+#' the input model object.
 #' @importFrom brms posterior_epred posterior_samples
 #' @importFrom stats quantile fitted residuals
 expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
@@ -72,14 +73,16 @@ expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
 
 #' expand_manec
 #'
-#' Extracts a range of statistics from a list of bayesnecfit model fits.
+#' Extracts a range of statistics from a list of \code{\link{bayesnecfit}}
+#' model fits.
 #'
 #' @inheritParams bnec
 #'
-#' @param object a bayesmanecfit mod_fits output list, as returned by
-#' \code{\link{bnec}} when more than one model is supplied.
+#' @param object a \code{\link{bayesmanecfit}} mod_fits output list, as
+#' returned by \code{\link{bnec}} when more than one model is supplied.
 #'
-#' @return A list of model statistical output derived from the input model list
+#' @return A \code{\link[base]{list}} of model statistical output derived from
+#' the input model list.
 #' @importFrom loo loo_model_weights
 #' @importFrom stats quantile
 expand_manec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,

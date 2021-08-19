@@ -4,14 +4,17 @@
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}},
-#' a character vector indicating the type of model set for which to list the
-#' available models, or a numeric vector indicating the natural range of
-#' values which the models should be able to handle (see details).
-#' If missing all available models and their groups are listed.
+#' a \code{\link[base]{character}} vector indicating the type of model set for
+#' which to list the available models, or a \code{\link[base]{numeric}} vector
+#' indicating the natural range of values which the models should be able to
+#' handle (see details). If missing all available models and their groups are
+#' listed.
 #'
-#' @details The available models are "ecx4param", "ecxexp", "ecxlin",
-#' "ecxsigm", "ecxwb1", "ecxwb2", "nec3param", "nec4param", "nechorme",
-#' "nechorme4", "neclin", "neclinhorme" and "necsigm".
+#' @details The available models are "nec3param", "nec4param", "nechorme",
+#' "nechorme4", "necsigm", "neclin", "neclinhorme", "nechormepwr",
+#' "nechorme4pwr", "nechormepwr01", "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
+#' "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3", "ecxll5", "ecxll4", "ecxll3",
+#' "ecxhormebc4", and "ecxhormebc5".
 #'
 #' To see the model formula and parameters for a specific model use the
 #' function \code{\link{show_params}}.
@@ -20,24 +23,24 @@
 #' the function \code{\link{models}} specifying the group name.
 #'
 #' To see the model names, model formula and parameters fitted in an existing
-#' bayesnec or bayesmanec model object use the function \code{\link{models}}
-#' specifying the fitted object.
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model object use
+#' the function \code{\link{models}} specifying the fitted object.
 #'
 #' To see what models are available for a given type of data use the function
-#' \code{\link{models}} passing a numeric vector indicating the range of
-#' possible data types. Models that have an exponential decay (most models
-#' with parameter "beta") with no "bot" parameter are zero_bounded and are not
-#' suitable for the gaussian family, or any family modelled using a logit or
-#' log link function. Models with a linear decay (containing the string "lin"
-#' in their name) are not suitable for modelling families that are zero
-#' bounded (gamma, poisson, negative binomial) using an identity link. Models
-#' with a linear decay or hormesis linear increase (all models with parameter
-#' "slope") are not suitable #' for modelling families that are 0, 1 bounded
-#' (binomial, beta, betabinomial2). These restrictions do not need to be
-#' controlled by the user and a call to \code{\link{bnec}} with
+#' \code{\link{models}} passing a \code{\link[base]{numeric}} vector indicating
+#' the range of possible data types. Models that have an exponential decay
+#' (most models with parameter "beta") with no "bot" parameter are zero-bounded
+#' and are not suitable for the Gaussian family, or any family modelled using a
+#' logit or log link function. Models with a linear decay
+#' (containing the string "lin" in their name) are not suitable for modelling
+#' families that are zero bounded (Gamma, Poisson, Negative binomial) using an
+#' identity link. Models with a linear decay or hormesis linear increase
+#' (all models with parameter "slope") are not suitable for modelling families
+#' that are 0, 1 bounded (binomial, beta, betabinomial2). These restrictions do
+#' not need to be controlled by the user and a call to \code{\link{bnec}} with
 #' \code{models = "all"} will simply exclude inappropriate models.
 #'
-#' @return A \code{\link[base]{list}} of the available or fitted models
+#' @return A \code{\link[base]{list}} of the available or fitted models.
 #' @examples
 #' library(bayesnec)
 #' # default to all models and model groups

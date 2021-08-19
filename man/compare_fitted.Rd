@@ -7,7 +7,7 @@
 compare_fitted(x, precision = 50, x_range = NA)
 }
 \arguments{
-\item{x}{A named list \code{\link[base]{list}} of objects of class
+\item{x}{A named \code{\link[base]{list}} of objects of class
 \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
 \code{\link{bnec}}.}
 
@@ -17,9 +17,9 @@ large values will make the ECx estimate more precise.}
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 }
 \value{
-A named list containing bootstrapped differences in posterior
-predictions of the \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}
-model fits contained in x. See Details.
+A named \code{\link[base]{list}} containing bootstrapped differences
+in posterior predictions of the \code{\link{bayesnecfit}} or
+\code{\link{bayesnecfit}} model fits contained in \code{x}. See Details.
 }
 \description{
 Extracts posterior predicted values from a list of class

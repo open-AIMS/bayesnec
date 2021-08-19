@@ -9,7 +9,7 @@
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A plot of the prior and posterior parameter probability densities
+#' @return A plot of the prior and posterior parameter probability densities.
 #'
 #' @importFrom ggplot2 ggplot geom_density facet_wrap scale_fill_manual theme_bw
 #' @importFrom brms hypothesis
@@ -77,9 +77,9 @@ check_priors.bayesnecfit <- function(object, ...) {
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
 #' @param ... Unused.
-#' @param filename An optional character vector to be used as a pdf filename
-#' in the case of a \code{\link{bayesmanecfit}}. Any non empty character
-#' string will indicate the user wants to save the plots.
+#' @param filename An optional \code{\link[base]{character}} vector to be used
+#' as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non
+#' empty character string will indicate the user wants to save the plots.
 #'
 #' @inherit check_priors return details seealso examples
 #'

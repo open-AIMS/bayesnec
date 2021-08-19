@@ -16,7 +16,7 @@
 No return value, generates a plot or writes a pdf to file.
 }
 \description{
-Plots mcmc chains for a \code{\link{bayesnecfit}} model fit as returned
+Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
 by \code{\link{bnec}}.
 }
 \examples{

@@ -1,6 +1,6 @@
 #' nsec.default
 #'
-#' Extracts the predicted nsec value as desired from an object of class
+#' Extracts the predicted NSEC value as desired from an object of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
@@ -9,28 +9,28 @@
 #' significance of the predicted posterior values.
 #' against the lowest observed concentration (assumed to be the control), to
 #' estimate NEC as an interpolated NOEC value from smooth ECx curves.
-#' @param precision The number of unique x values over which to find nsec -
-#' large values will make the nsec estimate more precise.
+#' @param precision The number of unique x values over which to find NSEC -
+#' large values will make the NSEC estimate more precise.
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
-#' posterior sample of calculated nsec values should be returned instead of
+#' posterior sample of calculated NSEC values should be returned instead of
 #' just the median and 95 credible intervals.
 #' @param hormesis_def A \code{\link[base]{character}} vector, taking values
 #' of "max" or "control". See Details.
 #' @param xform A function to apply to the returned estimated concentration
 #' values.
-#' @param x_range A range of x values over which to consider extracting nsec.
+#' @param x_range A range of x values over which to consider extracting NSEC.
 #' @param prob_vals A vector indicating the probability values over which to
-#' return the estimated nsec value. Defaults to 0.5 (median) and 0.025 and
+#' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
 #'
-#' @details For \code{hormesis_def}, if "max", then nsec values are calculated
+#' @details For \code{hormesis_def}, if "max", then NSEC values are calculated
 #' as a decline from the maximum estimates (i.e. the peak at nec);
 #' if "control", then ECx values are calculated relative to the control, which
 #' is assumed to be the lowest observed concentration.
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A vector containing the estimated nsec value, including upper and
+#' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds.
 #'
 #' @importFrom stats quantile predict
@@ -93,7 +93,7 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
 
 #' nsec
 #'
-#' Extracts the predicted nsec value as desired from an object of class
+#' Extracts the predicted NSEC value as desired from an object of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
 #' @inheritParams nsec.default
@@ -112,7 +112,7 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
 
 #' nsec.bayesnecfit
 #'
-#' Extracts the predicted nsec value as desired from an object of class
+#' Extracts the predicted NSEC value as desired from an object of class
 #' \code{\link{bayesnecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}}
@@ -127,7 +127,7 @@ nsec.bayesnecfit <- function(object, ...) {
 
 #' nsec.bayesmanecfit
 #'
-#' Extracts the predicted nsec value as desired from an object of class
+#' Extracts the predicted NSEC value as desired from an object of class
 #' \code{\link{bayesmanecfit}}.
 #'
 #' @inheritParams nsec
@@ -177,6 +177,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   }
 }
 
+#' @noRd
 nsec_fct <- function(y, reference, x_vec) {
   x_vec[min_abs(y - reference)]
 }

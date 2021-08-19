@@ -21,7 +21,7 @@ default, function \code{\link{ecx}} returns EC10.}
 A \code{\link[base]{data.frame}}.
 }
 \description{
-Creates the data.frame that feeds into the plotting function
+Creates the data.frame that feeds into the internal plotting function
 \code{\link{ggbnec}}.
 }
 \examples{

@@ -12,20 +12,20 @@
 #' "nec", "ecx" or "nsec".
 #'
 #' @details The geometric mean of values are simply the mean calculated on a
-#' log scale and back transformed through exp(), although we have added the
-#' capacity to accommodate zero values. Note that the function assumes that x
-#' has been modelled on the natural scale. Often C-R models are more stable on
-#' a log transformed or sqrt scaling. If the input \code{\link{bayesnecfit}} or
-#' \code{\link{bayesnecfit}} model fits are already based on a re-scaling of
-#' the x (concentration) axis, it is important to pass an appropriate xform
-#' argument to ensure these are back transformed before the the geometric mean
-#' calculation is applied.
+#' log scale and back transformed through \code{\link[base]{exp}}, although we
+#' have added the capacity to accommodate zero values. Note that the function
+#' assumes that \code{x} has been modelled on the natural scale. Often C-R
+#' models are more stable on a log transformed or sqrt scaling. If the input
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits are
+#' already based on a re-scaling of the x (concentration) axis, it is important
+#' to pass an appropriate xform argument to ensure these are back transformed
+#' before the the geometric mean calculation is applied.
 #'
 #' @seealso \code{\link{bnec}}
 #'
 #' @return The geometric mean of the endpoints estimate values
-#' of the \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}
-#' model fits contained in x. See Details.
+#' of the \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}
+#' model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile predict
 #' @importFrom dplyr %>% mutate bind_rows arrange

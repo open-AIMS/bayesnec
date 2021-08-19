@@ -12,9 +12,7 @@
 #' @importFrom stats update as.formula
 #'
 #' @seealso \code{\link{bnec}}
-#' @return The fitted \pkg{brms} model, including an estimate of the NEC
-#' value and predicted posterior values.
-#' A posterior sample of the NEC is also available under \code{nec_posterior}
+#' @return An object of class \code{\link{prebayesnecfit}}.
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA, family = NULL,
                          priors, model = NA, inits, skip_check = FALSE,
                          random = NA, random_vars = NA, weights = NA, ...) {
@@ -82,9 +80,11 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA, family = NULL,
                  " distribution."))
   if (missing(inits) | skip_check) {
     response_link <- response_link_scale(response, family)
-    inits <- make_good_inits(model, mod_dat$x,
-                             response_link, priors = priors,
+    inits <- make_good_inits(model, mod_dat$x, response_link, priors = priors,
                              chains = chs)
+    if (length(inits) == 1 && "random" %in% names(inits)) {
+      inits <- inits$random
+    }
   }
   if (!is.na(random[1])) {
     form_text <- as.character(brms_bf)

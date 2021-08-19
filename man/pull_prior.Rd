@@ -11,7 +11,7 @@ pull_prior(object)
 or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 }
 \value{
-A list containing the priors
+A \code{\link[base]{list}} containing the priors.
 }
 \description{
 Extracts the priors from an object of class

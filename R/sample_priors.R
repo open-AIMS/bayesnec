@@ -2,11 +2,12 @@
 #'
 #' Creates list or generates a plot of prior samples
 #'
-#' @param priors an object of class "brmsprior" from package \pkg{brms}.
-#' @param n_samples the number of prior samples to return.
-#' @param plot NA returns a list of numeric vectors of sampled priors,
-#' "ggplot" (default) returns a ggplot and "base" returns a histogram in
-#' base R.
+#' @param priors An object of class \code{\link[brms]{brmsprior}} from package
+#' \pkg{brms}.
+#' @param n_samples The number of prior samples to return.
+#' @param plot NA returns a \code{\link[base]{list}} of numeric vectors of
+#' sampled priors, "ggplot" (default) returns a \code{\link[ggplot2]{ggplot}}
+#'  and "base" returns a histogram in base R.
 #'
 #' @importFrom stats rgamma rnorm rbeta runif
 #' @importFrom graphics hist

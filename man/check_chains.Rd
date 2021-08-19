@@ -16,7 +16,7 @@ check_chains(x, ...)
 No return value, generates a plot or writes a pdf to file.
 }
 \description{
-Plots mcmc chains for a \code{\link{bayesnecfit}} or
+Plots HMC chains for a \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}.
 }
 \examples{

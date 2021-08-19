@@ -12,12 +12,12 @@
 
 \item{...}{Unused.}
 
-\item{filename}{An optional character vector to be used as a pdf filename
-in the case of a \code{\link{bayesmanecfit}}. Any non empty character
-string will indicate the user wants to save the plots.}
+\item{filename}{An optional \code{\link[base]{character}} vector to be used
+as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non
+empty character string will indicate the user wants to save the plots.}
 }
 \value{
-A plot of the prior and posterior parameter probability densities
+A plot of the prior and posterior parameter probability densities.
 }
 \description{
 Plots the prior and posterior parameter probability densities from an

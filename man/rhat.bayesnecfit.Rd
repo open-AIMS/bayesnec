@@ -13,8 +13,9 @@ by \code{\link{bnec}}.}
 \item{...}{Unused.}
 }
 \value{
-A named vector containing rhat values as returned for a brmsfit
-for each of the estimated parameters.
+A named \code{\link[base]{numeric}} vector containing Rhat values as
+returned for a \code{\link[brms]{brmsfit}} object for each of the estimated
+parameters.
 }
 \description{
 rhat.bayesnecfit

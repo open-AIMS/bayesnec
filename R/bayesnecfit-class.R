@@ -45,7 +45,7 @@
 #'
 NULL
 
-#' Checks if argument is a \code{bayesnecfit} object
+#' Checks if argument is a \code{\link{bayesnecfit}} object
 #'
 #' @param x An \R object
 is_bayesnecfit <- function(x) {

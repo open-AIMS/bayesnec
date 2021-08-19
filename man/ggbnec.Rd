@@ -7,7 +7,8 @@
 ggbnec(x, nec = TRUE, ecx = FALSE)
 }
 \arguments{
-\item{x}{A data.frame created by function \code{\link{ggbnec_data}}.}
+\item{x}{A \code{\link[base]{data.frame}} created by function
+\code{\link{ggbnec_data}}.}
 
 \item{nec}{Should NEC values be added to the plot? Defaults to TRUE.}
 
@@ -17,5 +18,6 @@ ggbnec(x, nec = TRUE, ecx = FALSE)
 A \code{\link[ggplot2]{ggplot}} object.
 }
 \description{
-\code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
+\code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
+plotting method.
 }

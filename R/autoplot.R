@@ -66,7 +66,7 @@ bind_ecx <- function(data, ecx_vals) {
 
 #' ggbnec_data.default
 #'
-#' Creates the data.frame that feeds into the plotting function
+#' Creates the data.frame that feeds into the internal plotting function
 #' \code{\link{ggbnec}}.
 #'
 #' @param x An object of class \code{\link{bayesnecfit}}, as returned
@@ -178,9 +178,11 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE,
 
 #' ggbnec
 #'
-#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
+#' plotting method.
 #'
-#' @param x A data.frame created by function \code{\link{ggbnec_data}}.
+#' @param x A \code{\link[base]{data.frame}} created by function
+#' \code{\link{ggbnec_data}}.
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
 #'
@@ -247,7 +249,8 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 
 #' autoplot.bayesnecfit
 #'
-#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
+#' plotting method.
 #'
 #' @inheritParams ggbnec
 #'
@@ -292,7 +295,8 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE) {
 
 #' autoplot.bayesmanecfit
 #'
-#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
+#' plotting method.
 #'
 #' @inheritParams ggbnec
 #'

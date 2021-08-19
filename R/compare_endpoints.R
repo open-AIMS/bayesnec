@@ -8,9 +8,8 @@
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A named list containing bootstrapped differences in posterior
-#' predictions of the \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}
-#' model fits contained in x. See Details.
+#' @return A named \code{\link[base]{list}} containing bootstrapped differences
+#' in posterior predictions of the \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile predict
 #' @importFrom dplyr %>% mutate bind_rows arrange

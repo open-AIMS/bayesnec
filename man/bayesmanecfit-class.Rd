@@ -12,7 +12,7 @@ represented as a \code{bayesmanecfit} object, which contains the original
 \code{\link[brms]{brmsfit}} fitted objects, names of non-linear models that
 were fitted, model averaging WAIC stats, sample size, mean posterior NEC
 values, mean model averaged predictions on the data scale, model averaged
-residuals, #' full posterior distribution of predicated values, and summary
+residuals, full posterior distribution of predicated values, and summary
 statistics of NEC statistics.
 }
 \details{

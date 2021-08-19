@@ -19,7 +19,7 @@ average_endpoints(
 )
 }
 \arguments{
-\item{x}{A named list \code{\link[base]{list}} of objects of class
+\item{x}{A named \code{\link[base]{list}} of objects of class
 \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
 \code{\link{bnec}}.}
 
@@ -58,8 +58,8 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 }
 \value{
 The geometric mean of the endpoints estimate values
-of the \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}
-model fits contained in x. See Details.
+of the \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}
+model fits contained in \code{x}. See Details.
 }
 \description{
 Extracts posterior predicted endpoint values from a list of class
@@ -68,14 +68,14 @@ calculates a geometric mean.
 }
 \details{
 The geometric mean of values are simply the mean calculated on a
-log scale and back transformed through exp(), although we have added the
-capacity to accommodate zero values. Note that the function assumes that x
-has been modelled on the natural scale. Often C-R models are more stable on
-a log transformed or sqrt scaling. If the input \code{\link{bayesnecfit}} or
-\code{\link{bayesnecfit}} model fits are already based on a re-scaling of
-the x (concentration) axis, it is important to pass an appropriate xform
-argument to ensure these are back transformed before the the geometric mean
-calculation is applied.
+log scale and back transformed through \code{\link[base]{exp}}, although we
+have added the capacity to accommodate zero values. Note that the function
+assumes that \code{x} has been modelled on the natural scale. Often C-R
+models are more stable on a log transformed or sqrt scaling. If the input
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits are
+already based on a re-scaling of the x (concentration) axis, it is important
+to pass an appropriate xform argument to ensure these are back transformed
+before the the geometric mean calculation is applied.
 }
 \examples{
 library(brms)

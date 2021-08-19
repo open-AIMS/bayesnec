@@ -1,14 +1,13 @@
 #' define_prior
 #'
-#' Generates prior model objects to pass to brms
+#' Generates prior model objects to pass to \pkg{brms}
 #'
 #' @inheritParams bnec
 #'
 #' @param predictor The predictor variable for the NEC model fit.
 #' @param response The response variable for the NEC model fit.
 #'
-#' @return A \code{\link[base]{list}} containing the \code{\link[brms]{prior}}
-#' and the string defining response distribution family to use.
+#' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms bf prior_string negbinomial Beta
 #' @importFrom stats qlogis binomial quantile Gamma poisson gaussian sd
 define_prior <- function(model, family, predictor, response) {
@@ -81,12 +80,10 @@ define_prior <- function(model, family, predictor, response) {
   pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50",
                           lb = min(predictor), ub = max(predictor))
   # x- and y-independent priors
-
   pr_d <- prior_string("normal(0, 2)", nlpar = "d")
   pr_beta <- prior_string("normal(0, 2)", nlpar = "beta")
   pr_f <- prior_string("normal(0, 2)", nlpar = "f")
   pr_slope <- prior_string("normal(0, 2)", nlpar = "slope")
-
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d

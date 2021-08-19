@@ -4,8 +4,7 @@
 #'
 #' @inheritParams bnec
 #'
-#' @return An object of class
-#' \code{\link[brms]{brmsformula}}.
+#' @return An \code{\link[base]{list}} of \code{\link[brms]{brmsformula}}.
 #'
 #' @examples
 #' library(bayesnec)

@@ -46,7 +46,8 @@ facets? Defaults to TRUE.}
 A \code{\link[ggplot2]{ggplot}} object.
 }
 \description{
-\code{\link[bayesnec:bayesnec-package]{bayesnec}} standard ggplot method.
+\code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
+plotting method.
 }
 \examples{
 \donttest{
