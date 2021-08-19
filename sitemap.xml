@@ -154,6 +154,12 @@
     <loc>/reference/fit_bayesnec.html</loc>
   </url>
   <url>
+    <loc>/reference/formula.bayesmanecfit.html</loc>
+  </url>
+  <url>
+    <loc>/reference/formula.bayesnecfit.html</loc>
+  </url>
+  <url>
     <loc>/reference/ggbnec.html</loc>
   </url>
   <url>
@@ -200,6 +206,12 @@
   </url>
   <url>
     <loc>/reference/manecsummary-class.html</loc>
+  </url>
+  <url>
+    <loc>/reference/model.frame.bayesmanecfit.html</loc>
+  </url>
+  <url>
+    <loc>/reference/model.frame.bayesnecfit.html</loc>
   </url>
   <url>
     <loc>/reference/models.html</loc>
