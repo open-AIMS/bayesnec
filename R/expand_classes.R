@@ -60,7 +60,7 @@ expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
   pred_vals <- list(data = pred_data,
                     posterior = pred_posterior)
   od <- dispersion(fit, summary = TRUE)
-  if (is.null(od)) {
+  if (length(od) == 0) {
     od <- c(NA, NA, NA)
   }
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
