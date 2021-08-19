@@ -24,6 +24,7 @@ bnec(
   loo_controls,
   random = NA,
   random_vars = NA,
+  weights = NA,
   ...
 )
 }
@@ -107,11 +108,17 @@ not provided by the user, \code{\link{bnec}} will set the default
 \code{method} argument in \code{\link[loo]{loo_model_weights}} to
 "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
 
-\item{random}{= A named \code{\link[base]{list}} containing the random model
+\item{random}{A named \code{\link[base]{list}} containing the random model
 formula to apply to model parameters.}
 
-\item{random_vars}{= A \code{\link[base]{character}} vector containing the names of
-the columns containing the variables used in the random model formula.}
+\item{random_vars}{A \code{\link[base]{character}} vector containing the
+names of the columns containing the variables used in the random model
+formula.}
+
+\item{weights}{A \code{\link[base]{character}} vector containing the
+name of the column which should be used as weights on the model likelihood.
+It must be a non-negative numeric column.
+See details.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via
 \code{\link{fit_bayesnec}}.}
@@ -207,6 +214,16 @@ and does not allow them back in as is the case with e.g. \code{stats::lm} and
 \code{na.action = exclude}. So we advise that you exclude any NAs in your
 data prior to fitting because if you so wish that should facilitate merging
 predictions back onto your original dataset.
+
+#' \strong{Weights}
+Model weights are passed on to the model via an "aterm" formula element,
+e.g. \code{y | weights(weight_vector)}, following \pkg{brms} formula syntax.
+Please note that \pkg{brms} does not implement design weights as in other
+standard \pkg{base} function. From their help page, \pkg{brms} "takes the
+weights literally, which means that an observation with weight 2 receives 2
+times more weight than an observation with weight 1. It also means that
+using a weight of 2 is equivalent to adding the corresponding observation
+twice to the data frame."
 }
 \examples{
 \donttest{

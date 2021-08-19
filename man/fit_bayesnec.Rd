@@ -16,6 +16,7 @@ fit_bayesnec(
   skip_check = FALSE,
   random = NA,
   random_vars = NA,
+  weights = NA,
   ...
 )
 }
@@ -60,11 +61,17 @@ model.}
 be avoided? Only relevant to function \code{\link{amend}}.
 Defaults to FALSE.}
 
-\item{random}{= A named \code{\link[base]{list}} containing the random model
+\item{random}{A named \code{\link[base]{list}} containing the random model
 formula to apply to model parameters.}
 
-\item{random_vars}{= A \code{\link[base]{character}} vector containing the names of
-the columns containing the variables used in the random model formula.}
+\item{random_vars}{A \code{\link[base]{character}} vector containing the
+names of the columns containing the variables used in the random model
+formula.}
+
+\item{weights}{A \code{\link[base]{character}} vector containing the
+name of the column which should be used as weights on the model likelihood.
+It must be a non-negative numeric column.
+See details.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via
 \code{\link{fit_bayesnec}}.}

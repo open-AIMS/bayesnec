@@ -17,11 +17,11 @@
 #' A posterior sample of the NEC is also available under \code{nec_posterior}
 fit_bayesnec <- function(data, x_var, y_var, trials_var = NA, family = NULL,
                          priors, model = NA, inits, skip_check = FALSE,
-                         random = NA, random_vars = NA, ...) {
+                         random = NA, random_vars = NA, weights = NA, ...) {
   if (skip_check) {
     mod_dat <- data
     custom_name <- check_custom_name(family)
-    if (family$family == "binomial" | custom_name == "beta_binomial2") {
+    if (family$family == "binomial" || custom_name == "beta_binomial2") {
       response <- data$y / data$trials
     } else {
       response <- data$y
@@ -31,10 +31,14 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA, family = NULL,
       priors <- define_prior(model = model, family = family, predictor = data$x,
                              response = response)
     }
+    if ("weights" %in% names(data)) {
+      weights <- "weights"
+    }
   } else {
     data_check <- check_data(data = data, x_var = x_var, y_var = y_var,
                              trials_var = trials_var, family = family,
-                             model = model, random_vars = random_vars)
+                             model = model, random_vars = random_vars,
+                             weights = weights)
     mod_dat <- data_check$mod_dat
     family <- data_check$family
     priors <- try(validate_priors(priors, model), silent = TRUE)
@@ -42,15 +46,23 @@ fit_bayesnec <- function(data, x_var, y_var, trials_var = NA, family = NULL,
       priors <- data_check$priors
     }
     custom_name <- check_custom_name(family)
-    if (family$family == "binomial" | custom_name == "beta_binomial2") {
+    if (family$family == "binomial" || custom_name == "beta_binomial2") {
       response <- mod_dat$y / mod_dat$trials
     } else {
       response <- mod_dat$y
     }
   }
   brms_bf <- get(paste0("bf_", model))
-  if (family$family == "binomial" | custom_name == "beta_binomial2") {
-    brms_bf[[1]][[2]] <- str2lang("y | trials(trials)")
+  if (family$family == "binomial" || custom_name == "beta_binomial2") {
+    brms_bf <- modify_formula(brms_bf, "|", "trials(trials)")
+  }
+  if (!is.na(weights)) {
+    if (family$family == "binomial" || custom_name == "beta_binomial2") {
+      symb <- "+"
+    } else {
+      symb <- "|"
+    }
+    brms_bf <- modify_formula(brms_bf, symb, "weights(weights)")
   }
   add_args <- list(...)
   if (!("chains" %in% names(add_args))) {

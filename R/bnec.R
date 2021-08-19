@@ -65,10 +65,15 @@
 #' not provided by the user, \code{\link{bnec}} will set the default
 #' \code{method} argument in \code{\link[loo]{loo_model_weights}} to
 #' "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.
-#' @param random = A named \code{\link[base]{list}} containing the random model 
+#' @param random A named \code{\link[base]{list}} containing the random model 
 #' formula to apply to model parameters.
-#' @param random_vars = A \code{\link[base]{character}} vector containing the names of 
-#' the columns containing the variables used in the random model formula.
+#' @param random_vars A \code{\link[base]{character}} vector containing the
+#' names of the columns containing the variables used in the random model
+#' formula.
+#' @param weights A \code{\link[base]{character}} vector containing the
+#' name of the column which should be used as weights on the model likelihood.
+#' It must be a non-negative numeric column.
+#' See details.
 #' @param ... Further arguments to \code{\link[brms]{brm}} via
 #' \code{\link{fit_bayesnec}}.
 #'
@@ -154,6 +159,15 @@
 #' data prior to fitting because if you so wish that should facilitate merging
 #' predictions back onto your original dataset.
 #'
+#' #' **Weights**
+#' Model weights are passed on to the model via an "aterm" formula element, 
+#' e.g. `y | weights(weight_vector)`, following \pkg{brms} formula syntax.
+#' Please note that \pkg{brms} does not implement design weights as in other
+#' standard \pkg{base} function. From their help page, \pkg{brms} "takes the
+#' weights literally, which means that an observation with weight 2 receives 2
+#' times more weight than an observation with weight 1. It also means that
+#' using a weight of 2 is equivalent to adding the corresponding observation
+#' twice to the data frame."
 #' @return If argument model is a single string, then an object of class
 #' \code{\link{bayesnecfit}}; if many strings or a set,
 #' an object of class \code{\link{bayesmanecfit}}.
@@ -177,7 +191,7 @@ bnec <- function(x, y = NULL, data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA, precision = 1000,
                  sig_val = 0.01, iter = 10e3, warmup = floor(iter / 10) * 9,
                  inits, sample_prior = "yes", loo_controls, random = NA,
-                 random_vars = NA, ...) {
+                 random_vars = NA, weights = NA, ...) {
   if (!missing(x)) {
     parse_out <- parse_x(x, y, data, x_var, y_var, model, trials_var, family)
     data <- parse_out$data
@@ -228,7 +242,7 @@ bnec <- function(x, y = NULL, data, x_var, y_var, model, trials_var = NA,
                      trials_var = trials_var, priors = priors, model = model_m,
                      iter = iter, warmup = warmup, inits = inits,
                      sample_prior = sample_prior, random = random,
-                     random_vars = random_vars, ...),
+                     random_vars = random_vars, weights = weights, ...),
         silent = FALSE
       )
       if (!inherits(fit_m, "try-error")) {
@@ -254,7 +268,7 @@ bnec <- function(x, y = NULL, data, x_var, y_var, model, trials_var = NA,
                             priors = priors, model = model, iter = iter,
                             warmup = warmup, inits = inits,
                             sample_prior = sample_prior, random = random,
-                            random_vars = random_vars, ...)
+                            random_vars = random_vars, weights = weights, ...)
     mod_fit <- expand_nec(mod_fit, x_range = x_range, precision = precision,
                           sig_val = sig_val, loo_controls = loo_controls,
                           model = model)

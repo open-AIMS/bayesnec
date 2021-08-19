@@ -4,7 +4,16 @@
 \alias{check_data}
 \title{check_data}
 \usage{
-check_data(data, x_var, y_var, trials_var, family, model, random_vars = NA)
+check_data(
+  data,
+  x_var,
+  y_var,
+  trials_var,
+  family,
+  model,
+  random_vars = NA,
+  weights
+)
 }
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for
@@ -31,8 +40,14 @@ distribution (family) to use for the y (response) data. See details.}
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 
-\item{random_vars}{= A \code{\link[base]{character}} vector containing the names of
-the columns containing the variables used in the random model formula.}
+\item{random_vars}{A \code{\link[base]{character}} vector containing the
+names of the columns containing the variables used in the random model
+formula.}
+
+\item{weights}{A \code{\link[base]{character}} vector containing the
+name of the column which should be used as weights on the model likelihood.
+It must be a non-negative numeric column.
+See details.}
 }
 \value{
 A \code{\link[base]{list}} of modified elements
