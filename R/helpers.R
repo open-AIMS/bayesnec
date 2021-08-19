@@ -381,3 +381,20 @@ gm_mean <- function(x, na_rm = TRUE, zero_propagate = FALSE) {
 summarise_posterior <- function(mat, x_vec) {
   cbind(x = x_vec, data.frame(t(apply(mat, 2, estimates_summary))))
 }
+
+#' @noRd
+modify_formula <- function(x, concat_symbol, new_string) {
+  if (!inherits(x, "brmsformula")) {
+    stop("Object is not of class brmsformula.")
+  }
+  tmp_ <- deparse(x[[1]][[2]])
+  new_ <- paste(tmp_, concat_symbol, new_string)
+  x[[1]][[2]] <- str2lang(new_)
+  x
+}
+
+#' @noRd
+is_character <- function(x) {
+  if (is.na(x)) x <- as.character(x)
+  is.character(x)
+}
