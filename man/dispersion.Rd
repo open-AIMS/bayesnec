@@ -8,8 +8,8 @@ dispersion(model, summary = FALSE, seed = 10)
 }
 \arguments{
 \item{model}{An object of class \code{\link[brms]{brmsfit}} whose
-distribution family is either \code{\link[stats]{gaussian}},
-\code{\link[stats]{poisson}} or \code{\link[stats]{binomial}}.}
+distribution family is either \code{\link[stats]{poisson}} or
+\code{\link[stats]{binomial}}.}
 
 \item{summary}{Logical. Should summary stats be returned instead of full
 vector? Defaults to FALSE.}
@@ -17,11 +17,11 @@ vector? Defaults to FALSE.}
 \item{seed}{Change seed for reproducible purposes.}
 }
 \value{
-If \code{summary} is FALSE, an n-long \code{\link[base]{numeric}}
-vector containing the dispersion metric, where n is the number of post
+A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
+n-long vector containing the dispersion metric, where n is the number of post
 warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If
 TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
-(mean, median, 95\% highest density intervals). of the dispersion metric.
+(mean, median, 95\% highest density intervals) of the dispersion metric.
 }
 \description{
 Calculates posterior dispersion metric
@@ -37,4 +37,9 @@ data(manec_example)
 exmp_brmsfit <- manec_example$mod_fits$nec4param$fit
 dispersion(exmp_brmsfit, summary = TRUE)
 
+}
+\references{
+Zuur, A. F., Hilbe, J. M., & Ieno, E. N. (2013). A Beginner's Guide to GLM
+and GLMM with R: A Frequentist and Bayesian Perspective for Ecologists.
+Highland Statistics Limited.
 }
