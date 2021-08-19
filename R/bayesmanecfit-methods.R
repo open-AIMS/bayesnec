@@ -307,3 +307,38 @@ print.manecsummary <- function(x, ...) {
 print.bayesmanecfit <- function(x, ...) {
   print(summary(x, ...))
 }
+
+#' formula.bayesmanecfit
+#'
+#' @param x An object of class \code{\link{bayesmanecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... Further arguments passed to or from other methods.
+#'
+#' @inheritParams pull_out
+#'
+#' @return An object of class \code{\link[stats]{formula}}.
+#'
+#' @importFrom stats formula
+#' @export
+formula.bayesmanecfit <- function(x, ..., model) {
+  x <- suppressMessages(suppressWarnings(pull_out(x, model)))
+  formula(x, ...)
+}
+
+#' model.frame.bayesmanecfit
+#'
+#' @param formula An object of class \code{\link{bayesmanecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... Further arguments passed to or from other methods.
+#'
+#' @inheritParams pull_out
+#'
+#' @return A \code{\link[base]{data.frame}} containing the data used to fit
+#' the model chosen from the existing \code{\link{bayesmanecfit}} set.
+#'
+#' @importFrom stats model.frame
+#' @export
+model.frame.bayesmanecfit <- function(formula, ..., model) {
+  x <- suppressMessages(suppressWarnings(pull_out(formula, model)))
+  model.frame(x, ...)
+}

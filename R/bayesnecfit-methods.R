@@ -258,3 +258,32 @@ print.necsummary <- function(x, ...) {
 print.bayesnecfit <- function(x, ...) {
   print(summary(x, ...))
 }
+
+#' formula.bayesnecfit
+#'
+#' @param x An object of class \code{\link{bayesnecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... Further arguments passed to or from other methods.
+#'
+#' @return An object of class \code{\link[stats]{formula}}.
+#'
+#' @importFrom stats formula
+#' @export
+formula.bayesnecfit <- function(x, ...) {
+  formula(x$fit, ...)
+}
+
+#' model.frame.bayesnecfit
+#'
+#' @param formula An object of class \code{\link{bayesnecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... Further arguments passed to or from other methods.
+#'
+#' @return A \code{\link[base]{data.frame}} containing the data used to fit
+#' the model.
+#'
+#' @importFrom stats model.frame
+#' @export
+model.frame.bayesnecfit <- function(formula, ...) {
+  model.frame(formula$fit, ...)
+}
