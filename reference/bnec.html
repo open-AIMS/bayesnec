@@ -176,6 +176,7 @@ averaged predictions based on WAIC model weights</p>
   <span class='va'>loo_controls</span>,
   random <span class='op'>=</span> <span class='cn'>NA</span>,
   random_vars <span class='op'>=</span> <span class='cn'>NA</span>,
+  weights <span class='op'>=</span> <span class='cn'>NA</span>,
   <span class='va'>...</span>
 <span class='op'>)</span></code></pre></div>
 
@@ -297,13 +298,21 @@ not provided by the user, <code>bnec</code> will set the default
     </tr>
     <tr>
       <th>random</th>
-      <td><p>= A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the random model
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the random model
 formula to apply to model parameters.</p></td>
     </tr>
     <tr>
       <th>random_vars</th>
-      <td><p>= A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of
-the columns containing the variables used in the random model formula.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
+names of the columns containing the variables used in the random model
+formula.</p></td>
+    </tr>
+    <tr>
+      <th>weights</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
+name of the column which should be used as weights on the model likelihood.
+It must be a non-negative numeric column.
+See details.</p></td>
     </tr>
     <tr>
       <th>...</th>
@@ -390,6 +399,15 @@ and does not allow them back in as is the case with e.g. <code><a href='https://
 <code>na.action = exclude</code>. So we advise that you exclude any NAs in your
 data prior to fitting because if you so wish that should facilitate merging
 predictions back onto your original dataset.</p>
+<p>#' <strong>Weights</strong>
+Model weights are passed on to the model via an "aterm" formula element,
+e.g. <code>y | weights(weight_vector)</code>, following <span class="pkg">brms</span> formula syntax.
+Please note that <span class="pkg">brms</span> does not implement design weights as in other
+standard <span class="pkg">base</span> function. From their help page, <span class="pkg">brms</span> "takes the
+weights literally, which means that an observation with weight 2 receives 2
+times more weight than an observation with weight 1. It also means that
+using a weight of 2 is equivalent to adding the corresponding observation
+twice to the data frame."</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='co'># \donttest{</span></span>
@@ -407,6 +425,7 @@ predictions back onto your original dataset.</p>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
 <span class='r-in'><span class='co'># Two models model</span></span>
 <span class='r-in'><span class='va'>exmp_b</span> <span class='op'>&lt;-</span> <span class='fu'>bnec</span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,</span>
 <span class='r-in'>               model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec4param"</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>, chains <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span></span>
@@ -422,6 +441,7 @@ predictions back onto your original dataset.</p>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'ecx4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 4 (4.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>

@@ -154,7 +154,16 @@
     <p>Check data input for a Bayesian NEC model fit</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>check_data</span><span class='op'>(</span><span class='va'>data</span>, <span class='va'>x_var</span>, <span class='va'>y_var</span>, <span class='va'>trials_var</span>, <span class='va'>family</span>, <span class='va'>model</span>, random_vars <span class='op'>=</span> <span class='cn'>NA</span><span class='op'>)</span></code></pre></div>
+    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>check_data</span><span class='op'>(</span>
+  <span class='va'>data</span>,
+  <span class='va'>x_var</span>,
+  <span class='va'>y_var</span>,
+  <span class='va'>trials_var</span>,
+  <span class='va'>family</span>,
+  <span class='va'>model</span>,
+  random_vars <span class='op'>=</span> <span class='cn'>NA</span>,
+  <span class='va'>weights</span>
+<span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -197,8 +206,16 @@ to fit. See Details for more information.</p></td>
     </tr>
     <tr>
       <th>random_vars</th>
-      <td><p>= A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of
-the columns containing the variables used in the random model formula.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
+names of the columns containing the variables used in the random model
+formula.</p></td>
+    </tr>
+    <tr>
+      <th>weights</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
+name of the column which should be used as weights on the model likelihood.
+It must be a non-negative numeric column.
+See details.</p></td>
     </tr>
     </table>
 
