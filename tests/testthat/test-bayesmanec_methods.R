@@ -36,3 +36,19 @@ test_that("summary behaves as expected", {
                                    "ecx_mods", "nec_vals", "ecs", "bayesr2",
                                    "rhat_issues"))
 })
+
+test_that("formula behaves as expected", {
+  expect_error(formula(manec_example))
+  expect_error(formula(manec_example, "nec4param"))
+  expect_s3_class(formula(manec_example, model = "nec4param"), "brmsformula")
+  expect_s3_class(formula(manec_example, model = "ecx4param"), "brmsformula")
+  expect_error(formula(manec_example, model = "ecxlin"))
+})
+
+test_that("model.frame behaves as expected", {
+  expect_error(model.frame(manec_example))
+  expect_error(model.frame(manec_example, "nec4param"))
+  expect_s3_class(model.frame(manec_example, model = "nec4param"), "data.frame")
+  expect_s3_class(model.frame(manec_example, model = "ecx4param"), "data.frame")
+  expect_error(model.frame(manec_example, model = "ecxlin"))
+})

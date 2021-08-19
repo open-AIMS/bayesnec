@@ -30,3 +30,8 @@ test_that("summary behaves as expected", {
   expect_equal(names(summary_p), c("brmssummary", "model", "is_ecx", "ecs",
                                    "bayesr2"))
 })
+
+test_that("formula/model.frame behaves as expected", {
+  expect_s3_class(formula(nec4param), "brmsformula")
+  expect_s3_class(model.frame(nec4param), "data.frame")
+})
