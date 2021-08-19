@@ -13,7 +13,7 @@ check_priors(object, ...)
 \item{...}{Unused.}
 }
 \value{
-A plot of the prior and posterior parameter probability densities
+A plot of the prior and posterior parameter probability densities.
 }
 \description{
 Plots the prior and posterior parameter probability densities from an

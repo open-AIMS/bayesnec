@@ -7,12 +7,13 @@
 extract_simdat(modfit)
 }
 \arguments{
-\item{modfit}{a bayesnecfit, as returned by fit_bayesnec}
+\item{modfit}{An object of class \code{\link{prebayesnecfit}}, as returned
+by \code{\link{fit_bayesnec}}.}
 }
 \value{
-A list of model simulation statistics including
-iter, thin, warmup and chains
+A \code{\link[base]{list}} of model simulation statistics including
+iter, thin, warmup, chains, inits and nsamples.
 }
 \description{
-Extracts a range of statistics from a list of bayesnecfit model fits.
+Extracts a range of statistics from a \code{\link{prebayesnecfit}} object.
 }

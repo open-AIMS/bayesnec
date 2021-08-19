@@ -11,7 +11,7 @@ beta_binomial2_rng(mu, phi, trials)
 
 \item{phi}{posterior phi.}
 
-\item{trials}{vector of observation trials..}
+\item{trials}{vector of observation trials.}
 }
 \value{
 A \code{\link[base]{numeric}} value or vector containing random values of the beta binomial distribution

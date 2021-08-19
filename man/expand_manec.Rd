@@ -13,8 +13,8 @@ expand_manec(
 )
 }
 \arguments{
-\item{object}{a bayesmanecfit mod_fits output list, as returned by
-\code{\link{bnec}} when more than one model is supplied.}
+\item{object}{a \code{\link{bayesmanecfit}} mod_fits output list, as
+returned by \code{\link{bnec}} when more than one model is supplied.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -23,9 +23,9 @@ and over which to extract ECx values. Large values will be slower but more
 precise.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values
-against the lowest observed concentration (assumed to be the control), to
-estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+significance of the predicted posterior values against the lowest observed
+concentration (assumed to be the control), to estimate NEC as an
+interpolated NOEC value from smooth ECx curves.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} of two elements
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
@@ -39,8 +39,10 @@ not provided by the user, \code{\link{bnec}} will set the default
 "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
 }
 \value{
-A list of model statistical output derived from the input model list
+A \code{\link[base]{list}} of model statistical output derived from
+the input model list.
 }
 \description{
-Extracts a range of statistics from a list of bayesnecfit model fits.
+Extracts a range of statistics from a list of \code{\link{bayesnecfit}}
+model fits.
 }

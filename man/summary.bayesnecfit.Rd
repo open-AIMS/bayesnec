@@ -12,14 +12,15 @@ by \code{\link{bnec}}.}
 
 \item{...}{Unused.}
 
-\item{ecx}{Should summary EC values be calculated? Defaults to FALSE.}
+\item{ecx}{Should summary ECx values be calculated? Defaults to FALSE.}
 
-\item{ecx_vals}{EC targets (between 1 and 99). Only relevant if ecx = TRUE.
+\item{ecx_vals}{ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
 If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
 }
 \value{
-A summary of the fitted model as returned for a brmsfit
+A summary of the fitted model as returned for a
+\code{\link[brms]{brmsfit}} object.
 }
 \description{
 summary.bayesnecfit

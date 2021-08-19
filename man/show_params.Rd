@@ -11,8 +11,7 @@ show_params(model = "all")
 to fit. See Details for more information.}
 }
 \value{
-An object of class
-\code{\link[brms]{brmsformula}}.
+An \code{\link[base]{list}} of \code{\link[brms]{brmsformula}}.
 }
 \description{
 Displays non-linear equation and parameter names

@@ -30,13 +30,13 @@ containing the concentration (x) variable.}
 \item{y_var}{A \code{\link[base]{character}} indicating the column heading
 containing the response (y) variable.}
 
-\item{trials_var}{A \code{\link[base]{character}} indicating the column heading for the number
-of "trials" for binomial or beta_binomial2 response data, as it appears in "data" (if data is supplied).
-Alternatively a \code{\link[base]{numeric}}
-vector representing the trials associated with each observation,
-if data are supplied as an x argument.
-or a \code{\link[base]{numeric}} vector indicating the trials
-If not supplied, the model may run but will not be the model you intended!}
+\item{trials_var}{A \code{\link[base]{character}} indicating the column
+heading for the number of "trials" for binomial or beta_binomial2 response
+data, as it appears in "data" (if data is supplied). Alternatively a
+\code{\link[base]{numeric}} vector representing the trials associated with
+each observation, if data are supplied as an \code{x} argument. Or a
+\code{\link[base]{numeric}} vector indicating the trials. If not supplied,
+the model may run but will not be the model you intended!}
 
 \item{family}{Either a \code{\link[base]{character}} string, a function, or
 an object of class \code{\link[stats]{family}} defining the statistical
@@ -46,14 +46,14 @@ distribution (family) to use for the y (response) data. See details.}
 specifies user-desired prior distributions of model parameters.
 If missing, \code{\link{bnec}} will figure out a baseline prior for each
 parameter. It can also be specified as a named \code{\link[base]{list}}
-where each name needs to correspond to the same string as "model". See
+where each name needs to correspond to the same string as \code{model}. See
 details.}
 
 \item{model}{A \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 
 \item{inits}{Optional. Initialisation values. Must be a
-\code{\link[base]{list}} of "n" names lists, where "n" corresponds to the
+\code{\link[base]{list}} of "n" named lists, where "n" corresponds to the
 number of chains, and names correspond to the parameter names of a given
 model.}
 
@@ -70,16 +70,13 @@ formula.}
 
 \item{weights}{A \code{\link[base]{character}} vector containing the
 name of the column which should be used as weights on the model likelihood.
-It must be a non-negative numeric column.
-See details.}
+It must be a non-negative numeric column. See details.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via
 \code{\link{fit_bayesnec}}.}
 }
 \value{
-The fitted \pkg{brms} model, including an estimate of the NEC
-value and predicted posterior values.
-A posterior sample of the NEC is also available under \code{nec_posterior}
+An object of class \code{\link{prebayesnecfit}}.
 }
 \description{
 Fits a concentration(dose)-response model using brms

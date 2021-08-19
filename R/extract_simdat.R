@@ -1,11 +1,12 @@
 #'extract_simdat
 #'
-#' Extracts a range of statistics from a list of bayesnecfit model fits.
+#' Extracts a range of statistics from a \code{\link{prebayesnecfit}} object.
 #'
-#' @param modfit a bayesnecfit, as returned by fit_bayesnec
+#' @param modfit An object of class \code{\link{prebayesnecfit}}, as returned
+#' by \code{\link{fit_bayesnec}}.
 #'
-#' @return A list of model simulation statistics including
-#' iter, thin, warmup and chains
+#' @return A \code{\link[base]{list}} of model simulation statistics including
+#' iter, thin, warmup, chains, inits and nsamples.
 extract_simdat <- function(modfit) {
   x <- modfit$fit$fit@sim
   list(iter = x$iter,

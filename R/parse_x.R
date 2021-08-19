@@ -7,7 +7,8 @@
 #' @importFrom grDevices xy.coords
 #' @importFrom methods is
 #'
-#' @return A list containing the elements data, x_var, y_var, trials_var
+#' @return A \code{\link[base]{list}} containing the elements data, x_var,
+#' y_var, trials_var.
 parse_x <- function(x, y, data, x_var, y_var, model, trials_var, family) {
   if (!is(x, "formula")) {
     if (missing(model)) {

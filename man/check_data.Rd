@@ -25,13 +25,13 @@ containing the concentration (x) variable.}
 \item{y_var}{A \code{\link[base]{character}} indicating the column heading
 containing the response (y) variable.}
 
-\item{trials_var}{A \code{\link[base]{character}} indicating the column heading for the number
-of "trials" for binomial or beta_binomial2 response data, as it appears in "data" (if data is supplied).
-Alternatively a \code{\link[base]{numeric}}
-vector representing the trials associated with each observation,
-if data are supplied as an x argument.
-or a \code{\link[base]{numeric}} vector indicating the trials
-If not supplied, the model may run but will not be the model you intended!}
+\item{trials_var}{A \code{\link[base]{character}} indicating the column
+heading for the number of "trials" for binomial or beta_binomial2 response
+data, as it appears in "data" (if data is supplied). Alternatively a
+\code{\link[base]{numeric}} vector representing the trials associated with
+each observation, if data are supplied as an \code{x} argument. Or a
+\code{\link[base]{numeric}} vector indicating the trials. If not supplied,
+the model may run but will not be the model you intended!}
 
 \item{family}{Either a \code{\link[base]{character}} string, a function, or
 an object of class \code{\link[stats]{family}} defining the statistical
@@ -46,8 +46,7 @@ formula.}
 
 \item{weights}{A \code{\link[base]{character}} vector containing the
 name of the column which should be used as weights on the model likelihood.
-It must be a non-negative numeric column.
-See details.}
+It must be a non-negative numeric column. See details.}
 }
 \value{
 A \code{\link[base]{list}} of modified elements

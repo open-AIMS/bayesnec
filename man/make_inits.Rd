@@ -13,9 +13,10 @@ to fit. See Details for more information.}
 \item{fct_args}{A \code{\link[base]{character}} string containing
 the expected argument names to be used.}
 
-\item{priors}{an object of class "brmsprior" from package \pkg{brms}.}
+\item{priors}{an object of class \code{\link[brms]{brmsprior}} from package
+\pkg{brms}.}
 
-\item{chains}{Number of chains to be passed to brms model.}
+\item{chains}{Number of chains to be passed to \pkg{brms} model.}
 }
 \value{
 A \code{\link[base]{list}} containing the initialisation values.

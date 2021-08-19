@@ -63,6 +63,6 @@ the x-axis.}
 a plot of the fitted model
 }
 \description{
-Generates a plot of a fitted "bayesnecfit" model, as returned by
+Generates a plot of a fitted \code{\link{bayesnecfit}} model, as returned by
 \code{\link{bnec}}.
 }

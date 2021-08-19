@@ -1,6 +1,6 @@
 #' plot.bayesnecfit
 #'
-#' Generates a plot of a fitted "bayesnecfit" model, as returned by
+#' Generates a plot of a fitted \code{\link{bayesnecfit}} model, as returned by
 #' \code{\link{bnec}}.
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} as returned by
@@ -129,16 +129,21 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #' by \code{\link{bnec}}.
 #'
 #' @param ... Unused.
-#' @param precision the number of x values over which to predict values.
-#' @param x_range The range of x values over which to make predictions.
+#' @param precision A \code{\link[base]{numeric}} vector of length 1 indicating
+#' the number of x values over which to predict values.
+#' @param x_range A \code{\link[base]{numeric}} vector of length 2 indicating
+#' the range of x values over which to make predictions.
 #'
-#' @return A list containing x and fitted y, with up and lw values
+#' @return A \code{\link[base]{list}} containing two elements: a
+#' \code{\link[base]{data.frame}} with predictor x and fitted y values plus
+#' lower and upper credible intervals; a \code{\link[base]{matrix}} of M x N,
+#' with M being the number of posterior draws and N being the number of
+#' observations in the input data.
 #'
 #' @importFrom brms posterior_epred
 #'
 #' @export
-predict.bayesnecfit <- function(object, ..., precision = 100,
-                                x_range = NA) {
+predict.bayesnecfit <- function(object, ..., precision = 100, x_range = NA) {
   mod_dat <- object$fit$data
   fit <- object$fit
   if (any(is.na(x_range))) {
@@ -165,13 +170,14 @@ predict.bayesnecfit <- function(object, ..., precision = 100,
 #' by \code{\link{bnec}}.
 #' @param ... Unused.
 #'
-#' @return A named vector containing rhat values as returned for a brmsfit
-#' for each of the estimated parameters.
+#' @return A named \code{\link[base]{numeric}} vector containing Rhat values as
+#' returned for a \code{\link[brms]{brmsfit}} object for each of the estimated
+#' parameters.
 #'
 #' @importFrom brms rhat
 #'
 #' @export
-rhat.bayesnecfit <- function(object, ... ) {
+rhat.bayesnecfit <- function(object, ...) {
   rhat(object$fit)
 }
 
@@ -179,13 +185,14 @@ rhat.bayesnecfit <- function(object, ... ) {
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} as returned
 #' by \code{\link{bnec}}.
-#' @param ecx Should summary EC values be calculated? Defaults to FALSE.
-#' @param ecx_vals EC targets (between 1 and 99). Only relevant if ecx = TRUE.
+#' @param ecx Should summary ECx values be calculated? Defaults to FALSE.
+#' @param ecx_vals ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
 #' If no value is specified by the user, returns calculations for EC10, EC50,
 #' and EC90.
 #' @param ... Unused.
 #'
-#' @return A summary of the fitted model as returned for a brmsfit
+#' @return A summary of the fitted model as returned for a
+#' \code{\link[brms]{brmsfit}} object.
 #'
 #' @importFrom brms bayes_R2
 #'
@@ -218,7 +225,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 #' returned by \code{\link{summary.bayesnecfit}}.
 #' @param ... Unused.
 #'
-#' @return A list containing a summary of model features and statistics.
+#' @return A \code{\link[base]{list}} containing a summary of model features
+#' and statistics.
 #'
 #' @export
 print.necsummary <- function(x, ...) {
@@ -251,8 +259,8 @@ print.necsummary <- function(x, ...) {
 #' returned by \code{\link{bnec}}.
 #' @param ... Further arguments to function summary.
 #'
-#' @return A list containing a summary of the model fit as returned a
-#' brmsfit for each model.
+#' @return A \code{\link[base]{list}} containing a summary of the model fit as
+#' returned for a \code{\link[brms]{brmsfit}} object.
 #'
 #' @export
 print.bayesnecfit <- function(x, ...) {

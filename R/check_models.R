@@ -4,9 +4,7 @@
 #'
 #' @inheritParams bnec
 #'
-#' @details
-#'
-#' This is a wrapper function to test input model criteria and find the
+#' @details This is a wrapper function to test input model criteria and find the
 #' correct models for use in \code{\link{fit_bayesnec}}.
 #'
 #' @importFrom stats na.omit

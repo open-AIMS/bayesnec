@@ -12,12 +12,18 @@ returned by \code{\link{bnec}}.}
 
 \item{...}{Unused.}
 
-\item{precision}{the number of x values over which to predict values.}
+\item{precision}{A \code{\link[base]{numeric}} vector of length 1 indicating
+the number of x values over which to predict values.}
 
-\item{x_range}{The range of x values over which to make predictions.}
+\item{x_range}{A \code{\link[base]{numeric}} vector of length 2 indicating
+the range of x values over which to make predictions.}
 }
 \value{
-A list containing x and fitted y, with up and lw values
+A \code{\link[base]{list}} containing two elements: a
+\code{\link[base]{data.frame}} with predictor x and fitted y values plus
+lower and upper credible intervals; a \code{\link[base]{matrix}} of M x N,
+with M being the number of posterior draws and N being the number of
+observations in the input data.
 }
 \description{
 predict.bayesmanecfit

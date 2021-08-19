@@ -3,10 +3,11 @@
 #' Fits a variety of NEC models using Bayesian analysis and provides a model
 #' averaged predictions based on WAIC model weights
 #' 
-#' @param x A \code{\link[base]{numeric}} vector to use for the x-variable (typically concentration) in 
-#' modelling, or a \code{\link[base]{data.frame}} containing both the x and y data.
-#' @param y A \code{\link[base]{numeric}} vector to use for the y-variable (typically the response) in 
-#' modelling .
+#' @param x A \code{\link[base]{numeric}} vector to use for the x-variable
+#' (typically concentration) in modelling, or a \code{\link[base]{data.frame}}
+#' containing both the x and y data.
+#' @param y A \code{\link[base]{numeric}} vector to use for the y-variable
+#' (typically the response) in modelling.
 #' @param data A \code{\link[base]{data.frame}} containing the data to use for
 #' the model.
 #' @param x_var A \code{\link[base]{character}} indicating the column heading
@@ -15,13 +16,13 @@
 #' containing the response (y) variable.
 #' @param model A \code{\link[base]{character}} vector indicating the model(s)
 #' to fit. See Details for more information.
-#' @param trials_var A \code{\link[base]{character}} indicating the column heading for the number
-#' of "trials" for binomial or beta_binomial2 response data, as it appears in "data" (if data is supplied). 
-#' Alternatively a \code{\link[base]{numeric}} 
-#' vector representing the trials associated with each observation, 
-#' if data are supplied as an x argument.
-#' or a \code{\link[base]{numeric}} vector indicating the trials
-#' If not supplied, the model may run but will not be the model you intended!
+#' @param trials_var A \code{\link[base]{character}} indicating the column
+#' heading for the number of "trials" for binomial or beta_binomial2 response
+#' data, as it appears in "data" (if data is supplied). Alternatively a
+#' \code{\link[base]{numeric}} vector representing the trials associated with
+#' each observation, if data are supplied as an \code{x} argument. Or a
+#' \code{\link[base]{numeric}} vector indicating the trials. If not supplied,
+#' the model may run but will not be the model you intended!
 #' @param family Either a \code{\link[base]{character}} string, a function, or
 #' an object of class \code{\link[stats]{family}} defining the statistical
 #' distribution (family) to use for the y (response) data. See details.
@@ -29,32 +30,32 @@
 #' specifies user-desired prior distributions of model parameters.
 #' If missing, \code{\link{bnec}} will figure out a baseline prior for each
 #' parameter. It can also be specified as a named \code{\link[base]{list}}
-#' where each name needs to correspond to the same string as "model". See
+#' where each name needs to correspond to the same string as \code{model}. See
 #' details.
 #' @param x_range A range of x values over which to consider extracting ECx.
 #' @param precision The length of the x vector used for posterior predictions,
 #' and over which to extract ECx values. Large values will be slower but more
 #' precise.
 #' @param sig_val Probability value to use as the lower quantile to test
-#' significance of the predicted posterior values
-#' against the lowest observed concentration (assumed to be the control), to
-#' estimate NEC as an interpolated NOEC value from smooth ECx curves.
+#' significance of the predicted posterior values against the lowest observed
+#' concentration (assumed to be the control), to estimate NEC as an
+#' interpolated NOEC value from smooth ECx curves.
 #' @param iter The number of iterations to be passed to
-#' \code{\link[brms]{brm}}. Defaults to 2e3 to be consistent with brms
-#' defaults.
-#' @param warmup A positive integer specifying number of warmup (a.k.a.
+#' \code{\link[brms]{brm}}. Defaults to 1e4.
+#' @param warmup A positive integer specifying number of warmup (similar to
 #' burnin) iterations. This also specifies the number of iterations used for
 #' stepsize adaptation, so warmup samples should not be used for inference.
-#' The number of warmup should not be larger than "iter" and the default is
-#' "floor(iter / 5) * 4".
+#' The number of warmup should not be larger than \code{iter} and the default is
+#' \code{floor(iter / 5) * 4}.
 #' @param inits Optional. Initialisation values. Must be a
-#' \code{\link[base]{list}} of "n" names lists, where "n" corresponds to the
+#' \code{\link[base]{list}} of "n" named lists, where "n" corresponds to the
 #' number of chains, and names correspond to the parameter names of a given
 #' model.
 #' @param sample_prior Indicate if samples from priors should be drawn
 #' additionally to the posterior samples. Options are "no", "yes"
 #' (the default), and "only". Among others, these samples can be used to
-#' calculate Bayes factors for point hypotheses via hypothesis.
+#' calculate Bayes factors for point hypotheses via
+#' \code{\link[brms]{hypothesis}}.
 #' @param loo_controls A named \code{\link[base]{list}} of two elements
 #' ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 #' containing the desired arguments to be passed on to \code{\link[brms]{loo}}
@@ -72,8 +73,7 @@
 #' formula.
 #' @param weights A \code{\link[base]{character}} vector containing the
 #' name of the column which should be used as weights on the model likelihood.
-#' It must be a non-negative numeric column.
-#' See details.
+#' It must be a non-negative numeric column. See details.
 #' @param ... Further arguments to \code{\link[brms]{brm}} via
 #' \code{\link{fit_bayesnec}}.
 #'
@@ -124,13 +124,15 @@
 #' \code{model} may also be one of "all", meaning all of the available models
 #' will be fit; "ecx" meaning only models excluding a specific NEC step
 #' parameter will be fit; "nec" meaning only models with a specific NEC step
-#' parameter will be fit; or "bot_free" meaning only models without a "bot"
-#' parameter (without a bottom plateau) will be fit. Notice that
-#' if one of these group strings is provided together with a user-specified
+#' parameter will be fit; "bot_free" meaning only models without a "bot"
+#' parameter (without a bottom plateau) will be fit; "zero_bounded" are models
+#' that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
+#' only allows a strict decline in response across the whole x range. Notice
+#' that if one of these group strings is provided together with a user-specified
 #' named list for the argument \code{priors}, the list names need to contain
 #' the actual model names, and not the group string , e.g. if
 #' \code{model = "ecx"} and \code{priors = my_priors} then
-#' \code{names(my_priors)} must #' contain \code{models("ecx")}. To check
+#' \code{names(my_priors)} must contain \code{models("ecx")}. To check
 #' available models and associated parameters for each group,
 #' use the function \code{\link{models}} or to check the parameters of a
 #' specific model use the function \code{\link{show_params}}.
@@ -189,7 +191,7 @@
 #' @export
 bnec <- function(x, y = NULL, data, x_var, y_var, model, trials_var = NA,
                  family = NULL, priors, x_range = NA, precision = 1000,
-                 sig_val = 0.01, iter = 10e3, warmup = floor(iter / 10) * 9,
+                 sig_val = 0.01, iter = 1e4, warmup = floor(iter / 10) * 9,
                  inits, sample_prior = "yes", loo_controls, random = NA,
                  random_vars = NA, weights = NA, ...) {
   if (!missing(x)) {

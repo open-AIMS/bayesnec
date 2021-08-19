@@ -13,12 +13,12 @@ returned by \code{\link{bnec}}.}
 \item{...}{Additional arguments to \code{\link{nec}}}
 }
 \value{
-A vector containing the estimated nec value, including upper and
+A vector containing the estimated NEC value, including upper and
 lower 95\% credible interval bounds
 (or other interval as specified by prob_vals).
 }
 \description{
-Extracts the predicted nec value as desired from an object of class
+Extracts the predicted NEC value as desired from an object of class
 \code{\link{bayesnecfit}}.
 }
 \examples{

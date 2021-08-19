@@ -13,8 +13,8 @@ returned by \code{\link{bnec}}.}
 \item{...}{Further arguments to function summary.}
 }
 \value{
-A list containing a summary of the model fit as returned a
-brmsfit for each model.
+A \code{\link[base]{list}} containing a summary of the model fit as
+returned for a \code{\link[brms]{brmsfit}} object.
 }
 \description{
 print.bayesnecfit

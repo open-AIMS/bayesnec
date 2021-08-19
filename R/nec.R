@@ -1,22 +1,22 @@
 #' nec.default
 #'
-#' Extracts the predicted nec value as desired from an object of class
+#' Extracts the predicted NEC value as desired from an object of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
-#' posterior sample of calculated nec values should be returned instead of
-#' just the median and 95 credible intervals.
+#' posterior sample of calculated NEC values should be returned instead of
+#' just the median and 95% credible intervals.
 #' @param xform A function to apply to the returned estimated concentration
 #' values.
 #' @param prob_vals A vector indicating the probability values over which to
-#' return the estimated nec value. Defaults to 0.5 (median) and 0.025 and
+#' return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A vector containing the estimated nec value, including upper and
+#' @return A vector containing the estimated NEC value, including upper and
 #' lower 95% credible interval bounds
 #' (or other interval as specified by prob_vals).
 #'
@@ -57,7 +57,7 @@ nec.default <- function(object, posterior = FALSE,  xform = NA,
 
 #' nec
 #'
-#' Extracts the predicted nec value as desired from an object of class
+#' Extracts the predicted NEC value as desired from an object of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
 #' @inheritParams nec.default
@@ -75,7 +75,7 @@ nec <- function(object, posterior = FALSE,
 
 #' nec.bayesnecfit
 #'
-#' Extracts the predicted nec value as desired from an object of class
+#' Extracts the predicted NEC value as desired from an object of class
 #' \code{\link{bayesnecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}}
@@ -90,7 +90,7 @@ nec.bayesnecfit <- function(object, ...) {
 
 #' nec.bayesmanecfit
 #'
-#' Extracts the predicted nec value as desired from an object of class
+#' Extracts the predicted NEC value as desired from an object of class
 #' \code{\link{bayesmanecfit}}.
 #'
 #' @inheritParams nec
