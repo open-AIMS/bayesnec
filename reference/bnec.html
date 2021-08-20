@@ -334,13 +334,12 @@ which can cause numerical estimation issues, a small offset is added (1 /
 <code>x_var</code> are distributed on a continuous scale from 0 to infinity, or
 are bounded to 0, or 1.</p>
 <p>The argument <code>family</code> indicates the family to use for the response
-variable in the <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> call, and may currently be "Beta" /
+variable in the <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> call, and may currently be
+"bernoulli" / bernoulli / bernoulli(), "Beta" /
 Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial2" /
 beta_binomial2, "Gamma" / Gamma / Gamma(), "gaussian" / gaussian /
 gaussian(), "negbinomial" / negbinomial / negbinomial(), or "poisson" /
-poisson / poisson(). Notice that families Beta and negbinomial are exported
-objects of package <span class="pkg">brms</span>, so the user needs to load <span class="pkg">brms</span> before
-calling these families.</p>
+poisson / poisson().</p>
 <p>Other families can be added as required, please raise an
 <a href='https://github.com/open-AIMS/bayesnec/issues'>issue</a> on the GitHub
 development site if your required family is not currently available.</p>

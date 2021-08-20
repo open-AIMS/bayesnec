@@ -238,7 +238,7 @@ facets? Defaults to TRUE.</p></td>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a nec3param model and a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Start sampling</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>The largest R-hat is 1.14, indicating chains have not mixed.</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>The largest R-hat is 1.18, indicating chains have not mixed.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> Running the chains for more iterations may help. See</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> http://mc-stan.org/misc/warnings.html#r-hat</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.</span>
@@ -251,7 +251,7 @@ facets? Defaults to TRUE.</p></td>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Start sampling</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>The largest R-hat is 1.06, indicating chains have not mixed.</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>The largest R-hat is 1.13, indicating chains have not mixed.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> Running the chains for more iterations may help. See</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> http://mc-stan.org/misc/warnings.html#r-hat</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.</span>
@@ -262,15 +262,16 @@ facets? Defaults to TRUE.</p></td>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> http://mc-stan.org/misc/warnings.html#tail-ess</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a beta distribution.</span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Fitted models are:  nec3param nec4param</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 7 observations with a pareto_k &gt; 0.7 in model 'nec3param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
 <span class='r-in'><span class='va'>test2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>test</span>, <span class='st'>"nec3param"</span><span class='op'>)</span></span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): nec3param</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 7 observations with a pareto_k &gt; 0.7 in model 'nec3param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
@@ -289,10 +290,10 @@ facets? Defaults to TRUE.</p></td>
 <span class='r-plt'><img src='autoplot.bayesmanecfit-5.png' alt='' width='700' height='433' /></span>
 <span class='r-in'><span class='co'># plot all panels together</span></span>
 <span class='r-in'><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/autoplot.html'>autoplot</a></span><span class='op'>(</span><span class='va'>test</span>, ecx <span class='op'>=</span> <span class='cn'>TRUE</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span>, multi_facet <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span></span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 7 observations with a pareto_k &gt; 0.7 in model 'nec3param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
