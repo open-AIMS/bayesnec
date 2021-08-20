@@ -234,7 +234,16 @@ bnec <- function(x, y = NULL, data, x_var, y_var, model, trials_var = NA,
     }
   }
   model <- check_models(model, family)
-  if (length(model) > 1) {
+  if(min(data[, "x_var"])<0){
+    
+    use_models <- setdiff(model, c("ecxsigm", "nechorme4pwr", "nechormepwr")) 
+    drop_models <- intersect(use_models, model)
+    model <- use_models
+    if(length(drop_models)>1) {warnings(paste("dropping models", drop_models, 
+                                              "as they are invalid for data with negative concentration values."))}
+    
+  }
+  if (length(model)==0) {stop("No valid models have been supplied for this data type.")} else if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     for (m in seq_along(model)) {
