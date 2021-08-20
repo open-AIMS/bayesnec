@@ -149,7 +149,7 @@ bf_ecxwb2p3 <- brms::bf(y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) *
                         nl = TRUE)
 # ecxll5
 bf_ecxll5 <- brms::bf(y ~ bot + (top - bot) / (1 + exp(exp(beta) *
-                        (x - ec50))) ^ f,
+                        (x - ec50))) ^ exp(f),
                       bot + top + beta + ec50 + f ~ 1,
                       nl = TRUE)
 # ecxll4
