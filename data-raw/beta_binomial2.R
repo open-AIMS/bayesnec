@@ -2,7 +2,7 @@ library(usethis)
 library(brms)
 beta_binomial2 <- brms::custom_family(
     "beta_binomial2", dpars = c("mu", "phi"),
-    links = c("logit", "log"), lb = c(NA, 0),
+    links = c("identity", "log"), lb = c(NA, 0),
     type = "int", vars = "trials[n]"
   )
 
