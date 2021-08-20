@@ -84,13 +84,12 @@
 #' are bounded to 0, or 1.
 #'
 #' The argument \code{family} indicates the family to use for the response
-#' variable in the \code{\link[brms]{brm}} call, and may currently be "Beta" /
+#' variable in the \code{\link[brms]{brm}} call, and may currently be
+#' "bernoulli" / bernoulli / bernoulli(), "Beta" /
 #' Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial2" /
 #' beta_binomial2, "Gamma" / Gamma / Gamma(), "gaussian" / gaussian /
 #' gaussian(), "negbinomial" / negbinomial / negbinomial(), or "poisson" /
-#' poisson / poisson(). Notice that families Beta and negbinomial are exported
-#' objects of package \pkg{brms}, so the user needs to load \pkg{brms} before
-#' calling these families.
+#' poisson / poisson().
 #'
 #' Other families can be added as required, please raise an
 #' \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub

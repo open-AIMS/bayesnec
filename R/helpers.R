@@ -63,7 +63,7 @@ min_abs <- function(x) {
 #' @importFrom brms prior_string
 #' @noRd
 paste_normal_prior <- function(mean, param, sd = 1, ...) {
-    prior_string(paste0("normal(", mean, ", ", sd, ")"), nlpar = param, ...)
+  prior_string(paste0("normal(", mean, ", ", sd, ")"), nlpar = param, ...)
 }
 
 #' @noRd
@@ -294,34 +294,35 @@ contains_one <- function(x) {
 #' @noRd
 response_link_scale <- function(response, family) {
   link_tag <- family$link
-  min_n0val <- min(response[which(response > 0)])/100
+  min_z_val <- min(response[which(response > 0)]) / 100
   if (link_tag == "logit") {  
-    max_n1val <- max(response[which(response < 1)]) + (1-max(response[which(response < 1)]))*0.99
-  }  
-  
+    max_o_val <- max(response[which(response < 1)]) +
+      (1 - max(response[which(response < 1)])) * 0.99
+  }
+  lr <- linear_rescale
   custom_name <- check_custom_name(family)
   if (link_tag %in% c("logit", "log")) {
     if (custom_name == "beta_binomial2") {
-      if(contains_zero(response)){
-        response <- linear_rescale(response, r_out = c(min_n0val, max(response)))
+      if (contains_zero(response)) {
+        response <- lr(response, r_out = c(min_z_val, max(response)))
       }
-      if(contains_one(response)){
-        response <- linear_rescale(response, r_out = c(min(response), max_n1val))
+      if (contains_one(response)) {
+        response <- lr(response, r_out = c(min(response), max_o_val))
       }
       response <- binomial(link = link_tag)$linkfun(response)
-    } else if (family$family == "binomial") {
-      if(contains_zero(response)){
-        response <- linear_rescale(response, r_out = c(min_n0val, max(response)))
+    } else if (family$family %in% c("bernoulli", "binomial")) {
+      if (contains_zero(response)) {
+        response <- lr(response, r_out = c(min_z_val, max(response)))
       }
-      if(contains_one(response)){
-        response <- linear_rescale(response, r_out = c(min(response), max_n1val))
+      if (contains_one(response)) {
+        response <- lr(response, r_out = c(min(response), max_o_val))
       }
       response <- family$linkfun(response)
     } else {
-      if(contains_zero(response)){
-        response <- linear_rescale(response, r_out = c(min_n0val, max(response)))
+      if (contains_zero(response)) {
+        response <- lr(response, r_out = c(min_z_val, max(response)))
       }
-      response <- family$linkfun(response)       
+      response <- family$linkfun(response)
     }
   }
   response
