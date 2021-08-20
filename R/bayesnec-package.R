@@ -10,6 +10,7 @@
 #' @name bayesnec-package
 #' @aliases bayesnec
 #' @importFrom ggplot2 autoplot
+#' @importFrom brms bernoulli Beta negbinomial
 #'
 #' @references
 #' Paul-Christian Bürkner (2018). Advanced Bayesian Multilevel

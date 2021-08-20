@@ -35,6 +35,7 @@ mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",
               poisson = "poisson",
               negbinomial = "negbinomial",
+              bernoulli = "bernoulli",
               binomial = "binomial",
               custom = "beta_binomial2",
               beta = "Beta")
