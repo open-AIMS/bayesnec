@@ -54,7 +54,7 @@ bayesnecformula <- function(formula, ...) {
     formula <- as.formula(formula)
   }
   formula <- formula_checks(formula)
-  bayesnec:::allot_class(formula, c("formula", "bayesnecformula"))
+  allot_class(formula, c("formula", "bayesnecformula"))
 }
 
 #' @importFrom stats model.frame na.omit
@@ -196,7 +196,7 @@ single_model_formula <- function(formula, model) {
   new_crf <- paste0("crf(", x_term, ", model = \"", model, "\")")
   to_eval <- paste0("update(formula, ~ . - ", x_str, " + ", new_crf, ")")
   formula <- eval(parse(text = to_eval))
-  bayesnec:::allot_class(formula, c("formula", "bayesnecformula"))
+  allot_class(formula, c("formula", "bayesnecformula"))
 }
 
 #' @noRd
