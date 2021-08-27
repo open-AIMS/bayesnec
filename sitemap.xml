@@ -67,6 +67,9 @@
     <loc>/reference/bayesnecfit-class.html</loc>
   </url>
   <url>
+    <loc>/reference/bayesnecformula.html</loc>
+  </url>
+  <url>
     <loc>/reference/beta_binomial2.html</loc>
   </url>
   <url>
@@ -98,9 +101,6 @@
   </url>
   <url>
     <loc>/reference/check_data.html</loc>
-  </url>
-  <url>
-    <loc>/reference/check_formula.html</loc>
   </url>
   <url>
     <loc>/reference/check_models.html</loc>
@@ -215,6 +215,9 @@
   </url>
   <url>
     <loc>/reference/model.frame.bayesnecfit.html</loc>
+  </url>
+  <url>
+    <loc>/reference/model.frame.bayesnecformula.html</loc>
   </url>
   <url>
     <loc>/reference/models.html</loc>

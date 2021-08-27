@@ -335,22 +335,13 @@ response (i.e. the response value is significantly
 lower than that expected in the case of no exposure).
 The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha
 value of 0.01 for a one-sided test of significance.</p>
-<p><strong>NAs are thrown away</strong>
-Stan's default behaviour is to fail when the input data contains NAs. For
+<p><b>NAs are thrown away</b></p>
+<p>Stan's default behaviour is to fail when the input data contains NAs. For
 that reason <span class="pkg">brms</span> excludes any NAs from input data prior to fitting,
 and does not allow them back in as is the case with e.g. <code><a href='https://rdrr.io/r/stats/lm.html'>stats::lm</a></code> and
 <code>na.action = exclude</code>. So we advise that you exclude any NAs in your
 data prior to fitting because if you so wish that should facilitate merging
 predictions back onto your original dataset.</p>
-<p>#' <strong>Weights</strong>
-Model weights are passed on to the model via an "aterm" formula element,
-e.g. <code>y | weights(weight_vector)</code>, following <span class="pkg">brms</span> formula syntax.
-Please note that <span class="pkg">brms</span> does not implement design weights as in other
-standard <span class="pkg">base</span> function. From their help page, <span class="pkg">brms</span> "takes the
-weights literally, which means that an observation with weight 2 receives 2
-times more weight than an observation with weight 1. It also means that
-using a weight of 2 is equivalent to adding the corresponding observation
-twice to the data frame."</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='co'># \donttest{</span></span>
