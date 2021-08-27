@@ -292,6 +292,11 @@ contains_one <- function(x) {
 }
 
 #' @noRd
+contains_negative <- function(x) {
+  any(x < 0, na.rm = TRUE)
+}
+
+#' @noRd
 response_link_scale <- function(response, family) {
   link_tag <- family$link
   min_z_val <- min(response[which(response > 0)]) / 100
