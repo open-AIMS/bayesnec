@@ -49,7 +49,7 @@ interpolated NOEC value from smooth ECx curves.}
 
 \item{priors}{An object of class \code{\link[brms]{brmsprior}} which
 specifies user-desired prior distributions of model parameters.
-If missing, \code{\link{bnec}} will figure out a baseline prior for each
+If missing, \code{\link{amend}} will figure out a baseline prior for each
 parameter. It can also be specified as a named \code{\link[base]{list}}
 where each name needs to correspond to the same string as \code{model}. See
 details.}

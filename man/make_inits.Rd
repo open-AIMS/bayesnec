@@ -7,7 +7,8 @@
 make_inits(model, fct_args, priors, chains)
 }
 \arguments{
-\item{model}{A \code{\link[base]{character}} vector indicating the model(s)
+\item{model}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 
 \item{fct_args}{A \code{\link[base]{character}} string containing

@@ -7,8 +7,8 @@
 dispersion(model, summary = FALSE, seed = 10)
 }
 \arguments{
-\item{model}{An object of class \code{\link[brms]{brmsfit}} whose
-distribution family is either \code{\link[stats]{poisson}} or
+\item{model}{An object of class \code{\link{bayesnecfit}} whose distribution
+family is either \code{\link[stats]{poisson}} or
 \code{\link[stats]{binomial}}.}
 
 \item{summary}{Logical. Should summary stats be returned instead of full

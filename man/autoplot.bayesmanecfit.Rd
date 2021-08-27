@@ -9,7 +9,9 @@
   ...,
   nec = TRUE,
   ecx = FALSE,
-  all = FALSE,
+  force_x = FALSE,
+  xform = NA,
+  all_models = FALSE,
   plot = TRUE,
   ask = TRUE,
   newpage = TRUE,
@@ -26,8 +28,16 @@ function \code{\link{bnec}}.}
 
 \item{ecx}{Should ECx values be added to the plot? Defaults to FALSE.}
 
-\item{all}{Should all individual models be plotted separately (defaults to
-FALSE) or should model averaged predictions be plotted instead?}
+\item{force_x}{A \code{\link[base]{logical}} value indicating if the argument
+\code{xform} should be forced on the predictor values. This is useful when
+the user transforms the predictor beforehand
+(e.g. when using a non-standard base function).}
+
+\item{xform}{A function to apply to the returned estimated concentration
+values.}
+
+\item{all_models}{Should all individual models be plotted separately\
+(defaults to FALSE) or should model averaged predictions be plotted instead?}
 
 \item{plot}{Should output \code{\link[ggplot2]{ggplot}} output be plotted?
 Only relevant if \code{all = TRUE} and \code{multi_facet = FALSE}.}
@@ -67,7 +77,7 @@ autoplot(test2, ecx = TRUE, ecx_val = 50)
 # plots multiple models, one at a time, with interactive prompt
 autoplot(test)
 # plot model averaged predictions
-autoplot(test, all = FALSE)
+autoplot(test, all_models = FALSE)
 # plot all panels together
 autoplot(test, ecx = TRUE, ecx_val = 50, multi_facet = TRUE)
 }

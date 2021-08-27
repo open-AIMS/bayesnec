@@ -7,14 +7,8 @@
 validate_priors(priors, model)
 }
 \arguments{
-\item{priors}{An object of class \code{\link[brms]{brmsprior}} which
-specifies user-desired prior distributions of model parameters.
-If missing, \code{\link{bnec}} will figure out a baseline prior for each
-parameter. It can also be specified as a named \code{\link[base]{list}}
-where each name needs to correspond to the same string as \code{model}. See
-details.}
-
-\item{model}{A \code{\link[base]{character}} vector indicating the model(s)
+\item{model}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 }
 \value{
