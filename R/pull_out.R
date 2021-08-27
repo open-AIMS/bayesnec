@@ -87,6 +87,7 @@ pull_out <- function(manec, model, loo_controls, ...) {
     allot_class(mod_fits, "bayesmanecfit")
   } else {
     mod_fits <- expand_nec(mod_fits[[1]], model = to_go,
+                           formula = mod_fits[[1]]$bayesnecformula,
                            loo_controls = loo_controls, ...)
     allot_class(mod_fits, "bayesnecfit")
   }

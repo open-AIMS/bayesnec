@@ -11,8 +11,8 @@
 #' the input model object.
 #' @importFrom brms posterior_epred posterior_samples
 #' @importFrom stats quantile fitted residuals
-expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
-                       loo_controls, ...) {
+expand_nec <- function(object, formula, x_range = NA, precision = 1000,
+                       sig_val = 0.01, loo_controls, ...) {
   fam_tag <- object$fit$family$family
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(), weights = list())
@@ -21,30 +21,31 @@ expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
   }
   object <- add_criteria(object, loo_controls$fitting, ...)
   fit <- object$fit
-  mod_dat <- fit$data
-  extract_params <- c("top", "beta", "nec", "alpha",
+  extract_params <- c("top", "beta", "nec", "f",
                       "bot", "d", "slope", "ec50")
   extracted_params <- lapply(extract_params, extract_pars, fit)
   names(extracted_params) <- extract_params
-
+  mod_dat <- model.frame(formula, data = fit$data)
+  x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  x <- fit$data[[x_var]]
   if (any(is.na(x_range))) {
-    x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length = precision)
+    x_seq <- seq(min(x), max(x), length = precision)
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
-  new_dat <- data.frame(x = x_seq)
+  new_dat <- data.frame(x_seq)
+  names(new_dat) <- x_var
   custom_name <- check_custom_name(fit$family)
   if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
-    new_dat$trials <- 1
+    trials_col_name <- attr(mod_dat, "bnec_pop")[["trials_var"]]
+    new_dat[[trials_col_name]] <- 1
   }
-  pred_posterior <- posterior_epred(fit, newdata = new_dat,
-                                    re_formula = NA)
+  pred_posterior <- posterior_epred(fit, newdata = new_dat, re_formula = NA)
   y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
                      scale = "response")
   pred_data <- data.frame(x = x_seq, Estimate = y_pred_m[, "Estimate"],
                           Q2.5 = y_pred_m[, "Q2.5"],
                           Q97.5 = y_pred_m[, "Q97.5"])
-
   if (is.na(extracted_params$nec["Estimate"])) {
     mod_class <- "ecx"
   } else {
@@ -60,7 +61,7 @@ expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
   }
   pred_vals <- list(data = pred_data,
                     posterior = pred_posterior)
-  od <- dispersion(fit, summary = TRUE)
+  od <- dispersion(object, summary = TRUE)
   if (length(od) == 0) {
     od <- c(NA, NA, NA)
   }
@@ -68,7 +69,7 @@ expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
   c(object, list(pred_vals = pred_vals), extracted_params,
     list(dispersion = od, predicted_y = predicted_y,
-    residuals = residuals, nec_posterior = nec_posterior))
+         residuals = residuals, nec_posterior = nec_posterior))
 }
 
 #' expand_manec
@@ -85,8 +86,8 @@ expand_nec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
 #' the input model list.
 #' @importFrom loo loo_model_weights
 #' @importFrom stats quantile
-expand_manec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
-                         loo_controls) {
+expand_manec <- function(object, formula, x_range = NA, precision = 1000,
+                         sig_val = 0.01, loo_controls) {
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(), weights = list())
   } else {
@@ -117,12 +118,13 @@ expand_manec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
   mod_fits <- object[success_models]
   object <- object[success_models]
   for (i in seq_along(object)) {
-    object[[i]] <- expand_nec(object[[i]], x_range = x_range,
+    object[[i]] <- expand_nec(object[[i]], formula = formula, x_range = x_range,
                               precision = precision, sig_val = sig_val,
                               loo_controls = loo_controls,
                               model = success_models[i])
   }
-  mod_dat <- object[[1]]$fit$data
+  mod_dat <- model.frame(formula, data = object[[1]]$fit$data)
+  y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")
   colnames(disp) <- c("dispersion_Estimate",
                       "dispersion_Q2.5", "dispersion_Q97.5")
@@ -148,8 +150,7 @@ expand_manec <- function(object, x_range = NA, precision = 1000, sig_val = 0.01,
   list(mod_fits = mod_fits, success_models = success_models,
        mod_stats = mod_stats, sample_size = sample_size,
        w_nec_posterior = nec_posterior, w_predicted_y = y_pred,
-       w_residuals = mod_dat$y - y_pred,
-       w_pred_vals = list(data = pred_data,
-                          posterior = post_pred),
+       w_residuals = mod_dat[[y_var]] - y_pred,
+       w_pred_vals = list(data = pred_data, posterior = post_pred),
        w_nec = nec)
 }

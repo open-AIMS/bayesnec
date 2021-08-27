@@ -14,10 +14,10 @@
 #' @return a plot of the fitted model
 plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                position_legend = "topright", add_ec10 = FALSE,
-                               xform = NA, lxform = NA, jitter_x = FALSE,
-                               jitter_y = FALSE, ylab = "response",
-                               xlab = "concentration", xticks = NA,
-                               all_models = FALSE) {  
+                               xform = NA, lxform = NA, force_x = FALSE,
+                               jitter_x = FALSE, jitter_y = FALSE,
+                               ylab = "Response", xlab = "Predictor",
+                               xticks = NA, all_models = FALSE) {
   if (all_models) {
     oldpar <- par(no.readonly = TRUE)
     on.exit(par(oldpar))
@@ -25,14 +25,14 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     par(mfrow = c(ceiling(length(mod_fits) / 2), 2),
         mar = c(1.5, 1.5, 1.5, 1.5), oma = c(3, 3, 0, 0))
     for (m in seq_along(mod_fits)) {
-      mod_fits[[m]] <- expand_and_assign_nec(mod_fits[[m]])
-      plot(x = mod_fits[[m]],
-           CI = CI, add_nec = add_nec,
-           position_legend = position_legend,
-           add_ec10 = add_ec10,
-           xform = xform, lxform = lxform,
-           jitter_x = jitter_x, jitter_y = jitter_y,
-           ylab = "", xlab = "",
+      mod_fits[[m]] <- suppressMessages(suppressWarnings(expand_and_assign_nec(
+        x = mod_fits[[m]], formula = mod_fits[[m]]$bayesnecformula,
+        model = names(mod_fits)[m]
+      )))
+      plot(x = mod_fits[[m]], CI = CI, add_nec = add_nec,
+           position_legend = position_legend, add_ec10 = add_ec10,
+           xform = xform, lxform = lxform, force_x = force_x,
+           jitter_x = jitter_x, jitter_y = jitter_y, ylab = "", xlab = "",
            xticks = xticks, ...)
       mtext(xlab, side = 1, outer = TRUE, line = 2)
       mtext(ylab, side = 2, outer = TRUE, line = 2)
@@ -41,12 +41,16 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   } else {
     universal <- x$mod_fits[[1]]
     mod_dat <- universal$fit$data
+    bdat <- model.frame(x$mod_fits[[1]]$bayesnecformula, data = mod_dat)
+    y_var <- attr(bdat, "bnec_pop")[["y_var"]]
+    x_var <- attr(bdat, "bnec_pop")[["x_var"]]
     family <- universal$fit$family$family
     custom_name <- check_custom_name(universal$fit$family)
     if (family == "binomial" | custom_name == "beta_binomial2") {
-      y_dat <- mod_dat$y / mod_dat$trials
+      trials_var <- attr(bdat, "bnec_pop")[["trials_var"]]
+      y_dat <- mod_dat[[y_var]] / mod_dat[[trials_var]]
     } else {
-      y_dat <- mod_dat$y
+      y_dat <- mod_dat[[y_var]]
     }
     ec10 <- c(NA, NA, NA)
     if (add_ec10 & family != "gaussian") {
@@ -56,12 +60,16 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
       ec10 <- ecx(x, type = "relative")
     }
     if (inherits(xform, "function")) {
-      x_dat <- xform(mod_dat$x)
+      x_dat <- mod_dat[[x_var]]
+      x_vec <- x$w_pred_vals$data$x
+      if (force_x) {
+        x_dat <- xform(x_dat)
+        x_vec <- xform(x_vec)
+      }
       nec <- xform(x$w_nec)
-      x_vec <- xform(x$w_pred_vals$data$x)
       ec10 <- xform(ec10)
     } else {
-      x_dat <- mod_dat$x
+      x_dat <- mod_dat[[x_var]]
       nec <- x$w_nec
       x_vec <- x$w_pred_vals$data$x
     }

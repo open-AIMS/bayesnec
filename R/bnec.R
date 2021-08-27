@@ -3,35 +3,9 @@
 #' Fits a variety of NEC models using Bayesian analysis and provides a model
 #' averaged predictions based on WAIC model weights
 #' 
-#' @param x A \code{\link[base]{numeric}} vector to use for the x-variable
-#' (typically concentration) in modelling, or a \code{\link[base]{data.frame}}
-#' containing both the x and y data.
-#' @param y A \code{\link[base]{numeric}} vector to use for the y-variable
-#' (typically the response) in modelling.
+#' @param formula ....
 #' @param data A \code{\link[base]{data.frame}} containing the data to use for
 #' the model.
-#' @param x_var A \code{\link[base]{character}} indicating the column heading
-#' containing the concentration (x) variable.
-#' @param y_var A \code{\link[base]{character}} indicating the column heading
-#' containing the response (y) variable.
-#' @param model A \code{\link[base]{character}} vector indicating the model(s)
-#' to fit. See Details for more information.
-#' @param trials_var A \code{\link[base]{character}} indicating the column
-#' heading for the number of "trials" for binomial or beta_binomial2 response
-#' data, as it appears in "data" (if data is supplied). Alternatively a
-#' \code{\link[base]{numeric}} vector representing the trials associated with
-#' each observation, if data are supplied as an \code{x} argument. Or a
-#' \code{\link[base]{numeric}} vector indicating the trials. If not supplied,
-#' the model may run but will not be the model you intended!
-#' @param family Either a \code{\link[base]{character}} string, a function, or
-#' an object of class \code{\link[stats]{family}} defining the statistical
-#' distribution (family) to use for the y (response) data. See details.
-#' @param priors An object of class \code{\link[brms]{brmsprior}} which
-#' specifies user-desired prior distributions of model parameters.
-#' If missing, \code{\link{bnec}} will figure out a baseline prior for each
-#' parameter. It can also be specified as a named \code{\link[base]{list}}
-#' where each name needs to correspond to the same string as \code{model}. See
-#' details.
 #' @param x_range A range of x values over which to consider extracting ECx.
 #' @param precision The length of the x vector used for posterior predictions,
 #' and over which to extract ECx values. Large values will be slower but more
@@ -40,22 +14,6 @@
 #' significance of the predicted posterior values against the lowest observed
 #' concentration (assumed to be the control), to estimate NEC as an
 #' interpolated NOEC value from smooth ECx curves.
-#' @param iter The number of iterations to be passed to
-#' \code{\link[brms]{brm}}. Defaults to 1e4.
-#' @param warmup A positive integer specifying number of warmup (similar to
-#' burnin) iterations. This also specifies the number of iterations used for
-#' stepsize adaptation, so warmup samples should not be used for inference.
-#' The number of warmup should not be larger than \code{iter} and the default is
-#' \code{floor(iter / 5) * 4}.
-#' @param inits Optional. Initialisation values. Must be a
-#' \code{\link[base]{list}} of "n" named lists, where "n" corresponds to the
-#' number of chains, and names correspond to the parameter names of a given
-#' model.
-#' @param sample_prior Indicate if samples from priors should be drawn
-#' additionally to the posterior samples. Options are "no", "yes"
-#' (the default), and "only". Among others, these samples can be used to
-#' calculate Bayes factors for point hypotheses via
-#' \code{\link[brms]{hypothesis}}.
 #' @param loo_controls A named \code{\link[base]{list}} of two elements
 #' ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 #' containing the desired arguments to be passed on to \code{\link[brms]{loo}}
@@ -66,14 +24,30 @@
 #' not provided by the user, \code{\link{bnec}} will set the default
 #' \code{method} argument in \code{\link[loo]{loo_model_weights}} to
 #' "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.
-#' @param random A named \code{\link[base]{list}} containing the random model 
+#' @param x_var Deprecated. Use formula instead. Used to be a
+#' \code{\link[base]{character}} indicating the column heading
+#' containing the concentration (x) variable.
+#' @param y_var  Deprecated. Use formula instead. Used to be a
+#' \code{\link[base]{character}} indicating the column heading
+#' containing the response (y) variable.
+#' @param model Deprecated. Use formula instead. Used to be a
+#' \code{\link[base]{character}} vector indicating the model(s)
+#' to fit. See Details for more information.
+#' @param trials_var Deprecated. Use formula instead. Used to be a
+#' \code{\link[base]{character}} indicating the column
+#' heading for the number of "trials" for binomial or beta_binomial2 response
+#' data, as it appears in "data" (if data is supplied). Alternatively a
+#' \code{\link[base]{numeric}} vector representing the trials associated with
+#' each observation, if data are supplied as an \code{x} argument. Or a
+#' \code{\link[base]{numeric}} vector indicating the trials. If not supplied,
+#' the model may run but will not be the model you intended!
+#' @param random Deprecated. Use formula instead. Used to be a named
+#' \code{\link[base]{list}} containing the random model
 #' formula to apply to model parameters.
-#' @param random_vars A \code{\link[base]{character}} vector containing the
+#' @param random_vars Deprecated. Use formula instead. Used to be a
+#' \code{\link[base]{character}} vector containing the
 #' names of the columns containing the variables used in the random model
 #' formula.
-#' @param weights A \code{\link[base]{character}} vector containing the
-#' name of the column which should be used as weights on the model likelihood.
-#' It must be a non-negative numeric column. See details.
 #' @param ... Further arguments to \code{\link[brms]{brm}} via
 #' \code{\link{fit_bayesnec}}.
 #'
@@ -187,73 +161,37 @@
 #'                model = c("nec4param", "ecx4param"), chains = 2)
 #' }
 #'
+#' @importFrom stats model.frame
+#'
 #' @export
-bnec <- function(x, y = NULL, data, x_var, y_var, model, trials_var = NA,
-                 family = NULL, priors, x_range = NA, precision = 1000,
-                 sig_val = 0.01, iter = 1e4, warmup = floor(iter / 10) * 9,
-                 inits, sample_prior = "yes", loo_controls, random = NA,
-                 random_vars = NA, weights = NA, ...) {
-  if (!missing(x)) {
-    parse_out <- parse_x(x, y, data, x_var, y_var, model, trials_var, family)
-    data <- parse_out$data
-    x_var <- parse_out$x_var
-    y_var <- parse_out$y_var
-    trials_var <- parse_out$trials_var
-    model <- parse_out$model
-  } else {
-    if (missing(data) | missing(x_var) | missing(y_var) | missing(model)) {
-      stop("You must supply x, or all of data, x_var, y_var and model.",
-           " See ?bnec")
-    }
+bnec <- function(formula, data, x_range = NA, precision = 1000, sig_val = 0.01,
+                 loo_controls, x_var = NULL, y_var = NULL, trials_var = NULL,
+                 model = NULL, random = NULL, random_vars = NULL, ...) {
+  mf <- match.call(expand.dots = FALSE)
+  m <- sapply(c("x_var", "y_var", "trials_var", "model", "random",
+                "random_vars"), function(x, l) is.null(l[[x]]), l = mf)
+  if (!all(m)) {
+    warning("Arguments x_var, y_var, trials_var, model, random and random_vars",
+            " are deprecated. Extracting relevant data and model information",
+            " from argument formula. See ?bnec")
   }
-  msets <- names(mod_groups)
-  if (any(model %in% msets)) {
-    group_mods <- intersect(model, msets)
-    model <- union(model, unname(unlist(mod_groups[group_mods])))
-    model <- setdiff(model, msets)
-  }
-  if (is.null(family)) {
-    if (is.na(trials_var)) {
-      m_trials <- NULL
-    } else {
-      m_trials <- data[, trials_var]
-    }
-    family <- set_distribution(data[, y_var], support_integer = TRUE,
-                               trials = m_trials)
-  }
-  family <- validate_family(family)
-  fam_tag <- family$family
-  link_tag <- family$link
-  if (missing(loo_controls)) {
-    loo_controls <- list(fitting = list(), weights = list(method = "pseudobma"))
-  } else {
-    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
-    if (!"method" %in% names(loo_controls$weights)) {
-      loo_controls$weights$method <- "pseudobma"
-    }
-  }
-  model <- check_models(model, family)
-  if(min(data[, x_var])<0){
-    use_models <- setdiff(model, c("ecxsigm", "nechorme4pwr", "nechormepwr")) 
-    drop_models <- setdiff(model, use_models)
-    model <- use_models
-    if(length(drop_models)>0) {
-      message(paste("Dropping the model(s)", drop_models, 
-                                              "as they are not valid for data with negative predictor (x) values."))}
-    
-  }
-  if (length(model)==0) {stop("No valid models have been supplied for this data type.")
-    } else if (length(model) > 1) {
+  formula <- bayesnecformula(formula)
+  bdat <- model.frame(formula, data = data)
+  model <- get_model_from_formula(formula)
+  brm_args <- list(...)
+  brm_args$family <- retrieve_valid_family(brm_args, bdat)
+  model <- check_models(model, brm_args$family, bdat)
+  loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
+  if (length(model) == 0) {
+    stop("No valid models have been supplied for this data type.")
+  } else if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     for (m in seq_along(model)) {
       model_m <- model[m]
       fit_m <- try(
-        fit_bayesnec(data = data, x_var = x_var, y_var = y_var, family = family,
-                     trials_var = trials_var, priors = priors, model = model_m,
-                     iter = iter, warmup = warmup, inits = inits,
-                     sample_prior = sample_prior, random = random,
-                     random_vars = random_vars, weights = weights, ...),
+        fit_bayesnec(formula = formula, data = data, model = model_m,
+                     brm_args = brm_args),
         silent = FALSE
       )
       if (!inherits(fit_m, "try-error")) {
@@ -262,27 +200,24 @@ bnec <- function(x, y = NULL, data, x_var, y_var, model, trials_var = NA,
         mod_fits[[m]] <- NA
       }
     }
-    mod_fits <- expand_manec(mod_fits, x_range = x_range, precision = precision,
-                             sig_val = sig_val, loo_controls = loo_controls)
+    mod_fits <- expand_manec(mod_fits, formula = formula, x_range = x_range,
+                             precision = precision, sig_val = sig_val,
+                             loo_controls = loo_controls)
     if (length(mod_fits) > 1) {
       allot_class(mod_fits, "bayesmanecfit")
     } else {
-      mod_fits <- expand_nec(mod_fits[[1]], x_range = x_range,
-                             precision = precision, sig_val = sig_val,
-                             loo_controls = loo_controls,
+      mod_fits <- expand_nec(mod_fits[[1]], formula = formula,
+                             x_range = x_range, precision = precision,
+                             sig_val = sig_val, loo_controls = loo_controls,
                              model = names(mod_fits))
       allot_class(mod_fits, "bayesnecfit")
     }
   } else {
-    mod_fit <- fit_bayesnec(data = data, x_var = x_var, y_var = y_var,
-                            trials_var = trials_var, family = family,
-                            priors = priors, model = model, iter = iter,
-                            warmup = warmup, inits = inits,
-                            sample_prior = sample_prior, random = random,
-                            random_vars = random_vars, weights = weights, ...)
-    mod_fit <- expand_nec(mod_fit, x_range = x_range, precision = precision,
-                          sig_val = sig_val, loo_controls = loo_controls,
-                          model = model)
+    mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
+                            brm_args = brm_args)
+    mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
+                          precision = precision, sig_val = sig_val,
+                          loo_controls = loo_controls, model = model)
     allot_class(mod_fit, "bayesnecfit")
   }
 }

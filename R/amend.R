@@ -11,6 +11,12 @@
 #' model types you which to drop for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of
 #' model types to add to the modified fit.
+#' @param priors An object of class \code{\link[brms]{brmsprior}} which
+#' specifies user-desired prior distributions of model parameters.
+#' If missing, \code{\link{amend}} will figure out a baseline prior for each
+#' parameter. It can also be specified as a named \code{\link[base]{list}}
+#' where each name needs to correspond to the same string as \code{model}. See
+#' details.
 #'
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'
@@ -63,7 +69,9 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
   simdat <- extract_simdat(object$mod_fits[[1]])
   data <- object$mod_fits[[1]]$fit$data
   family <- object$mod_fits[[1]]$fit$family
-  model_set <- check_models(model_set, family)
+  formula <- object$mod_fits[[1]]$bayesnecformula
+  bdat <- model.frame(formula, data = data)
+  model_set <- check_models(model_set, family, bdat)
   fam_tag <- family$family
   link_tag <- family$link
   mod_fits <- vector(mode = "list", length = length(model_set))
@@ -72,11 +80,28 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
     model <- model_set[m]
     mod_m <- try(object$mod_fits[[model]], silent = TRUE)
     if (!inherits(mod_m, "prebayesnecfit")) {
+      brm_args <- list(
+        family = family, iter = simdat$iter, thin = simdat$thin,
+        warmup = simdat$warmup, inits = simdat$inits, chains = simdat$chains,
+        sample_prior = simdat$sample_prior
+      )
+      if (missing(priors)) {
+        priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
+        if (inherits(priors, "try-error")) {
+          x <- retrieve_var(bdat, "x_var", error = TRUE)
+          y <- retrieve_var(bdat, "y_var", error = TRUE)
+          custom_name <- check_custom_name(family)
+          if (family$family == "binomial" || custom_name == "beta_binomial2") {
+            tr <- retrieve_var(bdat, "trials_var", error = TRUE)
+            y <- y / tr
+          }
+          brm_args$prior <- define_prior(model, family, x, y)
+        }
+      }
       fit_m <- try(
         fit_bayesnec(
-          data = data, family = family, model = model, skip_check = TRUE,
-          iter = simdat$iter, thin = simdat$thin, warmup = simdat$warmup,
-          inits = simdat$inits, chains = simdat$chains, priors = priors
+          formula = formula, data = data, model = model,
+          brm_args = brm_args, skip_check = TRUE
         ),
         silent = FALSE
       )
@@ -89,12 +114,13 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
       mod_fits[[m]] <- mod_m
     }
   }
-  mod_fits <- expand_manec(mod_fits, x_range = x_range, precision = precision,
-                           sig_val = sig_val, loo_controls = loo_controls)
+  mod_fits <- expand_manec(mod_fits, formula = formula, x_range = x_range,
+                           precision = precision, sig_val = sig_val,
+                           loo_controls = loo_controls)
   if (length(mod_fits) > 1) {
     allot_class(mod_fits, "bayesmanecfit")
   } else {
-    mod_fits <- expand_nec(mod_fits[[1]], x_range = x_range,
+    mod_fits <- expand_nec(mod_fits[[1]], formula = formula, x_range = x_range,
                            precision = precision, sig_val = sig_val,
                            loo_controls = loo_controls, model = names(mod_fits))
     allot_class(mod_fits, "bayesnecfit")

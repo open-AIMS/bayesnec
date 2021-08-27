@@ -18,6 +18,10 @@
 #' @param xform A function to be applied as a transformation of the x data.
 #' @param lxform A function to be applied as a transformation only to axis
 #' labels and the annotated NEC / EC10 values.
+#' @param force_x A \code{\link[base]{logical}} value indicating if the argument
+#' \code{xform} should be forced on the predictor values. This is useful when
+#' the user transforms the predictor beforehand
+#' (e.g. when using a non-standard base function).
 #' @param jitter_x A \code{\link[base]{logical}} value indicating if the x
 #' data points on the plot should be jittered.
 #' @param jitter_y A \code{\link[base]{logical}} value indicating if the y
@@ -31,20 +35,24 @@
 #' @export
 #' @return a plot of the fitted model
 #' @importFrom graphics plot axis lines abline legend
-#' @importFrom stats quantile
+#' @importFrom stats quantile model.frame
 #' @importFrom grDevices adjustcolor
 plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
-                             position_legend = "topright",
-                             add_ec10 = FALSE, xform = NA,
-                             lxform = NA, jitter_x = FALSE,
-                             jitter_y = FALSE, ylab = "response",
-                             xlab = "concentration", xticks = NA) {
+                             position_legend = "topright", add_ec10 = FALSE,
+                             xform = NA, lxform = NA, force_x = FALSE,
+                             jitter_x = FALSE, jitter_y = FALSE,
+                             ylab = "Response", xlab = "Predictor",
+                             xticks = NA) {
   family <- x$fit$family$family
   custom_name <- check_custom_name(x$fit$family)
+  mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
+  y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
+  x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   if (family == "binomial" | custom_name == "beta_binomial2") {
-    y_dat <- x$fit$data$y / x$fit$data$trials
+    trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
+    y_dat <- x$fit$data[[y_var]] / x$fit$data[[trials_var]]
   } else {
-    y_dat <- x$fit$data$y
+    y_dat <- x$fit$data[[y_var]]
   }
   ec10 <- c(NA, NA, NA)
   if (add_ec10 & family != "gaussian") {
@@ -54,12 +62,16 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     ec10 <- ecx(x, type = "relative")
   }
   if (inherits(xform, "function")) {
-    x_dat <- xform(x$fit$data$x)
+    x_dat <- x$fit$data[[x_var]]
+    x_vec <- x$pred_vals$data$x
+    if (force_x) {
+      x_dat <- xform(x_dat)
+      x_vec <- xform(x_vec)
+    }
     nec <- xform(x$nec)
-    x_vec <- xform(x$pred_vals$data$x)
     ec10 <- xform(ec10)
   } else {
-    x_dat <- x$fit$data$x
+    x_dat <- x$fit$data[[x_var]]
     nec <- x$nec
     x_vec <- x$pred_vals$data$x
   }
@@ -144,18 +156,22 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @export
 predict.bayesnecfit <- function(object, ..., precision = 100, x_range = NA) {
-  mod_dat <- object$fit$data
+  browser()
+  data <- model.frame(object$bayesnecformula, data = object$fit$data)
+  x <- retrieve_var(data, "x_var", error = TRUE)
   fit <- object$fit
   if (any(is.na(x_range))) {
-    x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length = precision)
+    x_seq <- seq(min(x), max(x), length = precision)
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
-  new_dat <- data.frame(x = x_seq)
+  new_dat <- data.frame(x_seq)
+  names(new_dat) <- x_var
   fam_tag <- fit$family$family
   custom_name <- check_custom_name(fit$family)
   if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
-    new_dat$trials <- 1
+    trials_var <- attr(data, "bnec_pop")[["trials_var"]]
+    new_dat[[trials_var]] <- 1
   }
   pred_out <- brms::posterior_epred(fit, newdata = new_dat,
                                     re_formula = NA)

@@ -4,131 +4,83 @@
 #'
 #' @inheritParams bnec
 #'
-#' @details
-#'
-#' This is a wrapper function to test input data criteria and find the
+#' @details This is a wrapper function to test input data criteria and find the
 #' correct priors for use in \code{\link{fit_bayesnec}}.
 #'
 #' @importFrom stats na.omit
+#'
 #' @return A \code{\link[base]{list}} of modified elements
 #' necessary for \code{\link{fit_bayesnec}}.
-check_data <- function(data, x_var, y_var, trials_var, family, model,
-                       random_vars = NA, weights) {
-  vars <- list(
-    x_var = x_var, y_var = y_var, trials_var = trials_var, weights = weights
-  )
-  are_chars <- sapply(vars, is_character)
-  if (!all(are_chars)) {
-    to_show <- are_chars[!are_chars]
-    to_show <- sapply(vars[names(to_show)], identity)
-    to_show <- paste0(names(to_show), " = ", unname(to_show), collapse = "; ")
-    stop("Input variables (", to_show, ") must be characters. See ?bnec")
+check_data <- function(data, family, model) {
+  y <- retrieve_var(data, "y_var", error = TRUE)
+  x <- retrieve_var(data, "x_var", error = TRUE)
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  y_pos <- which(names(bnec_pop_vars) == "y_var")
+  x_pos <- which(names(bnec_pop_vars) == "x_var")
+  if (!is.numeric(x)) {
+    x_flag <- names(data)[x_pos]
+    stop(paste0("Your indicated predictor column \"", x_flag,
+                "\" contains data that is class ", class(x),
+                ". The function bnec requires the predictor",
+                " column to be numeric."))
   }
-  use_vars <- na.omit(c(y_var = y_var, x_var = x_var, trials_var, weights))
-  var_colms <- match(use_vars, colnames(data))
-  missing_colms <- data.frame(val = use_vars[which(is.na(var_colms))],
-                              stringsAsFactors = FALSE)
-  missing_colms$element <- rownames(missing_colms)
-  if (length(na.omit(var_colms)) < length(use_vars)) {
-    stop(
-      paste0(
-        "Your indicated ",
-        paste(paste0(missing_colms$element, " '", missing_colms$val, "'"),
-              collapse = ", "), " is not present in your input data. ",
-        "Has this been misspecified?"
-      )
-    )
+  if (contains_negative(x) && model == "necsigm") {
+    stop("necsigm should only be called when predictor values are >= 0")
   }
-  y_dat <- data[, y_var]
-  x_dat <- data[, x_var]
-  if (!inherits(x_dat, "numeric")) {
-    stop(paste0("Your indicated x_var column ", x_var,
-                " contains data that is class ", class(x_dat),
-                ". The function bnec requires the concentration",
-                " data (argument x_var) to be numeric."))
-  }
-  if (any(x_dat < 0) & model == "necsigm") {
-    message("necsigm should only be called when x values are >= 0")
-    stop()
-  }
-  test_x <- mean(x_dat)
-  test_y <- mean(y_dat)
+  test_x <- mean(x)
+  test_y <- mean(y)
   if (!is.finite(test_x)) {
-    stop("Your x_var column contains values that are not finite.")
+    stop("Your predictor column contains values that are not finite.")
   }
   if (!is.finite(test_y)) {
-    stop("Your y_var column contains values that are not finite.")
+    stop("Your response column contains values that are not finite.")
   }
-  resp_check <- mean(y_dat[which(x_dat < mean(x_dat))]) <
-    mean(y_dat[which(x_dat > mean(x_dat))])
-  if (resp_check & !grepl("horme", model)) {
-    stop("The mean value of the response for the lower half of the ",
-         "concentration data are lower than that of the upper half ",
-         "of the concentration data. bnec only fits concentration ",
-         "response data where the response declines with increasing ",
-         "values of concentration.")
-  }
-  if (!model %in% c("neclin", "nec3param", "necsigm", "nec4param",
-                    "nechorme", "neclinhorme", "nechorme4",
-                    "ecx4param", "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3", "ecxlin",
-                    "ecxexp", "ecxsigm", "ecxll3", "ecxll4", "ecxll5", "ecxhormebc4", "ecxhormebc5", 
-                    "nechormepwr", "nechorme4pwr","nechormepwr01")) {
-    stop(paste("The model", model, "is not a valid model name.",
-               "Please check ?bnec for valid model calls."))
+  resp_check <- mean(y[which(x < mean(x))]) <
+    mean(y[which(x > mean(x))])
+  if (resp_check && !grepl("horme", model)) {
+    stop("The mean value of the response column for the lower half of the ",
+         "predictor column are lower than that of the upper half ",
+         "of the predictor column. bnec only allows for ",
+         "response values to decline with increasing values of predictor.")
   }
   fam_tag <- family$family
-  x_type <- set_distribution(x_dat)
-  if (min(data[, x_var]) == 0 & x_type == "Gamma") {
-    tt <- data[, x_var]
-    min_val <- min(tt[which(tt > 0)])
-    data[which(tt == 0), x_var] <- tt[which(tt == 0)] + (min_val / 10)
+  x_type <- set_distribution(x)
+  if (min(x) == 0 & x_type == "Gamma") {
+    min_val <- min(x[x > 0])
+    data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)
   }
-  if (min(data[, y_var]) == 0 & fam_tag == "Gamma") {
-    tt <- data[, y_var]
-    min_val <- min(tt[which(tt > 0)])
-    data[which(tt == 0), y_var] <- tt[which(tt == 0)] + (min_val / 10)
+  if (min(y) == 0 & fam_tag == "Gamma") {
+    min_val <- min(y[y > 0])
+    data[y == 0, y_pos] <- y[y == 0] + (min_val / 10)
   }
-  if (min(data[, x_var]) == 0 & x_type == "beta") {
-    tt <- data[, x_var]
-    min_val <- min(tt[which(tt > 0)])
-    data[which(tt == 0), x_var] <- tt[which(tt == 0)] + (min_val / 10)
+  if (min(x) == 0 & x_type == "beta") {
+    min_val <- min(x[x > 0])
+    data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)
   }
-  if (min(data[, y_var]) == 0 & fam_tag == "beta") {
-    tt <- data[, y_var]
-    min_val <- min(tt[which(tt > 0)])
-    data[which(tt == 0), y_var] <- tt[which(tt == 0)] + (min_val / 10)
+  if (min(y) == 0 & fam_tag == "beta") {
+    min_val <- min(y[y > 0])
+    data[y == 0, y_pos] <- y[y == 0] + (min_val / 10)
   }
-  if (max(data[, x_var]) == 1 & x_type == "beta") {
-    tt <- data[, x_var]
-    data[which(tt == 1), x_var] <- tt[which(tt == 1)] - 0.001
+  if (max(x) == 1 & x_type == "beta") {
+    data[x == 1, x_pos] <- x[x == 1] - 0.001
   }
-  if (max(data[, y_var]) == 1 & fam_tag == "beta") {
-    tt <- data[, y_var]
-    data[which(tt == 1), y_var] <- tt[which(tt == 1)] - 0.001
+  if (max(y) == 1 & fam_tag == "beta") {
+    data[y == 1, y_pos] <- y[y == 1] - 0.001
   }
-  mod_dat <- data.frame(x = data[, x_var],
-                        y = data[, y_var],
+  mod_dat <- data.frame(x = data[[x_pos]], y = data[[y_pos]],
                         trials = nrow(data))
-  if (!is.na(random_vars[1])) {
-    rand_dat <- data.frame(data[, random_vars])
-    colnames(rand_dat) <- random_vars
-    mod_dat <- cbind(mod_dat, rand_dat)
-  }
-  response <- data[, y_var]
-  custom_name <- check_custom_name(family)
-  if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
-    mod_dat$trials <- data[, trials_var]
-    response <- data[, y_var] / data[, trials_var]
-  }
-  if (!is.na(weights)) {
-    weights <- data[, weights]
-    if (!is.numeric(weights) ||
-          (is.numeric(weights) && sum(weights < 0) >= 1)) {
-      stop("Weights must be non-negative.")
+  bnec_group_vars <- attr(data, "bnec_group")
+  if (!is.na(bnec_group_vars)) {
+    are_numeric <- sapply(data[, bnec_group_vars, drop = FALSE], is.numeric)
+    if (any(are_numeric)) {
+      to_flag <- paste0(names(are_numeric)[are_numeric], collapse = "; ")
+      stop("Your group-level column(s): ", to_flag, "; must be either a",
+           " character or a factor.")
     }
-    mod_dat$weights <- weights
   }
-  priors <- define_prior(model = model, family = family,
-                         predictor = mod_dat$x, response = response)
-  list(priors = priors, mod_dat = mod_dat, family = family)
+  custom_name <- check_custom_name(family)
+  if (fam_tag == "binomial" || custom_name == "beta_binomial2") {
+    mod_dat$trials <- retrieve_var(data, "trials_var", error = TRUE)
+  }
+  list(mod_dat = mod_dat, family = family)
 }
