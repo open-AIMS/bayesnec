@@ -154,7 +154,7 @@
     <p>bind_nec</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>bind_nec</span><span class='op'>(</span><span class='va'>data</span>, <span class='va'>nec_vals</span><span class='op'>)</span></code></pre></div>
+    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>bind_nec</span><span class='op'>(</span><span class='va'>data</span>, <span class='va'>nec_vals</span>, xform <span class='op'>=</span> <span class='cn'>NA</span><span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -167,6 +167,11 @@
       <th>nec_vals</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector containing the mean,
 and 95% credible intervals of NEC values.</p></td>
+    </tr>
+    <tr>
+      <th>xform</th>
+      <td><p>A function to apply to the returned estimated concentration
+values.</p></td>
     </tr>
     </table>
 

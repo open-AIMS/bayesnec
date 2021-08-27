@@ -154,104 +154,36 @@
     <p>Fits a concentration(dose)-response model using brms</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>fit_bayesnec</span><span class='op'>(</span>
-  <span class='va'>data</span>,
-  <span class='va'>x_var</span>,
-  <span class='va'>y_var</span>,
-  trials_var <span class='op'>=</span> <span class='cn'>NA</span>,
-  family <span class='op'>=</span> <span class='cn'>NULL</span>,
-  <span class='va'>priors</span>,
-  model <span class='op'>=</span> <span class='cn'>NA</span>,
-  <span class='va'>inits</span>,
-  skip_check <span class='op'>=</span> <span class='cn'>FALSE</span>,
-  random <span class='op'>=</span> <span class='cn'>NA</span>,
-  random_vars <span class='op'>=</span> <span class='cn'>NA</span>,
-  weights <span class='op'>=</span> <span class='cn'>NA</span>,
-  <span class='va'>...</span>
-<span class='op'>)</span></code></pre></div>
+    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>fit_bayesnec</span><span class='op'>(</span><span class='va'>formula</span>, <span class='va'>data</span>, model <span class='op'>=</span> <span class='cn'>NA</span>, <span class='va'>brm_args</span>, skip_check <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>formula</th>
+      <td><p>....</p></td>
+    </tr>
     <tr>
       <th>data</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for
 the model.</p></td>
     </tr>
     <tr>
-      <th>x_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the concentration (x) variable.</p></td>
-    </tr>
-    <tr>
-      <th>y_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the response (y) variable.</p></td>
-    </tr>
-    <tr>
-      <th>trials_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column
-heading for the number of "trials" for binomial or beta_binomial2 response
-data, as it appears in "data" (if data is supplied). Alternatively a
-<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector representing the trials associated with
-each observation, if data are supplied as an <code>x</code> argument. Or a
-<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials. If not supplied,
-the model may run but will not be the model you intended!</p></td>
-    </tr>
-    <tr>
-      <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or
-an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical
-distribution (family) to use for the y (response) data. See details.</p></td>
-    </tr>
-    <tr>
-      <th>priors</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which
-specifies user-desired prior distributions of model parameters.
-If missing, <code><a href='bnec.html'>bnec</a></code> will figure out a baseline prior for each
-parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
-where each name needs to correspond to the same string as <code>model</code>. See
-details.</p></td>
-    </tr>
-    <tr>
       <th>model</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
+      <td><p>Deprecated. Use formula instead. Used to be a
+<code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
 to fit. See Details for more information.</p></td>
     </tr>
     <tr>
-      <th>inits</th>
-      <td><p>Optional. Initialisation values. Must be a
-<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" named lists, where "n" corresponds to the
-number of chains, and names correspond to the parameter names of a given
-model.</p></td>
+      <th>brm_args</th>
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing further
+arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>.</p></td>
     </tr>
     <tr>
       <th>skip_check</th>
       <td><p>Should data check via <code><a href='check_data.html'>check_data</a></code>
 be avoided? Only relevant to function <code><a href='amend.html'>amend</a></code>.
 Defaults to FALSE.</p></td>
-    </tr>
-    <tr>
-      <th>random</th>
-      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the random model
-formula to apply to model parameters.</p></td>
-    </tr>
-    <tr>
-      <th>random_vars</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
-names of the columns containing the variables used in the random model
-formula.</p></td>
-    </tr>
-    <tr>
-      <th>weights</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
-name of the column which should be used as weights on the model likelihood.
-It must be a non-negative numeric column. See details.</p></td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code> via
-<code>fit_bayesnec</code>.</p></td>
     </tr>
     </table>
 

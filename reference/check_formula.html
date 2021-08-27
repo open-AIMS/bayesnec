@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>parse_x — parse_x • bayesnec</title>
+<title>check_formula — check_formula • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="parse_x — parse_x" />
-<meta property="og:description" content="Fits a concentration(dose)-response model using brms" />
+<meta property="og:title" content="check_formula — check_formula" />
+<meta property="og:description" content="Checks if input formula is of correct class/structure" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -145,66 +145,28 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>parse_x</h1>
+    <h1>check_formula</h1>
     <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/parse_x.R'><code>R/parse_x.R</code></a></small>
-    <div class="hidden name"><code>parse_x.Rd</code></div>
+    <div class="hidden name"><code>check_formula.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Fits a concentration(dose)-response model using brms</p>
+    <p>Checks if input formula is of correct class/structure</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>parse_x</span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>y</span>, <span class='va'>data</span>, <span class='va'>x_var</span>, <span class='va'>y_var</span>, <span class='va'>model</span>, <span class='va'>trials_var</span>, <span class='va'>family</span><span class='op'>)</span></code></pre></div>
+    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>check_formula</span><span class='op'>(</span><span class='va'>formula</span>, <span class='va'>data</span><span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>x</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the x-variable
-(typically concentration) in modelling, or a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>
-containing both the x and y data.</p></td>
-    </tr>
-    <tr>
-      <th>y</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the y-variable
-(typically the response) in modelling.</p></td>
+      <th>formula</th>
+      <td><p>....</p></td>
     </tr>
     <tr>
       <th>data</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for
 the model.</p></td>
-    </tr>
-    <tr>
-      <th>x_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the concentration (x) variable.</p></td>
-    </tr>
-    <tr>
-      <th>y_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the response (y) variable.</p></td>
-    </tr>
-    <tr>
-      <th>model</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
-to fit. See Details for more information.</p></td>
-    </tr>
-    <tr>
-      <th>trials_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column
-heading for the number of "trials" for binomial or beta_binomial2 response
-data, as it appears in "data" (if data is supplied). Alternatively a
-<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector representing the trials associated with
-each observation, if data are supplied as an <code>x</code> argument. Or a
-<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials. If not supplied,
-the model may run but will not be the model you intended!</p></td>
-    </tr>
-    <tr>
-      <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or
-an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical
-distribution (family) to use for the y (response) data. See details.</p></td>
     </tr>
     </table>
 

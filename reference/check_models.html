@@ -154,21 +154,20 @@
     <p>Check model input for a Bayesian model fit</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>check_models</span><span class='op'>(</span><span class='va'>model</span>, <span class='va'>family</span><span class='op'>)</span></code></pre></div>
+    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>check_models</span><span class='op'>(</span><span class='va'>model</span>, <span class='va'>family</span>, <span class='va'>data</span><span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>model</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
+      <td><p>Deprecated. Use formula instead. Used to be a
+<code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
 to fit. See Details for more information.</p></td>
     </tr>
     <tr>
-      <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or
-an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical
-distribution (family) to use for the y (response) data. See details.</p></td>
+      <th>data</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>.</p></td>
     </tr>
     </table>
 

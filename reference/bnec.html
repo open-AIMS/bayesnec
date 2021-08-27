@@ -157,26 +157,18 @@ averaged predictions based on WAIC model weights</p>
     </div>
 
     <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>bnec</span><span class='op'>(</span>
-  <span class='va'>x</span>,
-  y <span class='op'>=</span> <span class='cn'>NULL</span>,
+  <span class='va'>formula</span>,
   <span class='va'>data</span>,
-  <span class='va'>x_var</span>,
-  <span class='va'>y_var</span>,
-  <span class='va'>model</span>,
-  trials_var <span class='op'>=</span> <span class='cn'>NA</span>,
-  family <span class='op'>=</span> <span class='cn'>NULL</span>,
-  <span class='va'>priors</span>,
   x_range <span class='op'>=</span> <span class='cn'>NA</span>,
   precision <span class='op'>=</span> <span class='fl'>1000</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
-  iter <span class='op'>=</span> <span class='fl'>10000</span>,
-  warmup <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/Round.html'>floor</a></span><span class='op'>(</span><span class='va'>iter</span><span class='op'>/</span><span class='fl'>10</span><span class='op'>)</span> <span class='op'>*</span> <span class='fl'>9</span>,
-  <span class='va'>inits</span>,
-  sample_prior <span class='op'>=</span> <span class='st'>"yes"</span>,
   <span class='va'>loo_controls</span>,
-  random <span class='op'>=</span> <span class='cn'>NA</span>,
-  random_vars <span class='op'>=</span> <span class='cn'>NA</span>,
-  weights <span class='op'>=</span> <span class='cn'>NA</span>,
+  x_var <span class='op'>=</span> <span class='cn'>NULL</span>,
+  y_var <span class='op'>=</span> <span class='cn'>NULL</span>,
+  trials_var <span class='op'>=</span> <span class='cn'>NULL</span>,
+  model <span class='op'>=</span> <span class='cn'>NULL</span>,
+  random <span class='op'>=</span> <span class='cn'>NULL</span>,
+  random_vars <span class='op'>=</span> <span class='cn'>NULL</span>,
   <span class='va'>...</span>
 <span class='op'>)</span></code></pre></div>
 
@@ -184,60 +176,13 @@ averaged predictions based on WAIC model weights</p>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>x</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the x-variable
-(typically concentration) in modelling, or a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>
-containing both the x and y data.</p></td>
-    </tr>
-    <tr>
-      <th>y</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector to use for the y-variable
-(typically the response) in modelling.</p></td>
+      <th>formula</th>
+      <td><p>....</p></td>
     </tr>
     <tr>
       <th>data</th>
       <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the data to use for
 the model.</p></td>
-    </tr>
-    <tr>
-      <th>x_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the concentration (x) variable.</p></td>
-    </tr>
-    <tr>
-      <th>y_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
-containing the response (y) variable.</p></td>
-    </tr>
-    <tr>
-      <th>model</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
-to fit. See Details for more information.</p></td>
-    </tr>
-    <tr>
-      <th>trials_var</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column
-heading for the number of "trials" for binomial or beta_binomial2 response
-data, as it appears in "data" (if data is supplied). Alternatively a
-<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector representing the trials associated with
-each observation, if data are supplied as an <code>x</code> argument. Or a
-<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials. If not supplied,
-the model may run but will not be the model you intended!</p></td>
-    </tr>
-    <tr>
-      <th>family</th>
-      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string, a function, or
-an object of class <code><a href='https://rdrr.io/r/stats/family.html'>family</a></code> defining the statistical
-distribution (family) to use for the y (response) data. See details.</p></td>
-    </tr>
-    <tr>
-      <th>priors</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which
-specifies user-desired prior distributions of model parameters.
-If missing, <code>bnec</code> will figure out a baseline prior for each
-parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
-where each name needs to correspond to the same string as <code>model</code>. See
-details.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -257,34 +202,6 @@ concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
-      <th>iter</th>
-      <td><p>The number of iterations to be passed to
-<code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>. Defaults to 1e4.</p></td>
-    </tr>
-    <tr>
-      <th>warmup</th>
-      <td><p>A positive integer specifying number of warmup (similar to
-burnin) iterations. This also specifies the number of iterations used for
-stepsize adaptation, so warmup samples should not be used for inference.
-The number of warmup should not be larger than <code>iter</code> and the default is
-<code>floor(iter / 5) * 4</code>.</p></td>
-    </tr>
-    <tr>
-      <th>inits</th>
-      <td><p>Optional. Initialisation values. Must be a
-<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of "n" named lists, where "n" corresponds to the
-number of chains, and names correspond to the parameter names of a given
-model.</p></td>
-    </tr>
-    <tr>
-      <th>sample_prior</th>
-      <td><p>Indicate if samples from priors should be drawn
-additionally to the posterior samples. Options are "no", "yes"
-(the default), and "only". Among others, these samples can be used to
-calculate Bayes factors for point hypotheses via
-<code><a href='https://rdrr.io/pkg/brms/man/hypothesis.brmsfit.html'>hypothesis</a></code>.</p></td>
-    </tr>
-    <tr>
       <th>loo_controls</th>
       <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of two elements
 ("fitting" and/or "weights"), each being a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
@@ -298,21 +215,46 @@ not provided by the user, <code>bnec</code> will set the default
 "pseudobma". See ?<code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> for further info.</p></td>
     </tr>
     <tr>
+      <th>x_var</th>
+      <td><p>Deprecated. Use formula instead. Used to be a
+<code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
+containing the concentration (x) variable.</p></td>
+    </tr>
+    <tr>
+      <th>y_var</th>
+      <td><p>Deprecated. Use formula instead. Used to be a
+<code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column heading
+containing the response (y) variable.</p></td>
+    </tr>
+    <tr>
+      <th>trials_var</th>
+      <td><p>Deprecated. Use formula instead. Used to be a
+<code><a href='https://rdrr.io/r/base/character.html'>character</a></code> indicating the column
+heading for the number of "trials" for binomial or beta_binomial2 response
+data, as it appears in "data" (if data is supplied). Alternatively a
+<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector representing the trials associated with
+each observation, if data are supplied as an <code>x</code> argument. Or a
+<code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector indicating the trials. If not supplied,
+the model may run but will not be the model you intended!</p></td>
+    </tr>
+    <tr>
+      <th>model</th>
+      <td><p>Deprecated. Use formula instead. Used to be a
+<code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
+to fit. See Details for more information.</p></td>
+    </tr>
+    <tr>
       <th>random</th>
-      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the random model
+      <td><p>Deprecated. Use formula instead. Used to be a named
+<code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the random model
 formula to apply to model parameters.</p></td>
     </tr>
     <tr>
       <th>random_vars</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
+      <td><p>Deprecated. Use formula instead. Used to be a
+<code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
 names of the columns containing the variables used in the random model
 formula.</p></td>
-    </tr>
-    <tr>
-      <th>weights</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the
-name of the column which should be used as weights on the model likelihood.
-It must be a non-negative numeric column. See details.</p></td>
     </tr>
     <tr>
       <th>...</th>
@@ -419,33 +361,13 @@ twice to the data frame."</p>
 <span class='r-in'><span class='co'># A single model</span></span>
 <span class='r-in'><span class='va'>exmp_a</span> <span class='op'>&lt;-</span> <span class='fu'>bnec</span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,</span>
 <span class='r-in'>               model <span class='op'>=</span> <span class='st'>"nec4param"</span>, chains <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span></span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a beta distribution.</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Start sampling</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a beta distribution.</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Arguments x_var, y_var, trials_var, model, random and random_vars are deprecated. Extracting relevant data and model information from argument formula. See ?bnec</span>
+<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in bayesnecformula(formula)</span> argument "formula" is missing, with no default</span>
 <span class='r-in'><span class='co'># Two models model</span></span>
 <span class='r-in'><span class='va'>exmp_b</span> <span class='op'>&lt;-</span> <span class='fu'>bnec</span><span class='op'>(</span>data <span class='op'>=</span> <span class='va'>nec_data</span>, x_var <span class='op'>=</span> <span class='st'>"x"</span>, y_var <span class='op'>=</span> <span class='st'>"y"</span>,</span>
 <span class='r-in'>               model <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec4param"</span>, <span class='st'>"ecx4param"</span><span class='op'>)</span>, chains <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span></span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a beta distribution.</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Start sampling</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a beta distribution.</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a ecx4param model and a beta distribution.</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Start sampling</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a ecx4param model using a beta distribution.</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Fitted models are:  nec4param ecx4param</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Method 'posterior_samples' is deprecated. Please see ?as_draws for recommended alternatives.</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'ecx4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 4 (4.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
+<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Arguments x_var, y_var, trials_var, model, random and random_vars are deprecated. Extracting relevant data and model information from argument formula. See ?bnec</span>
+<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in bayesnecformula(formula)</span> argument "formula" is missing, with no default</span>
 <span class='r-in'><span class='co'># }</span></span>
 <span class='r-in'></span>
 </code></pre></div>
