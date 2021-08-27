@@ -2,8 +2,8 @@
 #'
 #' Calculates posterior dispersion metric
 #'
-#' @param model An object of class \code{\link[brms]{brmsfit}} whose
-#' distribution family is either \code{\link[stats]{poisson}} or
+#' @param model An object of class \code{\link{bayesnecfit}} whose distribution
+#' family is either \code{\link[stats]{poisson}} or
 #' \code{\link[stats]{binomial}}.
 #' @param summary Logical. Should summary stats be returned instead of full
 #' vector? Defaults to FALSE.
@@ -35,6 +35,9 @@
 #' 
 #' @export
 dispersion <- function(model, summary = FALSE, seed = 10) {
+  formula <- model$bayesnecformula
+  model <- model$fit
+  mod_dat <- model.frame(formula, data = model$data)
   allowed_fams <- c("poisson", "binomial")
   fam <- model$family$family
   if (fam %in% c(allowed_fams)) {
@@ -51,7 +54,8 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       prd_mu <- fam_fcts$linkinv(lpd_out[i, ])
       prd_var_y <- fam_fcts$variance(prd_mu)
       if (fam == "binomial") {
-        prd_var_y <- prd_var_y * model$data$trials
+        trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
+        prd_var_y <- prd_var_y * model$data[[trials_var]]
       }
       prd_res <- (obs_y - prd_y) / sqrt(prd_var_y)
       sim_y <- ppd_out[i, ]
