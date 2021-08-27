@@ -101,7 +101,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e5, ...) {
   init_ranges <- lapply(inits, get_init_ranges, x, pred_fct, fct_args)
   are_good <- all(sapply(init_ranges, check_limits, limits))
   n_t <- 1
-  while (!are_good & n_t <= n_trials) {
+  while (!are_good && n_t <= n_trials) {
     inits <- make_inits(model, fct_args, ...)
     init_ranges <- lapply(inits, get_init_ranges, x, pred_fct, fct_args)
     are_good <- all(sapply(init_ranges, check_limits, limits))
