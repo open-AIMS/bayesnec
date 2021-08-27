@@ -8,7 +8,7 @@
 #' \code{\link[brms]{brmsprior}}.
 validate_priors <- function(priors, model) {
   if (missing(priors)) {
-    stop("No valid prior specified")
+    stop("No valid prior specified.")
   }
   if (inherits(priors, "list")) {
     if (!model %in% names(priors)) {
@@ -18,16 +18,12 @@ validate_priors <- function(priors, model) {
     }
     priors <- priors[[model]]
     if (is.null(priors)) {
-      stop("No valid prior specified")
+      stop("No valid prior specified.")
     }
   }
   if (!inherits(priors, "brmsprior")) {
-    message("Prior for model ", model,
-            " is not of class brmsprior; ",
-            "see ?bnec for argument details ",
-            "and example.\n",
-            "Using bayesnec default priors.")
-    stop("No valid prior specified")
+    stop("Prior for model ", model, " is not of class brmsprior; see ?bnec for",
+         " argument details and example.\n Using bayesnec default priors.")
   }
   priors
 }
