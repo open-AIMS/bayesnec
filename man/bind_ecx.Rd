@@ -2,7 +2,7 @@
 % Please edit documentation in R/autoplot.R
 \name{bind_ecx}
 \alias{bind_ecx}
-\title{bind_nec}
+\title{bind_ecx}
 \usage{
 bind_ecx(data, ecx_vals)
 }
@@ -16,5 +16,5 @@ and 95\% credible intervals of ECx values.}
 A \code{\link[base]{data.frame}}.
 }
 \description{
-bind_nec
+bind_ecx
 }

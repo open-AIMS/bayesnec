@@ -4,7 +4,7 @@
 \alias{autoplot.bayesnecfit}
 \title{autoplot.bayesnecfit}
 \usage{
-\method{autoplot}{bayesnecfit}(object, ..., nec = TRUE, ecx = FALSE)
+\method{autoplot}{bayesnecfit}(object, ..., nec = TRUE, ecx = FALSE, force_x = FALSE, xform = NA)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} as returned by
@@ -15,6 +15,14 @@ function \code{\link{bnec}}.}
 \item{nec}{Should NEC values be added to the plot? Defaults to TRUE.}
 
 \item{ecx}{Should ECx values be added to the plot? Defaults to FALSE.}
+
+\item{force_x}{A \code{\link[base]{logical}} value indicating if the argument
+\code{xform} should be forced on the predictor values. This is useful when
+the user transforms the predictor beforehand
+(e.g. when using a non-standard base function).}
+
+\item{xform}{A function to apply to the returned estimated concentration
+values.}
 }
 \value{
 A \code{\link[ggplot2]{ggplot}} object.
@@ -41,7 +49,7 @@ autoplot(test2, ecx = TRUE, ecx_val = 50)
 # plots multiple models, one at a time, with interactive prompt
 autoplot(test)
 # plot model averaged predictions
-autoplot(test, all = FALSE)
+autoplot(test, all_models = FALSE)
 # plot all panels together
 autoplot(test, ecx = TRUE, ecx_val = 50, multi_facet = TRUE)
 }

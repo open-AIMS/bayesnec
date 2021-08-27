@@ -6,6 +6,7 @@
 \usage{
 expand_manec(
   object,
+  formula,
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
@@ -15,6 +16,8 @@ expand_manec(
 \arguments{
 \item{object}{a \code{\link{bayesmanecfit}} mod_fits output list, as
 returned by \code{\link{bnec}} when more than one model is supplied.}
+
+\item{formula}{....}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 

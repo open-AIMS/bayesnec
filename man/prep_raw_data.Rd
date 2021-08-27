@@ -4,7 +4,7 @@
 \alias{prep_raw_data}
 \title{prep_raw_data}
 \usage{
-prep_raw_data(brms_fit)
+prep_raw_data(brms_fit, bayesnecformula)
 }
 \arguments{
 \item{brms_fit}{A \code{\link[brms]{brmsfit}} object.}

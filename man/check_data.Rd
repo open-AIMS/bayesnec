@@ -4,49 +4,15 @@
 \alias{check_data}
 \title{check_data}
 \usage{
-check_data(
-  data,
-  x_var,
-  y_var,
-  trials_var,
-  family,
-  model,
-  random_vars = NA,
-  weights
-)
+check_data(data, family, model)
 }
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for
 the model.}
 
-\item{x_var}{A \code{\link[base]{character}} indicating the column heading
-containing the concentration (x) variable.}
-
-\item{y_var}{A \code{\link[base]{character}} indicating the column heading
-containing the response (y) variable.}
-
-\item{trials_var}{A \code{\link[base]{character}} indicating the column
-heading for the number of "trials" for binomial or beta_binomial2 response
-data, as it appears in "data" (if data is supplied). Alternatively a
-\code{\link[base]{numeric}} vector representing the trials associated with
-each observation, if data are supplied as an \code{x} argument. Or a
-\code{\link[base]{numeric}} vector indicating the trials. If not supplied,
-the model may run but will not be the model you intended!}
-
-\item{family}{Either a \code{\link[base]{character}} string, a function, or
-an object of class \code{\link[stats]{family}} defining the statistical
-distribution (family) to use for the y (response) data. See details.}
-
-\item{model}{A \code{\link[base]{character}} vector indicating the model(s)
+\item{model}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
-
-\item{random_vars}{A \code{\link[base]{character}} vector containing the
-names of the columns containing the variables used in the random model
-formula.}
-
-\item{weights}{A \code{\link[base]{character}} vector containing the
-name of the column which should be used as weights on the model likelihood.
-It must be a non-negative numeric column. See details.}
 }
 \value{
 A \code{\link[base]{list}} of modified elements

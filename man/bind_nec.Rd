@@ -4,13 +4,16 @@
 \alias{bind_nec}
 \title{bind_nec}
 \usage{
-bind_nec(data, nec_vals)
+bind_nec(data, nec_vals, xform = NA)
 }
 \arguments{
 \item{data}{A \code{\link[base]{data.frame}}.}
 
 \item{nec_vals}{A \code{\link[base]{numeric}} vector containing the mean,
 and 95\% credible intervals of NEC values.}
+
+\item{xform}{A function to apply to the returned estimated concentration
+values.}
 }
 \value{
 A \code{\link[base]{data.frame}}.

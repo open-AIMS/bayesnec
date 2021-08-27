@@ -5,67 +5,26 @@
 \title{bnec}
 \usage{
 bnec(
-  x,
-  y = NULL,
+  formula,
   data,
-  x_var,
-  y_var,
-  model,
-  trials_var = NA,
-  family = NULL,
-  priors,
   x_range = NA,
   precision = 1000,
   sig_val = 0.01,
-  iter = 10000,
-  warmup = floor(iter/10) * 9,
-  inits,
-  sample_prior = "yes",
   loo_controls,
-  random = NA,
-  random_vars = NA,
-  weights = NA,
+  x_var = NULL,
+  y_var = NULL,
+  trials_var = NULL,
+  model = NULL,
+  random = NULL,
+  random_vars = NULL,
   ...
 )
 }
 \arguments{
-\item{x}{A \code{\link[base]{numeric}} vector to use for the x-variable
-(typically concentration) in modelling, or a \code{\link[base]{data.frame}}
-containing both the x and y data.}
-
-\item{y}{A \code{\link[base]{numeric}} vector to use for the y-variable
-(typically the response) in modelling.}
+\item{formula}{....}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use for
 the model.}
-
-\item{x_var}{A \code{\link[base]{character}} indicating the column heading
-containing the concentration (x) variable.}
-
-\item{y_var}{A \code{\link[base]{character}} indicating the column heading
-containing the response (y) variable.}
-
-\item{model}{A \code{\link[base]{character}} vector indicating the model(s)
-to fit. See Details for more information.}
-
-\item{trials_var}{A \code{\link[base]{character}} indicating the column
-heading for the number of "trials" for binomial or beta_binomial2 response
-data, as it appears in "data" (if data is supplied). Alternatively a
-\code{\link[base]{numeric}} vector representing the trials associated with
-each observation, if data are supplied as an \code{x} argument. Or a
-\code{\link[base]{numeric}} vector indicating the trials. If not supplied,
-the model may run but will not be the model you intended!}
-
-\item{family}{Either a \code{\link[base]{character}} string, a function, or
-an object of class \code{\link[stats]{family}} defining the statistical
-distribution (family) to use for the y (response) data. See details.}
-
-\item{priors}{An object of class \code{\link[brms]{brmsprior}} which
-specifies user-desired prior distributions of model parameters.
-If missing, \code{\link{bnec}} will figure out a baseline prior for each
-parameter. It can also be specified as a named \code{\link[base]{list}}
-where each name needs to correspond to the same string as \code{model}. See
-details.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -78,26 +37,6 @@ significance of the predicted posterior values against the lowest observed
 concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
-\item{iter}{The number of iterations to be passed to
-\code{\link[brms]{brm}}. Defaults to 1e4.}
-
-\item{warmup}{A positive integer specifying number of warmup (similar to
-burnin) iterations. This also specifies the number of iterations used for
-stepsize adaptation, so warmup samples should not be used for inference.
-The number of warmup should not be larger than \code{iter} and the default is
-\code{floor(iter / 5) * 4}.}
-
-\item{inits}{Optional. Initialisation values. Must be a
-\code{\link[base]{list}} of "n" named lists, where "n" corresponds to the
-number of chains, and names correspond to the parameter names of a given
-model.}
-
-\item{sample_prior}{Indicate if samples from priors should be drawn
-additionally to the posterior samples. Options are "no", "yes"
-(the default), and "only". Among others, these samples can be used to
-calculate Bayes factors for point hypotheses via
-\code{\link[brms]{hypothesis}}.}
-
 \item{loo_controls}{A named \code{\link[base]{list}} of two elements
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
@@ -109,16 +48,35 @@ not provided by the user, \code{\link{bnec}} will set the default
 \code{method} argument in \code{\link[loo]{loo_model_weights}} to
 "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
 
-\item{random}{A named \code{\link[base]{list}} containing the random model
+\item{x_var}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} indicating the column heading
+containing the concentration (x) variable.}
+
+\item{y_var}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} indicating the column heading
+containing the response (y) variable.}
+
+\item{trials_var}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} indicating the column
+heading for the number of "trials" for binomial or beta_binomial2 response
+data, as it appears in "data" (if data is supplied). Alternatively a
+\code{\link[base]{numeric}} vector representing the trials associated with
+each observation, if data are supplied as an \code{x} argument. Or a
+\code{\link[base]{numeric}} vector indicating the trials. If not supplied,
+the model may run but will not be the model you intended!}
+
+\item{model}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} vector indicating the model(s)
+to fit. See Details for more information.}
+
+\item{random}{Deprecated. Use formula instead. Used to be a named
+\code{\link[base]{list}} containing the random model
 formula to apply to model parameters.}
 
-\item{random_vars}{A \code{\link[base]{character}} vector containing the
+\item{random_vars}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} vector containing the
 names of the columns containing the variables used in the random model
 formula.}
-
-\item{weights}{A \code{\link[base]{character}} vector containing the
-name of the column which should be used as weights on the model likelihood.
-It must be a non-negative numeric column. See details.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}} via
 \code{\link{fit_bayesnec}}.}

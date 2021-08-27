@@ -7,12 +7,9 @@
 define_prior(model, family, predictor, response)
 }
 \arguments{
-\item{model}{A \code{\link[base]{character}} vector indicating the model(s)
+\item{model}{Deprecated. Use formula instead. Used to be a
+\code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
-
-\item{family}{Either a \code{\link[base]{character}} string, a function, or
-an object of class \code{\link[stats]{family}} defining the statistical
-distribution (family) to use for the y (response) data. See details.}
 
 \item{predictor}{The predictor variable for the NEC model fit.}
 
