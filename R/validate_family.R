@@ -16,16 +16,14 @@ validate_family <- function(family) {
     }
   }
   if (!inherits(family, "family")) {
-    stop("argument family either is not an actual family, ",
-         "or is of incorrect class")
+    stop("Argument \"family\" either is not an actual family, ",
+         "or is of incorrect class.")
   }
   fam_tag <- family$family
   if (!fam_tag %in% names(mod_fams)) {
-    stop("You have specified family as ",
-         fam_tag,
-         ", which is not currently implemented. ",
-         "bnec only allows: ",
-         paste0(mod_fams, collapse = ", "))
+    stop("You have specified family as ", fam_tag, ", which is not currently",
+         " implemented. bnec only allows: ", paste0(mod_fams, collapse = ", "),
+         ".")
   }
   family
 }
