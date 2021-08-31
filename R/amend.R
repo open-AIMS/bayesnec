@@ -114,7 +114,8 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
       mod_fits[[m]] <- mod_m
     }
   }
-  mod_fits <- expand_manec(mod_fits, formula = formula, x_range = x_range,
+  formulas <- lapply(mod_fits, `[[`, "bayesnecformula")
+  mod_fits <- expand_manec(mod_fits, formula = formulas, x_range = x_range,
                            precision = precision, sig_val = sig_val,
                            loo_controls = loo_controls)
   if (length(mod_fits) > 1) {
