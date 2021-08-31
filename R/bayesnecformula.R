@@ -79,10 +79,19 @@
 #' cannot attest to their functionality within
 #' \code{\link[bayesnec:bayesnec-package]{bayesnec}}.
 #' 
-#' @return A validated object of class \code{\link{bayesnecformula}} and
+#' \bold{Validation of formula}
+#' Please note that the function only checks for the input nature of the
+#' \code{formula} argument and adds a new class. This function **does not**
+#' perform any validation on the model nor checks on its adequacy to work with
+#' other functions in the package. For that please refer to the function
+#' \code{\link{check_formula}} which requires the dataset associated with the
+#' formula.
+#'
+#' @return An object of class \code{\link{bayesnecformula}} and
 #' \code{\link[stats]{formula}}.
 #'
 #' @seealso
+#'   \code{\link{check_formula}},
 #'   \code{\link{models}},
 #'   \code{\link{show_params}}
 #'
@@ -103,8 +112,7 @@ bayesnecformula <- function(formula, ...) {
   } else if (!inherits(formula, "formula")) {
     stop("Your formula must be either a valid character or a formula object.")
   }
-  formula <- allot_class(formula, c("formula", "bayesnecformula"))
-  formula_checks(formula)
+  allot_class(formula, c("formula", "bayesnecformula"))
 }
 
 #' @export
@@ -112,18 +120,222 @@ bnf <- function(formula, ...) {
   bayesnecformula(formula = formula, ...)
 }
 
-#' @noRd
-formula_checks <- function(formula) {
+#' Check if input model formula is appropriate to use with
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}}
+#'
+#' Perform a series of checks to ensure that the input formula is valid
+#' for usage within \code{\link[bayesnec:bayesnec-package]{bayesnec}}.
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}} as returned
+#' by function \code{\link{bayesnecformula}}.
+#' @param data A \code{\link[stats]{data.frame}} containing the variables
+#' specified in \code{formula}.
+#' @param run_par_checks See details. A \code{\link[stats]{logical}} defining
+#' whether random terms for specific parameters should be checked against the
+#' underlying concentration-response model defined in \code{formula}.
+#' Defaults to \code{FALSE}.
+#'
+#' @return A validated object of class \code{\link{bayesnecformula}} and
+#' \code{\link[stats]{formula}}.
+#'
+#' @details This function allows the user to make sure that the input formula
+#' will allow for a successful model fit with the function \code{\link{bnec}}.
+#' Should all checks pass, the function returns the original formula. Otherwise
+#' it will fail and requires that the user fixes it until they're able to use
+#' it with \code{\link{bnec}}.
+#'
+#' The argument \code{run_par_checks} is irrelevant for most usages of this
+#' package because it only applies if three conditions are met: 1) the user has
+#' specified a group-level effect; 2) the group-level effects is parameter 
+#' specific (e.g. \code{(par | group_variable)} rather than \code{pgl/ogl(group_variable)}); and 3) The user is keen to learn if the specified parameter
+#' is found in the specified model (via argument \code{model} in the \code{crf} term -- see details in ?bayesnecformula).
+#' 
+#' @seealso
+#'   \code{\link{bnec}},
+#'   \code{\link{bayesnecformula}}
+#'
+#' @examples
+#' library(bayesnec)
+#' nec3param <- function(beta, nec, top, x) {
+#'   top * exp(-exp(beta) * (x - nec) *
+#'     ifelse(x - nec < 0, 0, 1))
+#' }
+#' 
+#' data <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
+#'                    group_1 = sample(c("a", "b"), 10, replace = TRUE),
+#'                    group_2 = sample(c("c", "d"), 10, replace = TRUE))
+#' data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
+#' 
+#' \donttest{
+#' f_1 <- y ~ crf(x, "nec3param") + z
+#' # regular formula not allowed, wrap it with function bnf
+#' check_formula(f_1, data)
+#' # population-level covariates are not allowed
+#' check_formula(bnf(f_1), data)
+#' # expect a series of messages for because not all
+#' # nec models have the "bot" parameter
+#' f_2 <- y | trials(tr) ~ crf(x, "nec") + (nec + bot | group_1)
+#' check_formula(bnf(f_2), data, run_par_checks = TRUE)
+#' }
+#' # runs fine
+#' f_3 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
+#' check_formula(bnf(f_3), data)
+#' f_4 <- y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
+#' inherits(check_formula(bnf(f_4), data), "bayesnecformula")
+#'
+#' @export
+check_formula <- function(formula, data, run_par_checks = FALSE) {
+  UseMethod("check_formula")
+}
+
+#' Check if input model formula is appropriate to use with
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}}
+#'
+#' Perform a series of checks to ensure that the input formula is appropriately
+#' set up for usage within \code{\link[bayesnec:bayesnec-package]{bayesnec}}.
+#'
+#' @inheritParams check_formula
+#' @inherit check_formula examples details return
+#'
+#' @importFrom formula.tools lhs rhs
+#'
+#' @export
+check_formula.bayesnecformula <- function(formula, data,
+                                          run_par_checks = FALSE) {
+  check_formula.default(formula = formula, data = data,
+                        run_par_checks = run_par_checks)
+}
+
+#' Check if input model formula is appropriate to use with
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}}
+#'
+#' Perform a series of checks to ensure that the input formula is appropriately
+#' set up for usage within \code{\link[bayesnec:bayesnec-package]{bayesnec}}.
+#'
+#' @inheritParams check_formula
+#' @inherit check_formula examples details return
+#'
+#' @importFrom formula.tools lhs rhs
+#'
+#' @export
+check_formula.default <- function(formula, data, run_par_checks = FALSE) {
   if (!inherits(formula, "bayesnecformula")) {
     stop("Your formula must be of class bayesnecformula.")
   }
-  # make sure that whatever's on right hand side is either x or random variable!
-  # make sure all variables actually exist in the dataframe!
-  # check for class of group-level effects
-  x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  rhs_calls <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(rhs(formula)))
+  split_rhs_calls <- strsplit(rhs_calls, " impossiblestr ")[[1]]
+  x_str <- grep("crf(", split_rhs_calls, fixed = TRUE, value = TRUE)
   if (length(x_str) == 0) {
     stop("You must specify which non-linear function to use with crf.",
          " See ?bayesnecformula")
+  }
+  crf_vars <- all.vars(str2lang(x_str))
+  if (length(crf_vars) != 1) {
+    stop("The `crf` term in your formula can only have one variable; you",
+         " specified ", paste0(crf_vars, collapse = "; "), ".")
+  } else if (!crf_vars %in% names(data)) {
+    stop("Predictor variable \"", crf_vars, "\" not present in data.frame.")
+  }
+  all_models <- get_model_from_formula(formula)
+  model <- all_models[1]
+  brms_bf <- get(paste0("bf_", model))
+  split_random_call <- setdiff(split_rhs_calls, x_str)
+  if (any(grepl("pgl(", split_random_call, fixed = TRUE))) {
+    str_calls <- grep("pgl(", split_random_call, fixed = TRUE, value = TRUE)
+    vars <- all.vars(str2lang(paste0(str_calls, collapse = " + ")))
+    for (i in seq_along(brms_bf[[2]])) {
+      for (j in seq_along(vars)) {
+        if (!vars[j] %in% names(data)) {
+          stop("Group-level variable(s) ",
+               paste0("\"", vars[j], "\"", collapse = "; "),
+               " not found in dataset.")
+        } else if (any(sapply(data[, vars[j]], is.numeric))) {
+          stop("Group-level variables cannot be numeric.")
+        }
+      }
+    }
+    split_random_call <- setdiff(split_random_call, str_calls)
+  }
+  if (any(grepl("|", split_random_call, fixed = TRUE))) {
+    str_calls <- grep("|", split_random_call, fixed = TRUE, value = TRUE)
+    split_str_calls <- lapply(str_calls, clean_bar_glef)
+    tmp_list <- list()
+    for (i in seq_along(split_str_calls)) {
+      if (any(grepl(" \\+ ", split_str_calls[[i]][2]))) {
+        stop("Right-hand side of the \"|\" symbol in the group-level portion",
+             " of your formula can only have one grouping variable. Issue",
+             " found on: ", str_calls[i])
+      }
+      if (any(grepl(" \\+ ", split_str_calls[[i]][1]))) {
+        extended_pars <- strsplit(split_str_calls[[i]][1], " \\+ ")[[1]]
+        tmp_list_i <- vector(mode = "list", length = length(extended_pars))
+        for (j in seq_along(tmp_list_i)) {
+          tmp_list_i[[j]] <- c(extended_pars[j], split_str_calls[[i]][2])
+        }
+        tmp_list <- c(tmp_list, tmp_list_i)
+      } else {
+        tmp_list <- c(tmp_list, split_str_calls[i])
+      }
+    }
+    split_str_calls <- tmp_list
+    pars <- sapply(split_str_calls, `[[`, 1)
+    vars <- sapply(split_str_calls, `[[`, 2)
+    vars <- strsplit(vars, "\\/|\\:")[[1]]
+    if (!all(vars %in% names(data))) {
+      to_flag <- vars[!vars %in% names(data)]
+      stop("Group-level variable(s) ",
+           paste0("\"", to_flag, "\"", collapse = "; "),
+           " not found in dataset.")
+    }
+    if (run_par_checks) {
+      message("Performing single parameter checks on all models...")
+      for (h in seq_along(all_models)) {
+        tmp_brms_bf <- get(paste0("bf_", all_models[h]))
+        if (!all(pars %in% names(tmp_brms_bf[[2]]))) {
+          to_flag <- pars[!pars %in% names(tmp_brms_bf[[2]])]
+          message("The parameter(s) ",
+                  paste0("\"", to_flag, "\"", collapse = "; "),
+                  " not valid parameters in ", all_models[h], ". If this",
+                  " was a mistake, check ?models and ?show_params, otherwise",
+                  " ignore.")
+        }
+      }
+    }
+    split_random_call <- setdiff(split_random_call, str_calls)
+  }
+  if (any(grepl("ogl(", split_random_call, fixed = TRUE))) {
+    str_calls <- grep("ogl(", split_random_call, fixed = TRUE, value = TRUE)
+    vars <- all.vars(str2lang(paste0(str_calls, collapse = " + ")))
+    for (i in seq_along(brms_bf[[2]])) {
+      for (j in seq_along(vars)) {
+        if (!vars[j] %in% names(data)) {
+          stop("Group-level variable(s) ",
+                  paste0("\"", vars[j], "\"", collapse = "; "),
+                  " not found in dataset.")
+        }
+      }
+    }
+    split_random_call <- setdiff(split_random_call, str_calls)
+  }
+  if (length(split_random_call) > 0) {
+    stop("Term(s) ", paste0(split_random_call, collapse = "; "), "; are not",
+         "allowed in a bayesnec formula. See ?bayesnecformula")
+  }
+  lhs_vars <- all.vars(lhs(formula))
+  exist_all_left <- all(lhs_vars %in% names(data))
+  if (!exist_all_left) {
+    to_flag <- paste0(setdiff(lhs_vars, names(data)), collapse = "; ")
+    stop("Variable(s) ", to_flag, " not present in data.frame")
+  }
+  lhs_calls <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(lhs(formula)))
+  split_lhs_calls <- strsplit(lhs_calls, " \\| | impossiblestr ")[[1]]
+  no_resp <- split_lhs_calls[-1]
+  if (length(no_resp) > 0) {
+    if (sum(grepl("trials\\(|weights\\(", no_resp)) < length(no_resp)) {
+      message("You have specified brms special aterms other than trials and",
+              " weights. bnec may yield unexpected model fits, proceed at",
+              " your own risk. See ?bayesnecformula.")
+    }
   }
   formula
 }
@@ -134,9 +346,10 @@ formula_checks <- function(formula) {
 #' and a formula of class \code{\link{bayesnecformula}}.
 #'
 #' @param formula A formula of class \code{\link{bayesnecformula}}.
+#' @param data A \code{\link[stats]{data.frame}} containing the variables
+#' specified in \code{formula}.
 #' @param ... Additional arguments to be passed to 
-#' \code{\link[stats]{model.frame}}. Currently, only \code{data}
-#' (must be a \code{\link[stats]{data.frame}}) is allowed.
+#' \code{\link{check_formula}}.
 #'
 #' @importFrom stats model.frame na.omit
 #'
@@ -162,7 +375,7 @@ formula_checks <- function(formula) {
 #' data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 #' 
 #' f_1 <- y ~ crf(x, "nec3param")
-#' f_2 <- log(y) | trials(tr) ~ crf(sqrt(x), "nec3param")
+#' f_2 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
 #' f_3 <- y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
 #' f_4 <- y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)
 #' 
@@ -174,13 +387,12 @@ formula_checks <- function(formula) {
 #' model.frame(bnf(f_4), data)
 #' 
 #' @export
-model.frame.bayesnecformula <- function(formula, ...) {
-  dot_args <- list(...)
-  if (!"data" %in% names(dot_args) && !inherits(dot_args[[1]], "data.frame")) {
+model.frame.bayesnecformula <- function(formula, data, ...) {
+  if (!inherits(data, "data.frame")) {
     stop("Argument data is missing.")
   }
-  pre_list <- simplify_formula(formula, dot_args[[1]])
-  data <- model.frame(pre_list$formula, ...)
+  pre_list <- simplify_formula(formula, data, ...)
+  data <- model.frame(pre_list$formula, data = data)
   bnec_pop <- na.omit(pre_list$pop_vars)
   names(bnec_pop) <- c("y_var", "x_var", "trials_var")[seq_along(bnec_pop)]
   attr(data, "bnec_pop") <- bnec_pop
@@ -192,8 +404,8 @@ model.frame.bayesnecformula <- function(formula, ...) {
 #' @noRd
 #' @importFrom formula.tools lhs rhs
 #' @importFrom stats as.formula terms
-simplify_formula <- function(formula, data) {
-  formula <- formula_checks(formula)
+simplify_formula <- function(formula, data, ...) {
+  formula <- check_formula(formula, data, ...)
   formula_lhs <- lhs(formula)
   if (length(formula_lhs) < 3) {
     y_call <- formula_lhs
@@ -270,14 +482,8 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
     vars <- all.vars(str2lang(paste0(str_calls, collapse = " + ")))
     for (i in seq_along(brmform[[2]])) {
       for (j in seq_along(vars)) {
-        if (!vars[j] %in% names(data)) {
-          message("Group-level variable(s) ",
-                  paste0("\"", vars[j], "\"", collapse = "; "),
-                  " not found in dataset. Ignoring...")
-        } else {
-          brmform[[2]][[i]] <- str2lang(paste0(deparse1(brmform[[2]][[i]]),
-                                               " + (1 |", vars[j], ")"))
-        }
+        brmform[[2]][[i]] <- str2lang(paste0(deparse1(brmform[[2]][[i]]),
+                                             " + (1 |", vars[j], ")"))
       }
     }
   }
@@ -286,11 +492,6 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
     split_str_calls <- lapply(str_calls, clean_bar_glef)
     tmp_list <- list()
     for (i in seq_along(split_str_calls)) {
-      if (any(grepl(" \\+ ", split_str_calls[[i]][2]))) {
-        stop("Right-hand side of the \"|\" symbol in the group-level portion",
-             " of your formula can only have one grouping variable. Issue",
-             " found on: ", str_calls[i])
-      }
       if (any(grepl(" \\+ ", split_str_calls[[i]][1]))) {
         extended_pars <- strsplit(split_str_calls[[i]][1], " \\+ ")[[1]]
         tmp_list_i <- vector(mode = "list", length = length(extended_pars))
@@ -305,12 +506,6 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
     split_str_calls <- tmp_list
     pars <- sapply(split_str_calls, `[[`, 1)
     vars <- sapply(split_str_calls, `[[`, 2)
-    if (!all(vars %in% names(data))) {
-      to_flag <- vars[!vars %in% names(data)]
-      stop("Group-level variable(s) ",
-           paste0("\"", to_flag, "\"", collapse = "; "),
-           " not found in dataset.")
-    }
     if (!all(pars %in% names(brmform[[2]]))) {
       to_flag <- pars[!pars %in% names(brmform[[2]])]
       message("The parameter(s) ", paste0("\"", to_flag, "\"", collapse = "; "),
