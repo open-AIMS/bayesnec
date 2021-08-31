@@ -79,16 +79,20 @@ pull_out <- function(manec, model, loo_controls, ...) {
             "Returning original object.")
     return(manec)
   }
-  mod_fits <- expand_manec(manec$mod_fits[to_go], loo_controls = loo_controls,
-                           ...) %>%
-    suppressMessages
+  formulas <- lapply(manec$mod_fits[to_go], `[[`, "bayesnecformula")
+  mod_fits <- expand_manec(manec$mod_fits[to_go], formula = formulas,
+                           loo_controls = loo_controls, ...) %>%
+    suppressMessages %>%
+    suppressWarnings
   message("Pulling out model(s): ", paste0(to_go, collapse = ", "))
   if (length(mod_fits) > 1) {
     allot_class(mod_fits, "bayesmanecfit")
   } else {
     mod_fits <- expand_nec(mod_fits[[1]], model = to_go,
                            formula = mod_fits[[1]]$bayesnecformula,
-                           loo_controls = loo_controls, ...)
+                           loo_controls = loo_controls, ...) %>%
+    suppressMessages %>%
+    suppressWarnings
     allot_class(mod_fits, "bayesnecfit")
   }
 }

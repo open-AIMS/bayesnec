@@ -81,6 +81,10 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
 #'
 #' @param object a \code{\link{bayesmanecfit}} mod_fits output list, as
 #' returned by \code{\link{bnec}} when more than one model is supplied.
+#' @param formula Either a \code{\link[base]{character}} string defining an
+#' R formula or an actual \code{\link[stats]{formula}} object. See
+#' \code{\link{bayesnecformula}} and \code{\link{check_formula}}. It could also
+#' be a list of formulas if multiple objects are passed to \code{object}.
 #'
 #' @return A \code{\link[base]{list}} of model statistical output derived from
 #' the input model list.
@@ -117,13 +121,14 @@ expand_manec <- function(object, formula, x_range = NA, precision = 1000,
   }
   mod_fits <- object[success_models]
   object <- object[success_models]
+  formula <- formula[success_models]
   for (i in seq_along(object)) {
-    object[[i]] <- expand_nec(object[[i]], formula = formula, x_range = x_range,
-                              precision = precision, sig_val = sig_val,
-                              loo_controls = loo_controls,
+    object[[i]] <- expand_nec(object[[i]], formula = formula[[i]],
+                              x_range = x_range, precision = precision,
+                              sig_val = sig_val, loo_controls = loo_controls,
                               model = success_models[i])
   }
-  mod_dat <- model.frame(formula, data = object[[1]]$fit$data)
+  mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")
   colnames(disp) <- c("dispersion_Estimate",
