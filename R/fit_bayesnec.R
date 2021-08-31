@@ -18,7 +18,7 @@
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE) {
   formula <- single_model_formula(formula, model)
-  bdat <- model.frame(formula, data = data)
+  bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
   y <- retrieve_var(bdat, "y_var", error = TRUE)
   tr <- retrieve_var(bdat, "trials_var")
