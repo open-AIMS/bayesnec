@@ -15,7 +15,7 @@ R formula or an actual \code{\link[stats]{formula}} object. See details.}
 \item{...}{Unused.}
 }
 \value{
-A validated object of class \code{\link{bayesnecformula}} and
+An object of class \code{\link{bayesnecformula}} and
 \code{\link[stats]{formula}}.
 }
 \description{
@@ -87,8 +87,22 @@ times more weight than an observation with weight 1. It also means that
 using a weight of 2 is equivalent to adding the corresponding observation
 twice to the data frame." Other \code{aterms} might be added, though we
 cannot attest to their functionality within
-\code{\link[bayesnec:bayesnec-package]{bayesnec}}.
+\code{\link[bayesnec:bayesnec-package]{bayesnec}}, i.e. checks will
+be done outside via \code{\link[brms]{brm}}.
 }
+
+\strong{NB:} \code{aterms} other than \code{trials()} and \code{weights()} are
+currently omitted from \code{\link{model.frame}} output. If you need other
+\code{aterms} as part of that output please raise an issue on our GitHub
+page.
+
+\bold{Validation of formula}
+Please note that the function only checks for the input nature of the
+\code{formula} argument and adds a new class. This function \strong{does not}
+perform any validation on the model nor checks on its adequacy to work with
+other functions in the package. For that please refer to the function
+\code{\link{check_formula}} which requires the dataset associated with the
+formula.
 }
 \examples{
 library(bayesnec)
@@ -100,8 +114,16 @@ bnf(log(y) | trials(tr) ~ crf(sqrt(x), "nec3param"))
 bnf(y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2))
 bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 
+\donttest{
+# complex transformations are not advisable because
+# they are passed directly to Stan via brms
+# and are likely to fail -- transform your variable beforehand!
+try(bnf(log(y) | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
+}
 }
 \seealso{
+\code{\link{check_formula}},
+\code{\link{model.frame}},
 \code{\link{models}},
 \code{\link{show_params}}
 }

@@ -38,20 +38,20 @@ library(bayesnec)
 options(mc.cores = 2)
 data(nec_data)
 
-test <- bnec(data = nec_data, x_var = "x", y_var = "y",
-             model = c("nec3param", "nec4param"), iter = 2e2,
-             family = Beta(link = "identity"))
-test2 <- pull_out(test, "nec3param")
-autoplot(test2)
-autoplot(test2, nec = FALSE)
-autoplot(test2, ecx = TRUE, ecx_val = 50)
+necs <- bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
+             iter = 2e2, family = Beta(link = "identity"))
+nec3param <- pull_out(necs, "nec3param")
+autoplot(nec3param)
+autoplot(nec3param, nec = FALSE)
+autoplot(nec3param, ecx = TRUE, ecx_val = 50)
 
-# plots multiple models, one at a time, with interactive prompt
-autoplot(test)
 # plot model averaged predictions
-autoplot(test, all_models = FALSE)
+autoplot(necs)
 # plot all panels together
-autoplot(test, ecx = TRUE, ecx_val = 50, multi_facet = TRUE)
+autoplot(necs, ecx = TRUE, ecx_val = 50, all_models = TRUE)
+# plots multiple models, one at a time, with interactive prompt
+autoplot(necs, ecx = TRUE, ecx_val = 50, all_models = TRUE,
+         multi_facet = FALSE)
 }
 }
 \seealso{

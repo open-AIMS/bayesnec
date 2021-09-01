@@ -36,11 +36,12 @@ not provided by the user, \code{\link{bnec}} will set the default
 \code{method} argument in \code{\link[loo]{loo_model_weights}} to
 "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
 
-\item{x_range}{A range of x values over which to consider extracting ECx.}
+\item{x_range}{A range of predictor values over which to consider extracting
+ECx.}
 
-\item{precision}{The length of the x vector used for posterior predictions,
-and over which to extract ECx values. Large values will be slower but more
-precise.}
+\item{precision}{The length of the predictor vector used for posterior
+predictions, and over which to extract ECx values. Large values will be
+slower but more precise.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values against the lowest observed

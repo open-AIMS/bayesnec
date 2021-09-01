@@ -7,7 +7,11 @@
 validate_priors(priors, model)
 }
 \arguments{
-\item{model}{Deprecated. Use formula instead. Used to be a
+\item{priors}{Either a \code{\link[base]{data.frame}} of class
+\code{\link[brms]{brmsprior}}, or a \code{\link[base]{list}} containing
+multiple objects of class \code{\link[brms]{brmsprior}}.}
+
+\item{model}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 }

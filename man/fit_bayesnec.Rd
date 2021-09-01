@@ -7,12 +7,14 @@
 fit_bayesnec(formula, data, model = NA, brm_args, skip_check = FALSE)
 }
 \arguments{
-\item{formula}{....}
+\item{formula}{Either a \code{\link[base]{character}} string defining an
+R formula or an actual \code{\link[stats]{formula}} object. See
+\code{\link{bayesnecformula}} and \code{\link{check_formula}}.}
 
-\item{data}{A \code{\link[base]{data.frame}} containing the data to use for
-the model.}
+\item{data}{A \code{\link[base]{data.frame}} containing the data to use with
+the \code{formula}.}
 
-\item{model}{Deprecated. Use formula instead. Used to be a
+\item{model}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 

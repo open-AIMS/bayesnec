@@ -12,7 +12,7 @@ add_criteria(object, loo_f_controls, model)
 \item{loo_f_controls}{A named \code{\link[base]{list}} containing the
 desired arguments to be passed on to \code{\link[brms]{loo}}.}
 
-\item{model}{Deprecated. Use formula instead. Used to be a
+\item{model}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 }
