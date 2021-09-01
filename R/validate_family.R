@@ -4,6 +4,9 @@
 #'
 #' @inheritParams bnec
 #'
+#' @param family A family \code{\link[base]{character}} string or a 
+#' \code{\link[stats]{family}} function.
+#'
 #' @return An object of class \code{\link[stats]{family}}.
 validate_family <- function(family) {
   if (inherits(family, "function")) {

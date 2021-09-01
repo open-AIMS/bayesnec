@@ -4,6 +4,7 @@
 #'
 #' @inheritParams bnec
 #'
+#' @param family A \code{\link[stats]{family}} function.
 #' @param data A \code{\link[base]{data.frame}}.
 #'
 #' @details This is a wrapper function to test input model criteria and find the

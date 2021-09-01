@@ -1,6 +1,7 @@
 #' prep_raw_data
 #'
 #' @param brms_fit A \code{\link[brms]{brmsfit}} object.
+#' @param bayesnecformula A \code{\link{bayesnecformula}} formula object.
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'

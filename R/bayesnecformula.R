@@ -141,9 +141,9 @@ bnf <- function(formula, ...) {
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}} as returned
 #' by function \code{\link{bayesnecformula}}.
-#' @param data A \code{\link[stats]{data.frame}} containing the variables
+#' @param data A \code{\link[base]{data.frame}} containing the variables
 #' specified in \code{formula}.
-#' @param run_par_checks See details. A \code{\link[stats]{logical}} defining
+#' @param run_par_checks See details. A \code{\link[base]{logical}} defining
 #' whether random terms for specific parameters should be checked against the
 #' underlying concentration-response model defined in \code{formula}.
 #' Defaults to \code{FALSE}.
@@ -360,11 +360,11 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
 
 #' Extracting the model frame from a \code{\link{bayesnecformula}}
 #'
-#' Recovers evaluated \code{\link[stats]{data.frame}} given input \code{data}
+#' Recovers evaluated \code{\link[base]{data.frame}} given input \code{data}
 #' and a formula of class \code{\link{bayesnecformula}}.
 #'
 #' @param formula A formula of class \code{\link{bayesnecformula}}.
-#' @param data A \code{\link[stats]{data.frame}} containing the variables
+#' @param data A \code{\link[base]{data.frame}} containing the variables
 #' specified in \code{formula}.
 #' @param ... Additional arguments to be passed to 
 #' \code{\link{check_formula}}.
@@ -373,9 +373,9 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
 #'
 #' @details If the formula contains transformations to variables x and y,
 #' these are evaluated and returned as part of the 
-#' \code{\link[stats]{data.frame}}.
+#' \code{\link[base]{data.frame}}.
 #'
-#' @return A \code{\link[stats]{data.frame}} with additional attributes
+#' @return A \code{\link[base]{data.frame}} with additional attributes
 #' detailing the population-level variables (attribute \code{"bnec_pop"})
 #' (response y, predictor x, and, if binomial a formula, trials) and, if
 #' applicable, the group-level variables (attribute \code{"bnec_group"}).
