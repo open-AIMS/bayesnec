@@ -36,7 +36,7 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
   new_dat <- data.frame(x_seq)
   names(new_dat) <- x_var
   custom_name <- check_custom_name(fit$family)
-  if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
+  if (fam_tag == "binomial" || custom_name == "beta_binomial2") {
     trials_col_name <- attr(mod_dat, "bnec_pop")[["trials_var"]]
     new_dat[[trials_col_name]] <- 1
   }
@@ -122,8 +122,8 @@ expand_manec <- function(object, formula, x_range = NA, precision = 1000,
             "Returning ", success_models)
     return(object[success_models])
   } else {
-    message(paste("Fitted models are: ",
-                  paste(success_models, collapse = " ")))
+    message(paste0("Fitted models are: ",
+                   paste0(success_models, collapse = " ")))
   }
   mod_fits <- object[success_models]
   object <- object[success_models]
