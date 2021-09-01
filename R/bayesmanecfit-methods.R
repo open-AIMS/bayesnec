@@ -157,29 +157,40 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 predict.bayesmanecfit <- function(object, ..., precision = 100, x_range = NA) {
   mod_fits <- object$mod_fits
   model_set <- names(mod_fits)
-  mod_dat <- object$mod_fits[[1]]$fit$data
+  ref_mod_fit <- object$mod_fits[[1]]
+  mod_dat <- ref_mod_fit$fit$data
+  bdat <- model.frame(ref_mod_fit$bayesnecformula, data = mod_dat)
+  x_var <- attr(bdat, "bnec_pop")[["x_var"]]
   mod_stats <- object$mod_stats
   if (any(is.na(x_range))) {
-    x_seq <- seq(min(mod_dat$x), max(mod_dat$x), length = precision)
+    x_seq <- seq(min(mod_dat[[x_var]]), max(mod_dat[[x_var]]),
+                 length = precision)
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
   }
-  pred_list <- lapply(mod_fits, FUN = function(m) {
+  pred_list <- lapply(mod_fits, function(m, x_seq) {
     fit <- m$fit
-    new_dat <- data.frame(x = x_seq)
+    bdat <- model.frame(m$bayesnecformula, data = fit$data)
+    x_var <- attr(bdat, "bnec_pop")[["x_var"]]
+    new_dat <- data.frame(x_seq)
+    names(new_dat) <- x_var
     fam_tag <- fit$family$family
     custom_name <- check_custom_name(fit$family)
     if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
-      new_dat$trials <- 1
+      trials_var <- attr(bdat, "bnec_pop")[["trials_var"]]
+      new_dat[[trials_var]] <- 1
     }
     posterior_epred(fit, newdata = new_dat, re_formula = NA)
-  })
+  }, x_seq = x_seq)
   sample_size <- min(sapply(pred_list, nrow))
   pred_out <- do_wrapper(model_set, w_pred_list_calc, pred_list, sample_size,
                          mod_stats, fct = "rbind")
-  pred_data <- cbind(x = x_seq, apply(pred_out, 2, estimates_summary) %>%
-                                  t %>%
-                                  data.frame)
+  pred_data <- cbind(
+    x = x_seq,
+    apply(pred_out, 2, estimates_summary) %>%
+      t %>%
+      data.frame
+  )
   list(data = pred_data, posterior = pred_out)
 }
 
