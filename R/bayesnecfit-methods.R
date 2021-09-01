@@ -156,10 +156,10 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @export
 predict.bayesnecfit <- function(object, ..., precision = 100, x_range = NA) {
-  browser()
   data <- model.frame(object$bayesnecformula, data = object$fit$data)
-  x <- retrieve_var(data, "x_var", error = TRUE)
+  x_var <- attr(data, "bnec_pop")[["x_var"]]
   fit <- object$fit
+  x <- fit$data[[x_var]]
   if (any(is.na(x_range))) {
     x_seq <- seq(min(x), max(x), length = precision)
   } else {
@@ -170,7 +170,7 @@ predict.bayesnecfit <- function(object, ..., precision = 100, x_range = NA) {
   fam_tag <- fit$family$family
   custom_name <- check_custom_name(fit$family)
   if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
-    trials_var <- attr(data, "bnec_pop")[["trials_var"]]
+    trials_var <- retrieve_var(data, "trials_var", error = TRUE)
     new_dat[[trials_var]] <- 1
   }
   pred_out <- brms::posterior_epred(fit, newdata = new_dat,
