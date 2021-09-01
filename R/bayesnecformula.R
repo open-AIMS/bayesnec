@@ -77,7 +77,13 @@
 #' using a weight of 2 is equivalent to adding the corresponding observation
 #' twice to the data frame." Other \code{aterms} might be added, though we
 #' cannot attest to their functionality within
-#' \code{\link[bayesnec:bayesnec-package]{bayesnec}}.
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}}, i.e. checks will
+#' be done outside via \code{\link[brms]{brm}}.
+#' 
+#' **NB:** \code{aterms} other than \code{trials()} and \code{weights()} are
+#' currently omitted from \code{\link{model.frame}} output. If you need other
+#' \code{aterms} as part of that output please raise an issue on our GitHub
+#' page.
 #' 
 #' \bold{Validation of formula}
 #' Please note that the function only checks for the input nature of the
@@ -92,6 +98,7 @@
 #'
 #' @seealso
 #'   \code{\link{check_formula}},
+#'   \code{\link{model.frame}},
 #'   \code{\link{models}},
 #'   \code{\link{show_params}}
 #'
@@ -105,6 +112,12 @@
 #' bnf(y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2))
 #' bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 #'
+#' \donttest{
+#' # complex transformations are not advisable because
+#' # they are passed directly to Stan via brms
+#' # and are likely to fail -- transform your variable beforehand!
+#' try(bnf(log(y) | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
+#' }
 #' @export
 bayesnecformula <- function(formula, ...) {
   if (is.character(formula)) {
@@ -149,7 +162,12 @@ bnf <- function(formula, ...) {
 #' specified a group-level effect; 2) the group-level effects is parameter 
 #' specific (e.g. \code{(par | group_variable)} rather than \code{pgl/ogl(group_variable)}); and 3) The user is keen to learn if the specified parameter
 #' is found in the specified model (via argument \code{model} in the \code{crf} term -- see details in ?bayesnecformula).
-#' 
+#'
+#' **NB:** \code{aterms} other than \code{trials()} and \code{weights()} are
+#' currently omitted from \code{\link{model.frame}} output. If you need other
+#' \code{aterms} as part of that output please raise an issue on our GitHub
+#' page. See details about \code{aterms} in ?bayesnecformula.
+#'
 #' @seealso
 #'   \code{\link{bnec}},
 #'   \code{\link{bayesnecformula}}
@@ -582,4 +600,9 @@ crf <- function(x, model, arg_to_retrieve = "x") {
   } else {
     stop("arg_to_retrieve must be either \"x\" or \"model\".")
   }
+}
+
+#' @noRd
+trials <- function(...) {
+  identity(...)
 }
