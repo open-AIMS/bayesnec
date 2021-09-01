@@ -17,13 +17,16 @@ expand_nec(
 \arguments{
 \item{object}{An object of class \code{\link{prebayesnecfit}}.}
 
-\item{formula}{....}
+\item{formula}{Either a \code{\link[base]{character}} string defining an
+R formula or an actual \code{\link[stats]{formula}} object. See
+\code{\link{bayesnecformula}} and \code{\link{check_formula}}.}
 
-\item{x_range}{A range of x values over which to consider extracting ECx.}
+\item{x_range}{A range of predictor values over which to consider extracting
+ECx.}
 
-\item{precision}{The length of the x vector used for posterior predictions,
-and over which to extract ECx values. Large values will be slower but more
-precise.}
+\item{precision}{The length of the predictor vector used for posterior
+predictions, and over which to extract ECx values. Large values will be
+slower but more precise.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values against the lowest observed

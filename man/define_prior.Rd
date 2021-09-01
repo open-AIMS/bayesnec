@@ -7,9 +7,11 @@
 define_prior(model, family, predictor, response)
 }
 \arguments{
-\item{model}{Deprecated. Use formula instead. Used to be a
+\item{model}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
+
+\item{family}{A \code{\link[stats]{family}} function.}
 
 \item{predictor}{The predictor variable for the NEC model fit.}
 

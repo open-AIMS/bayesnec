@@ -7,10 +7,12 @@
 check_data(data, family, model)
 }
 \arguments{
-\item{data}{A \code{\link[base]{data.frame}} containing the data to use for
-the model.}
+\item{data}{A \code{\link[base]{data.frame}} containing the data to use with
+the \code{formula}.}
 
-\item{model}{Deprecated. Use formula instead. Used to be a
+\item{family}{A \code{\link[stats]{family}} function.}
+
+\item{model}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 }

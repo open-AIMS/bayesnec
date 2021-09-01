@@ -4,29 +4,31 @@
 \alias{model.frame.bayesnecformula}
 \title{Extracting the model frame from a \code{\link{bayesnecformula}}}
 \usage{
-\method{model.frame}{bayesnecformula}(formula, ...)
+\method{model.frame}{bayesnecformula}(formula, data, ...)
 }
 \arguments{
 \item{formula}{A formula of class \code{\link{bayesnecformula}}.}
 
+\item{data}{A \code{\link[base]{data.frame}} containing the variables
+specified in \code{formula}.}
+
 \item{...}{Additional arguments to be passed to
-\code{\link[stats]{model.frame}}. Currently, only \code{data}
-(must be a \code{\link[stats]{data.frame}}) is allowed.}
+\code{\link{check_formula}}.}
 }
 \value{
-A \code{\link[stats]{data.frame}} with additional attributes
+A \code{\link[base]{data.frame}} with additional attributes
 detailing the population-level variables (attribute \code{"bnec_pop"})
 (response y, predictor x, and, if binomial a formula, trials) and, if
 applicable, the group-level variables (attribute \code{"bnec_group"}).
 }
 \description{
-Recovers evaluated \code{\link[stats]{data.frame}} given input \code{data}
+Recovers evaluated \code{\link[base]{data.frame}} given input \code{data}
 and a formula of class \code{\link{bayesnecformula}}.
 }
 \details{
 If the formula contains transformations to variables x and y,
 these are evaluated and returned as part of the
-\code{\link[stats]{data.frame}}.
+\code{\link[base]{data.frame}}.
 }
 \examples{
 library(bayesnec)
@@ -41,7 +43,7 @@ data <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
 data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 
 f_1 <- y ~ crf(x, "nec3param")
-f_2 <- log(y) | trials(tr) ~ crf(sqrt(x), "nec3param")
+f_2 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
 f_3 <- y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
 f_4 <- y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)
 

@@ -6,6 +6,10 @@
 \usage{
 validate_family(family)
 }
+\arguments{
+\item{family}{A family \code{\link[base]{character}} string or a
+\code{\link[stats]{family}} function.}
+}
 \value{
 An object of class \code{\link[stats]{family}}.
 }

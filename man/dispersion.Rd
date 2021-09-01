@@ -32,11 +32,13 @@ between the observed relative to simulated Pearson residuals sums of
 squares.
 }
 \examples{
+\donttest{
 library(bayesnec)
-data(manec_example)
-exmp_brmsfit <- manec_example$mod_fits$nec4param$fit
-dispersion(exmp_brmsfit, summary = TRUE)
-
+data(nec_data)
+nec_data$y <- as.integer(round(nec_data$y * 100))
+nec4param <- bnec(y ~ crf(x, "nec4param"), data = nec_data, chains = 2)
+dispersion(nec4param, summary = TRUE)
+}
 }
 \references{
 Zuur, A. F., Hilbe, J. M., & Ieno, E. N. (2013). A Beginner's Guide to GLM

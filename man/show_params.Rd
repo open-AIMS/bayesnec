@@ -7,7 +7,7 @@
 show_params(model = "all")
 }
 \arguments{
-\item{model}{Deprecated. Use formula instead. Used to be a
+\item{model}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} vector indicating the model(s)
 to fit. See Details for more information.}
 }

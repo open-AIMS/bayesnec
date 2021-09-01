@@ -8,6 +8,8 @@ prep_raw_data(brms_fit, bayesnecformula)
 }
 \arguments{
 \item{brms_fit}{A \code{\link[brms]{brmsfit}} object.}
+
+\item{bayesnecformula}{A \code{\link{bayesnecformula}} formula object.}
 }
 \value{
 A \code{\link[base]{data.frame}}.
