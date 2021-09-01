@@ -73,7 +73,14 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
                             probs = sig_val)
     }
   }
-  nsec_out <- apply(p_samples, 1, nsec_fct,  reference, x_vec)
+  nsec_out <- apply(p_samples, 1, nsec_fct, reference, x_vec)
+  formula <- object$bayesnecformula
+  x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  x_call <- str2lang(eval(parse(text = x_str)))
+  if (inherits(x_call, "call")) {
+    x_call[[2]] <- str2lang("nsec_out")
+    nsec_out <- eval(x_call)
+  }
   if (inherits(xform, "function")) {
     nsec_out <- xform(nsec_out)
   }
