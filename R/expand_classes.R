@@ -10,7 +10,7 @@
 #' @return A \code{\link[base]{list}} of model statistical output derived from
 #' the input model object.
 #' @importFrom brms posterior_epred posterior_samples
-#' @importFrom stats quantile fitted residuals
+#' @importFrom stats quantile fitted residuals terms
 expand_nec <- function(object, formula, x_range = NA, precision = 1000,
                        sig_val = 0.01, loo_controls, ...) {
   fam_tag <- object$fit$family$family
@@ -55,6 +55,12 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
     reference <- quantile(pred_posterior[, 1], sig_val)
     grab <- apply(pred_posterior - reference, 1, min_abs)
     nec_posterior <- pred_data$x[grab]
+    x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+    x_call <- str2lang(eval(parse(text = x_str)))
+    if (inherits(x_call, "call")) {
+      x_call[[2]] <- str2lang("nec_posterior")
+      nec_posterior <- eval(x_call)
+    }
     extracted_params$nec <- estimates_summary(nec_posterior)
   } else {
     nec_posterior <- unlist(posterior_samples(fit, pars = "nec_Intercept"))
