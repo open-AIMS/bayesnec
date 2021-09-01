@@ -28,7 +28,7 @@
 #' nec(manec_example)
 #'
 #' @export
-nec.default <- function(object, posterior = FALSE,  xform = NA,
+nec.default <- function(object, posterior = FALSE, xform = NA,
                         prob_vals = c(0.5, 0.025, 0.975)) {
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
         prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
@@ -68,8 +68,8 @@ nec.default <- function(object, posterior = FALSE,  xform = NA,
 #' @inherit nec.default return details seealso examples
 #'
 #' @export
-nec <- function(object, posterior = FALSE,
-                 xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+nec <- function(object, posterior = FALSE, xform = NA,
+                prob_vals = c(0.5, 0.025, 0.975)) {
   UseMethod("nec")
 }
 
@@ -103,8 +103,8 @@ nec.bayesnecfit <- function(object, ...) {
 #' @importFrom stats quantile
 #'
 #' @export
-nec.bayesmanecfit <- function(object, posterior = FALSE,
-                               xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NA,
+                              prob_vals = c(0.5, 0.025, 0.975)) {
   if (max(grepl("ecx", names(object$mod_fits))) == 1) {
     message("bayesmanecfit contains ecx model types and therefore nec",
             " estimate includes nsec values.")
