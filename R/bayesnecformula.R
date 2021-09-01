@@ -184,12 +184,14 @@ bnf <- function(formula, ...) {
 #'                    group_2 = sample(c("c", "d"), 10, replace = TRUE))
 #' data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 #' 
-#' \donttest{
+#' \dontrun{
 #' f_1 <- y ~ crf(x, "nec3param") + z
 #' # regular formula not allowed, wrap it with function bnf
 #' check_formula(f_1, data)
 #' # population-level covariates are not allowed
 #' check_formula(bnf(f_1), data)
+#' }
+#' \donttest{
 #' # expect a series of messages for because not all
 #' # nec models have the "bot" parameter
 #' f_2 <- y | trials(tr) ~ crf(x, "nec") + (nec + bot | group_1)
@@ -487,7 +489,7 @@ clean_bar_glef <- function(x) {
 
 #' @noRd
 #' @importFrom stats terms
-#' @importFrom formula.tools rhs
+#' @importFrom formula.tools rhs `rhs<-`
 add_formula_glef <- function(model, brmform, bnecform, data) {
   crf_term <- grep("crf(", labels(terms(bnecform)), fixed = TRUE,
                    value = TRUE)
