@@ -34,6 +34,7 @@
 #' lower 95% credible interval bounds.
 #'
 #' @importFrom stats quantile predict
+#' @importFrom brms as_draws_df
 #'
 #' @examples
 #' \donttest{
@@ -66,8 +67,7 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
     n <- seq_len(nrow(p_samples))
     p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
                             p_samples, hormesis_def, fct = "rbind")
-    nec_posterior <- unlist(posterior_samples(object$fit,
-                                              pars = "nec_Intercept"))
+    nec_posterior <- as_draws_df(object$fit)[["b_nec_Intercept"]]
     if (hormesis_def == "max") {
       reference <- quantile(apply(pred_vals$posterior, 2, max),
                             probs = sig_val)

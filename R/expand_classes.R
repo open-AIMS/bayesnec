@@ -9,7 +9,7 @@
 #'
 #' @return A \code{\link[base]{list}} of model statistical output derived from
 #' the input model object.
-#' @importFrom brms posterior_epred posterior_samples
+#' @importFrom brms posterior_epred as_draws_df
 #' @importFrom stats quantile fitted residuals terms
 expand_nec <- function(object, formula, x_range = NA, precision = 1000,
                        sig_val = 0.01, loo_controls, ...) {
@@ -63,10 +63,9 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
     }
     extracted_params$nec <- estimates_summary(nec_posterior)
   } else {
-    nec_posterior <- unlist(posterior_samples(fit, pars = "nec_Intercept"))
+    nec_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
   }
-  pred_vals <- list(data = pred_data,
-                    posterior = pred_posterior)
+  pred_vals <- list(data = pred_data, posterior = pred_posterior)
   od <- dispersion(object, summary = TRUE)
   if (length(od) == 0) {
     od <- c(NA, NA, NA)
@@ -74,8 +73,8 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
   c(object, list(pred_vals = pred_vals), extracted_params,
-    list(dispersion = od, predicted_y = predicted_y,
-         residuals = residuals, nec_posterior = nec_posterior))
+    list(dispersion = od, predicted_y = predicted_y, residuals = residuals,
+         nec_posterior = nec_posterior))
 }
 
 #' expand_manec

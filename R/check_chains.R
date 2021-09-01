@@ -7,7 +7,7 @@
 #' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
 #' @param ... arguments used when class is \code{\link{bayesmanecfit}}.
 #'
-#' @importFrom brms fixef posterior_samples
+#' @importFrom brms fixef as_draws_array
 #' @importFrom stats acf
 #' @importFrom graphics axis lines mtext
 #' 
@@ -23,16 +23,17 @@
 #' @export
 check_chains.default <- function(x, ...) {
   oldpar <- par(no.readonly = TRUE)
-  on.exit(par(oldpar))      
+  on.exit(par(oldpar))
   params <- gsub("_Intercept", "", rownames(fixef(x$fit)))
-  sims_array <- posterior_samples(x$fit, pars = params, as.array = TRUE)
+  a_params <- paste0("b_", rownames(fixef(x$fit)))
+  sims_array <- as_draws_array(x$fit, variable = a_params)
   num_chains <- ncol(sims_array[, , 1])
   par(mfrow = c(length(params), 2), mar = c(0, 5, 0.5, 0.5),
       oma = c(4, 0, 2, 0))
   for (i in seq_len(length(params))) {
     x1 <- as.vector(sims_array[, , i])
     chain_id <- rep(seq_len(num_chains), each = nrow(sims_array[, , i]))
-    num_lags <- length(acf(sims_array[, , i][, 1], plot = FALSE)$lag)
+    num_lags <- length(acf(sims_array[, , i][, 1, 1], plot = FALSE)$lag)
     # plot the chains
     plot(seq_len(nrow(sims_array[, , i])), rep(NA, nrow(sims_array[, , i])),
          xaxt = "n", ylim = range(x1), main = "", xlab = "",
@@ -52,7 +53,7 @@ check_chains.default <- function(x, ...) {
       axis(side = 1)
     }
     for (j in seq_len(num_chains)) {
-      acf_j <- acf(sims_array[, , i][, j], plot = FALSE)
+      acf_j <- acf(sims_array[, , i][, j, 1], plot = FALSE)
       lines(acf_j$lag, acf_j$acf, col = j)
     }
   }
