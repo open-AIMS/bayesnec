@@ -89,7 +89,7 @@ check_models <- function(model, family, data) {
       if (length(drop_models) > 0) {
         message(
           paste("Dropping the model(s)", drop_models,
-                "as they are not valid for data with negative predictor (x) ",
+                "as they are not valid for data with negative predictor (x)",
                 "values.")
         )
       }
