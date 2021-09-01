@@ -89,7 +89,7 @@ and a formula of class bayesnecformula." />
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0</span>
       </span>
     </div>
 
@@ -152,12 +152,12 @@ and a formula of class bayesnecformula." />
     </div>
 
     <div class="ref-description">
-    <p>Recovers evaluated <code>data.frame</code> given input <code>data</code>
+    <p>Recovers evaluated <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> given input <code>data</code>
 and a formula of class <code><a href='bayesnecformula.html'>bayesnecformula</a></code>.</p>
     </div>
 
     <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bayesnecformula</span>
-<span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='va'>formula</span>, <span class='va'>...</span><span class='op'>)</span></code></pre></div>
+<span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='va'>formula</span>, <span class='va'>data</span>, <span class='va'>...</span><span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -167,16 +167,20 @@ and a formula of class <code><a href='bayesnecformula.html'>bayesnecformula</a><
       <td><p>A formula of class <code><a href='bayesnecformula.html'>bayesnecformula</a></code>.</p></td>
     </tr>
     <tr>
+      <th>data</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the variables
+specified in <code>formula</code>.</p></td>
+    </tr>
+    <tr>
       <th>...</th>
       <td><p>Additional arguments to be passed to
-<code><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></code>. Currently, only <code>data</code>
-(must be a <code>data.frame</code>) is allowed.</p></td>
+<code><a href='check_formula.html'>check_formula</a></code>.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A <code>data.frame</code> with additional attributes
+    <p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> with additional attributes
 detailing the population-level variables (attribute <code>"bnec_pop"</code>)
 (response y, predictor x, and, if binomial a formula, trials) and, if
 applicable, the group-level variables (attribute <code>"bnec_group"</code>).</p>
@@ -184,7 +188,7 @@ applicable, the group-level variables (attribute <code>"bnec_group"</code>).</p>
 
     <p>If the formula contains transformations to variables x and y,
 these are evaluated and returned as part of the
-<code>data.frame</code>.</p>
+<code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
@@ -199,7 +203,7 @@ these are evaluated and returned as part of the
 <span class='r-in'><span class='va'>data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'>nec3param</span><span class='op'>(</span>beta <span class='op'>=</span> <span class='op'>-</span><span class='fl'>0.2</span>, nec <span class='op'>=</span> <span class='fl'>4</span>, top <span class='op'>=</span> <span class='fl'>100</span>, <span class='va'>data</span><span class='op'>$</span><span class='va'>x</span><span class='op'>)</span></span>
 <span class='r-in'></span>
 <span class='r-in'><span class='va'>f_1</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>f_2</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/Log.html'>log</a></span><span class='op'>(</span><span class='va'>y</span><span class='op'>)</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>sqrt</a></span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span>, <span class='st'>"nec3param"</span><span class='op'>)</span></span>
+<span class='r-in'><span class='va'>f_2</span> <span class='op'>&lt;-</span> <span class='st'>"log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
 <span class='r-in'><span class='va'>f_3</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>ogl</span><span class='op'>(</span><span class='va'>group_1</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>pgl</span><span class='op'>(</span><span class='va'>group_2</span><span class='op'>)</span></span>
 <span class='r-in'><span class='va'>f_4</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='op'>(</span><span class='va'>nec</span> <span class='op'>+</span> <span class='va'>top</span> <span class='op'>|</span> <span class='va'>group_1</span><span class='op'>)</span></span>
 <span class='r-in'></span>
@@ -229,13 +233,13 @@ these are evaluated and returned as part of the
 <span class='r-in'><span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_4</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span></span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span>               y         x trials(tr) group_1</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 1  1.000000e+02  1.000000        100       a</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2  1.000000e+02  3.111111        100       b</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 3  3.676327e+01  5.222222        100       a</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 2  1.000000e+02  3.111111        100       a</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 3  3.676327e+01  5.222222        100       b</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 4  6.527785e+00  7.333333        100       b</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 5  1.159091e+00  9.444444        100       a</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 5  1.159091e+00  9.444444        100       b</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 6  2.058113e-01 11.555556        100       b</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 7  3.654441e-02 13.666667        100       a</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 8  6.488923e-03 15.777778        100       a</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 7  3.654441e-02 13.666667        100       b</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 8  6.488923e-03 15.777778        100       b</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 9  1.152191e-03 17.888889        100       b</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> 10 2.045861e-04 20.000000        100       a</span>
 <span class='r-in'></span>

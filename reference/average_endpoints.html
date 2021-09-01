@@ -90,7 +90,7 @@ calculates a geometric mean." />
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0</span>
       </span>
     </div>
 
@@ -262,18 +262,11 @@ before the the geometric mean calculation is applied.</p>
 <span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
 <span class='r-in'><span class='va'>ecx4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_example</span>, model <span class='op'>=</span> <span class='st'>"ecx4param"</span><span class='op'>)</span></span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): ecx4param</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'ecx4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 5 (5.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in terms.formula(formula, data = data)</span> argument is not a valid model</span>
 <span class='r-in'><span class='va'>nec4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_example</span>, model <span class='op'>=</span> <span class='st'>"nec4param"</span><span class='op'>)</span></span>
 <span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): nec4param</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 2 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 4 (4.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in terms.formula(formula, data = data)</span> argument is not a valid model</span>
 <span class='r-in'><span class='fu'>average_endpoints</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='st'>"nec"</span> <span class='op'>=</span> <span class='va'>ecx4param</span>, <span class='st'>"ecx"</span> <span class='op'>=</span> <span class='va'>nec4param</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span></span>
-<span class='r-err co'><span class='r-pr'>#&gt;</span> <span class='error'>Error in average_endpoints(list(nec = ecx4param, ecx = nec4param), ecx_val = 50)</span> object 'ecx4param' not found</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>       50%      2.5%     97.5% </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 1.1475071 0.8501813 1.2676981 </span>
 <span class='r-in'></span>
 </code></pre></div>
   </div>

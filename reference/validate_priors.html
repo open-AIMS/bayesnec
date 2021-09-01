@@ -88,7 +88,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0</span>
       </span>
     </div>
 
@@ -160,8 +160,14 @@
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
+      <th>priors</th>
+      <td><p>Either a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of class
+<code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code>, or a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing
+multiple objects of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code>.</p></td>
+    </tr>
+    <tr>
       <th>model</th>
-      <td><p>Deprecated. Use formula instead. Used to be a
+      <td><p>Removed in version 2.0. Use formula instead. Used to be a
 <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector indicating the model(s)
 to fit. See Details for more information.</p></td>
     </tr>

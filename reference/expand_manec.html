@@ -89,7 +89,7 @@ model fits." />
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0</span>
       </span>
     </div>
 
@@ -175,17 +175,21 @@ returned by <code><a href='bnec.html'>bnec</a></code> when more than one model i
     </tr>
     <tr>
       <th>formula</th>
-      <td><p>....</p></td>
+      <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining an
+R formula or an actual <code><a href='https://rdrr.io/r/stats/formula.html'>formula</a></code> object. See
+<code><a href='bayesnecformula.html'>bayesnecformula</a></code> and <code><a href='check_formula.html'>check_formula</a></code>. It could also
+be a list of formulas if multiple objects are passed to <code>object</code>.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
-      <td><p>A range of x values over which to consider extracting ECx.</p></td>
+      <td><p>A range of predictor values over which to consider extracting
+ECx.</p></td>
     </tr>
     <tr>
       <th>precision</th>
-      <td><p>The length of the x vector used for posterior predictions,
-and over which to extract ECx values. Large values will be slower but more
-precise.</p></td>
+      <td><p>The length of the predictor vector used for posterior
+predictions, and over which to extract ECx values. Large values will be
+slower but more precise.</p></td>
     </tr>
     <tr>
       <th>sig_val</th>
