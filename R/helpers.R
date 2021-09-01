@@ -439,15 +439,21 @@ retrieve_var <- function(data, var, error = FALSE) {
   out <- try(data[[v_pos]], silent = TRUE)
   if (inherits(out, "try-error")) {
     if (error) {
-      stop("The input variable \"", gsub("_var", "", var),
+      stop("The input variable \"", bnec_vars[[var]],
            "\" was not properly specified in formula. See ?bayesnecformula")
     }
     NULL
   } else if (is.numeric(out)) {
-    out
+    if (!is.vector(out)) {
+      message("You most likely provided a function to transform your \"",
+              bnec_vars[[var]], "\" that does not return a vector. This is",
+              " likely to cause issues with sampling in Stan. ",
+              " Forcing it to be a vector...")
+    }
+    as.vector(out)
   } else {
-    stop("The input variable \"", gsub("_var", "", var),
-         " is not numeric.")
+    stop("The input variable \"", bnec_vars[[var]],
+         "\" is not numeric.")
   }
 }
 
