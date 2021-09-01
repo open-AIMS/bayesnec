@@ -2,8 +2,6 @@
 #'
 #' Checks if family is allowed
 #'
-#' @inheritParams bnec
-#'
 #' @param family A family \code{\link[base]{character}} string or a 
 #' \code{\link[stats]{family}} function.
 #'
