@@ -4,6 +4,7 @@
 #'
 #' @inheritParams bnec
 #'
+#' @param family A \code{\link[stats]{family}} function.
 #' @param predictor The predictor variable for the NEC model fit.
 #' @param response The response variable for the NEC model fit.
 #'

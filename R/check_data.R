@@ -4,6 +4,8 @@
 #'
 #' @inheritParams bnec
 #'
+#' @param family A \code{\link[stats]{family}} function.
+#'
 #' @details This is a wrapper function to test input data criteria and find the
 #' correct priors for use in \code{\link{fit_bayesnec}}.
 #'

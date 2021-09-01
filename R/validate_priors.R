@@ -4,6 +4,10 @@
 #'
 #' @inheritParams bnec
 #'
+#' @param priors Either a \code{\link[base]{data.frame}} of class
+#' \code{\link[brms]{brmsprior}}, or a \code{\link[base]{list}} containing
+#' multiple objects of class \code{\link[brms]{brmsprior}}.
+#'
 #' @return A \code{\link[base]{data.frame}} of class
 #' \code{\link[brms]{brmsprior}}.
 validate_priors <- function(priors, model) {
