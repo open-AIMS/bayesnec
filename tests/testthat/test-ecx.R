@@ -39,29 +39,17 @@ test_that("ecx_val warnings behave as expected", {
 
 test_that("ecx returns expected object types and arguments pass correctly", {
   ec50_summary <- ecx(manec_example, ecx_val = 50, type = "relative",
-                      precision = 50) %>%
-    expect_message %>%
-    suppressWarnings
+                      precision = 50)
   ec50_summary2 <- ecx(manec_example, ecx_val = 50, type = "relative",
-                       precision = 50, xform = exp) %>%
-    expect_message %>%
-    suppressWarnings
+                       precision = 50, xform = exp)
   ec50_posterior <- ecx(manec_example, ecx_val = 50,
-                        type = "relative", posterior = TRUE, precision = 50) %>%
-    expect_message %>%
-    suppressWarnings
+                        type = "relative", posterior = TRUE, precision = 50)
   ec50n_summary <- ecx(nec4param, ecx_val = 50, type = "relative",
-                       precision = 50) %>%
-    expect_message %>%
-    suppressWarnings
+                       precision = 50)
   ec50n_summary2 <- ecx(nec4param, ecx_val = 50, type = "relative",
-                        precision = 50, xform = exp) %>%
-    expect_message %>%
-    suppressWarnings
+                        precision = 50, xform = exp)
   ec50n_posterior <- ecx(nec4param, ecx_val = 50, type = "relative",
-                         posterior = TRUE, precision = 50) %>%
-    expect_message %>%
-    suppressWarnings
+                         posterior = TRUE, precision = 50)
   expect_equal(length(ec50_summary), 3)
   expect_gt(length(ec50_posterior), 3)
   expect_equal(length(ec50n_summary), 3)
@@ -81,8 +69,7 @@ test_that("works for bayesnecfit", {
 })
 
 test_that("works for bayesmanecfit", {
-  ecx1 <- ecx(manec_example) %>%
-    suppressWarnings
+  ecx1 <- ecx(manec_example)
   expect_equal(length(ecx1), 3)
   expect_equal(names(ecx1), c("ec_10", "ec_10_lw", "ec_10_up"))
 })

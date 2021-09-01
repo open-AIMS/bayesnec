@@ -29,7 +29,7 @@ test_that("input checks work correctly and return appropriate messages", {
     suppressWarnings
   amend(manec_example, add = "nec3param") %>%
     expect_message %>%
-    expect_message("Fitted models are:  nec4param ecx4param") %>%
+    expect_message("Fitted models are: nec4param ecx4param") %>%
     suppressWarnings
   amend(manec_example, add = "nec4param",
         loo_controls = list(weights = list(method = "pseudobma"))) %>%
