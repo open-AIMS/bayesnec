@@ -475,6 +475,8 @@ add_brm_defaults <- function(brm_args, model, family, predictor, response,
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
   if (inherits(priors, "try-error")) {
     brm_args$prior <- define_prior(model, family, predictor, response)
+  } else {
+    brm_args$prior <- priors
   }
   if (!("inits" %in% names(brm_args)) || skip_check) {
     msg_tag <- ifelse(family$family == "custom", custom_name, family$family)
