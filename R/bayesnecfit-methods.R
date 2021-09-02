@@ -169,8 +169,8 @@ predict.bayesnecfit <- function(object, ..., precision = 100, x_range = NA) {
   names(new_dat) <- x_var
   fam_tag <- fit$family$family
   custom_name <- check_custom_name(fit$family)
-  if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
-    trials_var <- retrieve_var(data, "trials_var", error = TRUE)
+  if (fam_tag == "binomial" || custom_name == "beta_binomial2") {
+    trials_var <- attr(data, "bnec_pop")[["trials_var"]]
     new_dat[[trials_var]] <- 1
   }
   pred_out <- brms::posterior_epred(fit, newdata = new_dat,
