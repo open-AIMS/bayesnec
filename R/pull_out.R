@@ -79,7 +79,7 @@ pull_out <- function(manec, model, loo_controls, ...) {
             "Returning original object.")
     return(manec)
   }
-  formulas <- lapply(manec$mod_fits[to_go], `[[`, "bayesnecformula")
+  formulas <- lapply(manec$mod_fits[to_go], extract_formula)
   mod_fits <- expand_manec(manec$mod_fits[to_go], formula = formulas,
                            loo_controls = loo_controls, ...) %>%
     suppressMessages %>%

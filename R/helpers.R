@@ -491,3 +491,13 @@ add_brm_defaults <- function(brm_args, model, family, predictor, response,
   }
   brm_args
 }
+
+#' @noRd
+extract_formula <- function(x) {
+  out <- try(x[["bayesnecformula"]], silent = TRUE)
+  if (inherits(out, "try-error")) {
+    NA
+  } else {
+    out
+  }
+}

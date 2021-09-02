@@ -105,7 +105,7 @@ expand_manec <- function(object, formula, x_range = NA, precision = 1000,
   }
   loo_w_controls <- loo_controls$weights
   model_set <- names(object)
-  success_models <- model_set[sapply(object, class) == "prebayesnecfit"]
+  success_models <- model_set[sapply(object, is_prebayesnecfit)]
   if (length(success_models) == 0) {
     stop("None of the models fit successfully, ",
          "try using bnec with a single model (e.g. ecxexp) ",
