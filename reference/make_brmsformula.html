@@ -200,10 +200,10 @@ final <code><a href='https://rdrr.io/pkg/brms/man/brmsformula.html'>brmsformula<
 <span class='r-in'><span class='va'>data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'>nec3param</span><span class='op'>(</span>beta <span class='op'>=</span> <span class='op'>-</span><span class='fl'>0.2</span>, nec <span class='op'>=</span> <span class='fl'>4</span>, top <span class='op'>=</span> <span class='fl'>100</span>, <span class='va'>data</span><span class='op'>$</span><span class='va'>x</span><span class='op'>)</span></span>
 <span class='r-in'></span>
 <span class='r-in'><span class='co'># make one single model</span></span>
-<span class='r-in'><span class='va'>f_1</span> <span class='op'>&lt;-</span> <span class='st'>"log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
+<span class='r-in'><span class='va'>f_1</span> <span class='op'>&lt;-</span> <span class='st'>"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
 <span class='r-in'><span class='fu'>make_brmsformula</span><span class='op'>(</span><span class='va'>f_1</span>, <span class='va'>data</span><span class='op'>)</span></span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> $nec3param</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> log(y) | trials(tr) ~ top * exp(-exp(beta) * (sqrt(x) - nec) * step(sqrt(x) - nec)) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y | trials(tr) ~ top * exp(-exp(beta) * (sqrt(x) - nec) * step(sqrt(x) - nec)) </span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> nec ~ 1</span>

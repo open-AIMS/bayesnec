@@ -203,7 +203,7 @@ these are evaluated and returned as part of the
 <span class='r-in'><span class='va'>data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'>nec3param</span><span class='op'>(</span>beta <span class='op'>=</span> <span class='op'>-</span><span class='fl'>0.2</span>, nec <span class='op'>=</span> <span class='fl'>4</span>, top <span class='op'>=</span> <span class='fl'>100</span>, <span class='va'>data</span><span class='op'>$</span><span class='va'>x</span><span class='op'>)</span></span>
 <span class='r-in'></span>
 <span class='r-in'><span class='va'>f_1</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>f_2</span> <span class='op'>&lt;-</span> <span class='st'>"log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
+<span class='r-in'><span class='va'>f_2</span> <span class='op'>&lt;-</span> <span class='st'>"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
 <span class='r-in'><span class='va'>f_3</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>ogl</span><span class='op'>(</span><span class='va'>group_1</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>pgl</span><span class='op'>(</span><span class='va'>group_2</span><span class='op'>)</span></span>
 <span class='r-in'><span class='va'>f_4</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='op'>(</span><span class='va'>nec</span> <span class='op'>+</span> <span class='va'>top</span> <span class='op'>|</span> <span class='va'>group_1</span><span class='op'>)</span></span>
 <span class='r-in'></span>
@@ -216,17 +216,17 @@ these are evaluated and returned as part of the
 <span class='r-out co'><span class='r-pr'>#&gt;</span> attr(,"class")</span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> [1] "omit"</span>
 <span class='r-in'><span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_2</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span></span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>        log(y)  sqrt(x) trials(tr)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1   4.6051702 1.000000        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2   4.6051702 1.763834        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 3   3.6044993 2.285218        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 4   1.8760677 2.708013        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 5   0.1476361 3.073181        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 6  -1.5807955 3.399346        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 7  -3.3092271 3.696846        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 8  -5.0376587 3.972125        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 9  -6.7660903 4.229526        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 10 -8.4945219 4.472136        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>               y  sqrt(x) trials(tr)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 1  1.000000e+02 1.000000        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 2  1.000000e+02 1.763834        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 3  3.676327e+01 2.285218        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 4  6.527785e+00 2.708013        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 5  1.159091e+00 3.073181        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 6  2.058113e-01 3.399346        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 7  3.654441e-02 3.696846        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 8  6.488923e-03 3.972125        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 9  1.152191e-03 4.229526        100</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 10 2.045861e-04 4.472136        100</span>
 <span class='r-in'><span class='va'>m_3</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_3</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span></span>
 <span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/attr.html'>attr</a></span><span class='op'>(</span><span class='va'>m_3</span>, <span class='st'>"bnec_group"</span><span class='op'>)</span></span>
 <span class='r-out co'><span class='r-pr'>#&gt;</span> [1] "group_1" "group_2"</span>
