@@ -16,6 +16,9 @@
 #'
 #' @details
 #'
+#' See \code{methods(class = "bayesnecformula")} for an overview of
+#' available methods.
+#'
 #' \bold{General formula syntax}
 #'
 #' The \code{formula} argument accepts formulas of the following syntax:
@@ -100,7 +103,8 @@
 #'   \code{\link{check_formula}},
 #'   \code{\link{model.frame}},
 #'   \code{\link{models}},
-#'   \code{\link{show_params}}
+#'   \code{\link{show_params}},
+#'   \code{\link{make_brmsformula}}
 #'
 #' @examples
 #' library(bayesnec)

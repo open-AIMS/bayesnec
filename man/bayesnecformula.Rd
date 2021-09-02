@@ -25,6 +25,9 @@ define linear and non-linear (potentially multilevel) concentration-response
 models.
 }
 \details{
+See \code{methods(class = "bayesnecformula")} for an overview of
+available methods.
+
 \bold{General formula syntax}
 
 The \code{formula} argument accepts formulas of the following syntax:
@@ -125,5 +128,6 @@ try(bnf(log(y) | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 \code{\link{check_formula}},
 \code{\link{model.frame}},
 \code{\link{models}},
-\code{\link{show_params}}
+\code{\link{show_params}},
+\code{\link{make_brmsformula}}
 }

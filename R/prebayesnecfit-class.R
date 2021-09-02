@@ -3,8 +3,9 @@
 #' This is an intermediate class that was created to make both
 #' \code{\link{bayesnecfit}} and \code{\link{bayesmanecfit}} objects lighter
 #' to handle. It contains the original \code{\link[brms]{brmsfit}}
-#' fitted object, name of non-linear model that was fitted, and the list of
-#' initialisation values applied.
+#' fitted object, name of non-linear model that was fitted, the list of
+#' initialisation values applied, and the validated
+#' \code{\link{bayesnecformula}}.
 #'
 #' @name prebayesnecfit-class
 #' @aliases prebayesnecfit
@@ -18,12 +19,15 @@
 #' the fitted model.
 #' @slot inits A \code{\link[base]{list}} containing the initialisation values
 #' for to fit the model.
+#' @slot bayesnecformula An object of class \code{\link{bayesnecformula}} and
+#' \code{\link[stats]{formula}}.
 #'
 #' @seealso
 #'   \code{\link{bayesnec}},
 #'   \code{\link{bnec}},
 #'   \code{\link{bayesnecfit}},
-#'   \code{\link{bayesmanecfit}}
+#'   \code{\link{bayesmanecfit}},
+#'   \code{\link{bayesnecformula}}
 #'
 NULL
 
