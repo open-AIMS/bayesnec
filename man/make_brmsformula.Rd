@@ -37,7 +37,7 @@ data <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
 data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 
 # make one single model
-f_1 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
+f_1 <- "y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
 make_brmsformula(f_1, data)
 # make an entire class of models
 f_2 <- y ~ crf(x, "ecx") + ogl(group_1) + pgl(group_2)

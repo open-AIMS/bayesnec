@@ -113,7 +113,7 @@ library(bayesnec)
 bayesnecformula(y ~ crf(x, "nec3param"))
 # or use shot alias bnf
 bayesnecformula(y ~ crf(x, "nec3param")) == bnf(y ~ crf(x, "nec3param"))
-bnf(log(y) | trials(tr) ~ crf(sqrt(x), "nec3param"))
+bnf(y | trials(tr) ~ crf(sqrt(x), "nec3param"))
 bnf(y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2))
 bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 
@@ -121,7 +121,7 @@ bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 # complex transformations are not advisable because
 # they are passed directly to Stan via brms
 # and are likely to fail -- transform your variable beforehand!
-try(bnf(log(y) | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
+try(bnf(y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 }
 }
 \seealso{

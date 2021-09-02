@@ -71,7 +71,7 @@ f_2 <- y | trials(tr) ~ crf(x, "nec") + (nec + bot | group_1)
 check_formula(bnf(f_2), data, run_par_checks = TRUE)
 }
 # runs fine
-f_3 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
+f_3 <- "y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
 check_formula(bnf(f_3), data)
 f_4 <- y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
 inherits(check_formula(bnf(f_4), data), "bayesnecformula")
