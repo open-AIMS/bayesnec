@@ -43,7 +43,7 @@ data <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
 data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 
 f_1 <- y ~ crf(x, "nec3param")
-f_2 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
+f_2 <- "y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
 f_3 <- y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
 f_4 <- y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)
 
