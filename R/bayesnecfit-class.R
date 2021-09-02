@@ -3,8 +3,9 @@
 #' Models fitted with the \code{\link[bayesnec:bayesnec-package]{bayesnec}}
 #' package are represented as a \code{bayesnecfit} object, which contain the
 #' original \code{\link[brms]{brmsfit}} fitted object, list of initialisation
-#' values used, name of non-linear model that was fitted, posterior
-#' predictions, posterior parameter estimates and a series of other statistics.
+#' values used, the validated \code{\link{bayesnecformula}}, name of non-linear
+#' model that was fitted, posterior predictions, posterior parameter estimates
+#' and a series of other statistics.
 #'
 #' @name bayesnecfit-class
 #' @aliases bayesnecfit
@@ -18,6 +19,8 @@
 #' the fitted model.
 #' @slot inits A \code{\link[base]{list}} containing the initialisation values
 #' for to fit the model.
+#' @slot bayesnecformula An object of class \code{\link{bayesnecformula}} and
+#' \code{\link[stats]{formula}}.
 #' @slot pred_vals A \code{\link[base]{list}} containing a
 #' \code{\link[base]{data.frame}} of summary posterior predicted values
 #' and a vector containing based on the supplied \code{precision} and
@@ -25,6 +28,8 @@
 #' @slot top The estimate for parameter "top" in the fitted model.
 #' @slot beta The estimate for parameter "beta" in the fitted model.
 #' @slot nec The estimated NEC.
+#' @slot f The estimate for parameter "f" in the fitted model, NA if
+#' absent for the fitted model type.
 #' @slot bot The estimate for parameter "bot" in the fitted model, NA if
 #' absent for the fitted model type.
 #' @slot d The estimate for parameter "d" in the fitted model, NA if absent
@@ -41,7 +46,8 @@
 #' @seealso
 #'   \code{\link{bayesnec}},
 #'   \code{\link{bnec}},
-#'   \code{\link{bayesmanecfit}}
+#'   \code{\link{bayesmanecfit}},
+#'   \code{\link{bayesnecformula}}
 #'
 NULL
 
