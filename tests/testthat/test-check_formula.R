@@ -19,7 +19,7 @@ test_that("correct classes", {
   data_x_char <- data
   data_x_char$x <- as.character(data_x_char$x)
   expect_s3_class(check_formula(bnf(f_0), data_x_char), "bayesnecformula")
-)}
+})
 
 test_that("all variables actually exist in the data frame", {
   # population-level covariates are not allowed
