@@ -11,4 +11,4 @@ test_that("correct classes", {
     expect_s3_class(wrangle_model_formula(model, bnf(form), bdat),
                     "brmsformula")
   }
-)}
+})

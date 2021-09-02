@@ -37,4 +37,4 @@ test_that("correct classes", {
   expect_type(suppressMessages(make_brmsformula(x7, dat)), "list")
   expect_type(suppressMessages(make_brmsformula(x8, dat)), "list")
   expect_type(suppressMessages(make_brmsformula(x9, dat)), "list")
-)}
+})
