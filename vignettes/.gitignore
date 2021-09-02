@@ -2,3 +2,4 @@
 *.R
 *.pdf
 !precompile.R
+!exmp2b_theoretical_curves.R

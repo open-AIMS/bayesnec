@@ -11,6 +11,10 @@ library(knitr)
 library(tools)
 library(purrr)
 
+# produce theoretical curves first in example 2b
+# source("vignettes/exmp2b_theoretical_curves.R")
+rm(list = ls())
+
 # Convert *.orig to *.Rmd -------------------------------------------------
 orig_files <- dir(path = "vignettes/", pattern = "*\\.Rmd\\.orig",
                   full.names = TRUE)
