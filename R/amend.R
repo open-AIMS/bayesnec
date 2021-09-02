@@ -86,19 +86,22 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
         sample_prior = simdat$sample_prior
       )
       if (missing(priors)) {
-        priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
-        if (inherits(priors, "try-error")) {
-          x <- retrieve_var(bdat, "x_var", error = TRUE)
-          y <- retrieve_var(bdat, "y_var", error = TRUE)
-          custom_name <- check_custom_name(family)
-          if (family$family == "binomial" || custom_name == "beta_binomial2") {
-            tr <- retrieve_var(bdat, "trials_var", error = TRUE)
-            y <- y / tr
-          }
-          brm_args$prior <- define_prior(model, family, x, y)
-        } else {
-          brm_args$prior <- priors
+        brm_args$prior <- NULL
+      } else {
+        brm_args$prior <- priors
+      }
+      priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
+      if (inherits(priors, "try-error")) {
+        x <- retrieve_var(bdat, "x_var", error = TRUE)
+        y <- retrieve_var(bdat, "y_var", error = TRUE)
+        custom_name <- check_custom_name(family)
+        if (family$family == "binomial" || custom_name == "beta_binomial2") {
+          tr <- retrieve_var(bdat, "trials_var", error = TRUE)
+          y <- y / tr
         }
+        brm_args$prior <- define_prior(model, family, x, y)
+      } else {
+        brm_args$prior <- priors
       }
       fit_m <- try(
         fit_bayesnec(
