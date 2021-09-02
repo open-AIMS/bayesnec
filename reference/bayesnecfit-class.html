@@ -50,8 +50,9 @@
 <meta property="og:description" content="Models fitted with the bayesnec
 package are represented as a bayesnecfit object, which contain the
 original brmsfit fitted object, list of initialisation
-values used, name of non-linear model that was fitted, posterior
-predictions, posterior parameter estimates and a series of other statistics." />
+values used, the validated bayesnecformula, name of non-linear
+model that was fitted, posterior predictions, posterior parameter estimates
+and a series of other statistics." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -158,8 +159,9 @@ predictions, posterior parameter estimates and a series of other statistics." />
     <p>Models fitted with the <code><a href='bayesnec-package.html'>bayesnec</a></code>
 package are represented as a <code>bayesnecfit</code> object, which contain the
 original <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code> fitted object, list of initialisation
-values used, name of non-linear model that was fitted, posterior
-predictions, posterior parameter estimates and a series of other statistics.</p>
+values used, the validated <code><a href='bayesnecformula.html'>bayesnecformula</a></code>, name of non-linear
+model that was fitted, posterior predictions, posterior parameter estimates
+and a series of other statistics.</p>
     </div>
 
 
@@ -181,6 +183,9 @@ the fitted model.</p></dd>
 <dt><code>inits</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the initialisation values
 for to fit the model.</p></dd>
 
+<dt><code>bayesnecformula</code></dt><dd><p>An object of class <code><a href='bayesnecformula.html'>bayesnecformula</a></code> and
+<code><a href='https://rdrr.io/r/stats/formula.html'>formula</a></code>.</p></dd>
+
 <dt><code>pred_vals</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing a
 <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> of summary posterior predicted values
 and a vector containing based on the supplied <code>precision</code> and
@@ -191,6 +196,9 @@ and a vector containing based on the supplied <code>precision</code> and
 <dt><code>beta</code></dt><dd><p>The estimate for parameter "beta" in the fitted model.</p></dd>
 
 <dt><code>nec</code></dt><dd><p>The estimated NEC.</p></dd>
+
+<dt><code>f</code></dt><dd><p>The estimate for parameter "f" in the fitted model, NA if
+absent for the fitted model type.</p></dd>
 
 <dt><code>bot</code></dt><dd><p>The estimate for parameter "bot" in the fitted model, NA if
 absent for the fitted model type.</p></dd>
@@ -217,7 +225,8 @@ absent for the fitted model type.</p></dd>
 
     <div class='dont-index'><p><code><a href='bayesnec-package.html'>bayesnec</a></code>,
 <code><a href='bnec.html'>bnec</a></code>,
-<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code></p></div>
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>,
+<code><a href='bayesnecformula.html'>bayesnecformula</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

@@ -50,8 +50,9 @@
 <meta property="og:description" content="This is an intermediate class that was created to make both
 bayesnecfit and bayesmanecfit objects lighter
 to handle. It contains the original brmsfit
-fitted object, name of non-linear model that was fitted, and the list of
-initialisation values applied." />
+fitted object, name of non-linear model that was fitted, the list of
+initialisation values applied, and the validated
+bayesnecformula." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -158,8 +159,9 @@ initialisation values applied." />
     <p>This is an intermediate class that was created to make both
 <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> and <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> objects lighter
 to handle. It contains the original <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code>
-fitted object, name of non-linear model that was fitted, and the list of
-initialisation values applied.</p>
+fitted object, name of non-linear model that was fitted, the list of
+initialisation values applied, and the validated
+<code><a href='bayesnecformula.html'>bayesnecformula</a></code>.</p>
     </div>
 
 
@@ -181,13 +183,17 @@ the fitted model.</p></dd>
 <dt><code>inits</code></dt><dd><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> containing the initialisation values
 for to fit the model.</p></dd>
 
+<dt><code>bayesnecformula</code></dt><dd><p>An object of class <code><a href='bayesnecformula.html'>bayesnecformula</a></code> and
+<code><a href='https://rdrr.io/r/stats/formula.html'>formula</a></code>.</p></dd>
+
 </dl>
     <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
 
     <div class='dont-index'><p><code><a href='bayesnec-package.html'>bayesnec</a></code>,
 <code><a href='bnec.html'>bnec</a></code>,
 <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>,
-<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code></p></div>
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>,
+<code><a href='bayesnecformula.html'>bayesnecformula</a></code></p></div>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
