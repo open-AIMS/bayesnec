@@ -57,13 +57,13 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
                         posterior = FALSE, type = "absolute",
                         hormesis_def = "control", x_range = NA,
                         xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
-  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
-        prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
+  if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[1] ||
+        prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
     }
   if (type != "direct") {
-    if (ecx_val < 1 | ecx_val > 99) {
+    if (ecx_val < 1 || ecx_val > 99) {
       stop("Supplied ecx_val is not in the required range. ",
            "Please supply a percentage value between 1 and 99.")
     }
@@ -78,7 +78,7 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   } else {
     m4param <- 0
   }
-  if (object$fit$family$family == "gaussian" & type == "absolute" &
+  if (object$fit$family$family == "gaussian" && type == "absolute" &
         m4param == 0) {
     stop("Absolute ECx values are not valid for a gaussian ",
          "response variable unless a model with a bot parameter is fit")
@@ -93,6 +93,13 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   }
   ecx_fct <- get(paste0("ecx_x_", type))
   ecx_out <- apply(p_samples, 1, ecx_fct, ecx_val, x_vec)
+  formula <- object$bayesnecformula
+  x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  x_call <- str2lang(eval(parse(text = x_str)))
+  if (inherits(x_call, "call")) {
+    x_call[[2]] <- str2lang("ecx_out")
+    ecx_out <- eval(x_call)
+  }
   if (inherits(xform, "function")) {
     ecx_out <- xform(ecx_out)
   }
