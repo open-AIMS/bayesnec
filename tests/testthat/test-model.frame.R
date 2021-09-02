@@ -48,4 +48,4 @@ test_that("correct classes", {
   expect_identical(names(attributes(d)$bnec_pop), c("y_var", "x_var"))
   expect_equal(attributes(d)$bnec_pop, c("resp", "pred"), ignore_attr = TRUE)
   expect_equal(attributes(d)$bnec_group, c("g_1", "g_2"))
-)}
+})
