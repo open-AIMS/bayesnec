@@ -1,23 +1,23 @@
 library(bayesnec)
-  fit1 <- manec_gausian_identity$mod_fits$nec4param$fit
-  fit2 <- manec_gausian_identity$mod_fits$ecx4param$fit
+
+fit1 <- manec_gausian_identity$mod_fits$nec4param$fit
+fit2 <- manec_gausian_identity$mod_fits$ecx4param$fit
   
 test_that("models fit correctly", {
-  nec_gausian_identity <- pull_out(manec_gausian_identity, "nec4param")
-
+  expect_message(pull_out(manec_gausian_identity, "nec4param"))
 })
 
 test_that("ecx works", {
- ec10 <- ecx(manec_gausian_identity, type = "relative")
- ec90 <- ecx(manec_gausian_identity, ecx_val = 90, type = "relative") 
- expect_gt(ec90[1], ec10[1])
+  ec10 <- ecx(manec_gausian_identity, type = "relative")
+  ec90 <- ecx(manec_gausian_identity, ecx_val = 90, type = "relative")
+  expect_gt(ec90[1], ec10[1])
+  expect_range(ec10[1], 1.38, 1.64)
+  expect_range(ec90[1], 2.93, 2.97)
 })
 
 test_that("gaussian model with identity works correctly", {
-  expect_equal(summary(manec_gausian_identity)$family, "gaussian")  
-  expect_equal(fit1$family$link, "identity")  
-  expect_range(ec10[1], 1.38, 1.64)
-  expect_range(ec90[1], 2.93, 2.97)
+  expect_equal(summary(manec_gausian_identity)$family, "gaussian")
+  expect_equal(fit1$family$link, "identity")
   
   expect_range(fixef(fit1)["bot_Intercept", 1], -12, -5)
   expect_range(fixef(fit1)["top_Intercept", 1], 2.1, 2.2)
@@ -25,83 +25,87 @@ test_that("gaussian model with identity works correctly", {
   expect_range(fixef(fit1)["nec_Intercept", 1], 1.3, 1.6)
   expect_warning(expect_range(waic(fit1)$estimates[3, 1], 167, 180))
   
-  expect_range(fixef(fit2)["bot_Intercept", 1], -6.6, -5.0)  
+  expect_range(fixef(fit2)["bot_Intercept", 1], -6.6, -5.0)
   expect_range(fixef(fit2)["ec50_Intercept", 1], 2.3, 2.5)
   expect_range(fixef(fit2)["top_Intercept", 1], 2.1, 2.4)
   expect_range(fixef(fit2)["beta_Intercept", 1], 0.8, 1.0)
-  expect_warning(expect_range(waic(fit2)$estimates[3, 1], 175, 215))  
+  expect_warning(expect_range(waic(fit2)$estimates[3, 1], 175, 215))
 })
 
 test_that("all model families return expected ecx values", {
- lapply(manec_fits, FUN = function(x) expect_range(ecx(x, type = "relative")[1], 1.3, 1.64))
- lapply(manec_fits[-1], FUN = function(x) expect_range(ecx(x, ecx_val = 90, type = "relative")[1], 1.9, 2.97)) 
+  lapply(manec_fits, function(x) {
+    expect_range(ecx(x, type = "relative")[1], 1.3, 1.64)
+  })
+  lapply(manec_fits[-1], function(x) {
+    expect_range(ecx(x, ecx_val = 90, type = "relative")[1], 1.9, 2.97)
+  })
 })
 
 test_that("all model families return expected nec values", {
-  lapply(manec_fits, FUN = function(x) expect_range(x$w_nec["Estimate"], 1.4, 1.6)) 
+  lapply(manec_fits, function(x) {
+    expect_range(x$w_nec["Estimate"], 1.4, 1.6)
+  })
 })
 
 test_that("all model families return expected weights", {
- lapply(manec_fits, FUN = function(x) expect_range(x$mod_stats[1,"wi"], 0.7, 1)) 
+  lapply(manec_fits, function(x) {
+    expect_range(x$mod_stats[1,"wi"], 0.7, 1)
+  })
 })
 
 test_that("all model families return expected class", {
-  lapply(nec_fits, FUN = function(x) expect_s3_class(x, "bayesnecfit"))
-  lapply(manec_fits, FUN = function(x) expect_s3_class(x, "bayesmanecfit"))
+  lapply(nec_fits, function(x) expect_s3_class(x, "bayesnecfit"))
+  lapply(manec_fits, function(x) expect_s3_class(x, "bayesmanecfit"))
 })
 
 test_that("beta model returns expected family and link", {
   expect_equal(summary(manec_beta_identity)$family, "beta")
-  expect_equal(summary(manec_beta_logit)$family, "beta")  
-  expect_equal(manec_beta_identity$mod_fits$nec4param$fit$family$link, "identity")  
-  expect_equal(manec_beta_logit$mod_fits$nec4param$fit$family$link, "logit")  
+  expect_equal(summary(manec_beta_logit)$family, "beta")
+  expect_equal(manec_beta_identity$mod_fits$nec4param$fit$family$link,
+               "identity")
+  expect_equal(manec_beta_logit$mod_fits$nec4param$fit$family$link, "logit")
 })
 
 test_that("binomial model returns expected family and link", {
   expect_equal(summary(manec_binomial_identity)$family, "binomial")
-  expect_equal(summary(manec_binomial_logit)$family, "binomial")  
-  expect_equal(manec_binomial_identity$mod_fits$nec4param$fit$family$link, "identity")  
-  expect_equal(manec_binomial_logit$mod_fits$nec4param$fit$family$link, "logit")  
+  expect_equal(summary(manec_binomial_logit)$family, "binomial")
+  expect_equal(manec_binomial_identity$mod_fits$nec4param$fit$family$link,
+               "identity")
+  expect_equal(manec_binomial_logit$mod_fits$nec4param$fit$family$link, "logit")
 })
   
 test_that("poisson model returns expected family and link", {
   expect_equal(summary(manec_poisson_identity)$family, "poisson")
-  expect_equal(summary(manec_poisson_log)$family, "poisson")  
-  expect_equal(manec_poisson_identity$mod_fits$nec4param$fit$family$link, "identity")  
-  expect_equal(manec_poisson_log$mod_fits$nec4param$fit$family$link, "log")  
+  expect_equal(summary(manec_poisson_log)$family, "poisson")
+  expect_equal(manec_poisson_identity$mod_fits$nec4param$fit$family$link,
+               "identity")
+  expect_equal(manec_poisson_log$mod_fits$nec4param$fit$family$link, "log")
 })
 
 test_that("negbinomial model returns expected family and link", {
   expect_equal(summary(manec_negbinomial_identity)$family, "negbinomial")
-  expect_equal(summary(manec_negbinomial_log)$family, "negbinomial")  
-  expect_equal(manec_negbinomial_identity$mod_fits$nec4param$fit$family$link, "identity")  
-  expect_equal(manec_negbinomial_log$mod_fits$nec4param$fit$family$link, "log")  
+  expect_equal(summary(manec_negbinomial_log)$family, "negbinomial")
+  expect_equal(manec_negbinomial_identity$mod_fits$nec4param$fit$family$link,
+               "identity")
+  expect_equal(manec_negbinomial_log$mod_fits$nec4param$fit$family$link, "log")
 })
 
 test_that("gamma model returns expected family and link", {
   expect_equal(summary(manec_gamma_identity)$family, "gamma")
-  expect_equal(summary(manec_gamma_log)$family, "gamma")  
-  expect_equal(manec_gamma_identity$mod_fits$nec4param$fit$family$link, "identity")  
-  expect_equal(manec_gamma_log$mod_fits$nec4param$fit$family$link, "log")  
+  expect_equal(summary(manec_gamma_log)$family, "gamma")
+  expect_equal(manec_gamma_identity$mod_fits$nec4param$fit$family$link,
+               "identity")
+  expect_equal(manec_gamma_log$mod_fits$nec4param$fit$family$link, "log")
 })
 
-test_that("bnec takes model formula input and provides warning for uncessary arguments", {
-  m1 <- "Arguments x_var, y_var, trials_var and model ignored in the case of formula syntax"
-  bnec(y ~ model(x, "ecxlin"), data = nec_data, x_var="x") %>% 
-  expect_warning(m1)
-  bnec(y ~ model(x, "ecxlin"), data = nec_data, model="ecxlin") %>% 
-    expect_warning(m1)
+test_that("bnec takes model formula input and provides warning for unnecessary arguments", {
+  m1 <- "Arguments x_var, y_var, trials_var, model, random and random_vars"
+  bnec(y ~ crf(x, "ecxlin"), data = nec_data, x_var = "x") %>%
+    expect_warning(m1) %>%
+    expect_message %>%
+    expect_error
+  bnec(y ~ crf(x, "ecxlin"), data = nec_data, model = "ecxlin") %>%
+    expect_warning(m1) %>%
+    expect_message %>%
+    expect_error
 })
-
-# test <- bnec(y ~ model(x, "ecxlin"), data = nec_data, chains = 2, iter=2e3)
-# # works
-# test <- bnec(nec_data, model="neclin", chains = 2, iter=2e3)
-# # works
-# test <- bnec(x=a, y=b, model="nec", trials_var = j, chains = 2, iter=2e3)
-# # works
-# test <- bnec(data=nec_data, x_var = "x", y_var = "y", model = "ecxlin", chains = 2, iter=2e3)
-# # works
-# test <- bnec(x=nec_data$x, y=nec_data$count, model="ecxlin", trials_var = nec_data$trials, chains = 2, iter=2e3)
-# #works
-# test <- bnec(x=other_data$a, y=other_data$b, model="ecxlin", chains = 2, iter=2e3)
-# #works
