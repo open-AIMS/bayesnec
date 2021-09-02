@@ -40,7 +40,7 @@ manec_binomial_logit <- nec_data %>%
   muted_bnec(y | trials(trials) ~ crf(x, model = c("nec4param", "ecx4param")),
              data = ., chains = 2, family = binomial(link = "logit"))
 manec_binomial_identity <- nec_data %>%
-  mutate(trials = 10, y = round(y * trials)) %>%
+  mutate(trials = 10, y = as.integer(round(y * trials))) %>%
   muted_bnec(y | trials(trials) ~ crf(x, model = c("nec4param", "ecx4param")),
              data = ., chains = 2)
 
