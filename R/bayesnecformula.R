@@ -112,7 +112,7 @@
 #' bayesnecformula(y ~ crf(x, "nec3param"))
 #' # or use shot alias bnf
 #' bayesnecformula(y ~ crf(x, "nec3param")) == bnf(y ~ crf(x, "nec3param"))
-#' bnf(log(y) | trials(tr) ~ crf(sqrt(x), "nec3param"))
+#' bnf(y | trials(tr) ~ crf(sqrt(x), "nec3param"))
 #' bnf(y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2))
 #' bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 #'
@@ -120,7 +120,7 @@
 #' # complex transformations are not advisable because
 #' # they are passed directly to Stan via brms
 #' # and are likely to fail -- transform your variable beforehand!
-#' try(bnf(log(y) | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
+#' try(bnf(y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 #' }
 #' @export
 bayesnecformula <- function(formula, ...) {
@@ -202,7 +202,7 @@ bnf <- function(formula, ...) {
 #' check_formula(bnf(f_2), data, run_par_checks = TRUE)
 #' }
 #' # runs fine
-#' f_3 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
+#' f_3 <- "y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
 #' check_formula(bnf(f_3), data)
 #' f_4 <- y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
 #' inherits(check_formula(bnf(f_4), data), "bayesnecformula")
@@ -305,11 +305,14 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
     pars <- sapply(split_str_calls, `[[`, 1)
     vars <- sapply(split_str_calls, `[[`, 2)
     vars <- strsplit(vars, "\\/|\\:")[[1]]
-    if (!all(vars %in% names(data))) {
-      to_flag <- vars[!vars %in% names(data)]
-      stop("Group-level variable(s) ",
-           paste0("\"", to_flag, "\"", collapse = "; "),
-           " not found in dataset.")
+    for (j in seq_along(vars)) {
+      if (!vars[j] %in% names(data)) {
+        stop("Group-level variable(s) ",
+             paste0("\"", vars[j], "\"", collapse = "; "),
+             " not found in dataset.")
+      } else if (any(sapply(data[, vars[j]], is.numeric))) {
+        stop("Group-level variables cannot be numeric.")
+      }
     }
     if (run_par_checks) {
       message("Performing single parameter checks on all models...")
@@ -336,6 +339,8 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
           stop("Group-level variable(s) ",
                   paste0("\"", vars[j], "\"", collapse = "; "),
                   " not found in dataset.")
+        } else if (any(sapply(data[, vars[j]], is.numeric))) {
+          stop("Group-level variables cannot be numeric.")
         }
       }
     }
@@ -343,7 +348,7 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
   }
   if (length(split_random_call) > 0) {
     stop("Term(s) ", paste0(split_random_call, collapse = "; "), "; are not",
-         "allowed in a bayesnec formula. See ?bayesnecformula")
+         " allowed in a bayesnec formula. See ?bayesnecformula")
   }
   lhs_vars <- all.vars(lhs(formula))
   exist_all_left <- all(lhs_vars %in% names(data))
@@ -399,7 +404,7 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
 #' data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 #' 
 #' f_1 <- y ~ crf(x, "nec3param")
-#' f_2 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
+#' f_2 <- "y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
 #' f_3 <- y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
 #' f_4 <- y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)
 #' 
@@ -413,7 +418,7 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
 #' @export
 model.frame.bayesnecformula <- function(formula, data, ...) {
   if (!inherits(data, "data.frame")) {
-    stop("Argument data is missing.")
+    stop("Argument data is not a data.frame.")
   }
   pre_list <- simplify_formula(formula, data, ...)
   data <- model.frame(pre_list$formula, data = data)
@@ -648,7 +653,7 @@ trials <- function(...) {
 #' data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 #'
 #' # make one single model
-#' f_1 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
+#' f_1 <- "y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
 #' make_brmsformula(f_1, data)
 #' # make an entire class of models
 #' f_2 <- y ~ crf(x, "ecx") + ogl(group_1) + pgl(group_2)
