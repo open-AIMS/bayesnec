@@ -96,6 +96,8 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
             y <- y / tr
           }
           brm_args$prior <- define_prior(model, family, x, y)
+        } else {
+          brm_args$prior <- priors
         }
       }
       fit_m <- try(
