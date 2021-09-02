@@ -612,3 +612,58 @@ crf <- function(x, model, arg_to_retrieve = "x") {
 trials <- function(...) {
   identity(...)
 }
+
+#' Expose the final \code{\link[brms]{brmsformula}}
+#'
+#' Checks the input formula according to
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} requirements and
+#' expose the final \code{\link[brms]{brmsformula}} which is to be fitted via
+#' package \pkg{brms}.
+#'
+#' @param formula Either a \code{\link[base]{character}} string defining an
+#' R formula or an actual \code{\link[stats]{formula}} object. See details.
+#' @param data A \code{\link[base]{data.frame}} containing the variables
+#' specified in \code{formula}.
+#'
+#' @importFrom stats model.frame
+#' 
+#' @return A named \code{\link[base]{list}}, with each element containing the
+#' final \code{\link[brms]{brmsformula}} to be passed to
+#' \code{\link[brms]{brm}}.
+#' 
+#' @seealso
+#'   \code{\link{bayesnecformula}},
+#'   \code{\link{check_formula}}
+#'
+#' @examples
+#' library(bayesnec)
+#' nec3param <- function(beta, nec, top, x) {
+#'   top * exp(-exp(beta) * (x - nec) *
+#'     ifelse(x - nec < 0, 0, 1))
+#' }
+#' 
+#' data <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
+#'                    group_1 = sample(c("a", "b"), 10, replace = TRUE),
+#'                    group_2 = sample(c("c", "d"), 10, replace = TRUE))
+#' data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
+#'
+#' # make one single model
+#' f_1 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
+#' make_brmsformula(f_1, data)
+#' # make an entire class of models
+#' f_2 <- y ~ crf(x, "ecx") + ogl(group_1) + pgl(group_2)
+#' make_brmsformula(f_2, data)
+#'
+#' @export
+make_brmsformula <- function(formula, data) {
+  formula <- bnf(formula)
+  all_models <- get_model_from_formula(formula)
+  out <- list()
+  for (i in seq_along(all_models)) {
+    formula_i <- single_model_formula(formula, all_models[i])
+    bdat_i <- model.frame(formula_i, data = data, run_par_checks = FALSE)
+    out[[i]] <- wrangle_model_formula(all_models[i], formula_i, bdat_i)
+  }
+  names(out) <- all_models
+  out
+}
