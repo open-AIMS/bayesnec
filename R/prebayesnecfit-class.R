@@ -31,7 +31,7 @@
 #'
 NULL
 
-#' Checks if argument is a \code{prebayesnecfit} object
+#' Checks if argument is a \code{\link{prebayesnecfit}} object
 #'
 #' @param x An \R object
 #' 
@@ -40,4 +40,27 @@ NULL
 #' @noRd
 is_prebayesnecfit <- function(x) {
   inherits(x, "prebayesnecfit")
+}
+
+
+#' @param x An \R object
+#' 
+#' @return A \code{\link[base]{logical}} vector.
+#'
+#' @noRd
+recover_prebayesnecfit <- function(x) {
+  if (is_bayesnecfit(x)) {
+    out <- allot_class(x[c("fit", "model", "inits", "bayesnecformula")],
+                       "prebayesnecfit")
+    out <- list(out = out)
+    names(out) <- out$out$model
+    out
+  } else if (is_bayesmanecfit(x)) {
+    for (i in seq_along(x$mod_fits)) {
+      x$mod_fits[[i]] <- allot_class(x$mod_fits[[i]], "prebayesnecfit")
+    }
+    x$mod_fits
+  } else {
+    stop("Objects must be either of class bayesnecfit or bayesmanecfit.")
+  }
 }
