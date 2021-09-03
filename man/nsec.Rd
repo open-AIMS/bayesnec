@@ -2,7 +2,8 @@
 % Please edit documentation in R/nsec.R
 \name{nsec}
 \alias{nsec}
-\title{nsec}
+\title{Extracts the predicted NSEC value as desired from an object of class
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 \usage{
 nsec(
   object,
@@ -17,7 +18,7 @@ nsec(
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesnecfit}} returned by \code{\link{bnec}}.}
+\code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.
@@ -49,7 +50,7 @@ lower 95\% credible interval bounds.
 }
 \description{
 Extracts the predicted NSEC value as desired from an object of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \details{
 For \code{hormesis_def}, if "max", then NSEC values are calculated

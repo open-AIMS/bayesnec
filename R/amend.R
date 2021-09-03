@@ -1,6 +1,4 @@
-#' amend.default
-#'
-#' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by
+#' Amends an existing \code{\link{bayesmanecfit}} object, for example, by
 #' adding or removing fitted models.
 #'
 #' @inheritParams bnec
@@ -24,6 +22,21 @@
 #' library(bayesnec)
 #' data(manec_example)
 #' exmp <- amend(manec_example, drop = "nec4param")
+#'
+#' @export
+amend <- function(object, drop, add, loo_controls, x_range = NA,
+                  precision = 1000, sig_val = 0.01, priors) {
+  UseMethod("amend")
+}
+
+#' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by
+#' adding or removing fitted models.
+#'
+#' @inheritParams amend
+#'
+#' @inherit amend return examples
+#'
+#' @noRd
 #'
 #' @export
 amend.default <- function(object, drop, add, loo_controls, x_range = NA,
@@ -133,21 +146,6 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
   }
 }
 
-#' amend
-#'
-#' Amends an existing \code{\link{bayesmanecfit}} object, for example, by
-#' adding or removing fitted models.
-#'
-#' @inheritParams amend.default
-#'
-#' @inherit amend.default return examples
-#'
-#' @export
-amend <- function(object, drop, add, loo_controls, x_range = NA,
-                  precision = 1000, sig_val = 0.01, priors) {
-  UseMethod("amend")
-}
-
 #' amend.bayesmanecfit
 #'
 #' Modifies an existing \code{\link{bayesmanecfit}} object, for example, by
@@ -155,7 +153,10 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #'
 #' @inheritParams amend
 #'
-#' @inherit amend.default return examples
+#' @inherit amend return examples
+#'
+#' @noRd
+#'
 #' @export
 amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
                                 precision = 1000, sig_val = 0.01, priors) {

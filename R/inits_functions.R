@@ -14,6 +14,8 @@
 #'
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
+#'
+#' @noRd
 make_inits <- function(model, fct_args, priors, chains) {
   fcts <- c(gamma = rgamma,
             normal = rnorm,
@@ -92,6 +94,8 @@ make_inits <- function(model, fct_args, priors, chains) {
 #'
 #' @seealso \code{\link{make_inits}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
+#'
+#' @noRd
 make_good_inits <- function(model, x, y, n_trials = 1e5, ...) {
   limits <- range(y, na.rm = TRUE)
   pred_fct <- get(paste0("pred_", model))

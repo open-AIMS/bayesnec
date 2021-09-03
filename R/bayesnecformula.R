@@ -221,9 +221,8 @@ check_formula <- function(formula, data, run_par_checks = FALSE) {
 #' @inheritParams check_formula
 #' @inherit check_formula examples details return
 #'
-#' @importFrom formula.tools lhs rhs
-#'
 #' @export
+#' @noRd
 check_formula.bayesnecformula <- function(formula, data,
                                           run_par_checks = FALSE) {
   check_formula.default(formula = formula, data = data,
@@ -242,6 +241,7 @@ check_formula.bayesnecformula <- function(formula, data,
 #' @importFrom formula.tools lhs rhs
 #'
 #' @export
+#' @noRd
 check_formula.default <- function(formula, data, run_par_checks = FALSE) {
   if (!inherits(formula, "bayesnecformula")) {
     stop("Your formula must be of class bayesnecformula.")

@@ -44,6 +44,8 @@ NULL
 #' Checks if argument is a \code{\link{bayesmanecfit}} object
 #'
 #' @param x An \R object
+#'
+#' @noRd
 is_bayesmanecfit <- function(x) {
   inherits(x, "bayesmanecfit")
 }

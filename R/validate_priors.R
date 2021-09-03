@@ -10,6 +10,8 @@
 #'
 #' @return A \code{\link[base]{data.frame}} of class
 #' \code{\link[brms]{brmsprior}}.
+#'
+#' @noRd
 validate_priors <- function(priors, model) {
   if (missing(priors)) {
     stop("No valid prior specified.")

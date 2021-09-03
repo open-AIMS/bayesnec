@@ -6,6 +6,8 @@
 #' \code{\link[stats]{family}} function.
 #'
 #' @return An object of class \code{\link[stats]{family}}.
+#'
+#' @noRd
 validate_family <- function(family) {
   if (inherits(family, "function")) {
     family <- family()

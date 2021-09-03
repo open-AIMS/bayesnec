@@ -2,7 +2,8 @@
 % Please edit documentation in R/ecx.R
 \name{ecx}
 \alias{ecx}
-\title{ecx}
+\title{Extracts the predicted ECx value as desired from an object of class
+\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.}
 \usage{
 ecx(
   object,

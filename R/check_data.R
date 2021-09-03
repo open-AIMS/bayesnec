@@ -13,6 +13,8 @@
 #'
 #' @return A \code{\link[base]{list}} of modified elements
 #' necessary for \code{\link{fit_bayesnec}}.
+#'
+#' @noRd
 check_data <- function(data, family, model) {
   y <- retrieve_var(data, "y_var", error = TRUE)
   x <- retrieve_var(data, "x_var", error = TRUE)

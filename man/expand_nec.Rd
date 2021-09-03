@@ -2,7 +2,7 @@
 % Please edit documentation in R/expand_classes.R
 \name{expand_nec}
 \alias{expand_nec}
-\title{expand_nec}
+\title{Extracts a range of statistics from a \code{\link{prebayesnecfit}} object.}
 \usage{
 expand_nec(
   object,
@@ -44,12 +44,12 @@ not provided by the user, \code{\link{bnec}} will set the default
 \code{method} argument in \code{\link[loo]{loo_model_weights}} to
 "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
 
-\item{...}{Further arguments to \code{\link{add_criteria}}.}
+\item{...}{Further arguments to internal function.}
 }
 \value{
 A \code{\link[base]{list}} of model statistical output derived from
 the input model object.
 }
 \description{
-Assigns class to a \code{\link{prebayesnecfit}} object
+Extracts a range of statistics from a \code{\link{prebayesnecfit}} object.
 }

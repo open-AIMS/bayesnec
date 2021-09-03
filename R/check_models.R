@@ -13,6 +13,8 @@
 #' @importFrom stats na.omit
 #' @return A \code{\link[base]{list}} of modified elements
 #' necessary for \code{\link{fit_bayesnec}}.
+#'
+#' @noRd
 check_models <- function(model, family, data) {
   fam_tag <- family$family
   link_tag <- family$link

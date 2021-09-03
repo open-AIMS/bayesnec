@@ -15,6 +15,8 @@
 #'
 #' @seealso \code{\link{bnec}}
 #' @return An object of class \code{\link{prebayesnecfit}}.
+#'
+#' @noRd
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE) {
   formula <- single_model_formula(formula, model)

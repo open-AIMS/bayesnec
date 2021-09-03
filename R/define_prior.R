@@ -11,6 +11,8 @@
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms bf prior_string negbinomial Beta
 #' @importFrom stats qlogis binomial quantile Gamma poisson gaussian sd
+#'
+#' @noRd
 define_prior <- function(model, family, predictor, response) {
   link_tag <- family$link
   custom_name <- check_custom_name(family)

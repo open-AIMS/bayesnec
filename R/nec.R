@@ -1,7 +1,5 @@
-#' nec.default
-#'
 #' Extracts the predicted NEC value as desired from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
@@ -20,12 +18,27 @@
 #' lower 95% credible interval bounds
 #' (or other interval as specified by prob_vals).
 #'
-#' @importFrom stats quantile predict
-#'
 #' @examples
 #' library(bayesnec)
 #' data(manec_example)
 #' nec(manec_example)
+#'
+#' @export
+nec <- function(object, posterior = FALSE, xform = NA,
+                prob_vals = c(0.5, 0.025, 0.975)) {
+  UseMethod("nec")
+}
+
+#' @inheritParams nec
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} returned by
+#' \code{\link{bnec}}.
+#'
+#' @inherit nec seealso return examples
+#' 
+#' @importFrom stats quantile predict
+#'
+#' @noRd
 #'
 #' @export
 nec.default <- function(object, posterior = FALSE, xform = NA,
@@ -55,52 +68,32 @@ nec.default <- function(object, posterior = FALSE, xform = NA,
   }
 }
 
-#' nec
+#' @inheritParams nec
 #'
-#' Extracts the predicted NEC value as desired from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' @param object An object of class \code{\link{bayesnecfit}} returned by
+#' \code{\link{bnec}}.
 #'
-#' @inheritParams nec.default
+#' @inherit nec seealso return examples
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesnecfit}} returned by \code{\link{bnec}}.
-#'
-#' @inherit nec.default return details seealso examples
+#' @noRd
 #'
 #' @export
-nec <- function(object, posterior = FALSE, xform = NA,
-                prob_vals = c(0.5, 0.025, 0.975)) {
-  UseMethod("nec")
+nec.bayesnecfit <- function(object, posterior = FALSE, xform = NA,
+                            prob_vals = c(0.5, 0.025, 0.975)) {
+  nec.default(object, posterior = posterior, xform = xform,
+              prob_vals = prob_vals)
 }
 
-#' nec.bayesnecfit
-#'
-#' Extracts the predicted NEC value as desired from an object of class
-#' \code{\link{bayesnecfit}}.
-#'
-#' @param object An object of class \code{\link{bayesnecfit}}
-#' returned by \code{\link{bnec}}.
-#' @param ... Additional arguments to \code{\link{nec}}
-#'
-#' @inherit nec return details seealso examples
-#' @export
-nec.bayesnecfit <- function(object, ...) {
-  nec.default(object, ...)
-}
-
-#' nec.bayesmanecfit
-#'
-#' Extracts the predicted NEC value as desired from an object of class
-#' \code{\link{bayesmanecfit}}.
-#'
 #' @inheritParams nec
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
 #'
-#' @inherit nec return details seealso examples
-#'
+#' @inherit nec seealso return examples
+#' 
 #' @importFrom stats quantile
+#'
+#' @noRd
 #'
 #' @export
 nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NA,

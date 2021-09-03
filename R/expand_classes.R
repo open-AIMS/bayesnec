@@ -1,16 +1,17 @@
-#' expand_nec
-#'
-#' Assigns class to a \code{\link{prebayesnecfit}} object
+#' Extracts a range of statistics from a \code{\link{prebayesnecfit}} object.
 #'
 #' @inheritParams bnec
 #'
 #' @param object An object of class \code{\link{prebayesnecfit}}.
-#' @param ... Further arguments to \code{\link{add_criteria}}.
+#' @param ... Further arguments to internal function.
 #'
 #' @return A \code{\link[base]{list}} of model statistical output derived from
 #' the input model object.
+#'
 #' @importFrom brms posterior_epred as_draws_df
 #' @importFrom stats quantile fitted residuals terms
+#'
+#' @export
 expand_nec <- function(object, formula, x_range = NA, precision = 1000,
                        sig_val = 0.01, loo_controls, ...) {
   fam_tag <- object$fit$family$family
@@ -77,24 +78,26 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
          nec_posterior = nec_posterior))
 }
 
-#' expand_manec
-#'
-#' Extracts a range of statistics from a list of \code{\link{bayesnecfit}}
-#' model fits.
+#' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
+#' objects.
 #'
 #' @inheritParams bnec
 #'
-#' @param object a \code{\link{bayesmanecfit}} mod_fits output list, as
-#' returned by \code{\link{bnec}} when more than one model is supplied.
+#' @param object A \code{\link[base]{list}} of objects of class
+#' \code{\link{prebayesnecfit}}.
 #' @param formula Either a \code{\link[base]{character}} string defining an
 #' R formula or an actual \code{\link[stats]{formula}} object. See
 #' \code{\link{bayesnecformula}} and \code{\link{check_formula}}. It could also
-#' be a list of formulas if multiple objects are passed to \code{object}.
+#' be a \code{\link[base]{list}} of formulas if multiple objects are passed to
+#' \code{object}.
 #'
 #' @return A \code{\link[base]{list}} of model statistical output derived from
 #' the input model list.
+#'
 #' @importFrom loo loo_model_weights
 #' @importFrom stats quantile
+#'
+#' @export
 expand_manec <- function(object, formula, x_range = NA, precision = 1000,
                          sig_val = 0.01, loo_controls) {
   if (missing(loo_controls)) {

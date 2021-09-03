@@ -1,7 +1,5 @@
-#' nsec.default
-#'
 #' Extracts the predicted NSEC value as desired from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
@@ -33,9 +31,6 @@
 #' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds.
 #'
-#' @importFrom stats quantile predict
-#' @importFrom brms as_draws_df
-#'
 #' @examples
 #' \donttest{
 #' library(bayesnec)
@@ -43,6 +38,25 @@
 #' data(manec_example)
 #' nsec(manec_example)
 #' }
+#'
+#' @export
+nsec <- function(object, sig_val = 0.01, precision = 1000,
+                 posterior = FALSE, x_range = NA, hormesis_def = "control",
+                 xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+  UseMethod("nsec")
+}
+
+#' @inheritParams nsec
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} returned by
+#' \code{\link{bnec}}.
+#'
+#' @inherit nsec details seealso return examples
+#' 
+#' @importFrom stats quantile predict
+#' @importFrom brms as_draws_df
+#'
+#' @noRd
 #'
 #' @export
 nsec.default <- function(object, sig_val = 0.01, precision = 1000,
@@ -98,53 +112,36 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
   }
 }
 
-#' nsec
+#' @inheritParams nsec
 #'
-#' Extracts the predicted NSEC value as desired from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' @param object An object of class \code{\link{bayesnecfit}} returned by
+#' \code{\link{bnec}}.
 #'
-#' @inheritParams nsec.default
-#'
-#' @param object An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesnecfit}} returned by \code{\link{bnec}}.
-#'
-#' @inherit nsec.default return details seealso examples
+#' @inherit nsec details seealso return examples
+#' 
+#' @noRd
 #'
 #' @export
-nsec <- function(object, sig_val = 0.01, precision = 1000,
-                 posterior = FALSE, x_range = NA, hormesis_def = "control",
-                 xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
-  UseMethod("nsec")
+nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
+                             posterior = FALSE, x_range = NA,
+                             hormesis_def = "control", xform = NA,
+                             prob_vals = c(0.5, 0.025, 0.975)) {
+  nsec.default(object, sig_val = sig_val, precision = precision,
+               posterior = posterior, x_range = x_range,
+               hormesis_def = hormesis_def, xform = xform, 
+               prob_vals = prob_vals)
 }
 
-#' nsec.bayesnecfit
-#'
-#' Extracts the predicted NSEC value as desired from an object of class
-#' \code{\link{bayesnecfit}}.
-#'
-#' @param object An object of class \code{\link{bayesnecfit}}
-#' returned by \code{\link{bnec}}.
-#' @param ... Additional arguments to \code{\link{nsec}}
-#'
-#' @inherit nsec return details seealso examples
-#' @export
-nsec.bayesnecfit <- function(object, ...) {
-  nsec.default(object, ...)
-}
-
-#' nsec.bayesmanecfit
-#'
-#' Extracts the predicted NSEC value as desired from an object of class
-#' \code{\link{bayesmanecfit}}.
-#'
 #' @inheritParams nsec
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
 #'
-#' @inherit nsec return details seealso examples
-#'
+#' @inherit nsec details seealso return examples
+#' 
 #' @importFrom stats quantile
+#'
+#' @noRd
 #'
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
