@@ -6,7 +6,9 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>nec.bayesnecfit — nec.bayesnecfit • bayesnec</title>
+<title>Concatenate multiple bnecfit objects into one single
+bayesmanecfit object containing Bayesian model averaging
+statistics. — c.bnecfit • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,9 +48,12 @@
 
 
 
-<meta property="og:title" content="nec.bayesnecfit — nec.bayesnecfit" />
-<meta property="og:description" content="Extracts the predicted NEC value as desired from an object of class
-bayesnecfit." />
+<meta property="og:title" content="Concatenate multiple bnecfit objects into one single
+bayesmanecfit object containing Bayesian model averaging
+statistics. — c.bnecfit" />
+<meta property="og:description" content="Concatenate multiple bnecfit objects into one single
+bayesmanecfit object containing Bayesian model averaging
+statistics." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -146,51 +151,39 @@ bayesnecfit." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>nec.bayesnecfit</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/nec.R'><code>R/nec.R</code></a></small>
-    <div class="hidden name"><code>nec.bayesnecfit.Rd</code></div>
+    <h1>Concatenate multiple <code><a href='bnecfit-class.html'>bnecfit</a></code> objects into one single
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object containing Bayesian model averaging
+statistics.</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/bnecfit-methods.R'><code>R/bnecfit-methods.R</code></a></small>
+    <div class="hidden name"><code>c.bnecfit.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Extracts the predicted NEC value as desired from an object of class
-<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>.</p>
+    <p>Concatenate multiple <code><a href='bnecfit-class.html'>bnecfit</a></code> objects into one single
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object containing Bayesian model averaging
+statistics.</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bayesnecfit</span>
-<span class='fu'><a href='nec.html'>nec</a></span><span class='op'>(</span><span class='va'>object</span>, <span class='va'>...</span><span class='op'>)</span></code></pre></div>
+    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bnecfit</span>
+<span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>...</span><span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>object</th>
-      <td><p>An object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>
-returned by <code><a href='bnec.html'>bnec</a></code>.</p></td>
+      <th>x</th>
+      <td><p>An object of class <code><a href='bnecfit-class.html'>bnecfit</a></code>.</p></td>
     </tr>
     <tr>
       <th>...</th>
-      <td><p>Additional arguments to <code><a href='nec.html'>nec</a></code></p></td>
+      <td><p>Additional objects of class <code><a href='bnecfit-class.html'>bnecfit</a></code>.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>A vector containing the estimated NEC value, including upper and
-lower 95% credible interval bounds
-(or other interval as specified by prob_vals).</p>
-    <h2 class="hasAnchor" id="see-also"><a class="anchor" href="#see-also"></a>See also</h2>
+    <p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p>
 
-    <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
-
-    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='nec.html'>nec</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> bayesmanecfit contains ecx model types and therefore nec estimate includes nsec values.</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>       50%      2.5%     97.5% </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1.4535468 0.7842331 1.5130335 </span>
-<span class='r-in'></span>
-</code></pre></div>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
