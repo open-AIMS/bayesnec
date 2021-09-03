@@ -137,12 +137,12 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
                            precision = precision, sig_val = sig_val,
                            loo_controls = loo_controls)
   if (length(mod_fits) > 1) {
-    allot_class(mod_fits, "bayesmanecfit")
+    allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
   } else {
     mod_fits <- expand_nec(mod_fits[[1]], formula = formula, x_range = x_range,
                            precision = precision, sig_val = sig_val,
                            loo_controls = loo_controls, model = names(mod_fits))
-    allot_class(mod_fits, "bayesnecfit")
+    allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
   }
 }
 

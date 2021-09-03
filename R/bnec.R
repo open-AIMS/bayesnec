@@ -233,13 +233,13 @@ bnec <- function(formula, data, x_range = NA, precision = 1000, sig_val = 0.01,
                              precision = precision, sig_val = sig_val,
                              loo_controls = loo_controls)
     if (length(mod_fits) > 1) {
-      allot_class(mod_fits, "bayesmanecfit")
+      allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
     } else {
       mod_fits <- expand_nec(mod_fits[[1]], formula = formula,
                              x_range = x_range, precision = precision,
                              sig_val = sig_val, loo_controls = loo_controls,
                              model = names(mod_fits))
-      allot_class(mod_fits, "bayesnecfit")
+      allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
     }
   } else {
     mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
@@ -247,6 +247,6 @@ bnec <- function(formula, data, x_range = NA, precision = 1000, sig_val = 0.01,
     mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
                           precision = precision, sig_val = sig_val,
                           loo_controls = loo_controls, model = model)
-    allot_class(mod_fit, "bayesnecfit")
+    allot_class(mod_fit, c("bayesnecfit", "bnecfit"))
   }
 }

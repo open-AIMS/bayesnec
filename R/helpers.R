@@ -168,7 +168,7 @@ allot_class <- function(x, new_class) {
 
 #' @noRd
 expand_and_assign_nec <- function(x, ...) {
-  allot_class(expand_nec(x, ...), "bayesnecfit")
+  allot_class(expand_nec(x, ...), c("bayesnecfit", "bnecfit"))
 }
 
 #' are_chains_correct
