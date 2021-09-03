@@ -2,13 +2,14 @@
 % Please edit documentation in R/nec.R
 \name{nec}
 \alias{nec}
-\title{nec}
+\title{Extracts the predicted NEC value as desired from an object of class
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 \usage{
 nec(object, posterior = FALSE, xform = NA, prob_vals = c(0.5, 0.025, 0.975))
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesnecfit}} returned by \code{\link{bnec}}.}
+\code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
 posterior sample of calculated NEC values should be returned instead of
@@ -28,7 +29,7 @@ lower 95\% credible interval bounds
 }
 \description{
 Extracts the predicted NEC value as desired from an object of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \examples{
 library(bayesnec)

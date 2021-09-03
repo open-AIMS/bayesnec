@@ -1,5 +1,3 @@
-#' ecx.default
-#'
 #' Extracts the predicted ECx value as desired from an object of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 #'
@@ -41,8 +39,6 @@
 #' @return A vector containing the estimated ECx value, including upper and
 #' lower 95% credible interval bounds.
 #'
-#' @importFrom stats quantile predict
-#'
 #' @examples
 #' \donttest{
 #' library(brms)
@@ -51,6 +47,25 @@
 #' ecx(manec_example, ecx_val = 50)
 #' ecx(manec_example)
 #' }
+#'
+#' @export
+ecx <- function(object, ecx_val = 10, precision = 1000,
+                posterior = FALSE, type = "absolute",
+                hormesis_def = "control", x_range = NA,
+                xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+  UseMethod("ecx")
+}
+
+#' @inheritParams ecx
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} returned by
+#' \code{\link{bnec}}.
+#'
+#' @inherit ecx details return seealso examples
+#'
+#' @importFrom stats quantile predict
+#'
+#' @noRd
 #'
 #' @export
 ecx.default <- function(object, ecx_val = 10, precision = 1000,
@@ -130,51 +145,36 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   }
 }
 
-#' ecx
+#' @inheritParams ecx
 #'
-#' Extracts the predicted ECx value as desired from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' @inherit ecx details return seealso examples
 #'
-#' @inheritParams ecx.default
+#' @param object An object of class \code{\link{bayesnecfit}} returned by
+#' \code{\link{bnec}}.
 #'
-#' @inherit ecx.default return details seealso examples
+#' @noRd
 #'
 #' @export
-ecx <- function(object, ecx_val = 10, precision = 1000,
-                posterior = FALSE, type = "absolute",
-                hormesis_def = "control", x_range = NA,
-                xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
-  UseMethod("ecx")
+ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
+                            posterior = FALSE, type = "absolute",
+                            hormesis_def = "control", x_range = NA,
+                            xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+  ecx.default(object = object, ecx_val = ecx_val, precision = precision,
+              posterior = posterior, type = type, hormesis_def = hormesis_def,
+              x_range = x_range, xform = xform, prob_vals = prob_vals)
 }
 
-#' ecx.bayesnecfit
-#'
-#' Extracts the predicted ECx value as desired from an object of class
-#' \code{\link{bayesnecfit}}.
-#'
-#' @param object An object of class \code{\link{bayesnecfit}}
-#' returned by \code{\link{bnec}}.
-#' @param ... Additional arguments to \code{\link{ecx}}.
-#'
-#' @inherit ecx return details seealso examples
-#' @export
-ecx.bayesnecfit <- function(object, ...) {
-  ecx.default(object, ...)
-}
-
-#' ecx.bayesmanecfit
-#'
-#' Extracts the predicted ECx value as desired from an object of class
-#' \code{\link{bayesmanecfit}}.
-#'
 #' @inheritParams ecx
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
 #'
-#' @inherit ecx return details seealso examples
+#' @inherit ecx details return seealso examples
 #'
 #' @importFrom stats quantile
+#'
+#' @noRd
+#'
 #' @export
 ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
                               posterior = FALSE, type = "absolute",
@@ -233,7 +233,7 @@ ecx_x_absolute <- function(y, ecx_val, x_vec) {
     ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
     outval <- x_vec[min_abs(y - ecx_y)]
   }
- outval
+  outval
 }
 
 #' @noRd

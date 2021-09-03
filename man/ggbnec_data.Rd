@@ -2,7 +2,7 @@
 % Please edit documentation in R/autoplot.R
 \name{ggbnec_data}
 \alias{ggbnec_data}
-\title{ggbnec_data}
+\title{Creates the data.frame for plotting with \code{\link{autoplot}}.}
 \usage{
 ggbnec_data(
   x,
@@ -36,8 +36,7 @@ default, function \code{\link{ecx}} returns EC10.}
 A \code{\link[base]{data.frame}}.
 }
 \description{
-Creates the data.frame that feeds into the plotting function
-\code{\link{ggbnec}}.
+Creates the data.frame for plotting with \code{\link{autoplot}}.
 }
 \examples{
 \donttest{

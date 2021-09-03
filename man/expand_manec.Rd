@@ -2,7 +2,8 @@
 % Please edit documentation in R/expand_classes.R
 \name{expand_manec}
 \alias{expand_manec}
-\title{expand_manec}
+\title{Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
+objects.}
 \usage{
 expand_manec(
   object,
@@ -14,13 +15,14 @@ expand_manec(
 )
 }
 \arguments{
-\item{object}{a \code{\link{bayesmanecfit}} mod_fits output list, as
-returned by \code{\link{bnec}} when more than one model is supplied.}
+\item{object}{A \code{\link[base]{list}} of objects of class
+\code{\link{prebayesnecfit}}.}
 
 \item{formula}{Either a \code{\link[base]{character}} string defining an
 R formula or an actual \code{\link[stats]{formula}} object. See
 \code{\link{bayesnecformula}} and \code{\link{check_formula}}. It could also
-be a list of formulas if multiple objects are passed to \code{object}.}
+be a \code{\link[base]{list}} of formulas if multiple objects are passed to
+\code{object}.}
 
 \item{x_range}{A range of predictor values over which to consider extracting
 ECx.}
@@ -50,6 +52,6 @@ A \code{\link[base]{list}} of model statistical output derived from
 the input model list.
 }
 \description{
-Extracts a range of statistics from a list of \code{\link{bayesnecfit}}
-model fits.
+Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
+objects.
 }

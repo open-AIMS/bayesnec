@@ -7,6 +7,8 @@
 #'
 #' @return A \code{\link[base]{list}} of model simulation statistics including
 #' iter, thin, warmup, chains, inits and nsamples.
+#'
+#' @noRd
 extract_simdat <- function(modfit) {
   x <- modfit$fit$fit@sim
   sample_prior <- attr(modfit$fit$prior, "sample_prior")

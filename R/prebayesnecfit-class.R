@@ -37,7 +37,7 @@ NULL
 #' 
 #' @return A \code{\link[base]{logical}} vector.
 #'
-#' @export
+#' @noRd
 is_prebayesnecfit <- function(x) {
   inherits(x, "prebayesnecfit")
 }

@@ -8,6 +8,8 @@
 #' distribution.
 #'
 #' @return A named \code{\link[base]{list}}.
+#'
+#' @noRd
 validate_loo_controls <- function(loo_controls, fam_tag) {
   if (!is.list(loo_controls)) {
     stop("loo_controls should be a named list of two elements. See ?bnec")

@@ -10,6 +10,7 @@
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
+#' @noRd
 set_distribution <- function(x, support_integer = FALSE, trials = NULL) {
   if (inherits(x, "numeric")) {
     if (!is.null(trials)) {

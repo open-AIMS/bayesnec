@@ -1,5 +1,3 @@
-#' prep_raw_data
-#'
 #' @param brms_fit A \code{\link[brms]{brmsfit}} object.
 #' @param bayesnecformula A \code{\link{bayesnecformula}} formula object.
 #'
@@ -8,6 +6,8 @@
 #' @importFrom dplyr %>% mutate select
 #' @importFrom rlang .data
 #' @importFrom stats model.frame
+#'
+#' @noRd
 prep_raw_data <- function(brms_fit, bayesnecformula) {
   r_df <- brms_fit$data
   mod_dat <- model.frame(bayesnecformula, data = r_df)
@@ -27,8 +27,6 @@ prep_raw_data <- function(brms_fit, bayesnecformula) {
     select(.data$x_e, .data$y_e, .data$y_ci, .data$x_r, .data$y_r)
 }
 
-#' bind_nec
-#'
 #' @param data A \code{\link[base]{data.frame}}.
 #' @param nec_vals A \code{\link[base]{numeric}} vector containing the mean,
 #' and 95% credible intervals of NEC values.
@@ -36,6 +34,8 @@ prep_raw_data <- function(brms_fit, bayesnecformula) {
 #' values.
 #'
 #' @return A \code{\link[base]{data.frame}}.
+#'
+#' @noRd
 bind_nec <- function(data, nec_vals, xform = NA) {
   data$nec_vals <- NA
   data$nec_labs <- NA
@@ -53,13 +53,13 @@ bind_nec <- function(data, nec_vals, xform = NA) {
   rbind(data, df)
 }
 
-#' bind_ecx
-#'
 #' @param data A \code{\link[base]{data.frame}}.
 #' @param ecx_vals A \code{\link[base]{numeric}} vector containing the mean,
 #' and 95% credible intervals of ECx values.
 #'
 #' @return A \code{\link[base]{data.frame}}.
+#'
+#' @noRd
 bind_ecx <- function(data, ecx_vals) {
   data$ecx_vals <- NA
   data$ecx_int <- NA
@@ -76,13 +76,10 @@ bind_ecx <- function(data, ecx_vals) {
   rbind(data, df)
 }
 
-#' ggbnec_data.default
+#' Creates the data.frame for plotting with \code{\link{autoplot}}.
 #'
-#' Creates the data.frame that feeds into the internal plotting function
-#' \code{\link{ggbnec}}.
-#'
-#' @param x An object of class \code{\link{bayesnecfit}}, as returned
-#' by function \code{\link{bnec}}.
+#' @param x An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}}.
 #' @param add_nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param add_ecx Should ECx values be added to the plot? Defaults to FALSE.
 #' @param force_x A \code{\link[base]{logical}} value indicating if the argument
@@ -96,10 +93,6 @@ bind_ecx <- function(data, ecx_vals) {
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'
-#' @importFrom dplyr %>% mutate
-#' @importFrom brms conditional_effects
-#' @importFrom rlang .data
-#'
 #' @examples
 #' \donttest{
 #' library(bayesnec)
@@ -108,6 +101,24 @@ bind_ecx <- function(data, ecx_vals) {
 #' ggbnec_data(manec_example)
 #' ggbnec_data(manec_example, add_ecx = TRUE, ecx_val = 50)
 #' }
+#'
+#' @export
+ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
+                        xform = NA, ...) {
+  UseMethod("ggbnec_data")
+}
+
+#' Creates the data.frame for plotting with \code{\link{autoplot}}.
+#'
+#' @inheritParams ggbnec_data
+#'
+#' @inherit ggbnec_data return examples
+#'
+#' @importFrom dplyr %>% mutate
+#' @importFrom brms conditional_effects
+#' @importFrom rlang .data
+#'
+#' @noRd
 #'
 #' @export
 ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE,
@@ -141,52 +152,35 @@ ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE,
   out
 }
 
-#' ggbnec_data
+#' Creates the data.frame for plotting with \code{\link{autoplot}}.
 #'
-#' Creates the data.frame that feeds into the plotting function
-#' \code{\link{ggbnec}}.
+#' @inheritParams ggbnec_data
 #'
-#' @inheritParams ggbnec_data.default
+#' @param x An object of class \code{\link{bayesnecfit}}, as returned by
+#' function \code{\link{bnec}}.
 #'
-#' @param x An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}}.
+#' @inherit ggbnec_data return examples
 #'
-#' @inherit ggbnec_data.default return examples
-#'
-#' @export
-ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
-                        xform = NA, ...) {
-  UseMethod("ggbnec_data")
-}
-
-#' ggbnec_data
-#'
-#' Creates the data.frame that feeds into the plotting function
-#' \code{\link{ggbnec}}.
-#'
-#' @inheritParams ggbnec_data.default
-#'
-#' @inherit ggbnec_data.default return examples
+#' @noRd
 #'
 #' @export
 ggbnec_data.bayesnecfit <- function(x, ...) {
   ggbnec_data.default(x, ...)
 }
 
-#' ggbnec_data
+#' Creates the data.frame for plotting with \code{\link{autoplot}}.
 #'
-#' Creates the data.frame that feeds into the plotting function
-#' \code{\link{ggbnec}}.
-#'
-#' @inheritParams ggbnec_data.default
+#' @inheritParams ggbnec_data
 #'
 #' @param x An object of class \code{\link{bayesmanecfit}}, as returned by
 #' function \code{\link{bnec}}.
 #'
-#' @inherit ggbnec_data.default return examples
+#' @inherit ggbnec_data return examples
 #'
 #' @importFrom dplyr %>% mutate
 #' @importFrom rlang .data
+#'
+#' @noRd
 #'
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
@@ -233,6 +227,8 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @importFrom ggplot2 element_text element_blank element_rect labs
 #' @importFrom dplyr %>% filter
 #' @importFrom rlang .data
+#'
+#' @noRd
 ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
   out <- ggplot() +
     geom_polygon(data = x %>% filter(!is.na(.data$y_ci)),
@@ -304,7 +300,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 #' @param xform A function to apply to the returned estimated concentration
 #' values.
 #'
-#' @inherit ggbnec return
+#' @return A \code{\link[ggplot2]{ggplot}} object.
 #'
 #' @importFrom dplyr mutate
 #' @family autoplot methods
@@ -363,7 +359,8 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @param multi_facet Should all plots be plotted in one single panel via
 #' facets? Defaults to TRUE.
 #'
-#' @inherit ggbnec return
+#' @return A \code{\link[ggplot2]{ggplot}} object.
+#'
 #' @inherit autoplot.bayesnecfit examples
 #' @family autoplot methods
 #'
