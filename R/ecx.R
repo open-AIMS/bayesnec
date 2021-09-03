@@ -185,11 +185,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
                          x_range, xform, prob_vals, sample_size) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
-    out <- ecx.default(target, ecx_val = ecx_val,
-                       precision = precision, posterior = posterior,
-                       type = type, hormesis_def = hormesis_def,
-                       x_range = x_range, xform = xform,
-                       prob_vals = prob_vals)
+    out <- ecx(target, ecx_val = ecx_val, precision = precision,
+               posterior = posterior, type = type, hormesis_def = hormesis_def,
+               x_range = x_range, xform = xform, prob_vals = prob_vals)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
     sample(out, n_s)
   }
