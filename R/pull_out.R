@@ -86,13 +86,13 @@ pull_out <- function(manec, model, loo_controls, ...) {
     suppressWarnings
   message("Pulling out model(s): ", paste0(to_go, collapse = ", "))
   if (length(mod_fits) > 1) {
-    allot_class(mod_fits, "bayesmanecfit")
+    allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
   } else {
     mod_fits <- expand_nec(mod_fits[[1]], model = to_go,
                            formula = mod_fits[[1]]$bayesnecformula,
                            loo_controls = loo_controls, ...) %>%
     suppressMessages %>%
     suppressWarnings
-    allot_class(mod_fits, "bayesnecfit")
+    allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
   }
 }
