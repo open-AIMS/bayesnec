@@ -16,8 +16,9 @@ knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE,
   fig.path = "vignette-fig-",
-  out.width = "100%",
-  dpi = 150,
+  fig.asp = 0.8,
+  out.width = "60%",
+  dpi = 120,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -80,7 +81,7 @@ names(post_comp)
 
 The `compare_posterior` function outputs several elements in a named list. This includes the **posterior_data** for each model in the comparison as a `data.frame` which we can use to plot a `geom_density` plot of the posterior estimates, so they can be compared visually.
 
-```{r exmp4-posterior, fig.width = 7, fig.height = 6}
+```{r exmp4-posterior, fig.width = 5}
 ggplot(data = post_comp$posterior_data, mapping = aes(x = value)) + 
   geom_density(mapping = aes(group = model, colour = model, fill = model),
                alpha = 0.3) +
@@ -91,7 +92,7 @@ From this you can see that the *EC~10~* estimates are very similar for the **ecx
 
 The `data.frame` `diff_data` can be used to make a similar plot, but specifically for the differences among models.
 
-```{r emp4-differences, fig.height=4.5}
+```{r exmp4-differences, fig.width = 5}
 ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
   geom_density(mapping = aes(group = comparison, colour = comparison,
                              fill = comparison), alpha = 0.3) +
@@ -132,7 +133,7 @@ head(post_comp_fitted$diff_data)
 
 Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** set, which is flat prior to the **nec** step point, and then declines more rapidly.
 
-```{r exmp4-fitted, fig.height=4.5}
+```{r exmp4-fitted, fig.width = 5}
 ggplot(data = post_comp_fitted$posterior_data) +
   geom_line(mapping = aes(x = x, y = Estimate, color = model), size = 0.5) +
   geom_ribbon(mapping = aes(x = x, ymin = Q2.5, ymax = Q97.5, fill = model),
@@ -143,7 +144,7 @@ ggplot(data = post_comp_fitted$posterior_data) +
 
 We can plot the differences between pairs of models in the list by plotting `diff.Estimate` from `diff_data` and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest and explains the differences we see above in the *EC~10~* endpoint estimates. The **ecx** and **all** model sets are relatively similar across the entire range of concentrations (red band overlaps zero). The green band is the difference between **nec** and **all** (specifically **all**-**nec**) and the blue band is the difference between **nec** and **ecx** (specifically **ecx**-**nec**). You can see from the green and blue bands that the **nec** set has slightly lower estimates than **all** and **ecx** at low to moderate predictor values; the **nec** based curve then crosses the other two, predicting higher values of the response at around a concentration of 4-5;  then drops rapidly, producing lower predictions than the other curves at around 5.
 
-```{r exmp4-fitteddiff, fig.height=4.5}
+```{r exmp4-fitteddiff, fig.width = 5}
 ggplot(data = post_comp_fitted$diff_data) +
   geom_line(mapping = aes(x = x, y = diff.Estimate, color = comparison),
             size = 0.5) +
@@ -155,7 +156,7 @@ ggplot(data = post_comp_fitted$diff_data) +
 
 And finally we can plot the probability that one model is greater than the other by plotting `prob` from `diff_data`. The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The red line hovers around 0.5 clearly indicating the lack of significant difference in the **ecx** and **all** model sets at any point of the predictor axis. The green and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the **nec** and the **ecx** or **all** model set predictions. The greatest probability of difference among these curves is between values of ~3 and ~4 of the predictor, where the probability of difference trends towards low values (**ecx** is higher than **nec**), and at around 5, where the probability difference is very high (**nec** is higher than **ecx**). These are the two points where the **ecx** set deviates most from the **nec** set.
 
-```{r exmp4-probplot, fig.height=4.5}
+```{r exmp4-probplot, fig.width = 5}
 ggplot(data = post_comp_fitted$prob_diff) +
   geom_line(mapping = aes(x = x, y = prob, color = comparison), size = 0.5) +
   labs(x = "Concentration", y = "Probability of difference") +

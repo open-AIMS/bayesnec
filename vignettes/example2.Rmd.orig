@@ -16,8 +16,9 @@ knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE,
   fig.path = "vignette-fig-",
-  out.width = "100%",
-  dpi = 150,
+  fig.asp = 0.8,
+  out.width = "60%",
+  dpi = 120,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -77,7 +78,7 @@ Whenever the `model` argument of `crf` is a model set, or a concatenation of spe
 
 We have created some plotting method functions for our `bayesnec` model types, so we can plot a `bayesmanecfit` model object simply with `autoplot`.
 
-```{r exmp2-base, fig.width = 7, fig.height = 6}
+```{r exmp2-decline, fig.width = 5}
 autoplot(exp_5)
 ```
 
@@ -97,14 +98,14 @@ summary(exp_5)
 
 The `bayesmanecfit` object also contains all of the original fits, which can be extracted using the `pull_out` function. For example, we can pull out the model **ecx4param**.
 
-```{r exmp2-ecx4param, fig.width = 7, fig.height = 6}
+```{r exmp2-ecx4param, fig.width = 5}
 exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
 autoplot(exp_5_nec4param)
 ```
 
 This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. All of the models in the `bayesmanecfit` can be simultaneously plotted using the argument `all_models = TRUE`.
 
-```{r exmp2-allmods, fig.width = 7, fig.height = 9}
+```{r exmp2-allmods, fig.width = 7, fig.asp = 1.2}
 autoplot(exp_5, all_models = TRUE)
 ```
 
@@ -112,7 +113,7 @@ You can see that some of these models represent very bad fits, and accordingly h
  
 We can assess the chains for one of the higher weighted models to make sure this is good. It is probably good practice to do this for all models with a high weight.
 
-```{r exmp-goodmod, fig.width = 6, fig.height = 6}
+```{r exmp2-goodmod, fig.width = 7, fig.asp = 1.2}
 plot(exp_5$mod_fits$ecxwb1$fit)
 ```
 
@@ -124,7 +125,7 @@ check_chains(exp_5, filename = "example_5_all_chains")
 
 We can also make a plot to compare the posterior probability density to that of the prior using the `check_priors` function, for an individual model fit, but also saving all fits to a file in the working directory.
 
-```{r exmp2-checkpriors1, fig.width = 6, fig.height = 6}
+```{r exmp2-checkpriors, fig.width = 6}
 check_priors(exp_5$mod_fits$nec4param)
 ```
 
@@ -180,7 +181,7 @@ Note that the new *NEC* estimates from the **nec**-containing model fits are sli
 
 Now we can make a combined plot of our output, showing the model averaged *NEC* model and the "all averaged model", along with the relevant thresholds.
 
-```{r exmp2-pretty, fig.width = 7, fig.height = 6}
+```{r exmp2-pretty, fig.width = 5}
 preds <- exp_5_nec$w_pred_vals$data
 
 autoplot(exp_5, nec = FALSE, all = FALSE) +
