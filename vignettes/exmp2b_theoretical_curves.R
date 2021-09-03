@@ -47,7 +47,7 @@ ecx_plots <- ggplot(data = ecx_data, mapping = aes(x, y)) +
   theme(axis.ticks = element_blank(),
         axis.text = element_blank())
 ggsave("vignettes/vignette-fig-exmp2b-theoretical_ecx_curves.png",
-       ecx_plots, width = 7.8, height = 6.4, dev = "png")
+       ecx_plots, width = 7.8, height = 6.4, dev = "png", dpi = 100)
 
 nec_data <- purrr::map_dfr(
   grep("^pred_nec", model_names, value = TRUE), make_plot_data,
@@ -64,4 +64,4 @@ nec_plots <- ggplot(data = nec_data, mapping = aes(x, y)) +
   theme(axis.ticks = element_blank(),
         axis.text = element_blank())
 ggsave("vignettes/vignette-fig-exmp2b-theoretical_nec_curves.png",
-       nec_plots, width = 7.8, height = 4.88, dev = "png")
+       nec_plots, width = 7.8, height = 4.88, dev = "png", dpi = 100)
