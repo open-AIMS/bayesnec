@@ -18,6 +18,7 @@ knitr::opts_chunk$set(
   fig.path = "vignette-fig-",
   fig.asp = 0.8,
   out.width = "60%",
+  fig.align = "center",
   dpi = 120,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
@@ -59,7 +60,7 @@ The current development version can be downloaded from GitHub via
 if (!requireNamespace("remotes")) {
   install.packages("remotes")
 }
-remotes::install_github("open-aims/bayesnec")
+remotes::install_github("open-aims/bayesnec", ref = "dev")
 ```
 
 Because `bayesnec` is based on `brms` and [Stan](https://mc-stan.org/), a C++
