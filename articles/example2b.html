@@ -152,7 +152,7 @@
 <p><span class="math inline">\(\beta = \text{beta}\)</span>, generally the exponential decay rate of response, either from 0 concentration or from the estimated <span class="math inline">\(\eta\)</span> value, with the exception of the <strong>neclinhorme</strong> model where it represents a linear decay from <span class="math inline">\(\eta\)</span> because slope (<span class="math inline">\(\alpha\)</span>) is required for the linear increase;</p>
 <p><span class="math inline">\(\delta = \text{bottom}\)</span>, representing the lower plateau for the response at infinite concentration;</p>
 <p><span class="math inline">\(\alpha = \text{slope}\)</span>, the linear decay rate in the models <strong>neclin</strong> and <strong>ecxlin</strong>, or the linear increase rate prior to <span class="math inline">\(\eta\)</span> for all hormesis models;</p>
-<p><span class="math inline">\(\text{ec50}\)</span> notionally the 50% effect concentration but may be influenced by scaling and should therefore not be strictly interpreted, and</p>
+<p><span class="math inline">\(\omega\)</span> = <span class="math inline">\(\text{EC\textsubscript{50}}\)</span> notionally the 50% effect concentration but may be influenced by scaling and should therefore not be strictly interpreted, and</p>
 <p><span class="math inline">\(\epsilon = \text{d}\)</span>, the exponent in the <strong>ecxsigm</strong> and <strong>necisgm</strong> models.</p>
 <p>In addition to the model parameters, all <strong>nec</strong>-containing models have a step function used to define the breakpoint in the regression, which can be defined as</p>
 <p><span class="math display">\[
@@ -216,7 +216,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecx4param" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecx4param" class="anchor" aria-hidden="true"></a>ecx4param</h3>
-<p>The <strong>ecx4param</strong> model is a 4-parameter sigmoidal decay model, given by the equation: <span class="math display">\[y_i = \frac{\tau + (\delta - \tau)}{1 + e^{e^{\beta} (\text{EC}_{50} - x_i)}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecx4param</strong> model is a 4-parameter sigmoidal decay model, given by the equation: <span class="math display">\[y_i = \frac{\tau + (\delta - \tau)}{1 + e^{e^{\beta} (\omega - x_i)}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) 
 #&gt; bot ~ 1
@@ -227,7 +227,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxwb1" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxwb1" class="anchor" aria-hidden="true"></a>ecxwb1</h3>
-<p>The <strong>ecxwb1</strong> model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxwb1</strong> model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \omega)}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) 
 #&gt; bot ~ 1
@@ -238,7 +238,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxwb1p3" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxwb1p3" class="anchor" aria-hidden="true"></a>ecxwb1p3</h3>
-<p>The <strong>ecxwb1p3</strong> model is a 3-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxwb1p3</strong> model is a 3-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \omega)}}\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) 
 #&gt; ec50 ~ 1
@@ -249,7 +249,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxwb2" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxwb2" class="anchor" aria-hidden="true"></a>ecxwb2</h3>
-<p>The <strong>ecxwb2</strong> model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxwb2</strong> model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
 #&gt; bot ~ 1
@@ -261,7 +261,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxwb2p3" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxwb2p3" class="anchor" aria-hidden="true"></a>ecxwb2p3</h3>
-<p>The <strong>ecxwb2p3</strong> model is a 3-parameter sigmoidal decay model, which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxwb2p3</strong> model is a 3-parameter sigmoidal decay model, which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
 #&gt; ec50 ~ 1
@@ -272,7 +272,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxll5" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxll5" class="anchor" aria-hidden="true"></a>ecxll5</h3>
-<p>The <strong>ecxll5</strong> model is a 5-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.5 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxll5</strong> model is a 5-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.5 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \omega^f)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^exp(f) 
 #&gt; bot ~ 1
@@ -284,7 +284,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxll4" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxll4" class="anchor" aria-hidden="true"></a>ecxll4</h3>
-<p>The <strong>ecxll4</strong> model is a 4-parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.4 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxll4</strong> model is a 4-parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.4 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \omega)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) 
 #&gt; bot ~ 1
@@ -295,7 +295,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxll3" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxll3" class="anchor" aria-hidden="true"></a>ecxll3</h3>
-<p>The <strong>ecxll3</strong> model is a 3-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.3 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxll3</strong> model is a 3-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.3 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \omega)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) 
 #&gt; top ~ 1
@@ -306,7 +306,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxhormebc5" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxhormebc5" class="anchor" aria-hidden="true"></a>ecxhormebc5</h3>
-<p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the “Brain-Cousens” (BC.5) model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the “Brain-Cousens” (BC.5) model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \omega)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
 #&gt; bot ~ 1
@@ -318,7 +318,7 @@ f(x_i, \eta) = \begin{cases}
 <div id="ecxhormebc4" class="section level3">
 <h3 class="hasAnchor">
 <a href="#ecxhormebc4" class="anchor" aria-hidden="true"></a>ecxhormebc4</h3>
-<p>The <strong>ecxhormebc4</strong> model is a 5-parameter log-logistic model similar to the <strong>exchormebc5</strong> model but with a lower bound of 0, given by the equation: <span class="math display">\[y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})\]</span> and fitted in R via <code>brms</code> using the formula</p>
+<p>The <strong>ecxhormebc4</strong> model is a 5-parameter log-logistic model similar to the <strong>exchormebc5</strong> model but with a lower bound of 0, given by the equation: <span class="math display">\[y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \omega)})\]</span> and fitted in R via <code>brms</code> using the formula</p>
 <pre><code>#&gt; [[1]]
 #&gt; y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
 #&gt; top ~ 1

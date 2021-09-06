@@ -157,7 +157,7 @@
 <p>We can view the prior and posterior probability densities of all the parameters in the model using the function <code>check_prior</code>, based on the <code>hypothesis</code> function of <code>brms</code>. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></code></pre></div>
-<p><img src="vignette-fig-exmp3-checkpriors-1.png" title="plot of chunk exmp3-checkpriors" alt="plot of chunk exmp3-checkpriors" width="60%"></p>
+<p><img src="vignette-fig-exmp3-checkpriors-1.png" title="plot of chunk exmp3-checkpriors" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;"></p>
 <p>In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function <code>pull_prior</code> to inspect what <code>bnec</code> came up with on its own, and decide how best to modify those priors to be more desirable.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span>
