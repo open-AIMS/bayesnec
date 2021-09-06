@@ -69,10 +69,6 @@ test_that("Concatenating only works if either if bnecfit", {
 })
 
 test_that("Update works with regular fitting arguments", {
-  expect_s3_class(update(nec_, chains = 1, iter = 50, recompile = TRUE,
-                         refresh = 0, verbose = FALSE), "bnecfit") %>%
-    suppressWarnings %>%
-    suppressMessages
   # no recompilation
   expect_error(update(manec_example, chains = 1, iter = 50))
 })
@@ -85,9 +81,4 @@ test_that("Different distribution triggers error or message", {
                       chains = 1, iter = 50), "You either input new")
   expect_error(update(manec_example, recompile = TRUE, chains = 1, iter = 50,
                       family = Beta(link = "identity")), "You either input new")
-  expect_message(update(manec_example, newdata = nec_data, recompile = TRUE,
-                        chains = 1, iter = 50, family = Beta(link = "identity"),
-                        force_fit = TRUE, refresh = 0, verbose = FALSE)) %>%
-    suppressWarnings %>%
-    suppressMessages
 })
