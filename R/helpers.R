@@ -503,3 +503,24 @@ extract_formula <- function(x) {
     out
   }
 }
+
+#' @noRd
+#' @importFrom stats model.frame
+has_family_changed <- function(x, data, ...) {
+  brm_args <- list(...)
+  for (i in seq_along(x)) {
+    formula <- extract_formula(x[[i]])
+    bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
+    model <- get_model_from_formula(formula)
+    family <- retrieve_valid_family(brm_args, bdat)
+    model <- check_models(model, family, bdat)
+    checked_df <- check_data(data = bdat, family = family, model = model)
+  }
+  out <- all.equal(checked_df$family, x[[1]]$fit$family,
+                   check.attributes = FALSE, check.environment = FALSE)
+  if (is.logical(out)) {
+    FALSE
+  } else {
+    TRUE
+  }
+}
