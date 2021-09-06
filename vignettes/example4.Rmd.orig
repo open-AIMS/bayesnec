@@ -18,6 +18,7 @@ knitr::opts_chunk$set(
   fig.path = "vignette-fig-",
   fig.asp = 0.8,
   out.width = "60%",
+  fig.align = "center",
   dpi = 120,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )

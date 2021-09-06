@@ -18,6 +18,7 @@ knitr::opts_chunk$set(
   fig.path = "vignette-fig-",
   fig.asp = 0.8,
   out.width = "60%",
+  fig.align = "center",
   dpi = 120,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
@@ -58,7 +59,7 @@ $\delta = \text{bottom}$, representing the lower plateau for the response at inf
 
 $\alpha = \text{slope}$, the linear decay rate in the models **neclin** and **ecxlin**, or the linear increase rate prior to $\eta$ for all hormesis models;
 
-$\text{ec50}$ notionally the 50% effect concentration but may be influenced by scaling and should therefore not be strictly interpreted, and
+$\omega$ = $\text{EC\textsubscript{50}}$ notionally the 50% effect concentration but may be influenced by scaling and should therefore not be strictly interpreted, and
 
 $\epsilon = \text{d}$, the exponent in the **ecxsigm** and **necisgm** models.
 
@@ -130,7 +131,7 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 ### ecx4param
 
 The **ecx4param** model is a 4-parameter sigmoidal decay model, given by the equation:
-$$y_i = \frac{\tau + (\delta - \tau)}{1 + e^{e^{\beta} (\text{EC}_{50} - x_i)}}$$
+$$y_i = \frac{\tau + (\delta - \tau)}{1 + e^{e^{\beta} (\omega - x_i)}}$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -140,7 +141,7 @@ show_params("ecx4param")
 ### ecxwb1
 
 The **ecxwb1** model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of @Ritz2016, given by the equation:
-$$y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}}$$
+$$y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \omega)}}$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -150,7 +151,7 @@ show_params("ecxwb1")
 ### ecxwb1p3
 
 The **ecxwb1p3** model is a 3-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of @Ritz2016, given by the equation:
-$$y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}}$$
+$$y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \omega)}}$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -162,7 +163,7 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 ### ecxwb2
 
 The **ecxwb2** model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of @Ritz2016, given by the equation:
-$$y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}})$$
+$$y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -174,7 +175,7 @@ While very similar to the **ecxwb1** [according to @Ritz2016], fitted **ecxwb1**
 ### ecxwb2p3
 
 The **ecxwb2p3** model is a 3-parameter sigmoidal decay model, which is a slight reformulation of the Weibull2 model of @Ritz2016, given by the equation:
-$$y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \text{EC}_{50})}})$$
+$$y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -186,7 +187,7 @@ While very similar to the **ecxwb1p3** [according to @Ritz2016], fitted **ecxwb1
 ### ecxll5
 
 The **ecxll5** model is a 5-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.5 model of @Ritz2016, given by the equation:
-$$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50}^f)})$$
+$$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \omega^f)})$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -196,7 +197,7 @@ show_params("ecxll5")
 ### ecxll4
 
 The **ecxll4** model is a 4-parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.4 model of @Ritz2016, given by the equation:
-$$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
+$$y_i = \delta + (\tau - \delta)/ (1 + e^{-e^{\beta} (x_i - \omega)})$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -206,7 +207,7 @@ show_params("ecxll4")
 ### ecxll3
 
 The **ecxll3** model is a 3-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.3 model of @Ritz2016, given by the equation:
-$$y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
+$$y_i = 0 + (\tau - 0)/ (1 + e^{-e^{\beta} (x_i - \omega)})$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -218,7 +219,7 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 ### ecxhormebc5
 
 The **ecxhormebc5** model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the "Brain-Cousens" (BC.5) model of @Ritz2016, given by the equation:
-$$y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
+$$y_i = \delta + (\tau - \delta + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \omega)})$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
@@ -228,7 +229,7 @@ show_params("ecxhormebc5")
 ### ecxhormebc4
 
 The **ecxhormebc4** model is a 5-parameter log-logistic model similar to the **exchormebc5** model but with a lower bound of 0, given by the equation:
-$$y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \text{EC}_{50})})$$
+$$y_i = 0 + (\tau - 0 + e^{\alpha}*x)/ (1 + e^{-e^{\beta} (x_i - \omega)})$$
 and fitted in R via `brms` using the formula
 
 ```{r, echo = FALSE}
