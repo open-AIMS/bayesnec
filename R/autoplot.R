@@ -306,7 +306,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 #' @family autoplot methods
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = 2)
