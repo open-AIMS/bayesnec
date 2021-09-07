@@ -153,31 +153,23 @@
                iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span>
-<span class="co">#&gt; [1] "bayesnecfit"</span></code></pre></div>
+<span class="co">#&gt; [1] "bayesnecfit" "bnecfit"</span></code></pre></div>
 <p>We can view the prior and posterior probability densities of all the parameters in the model using the function <code>check_prior</code>, based on the <code>hypothesis</code> function of <code>brms</code>. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></code></pre></div>
-<p><img src="vignette-fig-exmp3-checkpriors-1.png" title="plot of chunk exmp3-checkpriors" alt="plot of chunk exmp3-checkpriors" width="100%"></p>
+<p><img src="vignette-fig-exmp3-checkpriors-1.png" title="plot of chunk exmp3-checkpriors" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;"></p>
 <p>In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function <code>pull_prior</code> to inspect what <code>bnec</code> came up with on its own, and decide how best to modify those priors to be more desirable.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span>
 <span class="co">#&gt; [[1]]</span>
-<span class="co">#&gt;                       prior class      coef group resp dpar nlpar                                           bound</span>
-<span class="co">#&gt;                normal(0, 2)     b                            beta                                                </span>
-<span class="co">#&gt;                normal(0, 2)     b Intercept                  beta                                                </span>
-<span class="co">#&gt;  gamma(5, 2.28313180499098)     b                             nec &lt;lower=0.03234801324009,upper=3.22051966293556&gt;</span>
-<span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept                   nec                                                </span>
-<span class="co">#&gt;                  beta(5, 1)     b                             top                               &lt;lower=0,upper=1&gt;</span>
-<span class="co">#&gt;                  beta(5, 1)     b Intercept                   top                                                </span>
-<span class="co">#&gt;           gamma(0.01, 0.01)   phi                                                                                </span>
-<span class="co">#&gt;        source</span>
-<span class="co">#&gt;          user</span>
-<span class="co">#&gt;  (vectorized)</span>
-<span class="co">#&gt;          user</span>
-<span class="co">#&gt;  (vectorized)</span>
-<span class="co">#&gt;          user</span>
-<span class="co">#&gt;  (vectorized)</span>
-<span class="co">#&gt;       default</span></code></pre></div>
+<span class="co">#&gt;                       prior class      coef group resp dpar nlpar                                           bound       source</span>
+<span class="co">#&gt;                normal(0, 2)     b                            beta                                                         user</span>
+<span class="co">#&gt;                normal(0, 2)     b Intercept                  beta                                                 (vectorized)</span>
+<span class="co">#&gt;  gamma(5, 2.28313180499098)     b                             nec &lt;lower=0.03234801324009,upper=3.22051966293556&gt;         user</span>
+<span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept                   nec                                                 (vectorized)</span>
+<span class="co">#&gt;                  beta(5, 1)     b                             top                               &lt;lower=0,upper=1&gt;         user</span>
+<span class="co">#&gt;                  beta(5, 1)     b Intercept                   top                                                 (vectorized)</span>
+<span class="co">#&gt;           gamma(0.01, 0.01)   phi                                                                                      default</span></code></pre></div>
 <p><code>bnec</code> chose a <code>gamma</code> prior on the <em>NEC</em> parameter of <strong>nec3param</strong> because the predictor <code>nec_data$x</code> is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let’s go ahead and specify something else, say a normal with larger variance.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">my_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,

@@ -6,7 +6,8 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>amend.bayesmanecfit — amend.bayesmanecfit • bayesnec</title>
+<title>Update an object of class bnecfit as fitted by function
+bnec. — update.bnecfit • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,9 +47,10 @@
 
 
 
-<meta property="og:title" content="amend.bayesmanecfit — amend.bayesmanecfit" />
-<meta property="og:description" content="Modifies an existing bayesmanecfit object, for example, by
-adding or removing fitted models." />
+<meta property="og:title" content="Update an object of class bnecfit as fitted by function
+bnec. — update.bnecfit" />
+<meta property="og:description" content="Update an object of class bnecfit as fitted by function
+bnec." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -146,26 +148,28 @@ adding or removing fitted models." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>amend.bayesmanecfit</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/amend.R'><code>R/amend.R</code></a></small>
-    <div class="hidden name"><code>amend.bayesmanecfit.Rd</code></div>
+    <h1>Update an object of class <code><a href='bnecfit-class.html'>bnecfit</a></code> as fitted by function
+<code><a href='bnec.html'>bnec</a></code>.</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/bnecfit-methods.R'><code>R/bnecfit-methods.R</code></a></small>
+    <div class="hidden name"><code>update.bnecfit.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Modifies an existing <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object, for example, by
-adding or removing fitted models.</p>
+    <p>Update an object of class <code><a href='bnecfit-class.html'>bnecfit</a></code> as fitted by function
+<code><a href='bnec.html'>bnec</a></code>.</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bayesmanecfit</span>
-<span class='fu'><a href='amend.html'>amend</a></span><span class='op'>(</span>
+    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bnecfit</span>
+<span class='fu'><a href='https://rdrr.io/r/stats/update.html'>update</a></span><span class='op'>(</span>
   <span class='va'>object</span>,
-  <span class='va'>drop</span>,
-  <span class='va'>add</span>,
-  <span class='va'>loo_controls</span>,
+  newdata <span class='op'>=</span> <span class='cn'>NULL</span>,
+  recompile <span class='op'>=</span> <span class='cn'>NULL</span>,
   x_range <span class='op'>=</span> <span class='cn'>NA</span>,
   precision <span class='op'>=</span> <span class='fl'>1000</span>,
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
-  <span class='va'>priors</span>
+  <span class='va'>loo_controls</span>,
+  force_fit <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  <span class='va'>...</span>
 <span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -173,31 +177,21 @@ adding or removing fitted models.</p>
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>object</th>
-      <td><p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>, as returned
-by <code><a href='bnec.html'>bnec</a></code>.</p></td>
+      <td><p>An object of class <code><a href='bnecfit-class.html'>bnecfit</a></code> as fitted by function
+<code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
-      <th>drop</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of
-model types you which to drop for the modified fit.</p></td>
+      <th>newdata</th>
+      <td><p>Optional <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> to update the model
+with new data. Data-dependent default priors will not be updated
+automatically.</p></td>
     </tr>
     <tr>
-      <th>add</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> vector containing the names of
-model types to add to the modified fit.</p></td>
-    </tr>
-    <tr>
-      <th>loo_controls</th>
-      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of two elements
-("fitting" and/or "weights"), each being a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
-containing the desired arguments to be passed on to <code><a href='https://rdrr.io/pkg/brms/man/loo.brmsfit.html'>loo</a></code>
-(via "fitting") or to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> (via "weights").
-If "fitting" is provided with argument <code>pointwise = TRUE</code>
-(due to memory issues) and <code>family = "beta_binomial2"</code>, the
-<code><a href='bnec.html'>bnec</a></code> will fail because that is a custom family. If "weights" is
-not provided by the user, <code><a href='bnec.html'>bnec</a></code> will set the default
-<code>method</code> argument in <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> to
-"pseudobma". See ?<code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> for further info.</p></td>
+      <th>recompile</th>
+      <td><p>A <code><a href='https://rdrr.io/r/base/logical.html'>logical</a></code>, indicating whether the Stan
+model should be recompiled. If <code>NULL</code> (the default), <code>update</code>
+tries to figure out internally, if recompilation is necessary. Setting it to
+<code>FALSE</code> will cause all Stan code changing arguments to be ignored.</p></td>
     </tr>
     <tr>
       <th>x_range</th>
@@ -218,29 +212,51 @@ concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.</p></td>
     </tr>
     <tr>
-      <th>priors</th>
-      <td><p>An object of class <code><a href='https://rdrr.io/pkg/brms/man/set_prior.html'>brmsprior</a></code> which
-specifies user-desired prior distributions of model parameters.
-If missing, <code><a href='amend.html'>amend</a></code> will figure out a baseline prior for each
-parameter. It can also be specified as a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
-where each name needs to correspond to the same string as <code>model</code>. See
-details.</p></td>
+      <th>loo_controls</th>
+      <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of two elements
+("fitting" and/or "weights"), each being a named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code>
+containing the desired arguments to be passed on to <code><a href='https://rdrr.io/pkg/brms/man/loo.brmsfit.html'>loo</a></code>
+(via "fitting") or to <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> (via "weights").
+If "fitting" is provided with argument <code>pointwise = TRUE</code>
+(due to memory issues) and <code>family = "beta_binomial2"</code>, the
+<code><a href='bnec.html'>bnec</a></code> will fail because that is a custom family. If "weights" is
+not provided by the user, <code><a href='bnec.html'>bnec</a></code> will set the default
+<code>method</code> argument in <code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> to
+"pseudobma". See ?<code><a href='https://mc-stan.org/loo/reference/loo_model_weights.html'>loo_model_weights</a></code> for further info.</p></td>
+    </tr>
+    <tr>
+      <th>force_fit</th>
+      <td><p>Should model truly be updated in case either
+<code>newdata</code> of a new family is provided?</p></td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td><p>Further arguments to <code><a href='https://rdrr.io/pkg/brms/man/brm.html'>brm</a></code>.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>All successfully fitted <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> model fits.</p>
+    <p>An object of class <code><a href='bnecfit-class.html'>bnecfit</a></code>. If one single model is
+returned, then also an object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>; otherwise,
+if multiple models are returned, also an object of class
+<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
+    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span></span>
+<span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
 <span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>exmp</span> <span class='op'>&lt;-</span> <span class='fu'><a href='amend.html'>amend</a></span><span class='op'>(</span><span class='va'>manec_example</span>, drop <span class='op'>=</span> <span class='st'>"nec4param"</span><span class='op'>)</span></span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Only ecx4param is fitted, no model averaging done. Perhaps try setting better priors, or check ?show_params to make sure you have the correct parameter names for your priors.</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Returning ecx4param</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 2 observations with a pareto_k &gt; 0.7 in model 'ecx4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 5 (5.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
+<span class='r-in'><span class='co'># due to package size issues, `manec_example` does not contain original</span></span>
+<span class='r-in'><span class='co'># stanfit DSO, so need to recompile here</span></span>
+<span class='r-in'><span class='va'>smaller_manec</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/update.html'>update</a></span><span class='op'>(</span><span class='va'>manec_example</span>, chains <span class='op'>=</span> <span class='fl'>1</span>, iter <span class='op'>=</span> <span class='fl'>50</span>,</span>
+<span class='r-in'>                        recompile <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span></span>
+<span class='r-in'><span class='co'># original `manec_example` is fit with a Gaussian</span></span>
+<span class='r-in'><span class='co'># change to Beta distribution by adding newdata with original `nec_data$y`</span></span>
+<span class='r-in'><span class='co'># function will throw informative message.</span></span>
+<span class='r-in'><span class='va'>beta_manec</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/update.html'>update</a></span><span class='op'>(</span><span class='va'>manec_example</span>, newdata <span class='op'>=</span> <span class='va'>nec_data</span>, recompile <span class='op'>=</span> <span class='cn'>TRUE</span>,</span>
+<span class='r-in'>                     chains <span class='op'>=</span> <span class='fl'>1</span>, iter <span class='op'>=</span> <span class='fl'>50</span>, family <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span><span class='op'>(</span>link <span class='op'>=</span> <span class='st'>"identity"</span><span class='op'>)</span>,</span>
+<span class='r-in'>                     force_fit <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span></span>
+<span class='r-in'><span class='op'>}</span></span>
 <span class='r-in'></span>
 </code></pre></div>
   </div>

@@ -116,7 +116,7 @@
 <div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(<span class="st">"remotes"</span>)) {</span>
 <span id="cb2-2"><a href="#cb2-2"></a>  <span class="kw">install.packages</span>(<span class="st">"remotes"</span>)</span>
 <span id="cb2-3"><a href="#cb2-3"></a>}</span>
-<span id="cb2-4"><a href="#cb2-4"></a>remotes<span class="op">::</span><span class="kw">install_github</span>(<span class="st">"open-aims/bayesnec"</span>)</span></code></pre></div>
+<span id="cb2-4"><a href="#cb2-4"></a>remotes<span class="op">::</span><span class="kw">install_github</span>(<span class="st">"open-aims/bayesnec"</span>, <span class="dt">ref =</span> <span class="st">"dev"</span>)</span></code></pre></div>
 <p>Because <code>bayesnec</code> is based on <code>brms</code> and <a href="https://mc-stan.org/" class="external-link">Stan</a>, a C++ compiler is required. The program <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> comes with a C++ compiler for Windows. On Mac, you should install Xcode. See the prerequisites section on this <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="external-link">link</a> for further instructions on how to get the compilers running.</p>
 </div>
 <div id="usage" class="section level2">
