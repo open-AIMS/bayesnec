@@ -6,8 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Extracts a range of statistics from a list of prebayesnecfit
-objects. — expand_manec • bayesnec</title>
+<title>expand_manec — expand_manec • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -47,10 +46,9 @@ objects. — expand_manec • bayesnec</title>
 
 
 
-<meta property="og:title" content="Extracts a range of statistics from a list of prebayesnecfit
-objects. — expand_manec" />
-<meta property="og:description" content="Extracts a range of statistics from a list of prebayesnecfit
-objects." />
+<meta property="og:title" content="expand_manec — expand_manec" />
+<meta property="og:description" content="Extracts a range of statistics from a list of bayesnecfit
+model fits." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -148,15 +146,14 @@ objects." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Extracts a range of statistics from a list of <code><a href='prebayesnecfit-class.html'>prebayesnecfit</a></code>
-objects.</h1>
+    <h1>expand_manec</h1>
     <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/expand_classes.R'><code>R/expand_classes.R</code></a></small>
     <div class="hidden name"><code>expand_manec.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Extracts a range of statistics from a list of <code><a href='prebayesnecfit-class.html'>prebayesnecfit</a></code>
-objects.</p>
+    <p>Extracts a range of statistics from a list of <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code>
+model fits.</p>
     </div>
 
     <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>expand_manec</span><span class='op'>(</span>
@@ -173,16 +170,15 @@ objects.</p>
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>object</th>
-      <td><p>A <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of objects of class
-<code><a href='prebayesnecfit-class.html'>prebayesnecfit</a></code>.</p></td>
+      <td><p>a <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> mod_fits output list, as
+returned by <code><a href='bnec.html'>bnec</a></code> when more than one model is supplied.</p></td>
     </tr>
     <tr>
       <th>formula</th>
       <td><p>Either a <code><a href='https://rdrr.io/r/base/character.html'>character</a></code> string defining an
 R formula or an actual <code><a href='https://rdrr.io/r/stats/formula.html'>formula</a></code> object. See
 <code><a href='bayesnecformula.html'>bayesnecformula</a></code> and <code><a href='check_formula.html'>check_formula</a></code>. It could also
-be a <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of formulas if multiple objects are passed to
-<code>object</code>.</p></td>
+be a list of formulas if multiple objects are passed to <code>object</code>.</p></td>
     </tr>
     <tr>
       <th>x_range</th>

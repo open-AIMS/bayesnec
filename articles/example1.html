@@ -133,7 +133,7 @@
 <code class="sourceCode R"><span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span>
 <span class="op">}</span>
-<span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"open-aims/bayesnec"</span>, ref <span class="op">=</span> <span class="st">"dev"</span><span class="op">)</span></code></pre></div>
+<span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"open-aims/bayesnec"</span><span class="op">)</span></code></pre></div>
 <p>Because <code>bayesnec</code> is based on <code>brms</code> and <a href="https://mc-stan.org/" class="external-link">Stan</a>, a C++ compiler is required. The program <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> comes with a C++ compiler for Windows. On Mac, you should install Xcode. See the prerequisites section on this <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="external-link">link</a> for further instructions on how to get the compilers running.</p>
 <p>To run this vignette, we will also need some additional packages</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -164,9 +164,14 @@
 <span class="co">#&gt;  $ raw_x: num  0.1 0.1 0.1 0.1 0.1 0.1 6.25 6.25 6.25 6.25 ...</span>
 <span class="co">#&gt;  $ suc  : int  101 106 102 112 58 158 95 91 93 113 ...</span>
 <span class="co">#&gt;  $ tot  : int  175 112 103 114 69 165 109 92 99 138 ...</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span>
-<span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span>
-<span class="co">#&gt;    0.10   10.94   37.50   99.23  125.00  400.00</span></code></pre></div>
+<span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">binom_data</span><span class="op">$</span><span class="va">raw_x</span><span class="op">)</span>
+<span class="co">#&gt; [1]   0.1 400.0</span>
+
+<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">binom_data</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">raw_x</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_histogram.html" class="external-link">geom_histogram</a></span><span class="op">(</span>colour <span class="op">=</span> <span class="st">"white"</span>, fill <span class="op">=</span> <span class="st">"grey60"</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Predictor"</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-hist-1.png" title="plot of chunk exmp1-hist" alt="plot of chunk exmp1-hist" width="100%"></p>
 <p>In this case for <code>raw_x</code>, lowest concentration is 0.1 and the highest is 400. The data are right skewed and on the continuous scale. This type of distribution for the predictor data are common for concentration—response experiments, where the <em>concentration</em> data are the concentration of contaminants, or dilutions. The current default in <code>bayesnec</code> is to estimate the appropriate distribution(s) and priors based on the data, but it is possible to supply <code>prior</code> or <code>family</code> directly as additional arguments to the underlying <code>brm</code> function from <code>brms</code>. We are going to model this with the predictor data on a log scale, as this is the scaling clearly used in the experimental design and thus will provide more stable results.</p>
 <p>The data are binomial, with the column <code>suc</code> indicating the number of successes in the binomial call, and column <code>tot</code> indicating the number of trials.</p>
 <p>The main working function in <code>bayesnec</code> is the function <code>bnec</code>, which calls the other necessary functions and fits the <code>brms</code> model. We can run <code>bnec</code> by supplying <code>formula</code>: a special formula which comprises the relationship between response and predictor, and the C-R model (or models) chosen to be fitted; and <code>data</code>: a <code>data.frame</code> containing the data for the model fitting, here, <code>binom_data</code>.</p>
@@ -181,10 +186,16 @@
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">suc</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tot</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,
               data <span class="op">=</span> <span class="va">binom_data</span><span class="op">)</span></code></pre></div>
-<p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code>plot(exp_1$fit)</code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks OK. There are a range of other model diagnostics that can be explored for <code>brms</code> model fits, using the <code>object$fit</code> syntax. We encourage you to explore the rich material already on GitHub regarding use and validation of <a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a> models.</p>
-<p>Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> will discard that model and an error will be returned indicating the model could not be fit successfully.</p>
-<p>We can see the summary of our fitted model parameters using:</p>
+<p>The function shows the progress of the <code>brms</code> fit and returns the usual <code>brms</code> output (with a few other elements added to this list). The function <code>plot(exp_1$fit)</code> can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. Initially <code>bayesnec</code> will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains <code>bayesnec</code> will discard that model and an error will be returned indicating the model could not be fit successfully.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-brms-1.png" title="plot of chunk exmp1-brms" alt="plot of chunk exmp1-brms" width="100%"></p>
+<p>In our example, the chains are well mixed, and the probability density plots look good. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks OK. There are a range of other model diagnostics that can be explored for <code>brms</code> model fits, using the <code>object$fit</code> syntax. We encourage you to explore the rich material already on GitHub regarding use and validation of <a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a> models.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/pairs.html" class="external-link">pairs</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-brmspairs-1.png" title="plot of chunk exmp1-brmspairs" alt="plot of chunk exmp1-brmspairs" width="100%"></p>
+<p>We can see the summary of our fitted model parameters using:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">exp_1</span><span class="op">)</span>
 <span class="co">#&gt; Object of class bayesnecfit containing the following non-linear model: nec4param</span>
 <span class="co">#&gt; </span>
@@ -201,10 +212,10 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Population-Level Effects: </span>
 <span class="co">#&gt;                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span>
-<span class="co">#&gt; bot_Intercept      0.04      0.02     0.01     0.08 1.00     1958     1598</span>
-<span class="co">#&gt; top_Intercept      0.83      0.01     0.82     0.84 1.00     4301     4099</span>
-<span class="co">#&gt; beta_Intercept     0.75      0.15     0.49     1.04 1.00     1833     1944</span>
-<span class="co">#&gt; nec_Intercept      4.42      0.03     4.34     4.47 1.00     2118     2854</span>
+<span class="co">#&gt; bot_Intercept      0.04      0.02     0.01     0.08 1.00     2684     2681</span>
+<span class="co">#&gt; top_Intercept      0.83      0.01     0.81     0.84 1.00     3797     3975</span>
+<span class="co">#&gt; beta_Intercept     0.75      0.14     0.50     1.04 1.00     2435     3222</span>
+<span class="co">#&gt; nec_Intercept      4.42      0.03     4.35     4.47 1.00     2834     3716</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span>
 <span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span>
@@ -216,42 +227,56 @@
 <span class="co">#&gt; R2     0.81      0.00 0.80  0.82</span></code></pre></div>
 <p>Note the Rhat values in this example are one, indicating convergence.</p>
 <p>The functions <code>plot</code> (extending <code>base</code> plot method) and <code>autoplot</code> (extending <code>ggplot2</code> plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class <code>bayesnecfit</code>) from the call to <code>bnec</code>. <strong>Notice, however, that in this case we log-transformed the predictor <code>raw_x</code> in the input formula.</strong> This causes <code>brms</code> to pass these transformations onto Stan’s native code, and therefore estimates of <em>NEC</em> will be on that same scale. So we need to transform them back to the data scale using the additional argument <code>xform</code>.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_1</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-base-1.png" title="plot of chunk exmp1-base" alt="plot of chunk exmp1-base" width="100%"></p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_1</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></code></pre></div>
-<p><img src="vignette-fig-exmp1-binom-1.png" title="plot of chunk exmp1-binom" alt="plot of chunk exmp1-binom" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp1-ggplot-1.png" title="plot of chunk exmp1-ggplot" alt="plot of chunk exmp1-ggplot" width="100%"></p>
 <p>There are many built in methods available for <code>brmsfit</code> objects and we encourage you to make use of these in full.</p>
 <p>This model fit does not look great. You can see that the error bounds around the fit are far too narrow for this data given the variability among the points, suggesting over dispersion of this model (meaning that the data are more variable than this model fit predicts). For models whose response data are Binomial- or Poisson-distributed, an estimate of dispersion is provided by <code>bayesnec</code>, and this can be extracted using <code>exp_1$dispersion</code>. Values &gt; 1 indicate overdispersion and values &lt; 1 indicate underdispersion. In this case the overdispersion value is much bigger than 1, suggesting extreme overdispersion (meaning our model does not properly capture the true variability represented in this data). We would need to consider alternative ways of modelling this data using a different distribution, such as the Beta-Binomial.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span>
 <span class="co">#&gt; Estimate     Q2.5    Q97.5 </span>
-<span class="co">#&gt; 19.67592 13.23461 30.40135</span></code></pre></div>
+<span class="co">#&gt; 19.67491 13.19478 30.92917</span></code></pre></div>
 </div>
 <div id="beta-binomial" class="section level3">
 <h3 class="hasAnchor">
 <a href="#beta-binomial" class="anchor" aria-hidden="true"></a>Beta-Binomial</h3>
 <p>The Beta-Binomial model can be useful for overdispersed Binomial data.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_1b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">suc</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tot</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,
                data <span class="op">=</span> <span class="va">binom_data</span>, family <span class="op">=</span> <span class="va">beta_binomial2</span><span class="op">)</span></code></pre></div>
-<p>Fitting this data with the <code>betabinomial2</code> yields a much more realistic fit in terms of the confidence bounds (check <code>autoplot(exp_1b, xform = exp)</code>) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<p>Fitting this data with the <code>betabinomial2</code> yields a much more realistic fit in terms of the confidence bounds and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-bbinom-1.png" title="plot of chunk exmp1-bbinom" alt="plot of chunk exmp1-bbinom" width="100%"></p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_1b</span><span class="op">$</span><span class="va">dispersion</span>
 <span class="co">#&gt; [1] NA NA NA</span></code></pre></div>
-<p>Now that we have a better fit to these data, we can interpret the results. The estimated <em>NEC</em> value can be obtained directly from the fitted model object. As explained above, we need to transform <em>NEC</em> back to the data scale.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec_posterior</span><span class="op">)</span><span class="op">)</span>
-<span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span>
-<span class="co">#&gt;   20.56   55.03   70.62   68.05   81.16  192.06</span></code></pre></div>
+<p>Now that we have a better fit to these data, we can interpret the results. The estimated <em>NEC</em> value can be obtained directly from the fitted model object, using <code>exp_1b$nec</code>, or we can plot the posterior distribution of the <em>NEC</em> values. As explained above, we need to transform <em>NEC</em> back to the data scale.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec</span><span class="op">)</span>
+<span class="co">#&gt; Estimate     Q2.5    Q97.5 </span>
+<span class="co">#&gt; 70.62425 36.04150 93.72276</span>
+<span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>NEC <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec_posterior</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/qplot.html" class="external-link">qplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">.</span>, geom <span class="op">=</span> <span class="st">"blank"</span><span class="op">)</span> <span class="op">+</span>
+    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_histogram.html" class="external-link">geom_histogram</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">NEC</span>, y <span class="op">=</span> <span class="va">..density..</span><span class="op">)</span>, colour <span class="op">=</span> <span class="st">"white"</span>,
+                   fill <span class="op">=</span> <span class="st">"grey60"</span><span class="op">)</span> <span class="op">+</span>
+    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">NEC</span>, y <span class="op">=</span> <span class="va">..density..</span><span class="op">)</span>, stat <span class="op">=</span> <span class="st">"density"</span><span class="op">)</span> <span class="op">+</span>
+    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Posterior distribution of NEC"</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-nechist-1.png" title="plot of chunk exmp1-nechist" alt="plot of chunk exmp1-nechist" width="100%"></p>
 <p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em> model fit, using the function <code>ecx</code>. Note these may differ from a typical 4-parameter non-linear model, as the <em>NEC</em> model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Comparing posterior predictions</a> vignettes for more information.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span>
 <span class="co">#&gt;   ec_10_Q50  ec_10_Q2.5 ec_10_Q97.5 </span>
 <span class="co">#&gt;    76.15706    41.73123    96.57237 </span>
 <span class="co">#&gt; attr(,"precision")</span>
 <span class="co">#&gt; [1] 1000</span></code></pre></div>
 <p>A summary method has also been developed for <code>bayesnecfit</code> objects that gives an overall summary of the model statistics, which also include the estimate for <em>NEC</em>, as the <code>nec_intercept</code> population-level effect in the model—again, its value will depend on the scale of the predictor variable.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">)</span>
 <span class="co">#&gt; Object of class bayesnecfit containing the following non-linear model: nec4param</span>
 <span class="co">#&gt; </span>
@@ -290,7 +315,7 @@
 <h3 class="hasAnchor">
 <a href="#beta-data" class="anchor" aria-hidden="true"></a>Beta data</h3>
 <p>Sometimes the response variable is distributed between <code>0</code> and <code>1</code> but is not a straight-forward Binomial because it is a proportion on the continuous scale. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from Pulse-Amplitude-Modulation (PAM) data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical trials, and the data must be modelled using a Beta distribution instead.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">prop_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/123jq46d"</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
@@ -299,15 +324,18 @@
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">resp</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,
               data <span class="op">=</span> <span class="va">prop_data</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_2</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-betabrms-1.png" title="plot of chunk exmp1-betabrms" alt="plot of chunk exmp1-betabrms" width="100%"></p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></code></pre></div>
-<p><img src="vignette-fig-exmp1-beta-1.png" title="plot of chunk exmp1-beta" alt="plot of chunk exmp1-beta" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp1-betabase-1.png" title="plot of chunk exmp1-betabase" alt="plot of chunk exmp1-betabase" width="100%"></p>
 </div>
 <div id="poisson-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#poisson-data" class="anchor" aria-hidden="true"></a>Poisson data</h3>
 <p>Where data are a count (of, for example, individuals or cells), the response is likely to be Poisson distributed. Such data are distributed from <code>0</code> to <code>Inf</code> and are integers. First we mimic count data based on the package’s internal dataset, and make it overdispersed. Then we plot the concentration (i.e. predictor) data.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">330</span><span class="op">)</span>
 <span class="va">count_data</span> <span class="op">&lt;-</span> <span class="va">nec_data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
@@ -322,51 +350,67 @@
 <span class="co">#&gt; 'data.frame':    100 obs. of  2 variables:</span>
 <span class="co">#&gt;  $ x: num  1.019 0.816 0.371 0.401 1.295 ...</span>
 <span class="co">#&gt;  $ y: int  109 116 88 101 95 89 66 78 101 80 ...</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">y</span><span class="op">)</span>
-<span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span>
-<span class="co">#&gt;    5.00   68.00   84.00   76.87   92.25  124.00</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span>
-<span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span>
-<span class="co">#&gt; 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052</span></code></pre></div>
+<span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span>
+<span class="co">#&gt; [1] 0.03234801 3.22051966</span>
+
+<span class="va">count_data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
+  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">pivot_longer</a></span><span class="op">(</span>cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span>, names_to <span class="op">=</span> <span class="st">"variable"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>variable <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/recode.html" class="external-link">recode</a></span><span class="op">(</span><span class="va">variable</span>, <span class="st">"x"</span> <span class="op">=</span> <span class="st">"Predictor"</span>,
+                                  <span class="st">"y"</span> <span class="op">=</span> <span class="st">"Total counts"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">.</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_histogram.html" class="external-link">geom_histogram</a></span><span class="op">(</span>colour <span class="op">=</span> <span class="st">"white"</span>, fill <span class="op">=</span> <span class="st">"grey60"</span><span class="op">)</span> <span class="op">+</span>
+    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">variable</span>, scales <span class="op">=</span> <span class="st">"free"</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-poissonhist-1.png" title="plot of chunk exmp1-poissonhist" alt="plot of chunk exmp1-poissonhist" width="100%"></p>
 <p>First, we supply <code>bnec</code> with <code>data</code> (here <code>count_data</code>), and specify our formula. As we have integers of 0 and greater, the <code>family</code> is <code>"poisson"</code>. The default behaviour to guess the variable types works for this example.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span>
 <span class="va">exp_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<p>We first plot the model chains and parameter estimates to check the fit.</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-poissonbrms-1.png" title="plot of chunk exmp1-poissonbrms" alt="plot of chunk exmp1-poissonbrms" width="100%"></p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">)</span></code></pre></div>
-<p><img src="vignette-fig-exmp1-poisson-1.png" title="plot of chunk exmp1-poisson" alt="plot of chunk exmp1-poisson" width="60%" style="display: block; margin: auto;"></p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<p><img src="vignette-fig-exmp1-poissonbase-1.png" title="plot of chunk exmp1-poissonbase" alt="plot of chunk exmp1-poissonbase" width="100%"></p>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_3</span><span class="op">$</span><span class="va">dispersion</span>
 <span class="co">#&gt;   Estimate       Q2.5      Q97.5 </span>
 <span class="co">#&gt;  2.1349239  0.1836499 74.0848915</span></code></pre></div>
-<p>We first plot the model chains (with <code>plot(exp_3$fit)</code>) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the <code>family</code> argument.</p>
+<p>The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the <code>family</code> argument.</p>
 </div>
 <div id="negative-binomial" class="section level3">
 <h3 class="hasAnchor">
 <a href="#negative-binomial" class="anchor" aria-hidden="true"></a>Negative binomial</h3>
 <p>When count data are overdispersed and cannot be modelled using the Poisson distribution, the Negative binomial distribution is generally used. We can do this by calling <code>family = "negbinomial"</code>.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_3b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data</span>,
                family <span class="op">=</span> <span class="st">"negbinomial"</span><span class="op">)</span></code></pre></div>
 <p>The resultant plot seems to indicate the Negative Binomial distribution works better in terms of dispersion (more sensible wider confidence bands), however it still might not be the best model for these data. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html" class="external-link">Multi model usage</a> vignettes for options to fit other models to these data.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-negbinbrms-1.png" title="plot of chunk exmp1-negbinbrms" alt="plot of chunk exmp1-negbinbrms" width="100%"></p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">)</span></code></pre></div>
-<p><img src="vignette-fig-exmp1-negbinbase-1.png" title="plot of chunk exmp1-negbinbase" alt="plot of chunk exmp1-negbinbase" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp1-negbinbase-1.png" title="plot of chunk exmp1-negbinbase" alt="plot of chunk exmp1-negbinbase" width="100%"></p>
 </div>
 <div id="measure-data" class="section level3">
 <h3 class="hasAnchor">
 <a href="#measure-data" class="anchor" aria-hidden="true"></a>Measure data</h3>
 <p>Where data are a measured variable, the response is likely to be Gamma distributed. Good examples of <code>Gamma</code>-distributed data include measures of body size, such as length, weight, or area. Such data are distributed from <code>0+</code> to <code>Inf</code> and are continuous. Here we use the <code>nec_data</code> supplied with <code>bayesnec</code> with the response <code>y</code> on the exponential scale to ensure the right data range for a Gamma as an example.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>
 <span class="va">measure_data</span> <span class="op">&lt;-</span> <span class="va">nec_data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span>
   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>measure <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">exp_4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">measure</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">measure_data</span><span class="op">)</span></code></pre></div>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></code></pre></div>
+<p><img src="vignette-fig-exmp1-gammabrms-1.png" title="plot of chunk exmp1-gammabrms" alt="plot of chunk exmp1-gammabrms" width="100%"></p>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></code></pre></div>
-<p><img src="vignette-fig-exmp1-gammabase-1.png" title="plot of chunk exmp1-gammabase" alt="plot of chunk exmp1-gammabase" width="60%" style="display: block; margin: auto;"></p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<p><img src="vignette-fig-exmp1-gammabase-1.png" title="plot of chunk exmp1-gammabase" alt="plot of chunk exmp1-gammabase" width="100%"></p>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span>
 <span class="co">#&gt; Object of class bayesnecfit containing the following non-linear model: nec4param</span>
 <span class="co">#&gt; </span>

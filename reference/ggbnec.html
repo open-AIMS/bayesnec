@@ -6,9 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Concatenate multiple bnecfit objects into one single
-bayesmanecfit object containing Bayesian model averaging
-statistics. — c.bnecfit • bayesnec</title>
+<title>ggbnec — ggbnec • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -48,12 +46,9 @@ statistics. — c.bnecfit • bayesnec</title>
 
 
 
-<meta property="og:title" content="Concatenate multiple bnecfit objects into one single
-bayesmanecfit object containing Bayesian model averaging
-statistics. — c.bnecfit" />
-<meta property="og:description" content="Concatenate multiple bnecfit objects into one single
-bayesmanecfit object containing Bayesian model averaging
-statistics." />
+<meta property="og:title" content="ggbnec — ggbnec" />
+<meta property="og:description" content="bayesnec standard ggplot2
+plotting method." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -151,38 +146,39 @@ statistics." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Concatenate multiple <code><a href='bnecfit-class.html'>bnecfit</a></code> objects into one single
-<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object containing Bayesian model averaging
-statistics.</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/bnecfit-methods.R'><code>R/bnecfit-methods.R</code></a></small>
-    <div class="hidden name"><code>c.bnecfit.Rd</code></div>
+    <h1>ggbnec</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/autoplot.R'><code>R/autoplot.R</code></a></small>
+    <div class="hidden name"><code>ggbnec.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Concatenate multiple <code><a href='bnecfit-class.html'>bnecfit</a></code> objects into one single
-<code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> object containing Bayesian model averaging
-statistics.</p>
+    <p><code><a href='bayesnec-package.html'>bayesnec</a></code> standard <span class="pkg">ggplot2</span>
+plotting method.</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bnecfit</span>
-<span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='va'>x</span>, <span class='va'>...</span><span class='op'>)</span></code></pre></div>
+    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>ggbnec</span><span class='op'>(</span><span class='va'>x</span>, nec <span class='op'>=</span> <span class='cn'>TRUE</span>, ecx <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span></code></pre></div>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
       <th>x</th>
-      <td><p>An object of class <code><a href='bnecfit-class.html'>bnecfit</a></code>.</p></td>
+      <td><p>A <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> created by function
+<code><a href='ggbnec_data.html'>ggbnec_data</a></code>.</p></td>
     </tr>
     <tr>
-      <th>...</th>
-      <td><p>Additional objects of class <code><a href='bnecfit-class.html'>bnecfit</a></code>.</p></td>
+      <th>nec</th>
+      <td><p>Should NEC values be added to the plot? Defaults to TRUE.</p></td>
+    </tr>
+    <tr>
+      <th>ecx</th>
+      <td><p>Should ECx values be added to the plot? Defaults to FALSE.</p></td>
     </tr>
     </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>An object of class <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code>.</p>
+    <p>A <code><a href='https://ggplot2.tidyverse.org/reference/ggplot.html'>ggplot</a></code> object.</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
