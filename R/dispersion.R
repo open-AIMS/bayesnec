@@ -42,8 +42,8 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   mod_dat <- model.frame(formula, data = model$data)
   allowed_fams <- c("poisson", "binomial")
   fam <- model$family$family
-  if (fam %in% c(allowed_fams)) {
-   fam_fcts <- get(fam)()
+  if (fam %in% allowed_fams) {
+    fam_fcts <- get(fam)()
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
     prd_out <- posterior_epred(model)
@@ -66,10 +66,17 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       sim_sr[i, ] <- sim_res^2
     }
     disp <- rowSums(prd_sr) / rowSums(sim_sr)
-    if (summary) {
-      estimates_summary(disp)
+    if (any(is.na(disp))) {
+      message("Your model predictions have generated no residuals; this is",
+              " most likely cause by a bad model fit. Ignoring dispersion",
+              " calculation.")
+      numeric()
     } else {
-      disp
+      if (summary) {
+        estimates_summary(disp)
+      } else {
+        disp
+      }      
     }
   } else {
     numeric()
