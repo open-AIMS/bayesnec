@@ -165,42 +165,36 @@
 <p>All these model fits are satisfactory despite the relatively low number of iterations set in our example, but the summary would also include a warning if there were fits with divergent transitions.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span>
-<span class="co">#&gt; Object of class bayesmanecfit containing the following non-linear models:</span>
-<span class="co">#&gt;   -  nec4param</span>
-<span class="co">#&gt;   -  neclin</span>
-<span class="co">#&gt;   -  ecxlin</span>
-<span class="co">#&gt;   -  ecx4param</span>
-<span class="co">#&gt;   -  ecxwb1</span>
-<span class="co">#&gt;   -  ecxwb2</span>
-<span class="co">#&gt;   -  ecxll5</span>
-<span class="co">#&gt;   -  ecxll4</span>
+<span class="co">#&gt; Object of class bayesmanecfit</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; Distribution family: gaussian</span>
+<span class="co">#&gt;  Family: gaussian  </span>
+<span class="co">#&gt;   Links: mu = identity; sigma = identity  </span>
+<span class="co">#&gt; </span>
 <span class="co">#&gt; Number of posterior draws per model:  1600</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Model weights (Method: pseudobma_bb_weights):</span>
 <span class="co">#&gt;             waic   wi</span>
-<span class="co">#&gt; nec4param -83.10 0.39</span>
-<span class="co">#&gt; neclin    -16.36 0.00</span>
-<span class="co">#&gt; ecxlin      5.23 0.00</span>
-<span class="co">#&gt; ecx4param -80.23 0.11</span>
-<span class="co">#&gt; ecxwb1    -73.94 0.01</span>
-<span class="co">#&gt; ecxwb2    -82.61 0.26</span>
-<span class="co">#&gt; ecxll5    -81.11 0.13</span>
-<span class="co">#&gt; ecxll4    -79.99 0.10</span>
+<span class="co">#&gt; nec4param -83.04 0.39</span>
+<span class="co">#&gt; neclin    -17.08 0.00</span>
+<span class="co">#&gt; ecxlin      5.08 0.00</span>
+<span class="co">#&gt; ecx4param -80.22 0.11</span>
+<span class="co">#&gt; ecxwb1    -73.86 0.01</span>
+<span class="co">#&gt; ecxwb2    -82.65 0.27</span>
+<span class="co">#&gt; ecxll5    -80.82 0.11</span>
+<span class="co">#&gt; ecxll4    -80.32 0.12</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Summary of weighted NEC posterior estimates:</span>
-<span class="co">#&gt; NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC</span>
+<span class="co">#&gt; NB: Model set contains the ECX models: #&gt; ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include #&gt; NSEC surrogates for NEC</span>
 <span class="co">#&gt;     Estimate Q2.5 Q97.5</span>
-<span class="co">#&gt; NEC     3.98 2.93  4.36</span>
+<span class="co">#&gt; NEC     3.97 2.97  4.36</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Bayesian R2 estimates:</span>
 <span class="co">#&gt;           Estimate Est.Error Q2.5 Q97.5</span>
 <span class="co">#&gt; nec4param     0.85      0.01 0.83  0.86</span>
 <span class="co">#&gt; neclin        0.78      0.01 0.74  0.80</span>
-<span class="co">#&gt; ecxlin        0.75      0.02 0.71  0.78</span>
+<span class="co">#&gt; ecxlin        0.74      0.02 0.71  0.77</span>
 <span class="co">#&gt; ecx4param     0.84      0.01 0.82  0.86</span>
 <span class="co">#&gt; ecxwb1        0.84      0.01 0.82  0.85</span>
 <span class="co">#&gt; ecxwb2        0.85      0.01 0.82  0.86</span>
