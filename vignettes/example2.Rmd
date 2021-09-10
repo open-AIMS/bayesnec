@@ -93,42 +93,36 @@ All these model fits are satisfactory despite the relatively low number of itera
 
 ```r
 summary(exp_5)
-#> Object of class bayesmanecfit containing the following non-linear models:
-#>   -  nec4param
-#>   -  neclin
-#>   -  ecxlin
-#>   -  ecx4param
-#>   -  ecxwb1
-#>   -  ecxwb2
-#>   -  ecxll5
-#>   -  ecxll4
+#> Object of class bayesmanecfit
 #> 
-#> Distribution family: gaussian
+#>  Family: gaussian  
+#>   Links: mu = identity; sigma = identity  
+#> 
 #> Number of posterior draws per model:  1600
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -83.10 0.39
-#> neclin    -16.36 0.00
-#> ecxlin      5.23 0.00
-#> ecx4param -80.23 0.11
-#> ecxwb1    -73.94 0.01
-#> ecxwb2    -82.61 0.26
-#> ecxll5    -81.11 0.13
-#> ecxll4    -79.99 0.10
+#> nec4param -83.04 0.39
+#> neclin    -17.08 0.00
+#> ecxlin      5.08 0.00
+#> ecx4param -80.22 0.11
+#> ecxwb1    -73.86 0.01
+#> ecxwb2    -82.65 0.27
+#> ecxll5    -80.82 0.11
+#> ecxll4    -80.32 0.12
 #> 
 #> 
 #> Summary of weighted NEC posterior estimates:
-#> NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
+#> NB: Model set contains the ECX models: #> ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include #> NSEC surrogates for NEC
 #>     Estimate Q2.5 Q97.5
-#> NEC     3.98 2.93  4.36
+#> NEC     3.97 2.97  4.36
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>           Estimate Est.Error Q2.5 Q97.5
 #> nec4param     0.85      0.01 0.83  0.86
 #> neclin        0.78      0.01 0.74  0.80
-#> ecxlin        0.75      0.02 0.71  0.78
+#> ecxlin        0.74      0.02 0.71  0.77
 #> ecx4param     0.84      0.01 0.82  0.86
 #> ecxwb1        0.84      0.01 0.82  0.85
 #> ecxwb2        0.85      0.01 0.82  0.86
