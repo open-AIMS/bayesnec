@@ -20,7 +20,7 @@ average_endpoints(
 }
 \arguments{
 \item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
+\code{\link{bayesnecfit}} or \code{\link{bayesnmaecfit}} returned by
 \code{\link{bnec}}.}
 
 \item{endpoint}{The type of endpoint to use in the mean. Takes values
