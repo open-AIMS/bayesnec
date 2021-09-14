@@ -524,3 +524,10 @@ has_family_changed <- function(x, data, ...) {
     TRUE
   }
 }
+
+#' @noRd
+find_transformations <- function(data) {
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  # what bout when no variable?
+  unname(bnec_pop_vars[!bnec_pop_vars %in% names(data)])
+}
