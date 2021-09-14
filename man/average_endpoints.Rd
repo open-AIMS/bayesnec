@@ -20,7 +20,7 @@ average_endpoints(
 }
 \arguments{
 \item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnmaecfit}} returned by
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 \code{\link{bnec}}.}
 
 \item{endpoint}{The type of endpoint to use in the mean. Takes values
@@ -63,7 +63,7 @@ model fits contained in \code{x}. See Details.
 }
 \description{
 Extracts posterior predicted endpoint values from a list of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 calculates a geometric mean.
 }
 \details{

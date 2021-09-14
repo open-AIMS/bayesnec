@@ -17,7 +17,7 @@ compare_posterior(
 }
 \arguments{
 \item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnmaecfit}} returned by
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 \code{\link{bnec}}.}
 
 \item{comparison}{The posterior predictions to compare, takes values of
@@ -49,7 +49,7 @@ in posterior predictions of the \code{\link{bayesnecfit}} or
 }
 \description{
 Extracts posterior predicted values from a list of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnmaecfit}} model fits and
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 compares these via bootstrap re sampling.
 }
 \examples{

@@ -1,7 +1,7 @@
 #' average_endpoints
 #'
 #' Extracts posterior predicted endpoint values from a list of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 #' calculates a geometric mean.
 #'
 #' @inheritParams compare_posterior
