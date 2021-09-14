@@ -1,11 +1,11 @@
 #' compare_posterior
 #'
 #' Extracts posterior predicted values from a list of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+#' \code{\link{bayesnecfit}} or \code{\link{bayesnmaecfit}} model fits and
 #' compares these via bootstrap re sampling.
 #'
 #' @param x A named \code{\link[base]{list}} of objects of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
+#' \code{\link{bayesnecfit}} or \code{\link{bayesnmaecfit}} returned by
 #' \code{\link{bnec}}.
 #' @param comparison The posterior predictions to compare, takes values of
 #' "nec", "nsec", "ecx" or "fitted".
