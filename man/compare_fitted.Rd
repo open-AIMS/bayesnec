@@ -8,7 +8,7 @@ compare_fitted(x, precision = 50, x_range = NA)
 }
 \arguments{
 \item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnmaecfit}} returned by
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 \code{\link{bnec}}.}
 
 \item{precision}{The number of unique x values over which to find ECx -
