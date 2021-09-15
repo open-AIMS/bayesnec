@@ -69,7 +69,7 @@ Update an object of class \code{\link{bnecfit}} as fitted by function
 \code{\link{bnec}}.
 }
 \examples{
-\dontrun{
+\donttest{
 library(bayesnec)
 data(manec_example)
 # due to package size issues, `manec_example` does not contain original

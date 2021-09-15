@@ -60,7 +60,7 @@ A \code{\link[ggplot2]{ggplot}} object.
 plotting method.
 }
 \examples{
-\dontrun{
+\donttest{
 library(brms)
 library(bayesnec)
 options(mc.cores = 2)

@@ -96,6 +96,7 @@ bind_ecx <- function(data, ecx_vals) {
 #' @examples
 #' \donttest{
 #' library(bayesnec)
+#' options(mc.cores = 2)
 #' data(manec_example)
 #'
 #' ggbnec_data(manec_example)
@@ -306,7 +307,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 #' @family autoplot methods
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = 2)

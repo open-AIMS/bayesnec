@@ -78,12 +78,14 @@ to pass an appropriate xform argument to ensure these are back transformed
 before the the geometric mean calculation is applied.
 }
 \examples{
+\donttest{
 library(brms)
 library(bayesnec)
 data(manec_example)
 ecx4param <- pull_out(manec_example, model = "ecx4param")
 nec4param <- pull_out(manec_example, model = "nec4param")
 average_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+}
 
 }
 \seealso{
