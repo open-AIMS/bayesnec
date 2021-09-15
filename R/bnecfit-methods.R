@@ -69,7 +69,7 @@ c.bnecfit <- function(x, ...) {
 #' @importFrom stats update
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' library(bayesnec)
 #' data(manec_example)
 #' # due to package size issues, `manec_example` does not contain original

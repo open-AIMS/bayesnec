@@ -53,11 +53,13 @@ Extracts posterior predicted values from a list of class
 compares these via bootstrap re sampling.
 }
 \examples{
+\donttest{
 library(bayesnec)
 data(manec_example)
 ecx4param <- pull_out(manec_example, model = "ecx4param")
 nec4param <- pull_out(manec_example, model = "nec4param")
 compare_posterior(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+}
 
 }
 \seealso{
