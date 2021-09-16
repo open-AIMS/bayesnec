@@ -2,9 +2,6 @@ library(bayesnec)
 library(ggplot2)
 
 data(manec_example)
-nec4param <- pull_out(manec_example, model = "nec4param") %>%
-  suppressMessages %>%
-  suppressWarnings
 
 test_that("returns ggplot for bayesnecfit objects", {
   p <- check_priors(nec4param)

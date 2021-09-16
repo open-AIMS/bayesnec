@@ -2,9 +2,6 @@ library(bayesnec)
 library(dplyr)
 
 data(manec_example)
-my_ctrls <- list(weights = list(method = "stacking"))
-manec_example_stack <- amend(manec_example, loo_controls = my_ctrls) %>%
-  suppressWarnings
 
 test_that("input checks work correctly and return appropriate messages", {
   general_error <- paste(
@@ -40,23 +37,4 @@ test_that("input checks work correctly and return appropriate messages", {
         loo_controls = list(weights = list(method = "pseudobma"))) %>%
     expect_message(general_error) %>%
     expect_message(m_3)
-})
-
-test_that("loo_controls pass correctly", {
-  expect_equal(class(manec_example_stack$mod_stats$wi), "stacking_weights")
-})
-
-test_that("new loo_controls are incorporated", {
-  get_new_method <- function(x) {
-    attributes(x$mod_stats$wi)$method
-  }
-  expect_equal(get_new_method(manec_example), "pseudobma")
-  my_ctrls <- list(weights = list(method = "stacking"))
-  manec_example_stack <- amend(manec_example, loo_controls = my_ctrls) %>%
-    expect_message %>%
-    suppressWarnings
-  expect_equal(get_new_method(manec_example_stack), "stacking")
-  expect_false(
-    all(manec_example$mod_stats$wi == manec_example_stack$mod_stats$wi)
-  )
 })

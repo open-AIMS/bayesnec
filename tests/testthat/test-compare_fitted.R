@@ -1,13 +1,5 @@
 library(bayesnec)
 
-data(manec_example)
-ecx4param <- pull_out(manec_example, model = "ecx4param") %>%
-  suppressMessages %>%
-  suppressWarnings
-nec4param <- pull_out(manec_example, model = "nec4param") %>%
-  suppressMessages %>%
-  suppressWarnings
-
 test_that("x must be a named list", {
   expect_error(compare_fitted(list(ecx4param, nec4param)))
   expect_error(compare_fitted(ecx4param, nec4param))

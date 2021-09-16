@@ -178,7 +178,7 @@
 #'   \code{\link{show_params}}
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' library(bayesnec)
 #' data(nec_data)
 #'
