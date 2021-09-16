@@ -1,11 +1,6 @@
 library(bayesnec)
 
 data(manec_example)
-ecx4param <- pull_out(manec_example, model = "ecx4param") %>%
-    suppressMessages
-nec4param <- pull_out(manec_example, model = "nec4param") %>%
-    suppressMessages
-
 fit1 <- manec_example$mod_fits[["nec4param"]]
 fit2 <- manec_example$mod_fits[["ecx4param"]]
 

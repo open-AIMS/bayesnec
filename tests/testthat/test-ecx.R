@@ -3,12 +3,6 @@ library(dplyr)
 library(brms)
 
 data(manec_example)
-nec4param <- pull_out(manec_example, model = "nec4param") %>%
-  suppressMessages %>%
-  suppressWarnings
-ecx4param <- pull_out(manec_example, model = "ecx4param") %>%
-  suppressMessages %>%
-  suppressWarnings
 
 test_that("prob_vals warnings behave as expected", {
   ecx(manec_example, prob_vals = c(0.6, 0.1, 0.9),

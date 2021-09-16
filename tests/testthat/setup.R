@@ -13,9 +13,18 @@ add_na <- function(x, n = 3) {
   x_b
 }
 
-data("nec_data")
+data(nec_data)
 other_data <- nec_data
 colnames(other_data) <- c("a", "b")
 nec_data <- nec_data %>% 
   mutate(count = as.integer(round(y * 20)),
-         trials = as.integer(20))
+         trials = as.integer(20),
+         log_x = log(x))
+
+data(manec_example)
+nec4param <- pull_out(manec_example, model = "nec4param") %>%
+  suppressMessages %>%
+  suppressWarnings
+ecx4param <- pull_out(manec_example, model = "ecx4param") %>%
+  suppressMessages %>%
+  suppressWarnings

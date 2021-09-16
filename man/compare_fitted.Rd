@@ -27,11 +27,11 @@ Extracts posterior predicted values from a list of class
 compares these across a vector of fitted values.
 }
 \examples{
-\donttest{
+\dontrun{
 library(bayesnec)
 data(manec_example)
-ecx4param <- pull_out(manec_example, model = "ecx4param")
 nec4param <- pull_out(manec_example, model = "nec4param")
+ecx4param <- pull_out(manec_example, model = "ecx4param")
 compare_fitted(list("nec" = ecx4param, "ecx" = nec4param))
 }
 

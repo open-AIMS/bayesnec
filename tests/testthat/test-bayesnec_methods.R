@@ -1,11 +1,6 @@
 library(bayesnec)
 library(brms)
 
-data(manec_example)
-nec4param <- pull_out(manec_example, model = "nec4param") %>%
-  suppressMessages %>%
-  suppressWarnings
-
 test_that("predict is silent", {
   expect_silent(predict(nec4param))
 })

@@ -206,7 +206,7 @@ data prior to fitting because if you so wish that should facilitate merging
 predictions back onto your original dataset.
 }
 \examples{
-\donttest{
+\dontrun{
 library(bayesnec)
 data(nec_data)
 

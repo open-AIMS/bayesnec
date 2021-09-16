@@ -34,12 +34,12 @@
 #' @importFrom utils combn
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' library(brms)
 #' library(bayesnec)
 #' data(manec_example)
+#' data(nec4param)
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' nec4param <- pull_out(manec_example, model = "nec4param")
 #' average_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 #' }
 #'
