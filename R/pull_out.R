@@ -20,10 +20,14 @@
 #' @seealso \code{\link{bnec}}, \code{\link{models}}.
 #'
 #' @examples
+#' \dontrun{
 #' library(bayesnec)
 #' data(manec_example)
-#' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' necmodels <- pull_out(manec_example, model = "nec")
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' # use "ecx" to get all ECx-containing models
+#' # (only one ["ecx4param"] in this minimal example)
+#' ecx_models <- pull_out(manec_example, model = "ecx")
+#' }
 #'
 #' @export
 pull_out <- function(manec, model, loo_controls, ...) {

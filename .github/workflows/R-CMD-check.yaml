@@ -56,6 +56,10 @@ jobs:
           sysreqs=$(Rscript -e "cat(sysreqs::sysreq_commands('DESCRIPTION'))")
           sudo -s eval "$sysreqs"
 
+      - name: Pandoc Windows fix
+        if: runner.os == 'Windows'
+        run: choco install pandoc
+
       - name: V8 fix
         if: runner.os == 'macOS'
         run: |

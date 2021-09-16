@@ -41,6 +41,7 @@ Creates the data.frame for plotting with \code{\link{autoplot}}.
 \examples{
 \donttest{
 library(bayesnec)
+options(mc.cores = 2)
 data(manec_example)
 
 ggbnec_data(manec_example)

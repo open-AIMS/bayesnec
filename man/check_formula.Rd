@@ -57,13 +57,13 @@ data <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
                    group_2 = sample(c("c", "d"), 10, replace = TRUE))
 data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 
-\dontrun{
-f_1 <- y ~ crf(x, "nec3param") + z
+# returns error
+# > f_1 <- y ~ crf(x, "nec3param") + z
 # regular formula not allowed, wrap it with function bnf
-check_formula(f_1, data)
+# > check_formula(f_1, data)
 # population-level covariates are not allowed
-check_formula(bnf(f_1), data)
-}
+# > check_formula(bnf(f_1), data)
+
 \donttest{
 # expect a series of messages for because not all
 # nec models have the "bot" parameter

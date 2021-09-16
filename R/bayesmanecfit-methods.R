@@ -255,7 +255,7 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   }
   out <- list(
     models = x$success_models,
-    family = x$mod_fits[[1]]$fit$family$family,
+    family = capture_family(x),
     sample_size = x$sample_size,
     mod_weights = clean_mod_weights(x),
     mod_weights_method = class(x$mod_stats$wi),
@@ -271,6 +271,25 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
   allot_class(out, "manecsummary")
 }
 
+#' @noRd
+capture_family <- function(manec) {
+  UseMethod("capture_family")
+}
+
+#' @noRd
+capture_family.default <- function(manec) {
+  capture_family(manec)
+}
+
+#' @noRd
+#' @importFrom utils capture.output
+capture_family.bayesmanecfit <- function(manec) {
+  x <- manec$mod_fits[[1]]$fit
+  out <- capture.output(print(summary(x)))
+  list(family = grep("^ Family:", out, value = TRUE),
+       links = grep("^  Links:", out, value = TRUE))
+}
+
 #' print.manecsummary
 #'
 #' @param x An object of class \code{\link{manecsummary}} as
@@ -281,11 +300,10 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
 #'
 #' @export
 print.manecsummary <- function(x, ...) {
-  cat("Object of class bayesmanecfit containing the following",
-      " non-linear models:\n",
-      paste0("  -  ", x$models, collapse = "\n"), sep = "")
-  cat("\n\n")
-  cat("Distribution family:", x$family)
+  cat("Object of class bayesmanecfit\n")
+  cat("\n")
+  cat(x$family$family, "\n")
+  cat(x$family$links, "\n")
   cat("\n")
   cat("Number of posterior draws per model: ", x$sample_size)
   cat("\n\n")

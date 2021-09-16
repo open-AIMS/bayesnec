@@ -19,7 +19,8 @@
 #' methods.
 #' @slot models A \code{\link[base]{character}} string indicating the name of
 #' the fitted non-linear models.
-#' @slot family The family distribution used to fit all the models.
+#' @slot family A \code{\link[base]{list}} indicating the
+#' family distribution and link function used to fit all the models.
 #' @slot sample_size The total post-warm-up sample size.
 #' @slot mod_weights A table containing the model weights.
 #' @slot mod_weights_method The method to calculate the weights.

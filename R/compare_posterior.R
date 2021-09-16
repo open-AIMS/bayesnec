@@ -1,11 +1,11 @@
 #' compare_posterior
 #'
 #' Extracts posterior predicted values from a list of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 #' compares these via bootstrap re sampling.
 #'
 #' @param x A named \code{\link[base]{list}} of objects of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
 #' @param comparison The posterior predictions to compare, takes values of
 #' "nec", "nsec", "ecx" or "fitted".
@@ -25,11 +25,13 @@
 #' @importFrom tidyselect everything
 #'
 #' @examples
+#' \dontrun{
 #' library(bayesnec)
 #' data(manec_example)
-#' ecx4param <- pull_out(manec_example, model = "ecx4param")
 #' nec4param <- pull_out(manec_example, model = "nec4param")
+#' ecx4param <- pull_out(manec_example, model = "ecx4param")
 #' compare_posterior(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+#' }
 #'
 #' @export
 compare_posterior <- function(x, comparison = "nec", ecx_val = 10,

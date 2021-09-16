@@ -1,6 +1,10 @@
 ---
 title: "Multi model usage"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    md_extensions: [
+      "-autolink_bare_uris"
+    ]
 vignette: >
   %\VignetteIndexEntry{Multi model usage}
   %\VignetteEngine{knitr::rmarkdown}
@@ -18,6 +22,7 @@ knitr::opts_chunk$set(
   fig.path = "vignette-fig-",
   fig.asp = 0.8,
   out.width = "60%",
+  fig.align = "center",
   dpi = 120,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )

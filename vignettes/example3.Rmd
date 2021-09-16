@@ -1,6 +1,10 @@
 ---
 title: "Priors"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    md_extensions: [
+      "-autolink_bare_uris"
+    ]
 vignette: >
   %\VignetteIndexEntry{Priors}
   %\VignetteEngine{knitr::rmarkdown}
@@ -67,7 +71,7 @@ We can view the prior and posterior probability densities of all the parameters 
 check_priors(exmp_a)
 ```
 
-<img src="vignette-fig-exmp3-checkpriors-1.png" title="plot of chunk exmp3-checkpriors" alt="plot of chunk exmp3-checkpriors" width="60%" />
+<img src="vignette-fig-exmp3-checkpriors-1.png" title="plot of chunk exmp3-checkpriors" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;" />
 
 In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function `pull_prior` to inspect what `bnec` came up with on its own, and decide how best to modify those priors to be more desirable.
 
