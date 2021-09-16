@@ -101,7 +101,7 @@
       </header><script src="example1_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip></h1>
+      <h1 data-toc-skip>Single model usage</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/open-aims/bayesnec/blob/master/vignettes/example1.Rmd"><code>vignettes/example1.Rmd</code></a></small>
@@ -115,13 +115,13 @@
 <h1 class="hasAnchor">
 <a href="#bayesnec" class="anchor"></a><code>bayesnec</code>
 </h1>
-<p>The <code>bayesnec</code> is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage “x”, <em>ECx</em>) thresholds from non-linear models fitted using Bayesian Hamiltonian Monte Carlo (HMC) via <code>brms</code> <span class="citation">(<span class="citeproc-not-found" data-reference-id="Burkner2017"><strong>???</strong></span>; <span class="citeproc-not-found" data-reference-id="Burkner2018"><strong>???</strong></span>)</span> and <code>stan</code>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(<span class="citeproc-not-found" data-reference-id="Fisher2020"><strong>???</strong></span>)</span> which was based on the <code>R2jags</code> package <span class="citation">(<span class="citeproc-not-found" data-reference-id="Su2015"><strong>???</strong></span>)</span> and <code>jags</code> <span class="citation">(<span class="citeproc-not-found" data-reference-id="Plummer2003"><strong>???</strong></span>)</span>.</p>
+<p>The <code>bayesnec</code> is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and Effect-Concentration (of specified percentage “x”, <em>ECx</em>) thresholds from non-linear models fitted using Bayesian Hamiltonian Monte Carlo (HMC) via <code>brms</code> <span class="citation">(Bürkner 2017; Bürkner 2018)</span> and <code>stan</code>. The package is an adaptation and extension of an initial package <code>jagsNEC</code> <span class="citation">(Fisher, Ricardo, and Fox 2020)</span> which was based on the <code>R2jags</code> package <span class="citation">(Su and Yajima 2015)</span> and <code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
 </div>
 <div id="background" class="section level1">
 <h1 class="hasAnchor">
 <a href="#background" class="anchor"></a>Background</h1>
 <p>Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for <em>NEC</em> estimation (or even <em>ECx</em> estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The <code>bayesnec</code> package provides an accessible interface specifically for fitting <em>NEC</em> models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the “concentration” or “dose” variable (the predictor) as well as the “response” variable. The package requires a simplified model formula, which together with the data is used to wrangle more complex non-linear model formula(s), as well as to generate priors and initial values required to call a <code>brms</code> model. While the distribution of the predictor and response variables can be specified directly, <code>bayesnec</code> will automatically attempt to assign the correct distribution to use based on the characteristics of the provided data.</p>
-<p>This project started with an implementation of the <em>NEC</em> model based on that described in (Pires et al. 2002) and <span class="citation">(<span class="citeproc-not-found" data-reference-id="Fox2010"><strong>???</strong></span>)</span> using R2jags <span class="citation">(<span class="citeproc-not-found" data-reference-id="Fisher2020"><strong>???</strong></span>)</span>. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original <code>jagsNEC</code> implementation supported Gaussian-, Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed response data, <code>bayesnec</code> additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available <code>brms</code> families. We have since also further added a range of alternative <em>NEC</em> model types, as well as a range of concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist-based packages such as <code>drc</code><span class="citation">(<span class="citeproc-not-found" data-reference-id="Ritz2016"><strong>???</strong></span>)</span>. These models do not employ segmented linear regression (i.e., use of a <code>step</code> function) but simply models the response as a smooth function of concentration.</p>
+<p>This project started with an implementation of the <em>NEC</em> model based on that described in (Pires et al. 2002) and <span class="citation">(Fox 2010)</span> using R2jags <span class="citation">(Fisher, Ricardo, and Fox 2020)</span>. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original <code>jagsNEC</code> implementation supported Gaussian-, Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed response data, <code>bayesnec</code> additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available <code>brms</code> families. We have since also further added a range of alternative <em>NEC</em> model types, as well as a range of concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist-based packages such as <code>drc</code><span class="citation">(Ritz et al. 2016)</span>. These models do not employ segmented linear regression (i.e., use of a <code>step</code> function) but simply models the response as a smooth function of concentration.</p>
 <p>Specific models can be fit directly using <code>bnec</code>, which is what we discuss here. Alternatively, it is possible to fit a custom model set, a specific model set, or all the available models. Further information on fitting multi-models using <code>bayesnec</code> can be found in the <a href="https://open-aims.github.io/bayesnec/articles/example2.html">Multi model usage</a> vignette. For detailed information on the models available in <code>bayesnec</code> see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette.</p>
 <p>Important information on the current package is contained in the <code>bayesnec</code> help-files and the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model details</a> vignette.</p>
 <p>This package is currently under development. We are keen to receive any feedback regarding usage, and especially bug reporting that includes an easy to run self-contained reproducible example of unexpected behaviour, or example model fits that fail to converge (have poor chain mixing) or yield other errors. Such information will hopefully help us towards building a more robust package. We cannot help troubleshoot issues if an easy-to-run reproducible example is not supplied.</p>
@@ -408,9 +408,32 @@
 </div>
 </div>
 </div>
-<div id="references" class="section level1">
+<div id="references" class="section level1 unnumbered">
 <h1 class="hasAnchor">
 <a href="#references" class="anchor"></a>References</h1>
+<div id="refs" class="references">
+<div id="ref-Burkner2017">
+<p>Bürkner, Paul Christian. 2017. “brms: An R package for Bayesian multilevel models using Stan.” <em>Journal of Statistical Software</em> 80 (1): 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>.</p>
+</div>
+<div id="ref-Burkner2018">
+<p>Bürkner, Paul-Christian. 2018. “Advanced Bayesian Multilevel Modeling with the R Package brms.” <em>The R Journal</em> 10 (1): 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>.</p>
+</div>
+<div id="ref-Fisher2020">
+<p>Fisher, Rebecca, Gerard Ricardo, and David Fox. 2020. “Bayesian concentration-response modelling using jagsNEC.” <a href="https://doi.org/10.5281/ZENODO.3966864">https://doi.org/10.5281/ZENODO.3966864</a>.</p>
+</div>
+<div id="ref-Fox2010">
+<p>Fox, David R. 2010. “A Bayesian approach for determining the no effect concentration and hazardous concentration in ecotoxicology.” <em>Ecotoxicology and Environmental Safety</em> 73 (2): 123–31.</p>
+</div>
+<div id="ref-Plummer2003">
+<p>Plummer, Martyn. 2003. “JAGS: A program for analysis of Bayesian graphical models using Gibbs sampling.” In <em>Proceedings of the 3rd International Workshop on Distributed Statistical Computing (DSC 2003)</em>, 1–10. Technische Universität Wien, Vienna, Austria: Achim Zeileis.</p>
+</div>
+<div id="ref-Ritz2016">
+<p>Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard. 2016. “Dose-Response Analysis Using R.” <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021">https://doi.org/10.1371/journal.pone.0146021</a>.</p>
+</div>
+<div id="ref-Su2015">
+<p>Su, Yu-Sung, and Masanao Yajima. 2015. <em>R2jags: Using R to Run ’JAGS’</em>. <a href="https://CRAN.R-project.org/package=R2jags">https://CRAN.R-project.org/package=R2jags</a>.</p>
+</div>
+</div>
 </div>
   </div>
 
