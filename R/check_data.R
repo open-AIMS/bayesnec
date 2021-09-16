@@ -28,9 +28,6 @@ check_data <- function(data, family, model) {
                 ". The function bnec requires the predictor",
                 " column to be numeric."))
   }
-  if (contains_negative(x) && model == "necsigm") {
-    stop("necsigm should only be called when predictor values are >= 0")
-  }
   test_x <- mean(x)
   test_y <- mean(y)
   if (!is.finite(test_x)) {
