@@ -36,3 +36,40 @@ NULL
 #' @name manec_example
 #' @docType data
 NULL
+
+#' Herbicide phytotoxicity data
+#'
+#' Herbicide phytotoxicity dataset from Jones & Kerswell (2003).
+#'
+#' The response data (Fv/Fm) Chlorophyll fluorescence measurements of symbiotic
+#' dinoflagellates still in the host tissue of the coral
+#' (in hospite or in vivo) were measured using a DIVING-PAM chlorophyll
+#' fluorometer (Walz) on vertical planes of tissue 2 to 3 cm above the base of
+#' the corals, using either a 6 mm (Acropora formosa) or 2 mm
+#' (Seriatopora hystrix) fibre-optic probe. Parameters measured were the
+#' maximum potential quantum yield (Fv/Fm).
+#'
+#' Additional information on each of the herbicides included is available from
+#' the original publication Jones & Kerswell (2003).
+#'
+#' The columns are as follows:
+#'
+#' \describe{ 
+#'\item{herbicide}{The herbicide (chr).}
+#'\item{concentration}{The treatment concentration in µg / L (dbl).}
+#'\item{fvfm}{Maximum effective quantum yield (dbl).}
+#' }
+#'
+#' @name herbicide
+#' @docType data
+#' @format An object of class `data.frame` with 580 rows and 3 columns.
+#' @keywords datasets
+#' @examples
+#' head(herbicide)
+#'
+#' @references
+#' Jones RJ, Kerswell AP (2003) Phytotoxicity of Photosystem II (PSII)
+#' herbicides to coral. Marine Ecology Progress Series, 261: 149-159.
+#' doi: 10.3354/meps261149.
+#'
+NULL
