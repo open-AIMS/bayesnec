@@ -2,9 +2,6 @@
 title: "Single model usage"
 output:
   rmarkdown::html_vignette:
-    md_extensions: [
-      "-autolink_bare_uris"
-    ]
 vignette: >
   %\VignetteIndexEntry{Single model usage}
   %\VignetteEngine{knitr::rmarkdown}
