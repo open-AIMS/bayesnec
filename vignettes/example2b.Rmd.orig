@@ -2,9 +2,6 @@
 title: "Model details"
 output:
   rmarkdown::html_vignette:
-    md_extensions: [
-      "-autolink_bare_uris"
-    ]
 vignette: >
   %\VignetteIndexEntry{Model details}
   %\VignetteEngine{knitr::rmarkdown}

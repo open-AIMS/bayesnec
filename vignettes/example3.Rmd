@@ -2,9 +2,6 @@
 title: "Priors"
 output:
   rmarkdown::html_vignette:
-    md_extensions: [
-      "-autolink_bare_uris"
-    ]
 vignette: >
   %\VignetteIndexEntry{Priors}
   %\VignetteEngine{knitr::rmarkdown}
@@ -61,7 +58,6 @@ exmp_a <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
 
 ```r
 class(exmp_a)
-#> [1] "bayesnecfit" "bnecfit"
 ```
 
 We can view the prior and posterior probability densities of all the parameters in the model using the function `check_prior`, based on the `hypothesis` function of `brms`. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.
@@ -71,22 +67,11 @@ We can view the prior and posterior probability densities of all the parameters 
 check_priors(exmp_a)
 ```
 
-<img src="vignette-fig-exmp3-checkpriors-1.png" title="plot of chunk exmp3-checkpriors" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;" />
-
 In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function `pull_prior` to inspect what `bnec` came up with on its own, and decide how best to modify those priors to be more desirable.
 
 
 ```r
 pull_prior(exmp_a)
-#> [[1]]
-#>                       prior class      coef group resp dpar nlpar                                           bound       source
-#>                normal(0, 2)     b                            beta                                                         user
-#>                normal(0, 2)     b Intercept                  beta                                                 (vectorized)
-#>  gamma(5, 2.28313180499098)     b                             nec <lower=0.03234801324009,upper=3.22051966293556>         user
-#>  gamma(5, 2.28313180499098)     b Intercept                   nec                                                 (vectorized)
-#>                  beta(5, 1)     b                             top                               <lower=0,upper=1>         user
-#>                  beta(5, 1)     b Intercept                   top                                                 (vectorized)
-#>           gamma(0.01, 0.01)   phi                                                                                      default
 ```
 
 `bnec` chose a `gamma` prior on the *NEC* parameter of **nec3param** because the predictor `nec_data$x` is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
@@ -107,11 +92,6 @@ Two things are of note. If the user is specifying their own priors, `bnec` requi
 
 ```r
 show_params(model = "nec3param")
-#> [[1]]
-#> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
-#> top ~ 1
-#> beta ~ 1
-#> nec ~ 1
 ```
 
 ### bayesmanecfit
@@ -142,29 +122,6 @@ check_priors(exmp_c, filename = "Check_priors")
 ```
 
 
-```
-#> $nec3param
-#>              prior class      coef group resp dpar nlpar bound       source
-#>      gamma(0.5, 2)     b                            beta               user
-#>      gamma(0.5, 2)     b Intercept                  beta       (vectorized)
-#>   normal(1.3, 2.7)     b                             nec               user
-#>   normal(1.3, 2.7)     b Intercept                   nec       (vectorized)
-#>         beta(5, 1)     b                             top               user
-#>         beta(5, 1)     b Intercept                   top       (vectorized)
-#>  gamma(0.01, 0.01)   phi                                            default
-#> 
-#> $nec4param
-#>              prior class      coef group resp dpar nlpar bound       source
-#>      gamma(0.5, 2)     b                            beta               user
-#>      gamma(0.5, 2)     b Intercept                  beta       (vectorized)
-#>         beta(1, 5)     b                             bot               user
-#>         beta(1, 5)     b Intercept                   bot       (vectorized)
-#>   normal(1.3, 2.7)     b                             nec               user
-#>   normal(1.3, 2.7)     b Intercept                   nec       (vectorized)
-#>         beta(5, 1)     b                             top               user
-#>         beta(5, 1)     b Intercept                   top       (vectorized)
-#>  gamma(0.01, 0.01)   phi                                            default
-```
 
 The user can also specify priors for one model only out of the entire set, `bayesnec` will return a message stating that it is searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.
 
