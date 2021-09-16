@@ -54,8 +54,6 @@ plotting method." />
 
 
 
-
-
 <!-- mathjax -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script>
@@ -67,15 +65,9 @@ plotting method." />
 
 
 
-  
-
-  
-
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    
-
     <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -96,6 +88,12 @@ plotting method." />
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
+  <a href="../index.html">
+    <span class="fas fa-home fa-lg"></span>
+     
+  </a>
+</li>
+<li>
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
@@ -156,8 +154,8 @@ plotting method." />
 plotting method.</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bayesmanecfit</span>
-<span class='fu'><a href='https://ggplot2.tidyverse.org/reference/autoplot.html'>autoplot</a></span><span class='op'>(</span>
+    <pre class="usage"><span class='co'># S3 method for bayesmanecfit</span>
+<span class='fu'>autoplot</span><span class='op'>(</span>
   <span class='va'>object</span>,
   <span class='va'>...</span>,
   nec <span class='op'>=</span> <span class='cn'>TRUE</span>,
@@ -169,7 +167,7 @@ plotting method.</p>
   ask <span class='op'>=</span> <span class='cn'>TRUE</span>,
   newpage <span class='op'>=</span> <span class='cn'>TRUE</span>,
   multi_facet <span class='op'>=</span> <span class='cn'>TRUE</span>
-<span class='op'>)</span></code></pre></div>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -240,28 +238,40 @@ facets? Defaults to TRUE.</p></td>
 <code><a href='autoplot.bayesnecfit.html'>autoplot.bayesnecfit</a>()</code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span></span>
-<span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/paul-buerkner/brms'>brms</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span><span class='op'>(</span>mc.cores <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span></span>
-<span class='r-in'></span>
-<span class='r-in'><span class='va'>necs</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec3param"</span>, <span class='st'>"nec4param"</span><span class='op'>)</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>nec_data</span>,</span>
-<span class='r-in'>             iter <span class='op'>=</span> <span class='fl'>2e2</span>, family <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span><span class='op'>(</span>link <span class='op'>=</span> <span class='st'>"identity"</span><span class='op'>)</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>nec3param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>necs</span>, <span class='st'>"nec3param"</span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/autoplot.html'>autoplot</a></span><span class='op'>(</span><span class='va'>nec3param</span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/autoplot.html'>autoplot</a></span><span class='op'>(</span><span class='va'>nec3param</span>, nec <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/autoplot.html'>autoplot</a></span><span class='op'>(</span><span class='va'>nec3param</span>, ecx <span class='op'>=</span> <span class='cn'>TRUE</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span></span>
-<span class='r-in'></span>
-<span class='r-in'><span class='co'># plot model averaged predictions</span></span>
-<span class='r-in'><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/autoplot.html'>autoplot</a></span><span class='op'>(</span><span class='va'>necs</span><span class='op'>)</span></span>
-<span class='r-in'><span class='co'># plot all panels together</span></span>
-<span class='r-in'><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/autoplot.html'>autoplot</a></span><span class='op'>(</span><span class='va'>necs</span>, ecx <span class='op'>=</span> <span class='cn'>TRUE</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span>, all_models <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span></span>
-<span class='r-in'><span class='co'># plots multiple models, one at a time, with interactive prompt</span></span>
-<span class='r-in'><span class='fu'><a href='https://ggplot2.tidyverse.org/reference/autoplot.html'>autoplot</a></span><span class='op'>(</span><span class='va'>necs</span>, ecx <span class='op'>=</span> <span class='cn'>TRUE</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span>, all_models <span class='op'>=</span> <span class='cn'>TRUE</span>,</span>
-<span class='r-in'>         multi_facet <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span></span>
-<span class='r-in'><span class='op'>}</span></span>
-</code></pre></div>
+    <pre class="examples"><div class='input'><span class='co'># \donttest{</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://github.com/paul-buerkner/brms'>brms</a></span><span class='op'>)</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span><span class='op'>(</span>mc.cores <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span>
+
+<span class='va'>necs</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nec3param"</span>, <span class='st'>"nec4param"</span><span class='op'>)</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>nec_data</span>,
+             iter <span class='op'>=</span> <span class='fl'>2e2</span>, family <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/pkg/brms/man/brmsfamily.html'>Beta</a></span><span class='op'>(</span>link <span class='op'>=</span> <span class='st'>"identity"</span><span class='op'>)</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; <span class='message'>Finding initial values which allow the response to be fitted using a nec3param model and a beta distribution.</span></div><div class='output co'>#&gt; <span class='message'>Compiling Stan program...</span></div><div class='output co'>#&gt; <span class='message'>Start sampling</span></div><div class='output co'>#&gt; <span class='warning'>Warning: Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.</span>
+#&gt; <span class='warning'>Running the chains for more iterations may help. See</span>
+#&gt; <span class='warning'>http://mc-stan.org/misc/warnings.html#bulk-ess</span></div><div class='output co'>#&gt; <span class='warning'>Warning: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.</span>
+#&gt; <span class='warning'>Running the chains for more iterations may help. See</span>
+#&gt; <span class='warning'>http://mc-stan.org/misc/warnings.html#tail-ess</span></div><div class='output co'>#&gt; <span class='message'>Response variable modelled as a nec3param model using a beta distribution.</span></div><div class='output co'>#&gt; <span class='message'>Finding initial values which allow the response to be fitted using a nec4param model and a beta distribution.</span></div><div class='output co'>#&gt; <span class='message'>Compiling Stan program...</span></div><div class='output co'>#&gt; <span class='message'>Start sampling</span></div><div class='output co'>#&gt; <span class='warning'>Warning: The largest R-hat is 1.09, indicating chains have not mixed.</span>
+#&gt; <span class='warning'>Running the chains for more iterations may help. See</span>
+#&gt; <span class='warning'>http://mc-stan.org/misc/warnings.html#r-hat</span></div><div class='output co'>#&gt; <span class='warning'>Warning: Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.</span>
+#&gt; <span class='warning'>Running the chains for more iterations may help. See</span>
+#&gt; <span class='warning'>http://mc-stan.org/misc/warnings.html#bulk-ess</span></div><div class='output co'>#&gt; <span class='warning'>Warning: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.</span>
+#&gt; <span class='warning'>Running the chains for more iterations may help. See</span>
+#&gt; <span class='warning'>http://mc-stan.org/misc/warnings.html#tail-ess</span></div><div class='output co'>#&gt; <span class='message'>Response variable modelled as a nec4param model using a beta distribution.</span></div><div class='output co'>#&gt; <span class='message'>Fitted models are: nec3param nec4param</span></div><div class='output co'>#&gt; <span class='warning'>Warning: </span>
+#&gt; <span class='warning'>2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span></div><div class='output co'>#&gt; <span class='warning'>Warning: Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span></div><div class='output co'>#&gt; <span class='warning'>Warning: </span>
+#&gt; <span class='warning'>2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span></div><div class='input'><span class='va'>nec3param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>necs</span>, <span class='st'>"nec3param"</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; <span class='message'>Pulling out model(s): nec3param</span></div><div class='input'><span class='fu'>autoplot</span><span class='op'>(</span><span class='va'>nec3param</span><span class='op'>)</span>
+</div><div class='img'><img src='autoplot.bayesmanecfit-1.png' alt='' width='700' height='433' /></div><div class='input'><span class='fu'>autoplot</span><span class='op'>(</span><span class='va'>nec3param</span>, nec <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span>
+</div><div class='img'><img src='autoplot.bayesmanecfit-2.png' alt='' width='700' height='433' /></div><div class='input'><span class='fu'>autoplot</span><span class='op'>(</span><span class='va'>nec3param</span>, ecx <span class='op'>=</span> <span class='cn'>TRUE</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span>
+</div><div class='img'><img src='autoplot.bayesmanecfit-3.png' alt='' width='700' height='433' /></div><div class='input'>
+<span class='co'># plot model averaged predictions</span>
+<span class='fu'>autoplot</span><span class='op'>(</span><span class='va'>necs</span><span class='op'>)</span>
+</div><div class='img'><img src='autoplot.bayesmanecfit-4.png' alt='' width='700' height='433' /></div><div class='input'><span class='co'># plot all panels together</span>
+<span class='fu'>autoplot</span><span class='op'>(</span><span class='va'>necs</span>, ecx <span class='op'>=</span> <span class='cn'>TRUE</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span>, all_models <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</div><div class='img'><img src='autoplot.bayesmanecfit-5.png' alt='' width='700' height='433' /></div><div class='input'><span class='co'># plots multiple models, one at a time, with interactive prompt</span>
+<span class='fu'>autoplot</span><span class='op'>(</span><span class='va'>necs</span>, ecx <span class='op'>=</span> <span class='cn'>TRUE</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span>, all_models <span class='op'>=</span> <span class='cn'>TRUE</span>,
+         multi_facet <span class='op'>=</span> <span class='cn'>FALSE</span><span class='op'>)</span>
+</div><div class='img'><img src='autoplot.bayesmanecfit-6.png' alt='' width='700' height='433' /></div><div class='img'><img src='autoplot.bayesmanecfit-7.png' alt='' width='700' height='433' /></div><div class='input'><span class='co'># }</span>
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
@@ -273,11 +283,11 @@ facets? Defaults to TRUE.</p></td>
 
       <footer>
       <div class="copyright">
-  <p><p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p></p>
+  <p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p>
 </div>
 
 <div class="pkgdown">
-  <p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 1.6.1.9001.</p></p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>
@@ -285,8 +295,6 @@ facets? Defaults to TRUE.</p></td>
 
   
 
-
-  
 
   </body>
 </html>

@@ -55,8 +55,6 @@ compares these via bootstrap re sampling." />
 
 
 
-
-
 <!-- mathjax -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script>
@@ -68,15 +66,9 @@ compares these via bootstrap re sampling." />
 
 
 
-  
-
-  
-
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    
-
     <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -97,6 +89,12 @@ compares these via bootstrap re sampling." />
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
+  <a href="../index.html">
+    <span class="fas fa-home fa-lg"></span>
+     
+  </a>
+</li>
+<li>
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
@@ -158,7 +156,7 @@ compares these via bootstrap re sampling." />
 compares these via bootstrap re sampling.</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>compare_endpoints</span><span class='op'>(</span>
+    <pre class="usage"><span class='fu'>compare_endpoints</span><span class='op'>(</span>
   <span class='va'>x</span>,
   comparison <span class='op'>=</span> <span class='st'>"nec"</span>,
   ecx_val <span class='op'>=</span> <span class='fl'>10</span>,
@@ -167,7 +165,7 @@ compares these via bootstrap re sampling.</p>
   sig_val <span class='op'>=</span> <span class='fl'>0.01</span>,
   <span class='va'>precision</span>,
   x_range <span class='op'>=</span> <span class='cn'>NA</span>
-<span class='op'>)</span></code></pre></div>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -175,7 +173,7 @@ compares these via bootstrap re sampling.</p>
     <tr>
       <th>x</th>
       <td><p>A named <code><a href='https://rdrr.io/r/base/list.html'>list</a></code> of objects of class
-<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code>bayesnmaecfit</code> returned by
+<code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> or <code><a href='bayesmanecfit-class.html'>bayesmanecfit</a></code> returned by
 <code><a href='bnec.html'>bnec</a></code>.</p></td>
     </tr>
     <tr>
@@ -226,382 +224,15 @@ in posterior predictions of the <code><a href='bayesnecfit-class.html'>bayesnecf
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>ecx4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_example</span>, model <span class='op'>=</span> <span class='st'>"ecx4param"</span><span class='op'>)</span></span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): ecx4param</span>
-<span class='r-in'><span class='va'>nec4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_example</span>, model <span class='op'>=</span> <span class='st'>"nec4param"</span><span class='op'>)</span></span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Pulling out model(s): nec4param</span>
-<span class='r-in'><span class='fu'>compare_endpoints</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='st'>"nec"</span> <span class='op'>=</span> <span class='va'>ecx4param</span>, <span class='st'>"ecx"</span> <span class='op'>=</span> <span class='va'>nec4param</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span></span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> $posterior_list</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> $posterior_list$nec</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   [1] 0.77912696 0.80784923 0.73763924 0.81104059 0.85571967 0.78870105</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   [7] 0.42169430 0.60998472 0.91635557 0.65466380 0.98656555 0.76636151</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [13] 0.94188647 0.79189241 0.72487379 0.93550375 1.10145462 0.89401603</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [19] 0.75997878 0.75997878 0.59083654 0.59721927 0.98656555 1.01528782</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [25] 0.67062062 0.84614558 0.97380010 0.92273829 0.71849106 0.89082466</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [31] 0.94188647 0.90678148 0.79827514 0.92912102 0.76317014 0.71849106</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [37] 0.81423195 0.86210240 0.76955287 0.83976286 0.77912696 0.97699147</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [43] 0.98975692 0.84614558 1.01209646 0.75040469 0.82699740 1.02167055</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [49] 0.88763330 0.98018283 0.98975692 1.01847918 0.89720739 0.87486785</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [55] 0.93869511 0.68019470 1.01209646 0.67062062 0.87486785 0.78550968</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [61] 0.77912696 0.88444194 0.78231832 0.97380010 0.89082466 0.76317014</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [67] 0.93231238 0.69296016 0.90997284 0.80784923 0.69934288 0.91316420</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [73] 0.91316420 0.92273829 0.81104059 0.83018877 0.92912102 0.92912102</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [79] 0.91316420 0.92273829 0.75678742 0.85252831 1.04720145 1.00890510</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [85] 0.87167649 0.03234801 0.51743519 0.62913290 0.85252831 0.77593560</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [91] 0.83976286 0.98018283 0.89082466 0.86529376 0.03873074 0.94507783</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [97] 0.79189241 0.86848512 0.56849700 0.96422601</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> $posterior_list$ecx</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   [1] 1.442587 1.457722 1.481493 1.485925 1.458289 1.449933 1.443140 1.466578</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   [9] 1.436326 1.466663 1.421838 1.514186 1.429119 1.440516 1.397421 1.509695</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [17] 1.523597 1.530270 1.466546 1.466265 1.459125 1.431784 1.508234 1.508211</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [25] 1.419997 1.455781 1.432226 1.443483 1.435387 1.438993 1.405659 1.418535</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [33] 1.412248 1.417279 1.425567 1.436740 1.441224 1.415182 1.452339 1.420860</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [41] 1.423742 1.447464 1.439129 1.470685 1.447541 1.504913 1.524641 1.510200</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [49] 1.521482 1.522349 1.484843 1.396919 1.477415 1.473241 1.431799 1.421336</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [57] 1.434694 1.442501 1.425624 1.453501 1.475282 1.421443 1.469332 1.501495</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [65] 1.472506 1.350501 1.495111 1.394531 1.439682 1.487531 1.454148 1.429012</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [73] 1.508282 1.465438 1.433031 1.497852 1.486412 1.473494 1.474565 1.440962</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [81] 1.416739 1.494570 1.477715 1.364731 1.417989 1.495071 1.407532 1.489753</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [89] 1.465615 1.492940 1.472939 1.469240 1.508738 1.433194 1.407564 1.472851</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [97] 1.405898 1.421342 1.428190 1.469698</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> $posterior_data</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>     model      value</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1     ecx 1.45578075</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2     ecx 1.47741463</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 3     ecx 1.46969803</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 4     ecx 1.45233871</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 5     ecx 1.49785177</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 6     ecx 1.47528161</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 7     ecx 1.52464099</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 8     ecx 1.44754067</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 9     ecx 1.41518219</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 10    ecx 1.43968246</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 11    ecx 1.43632564</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 12    ecx 1.44993293</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 13    ecx 1.43899257</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 14    ecx 1.46626497</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 15    ecx 1.46923980</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 16    ecx 1.40753180</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 17    ecx 1.47349375</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 18    ecx 1.44250084</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 19    ecx 1.48641153</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 20    ecx 1.47324054</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 21    ecx 1.49507088</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 22    ecx 1.41853495</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 23    ecx 1.43469447</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 24    ecx 1.42911946</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 25    ecx 1.52359671</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 26    ecx 1.40756436</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 27    ecx 1.42144280</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 28    ecx 1.41798904</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 29    ecx 1.42819014</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 30    ecx 1.45912481</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 31    ecx 1.46933243</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 32    ecx 1.43674021</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 33    ecx 1.52234899</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 34    ecx 1.45828884</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 35    ecx 1.39742123</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 36    ecx 1.51418600</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 37    ecx 1.42901223</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 38    ecx 1.50828232</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 39    ecx 1.42374232</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 40    ecx 1.48975297</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 41    ecx 1.44314048</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 42    ecx 1.50491309</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 43    ecx 1.50969467</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 44    ecx 1.45772230</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 45    ecx 1.47456464</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 46    ecx 1.40589762</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 47    ecx 1.43303115</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 48    ecx 1.41224849</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 49    ecx 1.40565929</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 50    ecx 1.45414848</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 51    ecx 1.43319441</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 52    ecx 1.47771545</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 53    ecx 1.41673923</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 54    ecx 1.44096171</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 55    ecx 1.46561543</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 56    ecx 1.43222552</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 57    ecx 1.48592514</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 58    ecx 1.41999697</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 59    ecx 1.47250632</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 60    ecx 1.35050091</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 61    ecx 1.42183784</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 62    ecx 1.49457037</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 63    ecx 1.50821071</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 64    ecx 1.45350109</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 65    ecx 1.53026950</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 66    ecx 1.50149535</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 67    ecx 1.42086034</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 68    ecx 1.46654550</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 69    ecx 1.52148153</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 70    ecx 1.46657821</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 71    ecx 1.44348314</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 72    ecx 1.42562379</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 73    ecx 1.42134157</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 74    ecx 1.44051576</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 75    ecx 1.43538704</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 76    ecx 1.44122407</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 77    ecx 1.39453145</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 78    ecx 1.42556730</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 79    ecx 1.46666288</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 80    ecx 1.44258670</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 81    ecx 1.36473055</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 82    ecx 1.44746431</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 83    ecx 1.43178401</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 84    ecx 1.47285106</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 85    ecx 1.49294026</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 86    ecx 1.39691939</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 87    ecx 1.48149289</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 88    ecx 1.50823392</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 89    ecx 1.41727890</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 90    ecx 1.51020005</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 91    ecx 1.47293908</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 92    ecx 1.43179896</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 93    ecx 1.42133560</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 94    ecx 1.47068468</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 95    ecx 1.43912868</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 96    ecx 1.50873821</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 97    ecx 1.48753061</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 98    ecx 1.49511064</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 99    ecx 1.48484278</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 100   ecx 1.46543824</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 101   nec 0.98018283</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 102   nec 0.42169430</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 103   nec 0.91316420</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 104   nec 0.69296016</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 105   nec 0.93231238</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 106   nec 0.72487379</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 107   nec 0.78550968</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 108   nec 0.91316420</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 109   nec 0.87167649</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 110   nec 0.79189241</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 111   nec 0.75040469</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 112   nec 0.91316420</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 113   nec 1.01209646</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 114   nec 0.97699147</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 115   nec 0.93869511</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 116   nec 1.01528782</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 117   nec 0.78870105</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 118   nec 0.90678148</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 119   nec 0.98656555</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 120   nec 0.97380010</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 121   nec 0.67062062</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 122   nec 0.98656555</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 123   nec 0.81104059</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 124   nec 0.92273829</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 125   nec 0.89082466</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 126   nec 0.89082466</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 127   nec 0.94188647</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 128   nec 0.97380010</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 129   nec 1.00890510</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 130   nec 1.02167055</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 131   nec 0.78231832</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 132   nec 0.03873074</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 133   nec 0.87486785</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 134   nec 0.92273829</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 135   nec 0.87486785</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 136   nec 0.71849106</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 137   nec 0.77912696</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 138   nec 0.91635557</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 139   nec 0.86529376</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 140   nec 0.75997878</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 141   nec 0.51743519</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 142   nec 0.56849700</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 143   nec 0.81104059</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 144   nec 0.98975692</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 145   nec 0.67062062</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 146   nec 0.82699740</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 147   nec 0.80784923</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 148   nec 0.92912102</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 149   nec 0.84614558</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 150   nec 0.77912696</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 151   nec 0.76955287</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 152   nec 0.92912102</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 153   nec 0.79827514</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 154   nec 1.01847918</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 155   nec 0.89082466</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 156   nec 0.86210240</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 157   nec 0.59721927</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 158   nec 0.03234801</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 159   nec 0.98018283</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 160   nec 0.76317014</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 161   nec 0.88444194</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 162   nec 0.62913290</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 163   nec 0.94188647</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 164   nec 0.92273829</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 165   nec 0.89401603</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 166   nec 0.81423195</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 167   nec 0.83018877</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 168   nec 0.65466380</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 169   nec 0.59083654</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 170   nec 0.86848512</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 171   nec 0.93550375</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 172   nec 1.04720145</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 173   nec 0.85252831</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 174   nec 1.10145462</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 175   nec 0.92912102</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 176   nec 0.69934288</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 177   nec 0.88763330</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 178   nec 0.83976286</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 179   nec 0.60998472</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 180   nec 0.89720739</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 181   nec 0.77593560</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 182   nec 1.01209646</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 183   nec 0.85252831</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 184   nec 0.76636151</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 185   nec 0.75678742</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 186   nec 0.85571967</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 187   nec 0.79189241</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 188   nec 0.76317014</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 189   nec 0.80784923</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 190   nec 0.77912696</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 191   nec 0.83976286</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 192   nec 0.96422601</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 193   nec 0.98975692</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 194   nec 0.75997878</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 195   nec 0.68019470</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 196   nec 0.71849106</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 197   nec 0.84614558</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 198   nec 0.90997284</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 199   nec 0.73763924</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 200   nec 0.94507783</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> $diff_list</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> $diff_list$`nec-ecx`</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   [1] -0.4755979 -1.0557203 -0.5565338 -0.7593785 -0.5655394 -0.7504078</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   [7] -0.7391313 -0.5343765 -0.5435057 -0.6477900 -0.6859209 -0.5367687</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [13] -0.4268961 -0.4892735 -0.5305447 -0.3922440 -0.6847927 -0.5357194</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [19] -0.4998460 -0.4994404 -0.8244503 -0.4319694 -0.6236539 -0.5063812</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [25] -0.6327720 -0.5167397 -0.4795563 -0.4441889 -0.4192850 -0.4374543</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [31] -0.6870141 -1.3980095 -0.6474811 -0.5355505 -0.5225534 -0.7956949</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [37] -0.6498853 -0.5919268 -0.5584486 -0.7297742 -0.9257053 -0.9364161</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [43] -0.6986541 -0.4679654 -0.8039440 -0.5789002 -0.6251819 -0.4831275</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [49] -0.5595137 -0.6750215 -0.6636415 -0.5485944 -0.6184641 -0.4224825</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [55] -0.5747908 -0.5701231 -0.8887059 -1.3876490 -0.4923235 -0.5873308</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [61] -0.5373959 -0.8654375 -0.5663242 -0.5307628 -0.6362535 -0.6872634</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [67] -0.5906716 -0.8118817 -0.9306450 -0.5980931 -0.5079794 -0.3784223</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [73] -0.5688133 -0.3390611 -0.5062660 -0.7418812 -0.5068982 -0.5858044</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [79] -0.8566782 -0.5453793 -0.5887950 -0.4353679 -0.5792557 -0.7064895</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [85] -0.7361528 -0.5411997 -0.6896005 -0.7450638 -0.6094297 -0.7310731</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [91] -0.6331762 -0.4675729 -0.4315787 -0.7107059 -0.7589340 -0.7902472</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>  [97] -0.6413850 -0.5851378 -0.7472035 -0.5203604</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> $diff_data</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>     comparison       diff</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1      nec-ecx -0.4755979</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2      nec-ecx -1.0557203</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 3      nec-ecx -0.5565338</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 4      nec-ecx -0.7593785</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 5      nec-ecx -0.5655394</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 6      nec-ecx -0.7504078</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 7      nec-ecx -0.7391313</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 8      nec-ecx -0.5343765</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 9      nec-ecx -0.5435057</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 10     nec-ecx -0.6477900</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 11     nec-ecx -0.6859209</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 12     nec-ecx -0.5367687</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 13     nec-ecx -0.4268961</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 14     nec-ecx -0.4892735</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 15     nec-ecx -0.5305447</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 16     nec-ecx -0.3922440</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 17     nec-ecx -0.6847927</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 18     nec-ecx -0.5357194</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 19     nec-ecx -0.4998460</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 20     nec-ecx -0.4994404</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 21     nec-ecx -0.8244503</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 22     nec-ecx -0.4319694</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 23     nec-ecx -0.6236539</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 24     nec-ecx -0.5063812</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 25     nec-ecx -0.6327720</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 26     nec-ecx -0.5167397</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 27     nec-ecx -0.4795563</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 28     nec-ecx -0.4441889</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 29     nec-ecx -0.4192850</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 30     nec-ecx -0.4374543</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 31     nec-ecx -0.6870141</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 32     nec-ecx -1.3980095</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 33     nec-ecx -0.6474811</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 34     nec-ecx -0.5355505</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 35     nec-ecx -0.5225534</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 36     nec-ecx -0.7956949</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 37     nec-ecx -0.6498853</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 38     nec-ecx -0.5919268</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 39     nec-ecx -0.5584486</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 40     nec-ecx -0.7297742</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 41     nec-ecx -0.9257053</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 42     nec-ecx -0.9364161</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 43     nec-ecx -0.6986541</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 44     nec-ecx -0.4679654</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 45     nec-ecx -0.8039440</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 46     nec-ecx -0.5789002</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 47     nec-ecx -0.6251819</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 48     nec-ecx -0.4831275</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 49     nec-ecx -0.5595137</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 50     nec-ecx -0.6750215</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 51     nec-ecx -0.6636415</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 52     nec-ecx -0.5485944</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 53     nec-ecx -0.6184641</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 54     nec-ecx -0.4224825</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 55     nec-ecx -0.5747908</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 56     nec-ecx -0.5701231</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 57     nec-ecx -0.8887059</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 58     nec-ecx -1.3876490</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 59     nec-ecx -0.4923235</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 60     nec-ecx -0.5873308</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 61     nec-ecx -0.5373959</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 62     nec-ecx -0.8654375</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 63     nec-ecx -0.5663242</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 64     nec-ecx -0.5307628</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 65     nec-ecx -0.6362535</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 66     nec-ecx -0.6872634</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 67     nec-ecx -0.5906716</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 68     nec-ecx -0.8118817</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 69     nec-ecx -0.9306450</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 70     nec-ecx -0.5980931</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 71     nec-ecx -0.5079794</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 72     nec-ecx -0.3784223</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 73     nec-ecx -0.5688133</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 74     nec-ecx -0.3390611</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 75     nec-ecx -0.5062660</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 76     nec-ecx -0.7418812</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 77     nec-ecx -0.5068982</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 78     nec-ecx -0.5858044</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 79     nec-ecx -0.8566782</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 80     nec-ecx -0.5453793</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 81     nec-ecx -0.5887950</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 82     nec-ecx -0.4353679</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 83     nec-ecx -0.5792557</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 84     nec-ecx -0.7064895</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 85     nec-ecx -0.7361528</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 86     nec-ecx -0.5411997</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 87     nec-ecx -0.6896005</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 88     nec-ecx -0.7450638</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 89     nec-ecx -0.6094297</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 90     nec-ecx -0.7310731</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 91     nec-ecx -0.6331762</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 92     nec-ecx -0.4675729</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 93     nec-ecx -0.4315787</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 94     nec-ecx -0.7107059</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 95     nec-ecx -0.7589340</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 96     nec-ecx -0.7902472</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 97     nec-ecx -0.6413850</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 98     nec-ecx -0.5851378</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 99     nec-ecx -0.7472035</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 100    nec-ecx -0.5203604</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> $prob_diff</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   comparison prob</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1    nec-ecx    0</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-in'></span>
-</code></pre></div>
+    <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span>
+<span class='va'>nec4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_example</span>, model <span class='op'>=</span> <span class='st'>"nec4param"</span><span class='op'>)</span>
+<span class='va'>ecx4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='pull_out.html'>pull_out</a></span><span class='op'>(</span><span class='va'>manec_example</span>, model <span class='op'>=</span> <span class='st'>"ecx4param"</span><span class='op'>)</span>
+<span class='fu'>compare_endpoints</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/list.html'>list</a></span><span class='op'>(</span><span class='st'>"nec"</span> <span class='op'>=</span> <span class='va'>ecx4param</span>, <span class='st'>"ecx"</span> <span class='op'>=</span> <span class='va'>nec4param</span><span class='op'>)</span>, ecx_val <span class='op'>=</span> <span class='fl'>50</span><span class='op'>)</span>
+<span class='op'>}</span>
+
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
@@ -613,11 +244,11 @@ in posterior predictions of the <code><a href='bayesnecfit-class.html'>bayesnecf
 
       <footer>
       <div class="copyright">
-  <p><p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p></p>
+  <p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p>
 </div>
 
 <div class="pkgdown">
-  <p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 1.6.1.9001.</p></p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>
@@ -625,8 +256,6 @@ in posterior predictions of the <code><a href='bayesnecfit-class.html'>bayesnecf
 
   
 
-
-  
 
   </body>
 </html>

@@ -53,8 +53,6 @@
 
 
 
-
-
 <!-- mathjax -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script>
@@ -66,15 +64,9 @@
 
 
 
-  
-
-  
-
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    
-
     <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -95,6 +87,12 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
+  <a href="../index.html">
+    <span class="fas fa-home fa-lg"></span>
+     
+  </a>
+</li>
+<li>
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
@@ -154,7 +152,7 @@
     <p>Calculates posterior dispersion metric</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='fu'>dispersion</span><span class='op'>(</span><span class='va'>model</span>, summary <span class='op'>=</span> <span class='cn'>FALSE</span>, seed <span class='op'>=</span> <span class='fl'>10</span><span class='op'>)</span></code></pre></div>
+    <pre class="usage"><span class='fu'>dispersion</span><span class='op'>(</span><span class='va'>model</span>, summary <span class='op'>=</span> <span class='cn'>FALSE</span>, seed <span class='op'>=</span> <span class='fl'>10</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -195,73 +193,16 @@ and GLMM with R: A Frequentist and Bayesian Perspective for Ecologists.
 Highland Statistics Limited.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='co'># \donttest{</span></span>
-<span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>nec_data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/integer.html'>as.integer</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>*</span> <span class='fl'>100</span><span class='op'>)</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>nec4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>nec_data</span>, chains <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span></span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a poisson distribution.</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Compiling Stan program...</span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Start sampling</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '7872a07ff001f6c75a6939f1c914d8cc' NOW (CHAIN 1).</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Gradient evaluation took 0.000106 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: 1000 transitions using 10 leapfrog steps per transition would take 1.06 seconds.</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Adjust your expectations accordingly!</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration:    1 / 10000 [  0%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 1000 / 10000 [ 10%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 2000 / 10000 [ 20%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 3000 / 10000 [ 30%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 4000 / 10000 [ 40%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 5000 / 10000 [ 50%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 6000 / 10000 [ 60%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 7000 / 10000 [ 70%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 8000 / 10000 [ 80%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 8001 / 10000 [ 80%]  (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 9000 / 10000 [ 90%]  (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:  Elapsed Time: 2.97853 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                0.857168 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1:                3.8357 seconds (Total)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 1: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> SAMPLING FOR MODEL '7872a07ff001f6c75a6939f1c914d8cc' NOW (CHAIN 2).</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Gradient evaluation took 5.2e-05 seconds</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: 1000 transitions using 10 leapfrog steps per transition would take 0.52 seconds.</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Adjust your expectations accordingly!</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration:    1 / 10000 [  0%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 1000 / 10000 [ 10%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 2000 / 10000 [ 20%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 3000 / 10000 [ 30%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 4000 / 10000 [ 40%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 5000 / 10000 [ 50%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 6000 / 10000 [ 60%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 7000 / 10000 [ 70%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 8000 / 10000 [ 80%]  (Warmup)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 8001 / 10000 [ 80%]  (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 9000 / 10000 [ 90%]  (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: Iteration: 10000 / 10000 [100%]  (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:  Elapsed Time: 2.97589 seconds (Warm-up)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                0.997966 seconds (Sampling)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2:                3.97386 seconds (Total)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> Chain 2: </span>
-<span class='r-msg co'><span class='r-pr'>#&gt;</span> Response variable modelled as a nec4param model using a poisson distribution.</span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> <span class='warning'>Warning: </span></span>
-<span class='r-wrn co'><span class='r-pr'>#&gt;</span> 1 (1.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class='r-in'><span class='fu'>dispersion</span><span class='op'>(</span><span class='va'>nec4param</span>, summary <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span></span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>    Estimate        Q2.5       Q97.5 </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   5.0204670   0.8264864 136.8109087 </span>
-<span class='r-in'><span class='co'># }</span></span>
-</code></pre></div>
+    <pre class="examples"><div class='input'><span class='co'># \donttest{</span>
+<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span>
+<span class='va'>nec_data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/integer.html'>as.integer</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>*</span> <span class='fl'>100</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>nec4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>nec_data</span>, chains <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; <span class='message'>Finding initial values which allow the response to be fitted using a nec4param model and a poisson distribution.</span></div><div class='output co'>#&gt; <span class='message'>Compiling Stan program...</span></div><div class='output co'>#&gt; <span class='message'>Start sampling</span></div><div class='output co'>#&gt; <span class='message'>Response variable modelled as a nec4param model using a poisson distribution.</span></div><div class='output co'>#&gt; <span class='warning'>Warning: Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span></div><div class='output co'>#&gt; <span class='warning'>Warning: </span>
+#&gt; <span class='warning'>1 (1.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span></div><div class='input'><span class='fu'>dispersion</span><span class='op'>(</span><span class='va'>nec4param</span>, summary <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
+</div><div class='output co'>#&gt;    Estimate        Q2.5       Q97.5 
+#&gt;   5.2626203   0.8438535 146.0254712 </div><div class='input'><span class='co'># }</span>
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
@@ -273,11 +214,11 @@ Highland Statistics Limited.</p>
 
       <footer>
       <div class="copyright">
-  <p><p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p></p>
+  <p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p>
 </div>
 
 <div class="pkgdown">
-  <p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 1.6.1.9001.</p></p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>
@@ -285,8 +226,6 @@ Highland Statistics Limited.</p>
 
   
 
-
-  
 
   </body>
 </html>

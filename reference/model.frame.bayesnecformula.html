@@ -54,8 +54,6 @@ and a formula of class bayesnecformula." />
 
 
 
-
-
 <!-- mathjax -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script>
@@ -67,15 +65,9 @@ and a formula of class bayesnecformula." />
 
 
 
-  
-
-  
-
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    
-
     <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -96,6 +88,12 @@ and a formula of class bayesnecformula." />
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
+  <a href="../index.html">
+    <span class="fas fa-home fa-lg"></span>
+     
+  </a>
+</li>
+<li>
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
@@ -156,8 +154,8 @@ and a formula of class bayesnecformula." />
 and a formula of class <code><a href='bayesnecformula.html'>bayesnecformula</a></code>.</p>
     </div>
 
-    <div class="ref-usage sourceCode"><pre class='sourceCode r'><code><span class='co'># S3 method for bayesnecformula</span>
-<span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='va'>formula</span>, <span class='va'>data</span>, <span class='va'>...</span><span class='op'>)</span></code></pre></div>
+    <pre class="usage"><span class='co'># S3 method for bayesnecformula</span>
+<span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='va'>formula</span>, <span class='va'>data</span>, <span class='va'>...</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -191,59 +189,55 @@ these are evaluated and returned as part of the
 <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code>.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <div class="ref-examples sourceCode"><pre class='sourceCode r'><code><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>nec3param</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>beta</span>, <span class='va'>nec</span>, <span class='va'>top</span>, <span class='va'>x</span><span class='op'>)</span> <span class='op'>{</span></span>
-<span class='r-in'>  <span class='va'>top</span> <span class='op'>*</span> <span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='va'>beta</span><span class='op'>)</span> <span class='op'>*</span> <span class='op'>(</span><span class='va'>x</span> <span class='op'>-</span> <span class='va'>nec</span><span class='op'>)</span> <span class='op'>*</span></span>
-<span class='r-in'>    <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>x</span> <span class='op'>-</span> <span class='va'>nec</span> <span class='op'>&lt;</span> <span class='fl'>0</span>, <span class='fl'>0</span>, <span class='fl'>1</span><span class='op'>)</span><span class='op'>)</span></span>
-<span class='r-in'><span class='op'>}</span></span>
-<span class='r-in'></span>
-<span class='r-in'><span class='va'>data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></span><span class='op'>(</span>x <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq</a></span><span class='op'>(</span><span class='fl'>1</span>, <span class='fl'>20</span>, length.out <span class='op'>=</span> <span class='fl'>10</span><span class='op'>)</span>, tr <span class='op'>=</span> <span class='fl'>100</span>, wght <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>1</span>, <span class='fl'>2</span><span class='op'>)</span>,</span>
-<span class='r-in'>                   group_1 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"a"</span>, <span class='st'>"b"</span><span class='op'>)</span>, <span class='fl'>10</span>, replace <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>,</span>
-<span class='r-in'>                   group_2 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"c"</span>, <span class='st'>"d"</span><span class='op'>)</span>, <span class='fl'>10</span>, replace <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'>nec3param</span><span class='op'>(</span>beta <span class='op'>=</span> <span class='op'>-</span><span class='fl'>0.2</span>, nec <span class='op'>=</span> <span class='fl'>4</span>, top <span class='op'>=</span> <span class='fl'>100</span>, <span class='va'>data</span><span class='op'>$</span><span class='va'>x</span><span class='op'>)</span></span>
-<span class='r-in'></span>
-<span class='r-in'><span class='va'>f_1</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>f_2</span> <span class='op'>&lt;-</span> <span class='st'>"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
-<span class='r-in'><span class='va'>f_3</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>ogl</span><span class='op'>(</span><span class='va'>group_1</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>pgl</span><span class='op'>(</span><span class='va'>group_2</span><span class='op'>)</span></span>
-<span class='r-in'><span class='va'>f_4</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='op'>(</span><span class='va'>nec</span> <span class='op'>+</span> <span class='va'>top</span> <span class='op'>|</span> <span class='va'>group_1</span><span class='op'>)</span></span>
-<span class='r-in'></span>
-<span class='r-in'><span class='va'>m_1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_1</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/attr.html'>attr</a></span><span class='op'>(</span><span class='va'>m_1</span>, <span class='st'>"bnec_pop"</span><span class='op'>)</span></span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> y_var x_var </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>   "y"   "x" </span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> attr(,"na.action")</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> [1] 3</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> attr(,"class")</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> [1] "omit"</span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_2</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span></span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>               y  sqrt(x) trials(tr)</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1  1.000000e+02 1.000000        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2  1.000000e+02 1.763834        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 3  3.676327e+01 2.285218        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 4  6.527785e+00 2.708013        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 5  1.159091e+00 3.073181        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 6  2.058113e-01 3.399346        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 7  3.654441e-02 3.696846        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 8  6.488923e-03 3.972125        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 9  1.152191e-03 4.229526        100</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 10 2.045861e-04 4.472136        100</span>
-<span class='r-in'><span class='va'>m_3</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_3</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span></span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/attr.html'>attr</a></span><span class='op'>(</span><span class='va'>m_3</span>, <span class='st'>"bnec_group"</span><span class='op'>)</span></span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> [1] "group_1" "group_2"</span>
-<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_4</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span></span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span>               y         x trials(tr) group_1</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 1  1.000000e+02  1.000000        100       a</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 2  1.000000e+02  3.111111        100       a</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 3  3.676327e+01  5.222222        100       a</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 4  6.527785e+00  7.333333        100       b</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 5  1.159091e+00  9.444444        100       b</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 6  2.058113e-01 11.555556        100       a</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 7  3.654441e-02 13.666667        100       b</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 8  6.488923e-03 15.777778        100       a</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 9  1.152191e-03 17.888889        100       b</span>
-<span class='r-out co'><span class='r-pr'>#&gt;</span> 10 2.045861e-04 20.000000        100       a</span>
-<span class='r-in'></span>
-</code></pre></div>
+    <pre class="examples"><div class='input'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span>
+<span class='va'>nec3param</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>beta</span>, <span class='va'>nec</span>, <span class='va'>top</span>, <span class='va'>x</span><span class='op'>)</span> <span class='op'>{</span>
+  <span class='va'>top</span> <span class='op'>*</span> <span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='va'>beta</span><span class='op'>)</span> <span class='op'>*</span> <span class='op'>(</span><span class='va'>x</span> <span class='op'>-</span> <span class='va'>nec</span><span class='op'>)</span> <span class='op'>*</span>
+    <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>x</span> <span class='op'>-</span> <span class='va'>nec</span> <span class='op'>&lt;</span> <span class='fl'>0</span>, <span class='fl'>0</span>, <span class='fl'>1</span><span class='op'>)</span><span class='op'>)</span>
+<span class='op'>}</span>
+
+<span class='va'>data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></span><span class='op'>(</span>x <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq</a></span><span class='op'>(</span><span class='fl'>1</span>, <span class='fl'>20</span>, length.out <span class='op'>=</span> <span class='fl'>10</span><span class='op'>)</span>, tr <span class='op'>=</span> <span class='fl'>100</span>, wght <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>1</span>, <span class='fl'>2</span><span class='op'>)</span>,
+                   group_1 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"a"</span>, <span class='st'>"b"</span><span class='op'>)</span>, <span class='fl'>10</span>, replace <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>,
+                   group_2 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"c"</span>, <span class='st'>"d"</span><span class='op'>)</span>, <span class='fl'>10</span>, replace <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span><span class='op'>)</span>
+<span class='va'>data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'>nec3param</span><span class='op'>(</span>beta <span class='op'>=</span> <span class='op'>-</span><span class='fl'>0.2</span>, nec <span class='op'>=</span> <span class='fl'>4</span>, top <span class='op'>=</span> <span class='fl'>100</span>, <span class='va'>data</span><span class='op'>$</span><span class='va'>x</span><span class='op'>)</span>
+
+<span class='va'>f_1</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span>
+<span class='va'>f_2</span> <span class='op'>&lt;-</span> <span class='st'>"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span>
+<span class='va'>f_3</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>ogl</span><span class='op'>(</span><span class='va'>group_1</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>pgl</span><span class='op'>(</span><span class='va'>group_2</span><span class='op'>)</span>
+<span class='va'>f_4</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='op'>(</span><span class='va'>nec</span> <span class='op'>+</span> <span class='va'>top</span> <span class='op'>|</span> <span class='va'>group_1</span><span class='op'>)</span>
+
+<span class='va'>m_1</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_1</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/attr.html'>attr</a></span><span class='op'>(</span><span class='va'>m_1</span>, <span class='st'>"bnec_pop"</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; y_var x_var 
+#&gt;   "y"   "x" 
+#&gt; attr(,"na.action")
+#&gt; [1] 3
+#&gt; attr(,"class")
+#&gt; [1] "omit"</div><div class='input'><span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_2</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span>
+</div><div class='output co'>#&gt;               y  sqrt(x) trials(tr)
+#&gt; 1  1.000000e+02 1.000000        100
+#&gt; 2  1.000000e+02 1.763834        100
+#&gt; 3  3.676327e+01 2.285218        100
+#&gt; 4  6.527785e+00 2.708013        100
+#&gt; 5  1.159091e+00 3.073181        100
+#&gt; 6  2.058113e-01 3.399346        100
+#&gt; 7  3.654441e-02 3.696846        100
+#&gt; 8  6.488923e-03 3.972125        100
+#&gt; 9  1.152191e-03 4.229526        100
+#&gt; 10 2.045861e-04 4.472136        100</div><div class='input'><span class='va'>m_3</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_3</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/attr.html'>attr</a></span><span class='op'>(</span><span class='va'>m_3</span>, <span class='st'>"bnec_group"</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; [1] "group_1" "group_2"</div><div class='input'><span class='fu'><a href='https://rdrr.io/r/stats/model.frame.html'>model.frame</a></span><span class='op'>(</span><span class='fu'><a href='bayesnecformula.html'>bnf</a></span><span class='op'>(</span><span class='va'>f_4</span><span class='op'>)</span>, <span class='va'>data</span><span class='op'>)</span>
+</div><div class='output co'>#&gt;               y         x trials(tr) group_1
+#&gt; 1  1.000000e+02  1.000000        100       b
+#&gt; 2  1.000000e+02  3.111111        100       b
+#&gt; 3  3.676327e+01  5.222222        100       b
+#&gt; 4  6.527785e+00  7.333333        100       a
+#&gt; 5  1.159091e+00  9.444444        100       a
+#&gt; 6  2.058113e-01 11.555556        100       b
+#&gt; 7  3.654441e-02 13.666667        100       b
+#&gt; 8  6.488923e-03 15.777778        100       b
+#&gt; 9  1.152191e-03 17.888889        100       a
+#&gt; 10 2.045861e-04 20.000000        100       b</div><div class='input'>
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
@@ -255,11 +249,11 @@ these are evaluated and returned as part of the
 
       <footer>
       <div class="copyright">
-  <p><p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p></p>
+  <p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p>
 </div>
 
 <div class="pkgdown">
-  <p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 1.6.1.9001.</p></p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>
@@ -267,8 +261,6 @@ these are evaluated and returned as part of the
 
   
 
-
-  
 
   </body>
 </html>

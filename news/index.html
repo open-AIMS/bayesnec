@@ -52,8 +52,6 @@
 
 
 
-
-
 <!-- mathjax -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script>
@@ -65,15 +63,9 @@
 
 
 
-  
-
-  
-
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    
-
     <div class="container template-news">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -94,6 +86,12 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
+  <a href="../index.html">
+    <span class="fas fa-home fa-lg"></span>
+     
+  </a>
+</li>
+<li>
   <a href="../reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
@@ -150,29 +148,35 @@
 
     <div id="bayesnec-110" class="section level1">
 <h1 class="page-header" data-toc-text="1.1.0">
-<a href="#bayesnec-110" class="anchor" aria-hidden="true"></a>bayesnec 1.1.0<small> Unreleased </small></h1>
-<ul><li><p>Added <code><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">brms::bernoulli</a></code> to the list of allowed model distributions (<a href="https://github.com/open-AIMS/bayesnec/commit/76064617a299a07da29c690a7d07715c889bfa65" class="external-link"><code>7606461</code></a>).</p></li>
-<li><p>Made <code>identity</code> the default link (<a href="https://github.com/open-AIMS/bayesnec/commit/664086715092dfd9a61b766ea13230743beee0b7" class="external-link"><code>6640867</code></a>).</p></li>
-<li><p>Added more controls and tweaks to checking model relative to input data (<a href="https://github.com/open-AIMS/bayesnec/commit/85a38196a5e963df956787174cd5235c7e65ae02" class="external-link"><code>85a3819</code></a>), <a href="https://github.com/open-AIMS/bayesnec/commit/065a44513d509d9812c872bcc130e6c2db402049" class="external-link"><code>065a445</code></a>).</p></li>
-<li><p>Added <code>formula</code> and <code>model.frame</code> methods to main classes (<a href="https://github.com/open-AIMS/bayesnec/commit/9df4a64d1fb1ced15824a0d388d61e712dba7d92" class="external-link"><code>9df4a64</code></a>).</p></li>
-<li><p>Upgraded <code>ggbnec</code> to <code>autoplot</code> as <code>bayesnec</code> standard <code>ggplot2</code> plotting method (<a href="https://github.com/open-AIMS/bayesnec/commit/65fe15fec2c2a13f34d3238c05a841dffd7a1780" class="external-link"><code>65fe15f</code></a>).</p></li>
-<li><p>Enhanced handling of argument <code>loo_controls</code> in <code>bnec</code> to allow argument for both <code><a href="https://rdrr.io/pkg/brms/man/add_criterion.html" class="external-link">brms::add_criterion</a></code> and <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo::loo_model_weights</a></code> (<a href="https://github.com/open-AIMS/bayesnec/commit/9712fcce54adc83dbd26edc9ce659dda354fed6a" class="external-link"><code>9712fcc</code></a>).</p></li>
-<li><p>Added Bayesian R<sup>2</sup> to <code>summary</code> (<a href="https://github.com/open-AIMS/bayesnec/commit/9a71a3cc2b9cfacf5920094cbd16f7da81709e4a" class="external-link"><code>9a71a3c</code></a>).</p></li>
-<li><p>Expanded <code>bnec</code>’s capacity to accept input x and y vectors, data frames (<a href="https://github.com/open-AIMS/bayesnec/commit/f256b399ab9115fffa7349a7a9daef21090f53f5" class="external-link"><code>f256b39</code></a>) and formulas (<a href="https://github.com/open-AIMS/bayesnec/commit/32e74ac419c39c660aceb3d0914622de753a7a83" class="external-link"><code>32e74ac</code></a>).</p></li>
-<li><p>Corrected error for logit link cases for the beta_binomial2 where data contain 0 and 1 to ensure appropriate prior values on top and bot (<a href="https://github.com/open-AIMS/bayesnec/commit/41582378a1a55c9420f69e578cfc98dc23182515" class="external-link"><code>4158237</code></a>).</p></li>
-<li><p>Series of internal fixes to standardise function class outputs (<a href="https://github.com/open-AIMS/bayesnec/commit/81369bbaef5e860410a5e2cc5227b6033687d36c" class="external-link"><code>81369bb</code></a>, <a href="https://github.com/open-AIMS/bayesnec/commit/1c70efeea54abe39c078ebfd014434e060c6f337" class="external-link"><code>1c70efe</code></a>, <a href="https://github.com/open-AIMS/bayesnec/commit/5bce2b5c40d8c1c480423529aaa59e0c82eda188" class="external-link"><code>5bce2b5</code></a>, <a href="https://github.com/open-AIMS/bayesnec/commit/455ca70603a890b26a45b566975f21603f9f87df" class="external-link"><code>455ca70</code></a>, <a href="https://github.com/open-AIMS/bayesnec/commit/5e6b41e6845321b5ff1f96c6733d59b6629fb707" class="external-link"><code>5e6b41e</code></a>).</p></li>
-</ul></div>
+<a href="#bayesnec-110" class="anchor"></a>bayesnec 1.1.0<small> Unreleased </small>
+</h1>
+<ul>
+<li><p>Added <code><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html">brms::bernoulli</a></code> to the list of allowed model distributions (<a href="https://github.com/open-AIMS/bayesnec/commit/76064617a299a07da29c690a7d07715c889bfa65"><code>7606461</code></a>).</p></li>
+<li><p>Made <code>identity</code> the default link (<a href="https://github.com/open-AIMS/bayesnec/commit/664086715092dfd9a61b766ea13230743beee0b7"><code>6640867</code></a>).</p></li>
+<li><p>Added more controls and tweaks to checking model relative to input data (<a href="https://github.com/open-AIMS/bayesnec/commit/85a38196a5e963df956787174cd5235c7e65ae02"><code>85a3819</code></a>), <a href="https://github.com/open-AIMS/bayesnec/commit/065a44513d509d9812c872bcc130e6c2db402049"><code>065a445</code></a>).</p></li>
+<li><p>Added <code>formula</code> and <code>model.frame</code> methods to main classes (<a href="https://github.com/open-AIMS/bayesnec/commit/9df4a64d1fb1ced15824a0d388d61e712dba7d92"><code>9df4a64</code></a>).</p></li>
+<li><p>Upgraded <code>ggbnec</code> to <code>autoplot</code> as <code>bayesnec</code> standard <code>ggplot2</code> plotting method (<a href="https://github.com/open-AIMS/bayesnec/commit/65fe15fec2c2a13f34d3238c05a841dffd7a1780"><code>65fe15f</code></a>).</p></li>
+<li><p>Enhanced handling of argument <code>loo_controls</code> in <code>bnec</code> to allow argument for both <code><a href="https://rdrr.io/pkg/brms/man/add_criterion.html">brms::add_criterion</a></code> and <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html">loo::loo_model_weights</a></code> (<a href="https://github.com/open-AIMS/bayesnec/commit/9712fcce54adc83dbd26edc9ce659dda354fed6a"><code>9712fcc</code></a>).</p></li>
+<li><p>Added Bayesian R^2^ to <code>summary</code> (<a href="https://github.com/open-AIMS/bayesnec/commit/9a71a3cc2b9cfacf5920094cbd16f7da81709e4a"><code>9a71a3c</code></a>).</p></li>
+<li><p>Expanded <code>bnec</code>’s capacity to accept input x and y vectors, data frames (<a href="https://github.com/open-AIMS/bayesnec/commit/f256b399ab9115fffa7349a7a9daef21090f53f5"><code>f256b39</code></a>) and formulas (<a href="https://github.com/open-AIMS/bayesnec/commit/32e74ac419c39c660aceb3d0914622de753a7a83"><code>32e74ac</code></a>).</p></li>
+<li><p>Corrected error for logit link cases for the beta_binomial2 where data contain 0 and 1 to ensure appropriate prior values on top and bot (<a href="https://github.com/open-AIMS/bayesnec/commit/41582378a1a55c9420f69e578cfc98dc23182515"><code>4158237</code></a>).</p></li>
+<li><p>Series of internal fixes to standardise function class outputs (<a href="https://github.com/open-AIMS/bayesnec/commit/81369bbaef5e860410a5e2cc5227b6033687d36c"><code>81369bb</code></a>, <a href="https://github.com/open-AIMS/bayesnec/commit/1c70efeea54abe39c078ebfd014434e060c6f337"><code>1c70efe</code></a>, <a href="https://github.com/open-AIMS/bayesnec/commit/5bce2b5c40d8c1c480423529aaa59e0c82eda188"><code>5bce2b5</code></a>, <a href="https://github.com/open-AIMS/bayesnec/commit/455ca70603a890b26a45b566975f21603f9f87df"><code>455ca70</code></a>, <a href="https://github.com/open-AIMS/bayesnec/commit/5e6b41e6845321b5ff1f96c6733d59b6629fb707"><code>5e6b41e</code></a>).</p></li>
+</ul>
+</div>
     <div id="bayesnec-101" class="section level1">
 <h1 class="page-header" data-toc-text="1.0.1">
-<a href="#bayesnec-101" class="anchor" aria-hidden="true"></a>bayesnec 1.0.1<small> 2021-07-02 </small></h1>
-<ul><li><p>If link functions are not specified in bnec, then the default link function is used; previous versions of bayesnec used the identity link.</p></li>
+<a href="#bayesnec-101" class="anchor"></a>bayesnec 1.0.1<small> 2021-07-02 </small>
+</h1>
+<ul>
+<li><p>If link functions are not specified in bnec, then the default link function is used; previous versions of bayesnec used the identity link.</p></li>
 <li><p>An additional family has been added betabinomial2 for over dispersered binomial data.</p></li>
 <li><p>The package supports using link functions for generalized modelling, which appears to be more stable and is also in line with more typical generalised modelling approaches.</p></li>
 <li><p>There are multiple options for model weights calculation from the loo package. The default is “pseudobma BB”.</p></li>
 <li><p>There is now a compare_posterior function that also includes a bootstrapping procedure. This can be used to compare model fits across different datasets, or even different model sets for the same dataset (ie nec v ecx models). Please see the vignette for examples of usage.</p></li>
 <li><p>There is a vignette detailing the models available in bayesnec. Note that not all models are suitable for all families, and also depending if link functions are used.</p></li>
 <li><p>A new check_chains function has been added to allow chain plotting in base R and that works more smoothly with plotting chains for multiple fits for bayesmanec objects.</p></li>
-</ul></div>
+</ul>
+</div>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
@@ -186,11 +190,11 @@
 
       <footer>
       <div class="copyright">
-  <p><p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p></p>
+  <p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p>
 </div>
 
 <div class="pkgdown">
-  <p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 1.6.1.9001.</p></p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>
@@ -198,8 +202,6 @@
 
   
 
-
-  
 
   </body>
 </html>
