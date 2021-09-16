@@ -31,7 +31,22 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     y <- checked_df$mod_dat$y
     tr <- checked_df$mod_dat$trials
     family <- checked_df$family
+    custom_name <- check_custom_name(family)
     brm_args$family <- family
+    trans_vars <- find_transformations(bdat)
+    # if no transformations are applied via formula (including on trials),
+    # use the output of check_data
+    if (length(trans_vars) == 0) {
+      bnec_pop_vars <- attr(bdat, "bnec_pop")
+      y_var <- bnec_pop_vars[[which(names(bnec_pop_vars) == "y_var")]]
+      data[, y_var] <- y
+      x_var <- bnec_pop_vars[[which(names(bnec_pop_vars) == "x_var")]]
+      data[, x_var] <- x
+      if (family$family == "binomial" || custom_name == "beta_binomial2") {
+        t_var <- bnec_pop_vars[[which(names(bnec_pop_vars) == "trials_var")]]
+        data[, t_var] <- tr
+      }
+    }
   }
   custom_name <- check_custom_name(family)
   if (family$family == "binomial" || custom_name == "beta_binomial2") {

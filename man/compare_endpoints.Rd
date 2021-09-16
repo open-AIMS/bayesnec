@@ -17,7 +17,7 @@ compare_endpoints(
 }
 \arguments{
 \item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 \code{\link{bnec}}.}
 
 \item{comparison}{The posterior predictions to compare, takes values of
@@ -44,19 +44,22 @@ large values will make the ECx estimate more precise.}
 }
 \value{
 A named \code{\link[base]{list}} containing bootstrapped differences
-in posterior predictions of the \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits contained in \code{x}. See Details.
+in posterior predictions of the \code{\link{bayesnecfit}} or
+\code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 }
 \description{
 Extracts posterior predicted values from a list of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 compares these via bootstrap re sampling.
 }
 \examples{
+\dontrun{
 library(bayesnec)
 data(manec_example)
-ecx4param <- pull_out(manec_example, model = "ecx4param")
 nec4param <- pull_out(manec_example, model = "nec4param")
+ecx4param <- pull_out(manec_example, model = "ecx4param")
 compare_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+}
 
 }
 \seealso{

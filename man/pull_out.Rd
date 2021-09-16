@@ -36,10 +36,14 @@ depicting a suite of models, and object of class \code{\link{bayesmanecfit}}.
 Subsets model(s) from an existing object of class \code{\link{bayesmanecfit}}
 }
 \examples{
+\dontrun{
 library(bayesnec)
 data(manec_example)
-ecx4param <- pull_out(manec_example, model = "ecx4param")
-necmodels <- pull_out(manec_example, model = "nec")
+nec4param <- pull_out(manec_example, model = "nec4param")
+# use "ecx" to get all ECx-containing models
+# (only one ["ecx4param"] in this minimal example)
+ecx_models <- pull_out(manec_example, model = "ecx")
+}
 
 }
 \seealso{

@@ -1,7 +1,7 @@
 #' compare_fitted
 #'
 #' Extracts posterior predicted values from a list of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 #' compares these across a vector of fitted values.
 #'
 #' @inheritParams compare_posterior
@@ -10,18 +10,18 @@
 #'
 #' @return A named \code{\link[base]{list}} containing bootstrapped differences
 #' in posterior predictions of the \code{\link{bayesnecfit}} or
-#' \code{\link{bayesnecfit}} model fits contained in \code{x}. See Details.
+#' \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile predict
 #' @importFrom dplyr %>% mutate bind_rows
 #' @importFrom utils combn
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' library(bayesnec)
 #' data(manec_example)
-#' ecx4param <- pull_out(manec_example, model = "ecx4param")
 #' nec4param <- pull_out(manec_example, model = "nec4param")
+#' ecx4param <- pull_out(manec_example, model = "ecx4param")
 #' compare_fitted(list("nec" = ecx4param, "ecx" = nec4param))
 #' }
 #'

@@ -20,7 +20,7 @@ average_endpoints(
 }
 \arguments{
 \item{x}{A named \code{\link[base]{list}} of objects of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} returned by
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 \code{\link{bnec}}.}
 
 \item{endpoint}{The type of endpoint to use in the mean. Takes values
@@ -63,7 +63,7 @@ model fits contained in \code{x}. See Details.
 }
 \description{
 Extracts posterior predicted endpoint values from a list of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+\code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 calculates a geometric mean.
 }
 \details{
@@ -78,12 +78,14 @@ to pass an appropriate xform argument to ensure these are back transformed
 before the the geometric mean calculation is applied.
 }
 \examples{
+\dontrun{
 library(brms)
 library(bayesnec)
 data(manec_example)
+data(nec4param)
 ecx4param <- pull_out(manec_example, model = "ecx4param")
-nec4param <- pull_out(manec_example, model = "nec4param")
 average_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+}
 
 }
 \seealso{

@@ -1,7 +1,7 @@
 #' average_endpoints
 #'
 #' Extracts posterior predicted endpoint values from a list of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}} model fits and
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 #' calculates a geometric mean.
 #'
 #' @inheritParams compare_posterior
@@ -34,12 +34,14 @@
 #' @importFrom utils combn
 #'
 #' @examples
+#' \dontrun{
 #' library(brms)
 #' library(bayesnec)
 #' data(manec_example)
+#' data(nec4param)
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' nec4param <- pull_out(manec_example, model = "nec4param")
 #' average_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+#' }
 #'
 #' @export
 average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,

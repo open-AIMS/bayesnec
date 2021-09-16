@@ -58,7 +58,7 @@ The current development version can be downloaded from GitHub via
 if (!requireNamespace("remotes")) {
   install.packages("remotes")
 }
-remotes::install_github("open-aims/bayesnec")
+remotes::install_github("open-aims/bayesnec", ref = "dev")
 ```
 
 Because `bayesnec` is based on `brms` and [Stan](https://mc-stan.org/), a C++

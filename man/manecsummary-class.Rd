@@ -26,7 +26,8 @@ methods.
 \item{\code{models}}{A \code{\link[base]{character}} string indicating the name of
 the fitted non-linear models.}
 
-\item{\code{family}}{The family distribution used to fit all the models.}
+\item{\code{family}}{A \code{\link[base]{list}} indicating the
+family distribution and link function used to fit all the models.}
 
 \item{\code{sample_size}}{The total post-warm-up sample size.}
 
