@@ -93,8 +93,8 @@ test_that("negbinomial model returns expected family and link", {
 })
 
 test_that("gamma model returns expected family and link", {
-  expect_equal(summary(manec_gamma_identity)$family, "gamma")
-  expect_equal(summary(manec_gamma_log)$family, "gamma")
+  expect_true(grepl("gamma", summary(manec_gamma_identity)$family$family))
+  expect_true(grepl("gamma", summary(manec_gamma_log)$family$family))
   expect_equal(manec_gamma_identity$mod_fits$nec4param$fit$family$link,
                "identity")
   expect_equal(manec_gamma_log$mod_fits$nec4param$fit$family$link, "log")
