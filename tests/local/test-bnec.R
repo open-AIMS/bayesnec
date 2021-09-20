@@ -16,7 +16,7 @@ test_that("ecx works", {
 })
 
 test_that("gaussian model with identity works correctly", {
-  expect_equal(summary(manec_gausian_identity)$family, "gaussian")
+  expect_true(grepl("gaussian", summary(manec_gausian_identity)$family$family))
   expect_equal(fit1$family$link, "identity")
   
   expect_range(fixef(fit1)["bot_Intercept", 1], -12, -5)
@@ -59,40 +59,42 @@ test_that("all model families return expected class", {
 })
 
 test_that("beta model returns expected family and link", {
-  expect_equal(summary(manec_beta_identity)$family, "beta")
-  expect_equal(summary(manec_beta_logit)$family, "beta")
+  expect_true(grepl("beta", summary(manec_beta_identity)$family$family))
+  expect_true(grepl("beta", summary(manec_beta_logit)$family$family))
   expect_equal(manec_beta_identity$mod_fits$nec4param$fit$family$link,
                "identity")
   expect_equal(manec_beta_logit$mod_fits$nec4param$fit$family$link, "logit")
 })
 
 test_that("binomial model returns expected family and link", {
-  expect_equal(summary(manec_binomial_identity)$family, "binomial")
-  expect_equal(summary(manec_binomial_logit)$family, "binomial")
+  expect_true(grepl("binomial", summary(manec_binomial_identity)$family$family))
+  expect_true(grepl("binomial", summary(manec_binomial_logit)$family$family))
   expect_equal(manec_binomial_identity$mod_fits$nec4param$fit$family$link,
                "identity")
   expect_equal(manec_binomial_logit$mod_fits$nec4param$fit$family$link, "logit")
 })
   
 test_that("poisson model returns expected family and link", {
-  expect_equal(summary(manec_poisson_identity)$family, "poisson")
-  expect_equal(summary(manec_poisson_log)$family, "poisson")
+  expect_true(grepl("poisson", summary(manec_poisson_identity)$family$family))
+  expect_true(grepl("poisson", summary(manec_poisson_log)$family$family))
   expect_equal(manec_poisson_identity$mod_fits$nec4param$fit$family$link,
                "identity")
   expect_equal(manec_poisson_log$mod_fits$nec4param$fit$family$link, "log")
 })
 
 test_that("negbinomial model returns expected family and link", {
-  expect_equal(summary(manec_negbinomial_identity)$family, "negbinomial")
-  expect_equal(summary(manec_negbinomial_log)$family, "negbinomial")
+  expect_true(grepl("negbinomial",
+                    summary(manec_negbinomial_identity)$family$family))
+  expect_true(grepl("negbinomial",
+                    summary(manec_negbinomial_log)$family$family))
   expect_equal(manec_negbinomial_identity$mod_fits$nec4param$fit$family$link,
                "identity")
   expect_equal(manec_negbinomial_log$mod_fits$nec4param$fit$family$link, "log")
 })
 
 test_that("gamma model returns expected family and link", {
-  expect_equal(summary(manec_gamma_identity)$family, "gamma")
-  expect_equal(summary(manec_gamma_log)$family, "gamma")
+  expect_true(grepl("gamma", summary(manec_gamma_identity)$family$family))
+  expect_true(grepl("gamma", summary(manec_gamma_log)$family$family))
   expect_equal(manec_gamma_identity$mod_fits$nec4param$fit$family$link,
                "identity")
   expect_equal(manec_gamma_log$mod_fits$nec4param$fit$family$link, "log")
