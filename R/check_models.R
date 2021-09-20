@@ -85,12 +85,13 @@ check_models <- function(model, family, data) {
   if (!missing(data)) {
     x <- retrieve_var(data, "x_var")
     if (contains_negative(x)) {
-      use_models <- setdiff(model, c("ecxsigm", "nechorme4pwr", "nechormepwr"))
+      not_allowed <- c("ecxsigm", "nechorme4pwr", "nechormepwr", "necsigm")
+      use_models <- setdiff(model, not_allowed)
       drop_models <- setdiff(model, use_models)
       model <- use_models
       if (length(drop_models) > 0) {
         message(
-          paste("Dropping the model(s)", drop_models,
+          paste("Dropping the model(s)", paste0(drop_models, collapse = ", "),
                 "as they are not valid for data with negative predictor (x)",
                 "values.")
         )

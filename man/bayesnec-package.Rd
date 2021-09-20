@@ -13,7 +13,6 @@ both ECx values, but more particularly NEC. Please see ?bnec
 for more details.
 }
 \references{
-Paul-Christian Bürkner (2018). Advanced Bayesian Multilevel
-Modeling with the R Package brms. The R Journal, 10(1), 395-411.
-doi:10.32614/RJ-2018-017; https://mc-stan.org/users/interfaces/brms
+Bürkner P-C (2018) Advanced Bayesian Multilevel Modeling with the R Package
+brms. The R Journal, 10: 395-411. doi:10.32614/RJ-2018-017.
 }
