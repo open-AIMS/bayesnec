@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Posterior dispersion — dispersion • bayesnec</title>
+<title>Herbicide phytotoxicity data — herbicide • bayesnec</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -46,8 +46,8 @@
 
 
 
-<meta property="og:title" content="Posterior dispersion — dispersion" />
-<meta property="og:description" content="Calculates posterior dispersion metric" />
+<meta property="og:title" content="Herbicide phytotoxicity data — herbicide" />
+<meta property="og:description" content="Herbicide phytotoxicity dataset from Jones &amp;amp; Kerswell (2003)." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -143,65 +143,54 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>Posterior dispersion</h1>
-    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/dispersion.R'><code>R/dispersion.R</code></a></small>
-    <div class="hidden name"><code>dispersion.Rd</code></div>
+    <h1>Herbicide phytotoxicity data</h1>
+    <small class="dont-index">Source: <a href='https://github.com/open-aims/bayesnec/blob/master/R/data.R'><code>R/data.R</code></a></small>
+    <div class="hidden name"><code>herbicide.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Calculates posterior dispersion metric</p>
+    <p>Herbicide phytotoxicity dataset from Jones &amp; Kerswell (2003).</p>
     </div>
 
-    <pre class="usage"><span class='fu'>dispersion</span><span class='op'>(</span><span class='va'>model</span>, summary <span class='op'>=</span> <span class='cn'>FALSE</span>, seed <span class='op'>=</span> <span class='fl'>10</span><span class='op'>)</span></pre>
 
-    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
-    <table class="ref-arguments">
-    <colgroup><col class="name" /><col class="desc" /></colgroup>
-    <tr>
-      <th>model</th>
-      <td><p>An object of class <code><a href='bayesnecfit-class.html'>bayesnecfit</a></code> whose distribution
-family is either <code><a href='https://rdrr.io/r/stats/family.html'>poisson</a></code> or
-<code><a href='https://rdrr.io/r/stats/family.html'>binomial</a></code>.</p></td>
-    </tr>
-    <tr>
-      <th>summary</th>
-      <td><p>Logical. Should summary stats be returned instead of full
-vector? Defaults to FALSE.</p></td>
-    </tr>
-    <tr>
-      <th>seed</th>
-      <td><p>Change seed for reproducible purposes.</p></td>
-    </tr>
-    </table>
 
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
+    <h2 class="hasAnchor" id="format"><a class="anchor" href="#format"></a>Format</h2>
 
-    <p>A <code><a href='https://rdrr.io/r/base/numeric.html'>numeric</a></code> vector. If <code>summary</code> is FALSE, an
-n-long vector containing the dispersion metric, where n is the number of post
-warm-up posterior draws from the <code><a href='https://rdrr.io/pkg/brms/man/brmsfit-class.html'>brmsfit</a></code> object. If
-TRUE, then a <code><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></code> containing the summary stats
-(mean, median, 95% highest density intervals) of the dispersion metric.</p>
+    <p>An object of class <code>data.frame</code> with 580 rows and 3 columns.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>This function calculates a dispersion metric which takes the ratio
-between the observed relative to simulated Pearson residuals sums of
-squares.</p>
+    <p>The response data (Fv/Fm) Chlorophyll fluorescence measurements of symbiotic
+dinoflagellates still in the host tissue of the coral
+(in hospite or in vivo) were measured using a DIVING-PAM chlorophyll
+fluorometer (Walz) on vertical planes of tissue 2 to 3 cm above the base of
+the corals, using either a 6 mm (Acropora formosa) or 2 mm
+(Seriatopora hystrix) fibre-optic probe. Parameters measured were the
+maximum potential quantum yield (Fv/Fm).</p>
+<p>Additional information on each of the herbicides included is available from
+the original publication Jones &amp; Kerswell (2003).</p>
+<p>The columns are as follows:</p>
+<dl>
+<dt>herbicide</dt><dd><p>The herbicide (chr).</p></dd>
+<dt>concentration</dt><dd><p>The treatment concentration in µg / L (dbl).</p></dd>
+<dt>fvfm</dt><dd><p>Maximum effective quantum yield (dbl).</p></dd>
+
+</dl>
+
     <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
-    <p>Zuur, A. F., Hilbe, J. M., &amp; Ieno, E. N. (2013). A Beginner's Guide to GLM
-and GLMM with R: A Frequentist and Bayesian Perspective for Ecologists.
-Highland Statistics Limited.</p>
+    <p>Jones RJ, Kerswell AP (2003) Phytotoxicity of Photosystem II (PSII)
+herbicides to coral. Marine Ecology Progress Series, 261: 149-159.
+doi: 10.3354/meps261149.</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='co'># \donttest{</span>
-<span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span>
-<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>)</span>
-<span class='va'>nec_data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/integer.html'>as.integer</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/Round.html'>round</a></span><span class='op'>(</span><span class='va'>nec_data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>*</span> <span class='fl'>100</span><span class='op'>)</span><span class='op'>)</span>
-<span class='va'>nec4param</span> <span class='op'>&lt;-</span> <span class='fu'><a href='bnec.html'>bnec</a></span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec4param"</span><span class='op'>)</span>, data <span class='op'>=</span> <span class='va'>nec_data</span>, chains <span class='op'>=</span> <span class='fl'>2</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='message'>Finding initial values which allow the response to be fitted using a nec4param model and a poisson distribution.</span></div><div class='output co'>#&gt; <span class='message'>Compiling Stan program...</span></div><div class='output co'>#&gt; <span class='message'>Start sampling</span></div><div class='output co'>#&gt; <span class='message'>Response variable modelled as a nec4param model using a poisson distribution.</span></div><div class='output co'>#&gt; <span class='warning'>Warning: Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span></div><div class='output co'>#&gt; <span class='warning'>Warning: </span>
-#&gt; <span class='warning'>1 (1.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span></div><div class='input'><span class='fu'>dispersion</span><span class='op'>(</span><span class='va'>nec4param</span>, summary <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>
-</div><div class='output co'>#&gt;   Estimate       Q2.5      Q97.5 
-#&gt;   5.288997   0.810783 159.503274 </div><div class='input'><span class='co'># }</span>
+    <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/head.html'>head</a></span><span class='op'>(</span><span class='va'>herbicide</span><span class='op'>)</span>
+</div><div class='output co'>#&gt;     herbicide concentration fvfm
+#&gt; 1     irgarol           0.1 0.63
+#&gt; 2      diuron           0.1 0.68
+#&gt; 3     ametryn           0.1 0.68
+#&gt; 4 tebuthiuron           0.1 0.73
+#&gt; 5  hexazinone           0.1 0.64
+#&gt; 6    simazine           0.1 0.69</div><div class='input'>
 </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
