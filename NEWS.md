@@ -1,4 +1,10 @@
-# bayesnec development version (2.0.1)
+# bayesnec 2.0.2
+
+- Fixed CRAN bugs related to `testthat` ([`cfe9f20`](https://github.com/open-AIMS/bayesnec/commit/cfe9f20)).
+
+- Changed decline detection behaviour in function `check_data` ([`c2744e3`](https://github.com/open-AIMS/bayesnec/commit/c2744e3)).
+
+# bayesnec 2.0.1
 
 - Addition of `herbicide data` ([`2b13ef5`](https://github.com/open-AIMS/bayesnec/commit/2b13ef5)).
 
