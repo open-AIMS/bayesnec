@@ -119,13 +119,13 @@ test_that("new loo_controls are incorporated", {
   my_ctrls <- list(weights = list(method = "pseudobma"))
   expand_manec(tt1, formulas, loo_controls = my_ctrls) %>%
     get_new_method %>%
-    expect_message %>%
     expect_equal("pseudobma") %>%
+    expect_message %>%
     suppressWarnings
   my_ctrls <- list(weights = list(method = "stacking"))
   expand_manec(tt1, formulas, loo_controls = my_ctrls) %>%
     get_new_method %>%
-    expect_message %>%
     expect_equal("stacking") %>%
+    expect_message %>%
     suppressWarnings
 })
