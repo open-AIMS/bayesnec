@@ -39,10 +39,10 @@ check_data <- function(data, family, model) {
   resp_check <- mean(y[which(x < mean(x))]) <
     mean(y[which(x > mean(x))])
   if (resp_check && !grepl("horme", model)) {
-    stop("The mean value of the response column for the lower half of the ",
-         "predictor column are lower than that of the upper half ",
-         "of the predictor column. bnec only allows for ",
-         "response values to decline with increasing values of predictor.")
+    warning("The mean value of the response column for the lower half of the ",
+            "predictor column are lower than that of the upper half ",
+            "of the predictor column. bnec only allows for ",
+            "response values to decline with increasing values of predictor.")
   }
   fam_tag <- family$family
   x_type <- set_distribution(x)
