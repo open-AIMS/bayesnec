@@ -47,14 +47,14 @@ jobs:
       - name: Install BH Mac
         if: runner.os == 'macOS'
         run: |
-          install.packages("BH")
+          install.packages(c("remotes","BH"))
+          remotes::install_github("paul-buerkner/brms", dependencies = TRUE)
         shell: Rscript {0}
 
       - name: Install igraph Windows
         if: runner.os == 'Windows'
         run: |
-          install.packages("remotes")
-          remotes::install_github("igraph/rigraph@master")
+          install.packages("igraph", type = "binary")
         shell: Rscript {0}
 
       - uses: r-lib/actions/setup-r-dependencies@v1
