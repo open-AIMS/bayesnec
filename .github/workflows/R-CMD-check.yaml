@@ -35,6 +35,28 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      - name: Pandoc Windows fix
+        if: runner.os == 'Windows'
+        run: choco install pandoc
+
+      - name: V8 fix
+        if: runner.os == 'macOS'
+        run: |
+          brew install v8
+
+      - name: Install BH Mac
+        if: runner.os == 'macOS'
+        run: |
+          install.packages("BH")
+        shell: Rscript {0}
+
+      - name: Install igraph Windows
+        if: runner.os == 'Windows'
+        run: |
+          install.packages("remotes")
+          remotes::install_github("igraph/rigraph@master")
+        shell: Rscript {0}
+
       - uses: r-lib/actions/setup-r-dependencies@v1
         with:
           extra-packages: rcmdcheck
