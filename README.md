@@ -10,7 +10,7 @@ maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lif
 [![R build
 status](https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg)](https://github.com/open-AIMS/bayesnec/actions)
 [![Codecov test
-coverage](https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg)](https://codecov.io/gh/open-aims/bayesnec?branch=master)
+coverage](https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg)](https://app.codecov.io/gh/open-aims/bayesnec?branch=master)
 ![pkgdown](https://github.com/open-AIMS/bayesnec/workflows/pkgdown/badge.svg)
 [![CRAN
 Version](https://www.r-pkg.org/badges/version/bayesnec)](https://cran.r-project.org/package=bayesnec)
