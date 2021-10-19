@@ -45,7 +45,7 @@ jobs:
           brew install v8
 
       - name: Install BH Mac
-        if: runner.os == 'macOS'
+        if: runner.os != 'Linux'
         run: |
           install.packages(c("remotes","BH"))
           remotes::install_github("paul-buerkner/brms", dependencies = TRUE)
