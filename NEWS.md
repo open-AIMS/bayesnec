@@ -1,6 +1,6 @@
 # bayesnec 2.0.2.1
 
-- Fixed vignette formula bugs ([`47f839b`](https://github.com/open-AIMS/bayesnec/commit/47f839b)).
+- Fixed vignette formula bugs ([`162fec9`](https://github.com/open-AIMS/bayesnec/commit/162fec9)).
 
 # bayesnec 2.0.2
 
