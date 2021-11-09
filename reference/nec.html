@@ -196,12 +196,14 @@ lower 95% credible interval bounds
     <div class='dont-index'><p><code><a href='bnec.html'>bnec</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span>
-<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span>
-<span class='fu'>nec</span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; <span class='message'>bayesmanecfit contains ecx model types and therefore nec estimate includes nsec values.</span></div><div class='output co'>#&gt;       50%      2.5%     97.5% 
-#&gt; 1.4410929 0.7789674 1.5219369 </div><div class='input'>
-</div></pre>
+    <pre class="examples"><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
+<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
+<span class='r-in'><span class='fu'>nec</span><span class='op'>(</span><span class='va'>manec_example</span><span class='op'>)</span></span>
+<span class='r-msg co'><span class='r-pr'>#&gt;</span> bayesmanecfit contains ecx model types and therefore nec estimate includes nsec values.</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span>       50%      2.5%     97.5% </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> 1.4410929 0.7789674 1.5219369 </span>
+<span class='r-in'></span>
+</pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

@@ -186,127 +186,129 @@ final <code><a href='https://rdrr.io/pkg/brms/man/brmsformula.html'>brmsformula<
 <code><a href='check_formula.html'>check_formula</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span>
-<span class='va'>nec3param</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>beta</span>, <span class='va'>nec</span>, <span class='va'>top</span>, <span class='va'>x</span><span class='op'>)</span> <span class='op'>{</span>
-  <span class='va'>top</span> <span class='op'>*</span> <span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='va'>beta</span><span class='op'>)</span> <span class='op'>*</span> <span class='op'>(</span><span class='va'>x</span> <span class='op'>-</span> <span class='va'>nec</span><span class='op'>)</span> <span class='op'>*</span>
-    <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>x</span> <span class='op'>-</span> <span class='va'>nec</span> <span class='op'>&lt;</span> <span class='fl'>0</span>, <span class='fl'>0</span>, <span class='fl'>1</span><span class='op'>)</span><span class='op'>)</span>
-<span class='op'>}</span>
-
-<span class='va'>data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></span><span class='op'>(</span>x <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq</a></span><span class='op'>(</span><span class='fl'>1</span>, <span class='fl'>20</span>, length.out <span class='op'>=</span> <span class='fl'>10</span><span class='op'>)</span>, tr <span class='op'>=</span> <span class='fl'>100</span>, wght <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>1</span>, <span class='fl'>2</span><span class='op'>)</span>,
-                   group_1 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"a"</span>, <span class='st'>"b"</span><span class='op'>)</span>, <span class='fl'>10</span>, replace <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>,
-                   group_2 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"c"</span>, <span class='st'>"d"</span><span class='op'>)</span>, <span class='fl'>10</span>, replace <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span><span class='op'>)</span>
-<span class='va'>data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'>nec3param</span><span class='op'>(</span>beta <span class='op'>=</span> <span class='op'>-</span><span class='fl'>0.2</span>, nec <span class='op'>=</span> <span class='fl'>4</span>, top <span class='op'>=</span> <span class='fl'>100</span>, <span class='va'>data</span><span class='op'>$</span><span class='va'>x</span><span class='op'>)</span>
-
-<span class='co'># make one single model</span>
-<span class='va'>f_1</span> <span class='op'>&lt;-</span> <span class='st'>"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span>
-<span class='fu'>make_brmsformula</span><span class='op'>(</span><span class='va'>f_1</span>, <span class='va'>data</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; $nec3param
-#&gt; y | trials(tr) ~ top * exp(-exp(beta) * (sqrt(x) - nec) * step(sqrt(x) - nec)) 
-#&gt; top ~ 1
-#&gt; beta ~ 1
-#&gt; nec ~ 1
-#&gt; </div><div class='input'><span class='co'># make an entire class of models</span>
-<span class='va'>f_2</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"ecx"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>ogl</span><span class='op'>(</span><span class='va'>group_1</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>pgl</span><span class='op'>(</span><span class='va'>group_2</span><span class='op'>)</span>
-<span class='fu'>make_brmsformula</span><span class='op'>(</span><span class='va'>f_2</span>, <span class='va'>data</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; $ecx4param
-#&gt; y ~ ogl + top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) 
-#&gt; bot ~ 1 + (1 | group_2)
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxlin
-#&gt; y ~ ogl + top - exp(slope) * x 
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; slope ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxexp
-#&gt; y ~ ogl + top * exp(-exp(beta) * x) 
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxsigm
-#&gt; y ~ ogl + top * exp(-exp(beta) * x^exp(d)) 
-#&gt; d ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxwb1
-#&gt; y ~ ogl + bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) 
-#&gt; bot ~ 1 + (1 | group_2)
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxwb2
-#&gt; y ~ ogl + bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
-#&gt; bot ~ 1 + (1 | group_2)
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxwb1p3
-#&gt; y ~ ogl + 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) 
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxwb2p3
-#&gt; y ~ ogl + 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxll5
-#&gt; y ~ ogl + bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^exp(f) 
-#&gt; bot ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; f ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxll4
-#&gt; y ~ ogl + bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) 
-#&gt; bot ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxll3
-#&gt; y ~ ogl + 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) 
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxhormebc4
-#&gt; y ~ ogl + 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; slope ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; 
-#&gt; $ecxhormebc5
-#&gt; y ~ ogl + bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
-#&gt; bot ~ 1 + (1 | group_2)
-#&gt; top ~ 1 + (1 | group_2)
-#&gt; beta ~ 1 + (1 | group_2)
-#&gt; ec50 ~ 1 + (1 | group_2)
-#&gt; slope ~ 1 + (1 | group_2)
-#&gt; ogl ~ 1 + (1 | group_1)
-#&gt; </div><div class='input'>
-</div></pre>
+    <pre class="examples"><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
+<span class='r-in'><span class='va'>nec3param</span> <span class='op'>&lt;-</span> <span class='kw'>function</span><span class='op'>(</span><span class='va'>beta</span>, <span class='va'>nec</span>, <span class='va'>top</span>, <span class='va'>x</span><span class='op'>)</span> <span class='op'>{</span></span>
+<span class='r-in'>  <span class='va'>top</span> <span class='op'>*</span> <span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='op'>-</span><span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='va'>beta</span><span class='op'>)</span> <span class='op'>*</span> <span class='op'>(</span><span class='va'>x</span> <span class='op'>-</span> <span class='va'>nec</span><span class='op'>)</span> <span class='op'>*</span></span>
+<span class='r-in'>    <span class='fu'><a href='https://rdrr.io/r/base/ifelse.html'>ifelse</a></span><span class='op'>(</span><span class='va'>x</span> <span class='op'>-</span> <span class='va'>nec</span> <span class='op'>&lt;</span> <span class='fl'>0</span>, <span class='fl'>0</span>, <span class='fl'>1</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-in'><span class='op'>}</span></span>
+<span class='r-in'></span>
+<span class='r-in'><span class='va'>data</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></span><span class='op'>(</span>x <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/seq.html'>seq</a></span><span class='op'>(</span><span class='fl'>1</span>, <span class='fl'>20</span>, length.out <span class='op'>=</span> <span class='fl'>10</span><span class='op'>)</span>, tr <span class='op'>=</span> <span class='fl'>100</span>, wght <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='fl'>1</span>, <span class='fl'>2</span><span class='op'>)</span>,</span>
+<span class='r-in'>                   group_1 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"a"</span>, <span class='st'>"b"</span><span class='op'>)</span>, <span class='fl'>10</span>, replace <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>,</span>
+<span class='r-in'>                   group_2 <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/sample.html'>sample</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"c"</span>, <span class='st'>"d"</span><span class='op'>)</span>, <span class='fl'>10</span>, replace <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-in'><span class='va'>data</span><span class='op'>$</span><span class='va'>y</span> <span class='op'>&lt;-</span> <span class='fu'>nec3param</span><span class='op'>(</span>beta <span class='op'>=</span> <span class='op'>-</span><span class='fl'>0.2</span>, nec <span class='op'>=</span> <span class='fl'>4</span>, top <span class='op'>=</span> <span class='fl'>100</span>, <span class='va'>data</span><span class='op'>$</span><span class='va'>x</span><span class='op'>)</span></span>
+<span class='r-in'></span>
+<span class='r-in'><span class='co'># make one single model</span></span>
+<span class='r-in'><span class='va'>f_1</span> <span class='op'>&lt;-</span> <span class='st'>"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
+<span class='r-in'><span class='fu'>make_brmsformula</span><span class='op'>(</span><span class='va'>f_1</span>, <span class='va'>data</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $nec3param</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y | trials(tr) ~ top * exp(-exp(beta) * (sqrt(x) - nec) * step(sqrt(x) - nec)) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> nec ~ 1</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-in'><span class='co'># make an entire class of models</span></span>
+<span class='r-in'><span class='va'>f_2</span> <span class='op'>&lt;-</span> <span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"ecx"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>ogl</span><span class='op'>(</span><span class='va'>group_1</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>pgl</span><span class='op'>(</span><span class='va'>group_2</span><span class='op'>)</span></span>
+<span class='r-in'><span class='fu'>make_brmsformula</span><span class='op'>(</span><span class='va'>f_2</span>, <span class='va'>data</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecx4param</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> bot ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxlin</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + top - exp(slope) * x </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> slope ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxexp</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + top * exp(-exp(beta) * x) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxsigm</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + top * exp(-exp(beta) * x^exp(d)) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> d ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxwb1</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> bot ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxwb2</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> bot ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxwb1p3</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxwb2p3</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxll5</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^exp(f) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> bot ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> f ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxll4</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> bot ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxll3</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxhormebc4</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> slope ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> $ecxhormebc5</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ ogl + bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) </span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> bot ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> top ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> beta ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ec50 ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> slope ~ 1 + (1 | group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> </span>
+<span class='r-in'></span>
+</pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

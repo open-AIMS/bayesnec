@@ -183,7 +183,7 @@ R formula or an actual <code><a href='https://rdrr.io/r/stats/formula.html'>form
 <code><a href='https://rdrr.io/r/stats/formula.html'>formula</a></code>.</p>
     <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
 
-    <p>See <code><a href='https://rdrr.io/r/utils/methods.html'>methods(class = "bayesnecformula")</a></code> for an overview of
+    <p>See <code>methods(class = "bayesnecformula")</code> for an overview of
 available methods.</p>
 <p><b>General formula syntax</b></p>
 <p>The <code>formula</code> argument accepts formulas of the following syntax:</p>
@@ -262,27 +262,33 @@ formula.</p>
 <code><a href='make_brmsformula.html'>make_brmsformula</a></code></p></div>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span>
-
-<span class='fu'>bayesnecformula</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; y ~ crf(x, "nec3param")
-#&gt; &lt;environment: 0x5617325eac58&gt;</div><div class='input'><span class='co'># or use shot alias bnf</span>
-<span class='fu'>bayesnecformula</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>==</span> <span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; [1] TRUE</div><div class='input'><span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>sqrt</a></span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; y | trials(tr) ~ crf(sqrt(x), "nec3param")
-#&gt; &lt;environment: 0x5617325eac58&gt;</div><div class='input'><span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>ogl</span><span class='op'>(</span><span class='va'>group_1</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>pgl</span><span class='op'>(</span><span class='va'>group_2</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
-#&gt; &lt;environment: 0x5617325eac58&gt;</div><div class='input'><span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='op'>(</span><span class='va'>nec</span> <span class='op'>+</span> <span class='va'>top</span> <span class='op'>|</span> <span class='va'>group_1</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)
-#&gt; &lt;environment: 0x5617325eac58&gt;</div><div class='input'>
-<span class='co'># \donttest{</span>
-<span class='co'># complex transformations are not advisable because</span>
-<span class='co'># they are passed directly to Stan via brms</span>
-<span class='co'># and are likely to fail -- transform your variable beforehand!</span>
-<span class='kw'><a href='https://rdrr.io/r/base/try.html'>try</a></span><span class='op'>(</span><span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/scale.html'>scale</a></span><span class='op'>(</span><span class='va'>x</span>, scale <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")
-#&gt; &lt;environment: 0x5617325eac58&gt;</div><div class='input'><span class='co'># }</span>
-</div></pre>
+    <pre class="examples"><span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/library.html'>library</a></span><span class='op'>(</span><span class='va'><a href='https://open-aims.github.io/bayesnec/'>bayesnec</a></span><span class='op'>)</span></span>
+<span class='r-in'></span>
+<span class='r-in'><span class='fu'>bayesnecformula</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y ~ crf(x, "nec3param")</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> &lt;environment: 0x5643c9aa4490&gt;</span>
+<span class='r-in'><span class='co'># or use shot alias bnf</span></span>
+<span class='r-in'><span class='fu'>bayesnecformula</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span> <span class='op'>==</span> <span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> [1] TRUE</span>
+<span class='r-in'><span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/MathFun.html'>sqrt</a></span><span class='op'>(</span><span class='va'>x</span><span class='op'>)</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y | trials(tr) ~ crf(sqrt(x), "nec3param")</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> &lt;environment: 0x5643c9aa4490&gt;</span>
+<span class='r-in'><span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>ogl</span><span class='op'>(</span><span class='va'>group_1</span><span class='op'>)</span> <span class='op'>+</span> <span class='fu'>pgl</span><span class='op'>(</span><span class='va'>group_2</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> &lt;environment: 0x5643c9aa4490&gt;</span>
+<span class='r-in'><span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='va'>x</span>, <span class='st'>"nec3param"</span><span class='op'>)</span> <span class='op'>+</span> <span class='op'>(</span><span class='va'>nec</span> <span class='op'>+</span> <span class='va'>top</span> <span class='op'>|</span> <span class='va'>group_1</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> &lt;environment: 0x5643c9aa4490&gt;</span>
+<span class='r-in'></span>
+<span class='r-in'><span class='co'># \donttest{</span></span>
+<span class='r-in'><span class='co'># complex transformations are not advisable because</span></span>
+<span class='r-in'><span class='co'># they are passed directly to Stan via brms</span></span>
+<span class='r-in'><span class='co'># and are likely to fail -- transform your variable beforehand!</span></span>
+<span class='r-in'><span class='kw'><a href='https://rdrr.io/r/base/try.html'>try</a></span><span class='op'>(</span><span class='fu'>bnf</span><span class='op'>(</span><span class='va'>y</span> <span class='op'>|</span> <span class='fu'>trials</span><span class='op'>(</span><span class='va'>tr</span><span class='op'>)</span> <span class='op'>~</span> <span class='fu'>crf</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/scale.html'>scale</a></span><span class='op'>(</span><span class='va'>x</span>, scale <span class='op'>=</span> <span class='cn'>TRUE</span><span class='op'>)</span>, <span class='st'>"nec3param"</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span></span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")</span>
+<span class='r-out co'><span class='r-pr'>#&gt;</span> &lt;environment: 0x5643c9aa4490&gt;</span>
+<span class='r-in'><span class='co'># }</span></span>
+</pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
