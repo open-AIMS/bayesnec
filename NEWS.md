@@ -1,3 +1,7 @@
+# bayesnec 2.0.2.1
+
+- Fixed vignette formula bugs ([`47f839b`](https://github.com/open-AIMS/bayesnec/commit/47f839b)).
+
 # bayesnec 2.0.2
 
 - Fixed CRAN bugs related to `testthat` ([`cfe9f20`](https://github.com/open-AIMS/bayesnec/commit/cfe9f20)).
