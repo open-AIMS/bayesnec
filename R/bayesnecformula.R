@@ -253,7 +253,7 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
     stop("You must specify which non-linear function to use with crf.",
          " See ?bayesnecformula")
   }
-  crf_vars <- all.vars(str2lang(x_str))
+  crf_vars <- all.vars(str2lang(eval(parse(text = x_str))))
   if (length(crf_vars) != 1) {
     stop("The `crf` term in your formula can only have one variable; you",
          " specified ", paste0(crf_vars, collapse = "; "), ".")
