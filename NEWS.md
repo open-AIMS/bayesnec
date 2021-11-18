@@ -1,3 +1,7 @@
+# bayesnec 2.0.2.3
+
+- Fixed issue with `check_formula` ([`87fab44`](https://github.com/open-AIMS/bayesnec/commit/87fab44)).
+
 # bayesnec 2.0.2.2
 
 - Fixed issue with `gsub` substitution of x in original brms non-linear formulas, and added various tests ([`fa588fb`](https://github.com/open-AIMS/bayesnec/commit/fa588fb)).
