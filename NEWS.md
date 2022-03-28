@@ -1,5 +1,7 @@
 # bayesnec 2.0.2.3
 
+- Fixed issue with `expand_manec` ([`1ced4d4`](https://github.com/open-AIMS/bayesnec/commit/1ced4d4)).
+
 - Fixed issue with `check_formula` ([`87fab44`](https://github.com/open-AIMS/bayesnec/commit/87fab44)).
 
 # bayesnec 2.0.2.2
