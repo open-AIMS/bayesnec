@@ -253,7 +253,7 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
     stop("You must specify which non-linear function to use with crf.",
          " See ?bayesnecformula")
   }
-  crf_vars <- all.vars(str2lang(x_str))
+  crf_vars <- all.vars(str2lang(eval(parse(text = x_str))))
   if (length(crf_vars) != 1) {
     stop("The `crf` term in your formula can only have one variable; you",
          " specified ", paste0(crf_vars, collapse = "; "), ".")
@@ -464,13 +464,19 @@ simplify_formula <- function(formula, data, ...) {
 
 #' @noRd
 #' @importFrom formula.tools lhs
+substitute_x_in_formula <- function(new_x, brms_rhs) {
+  gsub("[x](?![[:alpha:]])", new_x, brms_rhs, perl = TRUE)
+}
+
+#' @noRd
+#' @importFrom formula.tools lhs
 wrangle_model_formula <- function(model, formula, data) {
   brms_bf <- get(paste0("bf_", model))
   brms_bf[[1]][[2]] <- lhs(formula)
   bnec_pop_vars <- attr(data, "bnec_pop")
   new_x <- names(data)[which(names(bnec_pop_vars) == "x_var")]
   brms_rhs <- deparse1(brms_bf[[1]][[3]])
-  tmp <- gsub("[x](?![aA-zZ])", new_x, brms_rhs, perl = TRUE)
+  tmp <- substitute_x_in_formula(new_x, brms_rhs)
   brms_bf[[1]][[3]] <- str2lang(tmp)
   bnec_group_vars <- attr(data, "bnec_group")
   if (any(!is.na(bnec_group_vars))) {
