@@ -100,13 +100,6 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
 #' @export
 expand_manec <- function(object, formula, x_range = NA, precision = 1000,
                          sig_val = 0.01, loo_controls) {
-  if (missing(loo_controls)) {
-    loo_controls <- list(fitting = list(), weights = list())
-  } else {
-    fam_tag <- object[[1]]$fit$family$family
-    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
-  }
-  loo_w_controls <- loo_controls$weights
   model_set <- names(object)
   success_models <- model_set[sapply(object, is_prebayesnecfit)]
   if (length(success_models) == 0) {
@@ -130,6 +123,13 @@ expand_manec <- function(object, formula, x_range = NA, precision = 1000,
   mod_fits <- object[success_models]
   object <- object[success_models]
   formula <- formula[success_models]
+  if (missing(loo_controls)) {
+    loo_controls <- list(fitting = list(), weights = list())
+  } else {
+    fam_tag <- object[[1]]$fit$family$family
+    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
+  }
+  loo_w_controls <- loo_controls$weights
   for (i in seq_along(object)) {
     object[[i]] <- expand_nec(object[[i]], formula = formula[[i]],
                               x_range = x_range, precision = precision,
