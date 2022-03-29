@@ -26,6 +26,8 @@
 <![endif]-->
 </head>
 <body data-spy="scroll" data-target="#toc">
+    
+
     <div class="container template-home">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -38,23 +40,17 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.2</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.3</span>
       </span>
     </div>
 
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
 <li>
-  <a href="index.html">
-    <span class="fas fa-home fa-lg"></span>
-     
-  </a>
-</li>
-<li>
   <a href="reference/index.html">Reference</a>
 </li>
 <li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
     Articles
      
     <span class="caret"></span>
@@ -83,7 +79,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/open-aims/bayesnec/">
+  <a href="https://github.com/open-aims/bayesnec/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
      
   </a>
@@ -100,20 +96,19 @@
 
       </header><div class="row">
   <div class="contents col-md-9">
-<div id="bayesnec-" class="section level1">
-<div class="page-header"><h1 class="hasAnchor">
-<a href="#bayesnec-" class="anchor"></a>bayesnec <img src="reference/figures/logo.png" width="180" alt="bayesnec Logo" align="right">
+<div class="section level1">
+<div class="page-header"><h1 id="bayesnec-">bayesnec <img src="reference/figures/logo.png" width="180" alt="bayesnec Logo" align="right"><a class="anchor" aria-label="anchor" href="#bayesnec-"></a>
 </h1></div>
 <!-- badges: start -->
 
-<div id="overview" class="section level2">
-<h2 class="hasAnchor">
-<a href="#overview" class="anchor"></a>Overview</h2>
-<p><code>bayesnec</code> is a No-Effect-Concentration estimation package that uses <a href="https://github.com/paul-buerkner/brms"><code>brms</code></a> to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating both ECX values, but more particularly NEC. Please see <code><a href="reference/bnec.html">?bnec</a></code> for a more detailed help file.</p>
+<div class="section level2">
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+</h2>
+<p><code>bayesnec</code> is a No-Effect-Concentration estimation package that uses <a href="https://github.com/paul-buerkner/brms" class="external-link"><code>brms</code></a> to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating both ECX values, but more particularly NEC. Please see <code><a href="reference/bnec.html">?bnec</a></code> for a more detailed help file.</p>
 </div>
-<div id="installation" class="section level2">
-<h2 class="hasAnchor">
-<a href="#installation" class="anchor"></a>Installation</h2>
+<div class="section level2">
+<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h2>
 <p>To install the latest release version from CRAN use</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">install.packages</span>(<span class="st">"bayesnec"</span>)</span></code></pre></div>
 <p>The current development version can be downloaded from GitHub via</p>
@@ -121,42 +116,49 @@
 <span id="cb2-2"><a href="#cb2-2"></a>  <span class="kw">install.packages</span>(<span class="st">"remotes"</span>)</span>
 <span id="cb2-3"><a href="#cb2-3"></a>}</span>
 <span id="cb2-4"><a href="#cb2-4"></a>remotes<span class="op">::</span><span class="kw">install_github</span>(<span class="st">"open-aims/bayesnec"</span>, <span class="dt">ref =</span> <span class="st">"dev"</span>)</span></code></pre></div>
-<p>Because <code>bayesnec</code> is based on <code>brms</code> and <a href="https://mc-stan.org/">Stan</a>, a C++ compiler is required. The program <a href="https://cran.r-project.org/bin/windows/Rtools/">Rtools</a> comes with a C++ compiler for Windows. On Mac, you should install Xcode. See the prerequisites section on this <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started">link</a> for further instructions on how to get the compilers running.</p>
+<p>Because <code>bayesnec</code> is based on <code>brms</code> and <a href="https://mc-stan.org/" class="external-link">Stan</a>, a C++ compiler is required. The program <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> comes with a C++ compiler for Windows. On Mac, you should install Xcode. See the prerequisites section on this <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="external-link">link</a> for further instructions on how to get the compilers running.</p>
 </div>
-<div id="usage" class="section level2">
-<h2 class="hasAnchor">
-<a href="#usage" class="anchor"></a>Usage</h2>
-<p>Usage and further information about <code>bayesnec</code> can be seen on the <a href="https://open-aims.github.io/bayesnec/">project page</a> and the <a href="https://open-aims.github.io/bayesnec/articles/">vignettes</a>. Help files for the individual functions can be found on the <a href="https://open-aims.github.io/bayesnec/reference/">reference page</a>.</p>
+<div class="section level2">
+<h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
+</h2>
+<p>Usage and further information about <code>bayesnec</code> can be seen on the <a href="https://open-aims.github.io/bayesnec/" class="external-link">project page</a> and the <a href="https://open-aims.github.io/bayesnec/articles/" class="external-link">vignettes</a>. Help files for the individual functions can be found on the <a href="https://open-aims.github.io/bayesnec/reference/" class="external-link">reference page</a>.</p>
 </div>
-<div id="further-information" class="section level2">
-<h2 class="hasAnchor">
-<a href="#further-information" class="anchor"></a>Further Information</h2>
-<p><code>bayesnec</code> is provided by the <a href="https://www.aims.gov.au">Australian Institute of Marine Science</a> under the GPL-2 License (<a href="https://opensource.org/licenses/GPL-2.0">GPL-2</a>).</p>
+<div class="section level2">
+<h2 id="further-information">Further Information<a class="anchor" aria-label="anchor" href="#further-information"></a>
+</h2>
+<p><code>bayesnec</code> is provided by the <a href="https://www.aims.gov.au" class="external-link">Australian Institute of Marine Science</a> under the GPL-2 License (<a href="https://opensource.org/licenses/GPL-2.0" class="external-link">GPL-2</a>).</p>
 </div>
 </div>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <div class="links">
-<h2>Links</h2>
+<h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li>Download from CRAN at <br><a href="https://cloud.r-project.org/package=bayesnec">https://​cloud.r-project.org/​package=bayesnec</a>
-</li>
-<li>Browse source code at <br><a href="https://github.com/open-aims/bayesnec/">https://​github.com/​open-aims/​bayesnec/​</a>
-</li>
-<li>Report a bug at <br><a href="https://github.com/open-aims/bayesnec/issues">https://​github.com/​open-aims/​bayesnec/​issues</a>
-</li>
+<li><a href="https://cloud.r-project.org/package=bayesnec" class="external-link">View on CRAN</a></li>
+<li><a href="https://github.com/open-aims/bayesnec/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/open-aims/bayesnec/issues" class="external-link">Report a bug</a></li>
 </ul>
 </div>
+
 <div class="license">
-<h2>License</h2>
+<h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
 <li><a href="LICENSE.html">Full license</a></li>
-<li><small><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a></small></li>
+<li><small><a href="https://www.r-project.org/Licenses/GPL-2" class="external-link">GPL-2</a></small></li>
 </ul>
 </div>
+
+
+<div class="citation">
+<h2 data-toc-skip>Citation</h2>
+<ul class="list-unstyled">
+<li><a href="authors.html#citation">Citing bayesnec</a></li>
+</ul>
+</div>
+
 <div class="developers">
-<h2>Developers</h2>
+<h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
 <li>Rebecca Fisher <br><small class="roles"> Author, maintainer </small>  </li>
 <li>Diego Barneche <br><small class="roles"> Author </small>  </li>
@@ -165,28 +167,31 @@
 </ul>
 </div>
 
-  <div class="dev-status">
-<h2>Dev status</h2>
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
-<li><a href="https://lifecycle.r-lib.org/articles/stages.html"><img src="https://img.shields.io/badge/lifecycle-maturing-blue.svg" alt="Lifecycle: maturing"></a></li>
-<li><a href="https://github.com/open-AIMS/bayesnec/actions"><img src="https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg" alt="R build status"></a></li>
-<li><a href="https://app.codecov.io/gh/open-aims/bayesnec?branch=master"><img src="https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg" alt="Codecov test coverage"></a></li>
-<li><a href="https://cran.r-project.org/package=bayesnec"><img src="https://www.r-pkg.org/badges/version/bayesnec" alt="CRAN Version"></a></li>
-<li><a href="https://CRAN.R-project.org/package=bayesnec"><img src="https://cranlogs.r-pkg.org/badges/bayesnec?color=brightgreen" alt="Downloads"></a></li>
-<li><a href="https://choosealicense.com/"><img src="https://img.shields.io/badge/license-GPL--2-lightgrey.svg" alt="license"></a></li>
-<li><a href="https://github.com/open-AIMS/bayesnec/issues/new"><img src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg" alt="Ask Us Anything !"></a></li>
+<li><a href="https://lifecycle.r-lib.org/articles/stages.html" class="external-link"><img src="https://img.shields.io/badge/lifecycle-maturing-blue.svg" alt="Lifecycle: maturing"></a></li>
+<li><a href="https://github.com/open-AIMS/bayesnec/actions" class="external-link"><img src="https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg" alt="R build status"></a></li>
+<li><a href="https://app.codecov.io/gh/open-aims/bayesnec?branch=master" class="external-link"><img src="https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg" alt="Codecov test coverage"></a></li>
+<li><a href="https://cran.r-project.org/package=bayesnec" class="external-link"><img src="https://www.r-pkg.org/badges/version/bayesnec" alt="CRAN Version"></a></li>
+<li><a href="https://CRAN.R-project.org/package=bayesnec" class="external-link"><img src="https://cranlogs.r-pkg.org/badges/bayesnec?color=brightgreen" alt="Downloads"></a></li>
+<li><a href="https://choosealicense.com/" class="external-link"><img src="https://img.shields.io/badge/license-GPL--2-lightgrey.svg" alt="license"></a></li>
+<li><a href="https://github.com/open-AIMS/bayesnec/issues/new" class="external-link"><img src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg" alt="Ask Us Anything !"></a></li>
 </ul>
 </div>
-</div>
+
+  </div>
 </div>
 
 
       <footer><div class="copyright">
-  <p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p>
+  <p></p>
+<p>Developed by Rebecca Fisher, Diego Barneche, Gerard Ricardo, David Fox.</p>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
+  <p></p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
 </div>
 
       </footer>
@@ -194,6 +199,8 @@
 
   
 
+
+  
 
   </body>
 </html>

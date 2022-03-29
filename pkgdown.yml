@@ -1,5 +1,5 @@
 pandoc: 2.7.3
-pkgdown: 1.6.1
+pkgdown: 2.0.2
 pkgdown_sha: ~
 articles:
   example1: example1.html
@@ -7,5 +7,5 @@ articles:
   example2b: example2b.html
   example3: example3.html
   example4: example4.html
-last_built: 2021-11-09T03:25Z
+last_built: 2022-03-29T00:45Z
 
