@@ -54,18 +54,18 @@ make_inits <- function(model, fct_args, priors, chains) {
       v1 <- as.numeric(bits[2])
       v2 <- as.numeric(bits[3])
       out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
-      if (priors$bound[j] != "") {
-        to_keep <- "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"
-        bounds <- regmatches(priors$bound[j],
-                             gregexpr(to_keep, priors$bound[j]))[[1]]
-        bounds <- as.numeric(bounds)
-        if (length(bounds) == 2) {
+      if (any(!is.na(priors[j, c("lb", "ub")]))) {
+        n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
+        if (n_bounds == 2) {
+          bounds <- as.numeric(priors[j, c("lb", "ub")])
           while (out[[i]][[j]] <= min(bounds) |
                    out[[i]][[j]] >= max(bounds)) {
             out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
           }
-        } else if (length(bounds) == 1) {
-          bound_fct <- ifelse(grepl("lower", priors$bound[j]), `<=`, `>=`)
+        } else if (n_bounds == 1) {
+          direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
+          bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
+          bounds <- as.numeric(priors[j, direction])
           while (bound_fct(out[[i]][[j]], bounds)) {
             out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
           }
