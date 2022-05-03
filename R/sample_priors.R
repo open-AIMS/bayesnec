@@ -40,43 +40,39 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
     v1 <- as.numeric(bits[2])
     v2 <- as.numeric(bits[3])
     out[[j]] <- fcts[[fct_i]](n_samples, v1, v2)
-    if (priors$bound[j] != "") {
-      to_keep <- "[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?"
-      bounds <- regmatches(priors$bound[j],
-                           gregexpr(to_keep, priors$bound[j]))[[1]]
-      bounds <- as.numeric(bounds)
-      if (length(bounds) == 2) {
+    if (any(!is.na(priors[j, c("lb", "ub")]))) {
+      n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
+      if (n_bounds == 2) {
+        bounds <- as.numeric(priors[j, c("lb", "ub")])
         out[[j]] <- sample(out[[j]][which(out[[j]] >= min(bounds) &
                                           out[[j]] <= max(bounds))],
                            n_samples, replace = TRUE)
-      } else if (length(bounds) == 1) {
-        bound_fct <- ifelse(grepl("lower", priors$bound[j]), `<=`, `>=`)
-        out[[j]] <- sample(out[[j]][which(bound_fct(out[[j]], bounds) ==
-                                      FALSE)],
+      } else if (n_bounds == 1) {
+        direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
+        bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
+        bounds <- as.numeric(priors[j, direction])
+        out[[j]] <- sample(out[[j]][!bound_fct(out[[j]], bounds)],
                            n_samples, replace = TRUE)
       }
     }
   }
   names(out) <- par_names
-  if (plot == "base") {
+  if (is.na(plot)) {
+    out
+  } else if (plot == "base") {
     oldpar <- par(no.readonly = TRUE)
     on.exit(par(oldpar))      
     par(mfrow = c(ceiling(nrow(priors) / 2), 2))
     for (j in seq_along(out)) {
       hist(out[[j]], main = names(out)[j])
     }
-  }
-  if (plot == "ggplot") {
-    plot <- do.call("cbind", out) %>%
+  } else if (plot == "ggplot") {
+    do.call("cbind", out) %>%
       data.frame %>%
       pivot_longer(names_to = "param", values_to = "value",
                    cols = starts_with("b_")) %>%
       ggplot(mapping = aes(x = .data$value)) +
         geom_histogram() +
         facet_wrap(~.data$param, scales = "free_x")
-    return(plot)
-  }
-  if (is.na(plot)) {
-    return(out)
   }
 }
