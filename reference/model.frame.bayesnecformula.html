@@ -18,7 +18,7 @@ and a formula of class bayesnecformula."><meta property="og:image" content="/log
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.3</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
       </span>
     </div>
 
@@ -121,8 +121,8 @@ these are evaluated and returned as part of the
 <span class="r-in"></span>
 <span class="r-in"><span class="va">f_1</span> <span class="op">&lt;-</span> <span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span></span>
 <span class="r-in"><span class="va">f_2</span> <span class="op">&lt;-</span> <span class="st">"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
-<span class="r-in"><span class="va">f_3</span> <span class="op">&lt;-</span> <span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">f_4</span> <span class="op">&lt;-</span> <span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">f_3</span> <span class="op">&lt;-</span> <span class="va">y</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">trials</a></span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">f_4</span> <span class="op">&lt;-</span> <span class="va">y</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">trials</a></span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span></span>
 <span class="r-in"></span>
 <span class="r-in"><span class="va">m_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.frame.html" class="external-link">model.frame</a></span><span class="op">(</span><span class="fu"><a href="bayesnecformula.html">bnf</a></span><span class="op">(</span><span class="va">f_1</span><span class="op">)</span>, <span class="va">data</span><span class="op">)</span></span>
 <span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">m_1</span>, <span class="st">"bnec_pop"</span><span class="op">)</span></span>
@@ -174,7 +174,7 @@ these are evaluated and returned as part of the
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
 </div>
 
       </footer></div>
