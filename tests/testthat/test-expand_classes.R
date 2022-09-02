@@ -7,7 +7,7 @@ fit2 <- manec_example$mod_fits[["ecx4param"]]
 test_that("expand_nec defaults work for nec model", {
   nec_fit <- expand_nec(fit1, fit1$bayesnecformula, model = "nec4param") %>%
     suppressWarnings
-  expect_equal(names(nec_fit), c("fit", "model", "inits", "bayesnecformula",
+  expect_equal(names(nec_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
                                  "beta", "nec", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
@@ -23,7 +23,7 @@ test_that("expand_nec arguments work for nec model", {
   nec_fit <- expand_nec(fit1, fit1$bayesnecformula, model = "nec4param",
                         x_range = c(0.01, 4), precision = 20) %>%
     suppressWarnings
-  expect_equal(names(nec_fit), c("fit", "model", "inits", "bayesnecformula",
+  expect_equal(names(nec_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
                                  "beta", "nec", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
@@ -38,7 +38,7 @@ test_that("expand_nec arguments work for nec model", {
 test_that("expand_ecx defaults work for ecx model", {
   ecx_fit <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param") %>%
     suppressWarnings
-  expect_equal(names(ecx_fit), c("fit", "model", "inits", "bayesnecformula",
+  expect_equal(names(ecx_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
                                  "beta", "nec", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
@@ -54,7 +54,7 @@ test_that("expand_ecx arguments work for ecx model", {
   ecx_fit <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param",
                         x_range = c(0.01, 4), precision = 20) %>%
     suppressWarnings
-  expect_equal(names(ecx_fit), c("fit", "model", "inits", "bayesnecformula",
+  expect_equal(names(ecx_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
                                  "beta", "nec", "f", "bot", "d", "slope",
                                  "ec50", "dispersion", "predicted_y",

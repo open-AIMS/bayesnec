@@ -478,7 +478,7 @@ add_brm_defaults <- function(brm_args, model, family, predictor, response,
   } else {
     brm_args$prior <- priors
   }
-  if (!("inits" %in% names(brm_args)) || skip_check) {
+  if (!("init" %in% names(brm_args)) || skip_check) {
     msg_tag <- ifelse(family$family == "custom", custom_name, family$family)
     message(paste0("Finding initial values which allow the response to be",
                    " fitted using a ", model, " model and a ", msg_tag,
@@ -489,7 +489,7 @@ add_brm_defaults <- function(brm_args, model, family, predictor, response,
     if (length(inits) == 1 && "random" %in% names(inits)) {
       inits <- inits$random
     }
-    brm_args$inits <- inits
+    brm_args$init <- inits
   }
   brm_args
 }
