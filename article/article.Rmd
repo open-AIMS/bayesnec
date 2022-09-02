@@ -51,13 +51,11 @@ output: rticles::rjournal_article
 ---
 
 ```{r setup, include=FALSE}
+library(bayesnec)
+library(cmdstanr)
 options(prompt = 'R> ', continue = '+ ')
 knitr::opts_chunk$set(purl = TRUE, warning = FALSE, message = FALSE, echo = TRUE, cache = TRUE, include = TRUE, eval = TRUE, fig.align = "center", fig.pos = "!ht")
-require(cmdstanr)
-set_cmdstan_path("C:/cmdstan")
 options(brms.backend = "cmdstanr")
-require(bayesnec)
-require(tidyverse)
 ```
 
 # Introduction
@@ -558,7 +556,7 @@ The current version of \pkg{bayesnec} harnesses the powerful modelling flexibili
 
 The main existing tool in R is the frequentist-based package \pkg{drc} [@Ritz2016]. **[I've added the code but will let you and Gerard develop the text for this section]**.
 
-```{r drccomparison, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "TBW."}
+```{r drccomparison, echo = FALSE, results = "hide"}
 library(drc)
 library(MASS)
 library(corpcor)
@@ -688,7 +686,9 @@ bnec_plot_data <- purrr::map_dfr(bnec_list, ggbnec_data, .id = "model") %>%
 drc_plot_data <- purrr::map_dfr(drc_list, ggdrc_data, .id = "model") %>%
   dplyr::mutate(source = "drc")
 plot_data <- rbind(bnec_plot_data, drc_plot_data)
+```
 
+```{r drccomparisonplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "TBW."}
 combine_fits(plot_data)
 ```
 
