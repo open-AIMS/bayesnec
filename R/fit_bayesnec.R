@@ -69,7 +69,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   msg_tag <- ifelse(family$family == "custom", custom_name, family$family)
   message(paste0("Response variable modelled as a ", model, " model using a ",
                  msg_tag, " distribution."))
-  out <- list(fit = fit, model = model, inits = all_args$inits,
+  out <- list(fit = fit, model = model, init = all_args$init,
               bayesnecformula = formula)
   allot_class(out, "prebayesnecfit")
 }
