@@ -53,6 +53,11 @@ output: rticles::rjournal_article
 ```{r setup, include=FALSE}
 options(prompt = 'R> ', continue = '+ ')
 knitr::opts_chunk$set(purl = TRUE, warning = FALSE, message = FALSE, echo = TRUE, cache = TRUE, include = TRUE, eval = TRUE, fig.align = "center", fig.pos = "!ht")
+require(cmdstanr)
+set_cmdstan_path("C:/cmdstan")
+options(brms.backend = "cmdstanr")
+require(bayesnec)
+require(tidyverse)
 ```
 
 # Introduction
@@ -487,7 +492,7 @@ The `summary` method provides the usual summary of model parameters and any rele
 summary(fit)
 ```
 
-As mentioned above, the visualisation of a particular model fit can be done via either \pkg{base} R (`plot`) and \pkg{ggplot2} (`autoplot`). Here we pass the additional argument `xform` which ensures that the *NEC* estimate is transformed to the proper scale (because the original formula contained `log(concentration)`):
+As mentioned above, the visualization of a particular model fit can be done via either \pkg{base} R (`plot`) and \pkg{ggplot2} (`autoplot`). Here we pass the additional argument `xform` which ensures that the *NEC* estimate is transformed to the proper scale (because the original formula contained `log(concentration)`):
 
 \newpage
 
