@@ -95,7 +95,7 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
     if (!inherits(mod_m, "prebayesnecfit")) {
       brm_args <- list(
         family = family, iter = simdat$iter, thin = simdat$thin,
-        warmup = simdat$warmup, inits = simdat$inits, chains = simdat$chains,
+        warmup = simdat$warmup, init = simdat$init, chains = simdat$chains,
         sample_prior = simdat$sample_prior
       )
       if (missing(priors)) {

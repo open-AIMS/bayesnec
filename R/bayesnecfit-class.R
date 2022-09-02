@@ -17,7 +17,7 @@
 #' @slot fit The fitted Bayesian model of class \code{\link[brms]{brmsfit}}.
 #' @slot model A \code{\link[base]{character}} string indicating the name of
 #' the fitted model.
-#' @slot inits A \code{\link[base]{list}} containing the initialisation values
+#' @slot init A \code{\link[base]{list}} containing the initialisation values
 #' for to fit the model.
 #' @slot bayesnecformula An object of class \code{\link{bayesnecformula}} and
 #' \code{\link[stats]{formula}}.
