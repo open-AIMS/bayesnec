@@ -25,8 +25,10 @@ bayesnec*tar.gz
 /Meta/
 paper/
 article/*
-!article/RJournal.sty
 !article/article.Rmd
 !article/article.bib
+!article/jss.bst
+!article/jss.cls
+!article/jsslogo.jpg
 Check_priors_plots.pdf
 doc/
