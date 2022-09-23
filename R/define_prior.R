@@ -46,20 +46,20 @@ define_prior <- function(model, family, predictor, response) {
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.9),
                                  ", ", sd(response) * 2.5, ")"),
-               bernoulli = "beta(5, 1)",
-               binomial = "beta(5, 1)",
-               beta_binomial2 = "beta(5, 1)",
-               beta = "beta(5, 1)")
+               bernoulli = "beta(5, 2)",
+               binomial = "beta(5, 2)",
+               beta_binomial2 = "beta(5, 2)",
+               beta = "beta(5, 2)")
   y_b_prs <- c(Gamma = u_b_g,
                poisson = u_b_g,
                negbinomial = u_b_g,
                gaussian = paste0("normal(",
                                  quantile(response, probs = 0.1),
                                  ", ", sd(response) * 2.5, ")"),
-               bernoulli = "beta(1, 5)",
-               binomial = "beta(1, 5)",
-               beta_binomial2 = "beta(1, 5)",
-               beta = "beta(1, 5)")
+               bernoulli = "beta(2, 5)",
+               binomial = "beta(2, 5)",
+               beta_binomial2 = "beta(2, 5)",
+               beta = "beta(2, 5)")
   x_prs <- c(beta = "beta(2, 2)",
              Gamma = paste0("gamma(5, ",
                             1 / (quantile(predictor,
@@ -68,7 +68,7 @@ define_prior <- function(model, family, predictor, response) {
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),
-                               ", ", sd(predictor) * 2.5, ")"))
+                               ", ", sd(predictor) * 10, ")"))
   lbs <- c(Gamma = 0, poisson = 0, negbinomial = 0, gaussian = NA,
            bernoulli = 0, binomial = 0, beta_binomial2 = 0, beta = 0)
   ubs <- c(Gamma = NA, poisson = NA, negbinomial = NA, gaussian = NA,
@@ -85,10 +85,10 @@ define_prior <- function(model, family, predictor, response) {
   pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50",
                           lb = min(predictor), ub = max(predictor))
   # x- and y-independent priors
-  pr_d <- prior_string("normal(0, 2)", nlpar = "d")
-  pr_beta <- prior_string("normal(0, 2)", nlpar = "beta")
-  pr_f <- prior_string("normal(0, 2)", nlpar = "f")
-  pr_slope <- prior_string("normal(0, 2)", nlpar = "slope")
+  pr_d <- prior_string("normal(0, 5)", nlpar = "d")
+  pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")
+  pr_f <- prior_string("normal(0, 5)", nlpar = "f")
+  pr_slope <- prior_string("normal(0, 5)", nlpar = "slope")
   # assemble
   if (model == "ecxsigm") {
     priors <- pr_beta + pr_top + pr_d
