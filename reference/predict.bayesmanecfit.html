@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -75,8 +75,8 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for bayesmanecfit</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, precision <span class="op">=</span> <span class="fl">100</span>, x_range <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for bayesmanecfit</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, precision <span class="op">=</span> <span class="fl">100</span>, x_range <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -84,18 +84,27 @@
     <dl><dt>object</dt>
 <dd><p>An object of class <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> as
 returned by <code><a href="bnec.html">bnec</a></code>.</p></dd>
+
+
 <dt>...</dt>
 <dd><p>Unused.</p></dd>
+
+
 <dt>precision</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 1 indicating
 the number of x values over which to predict values.</p></dd>
+
+
 <dt>x_range</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 2 indicating
 the range of x values over which to make predictions.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing two elements: a
+    
+
+<p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing two elements: a
 <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> with predictor x and fitted y values plus
 lower and upper credible intervals; a <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></code> of M x N,
 with M being the number of posterior draws and N being the number of
@@ -114,7 +123,7 @@ observations in the input data.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

@@ -22,7 +22,7 @@ models."><meta property="og:image" content="/logo.png"><!-- mathjax --><script s
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -84,7 +84,7 @@ models.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">formula</span>, <span class="va">...</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">formula</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -92,12 +92,17 @@ models.</p>
     <dl><dt>formula</dt>
 <dd><p>Either a <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> string defining an
 R formula or an actual <code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula</a></code> object. See details.</p></dd>
+
+
 <dt>...</dt>
 <dd><p>Unused.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An object of class <code>bayesnecformula</code> and
+    
+
+<p>An object of class <code>bayesnecformula</code> and
 <code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula</a></code>.</p>
     </div>
     <div id="details">
@@ -146,7 +151,7 @@ the addition of <code>pterms</code> outside of the term <code>crf</code>. Althou
 strongly discourage the user because those functionalities have not
 been tested yet. If this is extremely important to your research, please
 raise an issue on GitHub and we will consider.
-Currently, the only two <code>aterms</code> that have validated behaviour are:</p><ol><li><p><code><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">trials()</a></code> which is essential in binomially-distributed data, e.g.
+Currently, the only two <code>aterms</code> that have validated behaviour are:</p><ol><li><p><code>trials()</code> which is essential in binomially-distributed data, e.g.
 <code>y | trials(trials_variable)</code>, and 2) weights, e.g.
 <code>y | weights(weights_variable)</code>, following <span class="pkg">brms</span> formula syntax.
 Please note that <span class="pkg">brms</span> does not implement design weights as in other
@@ -158,7 +163,7 @@ twice to the data frame." Other <code>aterms</code> might be added, though we
 cannot attest to their functionality within
 <code><a href="bayesnec-package.html">bayesnec</a></code>, i.e. checks will
 be done outside via <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code>.</p></li>
-</ol><p><strong>NB:</strong> <code>aterms</code> other than <code><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">trials()</a></code> and <code><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">weights()</a></code> are
+</ol><p><strong>NB:</strong> <code>aterms</code> other than <code>trials()</code> and <code><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights()</a></code> are
 currently omitted from <code><a href="https://rdrr.io/r/stats/model.frame.html" class="external-link">model.frame</a></code> output. If you need other
 <code>aterms</code> as part of that output please raise an issue on our GitHub
 page.</p>
@@ -181,32 +186,32 @@ formula.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x56197f638bb8&gt;</span>
-<span class="r-in"><span class="co"># or use shot alias bnf</span></span>
-<span class="r-in"><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55c4dd47c180&gt;</span>
+<span class="r-in"><span><span class="co"># or use shot alias bnf</span></span></span>
+<span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
-<span class="r-in"><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">trials</a></span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(sqrt(x), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x56197f638bb8&gt;</span>
-<span class="r-in"><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">trials</a></span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55c4dd47c180&gt;</span>
+<span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x56197f638bb8&gt;</span>
-<span class="r-in"><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">trials</a></span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55c4dd47c180&gt;</span>
+<span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x56197f638bb8&gt;</span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># \donttest{</span></span>
-<span class="r-in"><span class="co"># complex transformations are not advisable because</span></span>
-<span class="r-in"><span class="co"># they are passed directly to Stan via brms</span></span>
-<span class="r-in"><span class="co"># and are likely to fail -- transform your variable beforehand!</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/addition-terms.html" class="external-link">trials</a></span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">x</span>, scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55c4dd47c180&gt;</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># complex transformations are not advisable because</span></span></span>
+<span class="r-in"><span><span class="co"># they are passed directly to Stan via brms</span></span></span>
+<span class="r-in"><span><span class="co"># and are likely to fail -- transform your variable beforehand!</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">x</span>, scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x56197f638bb8&gt;</span>
-<span class="r-in"><span class="co"># }</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55c4dd47c180&gt;</span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -221,7 +226,7 @@ formula.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

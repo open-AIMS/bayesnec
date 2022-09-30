@@ -18,7 +18,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -77,7 +77,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">pull_prior</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">pull_prior</span><span class="op">(</span><span class="va">object</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -85,17 +85,20 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
     <dl><dt>object</dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>
 or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by <code><a href="bnec.html">bnec</a></code>.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing the priors.</p>
+    
+
+<p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing the priors.</p>
     </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">pull_prior</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">pull_prior</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $nec4param</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                        prior class      coef group resp dpar</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                 normal(0, 2)     b                          </span>
@@ -107,16 +110,16 @@ or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by
 <span class="r-out co"><span class="r-pr">#&gt;</span>    normal(2.63236428713204, 3.6135432617749)     b                          </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    normal(2.63236428713204, 3.6135432617749)     b Intercept                </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                         student_t(3, 0, 2.5) sigma                          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  nlpar                                           bound       source</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   beta                                                         user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   beta                                                 (vectorized)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    bot                                                         user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    bot                                                 (vectorized)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    nec &lt;lower=0.03234801324009,upper=3.22051966293556&gt;         user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    nec                                                 (vectorized)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    top                                                         user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    top                                                 (vectorized)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                             default</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  nlpar               lb               ub       source</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta                                           user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta                                   (vectorized)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    bot                                           user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    bot                                   (vectorized)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    nec 0.03234801324009 3.22051966293556         user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    nec 0.03234801324009 3.22051966293556 (vectorized)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    top                                           user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    top                                   (vectorized)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                       0                       default</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $ecx4param</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                        prior class      coef group resp dpar</span>
@@ -129,18 +132,18 @@ or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by
 <span class="r-out co"><span class="r-pr">#&gt;</span>    normal(2.63236428713204, 3.6135432617749)     b                          </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    normal(2.63236428713204, 3.6135432617749)     b Intercept                </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                         student_t(3, 0, 2.5) sigma                          </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  nlpar                                           bound       source</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   beta                                                         user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   beta                                                 (vectorized)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    bot                                                         user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    bot                                                 (vectorized)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   ec50 &lt;lower=0.03234801324009,upper=3.22051966293556&gt;         user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   ec50                                                 (vectorized)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    top                                                         user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    top                                                 (vectorized)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                             default</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  nlpar               lb               ub       source</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta                                           user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta                                   (vectorized)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    bot                                           user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    bot                                   (vectorized)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ec50 0.03234801324009 3.22051966293556         user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   ec50 0.03234801324009 3.22051966293556 (vectorized)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    top                                           user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    top                                   (vectorized)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                       0                       default</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -155,7 +158,7 @@ or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

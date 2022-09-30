@@ -18,7 +18,7 @@ averaged predictions based on WAIC model weights"><meta property="og:image" cont
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -77,21 +77,21 @@ averaged predictions based on WAIC model weights</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">bnec</span><span class="op">(</span>
-  <span class="va">formula</span>,
-  <span class="va">data</span>,
-  x_range <span class="op">=</span> <span class="cn">NA</span>,
-  precision <span class="op">=</span> <span class="fl">1000</span>,
-  sig_val <span class="op">=</span> <span class="fl">0.01</span>,
-  <span class="va">loo_controls</span>,
-  x_var <span class="op">=</span> <span class="cn">NULL</span>,
-  y_var <span class="op">=</span> <span class="cn">NULL</span>,
-  trials_var <span class="op">=</span> <span class="cn">NULL</span>,
-  model <span class="op">=</span> <span class="cn">NULL</span>,
-  random <span class="op">=</span> <span class="cn">NULL</span>,
-  random_vars <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">bnec</span><span class="op">(</span></span>
+<span>  <span class="va">formula</span>,</span>
+<span>  <span class="va">data</span>,</span>
+<span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  precision <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  sig_val <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>  <span class="va">loo_controls</span>,</span>
+<span>  x_var <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  y_var <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  trials_var <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  model <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  random <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  random_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -100,25 +100,35 @@ averaged predictions based on WAIC model weights</p>
 <dd><p>Either a <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> string defining an
 R formula or an actual <code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula</a></code> object. See
 <code><a href="bayesnecformula.html">bayesnecformula</a></code> and <code><a href="check_formula.html">check_formula</a></code>.</p></dd>
+
+
 <dt>data</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> containing the data to use with
 the <code>formula</code>.</p></dd>
+
+
 <dt>x_range</dt>
 <dd><p>A range of predictor values over which to consider extracting
 ECx.</p></dd>
+
+
 <dt>precision</dt>
 <dd><p>The length of the predictor vector used for posterior
 predictions, and over which to extract ECx values. Large values will be
 slower but more precise.</p></dd>
+
+
 <dt>sig_val</dt>
 <dd><p>Probability value to use as the lower quantile to test
 significance of the predicted posterior values against the lowest observed
 concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.</p></dd>
+
+
 <dt>loo_controls</dt>
 <dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of two elements
 ("fitting" and/or "weights"), each being a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>
-containing the desired arguments to be passed on to <code><a href="https://rdrr.io/pkg/brms/man/loo.brmsfit.html" class="external-link">loo</a></code>
+containing the desired arguments to be passed on to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code>
 (via "fitting") or to <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> (via "weights").
 If "fitting" is provided with argument <code>pointwise = TRUE</code>
 (due to memory issues) and <code>family = "beta_binomial2"</code>, the
@@ -126,38 +136,55 @@ If "fitting" is provided with argument <code>pointwise = TRUE</code>
 not provided by the user, <code>bnec</code> will set the default
 <code>method</code> argument in <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
 "pseudobma". See ?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>
+
+
 <dt>x_var</dt>
 <dd><p>Removed in version 2.0. Use formula instead. Used to be a
 <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> indicating the column heading
 containing the predictor (concentration) variable.</p></dd>
+
+
 <dt>y_var</dt>
 <dd><p>Removed in version 2.0. Use formula instead. Used to be a
 <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> indicating the column heading
 containing the response variable.</p></dd>
+
+
 <dt>trials_var</dt>
 <dd><p>Removed in version 2.0. Use formula instead. Used to be a
 <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> indicating the column
 heading for the number of "trials" for binomial or beta_binomial2 response
 data, as it appears in "data" (if data is supplied).</p></dd>
+
+
 <dt>model</dt>
 <dd><p>Removed in version 2.0. Use formula instead. Used to be a
 <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector indicating the model(s)
 to fit. See Details for more information.</p></dd>
+
+
 <dt>random</dt>
 <dd><p>Removed in version 2.0. Use formula instead. Used to be a
 named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing the random model
 formula to apply to model parameters.</p></dd>
+
+
 <dt>random_vars</dt>
 <dd><p>Removed in version 2.0. Use formula instead. Used to be a
 <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector containing the
 names of the columns containing the variables used in the random model
 formula.</p></dd>
+
+
 <dt>...</dt>
 <dd><p>Further arguments to <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code>.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>If argument model is a single string, then an object of class
+    
+
+<p>If argument model is a single string, then an object of class
 <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>; if many strings or a set,
 an object of class <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p>
     </div>
@@ -247,7 +274,7 @@ used to calculate Bayes factors for point hypotheses via
 <code><a href="https://rdrr.io/pkg/brms/man/hypothesis.brmsfit.html" class="external-link">hypothesis</a></code>.</p>
 <p>Model averaging is achieved through a weighted sample of each fitted models
 posterior predictions, with weights derived using functions
-<code><a href="https://rdrr.io/pkg/brms/man/loo.brmsfit.html" class="external-link">loo</a></code> and <code><a href="https://rdrr.io/pkg/brms/man/loo_model_weights.brmsfit.html" class="external-link">loo_model_weights</a></code> from
+<code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code> and <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> from
 <span class="pkg">brms</span>. Argument to both these functions can be passed via the
 <code>loo_controls</code> argument. Individual model fits can be pulled out
 for examination using function <code><a href="pull_out.html">pull_out</a></code>.</p>
@@ -275,17 +302,17 @@ predictions back onto your original dataset.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># A single model</span></span>
-<span class="r-in"><span class="va">exmp_a</span> <span class="op">&lt;-</span> <span class="fu">bnec</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span class="r-in"><span class="co"># Two models model</span></span>
-<span class="r-in"><span class="va">exmp_b</span> <span class="op">&lt;-</span> <span class="fu">bnec</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec4param"</span>, <span class="st">"ecx4param"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span class="r-in">               data <span class="op">=</span> <span class="va">nec_data</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span></span>
-<span class="r-in"></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># A single model</span></span></span>
+<span class="r-in"><span><span class="va">exmp_a</span> <span class="op">&lt;-</span> <span class="fu">bnec</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Two models model</span></span></span>
+<span class="r-in"><span><span class="va">exmp_b</span> <span class="op">&lt;-</span> <span class="fu">bnec</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec4param"</span>, <span class="st">"ecx4param"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>               data <span class="op">=</span> <span class="va">nec_data</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -300,7 +327,7 @@ predictions back onto your original dataset.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

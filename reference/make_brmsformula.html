@@ -20,7 +20,7 @@ package brms."><meta property="og:image" content="/logo.png"><!-- mathjax --><sc
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -81,7 +81,7 @@ package <span class="pkg">brms</span>.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">make_brmsformula</span><span class="op">(</span><span class="va">formula</span>, <span class="va">data</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">make_brmsformula</span><span class="op">(</span><span class="va">formula</span>, <span class="va">data</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -89,13 +89,18 @@ package <span class="pkg">brms</span>.</p>
     <dl><dt>formula</dt>
 <dd><p>Either a <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> string defining an
 R formula or an actual <code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula</a></code> object. See details.</p></dd>
+
+
 <dt>data</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> containing the variables
 specified in <code>formula</code>.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>, with each element containing the
+    
+
+<p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>, with each element containing the
 final <code><a href="https://rdrr.io/pkg/brms/man/brmsformula.html" class="external-link">brmsformula</a></code> to be passed to
 <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code>.</p>
     </div>
@@ -107,29 +112,29 @@ final <code><a href="https://rdrr.io/pkg/brms/man/brmsformula.html" class="exter
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="va">nec3param</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">beta</span>, <span class="va">nec</span>, <span class="va">top</span>, <span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in">  <span class="va">top</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">beta</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">nec</span><span class="op">)</span> <span class="op">*</span></span>
-<span class="r-in">    <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">nec</span> <span class="op">&lt;</span> <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">20</span>, length.out <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>, tr <span class="op">=</span> <span class="fl">100</span>, wght <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>,</span>
-<span class="r-in">                   group_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span>, <span class="fl">10</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
-<span class="r-in">                   group_2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"c"</span>, <span class="st">"d"</span><span class="op">)</span>, <span class="fl">10</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">data</span><span class="op">$</span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu">nec3param</span><span class="op">(</span>beta <span class="op">=</span> <span class="op">-</span><span class="fl">0.2</span>, nec <span class="op">=</span> <span class="fl">4</span>, top <span class="op">=</span> <span class="fl">100</span>, <span class="va">data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># make one single model</span></span>
-<span class="r-in"><span class="va">f_1</span> <span class="op">&lt;-</span> <span class="st">"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span>
-<span class="r-in"><span class="fu">make_brmsformula</span><span class="op">(</span><span class="va">f_1</span>, <span class="va">data</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">nec3param</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">beta</span>, <span class="va">nec</span>, <span class="va">top</span>, <span class="va">x</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="va">top</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">beta</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">nec</span><span class="op">)</span> <span class="op">*</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">nec</span> <span class="op">&lt;</span> <span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">20</span>, length.out <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>, tr <span class="op">=</span> <span class="fl">100</span>, wght <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   group_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"a"</span>, <span class="st">"b"</span><span class="op">)</span>, <span class="fl">10</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   group_2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"c"</span>, <span class="st">"d"</span><span class="op">)</span>, <span class="fl">10</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">data</span><span class="op">$</span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu">nec3param</span><span class="op">(</span>beta <span class="op">=</span> <span class="op">-</span><span class="fl">0.2</span>, nec <span class="op">=</span> <span class="fl">4</span>, top <span class="op">=</span> <span class="fl">100</span>, <span class="va">data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># make one single model</span></span></span>
+<span class="r-in"><span><span class="va">f_1</span> <span class="op">&lt;-</span> <span class="st">"y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"</span></span></span>
+<span class="r-in"><span><span class="fu">make_brmsformula</span><span class="op">(</span><span class="va">f_1</span>, <span class="va">data</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $nec3param</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ top * exp(-exp(beta) * (sqrt(x) - nec) * step(sqrt(x) - nec)) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> top ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> beta ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> nec ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="co"># make an entire class of models</span></span>
-<span class="r-in"><span class="va">f_2</span> <span class="op">&lt;-</span> <span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"ecx"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">make_brmsformula</span><span class="op">(</span><span class="va">f_2</span>, <span class="va">data</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="co"># make an entire class of models</span></span></span>
+<span class="r-in"><span><span class="va">f_2</span> <span class="op">&lt;-</span> <span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"ecx"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">make_brmsformula</span><span class="op">(</span><span class="va">f_2</span>, <span class="va">data</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $ecx4param</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ ogl + top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> bot ~ 1 + (1 | group_2)</span>
@@ -228,7 +233,7 @@ final <code><a href="https://rdrr.io/pkg/brms/man/brmsformula.html" class="exter
 <span class="r-out co"><span class="r-pr">#&gt;</span> slope ~ 1 + (1 | group_2)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ogl ~ 1 + (1 | group_1)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -243,7 +248,7 @@ final <code><a href="https://rdrr.io/pkg/brms/man/brmsformula.html" class="exter
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

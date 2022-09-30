@@ -20,7 +20,7 @@ adding or removing fitted models."><meta property="og:image" content="/logo.png"
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -80,16 +80,16 @@ adding or removing fitted models.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">amend</span><span class="op">(</span>
-  <span class="va">object</span>,
-  <span class="va">drop</span>,
-  <span class="va">add</span>,
-  <span class="va">loo_controls</span>,
-  x_range <span class="op">=</span> <span class="cn">NA</span>,
-  precision <span class="op">=</span> <span class="fl">1000</span>,
-  sig_val <span class="op">=</span> <span class="fl">0.01</span>,
-  <span class="va">priors</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">amend</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  <span class="va">drop</span>,</span>
+<span>  <span class="va">add</span>,</span>
+<span>  <span class="va">loo_controls</span>,</span>
+<span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  precision <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  sig_val <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>  <span class="va">priors</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -97,16 +97,22 @@ adding or removing fitted models.</p>
     <dl><dt>object</dt>
 <dd><p>An object of class <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>, as returned
 by <code><a href="bnec.html">bnec</a></code>.</p></dd>
+
+
 <dt>drop</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector containing the names of
 model types you which to drop for the modified fit.</p></dd>
+
+
 <dt>add</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector containing the names of
 model types to add to the modified fit.</p></dd>
+
+
 <dt>loo_controls</dt>
 <dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of two elements
 ("fitting" and/or "weights"), each being a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>
-containing the desired arguments to be passed on to <code><a href="https://rdrr.io/pkg/brms/man/loo.brmsfit.html" class="external-link">loo</a></code>
+containing the desired arguments to be passed on to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code>
 (via "fitting") or to <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> (via "weights").
 If "fitting" is provided with argument <code>pointwise = TRUE</code>
 (due to memory issues) and <code>family = "beta_binomial2"</code>, the
@@ -114,18 +120,26 @@ If "fitting" is provided with argument <code>pointwise = TRUE</code>
 not provided by the user, <code><a href="bnec.html">bnec</a></code> will set the default
 <code>method</code> argument in <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
 "pseudobma". See ?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>
+
+
 <dt>x_range</dt>
 <dd><p>A range of predictor values over which to consider extracting
 ECx.</p></dd>
+
+
 <dt>precision</dt>
 <dd><p>The length of the predictor vector used for posterior
 predictions, and over which to extract ECx values. Large values will be
 slower but more precise.</p></dd>
+
+
 <dt>sig_val</dt>
 <dd><p>Probability value to use as the lower quantile to test
 significance of the predicted posterior values against the lowest observed
 concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.</p></dd>
+
+
 <dt>priors</dt>
 <dd><p>An object of class <code><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">brmsprior</a></code> which
 specifies user-desired prior distributions of model parameters.
@@ -133,23 +147,26 @@ If missing, <code>amend</code> will figure out a baseline prior for each
 parameter. It can also be specified as a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>
 where each name needs to correspond to the same string as <code>model</code>. See
 details.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>All successfully fitted <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> model fits.</p>
+    
+
+<p>All successfully fitted <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> model fits.</p>
     </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu">amend</span><span class="op">(</span><span class="va">manec_example</span>, drop <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu">amend</span><span class="op">(</span><span class="va">manec_example</span>, drop <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Only ecx4param is fitted, no model averaging done. Perhaps try setting better priors, or check ?show_params to make sure you have the correct parameter names for your priors.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Returning ecx4param</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Found 2 observations with a pareto_k &gt; 0.7 in model 'ecx4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Found 4 observations with a pareto_k &gt; 0.7 in model 'ecx4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> 4 (4.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class="r-in"></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -164,7 +181,7 @@ details.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

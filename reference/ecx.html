@@ -20,7 +20,7 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="/logo.png"><!-- 
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -80,17 +80,17 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="/logo.png"><!-- 
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">ecx</span><span class="op">(</span>
-  <span class="va">object</span>,
-  ecx_val <span class="op">=</span> <span class="fl">10</span>,
-  precision <span class="op">=</span> <span class="fl">1000</span>,
-  posterior <span class="op">=</span> <span class="cn">FALSE</span>,
-  type <span class="op">=</span> <span class="st">"absolute"</span>,
-  hormesis_def <span class="op">=</span> <span class="st">"control"</span>,
-  x_range <span class="op">=</span> <span class="cn">NA</span>,
-  xform <span class="op">=</span> <span class="cn">NA</span>,
-  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">ecx</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  ecx_val <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  precision <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  posterior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"absolute"</span>,</span>
+<span>  hormesis_def <span class="op">=</span> <span class="st">"control"</span>,</span>
+<span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -98,35 +98,54 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="/logo.png"><!-- 
     <dl><dt>object</dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by <code><a href="bnec.html">bnec</a></code>.</p></dd>
+
+
 <dt>ecx_val</dt>
 <dd><p>The desired percentage effect value. This must be a value
 between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.</p></dd>
+
+
 <dt>precision</dt>
 <dd><p>The number of unique x values over which to find ECx -
 large values will make the ECx estimate more precise.</p></dd>
+
+
 <dt>posterior</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> value indicating if the full
 posterior sample of calculated ECx values should be returned instead of
 just the median and 95 credible intervals.</p></dd>
+
+
 <dt>type</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector, taking values of
 "relative", "absolute" (the default) or "direct". See Details.</p></dd>
+
+
 <dt>hormesis_def</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector, taking values
 of "max" or "control". See Details.</p></dd>
+
+
 <dt>x_range</dt>
 <dd><p>A range of x values over which to consider extracting ECx.</p></dd>
+
+
 <dt>xform</dt>
 <dd><p>A function to apply to the returned estimated concentration
 values.</p></dd>
+
+
 <dt>prob_vals</dt>
 <dd><p>A vector indicating the probability values over which to
 return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A vector containing the estimated ECx value, including upper and
+    
+
+<p>A vector containing the estimated ECx value, including upper and
 lower 95% credible interval bounds.</p>
     </div>
     <div id="details">
@@ -151,22 +170,22 @@ is assumed to be the lowest observed concentration.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co"># \donttest{</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">ecx</span><span class="op">(</span><span class="va">manec_example</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">ecx</span><span class="op">(</span><span class="va">manec_example</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    ec_50 ec_50_lw ec_50_up </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1.666326 1.627870 1.715872 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.672709 1.611913 1.716031 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"precision")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1000</span>
-<span class="r-in"><span class="fu">ecx</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">ecx</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     ec_10  ec_10_lw  ec_10_up </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1.4828225 0.8567569 1.5563036 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.4876095 0.9304773 1.5467295 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"precision")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1000</span>
-<span class="r-in"><span class="co"># }</span></span>
-<span class="r-in"></span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -181,7 +200,7 @@ is assumed to be the lowest observed concentration.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

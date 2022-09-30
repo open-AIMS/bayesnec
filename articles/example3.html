@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -142,76 +142,139 @@
 </h3>
 <p>To set specified priors, it is simplest to start by letting <code>bnec</code> find the priors on its own, i.e. by not specifying the <code>brm</code> argument <code>prior</code> at all.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>
-
-<span class="co"># a single model</span>
-<span class="va">exmp_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,
-               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,
-               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># a single model</span></span>
+<span><span class="va">exmp_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
+<span>               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "bayesnecfit" "bnecfit"</span></span></code></pre></div>
 <p>We can view the prior and posterior probability densities of all the parameters in the model using the function <code>check_prior</code>, based on the <code>hypothesis</code> function of <code>brms</code>. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span></code></pre></div>
+<p><img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;"></p>
 <p>In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function <code>pull_prior</code> to inspect what <code>bnec</code> came up with on its own, and decide how best to modify those priors to be more desirable.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [[1]]</span></span>
+<span><span class="co">#&gt;                       prior class      coef group resp</span></span>
+<span><span class="co">#&gt;                normal(0, 5)     b                     </span></span>
+<span><span class="co">#&gt;                normal(0, 5)     b Intercept           </span></span>
+<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b                     </span></span>
+<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept           </span></span>
+<span><span class="co">#&gt;                  beta(5, 2)     b                     </span></span>
+<span><span class="co">#&gt;                  beta(5, 2)     b Intercept           </span></span>
+<span><span class="co">#&gt;           gamma(0.01, 0.01)   phi                     </span></span>
+<span><span class="co">#&gt;  dpar nlpar               lb               ub       source</span></span>
+<span><span class="co">#&gt;        beta                                           user</span></span>
+<span><span class="co">#&gt;        beta                                   (vectorized)</span></span>
+<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556         user</span></span>
+<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556 (vectorized)</span></span>
+<span><span class="co">#&gt;         top                0                1         user</span></span>
+<span><span class="co">#&gt;         top                0                1 (vectorized)</span></span>
+<span><span class="co">#&gt;                            0                       default</span></span></code></pre></div>
 <p><code>bnec</code> chose a <code>gamma</code> prior on the <em>NEC</em> parameter of <strong>nec3param</strong> because the predictor <code>nec_data$x</code> is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let’s go ahead and specify something else, say a normal with larger variance.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">my_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
-              <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,
-              <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>
-
-<span class="va">exmp_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,
-               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_prior</span>,
-               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">my_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<span>              <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
+<span>              <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">exmp_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
+<span>               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_prior</span>,</span>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Two things are of note. If the user is specifying their own priors, <code>bnec</code> requires them to specify priors for <strong>all</strong> parameters. The <code>pull_prior</code> function shows the priors <em>after</em> the model was fitted, but suppose the user does not know what parameters were comprised in a particular model. In those instances, the user can call the function <code>show_params(model = "all")</code> to inspect the parameters of each function, or some targeted function in particular.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/show_params.html">show_params</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/show_params.html">show_params</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [[1]]</span></span>
+<span><span class="co">#&gt; y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
+<span><span class="co">#&gt; top ~ 1</span></span>
+<span><span class="co">#&gt; beta ~ 1</span></span>
+<span><span class="co">#&gt; nec ~ 1</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="bayesmanecfit">bayesmanecfit<a class="anchor" aria-label="anchor" href="#bayesmanecfit"></a>
 </h3>
 <p>The user can also specify a named list of priors when one or more models are being fitted to the same dataset.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>,
-                  nec4param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(1, 5)"</span>, nlpar <span class="op">=</span> <span class="st">"bot"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
-
-<span class="va">exmp_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,
-               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_priors</span>,
-               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                  nec4param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(1, 5)"</span>, nlpar <span class="op">=</span> <span class="st">"bot"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">exmp_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
+<span>               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_priors</span>,</span>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><code>pull_prior</code> also works for an object of class <code>bayesmanecfit</code>, as does <code>check_priors</code> which allows an option of passing a filename to save the prior and posterior probability density plots to a pdf.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_c</span><span class="op">)</span>
-<span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_c</span>, filename <span class="op">=</span> <span class="st">"Check_priors"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_c</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_c</span>, filename <span class="op">=</span> <span class="st">"Check_priors"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">#&gt; $nec3param</span></span>
+<span><span class="co">#&gt;              prior class      coef group resp dpar nlpar</span></span>
+<span><span class="co">#&gt;      gamma(0.5, 2)     b                            beta</span></span>
+<span><span class="co">#&gt;      gamma(0.5, 2)     b Intercept                  beta</span></span>
+<span><span class="co">#&gt;   normal(1.3, 2.7)     b                             nec</span></span>
+<span><span class="co">#&gt;   normal(1.3, 2.7)     b Intercept                   nec</span></span>
+<span><span class="co">#&gt;         beta(5, 1)     b                             top</span></span>
+<span><span class="co">#&gt;         beta(5, 1)     b Intercept                   top</span></span>
+<span><span class="co">#&gt;  gamma(0.01, 0.01)   phi                                </span></span>
+<span><span class="co">#&gt;  lb ub       source</span></span>
+<span><span class="co">#&gt;                user</span></span>
+<span><span class="co">#&gt;        (vectorized)</span></span>
+<span><span class="co">#&gt;                user</span></span>
+<span><span class="co">#&gt;        (vectorized)</span></span>
+<span><span class="co">#&gt;                user</span></span>
+<span><span class="co">#&gt;        (vectorized)</span></span>
+<span><span class="co">#&gt;   0         default</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $nec4param</span></span>
+<span><span class="co">#&gt;              prior class      coef group resp dpar nlpar</span></span>
+<span><span class="co">#&gt;      gamma(0.5, 2)     b                            beta</span></span>
+<span><span class="co">#&gt;      gamma(0.5, 2)     b Intercept                  beta</span></span>
+<span><span class="co">#&gt;         beta(1, 5)     b                             bot</span></span>
+<span><span class="co">#&gt;         beta(1, 5)     b Intercept                   bot</span></span>
+<span><span class="co">#&gt;   normal(1.3, 2.7)     b                             nec</span></span>
+<span><span class="co">#&gt;   normal(1.3, 2.7)     b Intercept                   nec</span></span>
+<span><span class="co">#&gt;         beta(5, 1)     b                             top</span></span>
+<span><span class="co">#&gt;         beta(5, 1)     b Intercept                   top</span></span>
+<span><span class="co">#&gt;  gamma(0.01, 0.01)   phi                                </span></span>
+<span><span class="co">#&gt;  lb ub       source</span></span>
+<span><span class="co">#&gt;                user</span></span>
+<span><span class="co">#&gt;        (vectorized)</span></span>
+<span><span class="co">#&gt;                user</span></span>
+<span><span class="co">#&gt;        (vectorized)</span></span>
+<span><span class="co">#&gt;                user</span></span>
+<span><span class="co">#&gt;        (vectorized)</span></span>
+<span><span class="co">#&gt;                user</span></span>
+<span><span class="co">#&gt;        (vectorized)</span></span>
+<span><span class="co">#&gt;   0         default</span></span></code></pre>
 <p>The user can also specify priors for one model only out of the entire set, <code>bayesnec</code> will return a message stating that it is searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>,
-                  nec4param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,
-                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(1, 5)"</span>, nlpar <span class="op">=</span> <span class="st">"bot"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
-
-<span class="va">exmp_d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,
-               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_priors</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,
-               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                  nec4param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,</span>
+<span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(1, 5)"</span>, nlpar <span class="op">=</span> <span class="st">"bot"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">exmp_d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
+<span>               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_priors</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><code>prior = my_priors[[1]]</code> would also have worked because the argument priors can either take a <code>brmsprior</code> object directly, or a named list containing model-specific <code>brmsprior</code> objects.</p>
 <p>Finally the user can also extend an existing <code>bayesmanecfit</code> object with the function <code>amend</code>, also by specifying custom-built <code>priors</code>.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">necsigm_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,
-                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(2, 6.5)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,
-                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,
-                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(0, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"d"</span><span class="op">)</span><span class="op">)</span>
-<span class="va">exmp_e</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/amend.html">amend</a></span><span class="op">(</span><span class="va">exmp_d</span>, add <span class="op">=</span> <span class="st">"necsigm"</span>, priors <span class="op">=</span> <span class="va">necsigm_priors</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">necsigm_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<span>                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(2, 6.5)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,</span>
+<span>                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
+<span>                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(0, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"d"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">exmp_e</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/amend.html">amend</a></span><span class="op">(</span><span class="va">exmp_d</span>, add <span class="op">=</span> <span class="st">"necsigm"</span>, priors <span class="op">=</span> <span class="va">necsigm_priors</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
   </div>
@@ -233,7 +296,7 @@
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer>

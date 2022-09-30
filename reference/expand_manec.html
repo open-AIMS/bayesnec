@@ -20,7 +20,7 @@ objects."><meta property="og:image" content="/logo.png"><!-- mathjax --><script 
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -80,14 +80,14 @@ objects.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">expand_manec</span><span class="op">(</span>
-  <span class="va">object</span>,
-  <span class="va">formula</span>,
-  x_range <span class="op">=</span> <span class="cn">NA</span>,
-  precision <span class="op">=</span> <span class="fl">1000</span>,
-  sig_val <span class="op">=</span> <span class="fl">0.01</span>,
-  <span class="va">loo_controls</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">expand_manec</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  <span class="va">formula</span>,</span>
+<span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  precision <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  sig_val <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>  <span class="va">loo_controls</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -95,28 +95,38 @@ objects.</p>
     <dl><dt>object</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of objects of class
 <code><a href="prebayesnecfit-class.html">prebayesnecfit</a></code>.</p></dd>
+
+
 <dt>formula</dt>
 <dd><p>Either a <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> string defining an
 R formula or an actual <code><a href="https://rdrr.io/r/stats/formula.html" class="external-link">formula</a></code> object. See
 <code><a href="bayesnecformula.html">bayesnecformula</a></code> and <code><a href="check_formula.html">check_formula</a></code>. It could also
 be a <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of formulas if multiple objects are passed to
 <code>object</code>.</p></dd>
+
+
 <dt>x_range</dt>
 <dd><p>A range of predictor values over which to consider extracting
 ECx.</p></dd>
+
+
 <dt>precision</dt>
 <dd><p>The length of the predictor vector used for posterior
 predictions, and over which to extract ECx values. Large values will be
 slower but more precise.</p></dd>
+
+
 <dt>sig_val</dt>
 <dd><p>Probability value to use as the lower quantile to test
 significance of the predicted posterior values against the lowest observed
 concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.</p></dd>
+
+
 <dt>loo_controls</dt>
 <dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of two elements
 ("fitting" and/or "weights"), each being a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>
-containing the desired arguments to be passed on to <code><a href="https://rdrr.io/pkg/brms/man/loo.brmsfit.html" class="external-link">loo</a></code>
+containing the desired arguments to be passed on to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code>
 (via "fitting") or to <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> (via "weights").
 If "fitting" is provided with argument <code>pointwise = TRUE</code>
 (due to memory issues) and <code>family = "beta_binomial2"</code>, the
@@ -124,10 +134,13 @@ If "fitting" is provided with argument <code>pointwise = TRUE</code>
 not provided by the user, <code><a href="bnec.html">bnec</a></code> will set the default
 <code>method</code> argument in <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
 "pseudobma". See ?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of model statistical output derived from
+    
+
+<p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of model statistical output derived from
 the input model list.</p>
     </div>
 
@@ -143,7 +156,7 @@ the input model list.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

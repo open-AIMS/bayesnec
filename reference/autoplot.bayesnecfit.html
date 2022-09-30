@@ -18,7 +18,7 @@ plotting method."><meta property="og:image" content="/logo.png"><!-- mathjax -->
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -77,8 +77,8 @@ plotting method.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for bayesnecfit</span>
-<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, nec <span class="op">=</span> <span class="cn">TRUE</span>, ecx <span class="op">=</span> <span class="cn">FALSE</span>, force_x <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for bayesnecfit</span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, nec <span class="op">=</span> <span class="cn">TRUE</span>, ecx <span class="op">=</span> <span class="cn">FALSE</span>, force_x <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -86,24 +86,37 @@ plotting method.</p>
     <dl><dt>object</dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> as returned by
 function <code><a href="bnec.html">bnec</a></code>.</p></dd>
+
+
 <dt>...</dt>
 <dd><p>Additional arguments to be passed to <code><a href="ggbnec_data.html">ggbnec_data</a></code>.</p></dd>
+
+
 <dt>nec</dt>
 <dd><p>Should NEC values be added to the plot? Defaults to TRUE.</p></dd>
+
+
 <dt>ecx</dt>
 <dd><p>Should ECx values be added to the plot? Defaults to FALSE.</p></dd>
+
+
 <dt>force_x</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> value indicating if the argument
 <code>xform</code> should be forced on the predictor values. This is useful when
 the user transforms the predictor beforehand
 (e.g. when using a non-standard base function).</p></dd>
+
+
 <dt>xform</dt>
 <dd><p>A function to apply to the returned estimated concentration
 values.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></code> object.</p>
+    
+
+<p>A <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></code> object.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
@@ -113,18 +126,20 @@ values.</p></dd>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co"># \donttest{</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="va">necs</span> <span class="op">&lt;-</span> <span class="fu"><a href="bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
-<span class="r-in">             iter <span class="op">=</span> <span class="fl">2e2</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>mc.cores <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">necs</span> <span class="op">&lt;-</span> <span class="fu"><a href="bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span></span>
+<span class="r-in"><span>             iter <span class="op">=</span> <span class="fl">2e2</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Finding initial values which allow the response to be fitted using a nec3param model and a beta distribution.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Argument 'inits' is deprecated. Please use argument 'init' instead.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Compiling Stan program...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Start sampling</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>The largest R-hat is 1.07, indicating chains have not mixed.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> Running the chains for more iterations may help. See</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> https://mc-stan.org/misc/warnings.html#r-hat</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Running the chains for more iterations may help. See</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> https://mc-stan.org/misc/warnings.html#bulk-ess</span>
@@ -133,9 +148,11 @@ values.</p></dd>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> https://mc-stan.org/misc/warnings.html#tail-ess</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Response variable modelled as a nec3param model using a beta distribution.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a beta distribution.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Argument 'inits' is deprecated. Please use argument 'init' instead.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Compiling Stan program...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Start sampling</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>The largest R-hat is 1.09, indicating chains have not mixed.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> Running the chains for more iterations may help. See</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> https://mc-stan.org/misc/warnings.html#r-hat</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Running the chains for more iterations may help. See</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> https://mc-stan.org/misc/warnings.html#bulk-ess</span>
@@ -146,30 +163,30 @@ values.</p></dd>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Fitted models are: nec3param nec4param</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec3param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> 1 (1.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class="r-in"><span class="va">nec3param</span> <span class="op">&lt;-</span> <span class="fu"><a href="pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">necs</span>, <span class="st">"nec3param"</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="va">nec3param</span> <span class="op">&lt;-</span> <span class="fu"><a href="pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">necs</span>, <span class="st">"nec3param"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Pulling out model(s): nec3param</span>
-<span class="r-in"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">nec3param</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">nec3param</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="autoplot.bayesnecfit-1.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">nec3param</span>, nec <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">nec3param</span>, nec <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="autoplot.bayesnecfit-2.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">nec3param</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">nec3param</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="autoplot.bayesnecfit-3.png" alt="" width="700" height="433"></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="co"># plot model averaged predictions</span></span>
-<span class="r-in"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">necs</span><span class="op">)</span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># plot model averaged predictions</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">necs</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="autoplot.bayesnecfit-4.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span class="co"># plot all panels together</span></span>
-<span class="r-in"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">necs</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="co"># plot all panels together</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">necs</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="autoplot.bayesnecfit-5.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span class="co"># plots multiple models, one at a time, with interactive prompt</span></span>
-<span class="r-in"><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">necs</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span class="r-in">         multi_facet <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="co"># plots multiple models, one at a time, with interactive prompt</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">necs</span>, ecx <span class="op">=</span> <span class="cn">TRUE</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span>         multi_facet <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="autoplot.bayesnecfit-6.png" alt="" width="700" height="433"></span>
 <span class="r-plt img"><img src="autoplot.bayesnecfit-7.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span class="co"># }</span></span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -184,7 +201,7 @@ values.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

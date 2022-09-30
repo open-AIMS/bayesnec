@@ -20,7 +20,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -80,7 +80,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">nec</span><span class="op">(</span><span class="va">object</span>, posterior <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="cn">NA</span>, prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nec</span><span class="op">(</span><span class="va">object</span>, posterior <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="cn">NA</span>, prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -88,21 +88,30 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
     <dl><dt>object</dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by <code><a href="bnec.html">bnec</a></code>.</p></dd>
+
+
 <dt>posterior</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> value indicating if the full
 posterior sample of calculated NEC values should be returned instead of
 just the median and 95% credible intervals.</p></dd>
+
+
 <dt>xform</dt>
 <dd><p>A function to apply to the returned estimated concentration
 values.</p></dd>
+
+
 <dt>prob_vals</dt>
 <dd><p>A vector indicating the probability values over which to
 return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A vector containing the estimated NEC value, including upper and
+    
+
+<p>A vector containing the estimated NEC value, including upper and
 lower 95% credible interval bounds
 (or other interval as specified by prob_vals).</p>
     </div>
@@ -113,13 +122,13 @@ lower 95% credible interval bounds
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">nec</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nec</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> bayesmanecfit contains ecx model types and therefore nec estimate includes nsec values.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       50%      2.5%     97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1.4410929 0.7789674 1.5219369 </span>
-<span class="r-in"></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.4478059 0.5081005 1.5070988 </span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -134,7 +143,7 @@ lower 95% credible interval bounds
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

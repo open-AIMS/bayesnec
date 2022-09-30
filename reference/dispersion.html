@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -75,7 +75,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">dispersion</span><span class="op">(</span><span class="va">model</span>, summary <span class="op">=</span> <span class="cn">FALSE</span>, seed <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">dispersion</span><span class="op">(</span><span class="va">model</span>, summary <span class="op">=</span> <span class="cn">FALSE</span>, seed <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -84,15 +84,22 @@
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> whose distribution
 family is either <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></code> or
 <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></code>.</p></dd>
+
+
 <dt>summary</dt>
 <dd><p>Logical. Should summary stats be returned instead of full
 vector? Defaults to FALSE.</p></dd>
+
+
 <dt>seed</dt>
 <dd><p>Change seed for reproducible purposes.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector. If <code>summary</code> is FALSE, an
+    
+
+<p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector. If <code>summary</code> is FALSE, an
 n-long vector containing the dispersion metric, where n is the number of post
 warm-up posterior draws from the <code><a href="https://rdrr.io/pkg/brms/man/brmsfit-class.html" class="external-link">brmsfit</a></code> object. If
 TRUE, then a <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> containing the summary stats
@@ -113,23 +120,22 @@ Highland Statistics Limited.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co"># \donttest{</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">nec_data</span><span class="op">$</span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">$</span><span class="va">y</span> <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">nec_data</span><span class="op">$</span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">$</span><span class="va">y</span> <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a poisson distribution.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Argument 'inits' is deprecated. Please use argument 'init' instead.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Compiling Stan program...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Start sampling</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Response variable modelled as a nec4param model using a poisson distribution.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Found 2 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> 1 (1.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class="r-in"><span class="fu">dispersion</span><span class="op">(</span><span class="va">nec4param</span>, summary <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    Estimate        Q2.5       Q97.5 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   4.8810947   0.8337835 164.6630900 </span>
-<span class="r-in"><span class="co"># }</span></span>
+<span class="r-in"><span><span class="fu">dispersion</span><span class="op">(</span><span class="va">nec4param</span>, summary <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Estimate       Q2.5      Q97.5 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   5.037871   0.778324 134.025009 </span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -144,7 +150,7 @@ Highland Statistics Limited.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

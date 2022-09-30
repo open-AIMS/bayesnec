@@ -20,7 +20,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -80,16 +80,16 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">nsec</span><span class="op">(</span>
-  <span class="va">object</span>,
-  sig_val <span class="op">=</span> <span class="fl">0.01</span>,
-  precision <span class="op">=</span> <span class="fl">1000</span>,
-  posterior <span class="op">=</span> <span class="cn">FALSE</span>,
-  x_range <span class="op">=</span> <span class="cn">NA</span>,
-  hormesis_def <span class="op">=</span> <span class="st">"control"</span>,
-  xform <span class="op">=</span> <span class="cn">NA</span>,
-  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nsec</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  sig_val <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>  precision <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  posterior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  hormesis_def <span class="op">=</span> <span class="st">"control"</span>,</span>
+<span>  xform <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -97,34 +97,51 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
     <dl><dt>object</dt>
 <dd><p>An object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> returned by <code><a href="bnec.html">bnec</a></code>.</p></dd>
+
+
 <dt>sig_val</dt>
 <dd><p>Probability value to use as the lower quantile to test
 significance of the predicted posterior values.
 against the lowest observed concentration (assumed to be the control), to
 estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></dd>
+
+
 <dt>precision</dt>
 <dd><p>The number of unique x values over which to find NSEC -
 large values will make the NSEC estimate more precise.</p></dd>
+
+
 <dt>posterior</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> value indicating if the full
 posterior sample of calculated NSEC values should be returned instead of
 just the median and 95 credible intervals.</p></dd>
+
+
 <dt>x_range</dt>
 <dd><p>A range of x values over which to consider extracting NSEC.</p></dd>
+
+
 <dt>hormesis_def</dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector, taking values
 of "max" or "control". See Details.</p></dd>
+
+
 <dt>xform</dt>
 <dd><p>A function to apply to the returned estimated concentration
 values.</p></dd>
+
+
 <dt>prob_vals</dt>
 <dd><p>A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A vector containing the estimated NSEC value, including upper and
+    
+
+<p>A vector containing the estimated NSEC value, including upper and
 lower 95% credible interval bounds.</p>
     </div>
     <div id="details">
@@ -141,19 +158,19 @@ is assumed to be the lowest observed concentration.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co"># \donttest{</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">nsec</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nsec</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    ec_0.01 ec_0.01_lw ec_0.01_up </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   1.463674   0.327948   1.549921 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4684614  0.3822012  1.5292568 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"precision")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"sig_val")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.01</span>
-<span class="r-in"><span class="co"># }</span></span>
-<span class="r-in"></span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -168,7 +185,7 @@ is assumed to be the lowest observed concentration.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

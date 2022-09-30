@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -75,7 +75,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">sample_priors</span><span class="op">(</span><span class="va">priors</span>, n_samples <span class="op">=</span> <span class="fl">10000</span>, plot <span class="op">=</span> <span class="st">"ggplot"</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">sample_priors</span><span class="op">(</span><span class="va">priors</span>, n_samples <span class="op">=</span> <span class="fl">10000</span>, plot <span class="op">=</span> <span class="st">"ggplot"</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -83,16 +83,23 @@
     <dl><dt>priors</dt>
 <dd><p>An object of class <code><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">brmsprior</a></code> from package
 <span class="pkg">brms</span>.</p></dd>
+
+
 <dt>n_samples</dt>
 <dd><p>The number of prior samples to return.</p></dd>
+
+
 <dt>plot</dt>
 <dd><p>NA returns a <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of numeric vectors of
 sampled priors, "ggplot" (default) returns a <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></code>
 and "base" returns a histogram in base R.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing the initialisation values.</p>
+    
+
+<p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing the initialisation values.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
@@ -111,7 +118,7 @@ and "base" returns a histogram in base R.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
       </span>
     </div>
 
@@ -75,7 +75,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">show_params</span><span class="op">(</span>model <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">show_params</span><span class="op">(</span>model <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -84,17 +84,20 @@
 <dd><p>Removed in version 2.0. Use formula instead. Used to be a
 <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector indicating the model(s)
 to fit. See Details for more information.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of <code><a href="https://rdrr.io/pkg/brms/man/brmsformula.html" class="external-link">brmsformula</a></code>.</p>
+    
+
+<p>An <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of <code><a href="https://rdrr.io/pkg/brms/man/brmsformula.html" class="external-link">brmsformula</a></code>.</p>
     </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
-<span class="r-in"><span class="co"># default to all models (i.e. model = "all")</span></span>
-<span class="r-in"><span class="fu">show_params</span><span class="op">(</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># default to all models (i.e. model = "all")</span></span></span>
+<span class="r-in"><span><span class="fu">show_params</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $nec3param</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> top ~ 1</span>
@@ -250,16 +253,16 @@ to fit. See Details for more information.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ec50 ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> slope ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="co"># single model</span></span>
-<span class="r-in"><span class="fu">show_params</span><span class="op">(</span>model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="co"># single model</span></span></span>
+<span class="r-in"><span><span class="fu">show_params</span><span class="op">(</span>model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> top ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> beta ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> nec ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="co"># group of models</span></span>
-<span class="r-in"><span class="fu">show_params</span><span class="op">(</span>model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"ecx"</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="co"># group of models</span></span></span>
+<span class="r-in"><span><span class="fu">show_params</span><span class="op">(</span>model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"ecx"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $nec3param</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> top ~ 1</span>
@@ -351,7 +354,7 @@ to fit. See Details for more information.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ec50 ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> slope ~ 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -366,7 +369,7 @@ to fit. See Details for more information.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>
