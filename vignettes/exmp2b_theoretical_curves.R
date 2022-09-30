@@ -1,4 +1,4 @@
-library(tidyverse)
+library(dplyr)
 rm(list = ls())
 source("R/pred_equations.R")
 
@@ -43,7 +43,7 @@ ecx_data <- purrr::map_dfr(
   dplyr::mutate(fct = gsub("pred_", "", fct, fixed = TRUE))
 
 ecx_plots <- ggplot(data = ecx_data, mapping = aes(x, y)) +
-  geom_line(colour = "black", linetype = 3) +
+  geom_line(colour = "darkgrey", linetype = 1) +
   facet_wrap(~fct, ncol = 4, scales = "free") +
   labs(x = "Concentration (predictor)", y = "Response",
        title = substitute(italic("EC"["x"]) * " models")) +
@@ -60,7 +60,7 @@ nec_data <- purrr::map_dfr(
   dplyr::mutate(fct = gsub("pred_", "", fct, fixed = TRUE))
 
 nec_plots <- ggplot(data = nec_data, mapping = aes(x, y)) +
-  geom_line(colour = "black", linetype = 3) +
+  geom_line(colour = "darkgrey", linetype = 1) +
   facet_wrap(~fct, ncol = 4, scales = "free") +
   labs(x = "Concentration (predictor)", y = "Response",
        title = substitute(italic("NEC") * " models")) +
