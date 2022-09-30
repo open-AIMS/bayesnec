@@ -146,11 +146,16 @@ summary(exp_1)
 #>          total post-warmup draws = 8000
 #> 
 #> Population-Level Effects: 
-#>                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot_Intercept      0.04      0.02     0.01     0.08 1.00     1958     1598
-#> top_Intercept      0.83      0.01     0.82     0.84 1.00     4301     4099
-#> beta_Intercept     0.75      0.15     0.49     1.04 1.00     1833     1944
-#> nec_Intercept      4.42      0.03     4.34     4.47 1.00     2118     2854
+#>                Estimate Est.Error l-95% CI u-95% CI Rhat
+#> bot_Intercept      0.05      0.02     0.02     0.08 1.00
+#> top_Intercept      0.83      0.01     0.81     0.84 1.00
+#> beta_Intercept     0.80      0.13     0.56     1.07 1.00
+#> nec_Intercept      4.42      0.03     4.36     4.47 1.00
+#>                Bulk_ESS Tail_ESS
+#> bot_Intercept      3038     2860
+#> top_Intercept      4443     4471
+#> beta_Intercept     2841     3261
+#> nec_Intercept      3394     4022
 #> 
 #> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -171,7 +176,7 @@ The functions `plot` (extending `base` plot method) and `autoplot` (extending `g
 autoplot(exp_1, xform = exp)
 ```
 
-<img src="vignette-fig-exmp1-binom-1.png" title="plot of chunk exmp1-binom" alt="plot of chunk exmp1-binom" width="60%" style="display: block; margin: auto;" />
+<img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%" style="display: block; margin: auto;" />
 
 There are many built in methods available for `brmsfit` objects and we encourage you to make use of these in full.
 
@@ -181,7 +186,7 @@ This model fit does not look great. You can see that the error bounds around the
 ```r
 exp_1$dispersion
 #> Estimate     Q2.5    Q97.5 
-#> 19.67592 13.23461 30.40135
+#> 19.62317 13.17768 30.63329
 ```
 
 ### Beta-Binomial
@@ -209,7 +214,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 ```r
 summary(exp(exp_1b$nec_posterior))
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   20.56   55.03   70.62   68.05   81.16  192.06
+#>   11.18   65.88   78.42   75.55   87.42  192.18
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
@@ -218,7 +223,7 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 ```r
 ecx(exp_1b, xform = exp)
 #>   ec_10_Q50  ec_10_Q2.5 ec_10_Q97.5 
-#>    76.15706    41.73123    96.57237 
+#>    82.96216    43.33243    98.57387 
 #> attr(,"precision")
 #> [1] 1000
 ```
@@ -242,15 +247,22 @@ summary(exp_1b)
 #>          total post-warmup draws = 8000
 #> 
 #> Population-Level Effects: 
-#>                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot_Intercept      0.08      0.06     0.00     0.20 1.00     2327     2465
-#> top_Intercept      0.84      0.03     0.79     0.89 1.00     3400     3631
-#> beta_Intercept     0.44      0.53    -0.35     1.92 1.00     1354     1194
-#> nec_Intercept      4.26      0.25     3.58     4.54 1.01     1346     1512
+#>                Estimate Est.Error l-95% CI u-95% CI Rhat
+#> bot_Intercept      0.13      0.05     0.03     0.23 1.00
+#> top_Intercept      0.84      0.03     0.77     0.88 1.00
+#> beta_Intercept     0.82      0.65    -0.19     2.75 1.00
+#> nec_Intercept      4.36      0.19     3.65     4.58 1.00
+#>                Bulk_ESS Tail_ESS
+#> bot_Intercept      2591     2775
+#> top_Intercept      2476     3116
+#> beta_Intercept     1187     1040
+#> nec_Intercept      1139      982
 #> 
 #> Family Specific Parameters: 
-#>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.51      1.28     3.43     8.45 1.00     3182     3849
+#>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS
+#> phi     5.31      1.24     3.22     8.16 1.00     2175
+#>     Tail_ESS
+#> phi     3565
 #> 
 #> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -259,7 +271,7 @@ summary(exp_1b)
 #> 
 #> Bayesian R2 estimates:
 #>    Estimate Est.Error Q2.5 Q97.5
-#> R2     0.77      0.03 0.69  0.82
+#> R2     0.76      0.04 0.67  0.81
 ```
 
 ### Beta data
@@ -283,7 +295,7 @@ exp_2 <- bnec(resp ~ crf(log(raw_x + 1), model = "nec4param"),
 autoplot(exp_2, xform = function(x)exp(x) - 1)
 ```
 
-<img src="vignette-fig-exmp1-beta-1.png" title="plot of chunk exmp1-beta" alt="plot of chunk exmp1-beta" width="60%" style="display: block; margin: auto;" />
+<img src="vignette-fig-exmp1-beta-1.png" alt="plot of chunk exmp1-beta" width="60%" style="display: block; margin: auto;" />
 
 ### Poisson data
 
@@ -326,12 +338,12 @@ exp_3 <- bnec(y ~ crf(x, model = "nec4param"), data = count_data)
 autoplot(exp_3)
 ```
 
-<img src="vignette-fig-exmp1-poisson-1.png" title="plot of chunk exmp1-poisson" alt="plot of chunk exmp1-poisson" width="60%" style="display: block; margin: auto;" />
+<img src="vignette-fig-exmp1-poisson-1.png" alt="plot of chunk exmp1-poisson" width="60%" style="display: block; margin: auto;" />
 
 ```r
 exp_3$dispersion
 #>   Estimate       Q2.5      Q97.5 
-#>  2.1349239  0.1836499 74.0848915
+#>  2.1059688  0.1887641 64.4594877
 ```
 
 We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the `family` argument.
@@ -353,7 +365,7 @@ The resultant plot seems to indicate the Negative Binomial distribution works be
 autoplot(exp_3b)
 ```
 
-<img src="vignette-fig-exmp1-negbinbase-1.png" title="plot of chunk exmp1-negbinbase" alt="plot of chunk exmp1-negbinbase" width="60%" style="display: block; margin: auto;" />
+<img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%" style="display: block; margin: auto;" />
 
 ### Measure data
 
@@ -376,7 +388,7 @@ exp_4 <- bnec(measure ~ crf(x, model = "nec4param"), data = measure_data)
 autoplot(exp_4)
 ```
 
-<img src="vignette-fig-exmp1-gammabase-1.png" title="plot of chunk exmp1-gammabase" alt="plot of chunk exmp1-gammabase" width="60%" style="display: block; margin: auto;" />
+<img src="vignette-fig-exmp1-gammabase-1.png" alt="plot of chunk exmp1-gammabase" width="60%" style="display: block; margin: auto;" />
 
 ```r
 summary(exp_4)
@@ -394,15 +406,22 @@ summary(exp_4)
 #>          total post-warmup draws = 8000
 #> 
 #> Population-Level Effects: 
-#>                Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot_Intercept      0.98      0.05     0.88     1.07 1.00     3508     3507
-#> top_Intercept      2.44      0.01     2.41     2.46 1.00     5914     4942
-#> beta_Intercept     0.65      0.09     0.46     0.84 1.00     3000     3559
-#> nec_Intercept      1.50      0.02     1.46     1.54 1.00     3651     4294
+#>                Estimate Est.Error l-95% CI u-95% CI Rhat
+#> bot_Intercept      0.98      0.05     0.88     1.07 1.00
+#> top_Intercept      2.44      0.01     2.41     2.46 1.00
+#> beta_Intercept     0.65      0.10     0.46     0.84 1.00
+#> nec_Intercept      1.50      0.02     1.46     1.54 1.00
+#>                Bulk_ESS Tail_ESS
+#> bot_Intercept      3199     4023
+#> top_Intercept      5893     5156
+#> beta_Intercept     2739     3589
+#> nec_Intercept      3561     4345
 #> 
 #> Family Specific Parameters: 
-#>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   517.12     74.89   381.75   677.29 1.00     6018     4652
+#>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS
+#> shape   516.25     73.26   383.20   675.06 1.00     5829
+#>       Tail_ESS
+#> shape     5073
 #> 
 #> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential

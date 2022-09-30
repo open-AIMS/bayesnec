@@ -31,6 +31,47 @@ The `model` may also be one of `"all"`, meaning all of the available models will
 ```r
 library(bayesnec)
 models()
+#> $nec
+#>  [1] "nec3param"     "nec4param"     "nechorme"     
+#>  [4] "nechorme4"     "necsigm"       "neclin"       
+#>  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr" 
+#> [10] "nechormepwr01"
+#> 
+#> $ecx
+#>  [1] "ecx4param"   "ecxlin"      "ecxexp"     
+#>  [4] "ecxsigm"     "ecxwb1"      "ecxwb2"     
+#>  [7] "ecxwb1p3"    "ecxwb2p3"    "ecxll5"     
+#> [10] "ecxll4"      "ecxll3"      "ecxhormebc4"
+#> [13] "ecxhormebc5"
+#> 
+#> $all
+#>  [1] "nec3param"     "nec4param"     "nechorme"     
+#>  [4] "nechorme4"     "necsigm"       "neclin"       
+#>  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr" 
+#> [10] "nechormepwr01" "ecxlin"        "ecxexp"       
+#> [13] "ecxsigm"       "ecx4param"     "ecxwb1"       
+#> [16] "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"     
+#> [19] "ecxll5"        "ecxll4"        "ecxll3"       
+#> [22] "ecxhormebc4"   "ecxhormebc5"  
+#> 
+#> $bot_free
+#>  [1] "nec3param"     "nechorme"      "necsigm"      
+#>  [4] "neclin"        "neclinhorme"   "nechormepwr"  
+#>  [7] "ecxlin"        "ecxexp"        "ecxsigm"      
+#> [10] "ecxwb1p3"      "ecxwb2p3"      "ecxll3"       
+#> [13] "ecxhormebc4"   "nechormepwr01"
+#> 
+#> $zero_bounded
+#>  [1] "nec3param"     "nechorme"      "necsigm"      
+#>  [4] "nechormepwr"   "nechormepwr01" "ecxexp"       
+#>  [7] "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"     
+#> [10] "ecxll3"        "ecxhormebc4"  
+#> 
+#> $decline
+#>  [1] "nec3param" "nec4param" "necsigm"   "neclin"   
+#>  [5] "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param"
+#>  [9] "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3" 
+#> [13] "ecxll5"    "ecxll4"    "ecxll3"
 ```
 
 # Parameter definitions
@@ -89,6 +130,11 @@ $$y_i = \tau - e^{\alpha} x_i$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ top - exp(slope) * x 
+#> top ~ 1
+#> slope ~ 1
+```
 
 Because the model contains linear predictors it is not suitable for 0, 1-bounded data (i.e. Binomial and Beta families with an `"identity"` link function). As the model includes a linear decline with concentration, it is also not suitable for 0, `Inf` bounded data (Gamma, Poisson, Negative Binomial with an `"identity"` link).
 
@@ -99,6 +145,11 @@ $$y_i = \tau e^{-e^{\beta} x_i}$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ top * exp(-exp(beta) * x) 
+#> top ~ 1
+#> beta ~ 1
+```
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
 
@@ -109,6 +160,12 @@ $$y_i = \tau e^{-e^{\beta} x_i^{e^\epsilon}}$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ top * exp(-exp(beta) * x^exp(d)) 
+#> d ~ 1
+#> top ~ 1
+#> beta ~ 1
+```
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
 
@@ -119,6 +176,13 @@ $$y_i = \tau + (\delta - \tau)/(1 + e^{e^{\beta} (\omega - x_i)})$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) 
+#> bot ~ 1
+#> ec50 ~ 1
+#> top ~ 1
+#> beta ~ 1
+```
 
 #### ecxwb1
 
@@ -127,6 +191,13 @@ $$y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \omega)}}$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) 
+#> bot ~ 1
+#> ec50 ~ 1
+#> top ~ 1
+#> beta ~ 1
+```
 
 #### ecxwb1p3
 
@@ -135,6 +206,12 @@ $$y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \omega)}}$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) 
+#> ec50 ~ 1
+#> top ~ 1
+#> beta ~ 1
+```
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
 
@@ -145,6 +222,13 @@ $$y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
+#> bot ~ 1
+#> ec50 ~ 1
+#> top ~ 1
+#> beta ~ 1
+```
 
 While very similar to the **ecxwb1** [according to @Ritz2016], fitted **ecxwb1** and **ecxwb2** models can differ slightly.
 
@@ -155,6 +239,12 @@ $$y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) 
+#> ec50 ~ 1
+#> top ~ 1
+#> beta ~ 1
+```
 
 While very similar to the **ecxwb1p3** [according to @Ritz2016], fitted **ecxwb1p3** and **ecxwb2p3** models can differ slightly. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
 
@@ -165,6 +255,14 @@ $$y_i = \delta + (\tau - \delta) / (1 + e^{-e^{\beta} (x_i - \omega)})^{e^\zeta}
 with the respective `brmsformula` being
 
 
+```
+#> y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^exp(f) 
+#> bot ~ 1
+#> top ~ 1
+#> beta ~ 1
+#> ec50 ~ 1
+#> f ~ 1
+```
 
 #### ecxll4
 
@@ -173,6 +271,13 @@ $$y_i = \delta + (\tau - \delta)/ (1 + e^{e^{\beta} (x_i - \omega)})$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) 
+#> bot ~ 1
+#> top ~ 1
+#> beta ~ 1
+#> ec50 ~ 1
+```
 
 #### ecxll3
 
@@ -181,6 +286,12 @@ $$y_i = 0 + (\tau - 0)/ (1 + e^{e^{\beta} (x_i - \omega)})$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) 
+#> top ~ 1
+#> beta ~ 1
+#> ec50 ~ 1
+```
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
 
@@ -191,6 +302,14 @@ $$y_i = \delta + (\tau - \delta + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega
 with the respective `brmsformula` being
 
 
+```
+#> y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
+#> bot ~ 1
+#> top ~ 1
+#> beta ~ 1
+#> ec50 ~ 1
+#> slope ~ 1
+```
 
 #### ecxhormebc4
 
@@ -199,6 +318,13 @@ $$y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) 
+#> top ~ 1
+#> beta ~ 1
+#> ec50 ~ 1
+#> slope ~ 1
+```
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
 
@@ -213,6 +339,12 @@ $$y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ top - exp(slope) * (x - nec) * step(x - nec) 
+#> top ~ 1
+#> slope ~ 1
+#> nec ~ 1
+```
 
 Because the model contains linear predictors it is not suitable for 0, 1-bounded data (Binomial and Beta distributions with `"identity"` link). As the model includes a linear decline with concentration, it is also not suitable for 0, `Inf` bounded data (Gamma, Poisson, Negative Binomial with `"identity"` link).
 
@@ -223,6 +355,12 @@ $$y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}$$
 with the respective `brmsformula` being
 
 
+```
+#> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+```
 
 For Binomial-distributed response data in the case of `"identity"` link this model is equivalent to that in @Fox2010. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function.
 
@@ -233,6 +371,13 @@ $$y_i = \delta + (\tau - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \
 with the respective `brmsformula` being
 
 
+```
+#> y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#> bot ~ 1
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+```
 
 #### nechorme
 
@@ -241,6 +386,13 @@ $$y_i = (\tau + e^{\alpha} x_i) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \e
 with the respective `brmsformula` being
 
 
+```
+#> y ~ (top + exp(slope) * x) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> slope ~ 1
+```
 
 The **nechorme** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used.
 
@@ -250,6 +402,13 @@ $$y_i = (\tau + x_i^{1/(1+e^{\alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f
 with the respective `brmsformula` being
 
 
+```
+#> y ~ (top + x^(1/(1 + exp(slope)))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> slope ~ 1
+```
 
 The **nechormepwr** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. Because the model can generate predictions > 1 it should not be used for Binomial and Beta distributions with `"identity"` link. In this case the **nechromepwr01** model should be used.
 
@@ -260,6 +419,13 @@ $$y_i = (\tau + e^{\alpha} x_i) - e^{\beta} \left(x_i - \eta \right) f(x_i, \eta
 with the respective `brmsformula` being. 
 
 
+```
+#> y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) 
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> slope ~ 1
+```
 
 The **neclinhorme** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. This model contains linear predictors and is not suitable for 0, 1-bounded data (Binomial and Beta distributions with `"identity"` link). As the model includes a linear decline with concentration, it is also not suitable for 0, `Inf` bounded data (Gamma, Poisson, Negative Binomial with `"identity"` link).
 
@@ -270,6 +436,14 @@ $$y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta ) e^{-e^{\beta} \left(x_i - \
 with the respective `brmsformula` being
 
 
+```
+#> y ~ bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#> bot ~ 1
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> slope ~ 1
+```
 
 The **nechorme4** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$.
 
@@ -280,6 +454,14 @@ $$y_i = \delta + ((\tau + x_i^{1/(1+e^{\alpha})}) - \delta) e^{-e^{\beta} \left(
 with the respective `brmsformula` being
 
 
+```
+#> y ~ bot + ((top + x^(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#> bot ~ 1
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> slope ~ 1
+```
 
 The **nechorme4pwr** model is a *hormesis* model [@Mattson2008], allowing an initial power increase in the response variable at concentrations below $\eta$. Because the model can generate predictions > 1 it should not be used for Binomial and Beta distributions with `"identity"` link. In this case the **nechromepwr01** model should be used.
 
@@ -290,6 +472,13 @@ $$y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\bet
 with the respective `brmsformula` being
 
 
+```
+#> y ~ (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> slope ~ 1
+```
 
 The **nechormepwr01** model is a *hormesis* model [@Mattson2008], allowing an initial increase in the response variable at concentrations below $\eta$. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In this case the linear version (**neclinhorme**) should be used.
 
@@ -300,6 +489,13 @@ $$y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon}f(x_i, \eta)}
 with the respective `brmsformula` being
 
 
+```
+#> y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) 
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
+#> d ~ 1
+```
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an *NEC* step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.
 
