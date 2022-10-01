@@ -25,8 +25,8 @@ Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)
 Overview
 --------
 
-`bayesnec` is a No-Effect-Concentration estimation package that uses
-[`brms`](https://github.com/paul-buerkner/brms) to fit
+`bayesnec` is a toxicity estimate and No-Effect-Concentration estimation
+package that uses [`brms`](https://github.com/paul-buerkner/brms) to fit
 concentration(dose)-response data using Bayesian methods for the purpose
 of estimating both ECX values, but more particularly NEC. Please see
 `?bnec` for a more detailed help file.
