@@ -24,9 +24,9 @@ bayesnec*tar.gz
 .Rproj.user
 /Meta/
 paper/
-article/*
-!article/RJournal.sty
-!article/article.Rmd
-!article/article.bib
+article/*.pdf
+article/*log
+article/article_cache/
+article/article_files/
 Check_priors_plots.pdf
 doc/
