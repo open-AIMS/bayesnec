@@ -621,33 +621,8 @@ ggdrc_data <- function(x) {
   rbind(e_df, r_df, n_df)
 }
 
-df_list <- herbicide %>%
-  dplyr::filter(herbicide %in% c("hexazinone", "tebuthiuron")) %>%
-  dplyr::mutate(log_x = log(concentration)) %>%
-  dplyr::arrange(herbicide, concentration) %>%
-  split(f = ~ herbicide)
-
-bnec_list <- purrr::map(
-  df_list, ~bnec(formula = fvfm ~ crf(log_x, model = "nec3param"), data = .x)
-)
-drc_list <- purrr::map(
-  df_list, ~drm(formula = fvfm ~ log_x, fct = NEC.3(),
-                data = .x)
-)
-
-if (!all(names(bnec_list) == names(drc_list))) {
-  stop("Incompatible name order.")
-}
-
-bnec_plot_data <- purrr::map_dfr(bnec_list, ggbnec_data, .id = "model") %>%
-  dplyr::mutate(source = "bayesnec")
-drc_plot_data <- purrr::map_dfr(drc_list, ggdrc_data, .id = "model") %>%
-  dplyr::mutate(source = "drc")
-plot_data <- rbind(bnec_plot_data, drc_plot_data)
-```
-
-```{r drccomparisonplot, echo = FALSE, fig.width = 8, fig.height = 3.5, fig.cap = "TBW."}
 combine_fits <- function(x) {
+  # irgarol doesnt fit well in drc, conf int unreliable
   ltys <- rep(rep(c(1, 2, 2), length(unique(x$model))), 2)[-c(36:35)]
   lwds <- rep(rep(c(0.5, 0.2, 0.2), length(unique(x$model))), 2)[-c(36:35)]
   ggplot() +
@@ -688,6 +663,32 @@ combine_fits <- function(x) {
     labs(x = "Concentration (natural log)",
          y = "PAM")
 }
+
+df_list <- herbicide %>%
+  dplyr::mutate(log_x = log(concentration)) %>%
+  dplyr::arrange(herbicide, concentration) %>%
+  split(f = ~ herbicide)
+
+bnec_list <- purrr::map(
+  df_list, ~bnec(formula = fvfm ~ crf(log_x, model = "nec3param"), data = .x)
+)
+drc_list <- purrr::map(
+  df_list, ~drm(formula = fvfm ~ log_x, fct = NEC.3(),
+                data = .x)
+)
+
+if (!all(names(bnec_list) == names(drc_list))) {
+  stop("Incompatible name order.")
+}
+
+bnec_plot_data <- purrr::map_dfr(bnec_list, ggbnec_data, .id = "model") %>%
+  dplyr::mutate(source = "bayesnec")
+drc_plot_data <- purrr::map_dfr(drc_list, ggdrc_data, .id = "model") %>%
+  dplyr::mutate(source = "drc")
+plot_data <- rbind(bnec_plot_data, drc_plot_data)
+```
+
+```{r drccomparisonplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "TBW."}
 combine_fits(plot_data)
 ```
 
