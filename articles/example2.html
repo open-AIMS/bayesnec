@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
       </span>
     </div>
 
@@ -148,37 +148,19 @@
 <p>We have created some plotting method functions for our <code>bayesnec</code> model types, so we can plot a <code>bayesmanecfit</code> model object simply with <code>autoplot</code>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp2-decline-1.png" title="plot of chunk exmp2-decline" alt="plot of chunk exmp2-decline" width="60%" style="display: block; margin: auto;"></p>
 <p>The default plot looks exactly the same as our regular <code>bayesnecfit</code> plot, but the output is based on a weighted average of all the model fits in the <code>model = "decline"</code> model set. The <em>NEC</em> estimate on this plot (and in the summary output below) is based on a mix of actual <em>NEC</em> estimates, as well as the <em>NSEC</em> estimates that are used as an approximation to <em>NEC</em> for all the <strong>ecx</strong>-containing models in the set. Note that we do not currently recommend reporting these values as the <em>NEC</em> (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model details</a> vignette for more information). The fitted <code>bayesmanecfit</code> object contains different elements to the <code>bayesnecfit</code>. In particular, <code>mod_stats</code> contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from <code>brms</code>), wi (the model weight, currently defaulting to <code>"pseudobma"</code> using Bayesian bootstrap from <code>loo</code>), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span></span>
-<span><span class="co">#&gt;               model       waic           wi</span></span>
-<span><span class="co">#&gt; nec4param nec4param -83.419256 4.031982e-01</span></span>
-<span><span class="co">#&gt; neclin       neclin -16.364540 4.897550e-10</span></span>
-<span><span class="co">#&gt; ecxlin       ecxlin   3.825984 1.236900e-13</span></span>
-<span><span class="co">#&gt; ecx4param ecx4param -80.467538 1.168089e-01</span></span>
-<span><span class="co">#&gt; ecxwb1       ecxwb1 -73.907861 1.119553e-02</span></span>
-<span><span class="co">#&gt; ecxwb2       ecxwb2 -82.495450 2.231866e-01</span></span>
-<span><span class="co">#&gt; ecxll5       ecxll5 -81.435658 1.260900e-01</span></span>
-<span><span class="co">#&gt; ecxll4       ecxll4 -80.513770 1.195207e-01</span></span>
-<span><span class="co">#&gt;           dispersion_Estimate dispersion_Q2.5</span></span>
-<span><span class="co">#&gt; nec4param                  NA              NA</span></span>
-<span><span class="co">#&gt; neclin                     NA              NA</span></span>
-<span><span class="co">#&gt; ecxlin                     NA              NA</span></span>
-<span><span class="co">#&gt; ecx4param                  NA              NA</span></span>
-<span><span class="co">#&gt; ecxwb1                     NA              NA</span></span>
-<span><span class="co">#&gt; ecxwb2                     NA              NA</span></span>
-<span><span class="co">#&gt; ecxll5                     NA              NA</span></span>
-<span><span class="co">#&gt; ecxll4                     NA              NA</span></span>
-<span><span class="co">#&gt;           dispersion_Q97.5</span></span>
-<span><span class="co">#&gt; nec4param               NA</span></span>
-<span><span class="co">#&gt; neclin                  NA</span></span>
-<span><span class="co">#&gt; ecxlin                  NA</span></span>
-<span><span class="co">#&gt; ecx4param               NA</span></span>
-<span><span class="co">#&gt; ecxwb1                  NA</span></span>
-<span><span class="co">#&gt; ecxwb2                  NA</span></span>
-<span><span class="co">#&gt; ecxll5                  NA</span></span>
-<span><span class="co">#&gt; ecxll4                  NA</span></span></code></pre></div>
+<span><span class="co">#&gt;               model       waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span></span>
+<span><span class="co">#&gt; nec4param nec4param -83.099191 3.945908e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; neclin       neclin -16.362569 1.975592e-07                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxlin       ecxlin   5.227727 1.314113e-13                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecx4param ecx4param -80.232974 1.102457e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb1       ecxwb1 -73.938541 1.248067e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb2       ecxwb2 -82.608662 2.610547e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll5       ecxll5 -81.112102 1.251814e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll4       ecxll4 -79.988165 9.644653e-02                  NA              NA               NA</span></span></code></pre></div>
 <p>We can obtain a neater summary of the model fit by using the <code>summary</code> method for a <code>bayesmanecfit</code> object. A list of fitted models, and model weights are provided. In addition, the model averaged <em>NEC</em> is reported, however a warning is provided indicating it contains <em>NSEC</em> values. A warning message also indicates that the <strong>ecxll5</strong> model may have convergence issues according to the default <code>brms</code> Rhat criteria. For this example all the <strong>ecx</strong>-containing models have high weights, which we would expect given that type of model was used to generate the underlying example.</p>
 <p>All these model fits are satisfactory despite the relatively low number of iterations set in our example, but the summary would also include a warning if there were fits with divergent transitions.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
@@ -192,53 +174,53 @@
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Model weights (Method: pseudobma_bb_weights):</span></span>
 <span><span class="co">#&gt;             waic   wi</span></span>
-<span><span class="co">#&gt; nec4param -83.42 0.40</span></span>
-<span><span class="co">#&gt; neclin    -16.36 0.00</span></span>
-<span><span class="co">#&gt; ecxlin      3.83 0.00</span></span>
-<span><span class="co">#&gt; ecx4param -80.47 0.12</span></span>
-<span><span class="co">#&gt; ecxwb1    -73.91 0.01</span></span>
-<span><span class="co">#&gt; ecxwb2    -82.50 0.22</span></span>
-<span><span class="co">#&gt; ecxll5    -81.44 0.13</span></span>
-<span><span class="co">#&gt; ecxll4    -80.51 0.12</span></span>
+<span><span class="co">#&gt; nec4param -83.04 0.39</span></span>
+<span><span class="co">#&gt; neclin    -17.08 0.00</span></span>
+<span><span class="co">#&gt; ecxlin      5.08 0.00</span></span>
+<span><span class="co">#&gt; ecx4param -80.22 0.11</span></span>
+<span><span class="co">#&gt; ecxwb1    -73.86 0.01</span></span>
+<span><span class="co">#&gt; ecxwb2    -82.65 0.27</span></span>
+<span><span class="co">#&gt; ecxll5    -80.82 0.11</span></span>
+<span><span class="co">#&gt; ecxll4    -80.32 0.12</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Summary of weighted NEC posterior estimates:</span></span>
-<span><span class="co">#&gt; NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC</span></span>
+<span><span class="co">#&gt; NB: Model set contains the ECX models: #&gt; ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include #&gt; NSEC surrogates for NEC</span></span>
 <span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     4.01 3.07  4.36</span></span>
+<span><span class="co">#&gt; NEC     3.97 2.97  4.36</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
 <span><span class="co">#&gt;           Estimate Est.Error Q2.5 Q97.5</span></span>
 <span><span class="co">#&gt; nec4param     0.85      0.01 0.83  0.86</span></span>
 <span><span class="co">#&gt; neclin        0.78      0.01 0.74  0.80</span></span>
-<span><span class="co">#&gt; ecxlin        0.75      0.02 0.71  0.78</span></span>
+<span><span class="co">#&gt; ecxlin        0.74      0.02 0.71  0.77</span></span>
 <span><span class="co">#&gt; ecx4param     0.84      0.01 0.82  0.86</span></span>
 <span><span class="co">#&gt; ecxwb1        0.84      0.01 0.82  0.85</span></span>
-<span><span class="co">#&gt; ecxwb2        0.84      0.01 0.82  0.86</span></span>
+<span><span class="co">#&gt; ecxwb2        0.85      0.01 0.82  0.86</span></span>
 <span><span class="co">#&gt; ecxll5        0.84      0.01 0.82  0.86</span></span>
 <span><span class="co">#&gt; ecxll4        0.84      0.01 0.82  0.86</span></span></code></pre></div>
 <p>The <code>bayesmanecfit</code> object also contains all of the original fits, which can be extracted using the <code>pull_out</code> function. For example, we can pull out the model <strong>ecx4param</strong>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5_nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"ecx4param"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_5_nec4param</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp2-ecx4param-1.png" alt="plot of chunk exmp2-ecx4param" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp2-ecx4param-1.png" title="plot of chunk exmp2-ecx4param" alt="plot of chunk exmp2-ecx4param" width="60%" style="display: block; margin: auto;"></p>
 <p>This would extract the <strong>nec4param</strong> model from the <code>bayesmanecfit</code> and create a new object of class <code>bayesnecfit</code> which contains just a single fit. This would be identical to fitting the <strong>ecx4param</strong> as a single model using <code>bnec</code>. All of the models in the <code>bayesmanecfit</code> can be simultaneously plotted using the argument <code>all_models = TRUE</code>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">exp_5</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp2-allmods-1.png" alt="plot of chunk exmp2-allmods" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp2-allmods-1.png" title="plot of chunk exmp2-allmods" alt="plot of chunk exmp2-allmods" width="60%" style="display: block; margin: auto;"></p>
 <p>You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the <strong>ecxlin</strong> and <strong>neclin</strong> models in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions as much. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.</p>
 <p>We can assess the chains for one of the higher weighted models to make sure this is good. It is probably good practice to do this for all models with a high weight.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_fits</span><span class="op">$</span><span class="va">ecxwb1</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp2-goodmod-1.png" alt="plot of chunk exmp2-goodmod" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp2-goodmod-1.png" title="plot of chunk exmp2-goodmod" alt="plot of chunk exmp2-goodmod" width="60%" style="display: block; margin: auto;"></p>
 <p>Assessing chains for all the models in <code>bayesmanecfit</code> does not work as well using the default <code>brms</code> plotting method. Instead use <code>check_chains</code> and make sure to pass a <code>filename</code> argument, which means plots are automatically saved to pdf with a message.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_chains.html">check_chains</a></span><span class="op">(</span><span class="va">exp_5</span>, filename <span class="op">=</span> <span class="st">"example_5_all_chains"</span><span class="op">)</span></span></code></pre></div>
 <p>We can also make a plot to compare the posterior probability density to that of the prior using the <code>check_priors</code> function, for an individual model fit, but also saving all fits to a file in the working directory.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_fits</span><span class="op">$</span><span class="va">nec4param</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp2-checkpriors-1.png" alt="plot of chunk exmp2-checkpriors" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp2-checkpriors-1.png" title="plot of chunk exmp2-checkpriors" alt="plot of chunk exmp2-checkpriors" width="60%" style="display: block; margin: auto;"></p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span>, filename <span class="op">=</span> <span class="st">"example_5_all_priors"</span><span class="op">)</span></span></code></pre></div>
 <p>Where a large number of models are failing to converge, obviously it would be better to adjust <code>iter</code> and <code>warmup</code> in the <code>bnec</code> call, as well as some of the other arguments to <code>brms</code> such as <code>adapt_delta</code>. See the <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">?brm</a></code> documentation for more details. In the example above, only a single model had poor convergence according to Rhat criterion. It is possible to exclude such models from the model set using <code>amend</code> and the <code>bayesmanecfit</code> Rhat method, via:</p>
@@ -247,7 +229,7 @@
 <p>Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case one model fails, although we note that this is a very stringent criterion, and we have also used less than the default <code>bayesnec</code> value of <code>iter</code> (10,000).</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://mc-stan.org/bayesplot/reference/bayesplot-extractors.html" class="external-link">rhat</a></span><span class="op">(</span><span class="va">exp_5</span>, rhat_cutoff <span class="op">=</span> <span class="fl">1.01</span><span class="op">)</span><span class="op">$</span><span class="va">failed</span></span>
-<span><span class="co">#&gt; [1] "nec4param" "ecxlin"    "ecxll5"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "neclin" "ecxll5"</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="extracting-endpoint-values">Extracting endpoint values<a class="anchor" aria-label="anchor" href="#extracting-endpoint-values"></a>
@@ -264,12 +246,12 @@
 <span><span class="va">ECx50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
 <span><span class="va">ECx10</span></span>
 <span><span class="co">#&gt;    ec_10 ec_10_lw ec_10_up </span></span>
-<span><span class="co">#&gt; 4.207298 3.522639 4.465192 </span></span>
+<span><span class="co">#&gt; 4.174174 3.502503 4.454454 </span></span>
 <span><span class="co">#&gt; attr(,"precision")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span>
 <span><span class="va">ECx50</span></span>
 <span><span class="co">#&gt;    ec_50 ec_50_lw ec_50_up </span></span>
-<span><span class="co">#&gt; 5.020657 4.842115 5.248794 </span></span>
+<span><span class="co">#&gt; 5.035035 4.844845 5.245245 </span></span>
 <span><span class="co">#&gt; attr(,"precision")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span></code></pre></div>
 <p>The weighted <em>NEC</em> estimates can be extracted directly from the <em>NEC</em> model set object, as they are an explicit parameter in these models.</p>
@@ -277,7 +259,7 @@
 <code class="sourceCode R"><span><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_nec</span></span>
 <span><span class="va">NECvals</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 4.211072 3.926536 4.396620</span></span></code></pre></div>
+<span><span class="co">#&gt; 4.209236 3.912931 4.388703</span></span></code></pre></div>
 <p>Note that the new <em>NEC</em> estimates from the <strong>nec</strong>-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Compare posteriors vigenette</a>.</p>
 </div>
 <div class="section level4">
@@ -306,7 +288,7 @@
 <span>        axis.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">16</span><span class="op">)</span>,</span>
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        strip.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">16</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp2-pretty-1.png" alt="plot of chunk exmp2-pretty" width="60%" style="display: block; margin: auto;"></p>
+<p><img src="vignette-fig-exmp2-pretty-1.png" title="plot of chunk exmp2-pretty" alt="plot of chunk exmp2-pretty" width="60%" style="display: block; margin: auto;"></p>
 </div>
 </div>
 </div>

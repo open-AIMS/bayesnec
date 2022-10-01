@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.4</span>
       </span>
     </div>
 
@@ -126,6 +126,7 @@ Highland Statistics Limited.</p>
 <span class="r-in"><span><span class="va">nec_data</span><span class="op">$</span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">$</span><span class="va">y</span> <span class="op">*</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a poisson distribution.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Argument 'inits' is deprecated. Please use argument 'init' instead.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Compiling Stan program...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Start sampling</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Response variable modelled as a nec4param model using a poisson distribution.</span>
@@ -133,7 +134,7 @@ Highland Statistics Limited.</p>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> 1 (1.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class="r-in"><span><span class="fu">dispersion</span><span class="op">(</span><span class="va">nec4param</span>, summary <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    Estimate        Q2.5       Q97.5 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   5.0589755   0.8187811 137.8613171 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   4.8674726   0.8070667 117.5274579 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
