@@ -1,8 +1,7 @@
 ---
 documentclass: jss
-classoption: shortnames
 title:
-  formatted: "\\pkg{bayesnec}: An R Package for C-R Modelling and Estimation of toxicity metrics"
+  formatted: "\\pkg{bayesnec}: An R Package for C-R Modelling and Estimation of No-Effect-Concentrations"
   # If you use tex in the formatted title, also supply version without
   plain:     "bayesnec: An R Package for C-R Modelling and Estimation of No-Effect-Concentrations"
   # For running headers, if needed
@@ -12,61 +11,49 @@ author:
     address:
       - Australian Institute of Marine Science,
       - Crawley, WA, Australia
-    address2:
+    affiliation:
+      - Australian Institute of Marine Science 
+    affiliation2:
       - The Indian Ocean Marine Research Centre,
       - University of Western Australia,
       - Crawley, WA, Australia
-    affiliation:
-      'Australian Institute of Marine Science '
-    affiliation2:
-      'IOMRC University of Western Australia \AND'
     email: \email{r.fisher@aims.gov.au}
     orcid: 0000-0001-5148-6731
   - name: Diego R. Barneche
     address:
       - Australian Institute of Marine Science,
       - Crawley, WA, Australia
-    address2:
-      - The Indian Ocean Marine Research Centre University of Western Australia,
+    affiliation: Australian Institute of Marine Science
+    affiliation2:
+      - The Indian Ocean Marine Research Centre,
+      - University of Western Australia,
       - Crawley, WA, Australia
-    affiliation: 'Australian Institute of Marine Science'
-    affiliation2: 'IOMRC University of Western Australia \AND'
     orcid: 0000-0002-4568-2362
   - name: Gerard Ricardo
     address:
       - The University of Queensland,
       - St Lucia, Qld, Australia
-    address2:
+    affiliation: The University of Queensland
+    affiliation2:
       - Australian Institute of Marine Science,
       - Townsville, Qld, Australia
-    affiliation: 'The University of Queensland'
-    affiliation2:
-      'Australian Institute of Marine Science'
     orcid: 0000-0002-7761-0806
   - name: David Fox
     address:
       - Environmetrics Australia,
       - Beaumaris, Victoria, Australia
-    address2:
-      - University of Melbourne     
-      - Parkville, Victoria, Australia      
-    affiliation: 'Environmetrics Australia'
+    affiliation: Environmetrics Australia
     affiliation2:
-      'University of Melbourne'
+      - University of Melbourne,
+      - Parkville, Victoria, Australia
     orcid: 0000-0002-3178-7243
 abstract: >
   The \pkg{bayesnec} package has been developed for R to fit concentration(dose) - response curves (C-R) to toxicity data for the purpose of deriving no-effect-concentration (*NEC*), no-significant-effect-concentration (*NSEC*), and effect-concentration (of specified percentage 'x', *EC~x~*) thresholds from non-linear models fitted using Bayesian Hamiltonian Monte Carlo (HMC) via \pkg{brms} [@Burkner2017; @Burkner2018] and \pkg{rstan} [@rstan2021]. In \pkg{bayesnec} it is possible to fit a single model, custom models-set, specific model-set or all of the available models. When multiple models are specified the `bnec` function returns a model weighted average estimate of predicted posterior values. A range of support functions and methods are also included to work with the returned single, or multi-model objects that allow extraction of raw, or model averaged predicted, *NEC*, *NSEC* and *EC~x~* values and to interrogate the fitted model or model-set. The statistical methods used mean that the uncertainty in derived threshold values can be robustly quantified, including uncertainty in individual model fits to the underlying observed data, as well as uncertainty in the model functional form.
-keywords:
-  # at least one keyword must be supplied
-  formatted: [concentration-response, toxicity, no-effect-concentration, "\\proglang{R}", Bayesian, non-linear modelling]
-  plain:     [concentration-response, toxicity, no-effect-concentration, R, Bayesian, non-linear modelling]
 preamble: |
   \usepackage{amsmath}
   \usepackage{float}
 bibliography: article.bib
-output:
-  bookdown::pdf_book:
-    base_format: rticles::jss_article
+output: rticles::jss_article
 ---
 
 ```{r setup, include=FALSE}
@@ -79,30 +66,30 @@ options(brms.backend = "cmdstanr")
 
 # Introduction
 
-Concentration-response (C-R) modelling (also known as dose-response modelling or dose-response analysis) is a key tool for assessing toxicity and deriving the toxicity thresholds used in the risk assessments that underpin protection of human health and the environment. It is widely used in the disciplines of pharmacology, toxicology and ecotoxicology, where parametric non-linear regression methods are used to model response data of interest, with the resulting fitted models used to estimate critical thresholds of concern. These thresholds may be used directly to assess risk [e.g see @fisher2018c], or are subsequently incorporated into a broader population-level risk assessment framework [e.g. @Warne2015]. Typical thresholds derived from C-R modelling include the effect-concentration of defined percentage 'x' (ECx) and the no-effect-concentration (NEC), the latter being the generally preferred option [@Fox2008; @Warne2015; @Warne2018c].
+Concentration-response (C-R) modelling (also known as dose-response modelling or dose-response analysis) is a key tool for assessing toxicity and deriving the toxicity thresholds used in the risk assessments that underpin protection of human health and the environment. It is widely used in the disciplines of pharmacology, toxicology and ecotoxicology, where parametric non-linear regression methods are used to model response data of interest, with the resulting fitted models used to estimate critical thresholds of concern. These thresholds may be used directly to assess risk [e.g see @fisher2018c], or are subsequently incorporated into a broader population-level risk assessment framework [e.g. @Warne2015]. Typical thresholds derived from C-R modelling include the effect-concentration of defined percentage 'x' (ECx) and the no-effect-concentration (NEC), the latter being the generally preferred option [@Fox2008; @Warne2015].
 
-In qualitative terms, C-R models are a decreasing function of concentration, whereby the response may remain relatively stable for the initial portion of the curve, and then decays at some rate to zero, or some other lower bound at high concentration. An example is death of an organism resulting from ever increasing concentrations of a toxic pollutant. However, often the underlying mechanisms describing C-R relationships are not known, and therefore the literature abounds with alternative non-linear C-R equations. These can be broadly grouped into two main "model categories" (see below section \ref{mdbnc}) for the mathematical definition of each model): *NEC*-containing models---models which formally contain a step function comprising the "break-point" after which the predictor systematically alters the response [@Fox2010]; Smooth sigmoidal models that are typically used for estimating effect concentrations of a specified effect (e.g. *EC~x~*- models). They may or may not encompass the EC~50~ as a parameter[@Ritz2016]. Each of these two groups can be further split into two categories depending on whether the initial portion of the curve is flat, or increasing---the latter being known as hormesis models [@Ritz2016].
+In qualitative terms, C-R models are typically of a decaying shape, whereby the response remains relatively stable for the initial portion of the curve but later decays into a plateau (e.g. the death of an organism resulting from high concentrations of a pollutant). However, often the underlying mechanisms describing C-R relationships are not known, and therefore the literature abounds with alternative non-linear C-R equations. These can be broadly grouped into two main "model categories" (see below section \ref{mdbnc}) for the mathematical definition of each model): *NEC*-containing models---models which formally contain a step function comprising the "break-point" after which the predictor systematically alters the response [@Fox2010]; Smooth sigmoidal models that are typically used for estimating effects concentrations of a specified effect (e.g. *EC~x~*-containing models). They may or may not encompass the EC~50~ as a parameter[@Ritz2016]. Each of these two groups can be further split into two categories depending on whether the initial portion of the curve is flat, or increasing---the latter being known as hormesis models [@Ritz2016].
 
-The above model categories mostly comprise non-linear equations, thereby increasing the technical complexity of model fitting. C-R experimental designs are often also complex, and may require the addition of multi-level, hierarchical effects. Examples might include a random offset to model non-independence of replicates housed together in tanks, or where there are repeated measurements on individual genotypes. Additionally, C-R data are of varied nature, with the measured response data taking a wide range of natural distributions. For instance, response data may be unbounded continuous (e.g. growth when shrinkage is possible), or positive continuous (e.g. growth in the absence of shrinkage), proportional (e.g. fertilization success), or binary (e.g. survival). To the best of our knowledge, there are no open-source statistical software dedicated to C-R modelling which allow for appropriate model and error distribution depending on the input data. However, there is a wide array of multi-purpose packages for fitting non-linear generalised hierarchical models in R, for example (to list a few), \pkg{nlme} [@pinheiro2021], \pkg{lme4} [@pinheiro2021], \pkg{rjags} [@Su2015] and \pkg{rstan} [@rstan2021].
+The above model categories mostly comprise non-linear equations, thereby increasing the complexity of model fitting. C-R data-generating experimental designs are often complex, and may require the addition of multi-level, hierarchical effects (e.g. such as tank effects or repeated measurements of individuals). Additionally, C-R data are of varied nature, with the response, for instance being: 1) unbounded continuous [**REF**], positive continuous [**REF**], proportional [**REF**], or binary [**REF**]. To the best of our knowledge, there are no open-source statistical software dedicated to C-R modelling which allow for appropriate model and error distribution depending on the input data. However, there are a wide array of multi-purpose packages for fitting non-linear generalised hierarchical models in R, for example (to list a few), \pkg{nlme} [@pinheiro2021], \pkg{lme4} [@pinheiro2021], \pkg{rjags} [@Su2015] and \pkg{rstan} [@rstan2021].
 
-While C-R modelling can be carried out using multi-purpose software packages, this can be cumbersome in practice, requiring extensive manual programming to obtain the necessary, often relatively standard outputs. The \pkg{drc} package [@Ritz2016] was developed as a user friendly frequentist based solution to C-R modelling in R, and is currently widely used across a range of disciplines. \pkg{drc} implements a broad range of non-linear C-R models, provides facilities for ranking model fit based on AIC [@Burnham2002], joint modelling of multiple response curves, and supports a range of estimation procedures [@Ritz2016]. Section \ref{bnchmrk} provides a formal comparisons between \pkg{drc} and \pkg{bayesnec} standard output using default argument values.
+While C-R modelling can be carried out using multi-purpose software packages, this can be cumbersome in practice, requiring extensive manual programming to obtain the necessary, often relatively standard outputs. The \pkg{drc} package [@Ritz2016] was developed as a user friendly frequentist based solution to C-R modelling in R, and is currently widely used across a range of disciplines. \pkg{drc} implements a broad range of non-linear C-R models, provides facilities for ranking model fit based on AIC [@Burnham2002], joint modelling of multiple response curves, and supports a range of estimation procedures [@Ritz2016]. Please see below section \ref{bnchmrk} for formal comparisons between \pkg{drc} and \pkg{bayesnec} standard output using default argument values.
 
 Estimates of uncertainty in parameters and derived thresholds are critical for effective integration of threshold estimates into risk assessment and formal decision frameworks [@fisher2018c]. Bayesian methods allow robust quantification of uncertainty with intuitive and direct probabilistic meaning [@Ellison1996], and are therefore an excellent platform for C-R modelling in most settings. Furthermore, the posterior draws generated through Bayesian model fitting methods provide a rich resource that can be used to explore synergistic and antagonistic impacts [@Fisher2019d; @flores2021], propagate endpoint uncertainty [@Charles2020a; @Gottschalk2013], and test hypotheses of no-effect [@Thomas2006].
 
-There is a wide array of packages available for Bayesian model fitting via Markov chain Monte Carlo methods, including WinBUGS [@Lunn2000], JAGS [@Plummer2003] and Stan [@Carpenter2017], that seamlessly interface with R through packages such as \pkg{R2WinBUGS}, \pkg{R2jags} [@Su2015] and \pkg{rstan} [@rstan2021]. These packages require coding in R and additional model specification in custom languages---which might involve non trivial coding, extensive debugging and optimisation that is often time consuming and requires specialist expertise. All of which might add a learning/application barrier to many potential users. Several extension packages which aim to reduce that barrier have recently become available, principally \pkg{brms} [@Burkner2017], that allows a broad range of models to be easily fitted using \pkg{rstan} through simpler \pkg{lme4}-like formula syntax. However, even with packages like \pkg{brms}, Bayesian model fitting can be difficult to automate across all potential usage cases, particularly with respect to specifying valid initial parameter values and appropriate priors. In addition, as was the motivation for the development of the \pkg{drc} package in the frequentist setting, the R code required for fitting non-linear models and extracting the relevant outputs (e.g. *NEC*, *EC~x~*) can be cumbersome in practice, and even more so in the Bayesian setting where model fits contain multiple posterior draws.
+There are a wide array of packages available for Bayesian model fitting via Markov chain Monte Carlo methods, including WinBUGS [@Lunn2000], JAGS [@Plummer2003] and Stan [@Carpenter2017], that seamlessly interface with R through packages such as \pkg{R2WinBUGS}, \pkg{R2jags} [@Su2015] and \pkg{rstan} [@rstan2021]. These packages require coding in R and additional model specification in custom languages---which might involve non trivial coding, extensive debugging and optimisation that is often time consuming and requires specialist expertise. All of which might add a learning/application barrier to many potential users. Several extension packages which aim to break that barrier have recently become available, chief among which is \pkg{brms} [@Burkner2017], that allows a broad range of models to be easily fitted using \pkg{rstan} through simpler \pkg{lme4}-like formula syntax. However, even with packages like \pkg{brms}, Bayesian model fitting can be difficult to automate across all potential usage cases, particularly with respect to specifying valid initial parameter values and appropriate priors. In addition, as was the motivation for the development of the \pkg{drc} package in the frequentist setting, the R code required for fitting non-linear models and extracting the relevant outputs (e.g. *NEC*, *EC~x~*) can be cumbersome in practice, and even more so in the Bayesian setting where model fits contain multiple posterior draws.
 
-The greater complexity associated with Bayesian model fitting has likely hindered the uptake of Bayesian statistics for C-R threshold derivation across the broader ecotoxicology and toxicology communities, who may not have access to specialist statistical expertise [@Fisher2019]. \pkg{bayesnec} version `r packageVersion("bayesnec")` (available on CRAN) builds upon an implementation of the *NEC* model described in [@Fox2010; @Pires2002]. The \pkg{bayesnec} package provides an accessible interface specifically for fitting *NEC* and *EC~x~* and other C-R models using Bayesian methods. A variety of models can be specified based on the known distribution of the "concentration" or "dose" variable (the predictor, x) as well as the "response" (y) variable. The model formula, including priors and initial values required to call \pkg{brms} are automatically generated based on information contained in the supplied data. A range of tools is supplied to aid the user in interrogating model fits, plotting and generating predicted values, as well as extracting the standard outputs, such as *NEC* and *EC~x~* - either as a full posterior draw or in summary form.
+The greater complexity associated with Bayesian model fitting has likely hindered the uptake of Bayesian statistics for C-R threshold derivation across the broader ecotoxicology and toxicology communities, who may not have access to specialist statistical expertise [@Fisher2019]. \pkg{bayesnec} version `r packageVersion("bayesnec")` (available on CRAN) builds upon an implementation of the *NEC* model described in [@Fox2010; @Pires2002]. The \pkg{bayesnec} package provides an accessible interface specifically for fitting *NEC* and *EC~x~* and other C-R models using Bayesian methods. A variety of models can be specified based on the known distribution of the "concentration" or "dose" variable (the predictor, x) as well as the "response" (y) variable. The model formula, including priors and initial values required to call \pkg{brms} are automatically generated based on information contained in the supplied data. A range of tools are supplied to aid the user in interrogating model fits, plotting and generating predicted values, as well as extracting the standard outputs, such as *NEC* and *EC~x~* - either as a full posterior draw or in summary form.
 
 # Technical details
 
-In Bayesian inference, model parameters and their inherent uncertainty are estimated as statistical probability distributions. This is achieved by combining an a-priori probability ditribution for each parameter (the 'priors', $p(\theta)$) with the likelihood of the observed data, $D$, given the model parameters, $p(D | \theta)$, to yield a so-called posterior probability distribution, $p(\theta | D)$
+In Bayesian inference, model parameters and their inherent uncertainty are estimated as statistical probability distributions. This is achieved by combining an a-priori probability of each parameter (the 'priors', $p(\theta)$) with the likelihood of the observed data, $D$, given the model parameters, $p(D | \theta)$, to yield a so-called posterior probability distribution, $p(\theta | D)$
 
 \begin{equation}
   p(\theta | D) = \frac{p(D | \theta) p(\theta)}{\int_{\theta} p(D | \theta) p(\theta) d \theta} \propto p(D | \theta) p(\theta).
   \label{eqn1}
 \end{equation}
 
-In many cases, the denominator (a.k.a. "evidence" or "marginal") is analytically intractable, and therefore we resort to algorithmic approximations such as Markov Chain Monte Carlo (MCMC). \pkg{bayesnec} uses the extensive functionality of the \pkg{brms} package to write model code as well as fit models via a Stan program [@stan2021], which typically defines a Bayesian posterior as a log density function conditioned on the data. Stan employs Hamiltonian Monte Carlo (HMC)---a type of MCMC algorithm---for its fitting mechanism, and automatically optimizes the discretization time parameter to match an acceptance-rate target using the no-U-turn sampling (NUTS) algorithm [@hoffman2014]. \pkg{bayesnec} first takes the input model or model-set (via its custom formula class, `bayesnecformula`) in conjunction with potential user-defined hierarchical effects, to generate an object of class `brmsformula`. Then, based on the package-(or user-)specified priors, and response model distribution, it calls \pkg{brms} [@Burkner2017; @Burkner2018] to generate the Stan program code and fit the model through \pkg{rstan} [@rstan2021]. In doing so, \pkg{bayesnec} (as of version `r packageVersion("bayesnec")`) allows for response variables to be modelled with a variety of statistical distributions: Gaussian, Poisson, Binomial, Gamma, Negative-binomial, Beta and Beta-binomial. Future implementations of \pkg{bayesnec} might include additional distributions which are currently only implemented in \pkg{brms}. In addition to greater flexibility in the available response distributions, \pkg{bayesnec} includes a larger set of 23 *NEC*- and *EC~x~*-containing models (see below), including most of the commonly-used models in frequentist packages such as \pkg{drc} [@Ritz2016].
+In many cases, the denominator (a.k.a. "evidence" or "marginal") is analytically intractable, and therefore we resort to algorithmic approximations such as Markov Chain Monte Carlo (MCMC). \pkg{bayesnec} uses the extensive functionality of the \pkg{brms} package to write model code as well as fit models via a Stan program [@stan2021], which typically defines a Bayesian posterior as a log density function conditioned on the data. Stan employs Hamiltonian Monte Carlo (HMC)---a type of MCMC algorithm---for its fitting mechanism, and automatically optimizes the discretization time parameter to match an acceptance-rate target using the no-U-turn sampling (NUTS) algorithm [@hoffman2014]. \pkg{bayesnec} first takes the input model or model-set (via its custom formula class, `bayesnecformula`) in conjunction with potential user-defined hierarchical effects, to generate an object of class `brmsformula`. Then, based on the package-(or user-)specified priors, and response model distribution, it calls \pkg{brms} [@Burkner2017; @Burkner2018] to generate the Stan program code and fit the model through \pkg{rstan} [@rstan2021]. In doing so, \pkg{bayesnec} (as of version `r packageVersion("bayesnec")`) allows for response variables to be modelled using many (appropriate) statistical distributions: Gaussian, Poisson, Binomial, Gamma, Negative-binomial, Beta and Beta-binomial. Future implementations of \pkg{bayesnec} might include additional distributions which are currently only implemented in \pkg{brms}. In addition to greater flexibility in the available response distributions, \pkg{bayesnec} includes a larger set of 23 *NEC*- and *EC~x~*-containing models (see below), including most of the commonly-used models in frequentist packages such as \pkg{drc} [@Ritz2016].
   
 ## Models in \pkg{bayesnec} {short-title="Models in bayesnec" #mdbnc}
 
@@ -110,11 +97,11 @@ Where possible we have aimed for consistency in the interpretable meaning of the
 
 $\tau = \text{top}$, usually interpretable as either the response's intercept or the upper plateau representing the mean concentration of the response at zero concentration;
 
-$\eta = \text{NEC}$, the No-Effect-Concentration value (the concentration value where the breakpoint in the regression is);
+$\eta = \text{NEC}$, the No-Effect-Concentration value (the concentration value where the breakpoint in the regression is estimated at);
 
 $\beta = \text{beta}$, generally the exponential decay rate of response, either from 0 concentration or from the estimated $\eta$ value, with the exception of the **neclinhorme** model where it represents a linear decay from $\eta$ because slope ($\alpha$) is required for the linear increase;
 
-$\delta = \text{bottom}$, representing the lower asymptotic response at infinite concentration;
+$\delta = \text{bottom}$, representing the lower plateau for the response at infinite concentration;
 
 $\alpha = \text{slope}$, the linear decay rate in the models **neclin** and **ecxlin**, or the linear increase rate prior to $\eta$ for all hormesis models;
 
@@ -134,7 +121,7 @@ I(x_i, \eta) = \begin{cases}
 $$
 
 
-Note that strictly positive parameters (for example, $\beta$ and $\epsilon$) have been transformed as exponential functions to allow the use of normal priors and stabilize model fitting.
+Note that strictly positive parameters (for example, $\beta$ and $\epsilon$) have been coded as exponents to allow the use of normal priors and stabilize model fitting.
 
 ### \textit{EC\textsubscript{x}} models {short-title="ECx models" #ecx-models}
 
@@ -278,49 +265,49 @@ with the following `brmsformula`: `r as.character(show_params("necsigm")[[1]][[1
 
 ## Priors on model parameters
 
-To undertake a Bayesian analysis, prior probability densities must first be defined. Sometimes there may be substantial prior knowledge, for example when pilot data or data from a previous experiment exist for a given response curve. In this case the prior probability distribution may be quite narrow (highly "informative") and will therefore be influential in the characterisation of the posterior, especially when subsequent data are scarce or highly variable. However, in our experience in ecology and related disciplines, such prior knowledge is generally the exception. Where no quantitative prior information exists, it is common in Bayesian statistics to use "vague" or "weakly" informative priors. The use of "vague", "diffuse", "flat" or otherwise so-called "uninformative" priors is no longer recommended [@Banner2020]. Such priors generally form the default for many Bayesian packages, and are often used in practice without critical thought or evaluation, possibly as a result of fear of being too subjective [@Banner2020].**[What is now recommended is... Diego can you provide a brief summary of what is recommended?]**
+To carry out a Bayesian analysis the prior probability densities must be defined. Sometimes there may be substantial prior knowledge, for example when pilot data or data from a previous experiment exist for a given response curve. In this case the prior probability distribution may be quite narrow (highly "informative") and can have a strong influence on the posterior, especially when subsequent data are scarce or highly variable. However, in our experience in Ecology and related disciplines, such prior knowledge is generally the exception. Where no quantitative prior information exists, it is common in Bayesian statistics to use "vague" or "weakly" informative priors. The use of "vague", "diffuse", "flat" or otherwise so-called "uninformative" priors is no longer recommended [@Banner2020]. Such priors generally form the default for many Bayesian packages, and are often used in practice without critical thought or evaluation, possibly as a result of fear of being too subjective [@Banner2020].
 
-Considerable thought has gone into development of an algorithm to build "weakly" informative priors for fitting models in \pkg{bayesnec}. The priors are "weakly" informative in that in addition to specifying the relevant statistical family that appropriately captures the parameter's theoretical statistical distribution, we also use information contained within the observed data to centre the probability density near the most likely parameter space and/or constrain priors to sensible bounds. These weakly informative priors are used to help constrain the underlying routines so that they are less likely to consider what the researcher would deem highly improbable estimates, that may also cause the routines to become unstable. Weakly informative priors can be particularly helpful in complex non-linear modelling to ensure reliable convergence. These types of priors specify the general shape and bounds of the probability distribution for a given parameter, whilst remaining sufficiently broad so as not to influence the parameter's estimated posterior distribution (given a reasonable amount of observed data). In this sense, appropriately weak priors should yield analytical outcomes that share the same level of *objectivity* as equivalent frequentist approaches, whilst yielding robust parameter estimates with probabilistically interpretable uncertainty bounds.
+Considerable thought has gone into development of an algorithm to build "weakly" informative priors for fitting models in \pkg{bayesnec}. The priors are "weakly" informative in that in addition to specifying the relevant statistical family that appropriately captures the parameter's theoretical statistical distribution, we also use information contained within the observed data to centre the probability density near the most likely parameter space and/or constrain priors to sensible bounds. These weakly informative priors are used to help constrain the underlying routines so that they are less likely to consider what the researcher would deem highly improbable estimates, that also cause the routines to become unstable. Weakly informative priors can be particularly helpful in complex non-linear modelling to ensure reliable convergence. These types of priors specify the general shape and bounds of the expected probability distribution for a given parameter, whilst remaining sufficiently broad so as not to influence the parameter's estimated posterior distribution (given a reasonable amount of observed data). In this sense, appropriately weak priors should yield analytical outcomes that share the same level of *objectivity* as equivalent frequentist approaches, whilst yielding robust parameter estimates with probabilistically interpretable uncertainty bounds.
 
 ### Priors for response-scaled parameters
 
-Only the parameters $\tau = \text{top}$ and $\delta = \text{bottom}$ relate directly to the response variable's distribution. For Gaussian-distributed responses (or any response variable for which the link ensures valid values of the response can take from -$\infty$ to $\infty$, including `log` and `logit`) priors are Gaussian with a mean set at the 90^th^ and 10^th^ quantiles of the response for parameters $\tau = \text{top}$ and $\delta = \text{bottom}$, respectively, and a standard deviation of 2.5 * the standard deviation of the response (on the appropriate link scale). In this way \pkg{bayesnec} attempts to construct a prior that scales appropriately with the observed data, with greatest density near the most likely region of the response for both $\tau = \text{top}$ and $\delta = \text{bottom}$. By setting the standard deviation of the prior at 2.5 times the observed standard deviation of the response, these priors should be very broad and have little influence on each parameter's posterior density.
+Only the parameters $\tau = \text{top}$ and $\delta = \text{bottom}$ scale accordingly with the response variable's distribution. For Gaussian-distributed responses (or any response variable for which the link ensures valid values of the response can take from -$\infty$ to $\infty$, including `log` and `logit`) priors are Gaussian with a standard deviation of 2.5 and a mean set at the 90^th^ and 10^th^ quantiles of $\tau = \text{top}$ and $\delta = \text{bottom}$, respectively. In this way \pkg{bayesnec} attempts to construct a prior that scales appropriately with the observed data, with greatest density near the most likely region of the response for both $\tau = \text{top}$ and $\delta = \text{bottom}$, whilst remaining broad enough to have little influence on each parameter's posterior density.
 
-For Poisson-, Negative-binomial- and Gamma-distributed response variables, the response cannot take negative values and therefore Gaussian priors are unsuitable. Instead, we use Gamma priors with a mean scaled to correspond to the 75^th^ and 25^th^ quantiles of the response for $\tau = \text{top}$ and $\delta = \text{bottom}$, respectively. The mean ($\mu$) is linked mathematically to the shape (s) and rate parameters (r) by the equation $$ \mu = s * (1/r) $$ [@Becker1988] with the shape parameter being set to 2 by default. The value of 2 was selected based on trial and error through initial testing, as this appeared to produce relatively broad priors that were still centered around feasible values for these parameters.
+For Poisson-, Negative-binomial- and Gamma-distributed response variables, the response is truncated at 0 and therefore Gaussian priors are unsuitable. Instead, we use Gamma priors with a mean scaled to correspond to the 75^th^ and 25^th^ quantiles of $\tau = \text{top}$ and $\delta = \text{bottom}$, respectively. The mean ($\mu$) is linked mathematically to the shape (s) and rate parameters (r) by the equation $$ \mu = s * (1/r) $$ with the shape parameter being set to 2 by default.
 
-For the Binomial, Beta, and Beta-binomial families, estimates for $\tau = \text{top}$ and $\delta = \text{bottom}$ must necessarily be constrained between 0 and 1 when modelled on the identity link. Because of this constraint, there is no need to adjust scaling based on the response. In this case \pkg{bayesnec} uses `beta(5, 2)` and `beta(2, 5)` priors to provide a broad density centred across the upper and lower 0 to 1 range for the $\tau = \text{top}$ and $\delta = \text{bottom}$ parameters respectively.
+For the Binomial, Beta, and Beta-binomial families, estimates for $\tau = \text{top}$ and $\delta = \text{bottom}$ must necessarily be constrained between 0 and 1 when modelled on the identity link. Because of this constraint, there is no need to adjust scaling based on the response. In this case \pkg{bayesnec} uses `beta(5, 1)` and `beta(1, 5)` priors to provide a broad density centred across the upper and lower 0 to 1 range for the $\tau = \text{top}$ and $\delta = \text{bottom}$ parameters respectively.
 
 ### Priors for predictor-scaled parameters
 
-The parameters $\eta = \text{NEC}$ and $\eta = \text{ec50}$ scale according to the predictor variable because both of these are estimated in units of the predictor (usually concentration). To stabilise model fitting, the $\eta = \text{NEC}$ and $\eta = \text{ec50}$ parameters are bounded to the upper and lower observed range in the predictor, under the assumption that the range of concentrations in the experiment were sufficient to cover the full range of the response outcomes. Note that this assumption may not always hold if the data are from an experiment that is badly designed, and the outcome of any analysis resulting in either $\eta$ or $\eta$ being estimated at the bounds of the predictor data range should be interpreted with caution. The priors used reflect the characteristics of the observed data that are used to predict the appropriate family. If the predictor variable is strictly positive, a Gamma prior is used, with maximum density ($\mu$, see above) at the median value of the predictor, and a shape parameter of 5. If the predictor variable is truncated at both 0 and 1, a `beta(2, 2)` prior is used. For predictor variables ranging from -$\infty$ to $\infty$, a Gaussian prior is used, with a mean set at the median of the predictor values and a standard deviation of 2.5 time the standard deviation of the predictor variable.
+The parameters $\eta = \text{NEC}$ and $\eta = \text{ec50}$ scale with respect to the predictor variable because both of these are estimated in units of the predictor (usually concentration). To stabilise model fitting, the $\eta = \text{NEC}$ and $\eta = \text{ec50}$ parameters are bounded to the upper and lower observed range in the predictor, under the assumption that the range of concentrations in the experiment were sufficient to cover the full range of the response outcomes. Note that this assumption may not always hold if the data are from an experiment that is badly designed, and the outcome of any analysis resulting in either $\eta$ or $\eta$ being estimated at the bounds of the predictor data range should be interpreted with caution. The priors used reflect the characteristics of the observed data that are used to predict the appropriate family. If the predictor variable is strictly positive, a Gamma prior is used, with maximum density ($\mu$, see above) at the median value of the predictor, and a shape parameter of 5. If the predictor variable is truncated at both 0 and 1, a `beta(2, 2)` prior is used. For predictor variables ranging from -$\infty$ to $\infty$, a Gaussian prior is used, with a mean set at the median of the predictor values and a standard deviation of 2.5.
 
 ### Priors for other parameters
 
-For the parameters $\beta = \text{beta}$, $\alpha = \text{slope}$ and $\epsilon = \text{d}$ we first ensured any relevant transformations in the model formula such that theoretical values with the range -$\infty$ to $\infty$ are allowable, and a `normal(0, 5)` (location and scale) prior is used. For example in the `nec3param` model, $\beta = \text{beta}$ is an exponential decay parameter, which must by definition be bounded to 0 and $\infty$. Calling `exp(beta)` in the model formula ensures the exponent meets these requirements. Note also that a mean of 0 and standard deviation of 5 represents a relatively broad prior on this exponential scaling, so this is usually a weakly informative prior in practice.
+For the parameters $\beta = \text{beta}$, $\alpha = \text{slope}$ and $\epsilon = \text{d}$ we first ensured any relevant transformations in the model formula such that theoretical values with the range -$\infty$ to $\infty$ are allowable, and a `normal(0, 2)` (location and scale) prior is used. For example in the `nec3param` model, $\beta = \text{beta}$ is an exponential decay parameter, which must by definition be bounded to 0 and $\infty$. Calling `exp(beta)` in the model formula ensures the exponent meets these requirements. Note also that a mean of 0 and standard deviation of 2 represents a relatively broad prior on this exponential scaling, so this is still a weakly informative prior in practice.
 
 ## Model averaging {short-title="Model averaging" #modavg}
 
 Multi-model inference can be useful where there are a range of plausible models that could be used [@Burnham2002] and has been recently adopted in ecotoxicology for Species Sensitivity Distribution (SSD) model inference [@Thorley2018; @fox2020; @Dalgarno]. The approach may have considerable value in C-R modelling because there is often no a priori knowledge of the functional form that the response relationship should take. In this case, model averaging can be a useful way of allowing the data to drive the model selection process, with weights proportional to how well the individual models fit the data. Well-fitting models will have high weights, dominating the model averaged outcome. Conversely, poorly fitting models will have very low model weights and will therefore have little influence on the outcome. Where multiple models fit the data equally well, these can equally influence the outcome, and the resultant posterior predictions reflect that model uncertainty.
 
-\pkg{bayesnec} adopts the weighting methods implemented in the \pkg{loo} package in R [@vehtari2020]. \pkg{loo} provides an efficient approximate leave-one-out cross-validation (LOO) algorithm for Bayesian models fit using Markov chain Monte Carlo, as described in [@vehtari2017] <doi:10.1007/s11222-016-9696-4>. The approximation uses Pareto smoothed importance sampling (PSIS), a new procedure for regularizing importance weights and follows the implementation described in [@Vehtari2019]. The \pkg{loo} package offers two weighting methods, the "stacking" method, aimed to minimise prediction error [@Yao2018], and the "pseudobma" method, with and without Bayesian bootstrap [@vehtari2020; @vehtari2017]. The stacking method (method="stacking"), combines all models by maximizing the leave-one-out predictive density of the combination distribution, such that it finds the optimal linear combining weights for maximizing the leave-one-out log score [@vehtari2020]. The pseudo-BMA method (method="pseudobma") finds the relative weights proportional to the ELPD of each model [@vehtari2020]. The Bayesian bootstrap (when using method="pseudobma") takes into account the uncertainty of finite data points and regularizes the weights away from the extremes of 0 and 1  [@vehtari2020]. \pkg{bayesnec} currently uses by default the "pseudobma" method (method = "pseudobma") with Bayesian bootstrap (BB = TRUE), but this can be easily modified via argument "loo_controls".
+\pkg{bayesnec} adopts the weighting methods implemented in the \pkg{loo} package in R. **[WE NEED A PARAGRAPH HERE INTRODUCING LOO, THEN THE TWO MODEL AVERAGING METHODS IN STATISTICAL TERMS (I.E. WE'LL PROBABLY NEED SOME FORMULAS), AND TALK ABOUT THE LOO PACKAGE AND THE IMPLEMENTATION VIA BRMS AND RSTAN. The following sentence probably also more technical details]**. \pkg{loo} offers two weighting methods, the "stacking" method, aimed to minimise prediction error [@Yao2018], and the "pseudobma" method, with and without Bayesian bootstrap [@vehtari2020; @vehtari2017]. \pkg{bayesnec} currently uses by default the "pseudobma" method with Bayesian bootstrap, but this can be easily modified via argument "loo_controls".
 
 # Usage
 
 ## The fitting function \emph{bnec} {short-title="The fitting function bnec" #ffbnec}
 
-The main working function in \pkg{bayesnec} is `bnec`. We have attempted to make the `bnec` function as easy to use as possible, targeting the R user that is familiar with the usual model fitting syntax in R, but without specialist expertise in non-linear modelling and Bayesian statistics. We can run `bnec` by supplying the argument `formula`: a special custom formula which comprises the relationship between response and predictor, and the C-R model (or models) chosen to be fitted; and `data`: a `data.frame` containing the data for the model fitting.
+The main working function in \pkg{bayesnec} is `bnec`. We have attempted to make the `bnec` function as easy to use as possible, targeting the novice R user. We can run `bnec` by supplying the argument `formula`: a special custom formula which comprises the relationship between response and predictor, and the C-R model (or models) chosen to be fitted; and `data`: a `data.frame` containing the data for the model fitting.
 
 ## The input formula
 
 In its simplest syntax, the basic `bnec` formula should be of the form:
 
-```{r syntax, eval = FALSE}
+```{r, eval = FALSE}
 response ~ crf(predictor, model = "a_model")
 ```
 
 where the left-hand side of the formula is implemented exactly as in \pkg{brms} (see the 'aterms' section of the `brms::brm`'s help file). The right-hand side of the formula contains the special internal function `crf` (which stands for concentration-response function), and takes the predictor (including any simple function transformations such as `log`) and the desired C-R model or suite of models. As with any formula in R, the name of the terms need to be exactly as they are in the input data.frame. For Binomial- or Beta-Binomial distributed data, the user needs to include the `trials` term to the left-hand side of the formula, e.g.
 
-```{r formula, eval = FALSE}
+```{r, eval = FALSE}
 response | trials(n_trials) ~ crf(log(predictor), model = "a_model")
 ```
 
@@ -328,7 +315,7 @@ the input formula can either be a character string or a validated object of clas
 
 The class `bayesnecformula` (generated by the function `bayesnecformula` and its alias `bnf`) contains a `model.frame` method which can be employed to manually inspect the `data.frame` that will be used to run checks on the data suitability prior to model fitting, e.g.
 
-```{r loading}
+```{r}
 library(bayesnec)
 df <- data.frame(x = rgamma(100, 2, 0.1), y = rnorm(100))
 form <- bnf(y ~ crf(log(x), model = "nec3param"))
@@ -340,7 +327,7 @@ head(model.frame(form, df))
 Here we use one of the package's built-in datasets from @jones2003meps which comprise essays of herbicide phytotoxicity on chlorophyll fluorescence measurements (Fv/Fm) of symbiotic dinoflagellates still in the host tissue of the coral.
 
 
-```{r example, warning = FALSE, message = FALSE, results = "hide", cache = TRUE}
+```{r, warning = FALSE, message = FALSE, results = "hide", cache = TRUE}
 data(herbicide)
 # filter for one herbicide only
 data <- herbicide[herbicide$herbicide == "diuron", ]
@@ -360,7 +347,7 @@ Both `bayesnecfit` and `bayesmanecfit` classes contain methods for `summary`, `p
 
 The `summary` method provides the usual summary of model parameters and any relevant model fit statistics as returned in the underlying `brm` model fit(s). In the specific case of a `bayesmanecfit` object, the summary includes a list of fitted models, their respective model weights, and a model-averaged *NEC*---which is reported with a warning when it contains *NSEC* values.
 
-```{r summary, warning = FALSE, message = FALSE}
+```{r, warning = FALSE, message = FALSE}
 summary(fit)
 ```
 
@@ -426,7 +413,9 @@ The current version of \pkg{bayesnec} harnesses the powerful modelling flexibili
 
 \pkg{bayesnec} is built upon the precursor R package \pkg{jagsNEC} [@fisher2020], which writes and fits C-R models in JAGS [@Plummer2003]. \pkg{bayesnec} was then expanded to include several additional C-R models and further generalised to allow a large range of response variables to be modelled using their appropriate statistical distribution. In addition, \pkg{bayesnec} allows the addition of hierarchical effects (see above). The simpler syntax of \pkg{brms} allows \pkg{bayesnec} to be more easily expanded to include additional response distributions as well as C-R model formula. In addition, \pkg{brms} is well developed and comes with a large range of supporting functions not available to the \pkg{jags} equivalents.
 
-While there are some commercial propriety software packages to support the analysis of toxicity data, such as graphpad (<https://www.graphpad.com/>) and ToxCalc (<https://www.tidepool-scientific.com/ToxCalc/ToxCalc.html>), these provide limited flexibility and most importantly do not support fully reproducible analysis in an open-source environment. Ensuring that the raw data from the experiment are available; and that the statistical code and documentation to reproduce the analysis are also available are two major components to a reproducible study [@peng2015]. The open-source flexible computing environment R provides an ideal platform for reproducible analysis of toxicity datasets. The main existing tool in R that is widely used in ecotoxicology and toxicology is the frequentist-based package \pkg{drc} [@Ritz2016]. \pkg{drc} provides a suite of flexible and versatile model fitting and after-fitting functions for the analysis of dose-response data. The package includes a large range of built-in dose-reponse models that are parameterized using a unified structure with a coefficient b denoting the steepness of the dose-response curve, c, d the lower and upper asymptotes or limits of the response, and, for some models, e the effective dose ED50 [@Ritz2016]. Estimation in \pkg{drc} is based on the maximum likelihood principle, which under the assumption of normally distributed response values simplifies to nonlinear least squares. \pkg{bayesnec} provides a Bayesian implementation of many of the non-linear models offered by \pkg{drc}. We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-effect-concentration model implemented in WinBugs by [@Fox2010] for two selected herbicides from the data from [@jones2003meps]. In \pkg{bayesnec} this model is fit with the call `bnec(fvfm ~ crf(log_x, model = "nec3param"), data = .x)`, and in \pkg{drc} using `drm(fvfm ~ log_x, fct = NEC.3(), data = .x)`. The herbicides hexazinone and tebuthiuronthe were selected specifically for this comparison as visual inspection indicated they should provide a reasonable fit to the [@Fox2010] model as there was some evidence of a threshold effect. For both herbicides, the predicted \pkg{drc} and \pkg{bayesnec} values were nearly identical using the default behaviour of each package (\autoref{fig:drccomparisonplot}).
+**[Maybe a paragraph or a few sentences about toxcalc]**.
+
+The main existing tool in R is the frequentist-based package \pkg{drc} [@Ritz2016]. **[I've added the code but will let you and Gerard develop the text for this section]**.
 
 ```{r drccomparison, echo = FALSE, results = "hide"}
 library(drc)
@@ -518,7 +507,7 @@ drc_plot_data <- purrr::map_dfr(drc_list, ggdrc_data, .id = "model") %>%
 plot_data <- rbind(bnec_plot_data, drc_plot_data)
 ```
 
-```{r drccomparisonplot, echo = FALSE, fig.width = 6, fig.height = 3.5, fig.cap = "A comparison of the bayesnec and drc model fits and estimated NEC values for the \\texttt{nec3param} model, fit to data on maximum effective quantum yield of symbiotic dinoflagellates (in hospite) in Seriatopora hystrix exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h."}
+```{r drccomparisonplot, echo = FALSE, fig.width = 6, fig.height = 3.5, fig.cap = "TBW."}
 combine_fits <- function(x) {
   ltys <- rep(rep(c(1, 2, 2), length(unique(x$model))), 2)[-c(36:35)]
   lwds <- rep(rep(c(0.5, 0.2, 0.2), length(unique(x$model))), 2)[-c(36:35)]
@@ -556,32 +545,13 @@ combine_fits <- function(x) {
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           strip.background = element_blank(),
-          strip.text.x = element_text(size = 12),
           panel.border = element_rect(colour = NA, fill = NA)) +
-    labs(x = expression("Concentration "~"("*mu*"g/L)"),
+    labs(x = "Concentration (natural log)",
          y = "FvFm")
 }
 combine_fits(plot_data)
 ```
 
-# Illustrative Example 
-
-So far we have demonstrated the basic usage of \pkg{bayesnec} and compared the results for a single model fit to \pkg{drc}. Here we work through an illustrative example demonstrating the use of the package for a dataset on herbicide toxicity. The aim here is to indicate the usual workflow and highlight the advantages of model averaging combined with Bayesian methods as a rigorous means of estimating and comparing relative toxicity, and the associated uncertainty. The data we analyse in this example are from [@jones2003meps]. 
-
-The response data are the maximum effective quantum yield (${\Delta F / Fm'}$) of symbiotic dinoflagellates still in the host tissue of the coral *Seriatopora hystrix* (in hospite or in vivo). ${\Delta F / Fm'}$ was calculated from Chlorophyll fluorescence parameters measured using a DIVING-PAM chlorophyll fluorometer (Walz) as described in more detail in [@jones2003meps, @jones2003effects]. The corals were exposed to elevated levels of eight different herbicides (Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, tebuthiuron, ioxynil) at concentrations ranging from 0.3 to 1000 ${\mu g/L}$) for 10 h. Data for ioxynil were excluded from analysis here as this herbicide did not show sufficient response at the maximum concentration. We modeled the concentration-response curves for the remaining seven photo toxicity datasets using the \pkg{bayesnec} package using the following code:
-
-```{r fullbayesmanec_show, eval=FALSE, echo=TRUE}
-library(dplyr)
-data("herbicide")
-herbicides <- unique(herbicide$herbicide)
-manecfit <- lapply(herbicides, FUN = function(x){
-  data <- herbicide[herbicide$herbicide == x, ]  %>%
-    dplyr::mutate(concentration=log(concentration))
-  fit <- bnec(fvfm ~ crf(concentration, model = "decline"), data = data)
-  return(fit)
-})
-
-```
 
 ```{r fullbayesmanec, echo = FALSE, results = "hide", cache = TRUE}
 library(dplyr)
@@ -590,101 +560,38 @@ herbicides <- unique(herbicide$herbicide)
 manecfit <- lapply(herbicides, FUN = function(x){
   data <- herbicide[herbicide$herbicide == x, ]  %>%
     dplyr::mutate(concentration=log(concentration))
-  fit <- bnec(fvfm ~ crf(concentration, model = "decline"), data = data)
+  fit <- bnec(fvfm ~ crf(concentration, model = "all"), data = data)
   return(fit)
 })
 
-```
-The concentration data were log transformed to improve model stability and because this is the natural scaling of the concentration series for these data. As there was little evidence of hormesis (an initial increase in the response at low concentration) in these data, we used only the `decline` model set as candidate models for the model averaging.
-
-We first use the `rhat` function as one diagnostic test to check that all models fitted successfully. In this case, for all seven datasets and all the models in the `decline` model set, all parameters met the criterion of rhat < 1.05, suggesting relatively good model fits. Other diagnostic procedures include making use of the `check_chains()` and `check_pirors()` functions to ensure there is good chain mixing, and that the default priors were suitable, although results from these checks are omitted here for brevity.
-
-```{r check_rhat, eval=FALSE}
-names(manecfit) <- herbicides
-lapply(manecfit, FUN = function(x){
- rhat(x)$failed
-})
-lapply(manecfit, FUN = function(x){
- check_chains(x)
-})
-lapply(manecfit, FUN = function(x){
- check_priors(x)
-})
-
-```
-A collated table of model weights shows that the best fitting models vary substantially across the CR curves for the seven herbicides (Table \@ref(tab:modelweights)). Few herbicides showed any weight for the **NEC** type models, with the exception of tebuthiuron and ametryn which both had some, albeit limited, support. The weights for the various **ECx** models varied substantially, with at least some support for more than one model in all cases. This shows clearly the value of the model averaging approach adopted in \pkg{bayesnec}, which effectively accommodates this model uncertainty by seamlessly providing weighted model averaged inferences.
-
-```{r fullbayesmanecpreplot, echo = FALSE, results = "hide", cache = TRUE}
-good_fits <- lapply(manecfit, FUN = function(x){
-  bad_fits <- rhat(x)$failed
-  out_fit <- x
-  if(length(bad_fits)>0){
-    out_fit <- amend(x, drop = bad_fits)
-  }
-  return(out_fit)
-}) # note for the decline model set there are no fits with bad rhat values for this example
-
-all_plots <- lapply(good_fits, FUN = function(x){
-  nec_vals <- signif(exp(nec(x)), 2)
-  nec_lab <- paste("N(S)EC = ", nec_vals[1], " (", nec_vals[2], "-", nec_vals[3], ")", sep = "")
-  autoplot(x, nec = FALSE) +
-    ylim(0, 0.8) +
-    xlim(-2.5, 6) +
-    geom_text(
-      label=nec_lab,
-      aes(x=-2, y=0.8),
-      size = 3,
-      hjust = 0) +
-    scale_x_continuous(breaks = seq(-2.5, 6, by=2), 
-                       labels = signif(exp(seq(-2.5, 6, by=2)), 2)) +
+all_plots <- lapply(manecfit, FUN = function(x){
+  autoplot(x) +
     theme(axis.title.x=element_blank(),
-          axis.title.y=element_blank(),
-          strip.background = element_blank(),
-          strip.text.x = element_blank()) +
+          axis.title.y=element_blank()) +
     ggtitle("")
   
 })
 
 ```
 
-```{r modelweights}
-lapply(good_fits, FUN = function(x){
- x$mod_stats %>% dplyr::select(model, wi) %>% dplyr::mutate(wi=round(wi, 3))
-}) %>% bind_rows(.id = "herbicide") %>% tidyr::pivot_wider(names_from = herbicide, values_from = wi) #%>% 
- # kableExtra::kable(caption='Fitted models and their relative pseudo-BMA weights for CR curves for the effects seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral Seriatopora hystrix.',
- #     format='latex', booktabs=T)
-
-```
-The weighted model averaged predicted curves are shown in \autoref{fig:fullbayesmanecplot}. These fit the input data very well, and model predictions are generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn and tebuthiuron datasets can be clearly seen in the weighted average predicted values, manifesting as a broader confidence band at the estimated position of the NEC (\autoref{fig:fullbayesmanecplot}). 
-
-The values presented on the plot in \autoref{fig:fullbayesmanecplot} as N(SEC) are model averaged posterior densities of the NEC parameter obtained from all fitted **NEC** models, and the NSEC values estimated from all smooth **ECx** models. These values are the \pkg{bayesnec} estimates for the no-(significant)-effect concentration required for the integration of this toxicity data into the relevant regulatory framework in Australia, the Australian and New Zealand Water Quality Guidelines [@anzg]. While the recommendation that  **NEC** is the preferred toxicity estimate in this framework is well established [@Warne2015, @Warne2018c], use of the **NSEC** is relatively new [@Fisher2022] and yet to gain formal approval for use in the Australian setting, as discussed in more detail below. 
-
-```{r fullbayesmanecplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield of symbiotic dinoflagellates (in hospite) in Seriatopora hystrix exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. Data for ioxynil were excluded as this herbicide did not show a sufficient response at the maximum concentration. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\texttt{NEC} models, and the NSEC values estimated from all smooth \\texttt{ECx}  models. Only the \\texttt{decline} model set was used (ie. hormesis models were excluded."}
+```{r fullbayesmanecplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield "}
 library(ggpubr)
 figure <- ggarrange(plotlist=all_plots, nrow=4, ncol=2, 
+                    #labels = paste(letters[1:7], ". ",  herbicides, sep=""),
                     labels = herbicides,
-                    font.label=list(color="black",size=12, face = "plain"),
+                    vjust=3,
+                    font.label=list(color="black",size=10, face = "plain"),
                     align = "hv")
 
 annotate_figure(figure,
                 left = text_grob("FvFm", rot = 90),
-                bottom = text_grob(expression("Concentration "~"("*mu*"g/L)")))
-```
-
-Finally, we also plot the weighted averaged posterior samples for the N(S)EC toxicity values for all herbicides (\autoref{fig:necplots}). This shows clearly that irgarol, diuron and ametryn are the most toxic, and exhibit relatively similar toxicity, with their posterior densities substantially overlapping (\autoref{fig:necplots}). The herbicide tebuthiuron is the least toxic of these seven, followed by simazine, atrazine and finally haxinone, which exhibits intermediate toxicity (\autoref{fig:necplots}). 
-
-```{r necplots,  echo = FALSE, fig.width = 6, fig.height = 4, fig.cap = "Posterior distributions for N(S)EC toxicity estimates for effect of seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral Seriatopora hystrix. Shown are with medians and 80 percent intervals."}
-nec_posteriors <- lapply(good_fits, FUN = function(x){
- sample(x$w_nec_posterior, size = 7000)
-}) %>% bind_rows(.id = "herbicide")
-bayesplot::mcmc_areas(nec_posteriors, prob = 0.8)
-
+                bottom = text_grob("Concentration (natural log)"))
 ```
 
 
 # Discussion
 
-In order to be accessible to a broad community of varying statistical capabilities, we have simplified fitting a \pkg{bayesnec} model as much as possible, whilst retaining the ability to modify a wide range of arguments as necessary. Where possible we have tried to set default values to align with those in \pkg{brms}. Wherever we deviate, this is generally towards being more conservative and/or we have clearly explained our reasoning. Specific examples include: 1) `iter`, which we increased from the \pkg{brms} default of 2,000 to 10,000 as we found that a higher number of iterations are generally required for these non-linear models; and 2) the use of `pointwise = TRUE` (where possible) and `sample_prior = "yes"` to avoid excessive R crashes when used in the Windows operating system and allow the use of the `hypothesis` function respectively. We welcome constructive criticism of our selections and users must expect that default settings may change accordingly in later releases. We encourage users to modify these default values themselves whenever appropriate.
+In order to be accessible to a broad community of varying statistical capabilities, we have simplified fitting a \pkg{bayesnec} model as much as possible, whilst retaining the ability to modify a wide range of arguments as necessary. Where possible we have tried to set default values to align with those in \pkg{brms}. Wherever we deviate, this is generally towards being more conservative and/or we have clearly explained our reasoning. Specific examples include: 1) `iter`, which we increased from the \pkg{brms} default of 2,000 to 10,000 as we found that a higher number of iterations are generally required for these non-linear models; 2) the use of pseudo-BMA rather than stacking weights to better reflect \pkg{bayesnec}'s goals with respect to model averaging (discussed in more detail above); and 3) the use of `pointwise = TRUE` (where possible) and `sample_prior = "yes"` to avoid excessive R crashes when used in the Windows operating system and allow the use of the `hypothesis` function respectively. We welcome constructive criticism of our selections and users must expect that default settings may change accordingly in later releases.
 
 We have made considerable effort to ensure that \pkg{bayesnec} makes a sensible prediction for the appropriate family, constructs appropriate weakly informative priors, and generates sensible initial values. However, this is a difficult task across such a broad range of non-linear models, and across the potential range of ecotoxicological data that may be used. The user must interrogate their model fits using the wide array of helper functions, and use their own judgement regarding the appropriateness of model inferences for their own application. Of particular importance are examination of model fit statistics through the `summary` and `rhat` methods, visual inspection of all model fits in `bayesmanecfit` objects (via `plot(..., all_models = TRUE)` and `check_chains(..., all_models = TRUE)`) and an assessment of the posterior versus prior probability densities to ensure default priors are appropriate (using `check_priors`).
 
@@ -692,7 +599,7 @@ The model averaging approach implemented in \pkg{bayesnec} is widely used in a r
 
 ## Model suitability for \textit{NEC} and \textit{EC\textsubscript{x}} estimation {short-title="Model suitability for NEC and ECx estimation" #modsuit}
 
-In principle all models provide an estimate for the No-Effect-Concentration (*NEC*). As seen above, for model strings with **nec** as a prefix, the *NEC* is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per [@Fox2010]. On the other hand, models strings with **ecx** as a prefix are continuous curve models, typically used for extracting *EC~x~* values from concentration-response data. In this instance, the *NEC* reported is actually the No-Significant-Effect-Concentration (*NSEC*, see details in [@Fisher2022]), defined as the concentration at which there is a user supplied certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote ($\tau = \text{top}$) of the response (i.e. the response value is significantly lower than that expected in the case of no exposure). The default value for this *NSEC* proportion is 0.01, which corresponds to an alpha value (Type-I error rate) of 0.01 for a one-sided test of significance. We currently recommend only using the `"nec"` model set for estimation of *NEC* values, as the *NSEC* concept is still under peer-review and yet to be accepted within regulatory contexts. Both *NEC* and *NSEC* can be calculated from fitted models using the functions `nec` and `nsec`.
+In principle all models provide an estimate for the No-Effect-Concentration (*NEC*). As seen above, for model strings with **nec** as a prefix, the *NEC* is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per [@Fox2010]. On the other hand, models strings with **ecx** as a prefix are continuous curve models, typically used for extracting *EC~x~* values from concentration-response data. In this instance, the *NEC* reported is actually the No-Significant-Effect-Concentration (*NSEC*), defined as the concentration at which there is a user supplied certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote ($\tau = \text{top}$) of the response (i.e. the response value is significantly lower than that expected in the case of no exposure). The default value for this *NSEC* proportion is 0.01, which corresponds to an alpha value (Type-I error rate) of 0.01 for a one-sided test of significance. We currently recommend only using the `"nec"` model set for estimation of *NEC* values, as the *NSEC* concept is still under peer-review. Both *NEC* and *NSEC* can be calculated from fitted models using the functions `nec` and `nsec`.
 
 *EC~x~* estimates can be equally obtained from both `"nec"` and `"ecx"` models. *EC~x~* estimates will usually be lower (more conservative) for `"ecx"` models fitted to the same data as `"nec"` models. There is ambiguity in the definition of *EC~x~* estimates from hormesis models---these allow an initial increase in the response [see @Mattson2008] and include models with the string **horme** in their name---as well as those that have no natural lower bound on the scale of the response (models with the string **lin** in their name, in the case of Gaussian response data). For this reason the `ecx` function has arguments `hormesis_def` and `type`, both character vectors indicating the desired behaviour. For `hormesis_def = "max"`, *EC~x~* values are calculated as a decline from the maximum estimates (i.e., the peak at $\eta = \text{NEC}$); and `hormesis_def = "control"` (the default) indicates that *EC~x~* values should be calculated relative to the control, which is assumed to be the lowest observed concentration. For `type = "relative"` *EC~x~* is calculated as the percentage decrease from the maximum predicted value of the response ($\tau = \text{top}$) to the minimum predicted value of the response (i.e., *relative* to the observed data). For `type = "absolute"` (the default) *EC~x~* is calculated as the percentage decrease from the maximum value of the response ($\tau = \text{top}$) to 0 (or $\delta = \text{bottom}$ for models with that parameter). For `type = "direct"`, a direct interpolation of the response on the predictor is obtained.
 
