@@ -398,7 +398,7 @@ To ensure a `bnec` fit retains the same level of objectivity as an equivalent fr
 
 ### User-specified priors
 
-There may be situations where the default \pkg{bayesnec} priors do not behave as desired, or the user wants to provide customised priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the predictor variable). Conversely, priors may be too vague, leading to poor model convergence. Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for \pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual \pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brmsfit` object (see \autoref{fig:sampleprior}).
+In \pkg{bayesnec} we chose to provide default priors that are data-dependent. They were designed to be somewhat informative (relative to each parameter's region) but that would, in data-sufficient cases, return fits without HMC divergent transitions in Stan. Default "blanket" priors are not currently provided for non-linear models by the model-building underlying package \pkg{brms}, and we note that defining the extent to which a prior is vague or weakly/strongly informative ultimately depends on the likelihood [@gelman2017entropy]. Therefore, there may be situations where the default \pkg{bayesnec} priors do not behave as desired, or the user wants to provide customised priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the predictor variable). Conversely, priors may be too vague, leading to poor model convergence. Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for \pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual \pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brmsfit` object (see \autoref{fig:sampleprior}).
 
 ```{r sampleprior, fig.height = 4, fig.width = 4.5, fig.cap = "Frequency histograms of samples of the default priors used by bnec for fitting the \\texttt{nec4param} model to the example data."}
 sample_priors(fit$fit$prior)
@@ -572,35 +572,32 @@ The response data are the maximum effective quantum yield (${\Delta F / Fm'}$) o
 
 ```{r fullbayesmanec_show, eval=FALSE, echo=TRUE}
 library(dplyr)
+library(purrr)
 data("herbicide")
-herbicides <- unique(herbicide$herbicide)
-manecfit <- lapply(herbicides, FUN = function(x){
-  data <- herbicide[herbicide$herbicide == x, ]  %>%
-    dplyr::mutate(concentration=log(concentration))
-  fit <- bnec(fvfm ~ crf(concentration, model = "decline"), data = data)
-  return(fit)
-})
-
+manecfit <- herbicide %>%
+  dplyr::mutate(concentration = log(concentration)) %>%
+  split(f = ~ herbicide) %>%
+  purrr::map(function(x) {
+    bayesnec::bnec(fvfm ~ crf(concentration, model = "decline"), data = x)
+  })
 ```
 
 ```{r fullbayesmanec, echo = FALSE, results = "hide", cache = TRUE}
 library(dplyr)
+library(purrr)
 data("herbicide")
-herbicides <- unique(herbicide$herbicide)
-manecfit <- lapply(herbicides, FUN = function(x){
-  data <- herbicide[herbicide$herbicide == x, ]  %>%
-    dplyr::mutate(concentration=log(concentration))
-  fit <- bnec(fvfm ~ crf(concentration, model = "decline"), data = data)
-  return(fit)
-})
-
+manecfit <- herbicide %>%
+  dplyr::mutate(concentration = log(concentration)) %>%
+  split(f = ~ herbicide) %>%
+  purrr::map(function(x) {
+    bayesnec::bnec(fvfm ~ crf(concentration, model = "decline"), data = x)
+  })
 ```
 The concentration data were log transformed to improve model stability and because this is the natural scaling of the concentration series for these data. As there was little evidence of hormesis (an initial increase in the response at low concentration) in these data, we used only the `decline` model set as candidate models for the model averaging.
 
 We first use the `rhat` function as one diagnostic test to check that all models fitted successfully. In this case, for all seven datasets and all the models in the `decline` model set, all parameters met the criterion of rhat < 1.05, suggesting relatively good model fits. Other diagnostic procedures include making use of the `check_chains()` and `check_pirors()` functions to ensure there is good chain mixing, and that the default priors were suitable, although results from these checks are omitted here for brevity.
 
 ```{r check_rhat, eval=FALSE}
-names(manecfit) <- herbicides
 lapply(manecfit, FUN = function(x){
  rhat(x)$failed
 })
@@ -610,50 +607,51 @@ lapply(manecfit, FUN = function(x){
 lapply(manecfit, FUN = function(x){
  check_priors(x)
 })
-
 ```
+
 A collated table of model weights shows that the best fitting models vary substantially across the C-R curves for the seven herbicides (Table \@ref(tab:modelweights)). Few herbicides showed any weight for the **NEC** type models, with the exception of tebuthiuron and ametryn which both had some, albeit limited, support. The weights for the various **ECx** models varied substantially, with at least some support for more than one model in all cases. This shows clearly the value of the model averaging approach adopted in \pkg{bayesnec}, which effectively accommodates this model uncertainty by seamlessly providing weighted model averaged inferences.
 
-```{r fullbayesmanecpreplot, echo = FALSE, results = "hide", cache = TRUE}
-good_fits <- lapply(manecfit, FUN = function(x){
+```{r fullbayesmanecpreplot, echo = FALSE, results = "hide", cache = TRUE, dependson = "fullbayesmanec"}
+good_fits <- purrr::map(manecfit, function(x) {
   bad_fits <- rhat(x)$failed
   out_fit <- x
-  if(length(bad_fits)>0){
-    out_fit <- amend(x, drop = bad_fits)
+  if (length(bad_fits) > 0) {
+    out_fit <- bayesnec::amend(x, drop = bad_fits)
   }
-  return(out_fit)
-}) # note for the decline model set there are no fits with bad rhat values for this example
-
-all_plots <- lapply(good_fits, FUN = function(x){
+  out_fit
+  # note for the decline model set there are no fits with
+  #   bad rhat values for this example.
+})
+all_plots <- lapply(good_fits, function(x) {
   nec_vals <- signif(exp(nec(x)), 2)
-  nec_lab <- paste("N(S)EC = ", nec_vals[1], " (", nec_vals[2], "-", nec_vals[3], ")", sep = "")
+  nec_lab <- paste(
+    "N(S)EC = ", nec_vals[1], " (", nec_vals[2], "-", nec_vals[3], ")",
+    sep = ""
+  )
   autoplot(x, nec = FALSE) +
     ylim(0, 0.8) +
     xlim(-2.5, 6) +
-    geom_text(
-      label=nec_lab,
-      aes(x=-2, y=0.8),
-      size = 3,
-      hjust = 0) +
-    scale_x_continuous(breaks = seq(-2.5, 6, by=2), 
-                       labels = signif(exp(seq(-2.5, 6, by=2)), 2)) +
-    theme(axis.title.x=element_blank(),
-          axis.title.y=element_blank(),
+    geom_text(label = nec_lab, aes(x = -2, y = 0.8), size = 3, hjust = 0) +
+    scale_x_continuous(breaks = seq(-2.5, 6, by = 2), 
+                       labels = signif(exp(seq(-2.5, 6, by = 2)), 2)) +
+    theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
           strip.background = element_blank(),
           strip.text.x = element_blank()) +
     ggtitle("")
-  
 })
-
 ```
 
 ```{r modelweights}
-lapply(good_fits, FUN = function(x){
- x$mod_stats %>% dplyr::select(model, wi) %>% dplyr::mutate(wi=round(wi, 3))
-}) %>% bind_rows(.id = "herbicide") %>% tidyr::pivot_wider(names_from = herbicide, values_from = wi) #%>% 
+library(tidyr)
+purrr::map_dfr(good_fits, function(x) {
+  x$mod_stats %>%
+    dplyr::select(model, wi) %>%
+    dplyr::mutate(wi = round(wi, 3))
+}, .id = "herbicide") %>%
+  tidyr::pivot_wider(names_from = herbicide, values_from = wi) #%>% 
  # kableExtra::kable(caption='Fitted models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral Seriatopora hystrix.',
  #     format='latex', booktabs=T)
-
 ```
 The weighted model averaged predicted curves are shown in \autoref{fig:fullbayesmanecplot}. These fit the input data very well, and model predictions are generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn and tebuthiuron datasets can be clearly seen in the weighted average predicted values, manifesting as a broader confidence band at the estimated position of the NEC (\autoref{fig:fullbayesmanecplot}). 
 
@@ -661,26 +659,26 @@ The values presented on the plot in \autoref{fig:fullbayesmanecplot} as N(SEC) a
 
 ```{r fullbayesmanecplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield of symbiotic dinoflagellates (in hospite) in Seriatopora hystrix exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. Data for ioxynil were excluded as this herbicide did not show a sufficient response at the maximum concentration. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\texttt{NEC} models, and the NSEC values estimated from all smooth \\texttt{ECx}  models. Only the \\texttt{decline} model set was used (ie. hormesis models were excluded."}
 library(ggpubr)
-figure <- ggarrange(plotlist=all_plots, nrow=4, ncol=2, 
-                    labels = herbicides,
-                    font.label=list(color="black",size=12, face = "plain"),
-                    align = "hv")
-
-annotate_figure(figure,
-                left = text_grob("FvFm", rot = 90),
-                bottom = text_grob(expression("Concentration "~"("*mu*"g/L)")))
+herbicides <- unique(herbicide$herbicide)
+figure <- ggpubr::ggarrange(
+  plotlist = all_plots, nrow = 4, ncol = 2, labels = herbicides,
+  font.label = list(color = "black", size = 12, face = "plain"), align = "hv"
+)
+ggpubr::annotate_figure(
+  figure, left = text_grob("FvFm", rot = 90),
+  bottom = text_grob(expression("Concentration "~"("*mu*"g/L)"))
+)
 ```
 
 Finally, we also plot the weighted averaged posterior samples for the N(S)EC toxicity values for all herbicides (\autoref{fig:necplots}). This shows clearly that irgarol, diuron and ametryn are the most toxic, and exhibit relatively similar toxicity, with their posterior densities substantially overlapping (\autoref{fig:necplots}). The herbicide tebuthiuron is the least toxic of these seven, followed by simazine, atrazine and finally haxinone, which exhibits intermediate toxicity (\autoref{fig:necplots}). 
 
 ```{r necplots,  echo = FALSE, fig.width = 6, fig.height = 4, fig.cap = "Posterior distributions for N(S)EC toxicity estimates for effect of seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral Seriatopora hystrix. Shown are with medians and 80 percent intervals."}
 nec_posteriors <- lapply(good_fits, FUN = function(x){
- sample(x$w_nec_posterior, size = 7000)
-}) %>% bind_rows(.id = "herbicide")
+  sample(x$w_nec_posterior, size = 7000)
+}) %>%
+  dplyr::bind_rows(.id = "herbicide")
 bayesplot::mcmc_areas(nec_posteriors, prob = 0.8)
-
 ```
-
 
 # Discussion
 
