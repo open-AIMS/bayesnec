@@ -605,18 +605,14 @@ The concentration data were log transformed to improve model stability and becau
 Following model fitting We first use the `rhat` function as one diagnostic test to check that all models fitted successfully. In this case, for all seven datasets and all the models in the `decline` model set, all parameters met the criterion of rhat < 1.05, suggesting relatively good model fits. Other diagnostic procedures include making use of the `check_chains()` and `check_priors()` functions to ensure there is good chain mixing, and that the default priors were suitable, although results from these checks are omitted here for brevity.
 
 ```{r check_rhat, eval=FALSE}
-lapply(manecfit, FUN = function(x){
+lapply(manecfit, function(x) {
  rhat(x)$failed
 })
-lapply(manecfit, FUN = function(x){
- check_chains(x)
-})
-lapply(manecfit, FUN = function(x){
- check_priors(x)
-})
+lapply(manecfit, check_chains)
+lapply(manecfit, check_priors)
 ```
 
-A collated table of model weights shows that the best fitting models vary substantially across the C-R curves for the seven herbicides (Table \@ref(tab:weightsTab)). Few herbicides showed any weight for the **NEC** threshold models, with the exception of tebuthiuron and ametryn which both had some, albeit limited, support. The weights for the various **ECx** models varied substantially, with at least some support for more than one model in all cases. This shows clearly the value of the model averaging approach adopted in \pkg{bayesnec}, which effectively accommodates this model uncertainty by seamlessly providing weighted model averaged inferences.
+A collated table of model weights shows that the best fitting models vary substantially across the C-R curves for the seven herbicides (\autoref{tab:weightsTab}). Few herbicides showed any weight for the **NEC** threshold models, with the exception of tebuthiuron and ametryn which both had some, albeit limited, support. The weights for the various **ECx** models varied substantially, with at least some support for more than one model in all cases. This shows clearly the value of the model averaging approach adopted in \pkg{bayesnec}, which effectively accommodates this model uncertainty by seamlessly providing weighted model averaged inferences.
 
 ```{r fullbayesmanecpreplot, echo = FALSE, results = "hide", cache = TRUE, dependson = "fullbayesmanec"}
 good_fits <- purrr::map(manecfit, function(x) {
@@ -649,7 +645,7 @@ all_plots <- lapply(good_fits, function(x) {
 })
 ```
 
-```{r modelweights, weightsTab, echo=FALSE}
+```{r weightsTab, echo=FALSE}
 library(tidyr)
 modtab <- purrr::map_dfr(good_fits, function(x) {
   x$mod_stats %>%
@@ -657,8 +653,7 @@ modtab <- purrr::map_dfr(good_fits, function(x) {
     dplyr::mutate(wi = round(wi, 3))
 }, .id = "herbicide") %>%
   tidyr::pivot_wider(names_from = herbicide, values_from = wi)
-kableExtra::kable(modtab)
-#, caption="Fitted models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral Seriatopora hystrix.", format='latex', booktabs=T)
+knitr::kable(modtab, caption="Fitted models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral Seriatopora hystrix.")
 ```
 
 The weighted model averaged predicted curves are shown in \autoref{fig:fullbayesmanecplot}. These fit the input data very well, and model predictions are generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn and tebuthiuron datasets can be clearly seen in the weighted average predicted values, manifesting as a broader confidence band at the estimated position of the NEC threshold point (\autoref{fig:fullbayesmanecplot}). 
