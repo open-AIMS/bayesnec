@@ -25,6 +25,7 @@ bayesnec*tar.gz
 /Meta/
 paper/
 article/*
+!article/article.tex
 !article/article.Rmd
 !article/article.bib
 !article/jss.bst
