@@ -426,11 +426,11 @@ The current version of \pkg{bayesnec} harnesses the powerful modelling flexibili
 
 \pkg{bayesnec} is built upon the precursor R package \pkg{jagsNEC} [@fisher2020], which writes and fits C-R models in JAGS [@Plummer2003]. \pkg{bayesnec} was then expanded to include several additional C-R models and further generalised to allow a large range of response variables to be modelled using their appropriate statistical distribution. In addition, \pkg{bayesnec} allows the addition of hierarchical effects (see above). The simpler syntax of \pkg{brms} allows \pkg{bayesnec} to be more easily expanded to include additional response distributions as well as C-R model formula. In addition, \pkg{brms} is well developed and comes with a large range of supporting functions not available to the \pkg{jags} equivalents.
 
-While there are some commercial propriety software packages to support the analysis of toxicity data, such as graphpad (<https://www.graphpad.com/>) and ToxCalc (<https://www.tidepool-scientific.com/ToxCalc/ToxCalc.html>), these provide limited flexibility and most importantly do not support fully reproducible analysis in an open-source environment. Ensuring that the raw data from the experiment are available; and that the statistical code and documentation to reproduce the analysis are also available are two major components to a reproducible study [@peng2015]. 
+While there are some commercial propriety software packages to support the analysis of toxicity data, such as graphpad (<https://www.graphpad.com>) and ToxCalc (<https://www.tidepool-scientific.com/ToxCalc/ToxCalc.html>), these provide limited flexibility and most importantly do not support fully reproducible analysis in an open-source environment. Ensuring that the raw data from the experiment are available; and that the statistical code and documentation to reproduce the analysis are also available are two major components to a reproducible study [@peng2015]. 
 
 The open-source flexible computing environment R, provides an ideal platform for reproducible analysis of toxicity datasets. The main existing tool in R that is widely used in ecotoxicology and toxicology is the frequentist-based package \pkg{drc} [@Ritz2016]. \pkg{drc} provides a suite of flexible and versatile model fitting and after-fitting functions for the analysis of dose-response data. The package includes a large range of built-in dose-reponse models that are parameterized using a unified structure with a coefficient b denoting the steepness of the dose-response curve, c, d the lower and upper asymptotes or limits of the response, and, for some models, e the effective dose ED50 [@Ritz2016]. Estimation in \pkg{drc} is based on the maximum likelihood principle, which under the assumption of normally distributed response values simplifies to nonlinear least squares. \pkg{bayesnec} provides a Bayesian implementation of many of the non-linear models offered by \pkg{drc}. 
 
-We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-effect-concentration model implemented in WinBugs by @Fox2010 for two selected herbicides from the data from @jones2003meps. In \pkg{bayesnec} this model is fit with the call `bnec(fvfm ~ crf(log_x, model = "nec3param"), data = .x)`, and in \pkg{drc} using `drm(fvfm ~ log_x, fct = NEC.3(), data = .x)`. The herbicides hexazinone and tebuthiuronthe were selected specifically for this comparison as visual inspection indicated they should provide a reasonable fit to the [@Fox2010] model as there was some evidence of a threshold effect. For both herbicides, the predicted \pkg{drc} and \pkg{bayesnec} values were nearly identical using the default behaviour of each package (\autoref{fig:drccomparisonplot}).
+We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-effect-concentration model implemented in WinBugs by @Fox2010 for two selected herbicides from the data from @jones2003meps. In \pkg{bayesnec} this model is fit with the call `bnec(fvfm ~ crf(log_x, model = "nec3param"), data = .x)`, and in \pkg{drc} using `drm(fvfm ~ log_x, fct = NEC.3(), data = .x)`. The herbicides hexazinone and tebuthiuron were selected specifically for this comparison as visual inspection indicated they should provide a reasonable fit to the [@Fox2010] model as there was some evidence of a threshold effect. For both herbicides, the predicted \pkg{drc} and \pkg{bayesnec} values were nearly identical using the default behaviour of each package (\autoref{fig:drccomparisonplot}).
 
 ```{r drccomparison, echo = FALSE, results = "hide"}
 library(drc)
@@ -491,9 +491,9 @@ ggdrc_data <- function(x) {
                      nec_labs = NA, nec_labs_l = NA, nec_labs_u = NA)
   n_df <- data.frame(x_e = NA, y_e = NA, y_ci = NA,
                      x_r = NA, y_r = NA, nec_vals = drc_nec,
-                     nec_labs = c(rounded(drc_nec[[1]], 2), NA, NA),
-                     nec_labs_l = c(rounded(drc_nec[[2]], 2), NA, NA),
-                     nec_labs_u = c(rounded(drc_nec[[3]], 2), NA, NA))
+                     nec_labs = c(drc_nec[[1]], NA, NA),
+                     nec_labs_l = c(drc_nec[[2]], NA, NA),
+                     nec_labs_u = c(drc_nec[[3]], NA, NA))
   rbind(e_df, r_df, n_df)
 }
 
@@ -515,14 +515,19 @@ if (!all(names(bnec_list) == names(drc_list))) {
   stop("Incompatible name order.")
 }
 
-bnec_plot_data <- purrr::map_dfr(bnec_list, ggbnec_data, .id = "model") %>%
+bnec_plot_data <- purrr::map_dfr(bnec_list, ggbnec_data,  .id = "model") %>%
   dplyr::mutate(source = "bayesnec")
 drc_plot_data <- purrr::map_dfr(drc_list, ggdrc_data, .id = "model") %>%
   dplyr::mutate(source = "drc")
-plot_data <- rbind(bnec_plot_data, drc_plot_data)
+plot_data <- rbind(bnec_plot_data, drc_plot_data) %>% 
+  dplyr::mutate(nec_labs = as.character(signif(exp(as.numeric(nec_labs)),3)),
+                nec_labs_l = as.character(signif(exp(as.numeric(nec_labs_l)),3)),
+                nec_labs_u = as.character(signif(exp(as.numeric(nec_labs_u)),3)))
+
 ```
 
-```{r drccomparisonplot, echo = FALSE, fig.width = 6, fig.height = 3, fig.cap = "A comparison of the bayesnec and drc model fits and estimated NEC values for the \\texttt{nec3param} model, fit to data on maximum effective quantum yield of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h."}
+```{r drccomparisonplot, echo = FALSE, fig.width = 6, fig.height = 3, fig.cap = "A comparison of the bayesnec and drc model fits and estimated NEC values for the \\texttt{nec3param} model, fit to data on maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h."}
+
 combine_fits <- function(x) {
   ltys <- rep(rep(c(1, 2, 2), length(unique(x$model))), 2)[-c(36:35)]
   lwds <- rep(rep(c(0.5, 0.2, 0.2), length(unique(x$model))), 2)[-c(36:35)]
@@ -541,19 +546,22 @@ combine_fits <- function(x) {
                linetype = ltys, lwd = lwds, show.legend = FALSE) +
     geom_text(data = x %>% filter(!is.na(nec_labs), source == "bayesnec"),
               mapping = aes(label = paste0("bayesnec: ", nec_labs, " (",
-                                           nec_labs_l, " : ",
+                                           nec_labs_l, "-",
                                            nec_labs_u, ")")),
-              x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, size = 3,
+              x = Inf, y = Inf, hjust = 0.95, vjust = 1.5, size = 2.75,
               colour = "tomato") +
     geom_text(data = x %>% filter(!is.na(nec_labs), source == "drc"),
               mapping = aes(label = paste0("drc: ", nec_labs, " (",
-                                           nec_labs_l, " : ",
+                                           nec_labs_l, "-",
                                            nec_labs_u, ")")),
-              x = Inf, y = Inf, hjust = 1.1, vjust = 4, size = 3,
+              x = Inf, y = Inf, hjust = 0.95, vjust = 4, size = 2.75,
               colour = "skyblue2") +
+    coord_cartesian(clip = "off") +
     scale_colour_manual(values = c(bayesnec = "tomato", drc = "skyblue2")) +
     scale_fill_manual(values = c(bayesnec = "tomato", drc = "skyblue2")) +
     ylim(0, 0.8) +
+    scale_x_continuous(breaks = log(c(0.08, 0.61, 4.5, 33, 240)), 
+                       labels = c("0.08", "0.61", "4.5", "33", "240")) +    
     theme_classic() +
     facet_wrap(~model, scales = "free", ncol = 2) +
     theme(strip.text = element_text(hjust = 0),
@@ -563,7 +571,7 @@ combine_fits <- function(x) {
           strip.text.x = element_text(size = 12),
           panel.border = element_rect(colour = NA, fill = NA)) +
     labs(x = expression("Concentration "~"("*mu*"g/L)"),
-         y = "FvFm")
+         y = expression(""*Delta*"F"/"F m'"))
 }
 combine_fits(plot_data)
 ```
@@ -654,29 +662,29 @@ modtab <- purrr::map_dfr(good_fits, function(x) {
     dplyr::mutate(wi = round(wi, 3))
 }, .id = "herbicide") %>%
   tidyr::pivot_wider(names_from = herbicide, values_from = wi)
-knitr::kable(modtab, caption="Fitted models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral \\textit{Seriatopora hystrix}.")
+knitr::kable(modtab, caption="Fitted models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \\textit{Seriatopora hystrix}.")
 ```
 
 The weighted model averaged predicted curves are shown in \autoref{fig:fullbayesmanecplot}. These fit the input data very well, and model predictions are generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn and tebuthiuron datasets can be clearly seen in the weighted average predicted values, manifesting as a broader confidence band at the estimated position of the NEC threshold point (\autoref{fig:fullbayesmanecplot}). 
 
 The values presented on the plot in \autoref{fig:fullbayesmanecplot} as N(SEC) are model averaged posterior densities of the *NEC* parameter obtained from all fitted **nec** models, and the *NSEC* values estimated from all smooth **ecx** models. These values are the \pkg{bayesnec} estimates for the no-(significant)-effect concentration required for the integration of this toxicity data into the relevant regulatory framework in Australia, the Australian and New Zealand Water Quality Guidelines [@anzg]. While the recommendation that  *NEC* is the preferred toxicity estimate in this framework is well established [@Warne2015, @Warne2018c], use of the *NSEC* is relatively new [@Fisher2022] and yet to gain formal approval for use in the Australian setting, as discussed in more detail below. 
 
-```{r fullbayesmanecplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\texttt{NEC} models, and the NSEC values estimated from all smooth \\texttt{ECx}  models. Only the \\texttt{decline} model set was used (ie. hormesis models were excluded)."}
+```{r fullbayesmanecplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\texttt{NEC} models, and the NSEC values estimated from all smooth \\texttt{ECx}  models. Only the \\texttt{decline} model set was used (ie. hormesis models were excluded)."}
 library(ggpubr)
 herbicides <- unique(herbicide$herbicide)
 figure <- ggpubr::ggarrange(
-  plotlist = all_plots, nrow = 4, ncol = 2, labels = herbicides,
+  plotlist = all_plots, nrow = 4, ncol = 2, labels = sort(herbicides),
   font.label = list(color = "black", size = 12, face = "plain"), align = "hv"
 )
 ggpubr::annotate_figure(
-  figure, left = text_grob("FvFm", rot = 90),
+  figure, left = text_grob(expression(""*Delta*"F"/"F m'"), rot = 90),
   bottom = text_grob(expression("Concentration "~"("*mu*"g/L)"))
 )
 ```
 
 Finally, we also plot the weighted averaged posterior samples for the N(S)EC toxicity values for all herbicides (\autoref{fig:necplots}). This shows clearly that irgarol, diuron and ametryn are the most toxic, and exhibit relatively similar toxicity, with their posterior densities substantially overlapping (\autoref{fig:necplots}). The herbicide tebuthiuron is the least toxic of these seven, followed by simazine, atrazine and finally haxinone, which exhibits intermediate toxicity (\autoref{fig:necplots}). 
 
-```{r necplots,  echo = FALSE, fig.width = 6, fig.height = 4, fig.cap = "Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral \\textit{Seriatopora hystrix}. Shown are medians with 80\\%  uncertainty intervals."}
+```{r necplots,  echo = FALSE, fig.width = 6, fig.height = 4, fig.cap = "Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \\textit{Seriatopora hystrix}. Shown are medians with 80\\%  uncertainty intervals."}
 nec_posteriors <- lapply(good_fits, FUN = function(x){
   sample(x$w_nec_posterior, size = 7000)
 }) %>%
