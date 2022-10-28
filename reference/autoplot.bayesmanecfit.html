@@ -185,13 +185,10 @@ facets? Defaults to TRUE.</p></dd>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Finding initial values which allow the response to be fitted using a nec4param model and a beta distribution.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Compiling Stan program...</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Start sampling</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>There were 3 divergent transitions after warmup. See</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> https://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> to find out why this is a problem and how to eliminate them.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>There were 16 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>There were 25 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> https://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Examine the pairs() plot to diagnose sampling problems</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>The largest R-hat is 1.63, indicating chains have not mixed.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>The largest R-hat is 1.94, indicating chains have not mixed.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Running the chains for more iterations may help. See</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> https://mc-stan.org/misc/warnings.html#r-hat</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.</span>
@@ -204,10 +201,10 @@ facets? Defaults to TRUE.</p></dd>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Fitted models are: nec3param nec4param</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec3param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> 2 (2.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Found 1 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> 3 (3.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Found 5 observations with a pareto_k &gt; 0.7 in model 'nec4param'. It is recommended to set 'moment_match = TRUE' in order to perform moment matching for problematic observations. </span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> 15 (15.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> 16 (16.0%) p_waic estimates greater than 0.4. We recommend trying loo instead.</span>
 <span class="r-in"><span><span class="va">nec3param</span> <span class="op">&lt;-</span> <span class="fu"><a href="pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">necs</span>, <span class="st">"nec3param"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Pulling out model(s): nec3param</span>
 <span class="r-in"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">nec3param</span><span class="op">)</span></span></span>
