@@ -57,19 +57,19 @@ The \pkg{bayesnec} package has been developed for R to fit concentration(dose) -
      Rebecca Fisher\\
    Australian Institute of Marine Science\\
    Australian Institute of Marine Science,Crawley, WA, Australia\\
-       IOMRC University of Western Australia\\
+       University of Western Australia\\
    The Indian Ocean Marine Research Centre,University of Western Australia,Crawley, WA, Australia\\
     E-mail: \email{r.fisher@aims.gov.au}\\
   
      Diego R. Barneche\\
    Australian Institute of Marine Science\\
    Australian Institute of Marine Science,Crawley, WA, Australia\\
-       IOMRC University of Western Australia\\
+       University of Western Australia\\
    The Indian Ocean Marine Research Centre University of Western Australia,Crawley, WA, Australia\\
     
   
      Gerard Ricardo\\
-   The University of Queensland\\
+   University of Queensland\\
    The University of Queensland,St Lucia, Qld, Australia\\
        Australian Institute of Marine Science\\
    Australian Institute of Marine Science,Townsville, Qld, Australia\\
@@ -109,7 +109,6 @@ The \pkg{bayesnec} package has been developed for R to fit concentration(dose) -
 \begin{document}
 
 
-\newpage
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
 
@@ -424,12 +423,12 @@ R> head(model.frame(form, df))
 \end{CodeInput}
 \begin{CodeOutput}
            y   log(x)
-1 -0.6457006 3.895228
-2 -0.5401745 3.609705
-3  0.3254121 2.701388
-4  1.6852250 1.753313
-5  1.4451940 1.915761
-6 -0.4345755 2.789906
+1 -0.3021443 1.951846
+2 -0.3673526 1.964734
+3  1.2372392 2.565169
+4 -0.7975425 3.515925
+5 -3.3000524 2.701615
+6 -0.2440122 2.999924
 \end{CodeOutput}
 \end{CodeChunk}
 
@@ -601,11 +600,11 @@ The current version of \pkg{bayesnec} harnesses the powerful modelling flexibili
 
 \pkg{bayesnec} is built upon the precursor R package \pkg{jagsNEC} \citep{fisher2020}, which writes and fits C-R models in JAGS \citep{Plummer2003}. \pkg{bayesnec} was then expanded to include several additional C-R models and further generalised to allow a large range of response variables to be modelled using their appropriate statistical distribution. In addition, \pkg{bayesnec} allows the addition of hierarchical effects (see above). The simpler syntax of \pkg{brms} allows \pkg{bayesnec} to be more easily expanded to include additional response distributions as well as C-R model formula. In addition, \pkg{brms} is well developed and comes with a large range of supporting functions not available to the \pkg{jags} equivalents.
 
-While there are some commercial propriety software packages to support the analysis of toxicity data, such as graphpad (\url{https://www.graphpad.com/}) and ToxCalc (\url{https://www.tidepool-scientific.com/ToxCalc/ToxCalc.html}), these provide limited flexibility and most importantly do not support fully reproducible analysis in an open-source environment. Ensuring that the raw data from the experiment are available; and that the statistical code and documentation to reproduce the analysis are also available are two major components to a reproducible study \citep{peng2015}.
+While there are some commercial propriety software packages to support the analysis of toxicity data, such as graphpad (\url{https://www.graphpad.com}) and ToxCalc (\url{https://www.tidepool-scientific.com/ToxCalc/ToxCalc.html}), these provide limited flexibility and most importantly do not support fully reproducible analysis in an open-source environment. Ensuring that the raw data from the experiment are available; and that the statistical code and documentation to reproduce the analysis are also available are two major components to a reproducible study \citep{peng2015}.
 
 The open-source flexible computing environment R, provides an ideal platform for reproducible analysis of toxicity datasets. The main existing tool in R that is widely used in ecotoxicology and toxicology is the frequentist-based package \pkg{drc} \citep{Ritz2016}. \pkg{drc} provides a suite of flexible and versatile model fitting and after-fitting functions for the analysis of dose-response data. The package includes a large range of built-in dose-reponse models that are parameterized using a unified structure with a coefficient b denoting the steepness of the dose-response curve, c, d the lower and upper asymptotes or limits of the response, and, for some models, e the effective dose ED50 \citep{Ritz2016}. Estimation in \pkg{drc} is based on the maximum likelihood principle, which under the assumption of normally distributed response values simplifies to nonlinear least squares. \pkg{bayesnec} provides a Bayesian implementation of many of the non-linear models offered by \pkg{drc}.
 
-We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-effect-concentration model implemented in WinBugs by \citet{Fox2010} for two selected herbicides from the data from \citet{jones2003meps}. In \pkg{bayesnec} this model is fit with the call \texttt{bnec(fvfm\ \textasciitilde{}\ crf(log\_x,\ model\ =\ "nec3param"),\ data\ =\ .x)}, and in \pkg{drc} using \texttt{drm(fvfm\ \textasciitilde{}\ log\_x,\ fct\ =\ NEC.3(),\ data\ =\ .x)}. The herbicides hexazinone and tebuthiuronthe were selected specifically for this comparison as visual inspection indicated they should provide a reasonable fit to the \citep{Fox2010} model as there was some evidence of a threshold effect. For both herbicides, the predicted \pkg{drc} and \pkg{bayesnec} values were nearly identical using the default behaviour of each package (\autoref{fig:drccomparisonplot}).
+We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-effect-concentration model implemented in WinBugs by \citet{Fox2010} for two selected herbicides from the data from \citet{jones2003meps}. In \pkg{bayesnec} this model is fit with the call \texttt{bnec(fvfm\ \textasciitilde{}\ crf(log\_x,\ model\ =\ "nec3param"),\ data\ =\ .x)}, and in \pkg{drc} using \texttt{drm(fvfm\ \textasciitilde{}\ log\_x,\ fct\ =\ NEC.3(),\ data\ =\ .x)}. The herbicides hexazinone and tebuthiuron were selected specifically for this comparison as visual inspection indicated they should provide a reasonable fit to the \citep{Fox2010} model as there was some evidence of a threshold effect. For both herbicides, the predicted \pkg{drc} and \pkg{bayesnec} values were nearly identical using the default behaviour of each package (\autoref{fig:drccomparisonplot}).
 
 \begin{CodeChunk}
 \begin{figure}[!ht]
@@ -614,7 +613,7 @@ We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-eff
 
 }
 
-\caption[A comparison of the bayesnec and drc model fits and estimated NEC values for the \texttt{nec3param} model, fit to data on maximum effective quantum yield of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h]{A comparison of the bayesnec and drc model fits and estimated NEC values for the \texttt{nec3param} model, fit to data on maximum effective quantum yield of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h.}\label{fig:drccomparisonplot}
+\caption[A comparison of the bayesnec and drc model fits and estimated NEC values for the \texttt{nec3param} model, fit to data on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h]{A comparison of the bayesnec and drc model fits and estimated NEC values for the \texttt{nec3param} model, fit to data on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h.}\label{fig:drccomparisonplot}
 \end{figure}
 \end{CodeChunk}
 
@@ -687,7 +686,7 @@ ecxwb2 & NA & 0.004 & 0.002 & NA & NA & 0.019 & 0.284\\
 ecxll5 & NA & 0.308 & NA & NA & NA & NA & NA\\
 \hline
 \end{tabular}
-\caption{\label{tab:weightsTab}Fitted models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}.}
+\caption{\label{tab:weightsTab}Fitted models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}.}
 \end{table}
 
 \end{CodeChunk}
@@ -703,7 +702,7 @@ The values presented on the plot in \autoref{fig:fullbayesmanecplot} as N(SEC) a
 
 }
 
-\caption{Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx}  models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}\label{fig:fullbayesmanecplot}
+\caption{Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx}  models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}\label{fig:fullbayesmanecplot}
 \end{figure}
 \end{CodeChunk}
 
@@ -716,7 +715,7 @@ Finally, we also plot the weighted averaged posterior samples for the N(S)EC tox
 
 }
 
-\caption[Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}]{Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}. Shown are medians with 80\%  uncertainty intervals.}\label{fig:necplots}
+\caption[Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}]{Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}. Shown are medians with 80\%  uncertainty intervals.}\label{fig:necplots}
 \end{figure}
 \end{CodeChunk}
 
