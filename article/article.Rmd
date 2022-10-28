@@ -547,14 +547,15 @@ combine_fits <- function(x) {
               mapping = aes(label = paste0("bayesnec: ", nec_labs, " (",
                                            nec_labs_l, "-",
                                            nec_labs_u, ")")),
-              x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, size = 3,
+              x = Inf, y = Inf, hjust = 0.95, vjust = 1.5, size = 2.75,
               colour = "tomato") +
     geom_text(data = x %>% filter(!is.na(nec_labs), source == "drc"),
               mapping = aes(label = paste0("drc: ", nec_labs, " (",
                                            nec_labs_l, "-",
                                            nec_labs_u, ")")),
-              x = Inf, y = Inf, hjust = 1.1, vjust = 4, size = 3,
+              x = Inf, y = Inf, hjust = 0.95, vjust = 4, size = 2.75,
               colour = "skyblue2") +
+    coord_cartesian(clip = "off") +
     scale_colour_manual(values = c(bayesnec = "tomato", drc = "skyblue2")) +
     scale_fill_manual(values = c(bayesnec = "tomato", drc = "skyblue2")) +
     ylim(0, 0.8) +
