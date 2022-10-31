@@ -41,34 +41,35 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install pandoc
 
-      - name: V8 fix
-        if: runner.os == 'macOS'
-        run: |
-          brew install v8
+      # - name: V8 fix
+      #   if: runner.os == 'macOS'
+      #   run: |
+      #     brew install v8
 
-      - name: Install BH Mac
-        if: runner.os != 'Linux'
-        run: |
-          install.packages(c("remotes","BH"))
-          remotes::install_github("paul-buerkner/brms", dependencies = TRUE)
-        shell: Rscript {0}
-
-      - name: Install igraph Windows
-        if: runner.os == 'Windows'
-        run: |
-          install.packages("igraph", type = "binary")
-        shell: Rscript {0}
+      # - name: Install igraph Windows
+      #   if: runner.os == 'Windows'
+      #   run: |
+      #     install.packages("igraph", type = "binary")
+      #   shell: Rscript {0}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
-          needs: check
+          extra-packages: |
+            rcmdcheck
+            BH
+            stan-dev/cmdstanr
+            RcppEigen
+
+      - name: Build Cmdstan
+        run: |
+          cmdstanr::check_cmdstan_toolchain(fix = TRUE)
+          cmdstanr::install_cmdstan(cores = parallel::detectCores())
+        shell: Rscript {0}
 
       - uses: r-lib/actions/check-r-package@v2
         with:
-          args: 'c("--no-manual", "--as-cran")'
-          error-on: '"error"'
-          check-dir: '"check"'
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          args: 'c("--no-manual", "--as-cran", "--ignore-vignettes")'
 
       - name: Show testthat output
         if: always()
