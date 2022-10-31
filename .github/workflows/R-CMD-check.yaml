@@ -41,6 +41,14 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install pandoc
 
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            rcmdcheck
+            BH
+            stan-dev/cmdstanr
+            RcppEigen
+
       - name: Check
         env:
           _R_CHECK_CRAN_INCOMING_: false
@@ -57,20 +65,6 @@ jobs:
                 file = M, sep = "\n", append = TRUE)
           }
           rcmdcheck::rcmdcheck(path = "./rstan/rstan", args = c("--no-manual", "--as-cran", "--ignore-vignettes"), build_args = c("--no-build-vignettes"), error_on = "warning", check_dir = "check")
-        shell: Rscript {0}
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            rcmdcheck
-            BH
-            stan-dev/cmdstanr
-            RcppEigen
-
-      - name: Build Cmdstan
-        run: |
-          cmdstanr::check_cmdstan_toolchain(fix = TRUE)
-          cmdstanr::install_cmdstan(cores = parallel::detectCores())
         shell: Rscript {0}
 
       - uses: r-lib/actions/check-r-package@v2
