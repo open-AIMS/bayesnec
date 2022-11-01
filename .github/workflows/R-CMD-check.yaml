@@ -48,6 +48,8 @@ jobs:
 
       - name: Use Cmdstan to Fix
         run: |
+          install.packages("StanHeaders", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+          install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
