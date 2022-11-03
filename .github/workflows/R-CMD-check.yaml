@@ -41,10 +41,11 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            rcmdcheck
+            any::rcmdcheck
             BH
             stan-dev/cmdstanr
             RcppEigen
+          needs: check
 
       - name: Use Cmdstan to Fix
         run: |
@@ -57,3 +58,4 @@ jobs:
         with:
           build_args: 'c("--no-manual", "--no-build-vignettes")'
           args: 'c("--no-manual", "--as-cran", "--ignore-vignettes")'
+          upload-snapshots: true
