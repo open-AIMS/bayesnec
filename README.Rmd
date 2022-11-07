@@ -24,7 +24,7 @@ version <- gsub("-", ".", version)
 
 <!-- badges: start -->
 [![Lifecycle: maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html)
-[![R build status](https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg)](https://github.com/open-AIMS/bayesnec/actions)
+[![R build status](https://github.com/open-AIMS/bayesnec/actions/workflows/R-CMD-check.yaml/badge.svg?branch=dev)](https://github.com/open-AIMS/bayesnec/actions)
 [![Codecov test coverage](https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg)](https://app.codecov.io/gh/open-aims/bayesnec?branch=master)
 ![pkgdown](https://github.com/open-AIMS/bayesnec/workflows/pkgdown/badge.svg)
 [![CRAN Version](https://www.r-pkg.org/badges/version/bayesnec)](https://cran.r-project.org/package=bayesnec)
