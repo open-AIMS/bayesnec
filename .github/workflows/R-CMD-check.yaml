@@ -45,7 +45,6 @@ jobs:
             BH
             stan-dev/cmdstanr
             RcppEigen
-          needs: check
 
       - name: Use Cmdstan to Fix
         run: |
