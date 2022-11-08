@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, dev]
+    branches: master
 
 name: render readme
 
