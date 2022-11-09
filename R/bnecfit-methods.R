@@ -40,7 +40,11 @@ c.bnecfit <- function(x, ...) {
   mod_fits <- mod_fits[!duplicated(names(mod_fits))]
   formulas <- lapply(mod_fits, extract_formula)
   out <- expand_manec(mod_fits, formulas)
-  allot_class(out, c("bayesmanecfit", "bnecfit"))
+  if (length(out) == 1) {
+    x
+  } else {
+    allot_class(out, c("bayesmanecfit", "bnecfit"))
+  }
 }
 
 #' "Add" multiple \code{\link{bnecfit}} objects into one single
