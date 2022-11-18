@@ -144,3 +144,23 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     stop("Stan failed to update your objects.")
   }
 }
+
+#' rhat.bnecfit
+#'
+#' @param object An object of class \code{\link{bnecfit}} as
+#' returned by \code{\link{bnec}}.
+#' @param ... Unused.
+#' @param rhat_cutoff A \code{\link[base]{numeric}} vector indicating the Rhat
+#' cut-off used to test for model convergence.
+#'
+#' @return A \code{\link[base]{list}} containing a vector or Rhat values
+#' returned for each parameter for a \code{\link[brms]{brmsfit}} object,
+#' for each of the fitted models.
+#'
+#' @importFrom brms rhat
+#'
+#' @export
+rhat.bnecfit <- function(object, rhat_cutoff = 1.05, ... ) {
+  "rhat is not implemented in the base class bnecfit"
+}
+

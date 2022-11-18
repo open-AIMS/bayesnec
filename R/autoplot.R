@@ -250,7 +250,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
                  linetype = ltys, colour = "grey50",
                  lwd = lwds) +
       geom_text(data = x %>% filter(!is.na(.data$nec_labs)),
-                mapping = aes(label = paste0("NEC: ", .data$nec_labs, " (",
+                mapping = aes(label = paste0("N(S)EC: ", .data$nec_labs, " (",
                                              .data$nec_labs_l, "-",
                                              .data$nec_labs_u, ")")),
                 x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, size = 3,

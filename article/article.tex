@@ -12,7 +12,7 @@
 				\\
 		Australian Institute of Marine Science
 					\\University of Western Australia
-				 \And
+				 \AND
 			Diego R. Barneche
 					~\orcidlink{0000-0002-4568-2362}
 				\\
@@ -24,7 +24,7 @@
 				\\
 		University of Queensland
 					\\Australian Institute of Marine Science
-				 \And
+				 \AND
 			David Fox
 					~\orcidlink{0000-0002-3178-7243}
 				\\
@@ -107,6 +107,7 @@ The \pkg{bayesnec} package has been developed for R to fit concentration(dose) -
 \usepackage{float}
 
 \begin{document}
+
 
 
 \hypertarget{introduction}{%
@@ -382,7 +383,7 @@ For the parameters \(\beta = \text{beta}\), \(\alpha = \text{slope}\) and \(\eps
 
 Multi-model inference can be useful where there are a range of plausible models that could be used \citep{Burnham2002} and has been recently adopted in ecotoxicology for Species Sensitivity Distribution (SSD) model inference \citep{Thorley2018, fox2020, Dalgarno}. The approach may have considerable value in C-R modelling because there is often no a priori knowledge of the functional form that the response relationship should take. In this case, model averaging can be a useful way of allowing the data to drive the model selection process, with weights proportional to how well the individual models fit the data. Well-fitting models will have high weights, dominating the model averaged outcome. Conversely, poorly fitting models will have very low model weights and will therefore have little influence on the outcome. Where multiple models fit the data equally well, these can equally influence the outcome, and the resultant posterior predictions reflect that model uncertainty.
 
-\pkg{bayesnec} adopts the weighting methods implemented in the \pkg{loo} package in R \citep{vehtari2020}. \pkg{loo} provides an efficient approximate leave-one-out cross-validation (LOO) algorithm for Bayesian models fit using Markov chain Monte Carlo, as described in \citep{vehtari2017} \url{doi:10.1007/s11222-016-9696-4}. The approximation uses Pareto smoothed importance sampling (PSIS), a new procedure for regularizing importance weights and follows the implementation described in \citep{Vehtari2019}. The \pkg{loo} package offers two weighting methods, the ``stacking'' method, aimed to minimise prediction error \citep{Yao2018}, and the ``pseudobma'' method, with and without Bayesian bootstrap \citep{vehtari2020, vehtari2017}. The stacking method (method=``stacking''), combines all models by maximizing the leave-one-out predictive density of the combination distribution, such that it finds the optimal linear combining weights for maximizing the leave-one-out log score \citep{vehtari2020}. The pseudo-BMA method (method=``pseudobma'') finds the relative weights proportional to the ELPD of each model \citep{vehtari2020}. The Bayesian bootstrap (when using method=``pseudobma'') takes into account the uncertainty of finite data points and regularizes the weights away from the extremes of 0 and 1 \citep{vehtari2020}. \pkg{bayesnec} currently uses by default the ``pseudobma'' method (method = ``pseudobma'') with Bayesian bootstrap (BB = TRUE), but this can be easily modified via argument ``loo\_controls''.
+\pkg{bayesnec} adopts the weighting methods implemented in the \pkg{loo} package in R \citep{vehtari2020}. \pkg{loo} provides an efficient approximate leave-one-out cross-validation (LOO) algorithm for Bayesian models fit using Markov chain Monte Carlo, as described in \citep{vehtari2017} \url{doi:10.1007/s11222-016-9696-4}. The approximation uses Pareto smoothed importance sampling (PSIS), a new procedure for regularizing importance weights and follows the implementation described in \citep{Vehtari2019}. The \pkg{loo} package offers two weighting methods, the ``stacking'' method, aimed to minimise prediction error \citep{Yao2018}, and the ``pseudobma'' method, with and without Bayesian bootstrap \citep{vehtari2020, vehtari2017}. The stacking method (method=``stacking''), combines all models by maximizing the leave-one-out predictive density of the combination distribution, such that it finds the optimal linear combining weights for maximizing the leave-one-out log score \citep{vehtari2020}. The pseudo-BMA method (method=``pseudobma'') finds the relative weights proportional to the theoretical expected log pointwise predictive density of each model \citep{vehtari2020}. The Bayesian bootstrap (when using method=``pseudobma'') takes into account the uncertainty of finite data points and regularizes the weights away from the extremes of 0 and 1 \citep{vehtari2020}. \pkg{bayesnec} currently uses by default the ``pseudobma'' method (method = ``pseudobma'') with Bayesian bootstrap (BB = TRUE), but this can be easily modified via argument ``loo\_controls''.
 
 \hypertarget{usage}{%
 \section{Usage}\label{usage}}
@@ -518,10 +519,6 @@ R> autoplot(fit, xform = exp) +
 
 \caption{\pkg{ggplot2} `autoplot` of the example fit. The solid black line is the fitted median of the posterior prediction, dashed black lines are the 95\% credible intervals, and the vertical lines show the estimated \textit{NEC} value.}\label{fig:base-plot}
 \end{figure}
-\begin{CodeInput}
-R> # or alternatively
-R> # plot(fit, xform = exp, log = "x")
-\end{CodeInput}
 \end{CodeChunk}
 
 By default the plot shows the fitted posterior curve with 95\% credible intervals, along with an estimate of the \(\eta = \text{NEC}\) value. Please see on-line the vignettes at \url{https://open-aims.github.io/bayesnec/articles/} for more examples using \pkg{bayesnec} models for inference, as well as Section \ref{modsuit} below.
@@ -623,7 +620,140 @@ While \pkg{drc} is an excellent tool for fitting C-R models using frequentist me
 
 So far we have demonstrated the basic usage of \pkg{bayesnec} and compared the results for a single model fit to \pkg{drc}. Here we work through an illustrative example demonstrating the use of the package for a dataset on herbicide toxicity. The aim here is to indicate the usual workflow and highlight the advantages of model averaging combined with Bayesian methods as a rigorous means of estimating and comparing relative toxicity, and the associated uncertainty. The data we analyse in this example are from \citet{jones2003meps}.
 
-The response data are the maximum effective quantum yield (\({\Delta F / Fm'}\)) of symbiotic dinoflagellates still in the host tissue of the coral \emph{Seriatopora hystrix} (in hospite or in vivo). \({\Delta F / Fm'}\) was calculated from Chlorophyll fluorescence parameters measured using a DIVING-PAM chlorophyll fluorometer (Walz) as described in more detail in \citet{jones2003meps} and \citet{jones2003effects}. The corals were exposed to elevated levels of eight different herbicides (Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, tebuthiuron, ioxynil) at concentrations ranging from 0.3 to 1000 \({\mu g/L}\)) for 10 h. Data for ioxynil were excluded from analysis here as this herbicide did not show sufficient response at the maximum concentration. We modeled the concentration-response curves for the remaining seven photo toxicity datasets using the \pkg{bayesnec} package using the following code:
+\hypertarget{example-case-study}{%
+\subsection{Example Case Study}\label{example-case-study}}
+
+In our case study, the no-effect-toxicity values of a range of herbicides are first estimated and then their relative toxicity is compared. The response data are the maximum effective quantum yield (\({\Delta F / Fm'}\)) of symbiotic dinoflagellates still in the host tissue of the coral \emph{Seriatopora hystrix} (in hospite or in vivo). \({\Delta F / Fm'}\) was calculated from Chlorophyll fluorescence parameters measured using a DIVING-PAM chlorophyll fluorometer (Walz) as described in more detail in \citet{jones2003meps} and \citet{jones2003effects}. The corals were exposed to elevated levels of eight different herbicides (Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, tebuthiuron, ioxynil) at concentrations ranging from 0.3 to 1000 \({\mu g/L}\)) for 10 h. Data for ioxynil were excluded from analysis here as this herbicide did not show sufficient response at the maximum concentration.
+
+\subsection[Single herbicide]{Single herbicide analysis}\label{isingle}
+
+We start by describing the analysis workflow for a single herbicide, ametryn. We first filter ametryn from the larger herbicide data set. The concentration data are log transformed prior to analysis to improve model stability and because this is the natural scaling of the concentration series for these data. As there was little evidence of hormesis (an initial increase in the response at low concentration) in these data (or in the other herbicides, see below \ref{iall}), we used only the \texttt{decline} model set as candidate models for the model averaging. Setting \texttt{model\ =\ "decline"} results in \pkg{bayesnec} attempting to fit a set of 15 models, and returning an object of class \texttt{bayesmancfit} for the herbicide ametryn.
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> data("herbicide")
+R> ametryn <- herbicide %>%
++   dplyr::mutate(concentration = log(concentration)) %>% 
++   dplyr::filter(herbicide=="ametryn")
+R> manecfit_ametryn <- bayesnec::bnec(fvfm ~ crf(concentration, 
++                                    model = "decline"), 
++                                    data = ametryn)
+\end{CodeInput}
+\end{CodeChunk}
+
+Other than selecting a model set to use, here we leave all other \texttt{bnec} arguments as their default. In this case \pkg{bayesnec} correctly chooses a Beta distribution to use as the family, defaults to the identity link, and drops the models ``neclin'' and ``ecxlin'' from the complete list of ``decline'' models (as these are not appropriate for a zero bounded distribution, such as the Beta distribution, \ref{mdbnc}). Note that in this example (or the one below, \ref{iall}) we do not show all of the console output and messages generated by both the \texttt{bnec} and underlying \texttt{brm} functions, because across 15 models this results in substantial output.
+
+Following model fitting, the quality of the fits should be examined using the function \texttt{check\_chains}, as well as \texttt{check\_priors} to ensure there is good chain mixing and that the default priors were suitable. The results from these checks are omitted here for brevity, but can be easily saved to pdf output for visual inspection and inclusion into any analysis supplementary material by setting the argument \texttt{filename} to any non empty string, as in the code below:
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> check_chains(manecfit_ametryn, filename = "ametryn_check_chains")
+R> check_priors(manecfit_ametryn, filename = "ametryn_check_priors")
+\end{CodeInput}
+\end{CodeChunk}
+
+We can also check the \texttt{rhat} values of the fitted models using the \texttt{rhat} function:
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> rhat(manecfit_ametryn)
+\end{CodeInput}
+\end{CodeChunk}
+
+Once we are happy with the model fits, we can examine the model statistics using \texttt{summary}:
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> summary(manecfit_ametryn)
+\end{CodeInput}
+\begin{CodeOutput}
+Object of class bayesmanecfit
+
+ Family: beta  
+  Links: mu = identity; phi = identity  
+
+Number of posterior draws per model:  8000
+
+Model weights (Method: pseudobma_bb_weights):
+             waic   wi
+nec3param -451.16 0.04
+nec4param -456.83 0.06
+ecxexp    -320.45 0.00
+ecx4param -465.36 0.45
+ecxwb1p3  -323.32 0.00
+ecxwb2p3  -447.07 0.02
+ecxll4    -465.35 0.44
+ecxll3    -431.95 0.00
+
+
+Summary of weighted NEC posterior estimates:
+NB: Model set contains the ECX models: ecxexp;ecx4param;ecxwb1p3;ecxwb2p3;ecxll4;ecxll3; weighted NEC estimates include NSEC surrogates for NEC
+    Estimate  Q2.5 Q97.5
+NEC    -1.66 -2.10 -0.43
+
+
+Bayesian R2 estimates:
+          Estimate Est.Error Q2.5 Q97.5
+nec3param     0.99      0.00 0.99  0.99
+nec4param     0.99      0.00 0.99  0.99
+ecxexp        0.89      0.01 0.87  0.91
+ecx4param     0.99      0.00 0.99  0.99
+ecxwb1p3      0.94      0.01 0.90  0.96
+ecxwb2p3      0.99      0.00 0.99  0.99
+ecxll4        0.99      0.00 0.99  0.99
+ecxll3        0.99      0.00 0.98  0.99
+\end{CodeOutput}
+\end{CodeChunk}
+
+For a \texttt{bayesmanecfit} object with multiple model fits, \texttt{summary} first displays the class, the family and links that have been used for the model fits, the number of posterior draws contained within each model fit, and a table of the model weights for each model. For the amatryn data set, weights are spread among several \textbf{ecx} models, with a small amount of weight for the two \textbf{nec} models (\emph{nec3param} and \emph{nec4parm}).
+
+Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC values in the case of the fitted \emph{ECx} models. In units of log concentration, the estimated no-effect toxicity value for ametryn is -1.6614345, which is equivalent to 0.19 \({\mu}gL^{-1}\). The 95\% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighed pooled posterior sample.
+
+Finally, Bayesian \(R^2\) estimates are also provided \citep{gelman2019}, as an indicator of overall model fit. This is useful because model weights are always relative to the models actually included in the model set for the given data. The \(R^2\) provides an indicator of model fit that can be compared objectively across data sets as an indication of the quality of the fit of any of the supplied models to the data.
+
+We can plot all the models contained within the \texttt{bayesmanecfit} using the \texttt{autplot} function, with all\_models = TRUE (\autoref{fig:fullbayesmanecplotametrynALLplot}):
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> ametryn_plot_all <- autoplot(manecfit_ametryn, all_models = TRUE)
+\end{CodeInput}
+\end{CodeChunk}
+
+We can also plot the model averaged fit that is used to derive the model averaged no-effect-concentration for ametryn, as displayed in the summary (\autoref{fig:fullbayesmanecplotametrynplot}):
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> ametryn_plot <- autoplot(manecfit_ametryn)
+\end{CodeInput}
+\end{CodeChunk}
+
+\begin{CodeChunk}
+\begin{figure}[!ht]
+
+{\centering \includegraphics{article_files/figure-latex/fullbayesmanecplotametrynALLplot-1} 
+
+}
+
+\caption{Individual model fits to the ametryn dataset, showing the estimated no effect concentration for each. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated ametryn (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models.}\label{fig:fullbayesmanecplotametrynALLplot}
+\end{figure}
+\end{CodeChunk}
+
+\begin{CodeChunk}
+\begin{figure}[!ht]
+
+{\centering \includegraphics{article_files/figure-latex/fullbayesmanecplotametrynplot-1} 
+
+}
+
+\caption{Full model averaged bayesmanecfit to the ametryn dataset, showing the estimated model-averaged no effect concentration. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated ametryn (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}\label{fig:fullbayesmanecplotametrynplot}
+\end{figure}
+\end{CodeChunk}
+
+\subsection[Comparing toxicity]{Comparing toxicity across herbicides}\label{iall}
+
+Above we describe the workflow for a single herbicide. We now show how to use the same workflow across all herbicides to generate full \texttt{bayesmanecfit} model averaged fits and no-effect-toxicity estimates, and use this to compare their relative toxicity.
+
+We start by modelling the concentration-response curves for all seven photo toxicity data sets using the \pkg{bayesnec} package using the following code:
 
 \begin{CodeChunk}
 \begin{CodeInput}
@@ -636,28 +766,49 @@ R> manecfit <- herbicide %>%
 +   purrr::map(function(x) {
 +     bayesnec::bnec(fvfm ~ crf(concentration, model = "decline"), data = x)
 +   })
+R> save(manecfit, file = "manecfits.RData")
 \end{CodeInput}
 \end{CodeChunk}
 
-The concentration data were log transformed to improve model stability and because this is the natural scaling of the concentration series for these data. As there was little evidence of hormesis (an initial increase in the response at low concentration) in these data, we used only the \texttt{decline} model set as candidate models for the model averaging.
+Because we want to run the analysis for all seven herbicides separately we first split the data, then call the \texttt{bnec} function for each herbicide using \pkg{purrr}. We use the same settings and default arguments as for our single herbicide example above (ametryn, see \ref{isingle}). Note that fitting a large set of models using Bayesian methods can take some time, and we recommend running the analysis at a convenient time, and saving the resulting output to a .RData file to work with later.
 
-Following model fitting We first use the \texttt{rhat} function as one diagnostic test to check that all models fitted successfully. In this case, for all seven datasets and all the models in the \texttt{decline} model set, all parameters met the criterion of rhat \textless{} 1.05, suggesting relatively good model fits, for those models that successfully fitted. Other diagnostic procedures include making use of the \texttt{check\_chains()} and \texttt{check\_priors()} functions to ensure there is good chain mixing, and that the default priors were suitable, although results from these checks are omitted here for brevity.
+Once we have our list of fitted \texttt{bayesmanecfit} objects for each herbicide, can use \texttt{rhat} to check that all models fitted successfully for each, and find any models that fail the \texttt{rhat} criteria of \textless1.05 and removing these using the function \texttt{amend}. We achieve this across all the herbicides using \pkg{purrr}. As for the single herbicide fit (see \ref{isingle}), we should also check the chains and priors for each fitted model, although we have skipped that step here.
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> lapply(manecfit, function(x) {
-+  rhat(x)$failed
+R> ## lapply(manecfit, check_chains)
+R> ## lapply(manecfit, check_priors)
+R> cleaned_fits <- purrr::map(manecfit, function(x) {
++   bad_fits <- rhat(x)$failed
++   out_fit <- x
++   if (length(bad_fits) > 0) {
++     out_fit <- bayesnec::amend(x, drop = bad_fits)
++   }
++   out_fit
++   # note for the decline model set there are no fits with bad rhat values for this example.
 + })
-R> lapply(manecfit, check_chains)
-R> lapply(manecfit, check_priors)
 \end{CodeInput}
 \end{CodeChunk}
 
-A collated table of model weights shows that the best fitting models vary substantially across the C-R curves for the seven herbicides (\autoref{tab:weightsTab}). Few herbicides showed any weight for the \emph{NEC} threshold models, with the exception of tebuthiuron and ametryn which both had some, albeit limited, support. The weights for the various \emph{ECx} models varied substantially, with at least some support for more than one model in all cases. This shows clearly the value of the model averaging approach adopted in \pkg{bayesnec}, which effectively accommodates this model uncertainty by seamlessly providing weighted model averaged inferences. Note that for all herbicides there some models to did not fit successfully using the default \pkg{bayesnec} settings. While it should be possible to obtain valid fits for these few failed models using custom priors and/or initial values, the fact that there are already a large number of well fitting models in the model set for each herbicide suggests this would be unlikely to have any impact on inference.
+To facilitate comparison across the herbicides, we create a collated table of model weights by extracting the\texttt{\$mod\_stats} element from each herbicide's \texttt{bayesmanecfit}, again using \pkg{purrr}:
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> library(tidyr)
+R> modtab <- purrr::map_dfr(cleaned_fits, function(x) {
++   x$mod_stats %>%
++     dplyr::select(model, wi) %>%
++     dplyr::mutate(wi = round(wi, 3))}, .id = "herbicide") %>%
++   tidyr::pivot_wider(names_from = herbicide, values_from = wi)
+\end{CodeInput}
+\end{CodeChunk}
+
+This collated table of model weights shows that the best fitting models vary substantially across the C-R curves for the seven herbicides (\autoref{tab:weightsTab}). Few herbicides showed any weight for the \emph{NEC} threshold models, with the exception of ametryn which had some, albeit limited, support. The weights for the various \emph{ECx} models varied substantially, with at least some support for more than one model in all cases. This shows clearly the value of the model averaging approach adopted in \pkg{bayesnec}, which effectively accommodates this model uncertainty by seamlessly providing weighted model averaged inferences. Note that for all herbicides there were some models to did not fit successfully using the default \pkg{bayesnec} settings. While it should be possible to obtain valid fits for these few failed models using custom priors and/or initial values, the fact that there are already a large number of well fitting models in the model set for each herbicide suggests this would be unlikely to have any impact on inference, and here we proceed only with the currently valid fits.
 
 \begin{CodeChunk}
 \begin{table}
 
+\caption{\label{tab:weightsTab}Fitted valid models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}.}
 \centering
 \begin{tabular}[t]{l|r|r|r|r|r|r|r}
 \hline
@@ -686,14 +837,25 @@ ecxwb2 & NA & 0.004 & 0.002 & NA & NA & 0.019 & 0.284\\
 ecxll5 & NA & 0.308 & NA & NA & NA & NA & NA\\
 \hline
 \end{tabular}
-\caption{\label{tab:weightsTab}Fitted models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}.}
 \end{table}
 
 \end{CodeChunk}
 
-The weighted model averaged predicted curves are shown in \autoref{fig:fullbayesmanecplot}. These fit the input data very well, and model predictions are generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn and tebuthiuron datasets can be clearly seen in the weighted average predicted values, manifesting as a broader confidence band at the estimated position of the NEC threshold point (\autoref{fig:fullbayesmanecplot}).
+We use the \pkg{bayesnec} \texttt{autoplot} , together with \pkg{ggpubr} to make a panel plot of the weighted model averaged predicted curves for all seven herbicides (\autoref{fig:fullbayesmanecplot}).
 
-The values presented on the plot in \autoref{fig:fullbayesmanecplot} as N(SEC) are model averaged posterior densities of the \emph{NEC} parameter obtained from all fitted \textbf{nec} models, and the \emph{NSEC} values estimated from all smooth \textbf{ecx} models. These values are the \pkg{bayesnec} estimates for the no-(significant)-effect concentration required for the integration of this toxicity data into the relevant regulatory framework in Australia, the Australian and New Zealand Water Quality Guidelines \citep{anzg}. While the recommendation that \emph{NEC} is the preferred toxicity estimate in this framework is well established \citep[\citet{Warne2018c}]{Warne2015}, use of the \emph{NSEC} is relatively new \citep{Fisher2022} and yet to gain formal approval for use in the Australian setting, as discussed in more detail below.
+\begin{CodeChunk}
+\begin{CodeInput}
+R> all_plots <- lapply(cleaned_fits, function(x) {
++   autoplot(x) +
++   theme(axis.title.x = element_blank(),
++          axis.title.y = element_blank(),
++          strip.background = element_blank(),
++          strip.text.x = element_blank()) +
++     ggtitle("")})
+R> figure <- ggpubr::ggarrange(plotlist = all_plots, nrow = 4, ncol = 2, labels = names(all_plots),
++   font.label = list(color = "black", size = 12, face = "plain"), align = "hv")
+\end{CodeInput}
+\end{CodeChunk}
 
 \begin{CodeChunk}
 \begin{figure}[!ht]
@@ -702,11 +864,24 @@ The values presented on the plot in \autoref{fig:fullbayesmanecplot} as N(SEC) a
 
 }
 
-\caption{Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx}  models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}\label{fig:fullbayesmanecplot}
+\caption{Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}\label{fig:fullbayesmanecplot}
 \end{figure}
 \end{CodeChunk}
 
-Finally, we also plot the weighted averaged posterior samples for the N(S)EC toxicity values for all herbicides (\autoref{fig:necplots}). This shows clearly that irgarol, diuron and ametryn are the most toxic, and exhibit relatively similar toxicity, with their posterior densities substantially overlapping (\autoref{fig:necplots}). The herbicide tebuthiuron is the least toxic of these seven, followed by simazine, atrazine and finally haxinone, which exhibits intermediate toxicity (\autoref{fig:necplots}).
+Across the seven herbicides, they \texttt{bayesmanecfit} model averaged fits model the input data very well, with predictions generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn dataset is evident in the weighted average predicted values as a broader confidence band at the estimated position of the NEC threshold point (\autoref{fig:fullbayesmanecplot}).
+
+The values presented on the plot in \autoref{fig:fullbayesmanecplot} as N(S)EC are model averaged posterior densities of the \emph{NEC} parameter obtained from all fitted \textbf{nec} models, and the \emph{NSEC} values estimated from all smooth \textbf{ecx} models. These values are the \pkg{bayesnec} estimates for the no-(significant)-effect concentration required for the integration of this toxicity data into the relevant regulatory framework in Australia, the Australian and New Zealand Water Quality Guidelines \citep{anzg}. While the recommendation that \emph{NEC} is the preferred toxicity estimate in this framework is well established \citep[\citet{Warne2018c}]{Warne2015}, use of the \emph{NSEC} is relatively new \citep{Fisher2022} and yet to gain formal approval for use in the Australian setting, as discussed in more detail below.
+
+Finally, we also use the \texttt{compare\_posterior} function to extract and plot the weighted averaged posterior samples for the N(S)EC toxicity values for all herbicides (\autoref{fig:necplots}). This shows clearly that irgarol, diuron and ametryn are the most toxic, and exhibit relatively similar toxicity, with their posterior densities substantially overlapping (\autoref{fig:necplots}). The herbicide tebuthiuron is the least toxic of these seven, followed by simazine, atrazine and finally haxinone, which exhibits intermediate toxicity (\autoref{fig:necplots}). \texttt{compare\_posterior} also calculates the probability of difference in toxicity across the herbicides, which confirm the visual results and can be used to infer significant differences in toxicity (\autoref{tab:probdiffs}).
+
+\begin{CodeChunk}
+\begin{CodeInput}
+R> post_comp <- compare_posterior(cleaned_fits, comparison = "nec")
+R> prob_diff <- post_comp$prob_diff %>% 
++   separate(col = comparison, into = c("herbicide", "columns")) %>% 
++   pivot_wider(names_from = columns, values_from = prob)
+\end{CodeInput}
+\end{CodeChunk}
 
 \begin{CodeChunk}
 \begin{figure}[!ht]
@@ -718,6 +893,34 @@ Finally, we also plot the weighted averaged posterior samples for the N(S)EC tox
 \caption[Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}]{Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}. Shown are medians with 80\%  uncertainty intervals.}\label{fig:necplots}
 \end{figure}
 \end{CodeChunk}
+
+\begin{CodeChunk}
+\begin{table}
+
+\caption{\label{tab:probdiffs}Probability of differences in no-effect toxicity for seven herbicides. Values are based on the proportional overlap in predicted posterior probability density of the N(S)EC estimates.}
+\centering
+\begin{tabular}[t]{l|r|r|r|r|r|r}
+\hline
+herbicide & atrazine & diuron & hexazinone & irgarol & simazine & tebuthiuron\\
+\hline
+ametryn & 0.0261283 & 0.8287286 & 0.0652582 & 0.9341168 & 0.0103763 & 0.0095012\\
+\hline
+atrazine & NA & 0.9843730 & 0.8334792 & 0.9862483 & 0.0397550 & 0.0098762\\
+\hline
+diuron & NA & NA & 0.0143768 & 0.7303413 & 0.0093762 & 0.0097512\\
+\hline
+hexazinone & NA & NA & NA & 0.9872484 & 0.0172522 & 0.0096262\\
+\hline
+irgarol & NA & NA & NA & NA & 0.0092512 & 0.0096262\\
+\hline
+simazine & NA & NA & NA & NA & NA & 0.0408801\\
+\hline
+\end{tabular}
+\end{table}
+
+\end{CodeChunk}
+
+\newpage
 
 \hypertarget{discussion}{%
 \section{Discussion}\label{discussion}}
