@@ -29,34 +29,39 @@ check_chains.default <- function(x, ...) {
   sims_array <- as_draws_array(x$fit, variable = a_params)
   num_chains <- ncol(sims_array[, , 1])
   par(mfrow = c(length(params), 2), mar = c(0, 5, 0.5, 0.5),
-      oma = c(4, 0, 2, 0))
+      oma = c(4, 2, 2, 0))
   for (i in seq_len(length(params))) {
     x1 <- as.vector(sims_array[, , i])
     chain_id <- rep(seq_len(num_chains), each = nrow(sims_array[, , i]))
     num_lags <- length(acf(sims_array[, , i][, 1, 1], plot = FALSE)$lag)
-    # plot the chains
-    plot(seq_len(nrow(sims_array[, , i])), rep(NA, nrow(sims_array[, , i])),
-         xaxt = "n", ylim = range(x1), main = "", xlab = "",
-         ylab = params[i])
-    if (i == length(params)) {
-      axis(side = 1)
-    }
-    for (k in seq_len(num_chains)) {
-      lines(seq_len(nrow(sims_array[, , i])),
-            x1[which(chain_id == k)], col = k)
-    }
-    # plot the acf
+
+        # plot the acf
     plot(seq_len(num_lags), rep(NA, num_lags),
-         xaxt = "n", ylim = c(0, 1), xlab = "lag",
-         ylab = "correlation", main = "")
+         xaxt = "n", ylim = c(0, 1), xlab = "",
+         ylab = "", main = "")
     if (i == length(params)) {
       axis(side = 1)
+      mtext("lag", side=1, line = 2)
     }
     for (j in seq_len(num_chains)) {
       acf_j <- acf(sims_array[, , i][, j, 1], plot = FALSE)
       lines(acf_j$lag, acf_j$acf, col = j)
     }
+        # plot the chains
+    plot(seq_len(nrow(sims_array[, , i])), rep(NA, nrow(sims_array[, , i])),
+         xaxt = "n", ylim = range(x1), main = "", xlab = "",
+         ylab = params[i])
+    if (i == length(params)) {
+      axis(side = 1)
+      mtext("iteration", side=1, line =2)     
+    }
+    for (k in seq_len(num_chains)) {
+      lines(seq_len(nrow(sims_array[, , i])),
+            x1[which(chain_id == k)], col = k)
+    } 
+    
   }
+  mtext("correlation", side = 2, outer = TRUE, line = -2)   
   mtext(x$model, side = 3, outer = TRUE)
 }
 
