@@ -1,3 +1,5 @@
+#' Amends an existing \code{\link{bayesmanecfit}} object
+#' 
 #' Amends an existing \code{\link{bayesmanecfit}} object, for example, by
 #' adding or removing fitted models.
 #'

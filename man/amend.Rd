@@ -2,8 +2,7 @@
 % Please edit documentation in R/amend.R
 \name{amend}
 \alias{amend}
-\title{Amends an existing \code{\link{bayesmanecfit}} object, for example, by
-adding or removing fitted models.}
+\title{Amends an existing \code{\link{bayesmanecfit}} object}
 \usage{
 amend(
   object,
