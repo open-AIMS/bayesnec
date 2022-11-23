@@ -1,6 +1,6 @@
 #' Posterior dispersion
 #'
-#' Calculates posterior dispersion metric
+#' Calculates a posterior dispersion metric.
 #'
 #' @param model An object of class \code{\link{bayesnecfit}} whose distribution
 #' family is either \code{\link[stats]{poisson}} or

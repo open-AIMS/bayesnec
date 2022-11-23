@@ -12,14 +12,14 @@ models(object)
 a \code{\link[base]{character}} vector indicating the type of model set for
 which to list the available models, or a \code{\link[base]{numeric}} vector
 indicating the natural range of values which the models should be able to
-handle (see details). If missing all available models and their groups are
+handle (see Details). If missing, all available models and their groups are
 listed.}
 }
 \value{
 A \code{\link[base]{list}} of the available or fitted models.
 }
 \description{
-Lists the fitted or available models
+Lists the fitted or available models.
 }
 \details{
 The available models are "nec3param", "nec4param", "nechorme",

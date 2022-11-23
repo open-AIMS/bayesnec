@@ -20,10 +20,10 @@ amend(
 by \code{\link{bnec}}.}
 
 \item{drop}{A \code{\link[base]{character}} vector containing the names of
-model types you which to drop for the modified fit.}
+model types you which to exclude for the modified fit.}
 
 \item{add}{A \code{\link[base]{character}} vector containing the names of
-model types to add to the modified fit.}
+model types you which to include to the modified fit.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} of two elements
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
@@ -53,7 +53,7 @@ specifies user-desired prior distributions of model parameters.
 If missing, \code{\link{amend}} will figure out a baseline prior for each
 parameter. It can also be specified as a named \code{\link[base]{list}}
 where each name needs to correspond to the same string as \code{model}. See
-details.}
+Details.}
 }
 \value{
 All successfully fitted \code{\link{bayesmanecfit}} model fits.

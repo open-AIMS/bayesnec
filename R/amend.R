@@ -8,15 +8,15 @@
 #' @param object An object of class \code{\link{bayesmanecfit}}, as returned
 #' by \code{\link{bnec}}.
 #' @param drop A \code{\link[base]{character}} vector containing the names of
-#' model types you which to drop for the modified fit.
+#' model types you which to exclude for the modified fit.
 #' @param add A \code{\link[base]{character}} vector containing the names of
-#' model types to add to the modified fit.
+#' model types you which to include to the modified fit.
 #' @param priors An object of class \code{\link[brms]{brmsprior}} which
 #' specifies user-desired prior distributions of model parameters.
 #' If missing, \code{\link{amend}} will figure out a baseline prior for each
 #' parameter. It can also be specified as a named \code{\link[base]{list}}
 #' where each name needs to correspond to the same string as \code{model}. See
-#' details.
+#' Details.
 #'
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'

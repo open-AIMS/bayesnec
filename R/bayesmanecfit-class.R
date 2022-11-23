@@ -22,7 +22,7 @@
 #' name of the successfully fitted models.
 #' @slot mod_stats A \code{\link[base]{data.frame}} of model fit statistics.
 #' @slot sample_size The size of the posterior sample.
-#' information on the priors used in the model.
+#' Information on the priors used in the model.
 #' @slot w_nec_posterior The model-weighted posterior estimate of the NEC.
 #' @slot w_predicted_y The model-weighted predicted values for the observed
 #' data.

@@ -1,13 +1,13 @@
 #' models
 #'
-#' Lists the fitted or available models
+#' Lists the fitted or available models.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}},
 #' a \code{\link[base]{character}} vector indicating the type of model set for
 #' which to list the available models, or a \code{\link[base]{numeric}} vector
 #' indicating the natural range of values which the models should be able to
-#' handle (see details). If missing all available models and their groups are
+#' handle (see Details). If missing, all available models and their groups are
 #' listed.
 #'
 #' @details The available models are "nec3param", "nec4param", "nechorme",

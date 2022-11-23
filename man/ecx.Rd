@@ -2,8 +2,7 @@
 % Please edit documentation in R/ecx.R
 \name{ecx}
 \alias{ecx}
-\title{Extracts the predicted ECx value as desired from an object of class
-\code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.}
+\title{Extracts the predicted ECx value}
 \usage{
 ecx(
   object,
@@ -26,7 +25,7 @@ ecx(
 \item{ecx_val}{The desired percentage effect value. This must be a value
 between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
 
-\item{precision}{The number of unique x values over which to find ECx -
+\item{precision}{The number of unique x values over which to find ECx --
 large values will make the ECx estimate more precise.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
@@ -68,7 +67,7 @@ Extracts the predicted ECx value as desired from an object of class
 from the maximum predicted value of the response (top) to the minimum
 predicted value of the response. Type "absolute" (the default) is
 calculated as the percentage decrease from the maximum value of the
-response (top) to 0 (or bot for a 4 parameter model fit). Type "direct"
+response (top) to 0 (or 'bot' for a four-parameter model fit). Type "direct"
 provides a direct estimate of the x value for a given y.
 Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
 model is estimated at a percent decline from the control.

@@ -24,7 +24,7 @@ TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
 (mean, median, 95\% highest density intervals) of the dispersion metric.
 }
 \description{
-Calculates posterior dispersion metric
+Calculates a posterior dispersion metric.
 }
 \details{
 This function calculates a dispersion metric which takes the ratio

@@ -20,9 +20,9 @@ An object of class \code{\link{bayesnecformula}} and
 }
 \description{
 Set up a model formula for use in the
-\code{\link[bayesnec:bayesnec-package]{bayesnec}} package allowing to
-define linear and non-linear (potentially multilevel) concentration-response
-models.
+\code{\link[bayesnec:bayesnec-package]{bayesnec}} package, allowing linear
+and non-linear (potentially multi-level) concentration-response
+models to be defined.
 }
 \details{
 See \code{methods(class = "bayesnecformula")} for an overview of
@@ -37,13 +37,13 @@ The \code{formula} argument accepts formulas of the following syntax:
 \bold{The population-level term: \code{crf}}
 
 \code{\link[bayesnec:bayesnec-package]{bayesnec}} uses a special internal
-term called \code{crf} which sets the concentration-response equation
+term called \code{crf}, which sets the concentration-response equation
 to be evaluated based on some \code{x} predictor. The equation itself is
 defined by the argument \code{"model"}: a \code{\link[base]{character}}
 vector containing a specific model, a concatenation of specific models,
 or a single string defining a particular group of models
 (or group of equations, see \code{\link{models}}). Internally
-this argument is substituted by an actual \code{\link[brms]{brmsformula}}
+this argument is substituted by an actual \code{\link[brms]{brmsformula}},
 which is then passed onto \code{\link[brms]{brm}} for model fitting.
 
 \bold{Group-level terms: \code{glterms}}
@@ -52,12 +52,12 @@ The user has three options to define group-level effects in a
 \code{\link{bayesnecformula}}: 1) a general "offset" group-level effect
 defined by the term \code{ogl} (as in e.g. \code{ogl(group_variable)}). This
 adds an additional population-level parameter \code{ogl} to the model defined
-by \code{crf}, analogously to what an intercept-only group-level effect
-would be in a classic linear model. 2) a group-level effect applied to all
+by \code{crf}, analogously to an intercept-only group-level effect
+in a classic linear model. 2) A group-level effect applied to all
 parameters in a model at once. This is done by the special term \code{pgl},
-(as in e.g. \code{pgl(group_variable)}) which comes in handy so the user
+(as in e.g. \code{pgl(group_variable)}), which comes in handy so the user
 does not need to know the internal syntax and name of each parameter in the
-model. 3) a more classic approach where the user can specify which
+model. 3) A more classic approach where the user can specify which
 specific parameters --- NB: that requires prior knowledge on the model
 structure and parameter names --- to vary according to a grouping variable
 (as in e.g. \code{(bot | group_variable)}). \code{\link{bayesnecformula}}
@@ -75,20 +75,21 @@ terms that are valid for a \code{\link[brms]{brmsformula}}. These are
 The only capability that \code{\link{bayesnecformula}} does not allow is
 the addition of \code{pterms} outside of the term \code{crf}. Although
 \code{pterms} can be passed to predictor \code{x} within \code{crf}, we
-strongly discourage the user because those functionalities have not
-been tested yet. If this is extremely important to your research, please
-raise an issue on GitHub and we will consider.
+strongly discourage their use because those functionalities have not
+been tested yet. If this is extremely important to your work, please
+raise an issue on bayesnec GitHub, and we will consider further testing and
+development.
 Currently, the only two \code{aterms} that have validated behaviour are:
 \enumerate{
-\item \code{trials()} which is essential in binomially-distributed data, e.g.
+\item \code{trials()}, which is essential in binomially-distributed data, e.g.
 \code{y | trials(trials_variable)}, and 2) weights, e.g.
 \code{y | weights(weights_variable)}, following \pkg{brms} formula syntax.
 Please note that \pkg{brms} does not implement design weights as in other
-standard \pkg{base} function. From their help page, \pkg{brms} "takes the
+standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 weights literally, which means that an observation with weight 2 receives 2
 times more weight than an observation with weight 1. It also means that
 using a weight of 2 is equivalent to adding the corresponding observation
-twice to the data frame." Other \code{aterms} might be added, though we
+twice to the data frame". Other \code{aterms} might be added, though we
 cannot attest to their functionality within
 \code{\link[bayesnec:bayesnec-package]{bayesnec}}, i.e. checks will
 be done outside via \code{\link[brms]{brm}}.
