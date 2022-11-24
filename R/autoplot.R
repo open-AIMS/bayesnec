@@ -349,7 +349,8 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   chk::chk_lgl(add_ecx)
   chk::chk_lgl(force_x) 
   if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")} 
+    stop("xform must be a function.")
+    } 
 
   ggbnec_data(x, add_nec = nec, add_ecx = ecx, force_x = force_x,
               xform = xform, ...) %>%
@@ -402,7 +403,9 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   chk::chk_lgl(add_ecx)
   chk::chk_lgl(force_x) 
   if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")} 
+    stop("xform must be a function.")
+  } 
+  
   chk::chk_lgl(all_models) 
   chk::chk_lgl(plot) 
   chk::chk_lgl(ask) 
