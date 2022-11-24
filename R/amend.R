@@ -56,6 +56,9 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
   if (!is.na(x_range)) {chk::chk_numeric(x_range)}
   chk::chk_numeric(precision)
   chk::chk_numeric(sig_val)
+  if(!inherits(object, "bayesmanecfit")){ 
+    stop("object is not of class bayesmanecfit")
+    }
   
   old_method <- attributes(object$mod_stats$wi)$method
   if (!missing(loo_controls)) {
