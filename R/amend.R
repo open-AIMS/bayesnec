@@ -45,10 +45,18 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
     "Nothing to amend, please specify a proper model to either add or drop, or",
     "changes to loo_controls;\n Returning original model set."
   )
+  
   if (missing(drop) & missing(add) & missing(loo_controls)) {
     message(general_error)
     return(object)
   }
+  
+  if (!missing(drop)) {chk::chk_character(drop)}
+  if (!missing(add)) {chk::chk_character(add)}
+  if (!is.na(x_range)) {chk::chk_numeric(x_range)}
+  chk::chk_numeric(precision)
+  chk::chk_numeric(sig_val)
+  
   old_method <- attributes(object$mod_stats$wi)$method
   if (!missing(loo_controls)) {
     fam_tag <- object$mod_fits[[1]]$fit$family$family
