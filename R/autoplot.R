@@ -36,7 +36,7 @@ prep_raw_data <- function(brms_fit, bayesnecformula) {
 #' @return A \code{\link[base]{data.frame}}.
 #'
 #' @noRd
-bind_nec <- function(data, nec_vals, xform = NA) {
+bind_nec <- function(data, nec_vals, xform = identity) {
   data$nec_vals <- NA
   data$nec_labs <- NA
   data$nec_labs_l <- NA
@@ -105,7 +105,16 @@ bind_ecx <- function(data, ecx_vals) {
 #'
 #' @export
 ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
-                        xform = NA, ...) {
+                        xform = identity, ...) {
+  if(!inherits(x, "bnecfit")){ 
+    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
+  }
+  chk::chk_lgl(add_nec)
+  chk::chk_lgl(add_ecx)
+  chk::chk_lgl(force_x) 
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
+  
   UseMethod("ggbnec_data")
 }
 
@@ -123,7 +132,7 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
 #'
 #' @export
 ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                force_x = FALSE, xform = NA, ...) {
+                                force_x = FALSE, xform = identity, ...) {
   brms_fit <- x$fit
   plot_obj <- brms_fit %>%
     conditional_effects(method = "posterior_epred") %>%
@@ -185,7 +194,7 @@ ggbnec_data.bayesnecfit <- function(x, ...) {
 #'
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                      force_x = FALSE, xform = NA, ...) {
+                                      force_x = FALSE, xform = identity, ...) {
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
@@ -330,8 +339,18 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 #' }
 #' @export
 autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                 force_x = FALSE, xform = NA) {
+                                 force_x = FALSE, xform = identity) {
+
   x <- object
+  if(!inherits(x, "bnecfit")){ 
+    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
+  }
+  chk::chk_lgl(add_nec)
+  chk::chk_lgl(add_ecx)
+  chk::chk_lgl(force_x) 
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
+
   ggbnec_data(x, add_nec = nec, add_ecx = ecx, force_x = force_x,
               xform = xform, ...) %>%
     mutate(model = x$model) %>%
@@ -370,10 +389,26 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @importFrom grDevices devAskNewPage
 #' @export
 autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                   force_x = FALSE, xform = NA,
+                                   force_x = FALSE, xform = identity,
                                    all_models = FALSE, plot = TRUE, ask = TRUE,
                                    newpage = TRUE, multi_facet = TRUE) {
+  
   x <- object
+  
+  if(!inherits(x, "bnecfit")){ 
+    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
+  }
+  chk::chk_lgl(add_nec)
+  chk::chk_lgl(add_ecx)
+  chk::chk_lgl(force_x) 
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
+  chk::chk_lgl(all_models) 
+  chk::chk_lgl(plot) 
+  chk::chk_lgl(ask) 
+  chk::chk_lgl(newpage) 
+  chk::chk_lgl(multi_facet) 
+  
   if (all_models) {
     all_fits <- lapply(x$success_models, pull_out, manec = x) %>%
       suppressMessages %>%
