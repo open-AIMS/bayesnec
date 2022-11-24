@@ -21,7 +21,8 @@ Imports:
     purrr,
     tidyselect,
     evaluate,
-    rlang
+    rlang,
+    chk (>= 0.7.0)
 Suggests:
     rstan,
     knitr,
