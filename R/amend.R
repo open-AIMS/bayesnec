@@ -53,7 +53,7 @@ amend.default <- function(object, drop, add, loo_controls, x_range = NA,
   
   if (!missing(drop)) {chk::chk_character(drop)}
   if (!missing(add)) {chk::chk_character(add)}
-  if (!is.na(x_range)) {chk::chk_numeric(x_range)}
+  if (!is.na(x_range[1])) {chk::chk_numeric(x_range)}
   chk::chk_numeric(precision)
   chk::chk_numeric(sig_val)
   if(!inherits(object, "bayesmanecfit")){ 

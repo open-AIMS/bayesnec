@@ -4,7 +4,14 @@
 \alias{autoplot.bayesnecfit}
 \title{autoplot.bayesnecfit}
 \usage{
-\method{autoplot}{bayesnecfit}(object, ..., nec = TRUE, ecx = FALSE, force_x = FALSE, xform = NA)
+\method{autoplot}{bayesnecfit}(
+  object,
+  ...,
+  nec = TRUE,
+  ecx = FALSE,
+  force_x = FALSE,
+  xform = identity
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} as returned by

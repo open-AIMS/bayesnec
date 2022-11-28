@@ -11,7 +11,7 @@ compare_endpoints(
   type = "absolute",
   hormesis_def = "control",
   sig_val = 0.01,
-  precision,
+  precision = 100,
   x_range = NA
 )
 }
@@ -58,7 +58,7 @@ library(bayesnec)
 data(manec_example)
 nec4param <- pull_out(manec_example, model = "nec4param")
 ecx4param <- pull_out(manec_example, model = "ecx4param")
-compare_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+compare_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50, comparison="ecx")
 }
 
 }

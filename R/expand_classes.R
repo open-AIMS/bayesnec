@@ -29,7 +29,7 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
   mod_dat <- model.frame(formula, data = fit$data)
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   x <- fit$data[[x_var]]
-  if (any(is.na(x_range))) {
+  if (any(is.na(x_range[1]))) {
     x_seq <- seq(min(x), max(x), length = precision)
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)

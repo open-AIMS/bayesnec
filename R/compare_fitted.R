@@ -27,7 +27,7 @@
 #'
 #' @export
 compare_fitted <- function(x, precision = 50, x_range = NA) {
-  if (is.na(x_range)) {
+  if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   }
   posterior_list <- lapply(x, function(m, ...) {

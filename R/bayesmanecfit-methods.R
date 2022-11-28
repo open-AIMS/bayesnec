@@ -14,10 +14,32 @@
 #' @return a plot of the fitted model
 plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                position_legend = "topright", add_ec10 = FALSE,
-                               xform = NA, lxform = NA, force_x = FALSE,
+                               xform = identity, lxform = identity, force_x = FALSE,
                                jitter_x = FALSE, jitter_y = FALSE,
                                ylab = "Response", xlab = "Predictor",
                                xticks = NA, all_models = FALSE) {
+  if(!inherits(x, "bayesmanecfit")){ 
+    stop("x is not of class bayesmanecfit. x should be an object returned from a call to the function bnec.")
+  }
+  chk::chk_lgl(CI)
+  chk::chk_lgl(add_nec)
+  chk::chk_lgl(add_ec10)
+  chk::chk_lgl(force_x) 
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
+  if(!inherits(lxform, "function")){ 
+    stop("lxform must be a function.")} 
+  chk::chk_lgl(jitter_x)
+  chk::chk_lgl(jitter_y)
+  chk::chk_character(ylab)
+  chk::chk_character(xlab)
+  chk::chk_lgl(all_models)
+  legend_positions <- c("left", "topleft", "top", "topright", 
+          "right", "bottomright", "bottom","bottomleft")
+  if(length(na.omit(match(legend_positions, position_legend)))==0){
+    stop(paste("legend positions must be one of ", paste0(legend_positions, collapse = ", " )))
+  }
+  
   if (all_models) {
     oldpar <- par(no.readonly = TRUE)
     on.exit(par(oldpar))
@@ -155,6 +177,12 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @export
 predict.bayesmanecfit <- function(object, ..., precision = 100, x_range = NA) {
+  if(!inherits(object, "bayesmanecfit")){ 
+    stop("object is not of class bayesmanecfit")
+  }  
+  chk::chk_numeric(precision)
+  if(!is.na(x_range[1])) {chk::chk_numeric(x_range)}
+  
   mod_fits <- object$mod_fits
   model_set <- names(mod_fits)
   ref_mod_fit <- object$mod_fits[[1]]
@@ -162,7 +190,7 @@ predict.bayesmanecfit <- function(object, ..., precision = 100, x_range = NA) {
   bdat <- model.frame(ref_mod_fit$bayesnecformula, data = mod_dat)
   x_var <- attr(bdat, "bnec_pop")[["x_var"]]
   mod_stats <- object$mod_stats
-  if (any(is.na(x_range))) {
+  if (any(is.na(x_range[1]))) {
     x_seq <- seq(min(mod_dat[[x_var]]), max(mod_dat[[x_var]]),
                  length = precision)
   } else {
@@ -210,6 +238,11 @@ predict.bayesmanecfit <- function(object, ..., precision = 100, x_range = NA) {
 #'
 #' @export
 rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
+  if(!inherits(object, "bayesmanecfit")){ 
+    stop("object is not of class bayesmanecfit")
+  }  
+  chk::chk_numeric(rhat_cutoff)  
+  
   rhat_vals <- lapply(object$mod_fits, function(x) rhat(x$fit))
   check <- lapply(rhat_vals, function(x, rhat_cutoff) max(x > rhat_cutoff),
                   rhat_cutoff)
@@ -239,6 +272,11 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 #' @export
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90)) {
+  if(!inherits(object, "bayesmanecfit")){ 
+    stop("object is not of class bayesmanecfit")
+  } 
+  chk::chk_lgl(ecx)
+  chk::chk_numeric(ecx_vals)    
   x <- object
   ecs <- NULL
   if (ecx) {
@@ -300,6 +338,9 @@ capture_family.bayesmanecfit <- function(manec) {
 #'
 #' @export
 print.manecsummary <- function(x, ...) {
+  if(!inherits(x, "bayesmanecfit")){ 
+    stop("object is not of class bayesmanecfit")
+  } 
   cat("Object of class bayesmanecfit\n")
   cat("\n")
   cat(x$family$family, "\n")
@@ -347,6 +388,9 @@ print.manecsummary <- function(x, ...) {
 #'
 #' @export
 print.bayesmanecfit <- function(x, ...) {
+  if(!inherits(x, "bayesmanecfit")){ 
+    stop("object is not of class bayesmanecfit")
+  } 
   print(summary(x, ...))
 }
 
@@ -363,6 +407,9 @@ print.bayesmanecfit <- function(x, ...) {
 #' @importFrom stats formula
 #' @export
 formula.bayesmanecfit <- function(x, ..., model) {
+  if(!inherits(x, "bayesmanecfit")){ 
+    stop("object is not of class bayesmanecfit")
+  } 
   x <- suppressMessages(suppressWarnings(pull_out(x, model)))
   formula(x, ...)
 }

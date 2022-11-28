@@ -38,7 +38,7 @@
 #' library(brms)
 #' library(bayesnec)
 #' data(manec_example)
-#' data(nec4param)
+#' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
 #' average_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 #' }
@@ -47,7 +47,7 @@
 average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", sig_val = 0.01,
-                              precision = 1000, x_range = NA, xform = NA,
+                              precision = 1000, x_range = NA, xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list")
@@ -55,7 +55,17 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
   if (!is.character(endpoint)) {
     stop("Argument endpoint must be a character vector")
   }
-  if (is.na(x_range)) {
+  chk::chk_lgl(posterior)
+  chk::chk_character(type)
+  chk::chk_character(hormesis_def)
+  chk::chk_numeric(ecx_val)
+  chk::chk_numeric(sig_val)
+  chk::chk_numeric(precision)
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
+  chk::chk_numeric(prob_vals)  
+  
+  if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   }
   if (endpoint == "nec") {

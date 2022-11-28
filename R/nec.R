@@ -24,7 +24,7 @@
 #' nec(manec_example)
 #'
 #' @export
-nec <- function(object, posterior = FALSE, xform = NA,
+nec <- function(object, posterior = FALSE, xform = identity,
                 prob_vals = c(0.5, 0.025, 0.975)) {
   UseMethod("nec")
 }
@@ -41,7 +41,7 @@ nec <- function(object, posterior = FALSE, xform = NA,
 #' @noRd
 #'
 #' @export
-nec.default <- function(object, posterior = FALSE, xform = NA,
+nec.default <- function(object, posterior = FALSE, xform = identity,
                         prob_vals = c(0.5, 0.025, 0.975)) {
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
         prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
@@ -78,7 +78,7 @@ nec.default <- function(object, posterior = FALSE, xform = NA,
 #' @noRd
 #'
 #' @export
-nec.bayesnecfit <- function(object, posterior = FALSE, xform = NA,
+nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
                             prob_vals = c(0.5, 0.025, 0.975)) {
   nec.default(object, posterior = posterior, xform = xform,
               prob_vals = prob_vals)
@@ -96,7 +96,7 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = NA,
 #' @noRd
 #'
 #' @export
-nec.bayesmanecfit <- function(object, posterior = FALSE, xform = NA,
+nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   if (max(grepl("ecx", names(object$mod_fits))) == 1) {
     message("bayesmanecfit contains ecx model types and therefore nec",

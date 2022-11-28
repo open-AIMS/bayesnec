@@ -52,7 +52,8 @@
 ecx <- function(object, ecx_val = 10, precision = 1000,
                 posterior = FALSE, type = "absolute",
                 hormesis_def = "control", x_range = NA,
-                xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+                xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
+  
   UseMethod("ecx")
 }
 
@@ -71,12 +72,30 @@ ecx <- function(object, ecx_val = 10, precision = 1000,
 ecx.default <- function(object, ecx_val = 10, precision = 1000,
                         posterior = FALSE, type = "absolute",
                         hormesis_def = "control", x_range = NA,
-                        xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+                        xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
+  if(!inherits(object, "bayesnecfit")){ 
+    stop("object is not of class bayesnecfit")
+  }
+  chk::chk_numeric(ecx_val)
+  chk::chk_numeric(precision)  
+  chk::chk_logical(posterior)
+  if ((type %in% c("relative", "absolute", "direct"))==FALSE){
+    stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
+         Please see ?ecx for more details.")
+  }
+  if ((hormesis_def %in% c("max", "control"))==FALSE){
+    stop("type must be one of 'max' or 'control' (the default). 
+         Please see ?ecx for more details.")
+  }
+
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")}   
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[1] ||
         prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
-    }
+  }
+  
   if (type != "direct") {
     if (ecx_val < 1 || ecx_val > 99) {
       stop("Supplied ecx_val is not in the required range. ",
@@ -158,7 +177,7 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
 ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
                             posterior = FALSE, type = "absolute",
                             hormesis_def = "control", x_range = NA,
-                            xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+                            xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
   ecx.default(object = object, ecx_val = ecx_val, precision = precision,
               posterior = posterior, type = type, hormesis_def = hormesis_def,
               x_range = x_range, xform = xform, prob_vals = prob_vals)
@@ -179,7 +198,29 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
 ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", x_range = NA,
-                              xform = NA, prob_vals = c(0.5, 0.025, 0.975)) {
+                              xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
+  if(!inherits(object, "bayesmanecfit")){ 
+    stop("object is not of class bayesmanecfit")
+  }
+  chk::chk_numeric(ecx_val)
+  chk::chk_numeric(precision)  
+  chk::chk_logical(posterior)
+  if ((type %in% c("relative", "absolute", "direct"))==FALSE){
+    stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
+         Please see ?ecx for more details.")
+  }
+  if ((hormesis_def %in% c("max", "control"))==FALSE){
+    stop("type must be one of 'max' or 'control' (the default). 
+         Please see ?ecx for more details.")
+  }
+
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")}   
+  if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[1] ||
+      prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order")
+  }
   sample_ecx <- function(x, object, ecx_val, precision,
                          posterior, type, hormesis_def,
                          x_range, xform, prob_vals, sample_size) {
