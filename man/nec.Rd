@@ -5,7 +5,12 @@
 \title{Extracts the predicted NEC value as desired from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 \usage{
-nec(object, posterior = FALSE, xform = NA, prob_vals = c(0.5, 0.025, 0.975))
+nec(
+  object,
+  posterior = FALSE,
+  xform = identity,
+  prob_vals = c(0.5, 0.025, 0.975)
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or

@@ -13,7 +13,7 @@ ecx(
   type = "absolute",
   hormesis_def = "control",
   x_range = NA,
-  xform = NA,
+  xform = identity,
   prob_vals = c(0.5, 0.025, 0.975)
 )
 }

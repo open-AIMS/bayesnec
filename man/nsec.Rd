@@ -12,7 +12,7 @@ nsec(
   posterior = FALSE,
   x_range = NA,
   hormesis_def = "control",
-  xform = NA,
+  xform = identity,
   prob_vals = c(0.5, 0.025, 0.975)
 )
 }

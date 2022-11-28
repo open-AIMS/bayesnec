@@ -9,7 +9,7 @@ ggbnec_data(
   add_nec = TRUE,
   add_ecx = FALSE,
   force_x = FALSE,
-  xform = NA,
+  xform = identity,
   ...
 )
 }

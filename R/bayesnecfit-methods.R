@@ -39,10 +39,31 @@
 #' @importFrom grDevices adjustcolor
 plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              position_legend = "topright", add_ec10 = FALSE,
-                             xform = NA, lxform = NA, force_x = FALSE,
+                             xform = identity, lxform = identity, force_x = FALSE,
                              jitter_x = FALSE, jitter_y = FALSE,
                              ylab = "Response", xlab = "Predictor",
                              xticks = NA) {
+  if(!inherits(x, "bayesnecfit")){ 
+    stop("x is not of class bayesnecfit. x should be an object returned from a call to the function bnec.")
+  }
+  chk::chk_lgl(CI)
+  chk::chk_lgl(add_nec)
+  chk::chk_lgl(add_ec10)
+  chk::chk_lgl(force_x) 
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
+  if(!inherits(lxform, "function")){ 
+    stop("lxform must be a function.")} 
+  chk::chk_lgl(jitter_x)
+  chk::chk_lgl(jitter_y)
+  chk::chk_character(ylab)
+  chk::chk_character(xlab)
+  legend_positions <- c("left", "topleft", "top", "topright", 
+                        "right", "bottomright", "bottom","bottomleft")
+  if(length(na.omit(match(legend_positions, position_legend)))==0){
+    stop(paste("legend positions must be one of ", paste0(legend_positions, collapse = ", " )))
+  }
+  
   family <- x$fit$family$family
   custom_name <- check_custom_name(x$fit$family)
   mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
@@ -156,11 +177,17 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'
 #' @export
 predict.bayesnecfit <- function(object, ..., precision = 100, x_range = NA) {
+  if(!inherits(object, "bayesnecfit")){ 
+    stop("object is not of class bayesnecfit")
+  }  
+  chk::chk_numeric(precision)
+  if(!is.na(x_range[1])) {chk::chk_numeric(x_range)}
+  
   data <- model.frame(object$bayesnecformula, data = object$fit$data)
   x_var <- attr(data, "bnec_pop")[["x_var"]]
   fit <- object$fit
   x <- fit$data[[x_var]]
-  if (any(is.na(x_range))) {
+  if (any(is.na(x_range[1]))) {
     x_seq <- seq(min(x), max(x), length = precision)
   } else {
     x_seq <- seq(min(x_range), max(x_range), length = precision)
@@ -194,6 +221,9 @@ predict.bayesnecfit <- function(object, ..., precision = 100, x_range = NA) {
 #'
 #' @export
 rhat.bayesnecfit <- function(object, ...) {
+  if(!inherits(object, "bayesnecfit")){ 
+    stop("object is not of class bayesnecfit")
+  }    
   rhat(object$fit)
 }
 
@@ -215,6 +245,11 @@ rhat.bayesnecfit <- function(object, ...) {
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
                                 ecx_vals = c(10, 50, 90)) {
+  if(!inherits(object, "bayesnecfit")){ 
+    stop("object is not of class bayesnecfit")
+  } 
+  chk::chk_lgl(ecx)
+  chk::chk_numeric(ecx_vals)    
   x <- object
   ecs <- NULL
   if (ecx) {
@@ -246,6 +281,9 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 #'
 #' @export
 print.necsummary <- function(x, ...) {
+  if(!inherits(x, "bayesnecfit")){ 
+    stop("object is not of class bayesnecfit")
+  } 
   cat("Object of class bayesnecfit containing the following",
       " non-linear model: ", x$model, "\n\n", sep = "")
   print(x$brmssummary)
@@ -280,6 +318,9 @@ print.necsummary <- function(x, ...) {
 #'
 #' @export
 print.bayesnecfit <- function(x, ...) {
+  if(!inherits(x, "bayesnecfit")){ 
+    stop("object is not of class bayesnecfit")
+  }   
   print(summary(x, ...))
 }
 
@@ -294,6 +335,9 @@ print.bayesnecfit <- function(x, ...) {
 #' @importFrom stats formula
 #' @export
 formula.bayesnecfit <- function(x, ...) {
+  if(!inherits(x, "bayesnecfit")){ 
+    stop("object is not of class bayesnecfit")
+  } 
   formula(x$fit, ...)
 }
 

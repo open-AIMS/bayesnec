@@ -25,18 +25,37 @@
 #' data(manec_example)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' compare_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+#' compare_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50, comparison="ecx")
 #' }
 #'
 #' @export
 compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision, x_range = NA) {
-  if (is.na(x_range)) {
-    x_range <- return_x_range(x)
+                              sig_val = 0.01, precision = 100, x_range = NA) {
+
+  
+  if ((comparison %in% c("nec", "ecx", "nsec"))==FALSE){
+    stop("comparison must be one of nec, ecx or nsec.")
   }
+  chk::chk_numeric(ecx_val)
+  if ((type %in% c("relative", "absolute", "direct"))==FALSE){
+    stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
+         Please see ?ecx for more details.")
+  }
+  if ((hormesis_def %in% c("max", "control"))==FALSE){
+    stop("type must be one of 'max' or 'control' (the default). 
+         Please see ?ecx for more details.")
+  }
+  chk::chk_numeric(sig_val)
+  chk::chk_numeric(precision)
+  if (is.na(x_range[1])) {
+    x_range <- return_x_range(x)
+  } else {
+    chk::chk_numeric(x_range)    
+  }  
+  
   if (comparison == "nec") {
-    posterior_list <- lapply(x, return_nec_post, xform = NA)
+    posterior_list <- lapply(x, return_nec_post, xform = identity)
   }
   if (comparison == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,

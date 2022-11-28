@@ -10,7 +10,7 @@
   nec = TRUE,
   ecx = FALSE,
   force_x = FALSE,
-  xform = NA,
+  xform = identity,
   all_models = FALSE,
   plot = TRUE,
   ask = TRUE,

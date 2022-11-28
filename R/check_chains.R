@@ -22,6 +22,9 @@
 #'
 #' @export
 check_chains.default <- function(x, ...) {
+  if(!inherits(x, "bayesnecfit")){ 
+    stop("x is not of class bayesnecfit")
+  }
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
   params <- gsub("_Intercept", "", rownames(fixef(x$fit)))
@@ -110,11 +113,17 @@ check_chains.bayesnecfit <- function(x, ...) {
 #'
 #' @export
 check_chains.bayesmanecfit <- function(x, ..., filename = NA) {
+  if(!inherits(x, "bayesmanecfit")){ 
+    stop("x is not of class bayesmanecfit")
+  }  
+  if(!is.na(filename)){
+    chk::chk_character(filename)
+  }
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
   }
   for (m in seq_len(length(x$mod_fits))) {
-    check_chains.default(x = x$mod_fits[[m]], ...)
+    check_chains.default(x = pull_out(x, model = names(x$mod_fits)[m]), ...)
   }
   if (!is.na(filename)) {
     dev.off()
