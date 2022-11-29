@@ -1,3 +1,17 @@
+#' check_chains
+#'
+#' Plots HMC chains for a \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}.
+#'
+#' @inheritParams check_chains.default
+#'
+#' @inherit check_chains.default return examples
+#'
+#' @export
+check_chains <- function(x, ...) {
+  UseMethod("check_chains")
+}
+
 #' check_chains.default
 #'
 #' Plots HMC chains for a \code{\link{bayesnecfit}} or
@@ -22,6 +36,24 @@
 #'
 #' @export
 check_chains.default <- function(x, ...) {
+  if(inherits(x, "bayesnecfit")){ 
+    check_chains.bayesnecfit(x = x)
+  } else if(inherits(x, "bayesmanecfit")){ 
+      check_chains.bayesmanecfit(x = x, filename = filename)    
+    } else {stop("x is not of class bayesmanecfit or bayesnecfit")}
+}
+
+#' check_chains.bayesnecfit
+#'
+#' Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
+#' by \code{\link{bnec}}.
+#'
+#' @inheritParams check_chains.default
+#'
+#' @inherit check_chains.default return examples
+#'
+#' @export
+check_chains.bayesnecfit <- function(x, ...) {
   if(!inherits(x, "bayesnecfit")){ 
     stop("x is not of class bayesnecfit")
   }
@@ -37,8 +69,8 @@ check_chains.default <- function(x, ...) {
     x1 <- as.vector(sims_array[, , i])
     chain_id <- rep(seq_len(num_chains), each = nrow(sims_array[, , i]))
     num_lags <- length(acf(sims_array[, , i][, 1, 1], plot = FALSE)$lag)
-
-        # plot the acf
+    
+    # plot the acf
     plot(seq_len(num_lags), rep(NA, num_lags),
          xaxt = "n", ylim = c(0, 1), xlab = "",
          ylab = "", main = "")
@@ -50,7 +82,7 @@ check_chains.default <- function(x, ...) {
       acf_j <- acf(sims_array[, , i][, j, 1], plot = FALSE)
       lines(acf_j$lag, acf_j$acf, col = j)
     }
-        # plot the chains
+    # plot the chains
     plot(seq_len(nrow(sims_array[, , i])), rep(NA, nrow(sims_array[, , i])),
          xaxt = "n", ylim = range(x1), main = "", xlab = "",
          ylab = params[i])
@@ -66,34 +98,7 @@ check_chains.default <- function(x, ...) {
   }
   mtext("correlation", side = 2, outer = TRUE, line = -2)   
   mtext(x$model, side = 3, outer = TRUE)
-}
-
-#' check_chains
-#'
-#' Plots HMC chains for a \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}.
-#'
-#' @inheritParams check_chains.default
-#'
-#' @inherit check_chains.default return examples
-#'
-#' @export
-check_chains <- function(x, ...) {
-  UseMethod("check_chains")
-}
-
-#' check_chains.bayesnecfit
-#'
-#' Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
-#' by \code{\link{bnec}}.
-#'
-#' @inheritParams check_chains.default
-#'
-#' @inherit check_chains.default return examples
-#'
-#' @export
-check_chains.bayesnecfit <- function(x, ...) {
-  check_chains.default(x, ...)
+  
 }
 
 #' check_chains.bayesmanecfit
