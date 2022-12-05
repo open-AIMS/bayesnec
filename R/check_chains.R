@@ -3,28 +3,10 @@
 #' Plots HMC chains for a \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}.
 #'
-#' @inheritParams check_chains.default
-#'
-#' @inherit check_chains.default return examples
-#'
-#' @export
-check_chains <- function(x, ...) {
-  UseMethod("check_chains")
-}
-
-#' check_chains.default
-#'
-#' Plots HMC chains for a \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}.
-#'
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
 #' @param ... arguments used when class is \code{\link{bayesmanecfit}}.
 #'
-#' @importFrom brms fixef as_draws_array
-#' @importFrom stats acf
-#' @importFrom graphics axis lines mtext
-#' 
 #' @return No return value, generates a plot or writes a pdf to file.
 #'
 #' @examples
@@ -35,28 +17,26 @@ check_chains <- function(x, ...) {
 #' check_chains(manec_example)
 #'
 #' @export
-check_chains.default <- function(x, ...) {
-  if(inherits(x, "bayesnecfit")){ 
-    check_chains.bayesnecfit(x = x)
-  } else if(inherits(x, "bayesmanecfit")){ 
-      check_chains.bayesmanecfit(x = x, filename = filename)    
-    } else {stop("x is not of class bayesmanecfit or bayesnecfit")}
+check_chains <- function(x, ...) {
+  UseMethod("check_chains")
 }
+
 
 #' check_chains.bayesnecfit
 #'
 #' Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
 #' by \code{\link{bnec}}.
 #'
-#' @inheritParams check_chains.default
+#' @inheritParams check_chains
 #'
-#' @inherit check_chains.default return examples
+#' @inherit check_chains return examples
+#'
+#' @importFrom brms fixef as_draws_array
+#' @importFrom stats acf
+#' @importFrom graphics axis lines mtext
 #'
 #' @export
 check_chains.bayesnecfit <- function(x, ...) {
-  if(!inherits(x, "bayesnecfit")){ 
-    stop("x is not of class bayesnecfit")
-  }
   oldpar <- par(no.readonly = TRUE)
   on.exit(par(oldpar))
   params <- gsub("_Intercept", "", rownames(fixef(x$fit)))
@@ -98,7 +78,6 @@ check_chains.bayesnecfit <- function(x, ...) {
   }
   mtext("correlation", side = 2, outer = TRUE, line = -2)   
   mtext(x$model, side = 3, outer = TRUE)
-  
 }
 
 #' check_chains.bayesmanecfit
@@ -106,7 +85,7 @@ check_chains.bayesnecfit <- function(x, ...) {
 #' Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
 #' by \code{\link{bnec}}.
 #'
-#' @inheritParams check_chains.default
+#' @inheritParams check_chains
 #'
 #' @param filename An optional \code{\link[base]{character}} vector to be used
 #' as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non
@@ -114,13 +93,10 @@ check_chains.bayesnecfit <- function(x, ...) {
 #'
 #' @importFrom grDevices pdf dev.off
 #'
-#' @inherit check_chains.default return examples
+#' @inherit check_chains return examples
 #'
 #' @export
 check_chains.bayesmanecfit <- function(x, ..., filename = NA) {
-  if(!inherits(x, "bayesmanecfit")){ 
-    stop("x is not of class bayesmanecfit")
-  }  
   if(!is.na(filename)){
     chk::chk_character(filename)
   }
@@ -128,7 +104,7 @@ check_chains.bayesmanecfit <- function(x, ..., filename = NA) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
   }
   for (m in seq_len(length(x$mod_fits))) {
-    check_chains.default(x = pull_out(x, model = names(x$mod_fits)[m]), ...)
+    check_chains(x = pull_out(x, model = names(x$mod_fits)[m]), ...)
   }
   if (!is.na(filename)) {
     dev.off()
