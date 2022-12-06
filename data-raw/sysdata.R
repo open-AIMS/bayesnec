@@ -29,7 +29,10 @@ mod_groups <- list(nec = c("nec3param", "nec4param", "nechorme",
                                "necsigm", "neclin",
                                "ecxlin", "ecxexp", "ecxsigm", "ecx4param",
                                "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3",
-                               "ecxll5", "ecxll4", "ecxll3"))
+                               "ecxll5", "ecxll4", "ecxll3"),
+                   hormesis = c("nechorme", "nechorme4", "neclinhorme", 
+                                "nechormepwr", "nechorme4pwr", "nechormepwr01", 
+                                "ecxhormebc4", "ecxhormebc5"))
 
 mod_fams <- c(gaussian = "gaussian",
               Gamma = "Gamma",
