@@ -23,12 +23,15 @@ check_priors <- function(object, filename = NA) {
 
 
 #' Plots the prior and posterior parameter probability densities from an
-#' object of class \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
+#' object of class \code{\link{bayesnecfit}}.
 #'
 #' @inheritParams check_priors
 #'
-#' @inherit check_priors seealso examples return
+#' @param object An object of class \code{\link{bayesnecfit}} returned by
+#' \code{\link{bnec}}.
 #'
+#' @inherit check_priors examples return
+#' 
 #' @importFrom ggplot2 ggplot geom_density facet_wrap scale_fill_manual theme_bw
 #' @importFrom brms hypothesis
 #' @importFrom rlang .data
@@ -36,7 +39,7 @@ check_priors <- function(object, filename = NA) {
 #' @noRd
 #'
 #' @export
-check_priors.default <- function(object, filename = NA) {
+check_priors.bayesnecfit <- function(object, filename = NA) {
   brms_fit <- object$fit
   all_pars <- rownames(brms::fixef(brms_fit))
   all_data <- vector(mode = "list", length = length(all_pars))
@@ -56,23 +59,6 @@ check_priors.default <- function(object, filename = NA) {
 }
 
 #' Plots the prior and posterior parameter probability densities from an
-#' object of class \code{\link{bayesnecfit}}.
-#'
-#' @inheritParams check_priors
-#'
-#' @param object An object of class \code{\link{bayesnecfit}} returned by
-#' \code{\link{bnec}}.
-#'
-#' @inherit check_priors seealso examples return
-#'
-#' @noRd
-#'
-#' @export
-check_priors.bayesnecfit <- function(object, filename = NA) {
-  check_priors.default(object, filename = filename)
-}
-
-#' Plots the prior and posterior parameter probability densities from an
 #' object of class \code{\link{bayesmanecfit}}.
 #'
 #' @inheritParams check_priors
@@ -80,7 +66,7 @@ check_priors.bayesnecfit <- function(object, filename = NA) {
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
 #'
-#' @inherit check_priors seealso examples return
+#' @inherit check_priors examples return
 #'
 #' @importFrom ggplot2 ggtitle
 #' @importFrom grDevices devAskNewPage pdf
@@ -96,7 +82,7 @@ check_priors.bayesmanecfit <- function(object, filename = NA) {
     devAskNewPage(ask = TRUE)
   }
   for (m in seq_len(length(object$mod_fits))) {
-    out_plot <- check_priors.default(object = object$mod_fits[[m]]) +
+    out_plot <- check_priors(object = pull_out(object, model = names(object$mod_fits)[m])) +
       ggtitle(names(object$mod_fits)[m])
     print(out_plot)
   }

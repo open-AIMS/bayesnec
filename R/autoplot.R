@@ -106,15 +106,6 @@ bind_ecx <- function(data, ecx_vals) {
 #' @export
 ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
                         xform = identity, ...) {
-  if(!inherits(x, "bnecfit")){ 
-    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
-  }
-  chk::chk_lgl(add_nec)
-  chk::chk_lgl(add_ecx)
-  chk::chk_lgl(force_x) 
-  if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")} 
-  
   UseMethod("ggbnec_data")
 }
 
@@ -122,17 +113,21 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
 #'
 #' @inheritParams ggbnec_data
 #'
-#' @inherit ggbnec_data return examples
+#' @param x An object of class \code{\link{bayesnecfit}}, as returned by
+#' function \code{\link{bnec}}.
 #'
-#' @importFrom dplyr %>% mutate
-#' @importFrom brms conditional_effects
-#' @importFrom rlang .data
+#' @inherit ggbnec_data return examples
 #'
 #' @noRd
 #'
 #' @export
-ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                force_x = FALSE, xform = identity, ...) {
+ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
+                                    force_x = FALSE, xform = identity, ...) {
+  chk::chk_lgl(add_nec)
+  chk::chk_lgl(add_ecx)
+  chk::chk_lgl(force_x) 
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
   brms_fit <- x$fit
   plot_obj <- brms_fit %>%
     conditional_effects(method = "posterior_epred") %>%
@@ -166,22 +161,6 @@ ggbnec_data.default <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @inheritParams ggbnec_data
 #'
-#' @param x An object of class \code{\link{bayesnecfit}}, as returned by
-#' function \code{\link{bnec}}.
-#'
-#' @inherit ggbnec_data return examples
-#'
-#' @noRd
-#'
-#' @export
-ggbnec_data.bayesnecfit <- function(x, ...) {
-  ggbnec_data.default(x, ...)
-}
-
-#' Creates the data.frame for plotting with \code{\link{autoplot}}.
-#'
-#' @inheritParams ggbnec_data
-#'
 #' @param x An object of class \code{\link{bayesmanecfit}}, as returned by
 #' function \code{\link{bnec}}.
 #'
@@ -195,6 +174,9 @@ ggbnec_data.bayesnecfit <- function(x, ...) {
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                       force_x = FALSE, xform = identity, ...) {
+  chk::chk_lgl(add_nec)
+  chk::chk_lgl(add_ecx)
+  chk::chk_lgl(force_x)   
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
