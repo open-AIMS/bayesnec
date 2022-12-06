@@ -43,9 +43,9 @@ bind_nec <- function(data, nec_vals, xform = identity) {
   data$nec_labs_u <- NA
   df <- data[1:3, ]
   df[ ] <- NA
-  if (inherits(xform, "function")) {
-    nec_vals <- xform(nec_vals)
-  }
+
+  nec_vals <- xform(nec_vals)
+
   df$nec_vals <- nec_vals
   df$nec_labs[1] <- rounded(nec_vals[[1]], 2)
   df$nec_labs_l[1] <- rounded(nec_vals[[2]], 2)
@@ -82,10 +82,6 @@ bind_ecx <- function(data, ecx_vals) {
 #' \code{\link{bayesmanecfit}}, as returned by function \code{\link{bnec}}.
 #' @param add_nec Should NEC values be added to the plot? Defaults to TRUE.
 #' @param add_ecx Should ECx values be added to the plot? Defaults to FALSE.
-#' @param force_x A \code{\link[base]{logical}} value indicating if the argument
-#' \code{xform} should be forced on the predictor values. This is useful when
-#' the user transforms the predictor beforehand
-#' (e.g. when using a non-standard base function).
 #' @param xform A function to apply to the returned estimated concentration
 #' values.
 #' @param ... Additional arguments to be passed to \code{\link{ecx}}. By
@@ -104,7 +100,7 @@ bind_ecx <- function(data, ecx_vals) {
 #' }
 #'
 #' @export
-ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
+ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE,
                         xform = identity, ...) {
   UseMethod("ggbnec_data")
 }
@@ -126,10 +122,9 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
 #'
 #' @export
 ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                    force_x = FALSE, xform = identity, ...) {
+                                    xform = identity, ...) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
-  chk_lgl(force_x) 
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")} 
   brms_fit <- x$fit
@@ -142,12 +137,10 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                      y_ci = c(e_df$lower__, rev(e_df$upper__)),
                      x_r = NA, y_r = NA)
   r_df <- prep_raw_data(brms_fit, x$bayesnecformula)
+  bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
+  trans_vars <- find_transformations(bdat)
   out <- rbind(e_df, r_df)
-  if (force_x) {
-    if (!inherits(xform, "function")) {
-      stop("You need to specify a function through `xform` when",
-           " `force_x = TRUE`.")
-    }
+  if (length(trans_vars) == 0) {
     out <- out %>%
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
@@ -177,22 +170,21 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
-                                      force_x = FALSE, xform = identity, ...) {
+                                      xform = identity, ...) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
-  chk_lgl(force_x)   
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
                      y_ci = c(e_df$Q2.5, rev(e_df$Q97.5)),
                      x_r = NA, y_r = NA)
   r_df <- prep_raw_data(x$mod_fits[[1]]$fit, x$mod_fits[[1]]$bayesnecformula)
+  bdat <- model.frame(x$mod_fits[[1]]$bayesnecformula, 
+                      data = x$mod_fits[[1]]$fit$data, 
+                      run_par_checks = TRUE)
+  trans_vars <- find_transformations(bdat) 
   out <- rbind(e_df, r_df)
-  if (force_x) {
-    if (!inherits(xform, "function")) {
-      stop("You need to specify a function through `xform` when",
-           " `force_x = TRUE`.")
-    }
+  if (length(trans_vars) == 0) {
     out <- out %>%
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
@@ -288,11 +280,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 #' function \code{\link{bnec}}.
 #' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
 #' @param nec Should NEC values be added to the plot? Defaults to TRUE.
-#' @param ecx Should ECx values be added to the plot? Defaults to FALSE.
-#' @param force_x A \code{\link[base]{logical}} value indicating if the argument
-#' \code{xform} should be forced on the predictor values. This is useful when
-#' the user transforms the predictor beforehand
-#' (e.g. when using a non-standard base function).
+#' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
 #' @param xform A function to apply to the returned estimated concentration
 #' values.
 #'
@@ -326,7 +314,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 #' }
 #' @export
 autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                 force_x = FALSE, xform = identity) {
+                                 xform = identity) {
 
   x <- object
   if(!inherits(x, "bnecfit")){ 
@@ -334,12 +322,11 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   }
   chk_lgl(nec)
   chk_lgl(ecx)
-  chk_lgl(force_x) 
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")
     } 
 
-  ggbnec_data(x, add_nec = nec, add_ecx = ecx, force_x = force_x,
+  ggbnec_data(x, add_nec = nec, add_ecx = ecx,
               xform = xform, ...) %>%
     mutate(model = x$model) %>%
     ggbnec(nec = nec, ecx = ecx)
@@ -377,7 +364,7 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @importFrom grDevices devAskNewPage
 #' @export
 autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                   force_x = FALSE, xform = identity,
+                                   xform = identity,
                                    all_models = FALSE, plot = TRUE, ask = TRUE,
                                    newpage = TRUE, multi_facet = TRUE) {
   
@@ -388,11 +375,9 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   }
   chk_lgl(nec)
   chk_lgl(ecx)
-  chk_lgl(force_x) 
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")
   } 
-  
   chk_lgl(all_models) 
   chk_lgl(plot) 
   chk_lgl(ask) 
@@ -406,7 +391,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     if (multi_facet) {
       names(all_fits) <- x$success_models
       map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
-              force_x = force_x, xform = xform, ..., .id = "model") %>%
+             xform = xform, ..., .id = "model") %>%
         ggbnec(nec = nec, ecx = ecx)
     } else {
       if (plot) {
@@ -417,7 +402,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       plots <- vector(mode = "list", length = length(all_fits))
       for (i in seq_along(all_fits)) {
         plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
-                                  force_x = force_x, xform = xform, ...) %>%
+                                   xform = xform, ...) %>%
           mutate(model = x$success_models[i]) %>%
           ggbnec(nec = nec, ecx = ecx)
         plot(plots[[i]], newpage = newpage || i > 1)
@@ -428,8 +413,7 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       invisible(plots)
     }
   } else {
-    ggbnec_data(x, add_nec = nec, add_ecx = ecx, force_x = force_x,
-                xform = xform, ...) %>%
+    ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform, ...) %>%
       mutate(model = "Model averaged predictions") %>%
       ggbnec(nec = nec, ecx = ecx)
   }

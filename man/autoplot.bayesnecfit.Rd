@@ -4,14 +4,7 @@
 \alias{autoplot.bayesnecfit}
 \title{autoplot.bayesnecfit}
 \usage{
-\method{autoplot}{bayesnecfit}(
-  object,
-  ...,
-  nec = TRUE,
-  ecx = FALSE,
-  force_x = FALSE,
-  xform = identity
-)
+\method{autoplot}{bayesnecfit}(object, ..., nec = TRUE, ecx = FALSE, xform = identity)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} as returned by
@@ -21,12 +14,7 @@ function \code{\link{bnec}}.}
 
 \item{nec}{Should NEC values be added to the plot? Defaults to TRUE.}
 
-\item{ecx}{Should ECx values be added to the plot? Defaults to FALSE.}
-
-\item{force_x}{A \code{\link[base]{logical}} value indicating if the argument
-\code{xform} should be forced on the predictor values. This is useful when
-the user transforms the predictor beforehand
-(e.g. when using a non-standard base function).}
+\item{ecx}{Should ECx values be added to the plot? Defaults to FALSE..}
 
 \item{xform}{A function to apply to the returned estimated concentration
 values.}

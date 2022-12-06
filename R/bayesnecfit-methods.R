@@ -18,10 +18,6 @@
 #' @param xform A function to be applied as a transformation of the x data.
 #' @param lxform A function to be applied as a transformation only to axis
 #' labels and the annotated NEC / EC10 values.
-#' @param force_x A \code{\link[base]{logical}} value indicating if the argument
-#' \code{xform} should be forced on the predictor values. This is useful when
-#' the user transforms the predictor beforehand
-#' (e.g. when using a non-standard base function).
 #' @param jitter_x A \code{\link[base]{logical}} value indicating if the x
 #' data points on the plot should be jittered.
 #' @param jitter_y A \code{\link[base]{logical}} value indicating if the y
@@ -32,22 +28,24 @@
 #' label.
 #' @param xticks A numeric vector indicate where to place the tick marks of
 #' the x-axis.
-#' @export
-#' @return a plot of the fitted model
+#' 
 #' @importFrom graphics plot axis lines abline legend
 #' @importFrom stats quantile model.frame
 #' @importFrom grDevices adjustcolor
-#' @importFrom chk chk_lgl chk_character
+#' @importFrom chk chk_lgl chk_character 
+#' 
+#' @return a plot of the fitted model
+#' 
+#' @export
 plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              position_legend = "topright", add_ec10 = FALSE,
-                             xform = identity, lxform = identity, force_x = FALSE,
+                             xform = identity, lxform = identity,
                              jitter_x = FALSE, jitter_y = FALSE,
                              ylab = "Response", xlab = "Predictor",
                              xticks = NA) {
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)
-  chk_lgl(force_x) 
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
@@ -81,20 +79,22 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   if (add_ec10 & family == "gaussian") {
     ec10 <- ecx(x, type = "relative")
   }
-  if (inherits(xform, "function")) {
-    x_dat <- x$fit$data[[x_var]]
-    x_vec <- x$pred_vals$data$x
-    if (force_x) {
+
+  bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
+  trans_vars <- find_transformations(bdat)
+  x_dat <- x$fit$data[[x_var]]
+  x_vec <- x$pred_vals$data$x  
+  
+  # if no transformations are applied via formula (including on trials),
+  # use xform on axis
+  if (length(trans_vars) == 0) {
       x_dat <- xform(x_dat)
       x_vec <- xform(x_vec)
-    }
-    nec <- xform(x$nec)
-    ec10 <- xform(ec10)
-  } else {
-    x_dat <- x$fit$data[[x_var]]
-    nec <- x$nec
-    x_vec <- x$pred_vals$data$x
   }
+      
+  ec10 <- xform(ec10)  
+  nec <- xform(x$nec)
+
   if (jitter_x) {
     x_dat <- jitter(x_dat)
   }
@@ -236,6 +236,7 @@ rhat.bayesnecfit <- function(object, ...) {
 #' \code{\link[brms]{brmsfit}} object.
 #'
 #' @importFrom brms bayes_R2
+#' @importFrom chk chk_numeric chk_lgl
 #'
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
