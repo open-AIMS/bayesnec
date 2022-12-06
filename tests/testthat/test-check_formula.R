@@ -14,7 +14,7 @@ data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
 test_that("correct classes", {
   f_0 <- y ~ crf(x, "nec3param")
   expect_s3_class(check_formula(bnf(f_0), data), "bayesnecformula")
-  expect_error(check_formula(f_0, data), "must be of class bayesnecformula")
+  expect_error(check_formula(f_0, data))
   expect_error(check_formula(bnf(f_0), as.matrix(data)))
   data_x_char <- data
   data_x_char$x <- as.character(data_x_char$x)
