@@ -15,14 +15,13 @@
 #' @return a plot of the fitted model
 plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                position_legend = "topright", add_ec10 = FALSE,
-                               xform = identity, lxform = identity, force_x = FALSE,
+                               xform = identity, lxform = identity,
                                jitter_x = FALSE, jitter_y = FALSE,
                                ylab = "Response", xlab = "Predictor",
                                xticks = NA, all_models = FALSE) {
   chk_lgl(CI)
   chk_lgl(add_nec)
   chk_lgl(add_ec10)
-  chk_lgl(force_x) 
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
@@ -52,7 +51,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
       )))
       plot(x = mod_fits[[m]], CI = CI, add_nec = add_nec,
            position_legend = position_legend, add_ec10 = add_ec10,
-           xform = xform, lxform = lxform, force_x = force_x,
+           xform = xform, lxform = lxform,
            jitter_x = jitter_x, jitter_y = jitter_y, ylab = "", xlab = "",
            xticks = xticks, ...)
       mtext(xlab, side = 1, outer = TRUE, line = 2)
@@ -63,6 +62,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     universal <- x$mod_fits[[1]]
     mod_dat <- universal$fit$data
     bdat <- model.frame(x$mod_fits[[1]]$bayesnecformula, data = mod_dat)
+    trans_vars <- find_transformations(bdat)
     y_var <- attr(bdat, "bnec_pop")[["y_var"]]
     x_var <- attr(bdat, "bnec_pop")[["x_var"]]
     family <- universal$fit$family$family
@@ -80,20 +80,16 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     if (add_ec10 & family == "gaussian") {
       ec10 <- ecx(x, type = "relative")
     }
-    if (inherits(xform, "function")) {
-      x_dat <- mod_dat[[x_var]]
-      x_vec <- x$w_pred_vals$data$x
-      if (force_x) {
+
+    x_dat <- mod_dat[[x_var]]
+    x_vec <- x$w_pred_vals$data$x
+    if (length(trans_vars) == 0) {
         x_dat <- xform(x_dat)
         x_vec <- xform(x_vec)
       }
-      nec <- xform(x$w_nec)
-      ec10 <- xform(ec10)
-    } else {
-      x_dat <- mod_dat[[x_var]]
-      nec <- x$w_nec
-      x_vec <- x$w_pred_vals$data$x
-    }
+    nec <- xform(x$w_nec)
+    ec10 <- xform(ec10)
+
     if (jitter_x) {
       x_dat <- jitter(x_dat)
     }

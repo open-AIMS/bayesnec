@@ -4,14 +4,7 @@
 \alias{ggbnec_data}
 \title{Creates the data.frame for plotting with \code{\link{autoplot}}.}
 \usage{
-ggbnec_data(
-  x,
-  add_nec = TRUE,
-  add_ecx = FALSE,
-  force_x = FALSE,
-  xform = identity,
-  ...
-)
+ggbnec_data(x, add_nec = TRUE, add_ecx = FALSE, xform = identity, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
@@ -20,11 +13,6 @@ ggbnec_data(
 \item{add_nec}{Should NEC values be added to the plot? Defaults to TRUE.}
 
 \item{add_ecx}{Should ECx values be added to the plot? Defaults to FALSE.}
-
-\item{force_x}{A \code{\link[base]{logical}} value indicating if the argument
-\code{xform} should be forced on the predictor values. This is useful when
-the user transforms the predictor beforehand
-(e.g. when using a non-standard base function).}
 
 \item{xform}{A function to apply to the returned estimated concentration
 values.}
