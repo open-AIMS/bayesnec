@@ -240,8 +240,8 @@ rhat.bayesnecfit <- function(object, ...) {
 #' @export
 summary.bayesnecfit <- function(object, ..., ecx = FALSE,
                                 ecx_vals = c(10, 50, 90)) {
-  chk::chk_lgl(ecx)
-  chk::chk_numeric(ecx_vals)    
+  chk_lgl(ecx)
+  chk_numeric(ecx_vals)    
   x <- object
   ecs <- NULL
   if (ecx) {

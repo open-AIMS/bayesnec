@@ -37,6 +37,8 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #' @inheritParams amend
 #'
 #' @inherit amend return examples
+#' 
+#' @importFrom chk chk_lgl chk_character chk_numeric
 #'
 #' @noRd
 #'
@@ -53,11 +55,11 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
     return(object)
   }
   
-  if (!missing(drop)) {chk::chk_character(drop)}
-  if (!missing(add)) {chk::chk_character(add)}
-  if (!is.na(x_range[1])) {chk::chk_numeric(x_range)}
-  chk::chk_numeric(precision)
-  chk::chk_numeric(sig_val)
+  if (!missing(drop)) {chk_character(drop)}
+  if (!missing(add)) {chk_character(add)}
+  if (!is.na(x_range[1])) {chk_numeric(x_range)}
+  chk_numeric(precision)
+  chk_numeric(sig_val)
   if(!inherits(object, "bayesmanecfit")){ 
     stop("object is not of class bayesmanecfit")
   }

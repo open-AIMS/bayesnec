@@ -92,13 +92,14 @@ check_chains.bayesnecfit <- function(x, ...) {
 #' empty character string will indicate the user wants to save the plots.
 #'
 #' @importFrom grDevices pdf dev.off
+#' @importFrom chk chk_character
 #'
 #' @inherit check_chains return examples
 #'
 #' @export
 check_chains.bayesmanecfit <- function(x, ..., filename = NA) {
   if(!is.na(filename)){
-    chk::chk_character(filename)
+    chk_character(filename)
   }
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
