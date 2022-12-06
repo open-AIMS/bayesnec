@@ -29,6 +29,7 @@ nec <- function(object, posterior = FALSE, xform = identity,
   UseMethod("nec")
 }
 
+
 #' @inheritParams nec
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} returned by
@@ -37,14 +38,18 @@ nec <- function(object, posterior = FALSE, xform = identity,
 #' @inherit nec seealso return examples
 #' 
 #' @importFrom stats quantile predict
+##' @importFrom chk chk_logical
 #'
 #' @noRd
 #'
 #' @export
-nec.default <- function(object, posterior = FALSE, xform = identity,
-                        prob_vals = c(0.5, 0.025, 0.975)) {
+nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
+                            prob_vals = c(0.5, 0.025, 0.975)) {
+  chk_logical(posterior)
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
-        prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
+      prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
@@ -70,34 +75,27 @@ nec.default <- function(object, posterior = FALSE, xform = identity,
 
 #' @inheritParams nec
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} returned by
-#' \code{\link{bnec}}.
-#'
-#' @inherit nec seealso return examples
-#'
-#' @noRd
-#'
-#' @export
-nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
-                            prob_vals = c(0.5, 0.025, 0.975)) {
-  nec.default(object, posterior = posterior, xform = xform,
-              prob_vals = prob_vals)
-}
-
-#' @inheritParams nec
-#'
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
 #'
 #' @inherit nec seealso return examples
 #' 
 #' @importFrom stats quantile
+#' @importFrom chk chk_logical
 #'
 #' @noRd
 #'
 #' @export
 nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
+  chk_logical(posterior)
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")} 
+  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
+      prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
+    stop("prob_vals must include central, lower and upper quantiles,",
+         " in that order.")
+  }  
   if (max(grepl("ecx", names(object$mod_fits))) == 1) {
     message("bayesmanecfit contains ecx model types and therefore nec",
             " estimate includes nsec values.")

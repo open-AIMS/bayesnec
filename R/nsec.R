@@ -55,16 +55,26 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
 #' 
 #' @importFrom stats quantile predict
 #' @importFrom brms as_draws_df
-#'
+#' @importFrom chk chk_logical chk_numeric
+#' 
 #' @noRd
 #'
 #' @export
-nsec.default <- function(object, sig_val = 0.01, precision = 1000,
-                         posterior = FALSE, x_range = NA,
-                         hormesis_def = "control", xform = identity,
-                         prob_vals = c(0.5, 0.025, 0.975)) {
+nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
+                             posterior = FALSE, x_range = NA,
+                             hormesis_def = "control", xform = identity,
+                             prob_vals = c(0.5, 0.025, 0.975)) {
+  chk_numeric(sig_val)
+  chk_numeric(precision)  
+  chk_logical(posterior)  
+  if ((hormesis_def %in% c("max", "control"))==FALSE){
+    stop("type must be one of 'max' or 'control' (the default). 
+         Please see ?ecx for more details.")
+  }
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")}  
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
-        prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
+      prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
@@ -110,26 +120,6 @@ nsec.default <- function(object, sig_val = 0.01, precision = 1000,
   } else {
     nsec_out
   }
-}
-
-#' @inheritParams nsec
-#'
-#' @param object An object of class \code{\link{bayesnecfit}} returned by
-#' \code{\link{bnec}}.
-#'
-#' @inherit nsec details seealso return examples
-#' 
-#' @noRd
-#'
-#' @export
-nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
-                             posterior = FALSE, x_range = NA,
-                             hormesis_def = "control", xform = identity,
-                             prob_vals = c(0.5, 0.025, 0.975)) {
-  nsec.default(object, sig_val = sig_val, precision = precision,
-               posterior = posterior, x_range = x_range,
-               hormesis_def = hormesis_def, xform = xform, 
-               prob_vals = prob_vals)
 }
 
 #' @inheritParams nsec

@@ -117,6 +117,10 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
 #' function \code{\link{bnec}}.
 #'
 #' @inherit ggbnec_data return examples
+#' 
+#' @importFrom dplyr %>% mutate
+#' @importFrom brms conditional_effects
+#' @importFrom rlang .data
 #'
 #' @noRd
 #'

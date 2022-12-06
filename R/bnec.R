@@ -190,7 +190,6 @@
 #' }
 #'
 #' @importFrom stats model.frame
-#' 
 #' @importFrom chk chk_number
 #'
 #' @export

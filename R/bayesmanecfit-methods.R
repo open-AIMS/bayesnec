@@ -308,11 +308,6 @@ capture_family <- function(manec) {
 }
 
 #' @noRd
-capture_family.default <- function(manec) {
-  capture_family(manec)
-}
-
-#' @noRd
 #' @importFrom utils capture.output
 capture_family.bayesmanecfit <- function(manec) {
   x <- manec$mod_fits[[1]]$fit
