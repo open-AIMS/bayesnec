@@ -32,6 +32,7 @@
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect everything
 #' @importFrom utils combn
+#' @importFrom chk chk_lgl chk_character chk_numeric
 #'
 #' @examples
 #' \dontrun{
@@ -55,15 +56,15 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
   if (!is.character(endpoint)) {
     stop("Argument endpoint must be a character vector")
   }
-  chk::chk_lgl(posterior)
-  chk::chk_character(type)
-  chk::chk_character(hormesis_def)
-  chk::chk_numeric(ecx_val)
-  chk::chk_numeric(sig_val)
-  chk::chk_numeric(precision)
+  chk_lgl(posterior)
+  chk_character(type)
+  chk_character(hormesis_def)
+  chk_numeric(ecx_val)
+  chk_numeric(sig_val)
+  chk_numeric(precision)
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")} 
-  chk::chk_numeric(prob_vals)  
+  chk_numeric(prob_vals)  
   
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)

@@ -5,6 +5,8 @@
 #' compares these via bootstrap re sampling.
 #'
 #' @inheritParams compare_posterior
+#' 
+#' @importFrom chk chk_numeric
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -37,7 +39,7 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
   if ((comparison %in% c("nec", "ecx", "nsec"))==FALSE){
     stop("comparison must be one of nec, ecx or nsec.")
   }
-  chk::chk_numeric(ecx_val)
+  chk_numeric(ecx_val)
   if ((type %in% c("relative", "absolute", "direct"))==FALSE){
     stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
          Please see ?ecx for more details.")
@@ -46,12 +48,12 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
     stop("type must be one of 'max' or 'control' (the default). 
          Please see ?ecx for more details.")
   }
-  chk::chk_numeric(sig_val)
-  chk::chk_numeric(precision)
+  chk_numeric(sig_val)
+  chk_numeric(precision)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   } else {
-    chk::chk_numeric(x_range)    
+    chk_numeric(x_range)    
   }  
   
   if (comparison == "nec") {

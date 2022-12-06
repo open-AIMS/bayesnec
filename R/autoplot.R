@@ -123,9 +123,9 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE, force_x = FALSE,
 #' @export
 ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                     force_x = FALSE, xform = identity, ...) {
-  chk::chk_lgl(add_nec)
-  chk::chk_lgl(add_ecx)
-  chk::chk_lgl(force_x) 
+  chk_lgl(add_nec)
+  chk_lgl(add_ecx)
+  chk_lgl(force_x) 
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")} 
   brms_fit <- x$fit
@@ -174,9 +174,9 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @export
 ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                       force_x = FALSE, xform = identity, ...) {
-  chk::chk_lgl(add_nec)
-  chk::chk_lgl(add_ecx)
-  chk::chk_lgl(force_x)   
+  chk_lgl(add_nec)
+  chk_lgl(add_ecx)
+  chk_lgl(force_x)   
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
@@ -295,6 +295,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 #' @return A \code{\link[ggplot2]{ggplot}} object.
 #'
 #' @importFrom dplyr mutate
+#' @importFrom chk chk_lgl
 #' @family autoplot methods
 #'
 #' @examples
@@ -327,9 +328,9 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   if(!inherits(x, "bnecfit")){ 
     stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
   }
-  chk::chk_lgl(nec)
-  chk::chk_lgl(ecx)
-  chk::chk_lgl(force_x) 
+  chk_lgl(nec)
+  chk_lgl(ecx)
+  chk_lgl(force_x) 
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")
     } 
@@ -381,18 +382,18 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   if(!inherits(x, "bnecfit")){ 
     stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
   }
-  chk::chk_lgl(nec)
-  chk::chk_lgl(ecx)
-  chk::chk_lgl(force_x) 
+  chk_lgl(nec)
+  chk_lgl(ecx)
+  chk_lgl(force_x) 
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")
   } 
   
-  chk::chk_lgl(all_models) 
-  chk::chk_lgl(plot) 
-  chk::chk_lgl(ask) 
-  chk::chk_lgl(newpage) 
-  chk::chk_lgl(multi_facet) 
+  chk_lgl(all_models) 
+  chk_lgl(plot) 
+  chk_lgl(ask) 
+  chk_lgl(newpage) 
+  chk_lgl(multi_facet) 
   
   if (all_models) {
     all_fits <- lapply(x$success_models, pull_out, manec = x) %>%

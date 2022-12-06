@@ -35,6 +35,8 @@
 #' is assumed to be the lowest observed concentration.
 #'
 #' @seealso \code{\link{bnec}}
+#' 
+#' @importFrom chk chk_lgl chk_numeric
 #'
 #' @return A vector containing the estimated ECx value, including upper and
 #' lower 95% credible interval bounds.
@@ -76,9 +78,9 @@ ecx.default <- function(object, ecx_val = 10, precision = 1000,
   if(!inherits(object, "bayesnecfit")){ 
     stop("object is not of class bayesnecfit")
   }
-  chk::chk_numeric(ecx_val)
-  chk::chk_numeric(precision)  
-  chk::chk_logical(posterior)
+  chk_numeric(ecx_val)
+  chk_numeric(precision)  
+  chk_logical(posterior)
   if ((type %in% c("relative", "absolute", "direct"))==FALSE){
     stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
          Please see ?ecx for more details.")
@@ -202,9 +204,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   if(!inherits(object, "bayesmanecfit")){ 
     stop("object is not of class bayesmanecfit")
   }
-  chk::chk_numeric(ecx_val)
-  chk::chk_numeric(precision)  
-  chk::chk_logical(posterior)
+  chk_numeric(ecx_val)
+  chk_numeric(precision)  
+  chk_logical(posterior)
   if ((type %in% c("relative", "absolute", "direct"))==FALSE){
     stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
          Please see ?ecx for more details.")

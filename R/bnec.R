@@ -190,13 +190,15 @@
 #' }
 #'
 #' @importFrom stats model.frame
+#' 
+#' @importFrom chk chk_number
 #'
 #' @export
 bnec <- function(formula, data, x_range = NA, precision = 1000, sig_val = 0.01,
                  loo_controls, x_var = NULL, y_var = NULL, trials_var = NULL,
                  model = NULL, random = NULL, random_vars = NULL, ...) {
-  chk::chk_number(precision)
-  chk::chk_number(sig_val)
+  chk_number(precision)
+  chk_number(sig_val)
 
   mf <- match.call(expand.dots = FALSE)
   m <- sapply(c("x_var", "y_var", "trials_var", "model", "random",
