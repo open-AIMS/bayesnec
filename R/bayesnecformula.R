@@ -220,29 +220,13 @@ check_formula <- function(formula, data, run_par_checks = FALSE) {
 #'
 #' @inheritParams check_formula
 #' @inherit check_formula examples details return
+#' 
+#' @importFrom formula.tools lhs rhs
 #'
 #' @export
 #' @noRd
 check_formula.bayesnecformula <- function(formula, data,
                                           run_par_checks = FALSE) {
-  check_formula.default(formula = formula, data = data,
-                        run_par_checks = run_par_checks)
-}
-
-#' Check if input model formula is appropriate to use with
-#' \code{\link[bayesnec:bayesnec-package]{bayesnec}}
-#'
-#' Perform a series of checks to ensure that the input formula is appropriately
-#' set up for usage within \code{\link[bayesnec:bayesnec-package]{bayesnec}}.
-#'
-#' @inheritParams check_formula
-#' @inherit check_formula examples details return
-#'
-#' @importFrom formula.tools lhs rhs
-#'
-#' @export
-#' @noRd
-check_formula.default <- function(formula, data, run_par_checks = FALSE) {
   if (!inherits(formula, "bayesnecformula")) {
     stop("Your formula must be of class bayesnecformula.")
   }
@@ -337,8 +321,8 @@ check_formula.default <- function(formula, data, run_par_checks = FALSE) {
       for (j in seq_along(vars)) {
         if (!vars[j] %in% names(data)) {
           stop("Group-level variable(s) ",
-                  paste0("\"", vars[j], "\"", collapse = "; "),
-                  " not found in dataset.")
+               paste0("\"", vars[j], "\"", collapse = "; "),
+               " not found in dataset.")
         } else if (any(sapply(data[, vars[j]], is.numeric))) {
           stop("Group-level variables cannot be numeric.")
         }
