@@ -1,11 +1,9 @@
-#' plot.bayesnecfit
+#' @describeIn plot Generates a plot for \code{\link{bayesnecfit}}
+#' objects fitted by \code{\link{bnec}}.
+#' @order 2
 #'
-#' Generates a plot of a fitted \code{\link{bayesnecfit}} model, as returned by
-#' \code{\link{bnec}}.
+#' @inheritParams plot.bnecfit
 #'
-#' @param x An object of class \code{\link{bayesnecfit}} as returned by
-#' \code{\link{bnec}}.
-#' @param ... Additional arguments to \code{\link[graphics]{plot}}.
 #' @param CI A \code{\link[base]{logical}} value indicating if credibility
 #' intervals on the model fit should be plotted, calculated as the upper and
 #' lower bounds of the individual predicted values from all posterior samples.
@@ -29,13 +27,11 @@
 #' @param xticks A numeric vector indicate where to place the tick marks of
 #' the x-axis.
 #' 
+#' @inherit plot.bnecfit description return examples
 #' @importFrom graphics plot axis lines abline legend
 #' @importFrom stats quantile model.frame
 #' @importFrom grDevices adjustcolor
-#' @importFrom chk chk_lgl chk_character 
-#' 
-#' @return a plot of the fitted model
-#' 
+#' @importFrom chk chk_lgl chk_character
 #' @export
 plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              position_legend = "topright", add_ec10 = FALSE,

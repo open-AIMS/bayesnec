@@ -1,7 +1,6 @@
-#' plot.bayesmanecfit
-#'
-#' Generates a plot of a fitted \code{\link{bayesmanecfit}} object, as
-#' returned by \code{\link{bnec}}.
+#' @describeIn plot Generates a plot for \code{\link{bayesmanecfit}}
+#' objects fitted by \code{\link{bnec}}.
+#' @order 3
 #'
 #' @inheritParams plot.bayesnecfit
 #'
@@ -9,10 +8,10 @@
 #' models in the model set should be plotted simultaneously, or if a model
 #' average plot should be returned.
 #'
-#' @export
+#' @inherit plot.bnecfit description return examples
 #' @importFrom graphics par plot mtext legend
 #' @importFrom chk chk_lgl chk_character
-#' @return a plot of the fitted model
+#' @export
 plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                                position_legend = "topright", add_ec10 = FALSE,
                                xform = identity, lxform = identity,
