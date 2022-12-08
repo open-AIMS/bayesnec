@@ -48,7 +48,7 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   chk_logical(posterior)
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")} 
-  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
+  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
@@ -91,7 +91,7 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
   chk_logical(posterior)
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")} 
-  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
+  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
