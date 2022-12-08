@@ -73,7 +73,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
   }
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")}  
-  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[1] |
+  if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
