@@ -381,11 +381,11 @@ By default the plot shows the fitted posterior curve with 95% credible intervals
 
 A range of tools are available to assess model fit, including an estimate of overdispersion (for relevant families), an extension of the \pkg{brms} `rhat` function that can be applied to both `bayesnecfit` and `bayesmanecfit` model objects, and a function `check_chains` that can be used to visually assess chain mixing and stability.
 
-All diagnostic functions available in \pkg{brms} and \pkg{rstan} can be used on the underlying `brm` model fit by extracting the fitted \pkg{brms} model from the `bayenecfit` or `bayesmanecfit` model object. For example, we can use the default \pkg{brms} plotting method to obtain a diagnostic plot of the individual fit of the **nec4param** model using:
+All diagnostic functions available in \pkg{brms} and \pkg{rstan} can be used on the underlying `brm` model fit by extracting the fitted \pkg{brms} model from the `bayenecfit` or `bayesmanecfit` model object using the function `pull_brmsfit`. For example, we can use the default \pkg{brms} plotting method to obtain a diagnostic plot of the individual fit of the **nec4param** model using:
 
 
 ```{r brmsplot, fig.width = 5.14, fig.height = 6, fig.cap = "Default \\pkg{brms} plot of the \\texttt{nec4param} model showing the posterior densities and chain mixing for each of the included parameters.", dependson="fit"}
-plot(fit$fit)
+plot(pull_brmsfit(fit))
 ```
 
 which yields a plot of the posterior densities as well as trace plots of chains for each parameter in the specified model (\autoref{fig:brmsplot}).
@@ -399,7 +399,7 @@ To ensure a `bnec` fit retains the same level of objectivity as an equivalent fr
 In \pkg{bayesnec} we chose to provide default priors that are data-dependent. They were designed to be somewhat informative (relative to each parameter's region) but that would, in data-sufficient cases, return fits without HMC divergent transitions in Stan. Default "blanket" priors are not currently provided for non-linear models by the model-building underlying package \pkg{brms}, and we note that defining the extent to which a prior is vague or weakly/strongly informative ultimately depends on the likelihood [@gelman2017entropy]. Therefore, there may be situations where the default \pkg{bayesnec} priors do not behave as desired, or the user wants to provide customised priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the predictor variable). Conversely, priors may be too vague, leading to poor model convergence. Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for \pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual \pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brmsfit` object (`sample_priors(fit$fit$prior)`, see \autoref{fig:sampleprior}).
 
 ```{r sampleprior, echo=FALSE, fig.height = 3.5, fig.width = 4.5, fig.cap = "Frequency histograms of samples of the default priors used by bnec for fitting the \\texttt{nec4param} model to the example data."}
-sample_priors(fit$fit$prior)
+sample_priors(pull_brmsfit(fit)$prior)
 ```
 
 We can also use the function `check_priors` (based on the `hypothesis` function of \pkg{brms}) to assess how the posterior probability density for each parameter differs from that of the prior. Here we show the prior and posterior probability densities for the parameters in the `nec4param` model fit (`check_priors(fit)`, see \autoref{fig:checkpriorsingle}). There is also a `bayesmanecfit`-specific method that can be used to sequentially view all plots in a `bnec` call with multiple models, or write to a pdf as in `check_chains`.
@@ -727,9 +727,10 @@ modtab <- purrr::map_dfr(cleaned_fits, function(x) {
 
 This collated table of model weights shows that the best fitting models vary substantially across the C-R curves for the seven herbicides (\autoref{tab:weightsTab}). Few herbicides showed any weight for the *NEC* threshold models, with the exception of ametryn which had some, albeit limited, support. The weights for the various *ECx* models varied substantially, with at least some support for more than one model in all cases. This shows clearly the value of the model averaging approach adopted in \pkg{bayesnec}, which effectively accommodates this model uncertainty by seamlessly providing weighted model averaged inferences. Note that for all herbicides there were some models to did not fit successfully using the default \pkg{bayesnec} settings. While it should be possible to obtain valid fits for these few failed models using custom priors and/or initial values, the fact that there are already a large number of well fitting models in the model set for each herbicide suggests this would be unlikely to have any impact on inference, and here we proceed only with the currently valid fits. 
 
-```{r weightsTab, echo=FALSE, dependson=weights}
+```{r weightsTab, echo=FALSE}
 knitr::kable(modtab, caption="Fitted valid models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \\textit{Seriatopora hystrix}.")
 ```
+
 
 We use the \pkg{bayesnec} `autoplot` , together with \pkg{ggpubr} to make a panel plot of the weighted model averaged predicted curves for all seven herbicides (\autoref{fig:fullbayesmanecplot}).
 
@@ -747,8 +748,8 @@ figure <- ggpubr::ggarrange(plotlist = all_plots, nrow = 4, ncol = 2, labels = n
 
 ```{r fullbayesmanecplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\texttt{NEC} models, and the NSEC values estimated from all smooth \\texttt{ECx} models. Only the \\texttt{decline} model set was used (ie. hormesis models were excluded)."}
 ggpubr::annotate_figure(
-  figure, left = text_grob(expression(""*Delta*"F"/"F m'"), rot = 90),
-  bottom = text_grob(expression("Concentration "~"("*mu*"g/L)")))
+  figure, left = ggpubr::text_grob(expression(""*Delta*"F"/"F m'"), rot = 90),
+  bottom = ggpubr::text_grob(expression("Concentration "~"("*mu*"g/L)")))
 ```
 
 Across the seven herbicides, they `bayesmanecfit` model averaged fits model the input data very well, with predictions generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn dataset is evident in the weighted average predicted values as a broader confidence band at the estimated position of the NEC threshold point (\autoref{fig:fullbayesmanecplot}). 
@@ -777,7 +778,7 @@ ggplot(mapping = aes(x = conc)) +
   theme_classic()
 ```
 
-```{r probdiffs, echo=FALSE, dependson=compare_posterior}
+```{r probdiffs, echo=FALSE}
 knitr::kable(prob_diff, caption="Probability of differences in no-effect toxicity for seven herbicides. Values are based on the proportional overlap in predicted posterior probability density of the N(S)EC estimates.")
 ```
 
