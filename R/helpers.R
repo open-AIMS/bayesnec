@@ -541,3 +541,38 @@ cleaned_brms_summary <- function(brmsfit) {
   brmssummary
 }
 
+#' @noRd
+identical_value <- function(x, y) {
+  if (identical(x, y)) {
+    x
+  } else {
+    FALSE
+  }
+}
+
+#' @noRd
+#' @importFrom stats model.frame
+check_data_equality <- function(mod_fits) {
+  data_are_equal <- lapply(mod_fits, function(x) as.matrix(x$fit$data)) |>
+    Reduce(f = identical_value) |>
+    is.matrix()
+  if (!data_are_equal) {
+    stop("Dataset values differ across fits. Datasets need to be identical ",
+         "across the multiple fits.")
+  }
+  # this second check is needed for cases where a function is passed onto
+  # one of the model variables via the formula, e.g. crf(log(x), ...)
+  cols_are_equal <- lapply(mod_fits, function(x) {
+    model.frame(x$bayesnecformula, x$fit$data) |>
+      attr("terms") |>
+      attr("factors") |>
+      rownames() |>
+      sort()
+  }) |>
+    Reduce(f = identical_value) |>
+    is.character()
+  if (!cols_are_equal) {
+    stop("Dataset column names differ across fits. Datasets need to be ",
+         "identical across the multiple fits.")
+  }
+}
