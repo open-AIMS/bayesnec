@@ -13,9 +13,6 @@
 #'
 #' @noRd
 validate_priors <- function(priors, model) {
-  if (missing(priors)) {
-    stop("No valid prior specified.")
-  }
   if (inherits(priors, "list")) {
     if (!model %in% names(priors)) {
       message("Named prior list does not contain ",
@@ -23,9 +20,6 @@ validate_priors <- function(priors, model) {
               "Using bayesnec default priors.")
     }
     priors <- priors[[model]]
-    if (is.null(priors)) {
-      stop("No valid prior specified.")
-    }
   }
   if (!inherits(priors, "brmsprior")) {
     stop("Prior for model ", model, " is not of class brmsprior; see ?bnec for",
