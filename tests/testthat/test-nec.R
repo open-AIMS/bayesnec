@@ -41,6 +41,6 @@ test_that("posterior passes correctly", {
 })
 
 test_that("prob_vals passes correctly", {
-  nec4 <- nec(nec4param, prob_vals = c(0.3, 0.5, 0.7))
-  expect_equal(names(nec4), c("30%", "50%", "70%"))
+  nec4 <- nec(nec4param, prob_vals = c(0.5, 0.3, 0.7))
+  expect_equal(names(nec4), c("50%", "30%", "70%"))
 })

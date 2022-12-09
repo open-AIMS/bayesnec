@@ -81,11 +81,11 @@ test_that("posterior passes correctly", {
 })
 
 test_that("prob_vals passes correctly", {
-  ecx4 <- ecx(ecx4param, prob_vals = c(0.3, 0.5, 0.7))
-  expect_equal(names(ecx4), c("ec_10_Q30",   "ec_10_Q50",  "ec_10_Q70"))
+  ecx4 <- ecx(ecx4param, prob_vals = c(0.5, 0.3, 0.7))
+  expect_equal(names(ecx4), c("ec_10_Q50",   "ec_10_Q30",  "ec_10_Q70"))
 })
 
 test_that("ecx_val passes correctly", {
-  ecx4 <- ecx(ecx4param, prob_vals = c(0.3, 0.5, 0.7), ecx_val = 20)
-  expect_equal(names(ecx4), c("ec_20_Q30", "ec_20_Q50", "ec_20_Q70"))
+  ecx4 <- ecx(ecx4param, prob_vals = c(0.5, 0.3, 0.7), ecx_val = 20)
+  expect_equal(names(ecx4), c("ec_20_Q50", "ec_20_Q30", "ec_20_Q70"))
 })

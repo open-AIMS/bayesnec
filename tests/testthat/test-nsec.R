@@ -73,11 +73,11 @@ test_that("posterior passes correctly", {
 })
 
 test_that("prob_vals passes correctly", {
-  nsec4 <- nsec(ecx4param, prob_vals = c(0.3, 0.5, 0.7))
-  expect_equal(names(nsec4), c("ec_0.01_Q30", "ec_0.01_Q50", "ec_0.01_Q70"))
+  nsec4 <- nsec(ecx4param, prob_vals = c(0.5, 0.3, 0.7))
+  expect_equal(names(nsec4), c("ec_0.01_Q50", "ec_0.01_Q30", "ec_0.01_Q70"))
 })
 
 test_that("sig_val passes correctly", {
-  nsec4 <- nsec(ecx4param, prob_vals = c(0.3, 0.5, 0.7), sig_val = 0.05)
-  expect_equal(names(nsec4), c("ec_0.05_Q30", "ec_0.05_Q50", "ec_0.05_Q70"))
+  nsec4 <- nsec(ecx4param, prob_vals = c(0.5, 0.3, 0.7), sig_val = 0.05)
+  expect_equal(names(nsec4), c("ec_0.05_Q50", "ec_0.05_Q30", "ec_0.05_Q70"))
 })
