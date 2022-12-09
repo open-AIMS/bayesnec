@@ -93,6 +93,28 @@ manec_fits <- list(manec_gausian_identity = manec_gausian_identity,
 
 nec_fits <- lapply(manec_fits, pull_out, model = "nec4param")
 
+mod_1 <- pull_out(manec_example, "nec4param")
+mod_2 <- pull_out(manec_example, "ecx4param")
+mod_3 <- nec_data |>
+  dplyr::mutate(y = qlogis(y)) |>
+  (\(.)bnec(formula = y ~ crf(x, model = "nechorme4"),
+            data = ., iter = 200, warmup = 150, chains = 2,
+            stan_model_args = list(save_dso = FALSE)))()
+mod_4 <- nec_data |>
+  dplyr::mutate(y = qlogis(y), log_x = log(x)) |>
+  (\(.)bnec(formula = y ~ crf(log_x, model = "nechorme4"),
+            data = ., iter = 200, warmup = 150, chains = 2,
+            stan_model_args = list(save_dso = FALSE)))()
+mod_5 <- nec_data |>
+  dplyr::mutate(y = qlogis(y), log_x = log(x)) |>
+  (\(.)bnec(formula = y ~ crf(log(x), model = "nechorme4"),
+            data = ., iter = 200, warmup = 150, chains = 2,
+            stan_model_args = list(save_dso = FALSE)))()
+mod_6 <- nec_data |>
+  (\(.)bnec(formula = qlogis(y) ~ crf(x, model = "nechorme4"),
+            data = ., iter = 200, warmup = 150, chains = 2,
+            stan_model_args = list(save_dso = FALSE)))()
+
 data("nec_data")
 other_data <- nec_data
 colnames(other_data) <- c("a", "b")
