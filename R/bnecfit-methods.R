@@ -35,6 +35,7 @@ c.bnecfit <- function(x, ...) {
     for (i in seq_along(dots)) {
       mod_fits <- c(mod_fits, recover_prebayesnecfit(dots[[i]]))
     }
+    check_data_equality(mod_fits)
   }
   mod_fits <- mod_fits[!duplicated(names(mod_fits))]
   formulas <- lapply(mod_fits, extract_formula)
