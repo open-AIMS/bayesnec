@@ -26,6 +26,6 @@ test_that("posterior passes correctly", {
 
 test_that("prob_vals passes correctly", {
   ae4 <- average_endpoints(list(ecx4param = ecx4param, nec4param = nec4param),
-                           prob_vals = c(0.3, 0.5, 0.7))
-  expect_equal(names(ae4), c("30%", "50%", "70%"))
+                           prob_vals = c(0.5, 0.3, 0.7))
+  expect_equal(names(ae4), c("50%", "30%", "70%"))
 })
