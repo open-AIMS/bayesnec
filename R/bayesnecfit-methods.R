@@ -250,7 +250,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     names(ecs) <- paste0("ECx (", ecx_vals, "%) estimate:")
   }
   out <- list(
-    brmssummary = summary(x$fit, robust = TRUE),
+    brmssummary = cleaned_brms_summary(x$fit),
     model = x$model,
     is_ecx = x$model %in% mod_groups$ecx,
     ecs = ecs,
