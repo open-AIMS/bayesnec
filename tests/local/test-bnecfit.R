@@ -39,6 +39,14 @@ test_that("Adding only works if either if bnecfit", {
     expect_warning
 })
 
+test_that("Concat only works if datasets are identical", {
+  expect_message(c(mod_1, mod_2)) # should work
+  expect_message(c(mod_1, mod_2, mod_3)) # should work
+  expect_error(c(mod_1, mod_2, mod_4)) # should fail
+  expect_error(c(mod_1, mod_2, mod_5)) # should fail
+  expect_error(c(mod_1, mod_2, mod_6)) # should fail
+})
+
 test_that("Concatenating only works if either if bnecfit", {
   expect_true(is.list(c(1, nec_)))
   expect_true(is.list(c(NA, nec_)))
