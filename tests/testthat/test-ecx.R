@@ -68,7 +68,6 @@ test_that("works for bayesmanecfit", {
   expect_equal(names(ecx1), c("ec_10", "ec_10_lw", "ec_10_up"))
 })
 
-
 test_that("xform passes correctly", {
   ecx1 <- ecx(ecx4param)
   ecx2 <- ecx(ecx4param, xform = exp)
@@ -82,7 +81,7 @@ test_that("posterior passes correctly", {
 
 test_that("prob_vals passes correctly", {
   ecx4 <- ecx(ecx4param, prob_vals = c(0.5, 0.3, 0.7))
-  expect_equal(names(ecx4), c("ec_10_Q50",   "ec_10_Q30",  "ec_10_Q70"))
+  expect_equal(names(ecx4), c("ec_10_Q50", "ec_10_Q30", "ec_10_Q70"))
 })
 
 test_that("ecx_val passes correctly", {

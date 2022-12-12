@@ -16,8 +16,10 @@ test_that("prob_vals warnings behave as expected", {
 })
 
 test_that("ecx_val warnings behave as expected", {
-  expect_error(nsec(manec_example, ecx_val = 0.9))
-  expect_error(nsec(nec4param, ecx_val = 0.9))
+  # expect_error(nsec(manec_example, ecx_val = 0.9))
+  # expect_error(nsec(nec4param, ecx_val = 0.9))
+  expect_type(nsec(manec_example, ecx_val = 0.9), "double")
+  expect_type(nsec(nec4param, ecx_val = 0.9), "double")
 })
 
 test_that(paste0("nsec returns expected object types and precision is",
