@@ -37,8 +37,8 @@ nec <- function(object, posterior = FALSE, xform = identity,
 #'
 #' @inherit nec seealso return examples
 #' 
-#' @importFrom stats quantile predict
-##' @importFrom chk chk_logical
+#' @importFrom stats quantile
+#' @importFrom chk chk_logical
 #'
 #' @noRd
 #'
