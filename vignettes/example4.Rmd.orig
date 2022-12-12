@@ -137,7 +137,8 @@ Using the collated posterior_data we can plot the predicted curves with confiden
 
 ```{r exmp4-fitted, fig.width = 5}
 ggplot(data = post_comp_fitted$posterior_data) +
-  geom_line(mapping = aes(x = x, y = Estimate, color = model), size = 0.5) +
+  geom_line(mapping = aes(x = x, y = Estimate, color = model),
+            linewidth = 0.5) +
   geom_ribbon(mapping = aes(x = x, ymin = Q2.5, ymax = Q97.5, fill = model),
               alpha = 0.3)+
   labs(x = "Concentration", y = "Posterior estimate") +
@@ -149,7 +150,7 @@ We can plot the differences between pairs of models in the list by plotting `dif
 ```{r exmp4-fitteddiff, fig.width = 5}
 ggplot(data = post_comp_fitted$diff_data) +
   geom_line(mapping = aes(x = x, y = diff.Estimate, color = comparison),
-            size = 0.5) +
+            linewidth = 0.5) +
   geom_ribbon(mapping = aes(x = x, ymin  = diff.Q2.5, ymax = diff.Q97.5,
               fill = comparison), alpha = 0.3) +
   labs(x = "Concentration", y = "Posterior difference") +
@@ -160,7 +161,8 @@ And finally we can plot the probability that one model is greater than the other
 
 ```{r exmp4-probplot, fig.width = 5}
 ggplot(data = post_comp_fitted$prob_diff) +
-  geom_line(mapping = aes(x = x, y = prob, color = comparison), size = 0.5) +
+  geom_line(mapping = aes(x = x, y = prob, color = comparison),
+            linewidth = 0.5) +
   labs(x = "Concentration", y = "Probability of difference") +
   theme_classic()
 ```

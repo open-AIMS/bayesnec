@@ -128,7 +128,7 @@ check_chains(exp_5, filename = "example_5_all_chains")
 We can also make a plot to compare the posterior probability density to that of the prior using the `check_priors` function, for an individual model fit, but also saving all fits to a file in the working directory.
 
 ```{r exmp2-checkpriors, fig.width = 6}
-check_priors(exp_5$mod_fits$nec4param)
+check_priors(pull_out(exp_5, "nec4param"))
 ```
 
 ```{r echo = TRUE, eval = FALSE}

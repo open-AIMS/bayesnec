@@ -104,15 +104,15 @@ ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
 
 This shows the differences among the three estimates. There is no difference in the **ecx** and **all** estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth **ecx** type curve and thus those models have high weight. The **nec** based *EC~10~* estimates are greater than the **ecx** estimates in this case.
 
-We can formally test the probability that the endpoint estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as `prob_diff`. Here you can see there is 64% chance that **all** is greater than **ecx**. There is only a 13% chance that **ecx** is greater than **nec**, and a 87% chance that the **nec** is greater than **ecx**.
+We can formally test the probability that the endpoint estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as `prob_diff`. Here you can see there is 59% chance that **all** is greater than **ecx**. There is only a 15% chance that **ecx** is greater than **nec**, and a 85% chance that the **nec** is greater than **ecx**.
 
 
 ```r
 post_comp$prob_diff
 #>   comparison     prob
-#> 1    all-ecx 0.635625
-#> 2    all-nec 0.251875
-#> 3    ecx-nec 0.132500
+#> 1    all-ecx 0.590000
+#> 2    all-nec 0.246875
+#> 3    ecx-nec 0.154375
 ```
 
 ## Comparing posterior fitted values
@@ -142,7 +142,8 @@ Using the collated posterior_data we can plot the predicted curves with confiden
 
 ```r
 ggplot(data = post_comp_fitted$posterior_data) +
-  geom_line(mapping = aes(x = x, y = Estimate, color = model), size = 0.5) +
+  geom_line(mapping = aes(x = x, y = Estimate, color = model),
+            linewidth = 0.5) +
   geom_ribbon(mapping = aes(x = x, ymin = Q2.5, ymax = Q97.5, fill = model),
               alpha = 0.3)+
   labs(x = "Concentration", y = "Posterior estimate") +
@@ -156,7 +157,7 @@ We can plot the differences between pairs of models in the list by plotting `dif
 ```r
 ggplot(data = post_comp_fitted$diff_data) +
   geom_line(mapping = aes(x = x, y = diff.Estimate, color = comparison),
-            size = 0.5) +
+            linewidth = 0.5) +
   geom_ribbon(mapping = aes(x = x, ymin  = diff.Q2.5, ymax = diff.Q97.5,
               fill = comparison), alpha = 0.3) +
   labs(x = "Concentration", y = "Posterior difference") +
@@ -169,7 +170,8 @@ And finally we can plot the probability that one model is greater than the other
 
 ```r
 ggplot(data = post_comp_fitted$prob_diff) +
-  geom_line(mapping = aes(x = x, y = prob, color = comparison), size = 0.5) +
+  geom_line(mapping = aes(x = x, y = prob, color = comparison),
+            linewidth = 0.5) +
   labs(x = "Concentration", y = "Probability of difference") +
   theme_classic()
 #> Error in ggplot(data = post_comp_fitted$prob_diff): object 'post_comp_fitted' not found

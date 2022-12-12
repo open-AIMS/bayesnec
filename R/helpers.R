@@ -589,6 +589,12 @@ check_args_newdata <- function(precision, x_range) {
 #' @noRd
 newdata_eval <- function(object, precision, x_range, make_newdata, fct_eval,
                          ...) {
+  # Just need one model to extract and generate data
+  # since all models are considered to have the exact same raw data.
+  if (inherits(object, "bayesmanecfit")) {
+    model_set <- names(object$mod_fits)
+    object <- suppressMessages(pull_out(object, model = model_set[1]))
+  }
   data <- model.frame(object$bayesnecformula, object$fit$data)
   bnec_pop_vars <- attr(data, "bnec_pop")
   dot_list <- list(...)

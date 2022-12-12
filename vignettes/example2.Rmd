@@ -77,14 +77,14 @@ The default plot looks exactly the same as our regular `bayesnecfit` plot, but t
 ```r
 exp_5$mod_stats
 #>               model       waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-#> nec4param nec4param -82.998638 3.933805e-01                  NA              NA               NA
-#> neclin       neclin -16.774605 6.224539e-10                  NA              NA               NA
-#> ecxlin       ecxlin   3.678573 1.945387e-13                  NA              NA               NA
-#> ecx4param ecx4param -80.287249 1.217371e-01                  NA              NA               NA
-#> ecxwb1       ecxwb1 -74.043387 1.358253e-02                  NA              NA               NA
-#> ecxwb2       ecxwb2 -82.809602 3.071107e-01                  NA              NA               NA
-#> ecxll5       ecxll5 -78.818723 4.602331e-02                  NA              NA               NA
-#> ecxll4       ecxll4 -80.252107 1.181659e-01                  NA              NA               NA
+#> nec4param nec4param -82.846105 3.309026e-01                  NA              NA               NA
+#> neclin       neclin -16.735741 5.657137e-10                  NA              NA               NA
+#> ecxlin       ecxlin   3.937121 1.254481e-13                  NA              NA               NA
+#> ecx4param ecx4param -80.175630 1.049479e-01                  NA              NA               NA
+#> ecxwb1       ecxwb1 -74.033219 1.237391e-02                  NA              NA               NA
+#> ecxwb2       ecxwb2 -82.685108 2.584169e-01                  NA              NA               NA
+#> ecxll5       ecxll5 -81.886380 1.708252e-01                  NA              NA               NA
+#> ecxll4       ecxll4 -80.482799 1.225335e-01                  NA              NA               NA
 ```
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged *NEC* is reported, however a warning is provided indicating it contains *NSEC* values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default `brms` Rhat criteria. For this example all the **ecx**-containing models have high weights, which we would expect given that type of model was used to generate the underlying example.
@@ -103,31 +103,31 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -83.00 0.39
-#> neclin    -16.77 0.00
-#> ecxlin      3.68 0.00
-#> ecx4param -80.29 0.12
-#> ecxwb1    -74.04 0.01
-#> ecxwb2    -82.81 0.31
-#> ecxll5    -78.82 0.05
-#> ecxll4    -80.25 0.12
+#> nec4param -82.85 0.33
+#> neclin    -16.74 0.00
+#> ecxlin      3.94 0.00
+#> ecx4param -80.18 0.10
+#> ecxwb1    -74.03 0.01
+#> ecxwb2    -82.69 0.26
+#> ecxll5    -81.89 0.17
+#> ecxll4    -80.48 0.12
 #> 
 #> 
 #> Summary of weighted NEC posterior estimates:
 #> NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
 #>     Estimate Q2.5 Q97.5
-#> NEC     3.98 3.00  4.36
+#> NEC     4.00 3.00  4.36
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>           Estimate Est.Error Q2.5 Q97.5
 #> nec4param     0.85      0.01 0.83  0.86
-#> neclin        0.77      0.01 0.74  0.80
-#> ecxlin        0.75      0.02 0.71  0.78
+#> neclin        0.78      0.01 0.74  0.80
+#> ecxlin        0.75      0.02 0.71  0.77
 #> ecx4param     0.84      0.01 0.82  0.86
 #> ecxwb1        0.84      0.01 0.82  0.85
-#> ecxwb2        0.85      0.01 0.83  0.86
-#> ecxll5        0.84      0.01 0.82  0.86
+#> ecxwb2        0.85      0.01 0.82  0.86
+#> ecxll5        0.85      0.01 0.83  0.86
 #> ecxll4        0.84      0.01 0.82  0.86
 ```
 
@@ -172,9 +172,10 @@ We can also make a plot to compare the posterior probability density to that of 
 
 
 ```r
-check_priors(exp_5$mod_fits$nec4param)
-#> Error in UseMethod("check_priors"): no applicable method for 'check_priors' applied to an object of class "prebayesnecfit"
+check_priors(pull_out(exp_5, "nec4param"))
 ```
+
+<img src="vignette-fig-exmp2-checkpriors-1.png" alt="plot of chunk exmp2-checkpriors" width="60%" style="display: block; margin: auto;" />
 
 
 ```r
@@ -219,12 +220,12 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>    ec_10 ec_10_lw ec_10_up 
-#> 4.167622 3.522639 4.465192 
+#> 4.167622 3.512968 4.465192 
 #> attr(,"precision")
 #> [1] 1000
 ECx50
 #>    ec_50 ec_50_lw ec_50_up 
-#> 5.030576 4.842115 5.238875 
+#> 5.030576 4.852034 5.249290 
 #> attr(,"precision")
 #> [1] 1000
 ```
@@ -236,7 +237,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_nec
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 4.204222 3.911820 4.389411
+#> 4.205184 3.923249 4.390028
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].
