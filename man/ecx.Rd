@@ -14,7 +14,9 @@ ecx(
   hormesis_def = "control",
   x_range = NA,
   xform = identity,
-  prob_vals = c(0.5, 0.025, 0.975)
+  prob_vals = c(0.5, 0.025, 0.975),
+  make_newdata = TRUE,
+  ...
 )
 }
 \arguments{
@@ -45,6 +47,13 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{make_newdata}{Should the user allow the package to create
+\code{newdata} for predictions? If so, arguments \code{precision} and
+\code{x_range} will be used. Defaults to TRUE. See details.}
+
+\item{...}{Further arguments that control posterior predictions via
+\code{\link[brms]{posterior_epred}}.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
@@ -63,10 +72,22 @@ response (top) to 0 (or bot for a 4 parameter model fit). Type "direct"
 provides a direct estimate of the x value for a given y.
 Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
 model is estimated at a percent decline from the control.
+
 For \code{hormesis_def}, if "max", then ECx values are calculated as a
 decline from the maximum estimates (i.e. the peak at NEC);
 if "control", then ECx values are calculated relative to the control, which
 is assumed to be the lowest observed concentration.
+
+The argument \code{make_newdata} is relevant to those who want the package
+to create a data.frame from which to make predictions. this is done via
+\code{\link{bnec_newdata}} and uses arguments \code{precision} and
+\code{x_range}. If \code{make_newdata = FALSE} and no additional
+\code{newdata} argument is provided (via \code{...}), then the predictions
+are made for the raw data. Else, to generate predictions for a specific
+user-specific data.frame, set \code{make_newdata = FALSE} and provide
+an additional data.frame via the \code{newdata} argument. For guidance
+on how to structure \code{newdata}, see for example
+\code{\link[brms]{posterior_epred}}.
 }
 \examples{
 \donttest{

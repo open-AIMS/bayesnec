@@ -6,6 +6,17 @@
 #'
 #' @inheritParams compare_posterior
 #'
+#' @details The argument \code{make_newdata} is relevant to those who want the
+#' package to create a data.frame from which to make predictions. this is done
+#' via \code{\link{bnec_newdata}} and uses arguments \code{precision} and
+#' \code{x_range}. If \code{make_newdata = FALSE} and no additional
+#' \code{newdata} argument is provided (via \code{...}), then the predictions
+#' are made for the raw data. Else, to generate predictions for a specific
+#' user-specific data.frame, set \code{make_newdata = FALSE} and provide
+#' an additional data.frame via the \code{newdata} argument. For guidance
+#' on how to structure \code{newdata}, see for example
+#' \code{\link[brms]{posterior_epred}}.
+#' 
 #' @seealso \code{\link{bnec}}
 #'
 #' @return A named \code{\link[base]{list}} containing bootstrapped differences
@@ -15,6 +26,7 @@
 #' @importFrom stats quantile predict
 #' @importFrom dplyr %>% mutate bind_rows
 #' @importFrom utils combn
+#' @importFrom brms posterior_epred
 #'
 #' @examples
 #' \dontrun{
@@ -26,15 +38,26 @@
 #' }
 #'
 #' @export
-compare_fitted <- function(x, precision = 50, x_range = NA) {
+compare_fitted <- function(x, precision = 50, x_range = NA,
+                           make_newdata = TRUE, ...) {
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   }
-  posterior_list <- lapply(x, function(m, ...) {
-    predict(m, ...)$posterior
-  }, precision = precision, x_range = x_range)
-  x_vec <- seq(min(x_range), max(x_range), length = precision)
+  dot_list <- list(...)
+  posterior_list <- vector(mode = "list", length = length(x))
   names(posterior_list) <- names(x)
+  for (i in seq_along(posterior_list)) {
+    newdata_list <- newdata_eval(
+      x[[i]], precision = precision, x_range = x_range,
+      make_newdata = make_newdata, fct_eval = "compare_fitted", ...
+    )
+    x_vec <- newdata_list$x_vec
+    precision <- newdata_list$precision
+    dot_list$newdata <- newdata_list$newdata
+    dot_list$re_formula <- newdata_list$re_formula
+    dot_list$object <- x[[i]]
+    posterior_list[[i]] <- do.call(posterior_epred, dot_list)
+  }
   n_samples <- min(sapply(posterior_list, nrow))
   r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
     m[sample(seq_len(n_samples), replace = FALSE), ]

@@ -150,69 +150,122 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   }
 }
 
-#' predict.bayesmanecfit
+#' @describeIn predict Generates predictions for \code{\link{bayesmanecfit}}
+#' objects fitted by \code{\link{bnec}}.
+#' @order 3
 #'
-#' @param object An object of class \code{\link{bayesmanecfit}} as
-#' returned by \code{\link{bnec}}.
-#' @param ... Unused.
-#' @param precision A \code{\link[base]{numeric}} vector of length 1 indicating
-#' the number of x values over which to predict values.
-#' @param x_range A \code{\link[base]{numeric}} vector of length 2 indicating
-#' the range of x values over which to make predictions.
+#' @inheritParams predict.bnecfit
+#' @param ... Additional arguments to \code{\link[brms]{posterior_predict}}.
+#' @param summary Should summary statistics be returned
+#'  instead of the raw values? Default is \code{TRUE}.
+#' @param robust If \code{FALSE} (the default) the mean is used as
+#'  the measure of central tendency and the standard deviation as
+#'  the measure of variability. If \code{TRUE}, the median and the
+#'  median absolute deviation (MAD) are applied instead.
+#'  Only used if \code{summary} is \code{TRUE}.
+#' @param probs  The percentiles to be computed by the \code{quantile}
+#'  function. Only used if \code{summary} is \code{TRUE}.
 #'
-#' @return A \code{\link[base]{list}} containing two elements: a
-#' \code{\link[base]{data.frame}} with predictor x and fitted y values plus
-#' lower and upper credible intervals; a \code{\link[base]{matrix}} of M x N,
-#' with M being the number of posterior draws and N being the number of
-#' observations in the input data.
-#'
-#' @importFrom dplyr %>%
-#' @importFrom brms posterior_epred
-#' @importFrom chk chk_numeric
-#'
+#' @method predict bayesmanecfit
+#' @inherit predict.bnecfit description return
+#' @importFrom stats predict
+#' @importFrom brms posterior_summary
 #' @export
-predict.bayesmanecfit <- function(object, ..., precision = 100, x_range = NA) {
-  chk_numeric(precision)
-  if (!is.na(x_range[1])) {
-    chk_numeric(x_range)
+predict.bayesmanecfit <- function(object, summary = TRUE,
+                                  robust = FALSE,
+                                  probs = c(0.025, 0.975), ...) {
+  av_post_preds <- posterior_predict(object, ...)
+  if (!summary) {
+    av_post_preds
+  } else {
+    out <- apply(av_post_preds, 2, posterior_summary,
+                 robust = robust, probs = probs) |>
+      t()
+    colnames(out) <- c("Estimate", "Est.Error",
+                       paste0("Q", probs * 100))
+    out
   }
+}
+
+#' @describeIn posterior_predict Generates posterior predictions for
+#' \code{\link{bayesmanecfit}} objects fitted by \code{\link{bnec}}.
+#' @order 3
+#'
+#' @inheritParams posterior_predict.bnecfit
+#'
+#' @method posterior_predict bayesmanecfit
+#' @inherit posterior_predict.bnecfit description return
+#' @importFrom brms posterior_predict
+#' @export
+posterior_predict.bayesmanecfit <- function(object, ...) {
   mod_fits <- object$mod_fits
   model_set <- names(mod_fits)
-  ref_mod_fit <- object$mod_fits[[1]]
-  mod_dat <- ref_mod_fit$fit$data
-  bdat <- model.frame(ref_mod_fit$bayesnecformula, data = mod_dat)
-  x_var <- attr(bdat, "bnec_pop")[["x_var"]]
   mod_stats <- object$mod_stats
-  if (any(is.na(x_range[1]))) {
-    x_seq <- seq(min(mod_dat[[x_var]]), max(mod_dat[[x_var]]),
-                 length = precision)
-  } else {
-    x_seq <- seq(min(x_range), max(x_range), length = precision)
-  }
-  pred_list <- lapply(mod_fits, function(m, x_seq) {
-    fit <- m$fit
-    bdat <- model.frame(m$bayesnecformula, data = fit$data)
-    x_var <- attr(bdat, "bnec_pop")[["x_var"]]
-    new_dat <- data.frame(x_seq)
-    names(new_dat) <- x_var
-    fam_tag <- fit$family$family
-    custom_name <- check_custom_name(fit$family)
-    if (fam_tag == "binomial" | custom_name == "beta_binomial2") {
-      trials_var <- attr(bdat, "bnec_pop")[["trials_var"]]
-      new_dat[[trials_var]] <- 1
-    }
-    posterior_epred(fit, newdata = new_dat, re_formula = NA)
-  }, x_seq = x_seq)
+  pred_list <- lapply(mod_fits, function(x, ...) {
+    posterior_predict(x$fit, ...)
+  }, ...)
   sample_size <- min(sapply(pred_list, nrow))
-  pred_out <- do_wrapper(model_set, w_pred_list_calc, pred_list, sample_size,
-                         mod_stats, fct = "rbind")
-  pred_data <- cbind(
-    x = x_seq,
-    apply(pred_out, 2, estimates_summary) %>%
-      t %>%
-      data.frame
-  )
-  list(data = pred_data, posterior = pred_out)
+  do_wrapper(model_set, w_pred_list_calc, pred_list, sample_size,
+             mod_stats, fct = "rbind")
+}
+
+#' @describeIn fitted Generates mean posterior predictions for
+#' \code{\link{bayesmanecfit}} objects fitted by \code{\link{bnec}}.
+#' @order 3
+#'
+#' @inheritParams fitted.bnecfit
+#' @param ... Additional arguments to \code{\link[brms]{posterior_epred}}.
+#' @param summary Should summary statistics be returned
+#'  instead of the raw values? Default is \code{TRUE}.
+#' @param robust If \code{FALSE} (the default) the mean is used as
+#'  the measure of central tendency and the standard deviation as
+#'  the measure of variability. If \code{TRUE}, the median and the
+#'  median absolute deviation (MAD) are applied instead.
+#'  Only used if \code{summary} is \code{TRUE}.
+#' @param probs  The percentiles to be computed by the \code{quantile}
+#'  function. Only used if \code{summary} is \code{TRUE}.
+#'
+#' @method fitted bayesmanecfit
+#' @inherit fitted.bnecfit description return
+#' @importFrom stats fitted
+#' @importFrom brms posterior_summary
+#' @export
+fitted.bayesmanecfit <- function(object, summary = TRUE,
+                                  robust = FALSE,
+                                  probs = c(0.025, 0.975), ...) {
+  av_post_preds <- posterior_epred(object, ...)
+  if (!summary) {
+    av_post_preds
+  } else {
+    out <- apply(av_post_preds, 2, posterior_summary,
+                 robust = robust, probs = probs) |>
+      t()
+    colnames(out) <- c("Estimate", "Est.Error",
+                       paste0("Q", probs * 100))
+    out
+  }
+}
+
+#' @describeIn posterior_epred Generates mean posterior predictions for
+#' \code{\link{bayesmanecfit}} objects fitted by \code{\link{bnec}}.
+#' @order 3
+#'
+#' @inheritParams posterior_epred.bnecfit
+#'
+#' @method posterior_epred bayesmanecfit
+#' @inherit posterior_epred.bnecfit description return
+#' @importFrom brms posterior_epred
+#' @export
+posterior_epred.bayesmanecfit <- function(object, ...) {
+  mod_fits <- object$mod_fits
+  model_set <- names(mod_fits)
+  mod_stats <- object$mod_stats
+  pred_list <- lapply(mod_fits, function(x, ...) {
+    posterior_epred(x$fit, ...)
+  }, ...)
+  sample_size <- min(sapply(pred_list, nrow))
+  do_wrapper(model_set, w_pred_list_calc, pred_list, sample_size,
+             mod_stats, fct = "rbind")
 }
 
 #' rhat.bayesmanecfit
