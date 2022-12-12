@@ -8,6 +8,7 @@
 #' models in the model set should be plotted simultaneously, or if a model
 #' average plot should be returned.
 #'
+#' @method plot bayesmanecfit
 #' @inherit plot.bnecfit description return examples
 #' @importFrom graphics par plot mtext legend
 #' @importFrom chk chk_lgl chk_character
@@ -34,8 +35,9 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   chk_lgl(all_models)
   legend_positions <- c("left", "topleft", "top", "topright", 
           "right", "bottomright", "bottom","bottomleft")
-  if (length(na.omit(match(legend_positions, position_legend)))==0) {
-    stop(paste("legend positions must be one of ", paste0(legend_positions, collapse = ", " )))
+  if (length(na.omit(match(legend_positions, position_legend))) == 0) {
+    stop("Legend positions must be one of ",
+         paste0(legend_positions, collapse = ", " ), ".")
   }
   if (all_models) {
     oldpar <- par(no.readonly = TRUE)
@@ -79,16 +81,14 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     if (add_ec10 & family == "gaussian") {
       ec10 <- ecx(x, type = "relative")
     }
-
     x_dat <- mod_dat[[x_var]]
     x_vec <- x$w_pred_vals$data$x
     if (length(trans_vars) == 0) {
-        x_dat <- xform(x_dat)
-        x_vec <- xform(x_vec)
-      }
+      x_dat <- xform(x_dat)
+      x_vec <- xform(x_vec)
+    }
     nec <- xform(x$w_nec)
     ec10 <- xform(ec10)
-
     if (jitter_x) {
       x_dat <- jitter(x_dat)
     }

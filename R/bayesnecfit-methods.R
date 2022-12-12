@@ -27,6 +27,7 @@
 #' @param xticks A numeric vector indicate where to place the tick marks of
 #' the x-axis.
 #' 
+#' @method plot bayesnecfit
 #' @inherit plot.bnecfit description return examples
 #' @importFrom graphics plot axis lines abline legend
 #' @importFrom stats quantile model.frame
