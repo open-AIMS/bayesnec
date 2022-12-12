@@ -28,9 +28,7 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
     sep <- ifelse(priors$class[j] == "b", "_", "")
-    par_names[j] <- paste(priors$class[j],
-                          priors$nlpar[j],
-                          sep = sep)
+    par_names[j] <- paste(priors$class[j], priors$nlpar[j], sep = sep)
   }
   out <- vector(mode = "list", length = nrow(priors))
   for (j in seq_len(nrow(priors))) {
@@ -40,15 +38,15 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
     v1 <- as.numeric(bits[2])
     v2 <- as.numeric(bits[3])
     out[[j]] <- fcts[[fct_i]](n_samples, v1, v2)
-    if (any(priors[j, c("lb", "ub")] != "")) {
-      n_bounds <- sum(priors[j, c("lb", "ub")] != "")
+    if (any(!is.na(priors[j, c("lb", "ub")]))) {
+      n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
       if (n_bounds == 2) {
         bounds <- as.numeric(priors[j, c("lb", "ub")])
         out[[j]] <- sample(out[[j]][which(out[[j]] >= min(bounds) &
                                           out[[j]] <= max(bounds))],
                            n_samples, replace = TRUE)
       } else if (n_bounds == 1) {
-        direction <- c("lb", "ub")[priors[j, c("lb", "ub")] != ""]
+        direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
         bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
         bounds <- as.numeric(priors[j, direction])
         out[[j]] <- sample(out[[j]][!bound_fct(out[[j]], bounds)],
