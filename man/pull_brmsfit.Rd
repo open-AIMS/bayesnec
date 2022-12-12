@@ -5,14 +5,13 @@
 \title{Extract and object of class \code{\link{brmsfit}} from
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 \usage{
-pull_brmsfit(object, model = NA)
+pull_brmsfit(object, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
-\item{model}{An optional \code{\link[base]{character}} vector specifying the
-model to extract in the case of a \code{\link{bayesmanecfit}}.}
+\item{...}{Arguments passed to other methods.}
 }
 \value{
 A plot of the prior and posterior parameter probability densities.
