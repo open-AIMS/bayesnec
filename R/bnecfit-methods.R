@@ -183,3 +183,78 @@ rhat.bnecfit <- function(object, rhat_cutoff = 1.05, ... ) {
   "rhat is not implemented in the base class bnecfit"
 }
 
+#' Generates predictions for objects fitted by \code{\link{bnec}}
+#'
+#' @describeIn predict Serves as a wrapper which redirects the function
+#' depending on whether \code{object} is of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @order 1
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @param ... Additional arguments to \code{\link[brms]{predict.brmsfit}}.
+#'
+#' @method predict bnecfit
+#' @return See \code{?}\code{\link[brms]{predict.brmsfit}}.
+#' @export
+predict.bnecfit <- function(object, ...) {
+  UseMethod("predict")
+}
+
+#' Generates posterior predictions for objects fitted by \code{\link{bnec}}
+#'
+#' @describeIn posterior_predict Serves as a wrapper which redirects the
+#' function depending on whether \code{object} is of class
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#' @order 1
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @param ... Additional arguments to
+#' \code{\link[brms]{posterior_predict}}.
+#'
+#' @method posterior_predict bnecfit
+#' @return See \code{?}\code{\link[brms]{posterior_predict}}.
+#' @export
+posterior_predict.bnecfit <- function(object, ...) {
+  UseMethod("posterior_predict")
+}
+
+#' Generates mean posterior predictions for objects fitted by
+#' \code{\link{bnec}}
+#'
+#' @describeIn fitted Serves as a wrapper which redirects the function
+#' depending on whether \code{object} is of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @order 1
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @param ... Additional arguments to \code{\link[brms]{fitted.brmsfit}}.
+#'
+#' @method fitted bnecfit
+#' @return See \code{?}\code{\link[brms]{fitted.brmsfit}}.
+#' @export
+fitted.bnecfit <- function(object, ...) {
+  UseMethod("fitted")
+}
+
+#' Generates mean posterior predictions for objects fitted by
+#' \code{\link{bnec}}
+#'
+#' @describeIn posterior_epred Serves as a wrapper which redirects the
+#' function depending on whether \code{object} is of class
+#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#' @order 1
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @param ... Additional arguments to
+#' \code{\link[brms]{posterior_epred}}.
+#'
+#' @method posterior_epred bnecfit
+#' @return See \code{?}\code{\link[brms]{posterior_epred}}.
+#' @export
+posterior_epred.bnecfit <- function(object, ...) {
+  UseMethod("posterior_epred")
+}

@@ -13,7 +13,9 @@ nsec(
   x_range = NA,
   hormesis_def = "control",
   xform = identity,
-  prob_vals = c(0.5, 0.025, 0.975)
+  prob_vals = c(0.5, 0.025, 0.975),
+  make_newdata = TRUE,
+  ...
 )
 }
 \arguments{
@@ -43,6 +45,13 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{make_newdata}{Should the user allow the package to create
+\code{newdata} for predictions? If so, arguments \code{precision} and
+\code{x_range} will be used. Defaults to TRUE. See details.}
+
+\item{...}{Further arguments that control posterior predictions via
+\code{\link[brms]{posterior_epred}}.}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
@@ -54,9 +63,20 @@ Extracts the predicted NSEC value as desired from an object of class
 }
 \details{
 For \code{hormesis_def}, if "max", then NSEC values are calculated
-as a decline from the maximum estimates (i.e. the peak at nec);
+as a decline from the maximum estimates (i.e. the peak at NEC);
 if "control", then ECx values are calculated relative to the control, which
 is assumed to be the lowest observed concentration.
+
+The argument \code{make_newdata} is relevant to those who want the package
+to create a data.frame from which to make predictions. this is done via
+\code{\link{bnec_newdata}} and uses arguments \code{precision} and
+\code{x_range}. If \code{make_newdata = FALSE} and no additional
+\code{newdata} argument is provided (via \code{...}), then the predictions
+are made for the raw data. Else, to generate predictions for a specific
+user-specific data.frame, set \code{make_newdata = FALSE} and provide
+an additional data.frame via the \code{newdata} argument. For guidance
+on how to structure \code{newdata}, see for example
+\code{\link[brms]{posterior_epred}}.
 }
 \examples{
 \donttest{

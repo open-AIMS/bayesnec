@@ -14,8 +14,7 @@
 #' in posterior predictions of the \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 #'
-#' @importFrom stats quantile predict
-#' @importFrom dplyr %>% mutate bind_rows arrange
+#' @importFrom dplyr %>% bind_rows arrange
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect everything
 #' @importFrom utils combn
@@ -27,24 +26,24 @@
 #' data(manec_example)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' compare_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50, comparison="ecx")
+#' compare_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50,
+#' comparison="ecx")
 #' }
 #'
 #' @export
 compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision = 100, x_range = NA) {
-
-  
-  if ((comparison %in% c("nec", "ecx", "nsec"))==FALSE){
+                              sig_val = 0.01, precision = 100, x_range = NA,
+                              make_newdata = TRUE, ...) {
+  if ((comparison %in% c("nec", "ecx", "nsec")) == FALSE) {
     stop("comparison must be one of nec, ecx or nsec.")
   }
   chk_numeric(ecx_val)
-  if ((type %in% c("relative", "absolute", "direct"))==FALSE){
-    stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
-         Please see ?ecx for more details.")
+  if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
+    stop("type must be one of \"relative\", \"absolute\" (the default) or",
+         "\"direct\". Please see ?ecx for more details.")
   }
-  if ((hormesis_def %in% c("max", "control"))==FALSE){
+  if ((hormesis_def %in% c("max", "control")) == FALSE) {
     stop("type must be one of 'max' or 'control' (the default). 
          Please see ?ecx for more details.")
   }
@@ -54,20 +53,21 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
     x_range <- return_x_range(x)
   } else {
     chk_numeric(x_range)    
-  }  
-  
+  }
   if (comparison == "nec") {
     posterior_list <- lapply(x, return_nec_post, xform = identity)
   }
   if (comparison == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
                              posterior = TRUE, type = type,
-                             hormesis_def = hormesis_def, x_range = x_range)
+                             hormesis_def = hormesis_def, x_range = x_range,
+                             make_newdata = make_newdata, ...)
   }
   if (comparison == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, precision = precision,
                              posterior = TRUE, hormesis_def = hormesis_def,
-                             x_range = x_range)
+                             x_range = x_range, make_newdata = make_newdata,
+                             ...)
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))

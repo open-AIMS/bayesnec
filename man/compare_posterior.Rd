@@ -12,7 +12,9 @@ compare_posterior(
   hormesis_def = "control",
   sig_val = 0.01,
   precision,
-  x_range = NA
+  x_range = NA,
+  make_newdata = TRUE,
+  ...
 )
 }
 \arguments{
@@ -41,6 +43,13 @@ estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 large values will make the ECx estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
+
+\item{make_newdata}{Should the user allow the package to create
+\code{newdata} for predictions? If so, arguments \code{precision} and
+\code{x_range} will be used. Defaults to TRUE. See details.}
+
+\item{...}{Further arguments that control posterior predictions via
+\code{\link[brms]{posterior_epred}}.}
 }
 \value{
 A named \code{\link[base]{list}} containing bootstrapped differences
@@ -51,6 +60,33 @@ in posterior predictions of the \code{\link{bayesnecfit}} or
 Extracts posterior predicted values from a list of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 compares these via bootstrap re sampling.
+}
+\details{
+\code{type} "relative" is calculated as the percentage decrease
+from the maximum predicted value of the response (top) to the minimum
+predicted value of the response. Type "absolute" (the default) is
+calculated as the percentage decrease from the maximum value of the
+response (top) to 0 (or bot for a 4 parameter model fit). Type "direct"
+provides a direct estimate of the x value for a given y.
+Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
+model is estimated at a percent decline from the control.
+
+For \code{hormesis_def}, if "max", then ECx or NSEC values -- i.e.,
+depending on argument \code{comparison} -- are calculated
+as a decline from the maximum estimates (i.e. the peak at NEC);
+if "control", then ECx or NSEC values are calculated relative to the
+control, which is assumed to be the lowest observed concentration.
+
+The argument \code{make_newdata} is relevant to those who want the package
+to create a data.frame from which to make predictions. this is done via
+\code{\link{bnec_newdata}} and uses arguments \code{precision} and
+\code{x_range}. If \code{make_newdata = FALSE} and no additional
+\code{newdata} argument is provided (via \code{...}), then the predictions
+are made for the raw data. Else, to generate predictions for a specific
+user-specific data.frame, set \code{make_newdata = FALSE} and provide
+an additional data.frame via the \code{newdata} argument. For guidance
+on how to structure \code{newdata}, see for example
+\code{\link[brms]{posterior_epred}}.
 }
 \examples{
 \dontrun{
@@ -63,5 +99,6 @@ compare_posterior(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 
 }
 \seealso{
-\code{\link{bnec}}
+\code{\link{bnec}} \code{\link{ecx}} \code{\link{nsec}}
+\code{\link{nec}}
 }

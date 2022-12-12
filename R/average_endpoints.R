@@ -27,11 +27,8 @@
 #' of the \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}
 #' model fits contained in \code{x}. See Details.
 #'
-#' @importFrom stats quantile predict
-#' @importFrom dplyr %>% mutate bind_rows arrange
-#' @importFrom tidyr pivot_longer
-#' @importFrom tidyselect everything
-#' @importFrom utils combn
+#' @importFrom stats quantile
+#' @importFrom dplyr %>%
 #' @importFrom chk chk_lgl chk_character chk_numeric
 #'
 #' @examples
@@ -49,7 +46,8 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", sig_val = 0.01,
                               precision = 1000, x_range = NA, xform = identity,
-                              prob_vals = c(0.5, 0.025, 0.975)) {
+                              prob_vals = c(0.5, 0.025, 0.975),
+                              make_newdata = TRUE, ...) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list")
   }
@@ -62,10 +60,10 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
   chk_numeric(ecx_val)
   chk_numeric(sig_val)
   chk_numeric(precision)
-  if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")} 
-  chk_numeric(prob_vals)  
-  
+  if (!inherits(xform, "function")) {
+    stop("xform must be a function.")
+  }
+  chk_numeric(prob_vals)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   }
@@ -76,12 +74,13 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
                              posterior = TRUE, type = type,
                              hormesis_def = hormesis_def, x_range = x_range,
-                             xform = xform)
+                             xform = xform, make_newdata = make_newdata, ...)
   }
   if (endpoint == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, precision = precision,
                              posterior = TRUE, hormesis_def = hormesis_def,
-                             x_range = x_range, xform = xform)
+                             x_range = x_range, xform = xform,
+                             make_newdata = make_newdata, ...)
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))

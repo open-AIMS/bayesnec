@@ -20,11 +20,27 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param make_newdata Should the user allow the package to create
+#' \code{newdata} for predictions? If so, arguments \code{precision} and
+#' \code{x_range} will be used. Defaults to TRUE. See details.
+#' @param ... Further arguments that control posterior predictions via
+#' \code{\link[brms]{posterior_epred}}.
 #'
 #' @details For \code{hormesis_def}, if "max", then NSEC values are calculated
-#' as a decline from the maximum estimates (i.e. the peak at nec);
+#' as a decline from the maximum estimates (i.e. the peak at NEC);
 #' if "control", then ECx values are calculated relative to the control, which
 #' is assumed to be the lowest observed concentration.
+#' 
+#' The argument \code{make_newdata} is relevant to those who want the package
+#' to create a data.frame from which to make predictions. this is done via
+#' \code{\link{bnec_newdata}} and uses arguments \code{precision} and
+#' \code{x_range}. If \code{make_newdata = FALSE} and no additional
+#' \code{newdata} argument is provided (via \code{...}), then the predictions
+#' are made for the raw data. Else, to generate predictions for a specific
+#' user-specific data.frame, set \code{make_newdata = FALSE} and provide
+#' an additional data.frame via the \code{newdata} argument. For guidance
+#' on how to structure \code{newdata}, see for example
+#' \code{\link[brms]{posterior_epred}}.
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -42,7 +58,8 @@
 #' @export
 nsec <- function(object, sig_val = 0.01, precision = 1000,
                  posterior = FALSE, x_range = NA, hormesis_def = "control",
-                 xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
+                 xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                 make_newdata = TRUE, ...) {
   UseMethod("nsec")
 }
 
@@ -53,8 +70,8 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
 #'
 #' @inherit nsec details seealso return examples
 #' 
-#' @importFrom stats quantile predict
-#' @importFrom brms as_draws_df
+#' @importFrom stats quantile
+#' @importFrom brms as_draws_df posterior_epred
 #' @importFrom chk chk_logical chk_numeric
 #' 
 #' @noRd
@@ -63,15 +80,16 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
 nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
                              posterior = FALSE, x_range = NA,
                              hormesis_def = "control", xform = identity,
-                             prob_vals = c(0.5, 0.025, 0.975)) {
+                             prob_vals = c(0.5, 0.025, 0.975),
+                             make_newdata = TRUE, ...) {
   chk_numeric(sig_val)
-  chk_numeric(precision)  
-  chk_logical(posterior)  
-  if ((hormesis_def %in% c("max", "control"))==FALSE){
-    stop("type must be one of 'max' or 'control' (the default). 
-         Please see ?ecx for more details.")
+  chk_numeric(precision)
+  chk_logical(posterior)
+  if ((hormesis_def %in% c("max", "control")) == FALSE) {
+    stop("type must be one of \"max\" or \"control\" (the default). ",
+         "Please see ?ecx for more details.")
   }
-  if(!inherits(xform, "function")){ 
+  if(!inherits(xform, "function")) { 
     stop("xform must be a function.")}  
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
@@ -83,9 +101,17 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
   } else {
     mod_class <- "nec"
   }
-  pred_vals <- predict(object, precision = precision, x_range = x_range)
-  p_samples <- pred_vals$posterior
-  x_vec <- pred_vals$data$x
+  newdata_list <- newdata_eval(
+    object, precision = precision, x_range = x_range,
+    make_newdata = make_newdata, fct_eval = "nsec", ...
+  )
+  x_vec <- newdata_list$x_vec
+  precision <- newdata_list$precision
+  dot_list <- list(...)
+  dot_list$object <- object
+  dot_list$newdata <- newdata_list$newdata
+  dot_list$re_formula <- newdata_list$re_formula
+  p_samples <- do.call(posterior_epred, dot_list)
   reference <- quantile(p_samples[, 1], sig_val)
   if (grepl("horme", object$model)) {
     n <- seq_len(nrow(p_samples))
@@ -93,8 +119,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
                             p_samples, hormesis_def, fct = "rbind")
     nec_posterior <- as_draws_df(object$fit)[["b_nec_Intercept"]]
     if (hormesis_def == "max") {
-      reference <- quantile(apply(pred_vals$posterior, 2, max),
-                            probs = sig_val)
+      reference <- quantile(apply(p_samples, 2, max), probs = sig_val)
     }
   }
   nsec_out <- apply(p_samples, 1, nsec_fct, reference, x_vec)
@@ -137,15 +162,18 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
                                posterior = FALSE, x_range = NA,
                                hormesis_def = "control", xform = identity,
-                               prob_vals = c(0.5, 0.025, 0.975)) {
+                               prob_vals = c(0.5, 0.025, 0.975),
+                               make_newdata = TRUE, ...) {
   sample_nsec <- function(x, object, sig_val, precision,
                           posterior, hormesis_def,
-                          x_range, xform, prob_vals, sample_size) {
+                          x_range, xform, prob_vals, sample_size,
+                          make_newdata, ...) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
     out <- nsec(target, sig_val = sig_val, precision = precision,
                 posterior = posterior, hormesis_def = hormesis_def,
-                x_range = x_range, xform = xform, prob_vals = prob_vals)
+                x_range = x_range, xform = xform, prob_vals = prob_vals,
+                make_newdata = make_newdata, ...)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
     sample(out, n_s)
   }
@@ -153,12 +181,20 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   to_iter <- seq_len(length(object$success_models))
   nsec_out <- sapply(to_iter, sample_nsec, object, sig_val, precision,
                      posterior = TRUE, hormesis_def, x_range,
-                     xform, prob_vals, sample_size)
+                     xform, prob_vals, sample_size, make_newdata, ...)
   nsec_out <- unlist(nsec_out)
   label <- paste("ec", sig_val, sep = "_")
   nsec_estimate <- quantile(nsec_out, probs = prob_vals)
   names(nsec_estimate) <- c(label, paste(label, "lw", sep = "_"),
                             paste(label, "up", sep = "_"))
+  dot_list <- list(...)
+  if (!("newdata" %in% names(dot_list))) {
+    if (!make_newdata) {
+      precision <- "from raw data"
+    }
+  } else {
+    precision <- "from user-specified newdata"
+  }
   attr(nsec_estimate, "precision") <- precision
   attr(nsec_out, "precision") <- precision
   attr(nsec_estimate, "sig_val") <- sig_val

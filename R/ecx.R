@@ -20,6 +20,11 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param make_newdata Should the user allow the package to create
+#' \code{newdata} for predictions? If so, arguments \code{precision} and
+#' \code{x_range} will be used. Defaults to TRUE. See details.
+#' @param ... Further arguments that control posterior predictions via
+#' \code{\link[brms]{posterior_epred}}.
 #'
 #' @details \code{type} "relative" is calculated as the percentage decrease
 #' from the maximum predicted value of the response (top) to the minimum
@@ -29,10 +34,22 @@
 #' provides a direct estimate of the x value for a given y.
 #' Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
 #' model is estimated at a percent decline from the control.
+#' 
 #' For \code{hormesis_def}, if "max", then ECx values are calculated as a
 #' decline from the maximum estimates (i.e. the peak at NEC);
 #' if "control", then ECx values are calculated relative to the control, which
 #' is assumed to be the lowest observed concentration.
+#' 
+#' The argument \code{make_newdata} is relevant to those who want the package
+#' to create a data.frame from which to make predictions. this is done via
+#' \code{\link{bnec_newdata}} and uses arguments \code{precision} and
+#' \code{x_range}. If \code{make_newdata = FALSE} and no additional
+#' \code{newdata} argument is provided (via \code{...}), then the predictions
+#' are made for the raw data. Else, to generate predictions for a specific
+#' user-specific data.frame, set \code{make_newdata = FALSE} and provide
+#' an additional data.frame via the \code{newdata} argument. For guidance
+#' on how to structure \code{newdata}, see for example
+#' \code{\link[brms]{posterior_epred}}.
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -52,8 +69,8 @@
 ecx <- function(object, ecx_val = 10, precision = 1000,
                 posterior = FALSE, type = "absolute",
                 hormesis_def = "control", x_range = NA,
-                xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
-  
+                xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                make_newdata = TRUE, ...) {
   UseMethod("ecx")
 }
 
@@ -64,7 +81,8 @@ ecx <- function(object, ecx_val = 10, precision = 1000,
 #' @param object An object of class \code{\link{bayesnecfit}} returned by
 #' \code{\link{bnec}}.
 #' 
-#' @importFrom stats quantile predict
+#' @importFrom stats quantile
+#' @importFrom brms posterior_epred
 #' @importFrom chk chk_logical chk_numeric
 #'
 #' @noRd
@@ -73,27 +91,27 @@ ecx <- function(object, ecx_val = 10, precision = 1000,
 ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
                             posterior = FALSE, type = "absolute",
                             hormesis_def = "control", x_range = NA,
-                            xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
+                            xform = identity, prob_vals = c(0.5, 0.025, 0.975),
+                            make_newdata = TRUE, ...) {
   chk_numeric(ecx_val)
   chk_numeric(precision)  
   chk_logical(posterior)
-  if ((type %in% c("relative", "absolute", "direct"))==FALSE){
+  if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
     stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
          Please see ?ecx for more details.")
   }
-  if ((hormesis_def %in% c("max", "control"))==FALSE){
+  if ((hormesis_def %in% c("max", "control")) == FALSE) {
     stop("type must be one of 'max' or 'control' (the default). 
          Please see ?ecx for more details.")
   }
-  
-  if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")}   
+  if (!inherits(xform, "function")) {
+    stop("xform must be a function.")
+  }
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
-  
   if (type != "direct") {
     if (ecx_val < 1 || ecx_val > 99) {
       stop("Supplied ecx_val is not in the required range. ",
@@ -110,14 +128,22 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
   } else {
     m4param <- 0
   }
-  if (object$fit$family$family == "gaussian" && type == "absolute" &
+  if (object$fit$family$family == "gaussian" && type == "absolute" &&
       m4param == 0) {
     stop("Absolute ECx values are not valid for a gaussian ",
          "response variable unless a model with a bot parameter is fit")
   }
-  pred_vals <- predict(object, precision = precision, x_range = x_range)
-  p_samples <- pred_vals$posterior
-  x_vec <- pred_vals$data$x
+  newdata_list <- newdata_eval(
+    object, precision = precision, x_range = x_range,
+    make_newdata = make_newdata, fct_eval = "ecx", ...
+  )
+  x_vec <- newdata_list$x_vec
+  precision <- newdata_list$precision
+  dot_list <- list(...)
+  dot_list$object <- object
+  dot_list$newdata <- newdata_list$newdata
+  dot_list$re_formula <- newdata_list$re_formula
+  p_samples <- do.call(posterior_epred, dot_list)
   if (grepl("horme", object$model)) {
     n <- seq_len(nrow(p_samples))
     p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
@@ -160,7 +186,6 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
   } else {
     ecx_out
   }
-  
 }
 
 #' @inheritParams ecx
@@ -179,20 +204,21 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
 ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", x_range = NA,
-                              xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
+                              xform = identity,
+                              prob_vals = c(0.5, 0.025, 0.975),
+                              make_newdata = TRUE, ...) {
   chk_numeric(ecx_val)
   chk_numeric(precision)  
   chk_logical(posterior)
-  if ((type %in% c("relative", "absolute", "direct"))==FALSE){
+  if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
     stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
          Please see ?ecx for more details.")
   }
-  if ((hormesis_def %in% c("max", "control"))==FALSE){
+  if ((hormesis_def %in% c("max", "control")) == FALSE) {
     stop("type must be one of 'max' or 'control' (the default). 
          Please see ?ecx for more details.")
   }
-
-  if(!inherits(xform, "function")){ 
+  if (!inherits(xform, "function")) { 
     stop("xform must be a function.")}   
   if (length(prob_vals) < 3 || prob_vals[1] < prob_vals[2] ||
       prob_vals[1] > prob_vals[3] || prob_vals[2] > prob_vals[3]) {
@@ -201,12 +227,14 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   }
   sample_ecx <- function(x, object, ecx_val, precision,
                          posterior, type, hormesis_def,
-                         x_range, xform, prob_vals, sample_size) {
+                         x_range, xform, prob_vals, sample_size,
+                         make_newdata, ...) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
     out <- ecx(target, ecx_val = ecx_val, precision = precision,
                posterior = posterior, type = type, hormesis_def = hormesis_def,
-               x_range = x_range, xform = xform, prob_vals = prob_vals)
+               x_range = x_range, xform = xform, prob_vals = prob_vals,
+               make_newdata = make_newdata, ...)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
     sample(out, n_s)
   }
@@ -214,12 +242,20 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   to_iter <- seq_len(length(object$success_models))
   ecx_out <- sapply(to_iter, sample_ecx, object, ecx_val, precision,
                     posterior = TRUE, type, hormesis_def, x_range,
-                    xform, prob_vals, sample_size)
+                    xform, prob_vals, sample_size, make_newdata, ...)
   ecx_out <- unlist(ecx_out)
   label <- paste("ec", ecx_val, sep = "_")
   ecx_estimate <- quantile(ecx_out, probs = prob_vals)
   names(ecx_estimate) <- c(label, paste(label, "lw", sep = "_"),
                            paste(label, "up", sep = "_"))
+  dot_list <- list(...)
+  if (!("newdata" %in% names(dot_list))) {
+    if (!make_newdata) {
+      precision <- "from raw data"
+    }
+  } else {
+    precision <- "from user-specified newdata"
+  }
   attr(ecx_estimate, "precision") <- precision
   attr(ecx_out, "precision") <- precision
   if (!posterior) {
