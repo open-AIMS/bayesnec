@@ -55,8 +55,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     response <- y
   }
   brms_bf <- wrangle_model_formula(model, formula, bdat)
-  brm_args <- add_brm_defaults(brm_args, model, family, x, response, skip_check,
-                               custom_name)
+  brm_args <- add_brm_defaults(brm_args, model, family, x, response,
+                               skip_check, custom_name)
   all_args <- c(list(formula = brms_bf, data = data), brm_args)
   if (custom_name == "beta_binomial2") {
     all_args <- c(list(stanvars = stanvars), all_args)
