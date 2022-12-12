@@ -4,8 +4,7 @@ library(brms)
 data(manec_example)
 
 test_that("nec returns expected object types", {
-  nec_summary <- nec(manec_example) %>%
-    suppressMessages
+  nec_summary <- suppressMessages(nec(manec_example))
   expect_equal(length(nec_summary), 3)
 })
 
@@ -22,8 +21,7 @@ test_that("works for bayesnecfit", {
 test_that("works for bayesmanecfit", {
   mes <- paste0("bayesmanecfit contains ecx model types and therefore nec",
                 " estimate includes nsec values.")
-  nec1 <- nec(manec_example) %>%
-    suppressMessages
+  nec1 <- suppressMessages(nec(manec_example))
   expect_message(nec(manec_example), mes)
   expect_equal(length(nec1), 3)
   expect_equal(names(nec1), c("50%", "2.5%", "97.5%"))

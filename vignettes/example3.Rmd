@@ -76,22 +76,14 @@ In this case the priors seem reasonably vague, however there will be times when 
 ```r
 pull_prior(exmp_a)
 #> [[1]]
-#>                       prior class      coef group resp
-#>                normal(0, 5)     b                     
-#>                normal(0, 5)     b Intercept           
-#>  gamma(5, 2.28313180499098)     b                     
-#>  gamma(5, 2.28313180499098)     b Intercept           
-#>                  beta(5, 2)     b                     
-#>                  beta(5, 2)     b Intercept           
-#>           gamma(0.01, 0.01)   phi                     
-#>  dpar nlpar               lb               ub       source
-#>        beta                                           user
-#>        beta                                   (vectorized)
-#>         nec 0.03234801324009 3.22051966293556         user
-#>         nec 0.03234801324009 3.22051966293556 (vectorized)
-#>         top                0                1         user
-#>         top                0                1 (vectorized)
-#>                            0                       default
+#>                       prior class      coef group resp dpar nlpar               lb               ub       source
+#>                normal(0, 5)     b                            beta                                           user
+#>                normal(0, 5)     b Intercept                  beta                                   (vectorized)
+#>  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556         user
+#>  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556 (vectorized)
+#>                  beta(5, 2)     b                             top                0                1         user
+#>                  beta(5, 2)     b Intercept                   top                0                1 (vectorized)
+#>           gamma(0.01, 0.01)   phi                                                0                       default
 ```
 
 `bnec` chose a `gamma` prior on the *NEC* parameter of **nec3param** because the predictor `nec_data$x` is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
@@ -149,44 +141,26 @@ check_priors(exmp_c, filename = "Check_priors")
 
 ```
 #> $nec3param
-#>              prior class      coef group resp dpar nlpar
-#>      gamma(0.5, 2)     b                            beta
-#>      gamma(0.5, 2)     b Intercept                  beta
-#>   normal(1.3, 2.7)     b                             nec
-#>   normal(1.3, 2.7)     b Intercept                   nec
-#>         beta(5, 1)     b                             top
-#>         beta(5, 1)     b Intercept                   top
-#>  gamma(0.01, 0.01)   phi                                
-#>  lb ub       source
-#>                user
-#>        (vectorized)
-#>                user
-#>        (vectorized)
-#>                user
-#>        (vectorized)
-#>   0         default
+#>              prior class      coef group resp dpar nlpar lb ub       source
+#>      gamma(0.5, 2)     b                            beta               user
+#>      gamma(0.5, 2)     b Intercept                  beta       (vectorized)
+#>   normal(1.3, 2.7)     b                             nec               user
+#>   normal(1.3, 2.7)     b Intercept                   nec       (vectorized)
+#>         beta(5, 1)     b                             top               user
+#>         beta(5, 1)     b Intercept                   top       (vectorized)
+#>  gamma(0.01, 0.01)   phi                                  0         default
 #> 
 #> $nec4param
-#>              prior class      coef group resp dpar nlpar
-#>      gamma(0.5, 2)     b                            beta
-#>      gamma(0.5, 2)     b Intercept                  beta
-#>         beta(1, 5)     b                             bot
-#>         beta(1, 5)     b Intercept                   bot
-#>   normal(1.3, 2.7)     b                             nec
-#>   normal(1.3, 2.7)     b Intercept                   nec
-#>         beta(5, 1)     b                             top
-#>         beta(5, 1)     b Intercept                   top
-#>  gamma(0.01, 0.01)   phi                                
-#>  lb ub       source
-#>                user
-#>        (vectorized)
-#>                user
-#>        (vectorized)
-#>                user
-#>        (vectorized)
-#>                user
-#>        (vectorized)
-#>   0         default
+#>              prior class      coef group resp dpar nlpar lb ub       source
+#>      gamma(0.5, 2)     b                            beta               user
+#>      gamma(0.5, 2)     b Intercept                  beta       (vectorized)
+#>         beta(1, 5)     b                             bot               user
+#>         beta(1, 5)     b Intercept                   bot       (vectorized)
+#>   normal(1.3, 2.7)     b                             nec               user
+#>   normal(1.3, 2.7)     b Intercept                   nec       (vectorized)
+#>         beta(5, 1)     b                             top               user
+#>         beta(5, 1)     b Intercept                   top       (vectorized)
+#>  gamma(0.01, 0.01)   phi                                  0         default
 ```
 
 The user can also specify priors for one model only out of the entire set, `bayesnec` will return a message stating that it is searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.
