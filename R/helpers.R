@@ -576,3 +576,56 @@ check_data_equality <- function(mod_fits) {
          "identical across the multiple fits.")
   }
 }
+
+#' @noRd
+#' @importFrom chk chk_numeric
+check_args_newdata <- function(precision, x_range) {
+  chk_numeric(precision)
+  if (!is.na(x_range[1])) {
+    chk_numeric(x_range)
+  }  
+}
+
+#' @noRd
+newdata_eval <- function(object, precision, x_range, make_newdata, fct_eval,
+                         ...) {
+  data <- model.frame(object$bayesnecformula, object$fit$data)
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  dot_list <- list(...)
+  if ("newdata" %in% names(dot_list) && make_newdata) {
+    stop("You cannot provide a \"newdata\" and set make_newdata = TRUE",
+         " at the same time. Please use one or another. See details in",
+         " help file ?", fct_eval)
+  }
+  if (!("newdata" %in% names(dot_list))) {
+    if (make_newdata) {
+      newdata <- bnec_newdata(object, precision = precision, x_range = x_range)
+      x_vec <- newdata[[bnec_pop_vars[["x_var"]]]]
+      if ("re_formula" %in% names(dot_list)) {
+        message("Argument \"re_formula\" ignored and set to NA because",
+                " function make_newdata cannot guess random effect structure.")
+      }
+      re_formula <- NA
+    } else {
+      newdata <- NULL
+      x_vec <- pull_brmsfit(object)$data[[bnec_pop_vars[["x_var"]]]]
+      precision <- "from raw data"
+      if (!("re_formula" %in% names(dot_list))) {
+        re_formula <- NULL
+      } else {
+        re_formula <- dot_list$re_formula
+      }
+    }
+  } else {
+    newdata <- dot_list$newdata
+    x_vec <- newdata[[bnec_pop_vars[["x_var"]]]]
+    precision <- "from user-specified newdata"
+    if (!("re_formula" %in% names(dot_list))) {
+      re_formula <- NULL
+    } else {
+      re_formula <- dot_list$re_formula
+    }
+  }
+  list(newdata = newdata, x_vec = x_vec, precision = precision,
+       re_formula = re_formula)
+}
