@@ -88,6 +88,7 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
       data.frame()
   post_mean <- apply(posterior_data, MARGIN = 1, FUN = gm_mean)
   mean_estimate <- quantile(unlist(post_mean), na.rm = TRUE, probs = prob_vals)
+  names(mean_estimate) <- clean_names(mean_estimate)
   if (!posterior) {
     mean_estimate
   } else {

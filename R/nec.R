@@ -66,6 +66,9 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
     nec_out <- xform(nec_out)
   }
   nec_estimate <- quantile(unlist(nec_out), probs = prob_vals)
+  names(nec_estimate) <- clean_names(nec_estimate)
+  attr(nec_estimate, "toxicity_estimate") <- "nec"
+  attr(nec_out, "toxicity_estimate") <-  "nec"
   if (!posterior) {
     nec_estimate
   } else {
@@ -105,6 +108,9 @@ nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
     nec_out <- xform(nec_out)
   }
   nec_estimate <- quantile(unlist(nec_out), probs = prob_vals)
+  names(nec_estimate) <- clean_names(nec_estimate)
+  attr(nec_estimate, "toxicity_estimate") <- "nec"
+  attr(nec_out, "toxicity_estimate") <-  "nec"
   if (!posterior) {
     nec_estimate
   } else {

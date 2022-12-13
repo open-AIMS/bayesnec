@@ -81,6 +81,9 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
   chk_numeric(sig_val)
   chk_numeric(precision)
   chk_logical(posterior)
+  if (length(sig_val)>1) {
+    stop("You may only pass one sig_val")  
+  }
   if ((hormesis_def %in% c("max", "control")) == FALSE) {
     stop("type must be one of \"max\" or \"control\" (the default). ",
          "Please see ?ecx for more details.")
@@ -124,13 +127,14 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
   if (inherits(xform, "function")) {
     nsec_out <- xform(nsec_out)
   }
-  label <- paste("ec", sig_val, sep = "_")
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals)
-  names(nsec_estimate) <- paste(label, clean_names(nsec_estimate), sep = "_")
+  names(nsec_estimate) <- clean_names(nsec_estimate)
   attr(nsec_estimate, "precision") <- precision
   attr(nsec_out, "precision") <- precision
   attr(nsec_estimate, "sig_val") <- sig_val
   attr(nsec_out, "sig_val") <- sig_val
+  attr(nsec_estimate, "toxicity_estimate") <- "nsec"
+  attr(nsec_out, "toxicity_estimate") <-  "nsec"
   if (!posterior) {
     nsec_estimate
   } else {
@@ -154,6 +158,9 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
                                posterior = FALSE, x_range = NA,
                                hormesis_def = "control", xform = identity,
                                prob_vals = c(0.5, 0.025, 0.975)) {
+  if (length(sig_val)>1) {
+    stop("You may only pass one sig_val")  
+  }
   sample_nsec <- function(x, object, sig_val, precision,
                           posterior, hormesis_def,
                           x_range, xform, prob_vals, sample_size) {
@@ -171,14 +178,14 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
                      posterior = TRUE, hormesis_def, x_range,
                      xform, prob_vals, sample_size)
   nsec_out <- unlist(nsec_out)
-  label <- paste("ec", sig_val, sep = "_")
   nsec_estimate <- quantile(nsec_out, probs = prob_vals)
-  names(nsec_estimate) <- c(label, paste(label, "lw", sep = "_"),
-                            paste(label, "up", sep = "_"))
+  names(nsec_estimate) <- clean_names(nsec_estimate)
   attr(nsec_estimate, "precision") <- precision
   attr(nsec_out, "precision") <- precision
   attr(nsec_estimate, "sig_val") <- sig_val
   attr(nsec_out, "sig_val") <- sig_val
+  attr(nsec_estimate, "toxicity_estimate") <- "nsec"
+  attr(nsec_out, "toxicity_estimate") <-  "nsec"
   if (!posterior) {
     nsec_estimate
   } else {

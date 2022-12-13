@@ -46,14 +46,14 @@ test_that(paste0("nsec returns expected object types and precision is",
 test_that("works for bayesnecfit", {
   nsec1 <- nsec(ecx4param)
   expect_equal(length(nsec1), 3)
-  expect_equal(names(nsec1), c("ec_0.01_Q50", "ec_0.01_Q2.5", "ec_0.01_Q97.5"))
+  expect_equal(names(nsec1), c("Q50", "Q2.5", "Q97.5"))
 })
 
 test_that("works for bayesmanecfit", {
   nsec1 <- nsec(manec_example) %>%
     suppressWarnings
   expect_equal(length(nsec1), 3)
-  expect_equal(names(nsec1), c("ec_0.01", "ec_0.01_lw", "ec_0.01_up"))
+  expect_equal(names(nsec1), c("Q50", "Q2.5", "Q97.5"))
 })
 
 test_that("xform passes correctly", {
@@ -69,10 +69,10 @@ test_that("posterior passes correctly", {
 
 test_that("prob_vals passes correctly", {
   nsec4 <- nsec(ecx4param, prob_vals = c(0.5, 0.3, 0.7))
-  expect_equal(names(nsec4), c("ec_0.01_Q50", "ec_0.01_Q30", "ec_0.01_Q70"))
+  expect_equal(names(nsec4), c("Q50", "Q30", "Q70"))
 })
 
 test_that("sig_val passes correctly", {
   nsec4 <- nsec(ecx4param, prob_vals = c(0.5, 0.3, 0.7), sig_val = 0.05)
-  expect_equal(names(nsec4), c("ec_0.05_Q50", "ec_0.05_Q30", "ec_0.05_Q70"))
+  expect_equal(names(nsec4), c("Q50", "Q30", "Q70"))
 })

@@ -93,6 +93,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
                             xform = identity,
                             prob_vals = c(0.5, 0.025, 0.975)) {
   chk_numeric(ecx_val)
+  if (length(ecx_val)>1) {
+    stop("You may only pass one ecx_val")  
+  }
   chk_numeric(precision)  
   chk_logical(posterior)
   if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
@@ -155,11 +158,15 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
   if (inherits(xform, "function")) {
     ecx_out <- xform(ecx_out)
   }
-  label <- paste("ec", ecx_val, sep = "_")
+
   ecx_estimate <- quantile(unlist(ecx_out), probs = prob_vals)
-  names(ecx_estimate) <- paste(label, clean_names(ecx_estimate), sep = "_")
+  names(ecx_estimate) <- clean_names(ecx_estimate)
   attr(ecx_estimate, "precision") <- precision
   attr(ecx_out, "precision") <- precision
+  attr(ecx_estimate, "ecx_val") <- ecx_val
+  attr(ecx_out, "ecx_val") <- ecx_val
+  attr(ecx_estimate, "toxicity_estimate") <- "ecx"
+  attr(ecx_out, "toxicity_estimate") <-  "ecx"
   if (signif(ecx_estimate[1], 3) == signif(ecx_estimate[3], 3)) {
     message("The estimated mean is identical or nearly identical to your",
             " upper credible interval for the ", object$model, " model.",
@@ -203,6 +210,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   chk_numeric(ecx_val)
   chk_numeric(precision)  
   chk_logical(posterior)
+  if (length(ecx_val)>1) {
+    stop("You may only pass one ecx_val")  
+  }
   if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
     stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
          Please see ?ecx for more details.")
@@ -235,12 +245,14 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
                     posterior = TRUE, type, hormesis_def, x_range,
                     xform, prob_vals, sample_size)
   ecx_out <- unlist(ecx_out)
-  label <- paste("ec", ecx_val, sep = "_")
   ecx_estimate <- quantile(ecx_out, probs = prob_vals)
-  names(ecx_estimate) <- c(label, paste(label, "lw", sep = "_"),
-                           paste(label, "up", sep = "_"))
+  names(ecx_estimate) <- clean_names(ecx_estimate)
   attr(ecx_estimate, "precision") <- precision
   attr(ecx_out, "precision") <- precision
+  attr(ecx_estimate, "ecx_val") <- ecx_val
+  attr(ecx_out, "ecx_val") <- ecx_val
+  attr(ecx_estimate, "toxicity_estimate") <- "ecx"
+  attr(ecx_out, "toxicity_estimate") <-  "ecx"
   if (!posterior) {
     ecx_estimate
   } else {
