@@ -10,6 +10,19 @@
 #' the range of x values over which to make predictions.
 #'
 #' @return A \code{\link[base]{data.frame}} to be used in predictions.
+#'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' # Make fine precision, predict out of range
+#' newdata <- bnec_newdata(nec4param, precision = 200, x_range = c(0, 4))
+#' nrow(newdata) == 200
+#' all(range(newdata$x) == c(0, 4))
+#' newdata2 <- bnec_newdata(manec_example) # default size
+#' nrow(newdata2) == 100
+#' }
+#' 
 #' @export
 bnec_newdata <- function(x, precision = 100, x_range = NA) {
   UseMethod("bnec_newdata")
@@ -20,7 +33,7 @@ bnec_newdata <- function(x, precision = 100, x_range = NA) {
 #' Create a dataset for predictions
 #'
 #' @inheritParams bnec_newdata
-#' @inherit bnec_newdata description return
+#' @inherit bnec_newdata description return examples
 #' 
 #' @importFrom stats model.frame
 #' @noRd
@@ -52,7 +65,7 @@ bnec_newdata.bayesnecfit <- function(x, precision = 100, x_range = NA) {
 #' Create a dataset for predictions
 #'
 #' @inheritParams bnec_newdata
-#' @inherit bnec_newdata description return
+#' @inherit bnec_newdata description return examples
 #' @noRd
 #' @export
 bnec_newdata.bayesmanecfit <- function(x, precision = 100, x_range = NA) {

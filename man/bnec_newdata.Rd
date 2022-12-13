@@ -22,3 +22,16 @@ A \code{\link[base]{data.frame}} to be used in predictions.
 \description{
 Create a dataset for predictions
 }
+\examples{
+\dontrun{
+library(bayesnec)
+nec4param <- pull_out(manec_example, model = "nec4param")
+# Make fine precision, predict out of range
+newdata <- bnec_newdata(nec4param, precision = 200, x_range = c(0, 4))
+nrow(newdata) == 200
+all(range(newdata$x) == c(0, 4))
+newdata2 <- bnec_newdata(manec_example) # default size
+nrow(newdata2) == 100
+}
+
+}
