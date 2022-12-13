@@ -9,7 +9,13 @@
 #' \code{\link{bnec}}.
 #' @param comparison The posterior predictions to compare, takes values of
 #' "nec", "nsec", "ecx" or "fitted".
-#'
+#' @param make_newdata Only used if \code{comparison = "fitted"}. Should the
+#' user allow the package to create \code{newdata} for predictions?
+#' If so, arguments \code{precision} and \code{x_range} will be used. Defaults
+#' to TRUE. See details.
+#' @param ... Further arguments that control posterior predictions via
+#' \code{\link[brms]{posterior_epred}}.
+#' 
 #' @inheritParams ecx
 #' @inheritParams nsec
 #'
@@ -28,8 +34,9 @@
 #' if "control", then ECx or NSEC values are calculated relative to the
 #' control, which is assumed to be the lowest observed concentration.
 #' 
-#' The argument \code{make_newdata} is relevant to those who want the package
-#' to create a data.frame from which to make predictions. this is done via
+#' The argument \code{make_newdata} is only used if
+#' \code{comparison = "fitted"}. It is relevant to those who want the package
+#' to create a data.frame from which to make predictions. This is done via
 #' \code{\link{bnec_newdata}} and uses arguments \code{precision} and
 #' \code{x_range}. If \code{make_newdata = FALSE} and no additional
 #' \code{newdata} argument is provided (via \code{...}), then the predictions
@@ -40,7 +47,7 @@
 #' \code{\link[brms]{posterior_epred}}.
 #' 
 #' @seealso \code{\link{bnec}} \code{\link{ecx}} \code{\link{nsec}}
-#' \code{\link{nec}}
+#' \code{\link{nec}} \code{\link{bnec_newdata}}
 #'
 #' @return A named \code{\link[base]{list}} containing bootstrapped differences
 #' in posterior predictions of the \code{\link{bayesnecfit}} or
@@ -73,8 +80,7 @@ compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
     out <- compare_endpoints(x = x, comparison = comparison, ecx_val = ecx_val,
                              type = type, hormesis_def = hormesis_def,
                              sig_val = sig_val, precision = precision,
-                             x_range = x_range, make_newdata = make_newdata,
-                             ...)
+                             x_range = x_range)
   } else {
     if (missing(precision)) {
       precision <- 50

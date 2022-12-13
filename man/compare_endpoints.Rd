@@ -12,9 +12,7 @@ compare_endpoints(
   hormesis_def = "control",
   sig_val = 0.01,
   precision = 100,
-  x_range = NA,
-  make_newdata = TRUE,
-  ...
+  x_range = NA
 )
 }
 \arguments{
@@ -43,13 +41,6 @@ estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 large values will make the ECx estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
-
-\item{make_newdata}{Should the user allow the package to create
-\code{newdata} for predictions? If so, arguments \code{precision} and
-\code{x_range} will be used. Defaults to TRUE. See details.}
-
-\item{...}{Further arguments that control posterior predictions via
-\code{\link[brms]{posterior_epred}}.}
 }
 \value{
 A named \code{\link[base]{list}} containing bootstrapped differences

@@ -586,8 +586,23 @@ check_args_newdata <- function(precision, x_range) {
 }
 
 #' @noRd
-newdata_eval <- function(object, precision, x_range, make_newdata, fct_eval,
-                         ...) {
+newdata_eval <- function(object, precision, x_range) {
+  # Just need one model to extract and generate data
+  # since all models are considered to have the exact same raw data.
+  if (inherits(object, "bayesmanecfit")) {
+    model_set <- names(object$mod_fits)
+    object <- suppressMessages(pull_out(object, model = model_set[1]))
+  }
+  data <- model.frame(object$bayesnecformula, object$fit$data)
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  newdata <- bnec_newdata(object, precision = precision, x_range = x_range)
+  x_vec <- newdata[[bnec_pop_vars[["x_var"]]]]
+  list(newdata = newdata, x_vec = x_vec)
+}
+
+#' @noRd
+newdata_eval_fitted <- function(object, precision, x_range, make_newdata,
+                                fct_eval, ...) {
   # Just need one model to extract and generate data
   # since all models are considered to have the exact same raw data.
   if (inherits(object, "bayesmanecfit")) {
@@ -598,9 +613,9 @@ newdata_eval <- function(object, precision, x_range, make_newdata, fct_eval,
   bnec_pop_vars <- attr(data, "bnec_pop")
   dot_list <- list(...)
   if ("newdata" %in% names(dot_list) && make_newdata) {
-    stop("You cannot provide a \"newdata\" and set make_newdata = TRUE",
-         " at the same time. Please use one or another. See details in",
-         " help file ?", fct_eval)
+    stop("You cannot provide a \"newdata\" argument and set",
+         " make_newdata = TRUE at the same time. Please use one or another.",
+         " See details in help file ?", fct_eval)
   }
   if (!("newdata" %in% names(dot_list))) {
     if (make_newdata) {
@@ -608,7 +623,7 @@ newdata_eval <- function(object, precision, x_range, make_newdata, fct_eval,
       x_vec <- newdata[[bnec_pop_vars[["x_var"]]]]
       if ("re_formula" %in% names(dot_list)) {
         message("Argument \"re_formula\" ignored and set to NA because",
-                " function make_newdata cannot guess random effect structure.")
+                " function bnec_newdata cannot guess random effect structure.")
       }
       re_formula <- NA
     } else {

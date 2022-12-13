@@ -5,9 +5,13 @@
 #' compares these across a vector of fitted values.
 #'
 #' @inheritParams compare_posterior
+#' @param make_newdata Should the
+#' user allow the package to create \code{newdata} for predictions?
+#' If so, arguments \code{precision} and \code{x_range} will be used. Defaults
+#' to TRUE. See details.
 #'
 #' @details The argument \code{make_newdata} is relevant to those who want the
-#' package to create a data.frame from which to make predictions. this is done
+#' package to create a data.frame from which to make predictions. This is done
 #' via \code{\link{bnec_newdata}} and uses arguments \code{precision} and
 #' \code{x_range}. If \code{make_newdata = FALSE} and no additional
 #' \code{newdata} argument is provided (via \code{...}), then the predictions
@@ -23,7 +27,7 @@
 #' in posterior predictions of the \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 #'
-#' @importFrom stats quantile predict
+#' @importFrom stats quantile
 #' @importFrom dplyr mutate bind_rows
 #' @importFrom utils combn
 #' @importFrom brms posterior_epred
@@ -47,7 +51,7 @@ compare_fitted <- function(x, precision = 50, x_range = NA,
   posterior_list <- vector(mode = "list", length = length(x))
   names(posterior_list) <- names(x)
   for (i in seq_along(posterior_list)) {
-    newdata_list <- newdata_eval(
+    newdata_list <- newdata_eval_fitted(
       x[[i]], precision = precision, x_range = x_range,
       make_newdata = make_newdata, fct_eval = "compare_fitted", ...
     )

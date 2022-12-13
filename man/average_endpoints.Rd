@@ -15,9 +15,7 @@ average_endpoints(
   precision = 1000,
   x_range = NA,
   xform = identity,
-  prob_vals = c(0.5, 0.025, 0.975),
-  make_newdata = TRUE,
-  ...
+  prob_vals = c(0.5, 0.025, 0.975)
 )
 }
 \arguments{
@@ -57,13 +55,6 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
-
-\item{make_newdata}{Should the user allow the package to create
-\code{newdata} for predictions? If so, arguments \code{precision} and
-\code{x_range} will be used. Defaults to TRUE. See details.}
-
-\item{...}{Further arguments that control posterior predictions via
-\code{\link[brms]{posterior_epred}}.}
 }
 \value{
 The geometric mean of the endpoints estimate values

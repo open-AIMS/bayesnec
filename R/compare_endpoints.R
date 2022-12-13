@@ -33,8 +33,7 @@
 #' @export
 compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision = 100, x_range = NA,
-                              make_newdata = TRUE, ...) {
+                              sig_val = 0.01, precision = 100, x_range = NA) {
   if ((comparison %in% c("nec", "ecx", "nsec")) == FALSE) {
     stop("comparison must be one of nec, ecx or nsec.")
   }
@@ -60,14 +59,12 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
   if (comparison == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
                              posterior = TRUE, type = type,
-                             hormesis_def = hormesis_def, x_range = x_range,
-                             make_newdata = make_newdata, ...)
+                             hormesis_def = hormesis_def, x_range = x_range)
   }
   if (comparison == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, precision = precision,
                              posterior = TRUE, hormesis_def = hormesis_def,
-                             x_range = x_range, make_newdata = make_newdata,
-                             ...)
+                             x_range = x_range)
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))

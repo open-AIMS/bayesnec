@@ -45,8 +45,7 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", sig_val = 0.01,
                               precision = 1000, x_range = NA, xform = identity,
-                              prob_vals = c(0.5, 0.025, 0.975),
-                              make_newdata = TRUE, ...) {
+                              prob_vals = c(0.5, 0.025, 0.975)) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list")
   }
@@ -73,13 +72,12 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
                              posterior = TRUE, type = type,
                              hormesis_def = hormesis_def, x_range = x_range,
-                             xform = xform, make_newdata = make_newdata, ...)
+                             xform = xform)
   }
   if (endpoint == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, precision = precision,
                              posterior = TRUE, hormesis_def = hormesis_def,
-                             x_range = x_range, xform = xform,
-                             make_newdata = make_newdata, ...)
+                             x_range = x_range, xform = xform)
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))

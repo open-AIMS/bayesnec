@@ -44,9 +44,10 @@ large values will make the ECx estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
-\item{make_newdata}{Should the user allow the package to create
-\code{newdata} for predictions? If so, arguments \code{precision} and
-\code{x_range} will be used. Defaults to TRUE. See details.}
+\item{make_newdata}{Only used if \code{comparison = "fitted"}. Should the
+user allow the package to create \code{newdata} for predictions?
+If so, arguments \code{precision} and \code{x_range} will be used. Defaults
+to TRUE. See details.}
 
 \item{...}{Further arguments that control posterior predictions via
 \code{\link[brms]{posterior_epred}}.}
@@ -100,5 +101,5 @@ compare_posterior(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 }
 \seealso{
 \code{\link{bnec}} \code{\link{ecx}} \code{\link{nsec}}
-\code{\link{nec}}
+\code{\link{nec}} \code{\link{bnec_newdata}}
 }
