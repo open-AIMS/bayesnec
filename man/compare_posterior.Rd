@@ -78,8 +78,9 @@ as a decline from the maximum estimates (i.e. the peak at NEC);
 if "control", then ECx or NSEC values are calculated relative to the
 control, which is assumed to be the lowest observed concentration.
 
-The argument \code{make_newdata} is relevant to those who want the package
-to create a data.frame from which to make predictions. this is done via
+The argument \code{make_newdata} is only used if
+\code{comparison = "fitted"}. It is relevant to those who want the package
+to create a data.frame from which to make predictions. This is done via
 \code{\link{bnec_newdata}} and uses arguments \code{precision} and
 \code{x_range}. If \code{make_newdata = FALSE} and no additional
 \code{newdata} argument is provided (via \code{...}), then the predictions

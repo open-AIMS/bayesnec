@@ -36,7 +36,7 @@ compares these across a vector of fitted values.
 }
 \details{
 The argument \code{make_newdata} is relevant to those who want the
-package to create a data.frame from which to make predictions. this is done
+package to create a data.frame from which to make predictions. This is done
 via \code{\link{bnec_newdata}} and uses arguments \code{precision} and
 \code{x_range}. If \code{make_newdata = FALSE} and no additional
 \code{newdata} argument is provided (via \code{...}), then the predictions
