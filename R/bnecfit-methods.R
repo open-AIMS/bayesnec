@@ -1,21 +1,3 @@
-#' Generates a plot for objects fitted by \code{\link{bnec}}
-#'
-#' @describeIn plot Serves as a wrapper which redirects the function
-#' depending on whether \code{x} is of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}}.
-#' @order 1
-#'
-#' @param x An object of class \code{\link{bayesnecfit}} or
-#' \code{\link{bayesmanecfit}}.
-#' @param ... Additional arguments to \code{\link[graphics]{plot}}.
-#'
-#' @method plot bnecfit
-#' @return A plot of the fitted model.
-#' @export
-plot.bnecfit <- function(x, ...) {
-  UseMethod("plot")
-}
-
 #' Concatenate multiple \code{\link{bnecfit}} objects into one single
 #' \code{\link{bayesmanecfit}} object containing Bayesian model averaging
 #' statistics.
