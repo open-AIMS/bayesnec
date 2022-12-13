@@ -20,7 +20,6 @@
 #' (mean, median, 95% highest density intervals) of the dispersion metric.
 #'
 #' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
-#' @importFrom stats median
 #'
 #' @references
 #' Zuur, A. F., Hilbe, J. M., & Ieno, E. N. (2013). A Beginner's Guide to GLM

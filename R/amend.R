@@ -40,7 +40,7 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #'
 #' @inherit amend return examples
 #' 
-#' @importFrom chk chk_lgl chk_character chk_numeric
+#' @importFrom chk chk_character chk_numeric
 #'
 #' @noRd
 #'

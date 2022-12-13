@@ -36,7 +36,7 @@ pull_out <- function(manec, model, loo_controls, ...) {
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(), weights = list(method = old_method))
   } else {
-    fam_tag <- manec$mod_fits[[1]]$fit$family$family
+    fam_tag <- pull_brmsfit(pull_out(manec, model = names(manec$mod_fits[1])))$family$family
     loo_controls <- validate_loo_controls(loo_controls, fam_tag)
     if (length(loo_controls$weights) > 0) {
       message("You have specified a list of arguments in loo_control$weights; ",

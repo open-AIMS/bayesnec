@@ -14,7 +14,6 @@ linear_rescale <- function(x, r_out) {
 #' \code{\link[brms]{brmsfamily}}.
 #' @return A \code{\link[base]{character}} vector containing the brms
 #' custom family or NA.
-#' @importFrom brms fixef
 #' @noRd
 check_custom_name <- function(family) {
   custom_name <- "none"
@@ -296,6 +295,7 @@ contains_negative <- function(x) {
   any(x < 0, na.rm = TRUE)
 }
 
+#' @importFrom stats binomial
 #' @noRd
 response_link_scale <- function(response, family) {
   link_tag <- family$link

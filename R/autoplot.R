@@ -291,7 +291,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
 #' @family autoplot methods
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' library(brms)
 #' library(bayesnec)
 #' options(mc.cores = 2)
@@ -362,6 +362,8 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @importFrom dplyr mutate
 #' @importFrom purrr map_dfr
 #' @importFrom grDevices devAskNewPage
+#' @importFrom chk chk_lgl
+#' 
 #' @export
 autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                    xform = identity,

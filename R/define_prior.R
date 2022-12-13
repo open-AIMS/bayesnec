@@ -9,8 +9,8 @@
 #' @param response The response variable for the NEC model fit.
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
-#' @importFrom brms bf prior_string negbinomial Beta
-#' @importFrom stats qlogis binomial quantile Gamma poisson gaussian sd
+#' @importFrom brms prior_string
+#' @importFrom stats sd
 #'
 #' @noRd
 define_prior <- function(model, family, predictor, response) {

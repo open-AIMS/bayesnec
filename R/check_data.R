@@ -9,8 +9,6 @@
 #' @details This is a wrapper function to test input data criteria and find the
 #' correct priors for use in \code{\link{fit_bayesnec}}.
 #'
-#' @importFrom stats na.omit
-#'
 #' @return A \code{\link[base]{list}} of modified elements
 #' necessary for \code{\link{fit_bayesnec}}.
 #'
