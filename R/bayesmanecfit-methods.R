@@ -167,7 +167,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 #'  function. Only used if \code{summary} is \code{TRUE}.
 #'
 #' @method predict bayesmanecfit
-#' @inherit predict.bnecfit description return
+#' @inherit predict.bnecfit description return examples
 #' @importFrom stats predict
 #' @importFrom brms posterior_summary
 #' @export
@@ -194,7 +194,7 @@ predict.bayesmanecfit <- function(object, summary = TRUE,
 #' @inheritParams posterior_predict.bnecfit
 #'
 #' @method posterior_predict bayesmanecfit
-#' @inherit posterior_predict.bnecfit description return
+#' @inherit posterior_predict.bnecfit description return examples
 #' @importFrom brms posterior_predict
 #' @export
 posterior_predict.bayesmanecfit <- function(object, ...) {
@@ -226,7 +226,7 @@ posterior_predict.bayesmanecfit <- function(object, ...) {
 #'  function. Only used if \code{summary} is \code{TRUE}.
 #'
 #' @method fitted bayesmanecfit
-#' @inherit fitted.bnecfit description return
+#' @inherit fitted.bnecfit description return examples
 #' @importFrom stats fitted
 #' @importFrom brms posterior_summary
 #' @export
@@ -253,7 +253,7 @@ fitted.bayesmanecfit <- function(object, summary = TRUE,
 #' @inheritParams posterior_epred.bnecfit
 #'
 #' @method posterior_epred bayesmanecfit
-#' @inherit posterior_epred.bnecfit description return
+#' @inherit posterior_epred.bnecfit description return examples
 #' @importFrom brms posterior_epred
 #' @export
 posterior_epred.bayesmanecfit <- function(object, ...) {

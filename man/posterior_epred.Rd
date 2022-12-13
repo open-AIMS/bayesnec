@@ -41,3 +41,24 @@ function depending on whether \code{object} is of class
 \code{\link{bayesmanecfit}} objects fitted by \code{\link{bnec}}.
 
 }}
+\examples{
+\dontrun{
+library(bayesnec)
+# Uses default `precision` and `x_range` to generate `newdata` internally
+posterior_epred(manec_example)
+# Provide user-specified `newdata`
+nd_ <- data.frame(x = seq(0, 3, length.out = 200))
+ppreds <- posterior_epred(manec_example, ecx_val = 50, newdata = nd_,
+                            make_newdata = FALSE)
+ncol(ppreds) == 200 # cols are x, rows are iterations
+# Predictions for raw input data
+nec4param <- pull_out(manec_example, model = "nec4param")
+preds <- posterior_epred(nec4param, make_newdata = FALSE)
+x <- pull_brmsfit(nec4param)$data$x
+plot(sort(x), preds[1, order(x)], type = "l", col = alpha("black", 0.1),
+     ylim = c(-6, 3))
+for (i in seq_len(nrow(preds))[-1]) {
+  lines(sort(x), preds[i, order(x)], type = "l", col = alpha("black", 0.1))
+}
+}
+}

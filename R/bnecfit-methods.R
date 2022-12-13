@@ -235,7 +235,24 @@ rhat.bnecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 #' @param ... Additional arguments to \code{\link[brms]{predict.brmsfit}}.
 #'
 #' @method predict bnecfit
+#' 
 #' @return See \code{?}\code{\link[brms]{predict.brmsfit}}.
+#' 
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' # Uses default `precision` and `x_range` to generate `newdata` internally
+#' predict(manec_example)
+#' # Provide user-specified `newdata`
+#' nd_ <- data.frame(x = seq(0, 3, length.out = 200))
+#' predict(manec_example, ecx_val = 50, newdata = nd_, make_newdata = FALSE)
+#' # Predictions for raw input data
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' preds <- predict(nec4param, make_newdata = FALSE)
+#' x <- pull_brmsfit(nec4param)$data$x
+#' plot(x, preds[, 1])
+#' }
+#'
 #' @export
 predict.bnecfit <- function(object, ...) {
   UseMethod("predict")
@@ -255,6 +272,28 @@ predict.bnecfit <- function(object, ...) {
 #'
 #' @method posterior_predict bnecfit
 #' @return See \code{?}\code{\link[brms]{posterior_predict}}.
+#'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' # Uses default `precision` and `x_range` to generate `newdata` internally
+#' posterior_predict(manec_example)
+#' # Provide user-specified `newdata`
+#' nd_ <- data.frame(x = seq(0, 3, length.out = 200))
+#' ppreds <- posterior_predict(manec_example, ecx_val = 50, newdata = nd_,
+#'                             make_newdata = FALSE)
+#' ncol(ppreds) == 200 # cols are x, rows are iterations
+#' # Posterior predictions for raw input data
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' preds <- posterior_predict(nec4param, make_newdata = FALSE)
+#' x <- pull_brmsfit(nec4param)$data$x
+#' plot(sort(x), preds[1, order(x)], type = "l", col = alpha("black", 0.1),
+#'      ylim = c(-8, 5))
+#' for (i in seq_len(nrow(preds))[-1]) {
+#'   lines(sort(x), preds[i, order(x)], type = "l", col = alpha("black", 0.1))
+#' }
+#' }
+#'
 #' @export
 posterior_predict.bnecfit <- function(object, ...) {
   UseMethod("posterior_predict")
@@ -274,6 +313,23 @@ posterior_predict.bnecfit <- function(object, ...) {
 #'
 #' @method fitted bnecfit
 #' @return See \code{?}\code{\link[brms]{fitted.brmsfit}}.
+#'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' # Uses default `precision` and `x_range` to generate `newdata` internally
+#' fitted(manec_example)
+#' # Provide user-specified `newdata`
+#' nd_ <- data.frame(x = seq(0, 3, length.out = 200))
+#' fits <- fitted(manec_example, ecx_val = 50, newdata = nd_,
+#'                make_newdata = FALSE)
+#' nrow(fits) == 200
+#' # Predictions for raw input data
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' fits <- fitted(nec4param, make_newdata = FALSE)
+#' x <- pull_brmsfit(nec4param)$data$x
+#' plot(x, fits[, 1])
+#' }
 #' @export
 fitted.bnecfit <- function(object, ...) {
   UseMethod("fitted")
@@ -294,6 +350,27 @@ fitted.bnecfit <- function(object, ...) {
 #'
 #' @method posterior_epred bnecfit
 #' @return See \code{?}\code{\link[brms]{posterior_epred}}.
+#'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' # Uses default `precision` and `x_range` to generate `newdata` internally
+#' posterior_epred(manec_example)
+#' # Provide user-specified `newdata`
+#' nd_ <- data.frame(x = seq(0, 3, length.out = 200))
+#' ppreds <- posterior_epred(manec_example, ecx_val = 50, newdata = nd_,
+#'                             make_newdata = FALSE)
+#' ncol(ppreds) == 200 # cols are x, rows are iterations
+#' # Predictions for raw input data
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' preds <- posterior_epred(nec4param, make_newdata = FALSE)
+#' x <- pull_brmsfit(nec4param)$data$x
+#' plot(sort(x), preds[1, order(x)], type = "l", col = alpha("black", 0.1),
+#'      ylim = c(-6, 3))
+#' for (i in seq_len(nrow(preds))[-1]) {
+#'   lines(sort(x), preds[i, order(x)], type = "l", col = alpha("black", 0.1))
+#' }
+#' }
 #' @export
 posterior_epred.bnecfit <- function(object, ...) {
   UseMethod("posterior_epred")

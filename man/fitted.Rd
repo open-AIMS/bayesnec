@@ -52,3 +52,20 @@ depending on whether \code{object} is of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} objects fitted by \code{\link{bnec}}.
 
 }}
+\examples{
+\dontrun{
+library(bayesnec)
+# Uses default `precision` and `x_range` to generate `newdata` internally
+fitted(manec_example)
+# Provide user-specified `newdata`
+nd_ <- data.frame(x = seq(0, 3, length.out = 200))
+fits <- fitted(manec_example, ecx_val = 50, newdata = nd_,
+               make_newdata = FALSE)
+nrow(fits) == 200
+# Predictions for raw input data
+nec4param <- pull_out(manec_example, model = "nec4param")
+fits <- fitted(nec4param, make_newdata = FALSE)
+x <- pull_brmsfit(nec4param)$data$x
+plot(x, fits[, 1])
+}
+}
