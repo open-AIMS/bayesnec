@@ -28,7 +28,6 @@
 #' model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile
-#' @importFrom dplyr %>%
 #' @importFrom chk chk_lgl chk_character chk_numeric
 #'
 #' @examples
@@ -87,8 +86,8 @@ average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
   r_posterior_list <- lapply(posterior_list, FUN = function(m, n_samples) {
     m[sample(seq_len(n_samples), replace = FALSE)]
   }, n_samples = n_samples)
-  posterior_data <- do.call("cbind", r_posterior_list) %>%
-      data.frame
+  posterior_data <- do.call("cbind", r_posterior_list) |>
+      data.frame()
   post_mean <- apply(posterior_data, MARGIN = 1, FUN = gm_mean)
   mean_estimate <- quantile(unlist(post_mean), na.rm = TRUE, probs = prob_vals)
   if (!posterior) {

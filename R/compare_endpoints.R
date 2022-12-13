@@ -14,7 +14,7 @@
 #' in posterior predictions of the \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 #'
-#' @importFrom dplyr %>% bind_rows arrange
+#' @importFrom dplyr bind_rows arrange
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect everything
 #' @importFrom utils combn
@@ -74,26 +74,26 @@ compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
   r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
     m[sample(seq_len(n_samples), replace = FALSE)]
   }, n_samples = n_samples)
-  posterior_data <- do.call("cbind", r_posterior_list) %>%
-    data.frame %>%
-    pivot_longer(cols = everything(), names_to = "model") %>%
-    arrange(.data$model) %>%
-    data.frame
+  posterior_data <- do.call("cbind", r_posterior_list) |>
+    data.frame() |>
+    pivot_longer(cols = everything(), names_to = "model") |>
+    arrange(.data$model) |>
+    data.frame()
   all_combn <- combn(names(x), 2, simplify = FALSE)
   diff_list <- lapply(all_combn, function(a, r_list) {
     r_list[[a[1]]] - r_list[[a[2]]]
   }, r_list = r_posterior_list)
   names(diff_list) <- sapply(all_combn, function(m) paste0(m[1], "-", m[2]))
-  diff_data_out <- bind_rows(diff_list, .id = "comparison") %>%
-    pivot_longer(everything(), names_to = "comparison", values_to = "diff") %>%
-    data.frame
+  diff_data_out <- bind_rows(diff_list, .id = "comparison") |>
+    pivot_longer(everything(), names_to = "comparison", values_to = "diff") |>
+    data.frame()
   prob_diff <- lapply(diff_list, function(m) {
     m[m > 0] <- 1
     m[m <= 0] <- 0
     data.frame(prob = mean(m))
   })
-  prob_diff_out <- bind_rows(prob_diff, .id = "comparison") %>%
-    data.frame
+  prob_diff_out <- bind_rows(prob_diff, .id = "comparison") |>
+    data.frame()
   list(posterior_list = posterior_list, posterior_data = posterior_data,
        diff_list = diff_list, diff_data = diff_data_out,
        prob_diff = prob_diff_out)

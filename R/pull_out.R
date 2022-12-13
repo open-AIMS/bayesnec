@@ -11,8 +11,6 @@
 #' @param ... Additional arguments to \code{\link{expand_nec}} or
 #' \code{\link{expand_manec}}.
 #'
-#' @importFrom dplyr %>%
-#'
 #' @return If \code{model} is a string representing a single model, an object
 #' of class \code{\link{bayesnecfit}}; If \code{model} is instead a string
 #' depicting a suite of models, and object of class \code{\link{bayesmanecfit}}.
@@ -85,18 +83,18 @@ pull_out <- function(manec, model, loo_controls, ...) {
   }
   formulas <- lapply(manec$mod_fits[to_go], extract_formula)
   mod_fits <- expand_manec(manec$mod_fits[to_go], formula = formulas,
-                           loo_controls = loo_controls, ...) %>%
-    suppressMessages %>%
-    suppressWarnings
+                           loo_controls = loo_controls, ...) |>
+    suppressMessages() |>
+    suppressWarnings()
   message("Pulling out model(s): ", paste0(to_go, collapse = ", "))
   if (length(mod_fits) > 1) {
     allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
   } else {
     mod_fits <- expand_nec(mod_fits[[1]], model = to_go,
                            formula = mod_fits[[1]]$bayesnecformula,
-                           loo_controls = loo_controls, ...) %>%
-    suppressMessages %>%
-    suppressWarnings
+                           loo_controls = loo_controls, ...) |>
+    suppressMessages() |>
+    suppressWarnings()
     allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
   }
 }

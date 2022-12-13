@@ -339,7 +339,6 @@ rounded <- function(value, precision = 1) {
 }
 
 #' @noRd
-#' @importFrom dplyr %>%
 return_x_range <- function(x) {
   return_x <- function(object) {
     if (is_bayesmanecfit(object)) {
@@ -350,8 +349,8 @@ return_x_range <- function(x) {
       stop("Not all objects in x are of class bayesnecfit or bayesmanecfit.")
     }
   }
-  lapply(x, return_x) %>%
-    unlist %>%
+  lapply(x, return_x) |>
+    unlist() |>
     range(na.rm = TRUE)
 }
 

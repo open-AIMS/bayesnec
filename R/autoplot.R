@@ -3,7 +3,7 @@
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'
-#' @importFrom dplyr %>% mutate select
+#' @importFrom dplyr mutate select
 #' @importFrom rlang .data
 #' @importFrom stats model.frame
 #'
@@ -21,9 +21,9 @@ prep_raw_data <- function(brms_fit, bayesnecformula) {
   } else {
     r_df[[y_var]] <- r_df[[y_var]]
   }
-  r_df %>%
+  r_df |>
     mutate(x_e = NA, y_e = NA, y_ci = NA, x_r = .data[[x_var]],
-           y_r = .data[[y_var]]) %>%
+           y_r = .data[[y_var]]) |>
     select(.data$x_e, .data$y_e, .data$y_ci, .data$x_r, .data$y_r)
 }
 
@@ -114,7 +114,7 @@ ggbnec_data <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @inherit ggbnec_data return examples
 #' 
-#' @importFrom dplyr %>% mutate
+#' @importFrom dplyr mutate
 #' @importFrom brms conditional_effects
 #' @importFrom rlang .data
 #'
@@ -128,8 +128,8 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")} 
   brms_fit <- x$fit
-  plot_obj <- brms_fit %>%
-    conditional_effects(method = "posterior_epred") %>%
+  plot_obj <- brms_fit |>
+    conditional_effects(method = "posterior_epred") |>
     plot(plot = FALSE)
   e_df <- plot_obj[[1]]$data
   e_df <- data.frame(x_e = c(e_df$effect1__, rev(e_df$effect1__)),
@@ -141,7 +141,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   trans_vars <- find_transformations(bdat)
   out <- rbind(e_df, r_df)
   if (length(trans_vars) == 0) {
-    out <- out %>%
+    out <- out |>
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
   if (add_nec) {
@@ -163,7 +163,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #'
 #' @inherit ggbnec_data return examples
 #'
-#' @importFrom dplyr %>% mutate
+#' @importFrom dplyr mutate
 #' @importFrom rlang .data
 #'
 #' @noRd
@@ -185,7 +185,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   trans_vars <- find_transformations(bdat) 
   out <- rbind(e_df, r_df)
   if (length(trans_vars) == 0) {
-    out <- out %>%
+    out <- out |>
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
   if (add_nec) {
@@ -213,30 +213,30 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @importFrom ggplot2 ggplot geom_polygon aes geom_line geom_point
 #' @importFrom ggplot2 geom_vline geom_text theme_classic facet_wrap theme
 #' @importFrom ggplot2 element_text element_blank element_rect labs
-#' @importFrom dplyr %>% filter
+#' @importFrom dplyr filter
 #' @importFrom rlang .data
 #'
 #' @noRd
 ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
   out <- ggplot() +
-    geom_polygon(data = x %>% filter(!is.na(.data$y_ci)),
+    geom_polygon(data = x |> filter(!is.na(.data$y_ci)),
                  mapping = aes(x = .data$x_e, y = .data$y_ci),
                  fill = "grey75", alpha = 0.5) +
-    geom_line(data = x %>% filter(!is.na(.data$y_e)),
+    geom_line(data = x |> filter(!is.na(.data$y_e)),
               mapping = aes(x = .data$x_e, y = .data$y_e),
               colour = "black", linetype = 2) +
-    geom_point(data = x %>% filter(!is.na(.data$y_r)),
+    geom_point(data = x |> filter(!is.na(.data$y_r)),
                mapping = aes(x = .data$x_r, y = .data$y_r), fill = "grey30",
                shape = 21)
   if (nec) {
     ltys <- rep(c(1, 2, 2), length(unique(x$model)))
     lwds <- rep(c(0.5, 0.2, 0.2), length(unique(x$model)))
     out <- out +
-      geom_vline(data = x %>% filter(!is.na(.data$nec_vals)),
+      geom_vline(data = x |> filter(!is.na(.data$nec_vals)),
                  mapping = aes(xintercept = .data$nec_vals),
                  linetype = ltys, colour = "grey50",
                  lwd = lwds) +
-      geom_text(data = x %>% filter(!is.na(.data$nec_labs)),
+      geom_text(data = x |> filter(!is.na(.data$nec_labs)),
                 mapping = aes(label = paste0("N(S)EC: ", .data$nec_labs, " (",
                                              .data$nec_labs_l, "-",
                                              .data$nec_labs_u, ")")),
@@ -247,11 +247,11 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
     ltys <- rep(c(1, 2, 2), length(unique(x$model)))
     lwds <- rep(c(0.5, 0.2, 0.2), length(unique(x$model)))
     out <- out +
-      geom_vline(data = x %>% filter(!is.na(.data$ecx_vals)),
+      geom_vline(data = x |> filter(!is.na(.data$ecx_vals)),
                  mapping = aes(xintercept = .data$ecx_vals),
                  linetype = ltys, colour = "dodgerblue4",
                  lwd = lwds) +
-      geom_text(data = x %>% filter(!is.na(.data$ecx_labs)),
+      geom_text(data = x |> filter(!is.na(.data$ecx_labs)),
                 mapping = aes(label = paste0("EC[", .data$ecx_int, "]", ": ",
                                              .data$ecx_labs, " (",
                                              .data$ecx_labs_l, "-",
@@ -327,8 +327,8 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     } 
 
   ggbnec_data(x, add_nec = nec, add_ecx = ecx,
-              xform = xform, ...) %>%
-    mutate(model = x$model) %>%
+              xform = xform, ...) |>
+    mutate(model = x$model) |>
     ggbnec(nec = nec, ecx = ecx)
 }
 
@@ -359,7 +359,7 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #' @inherit autoplot.bayesnecfit examples
 #' @family autoplot methods
 #'
-#' @importFrom dplyr %>% mutate
+#' @importFrom dplyr mutate
 #' @importFrom purrr map_dfr
 #' @importFrom grDevices devAskNewPage
 #' @export
@@ -385,13 +385,13 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   chk_lgl(multi_facet) 
   
   if (all_models) {
-    all_fits <- lapply(x$success_models, pull_out, manec = x) %>%
-      suppressMessages %>%
-      suppressWarnings
+    all_fits <- lapply(x$success_models, pull_out, manec = x) |>
+      suppressMessages() |>
+      suppressWarnings()
     if (multi_facet) {
       names(all_fits) <- x$success_models
       map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
-             xform = xform, ..., .id = "model") %>%
+              xform = xform, ..., .id = "model") |>
         ggbnec(nec = nec, ecx = ecx)
     } else {
       if (plot) {
@@ -402,8 +402,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       plots <- vector(mode = "list", length = length(all_fits))
       for (i in seq_along(all_fits)) {
         plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
-                                   xform = xform, ...) %>%
-          mutate(model = x$success_models[i]) %>%
+                                   xform = xform, ...) |>
+          mutate(model = x$success_models[i]) |>
           ggbnec(nec = nec, ecx = ecx)
         plot(plots[[i]], newpage = newpage || i > 1)
         if (i == 1) {
@@ -413,8 +413,8 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       invisible(plots)
     }
   } else {
-    ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform, ...) %>%
-      mutate(model = "Model averaged predictions") %>%
+    ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform, ...) |>
+      mutate(model = "Model averaged predictions") |>
       ggbnec(nec = nec, ecx = ecx)
   }
 }

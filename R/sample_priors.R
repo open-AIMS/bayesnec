@@ -14,7 +14,6 @@
 #' @importFrom ggplot2 ggplot aes geom_histogram facet_wrap
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect starts_with
-#' @importFrom dplyr %>%
 #' @importFrom rlang .data
 #'
 #' @seealso \code{\link{bnec}}
@@ -65,10 +64,10 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
       hist(out[[j]], main = names(out)[j])
     }
   } else if (plot == "ggplot") {
-    do.call("cbind", out) %>%
-      data.frame %>%
+    do.call("cbind", out) |>
+      data.frame() |>
       pivot_longer(names_to = "param", values_to = "value",
-                   cols = starts_with("b_")) %>%
+                   cols = starts_with("b_")) |>
       ggplot(mapping = aes(x = .data$value)) +
         geom_histogram() +
         facet_wrap(~.data$param, scales = "free_x")

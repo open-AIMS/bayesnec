@@ -309,7 +309,6 @@ rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ... ) {
 #' @return A \code{\link[base]{list}} containing a summary of the model fit as
 #' returned by a \code{\link[brms]{brmsfit}} object for each model.
 #'
-#' @importFrom dplyr %>%
 #' @importFrom purrr map
 #' @importFrom brms bayes_R2
 #' @importFrom chk chk_lgl chk_numeric
@@ -341,10 +340,10 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     ecx_mods = ecx_mods,
     nec_vals = clean_nec_vals(x),
     ecs = ecs,
-    bayesr2 = x$mod_fits %>%
-      lapply(function(y)bayes_R2(y$fit)) %>%
+    bayesr2 = x$mod_fits |>
+      lapply(function(y)bayes_R2(y$fit)) |>
       do.call(what = "rbind.data.frame"),
-    rhat_issues = map(x$mod_fits, "fit") %>%
+    rhat_issues = map(x$mod_fits, "fit") |>
       map(has_r_hat_warnings)
   )
   allot_class(out, "manecsummary")

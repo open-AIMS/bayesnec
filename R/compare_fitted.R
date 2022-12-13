@@ -24,7 +24,7 @@
 #' \code{\link{bayesmanecfit}} model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile predict
-#' @importFrom dplyr %>% mutate bind_rows
+#' @importFrom dplyr mutate bind_rows
 #' @importFrom utils combn
 #' @importFrom brms posterior_epred
 #'
@@ -62,19 +62,19 @@ compare_fitted <- function(x, precision = 50, x_range = NA,
   r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
     m[sample(seq_len(n_samples), replace = FALSE), ]
   }, n_samples = n_samples)
-  posterior_data <- posterior_list %>%
-      lapply(summarise_posterior, x_vec = x_vec) %>%
-      bind_rows(.id = "model") %>%
-      data.frame
+  posterior_data <- posterior_list |>
+      lapply(summarise_posterior, x_vec = x_vec) |>
+      bind_rows(.id = "model") |>
+      data.frame()
   all_combn <- combn(names(x), 2, simplify = FALSE)
   diff_list <- lapply(all_combn, function(a, r_list) {
     r_list[[a[1]]] - r_list[[a[2]]]
   }, r_list = r_posterior_list)
   names(diff_list) <- sapply(all_combn, function(m) paste0(m[1], "-", m[2]))
   diff_data <- lapply(diff_list, function(m, x_vec) {
-   out_diffs <- apply(m, 2, quantile, probs = c(0.5, 0.025, 0.975)) %>%
-     t %>%
-     data.frame %>%
+   out_diffs <- apply(m, 2, quantile, probs = c(0.5, 0.025, 0.975)) |>
+     t() |>
+     data.frame() |>
      mutate(x = x_vec)
   }, x_vec)
   diff_data_out <- bind_rows(diff_data, .id = "comparison")
@@ -83,8 +83,8 @@ compare_fitted <- function(x, precision = 50, x_range = NA,
   prob_diff <- lapply(diff_list, function(m, x_vec) {
     m[m > 0] <- 1
     m[m <= 0] <- 0
-    cbind(x = x_vec, prob = colMeans(m)) %>%
-      data.frame
+    cbind(x = x_vec, prob = colMeans(m)) |>
+      data.frame()
   }, x_vec)
   prob_diff_out <- bind_rows(prob_diff, .id = "comparison")
   list(posterior_list = posterior_list, posterior_data = posterior_data,
