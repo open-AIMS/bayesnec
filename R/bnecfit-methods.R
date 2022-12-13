@@ -25,6 +25,24 @@ plot.bnecfit <- function(x, ...) {
 #'
 #' @return An object of class \code{\link{bayesmanecfit}}.
 #'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' ecx4param <- pull_out(manec_example, model = "ecx4param")
+#' # Go from two bayesnecfit objects to a bayesmanecfit object.
+#' #   In this example case it is redundant because it recovers the original
+#' #   `manec_example`.
+#' c(nec4param, ecx4param)
+#' # Add a bayesnecfit object to an existing bayesmanecfit object
+#' nechorme4 <- nec_data |>
+#'   dplyr::mutate(y = qlogis(y)) |>
+#'   (\(.)bnec(formula = y ~ crf(x, model = "nechorme4"),
+#'             data = ., iter = 200, warmup = 150, chains = 2,
+#'             stan_model_args = list(save_dso = FALSE)))()
+#' c(nechorme4, manec_example)
+#' }
+#'
 #' @export
 c.bnecfit <- function(x, ...) {
   dots <- list(...)
@@ -55,6 +73,24 @@ c.bnecfit <- function(x, ...) {
 #' @param e2 An object of class \code{\link{bnecfit}}.
 #'
 #' @return An object of class \code{\link{bayesmanecfit}}.
+#'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' ecx4param <- pull_out(manec_example, model = "ecx4param")
+#' # Go from two bayesnecfit objects to a bayesmanecfit object.
+#' #   In this example case it is redundant because it recovers the original
+#' #   `manec_example`.
+#' nec4param + ecx4param
+#' # Add a bayesnecfit object to an existing bayesmanecfit object
+#' nechorme4 <- nec_data |>
+#'   dplyr::mutate(y = qlogis(y)) |>
+#'   (\(.)bnec(formula = y ~ crf(x, model = "nechorme4"),
+#'             data = ., iter = 200, warmup = 150, chains = 2,
+#'             stan_model_args = list(save_dso = FALSE)))()
+#' nechorme4 + manec_example
+#' }
 #'
 #' @export
 `+.bnecfit` <- function(e1, e2) {
@@ -103,8 +139,8 @@ c.bnecfit <- function(x, ...) {
 #' # change to Beta distribution by adding newdata with original `nec_data$y`
 #' # function will throw informative message.
 #' beta_manec <- update(manec_example, newdata = nec_data, recompile = TRUE,
-#'                      chains = 1, iter = 50, family = Beta(link = "identity"),
-#'                      force_fit = TRUE)
+#'                      chains = 1, iter = 50,
+#'                      family = Beta(link = "identity"), force_fit = TRUE)
 #' }
 #'
 #' @export
@@ -184,7 +220,7 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
 #'
 #' @export
 rhat.bnecfit <- function(object, rhat_cutoff = 1.05, ... ) {
-  "rhat is not implemented in the base class bnecfit"
+  UseMethod("rhat")
 }
 
 #' Generates predictions for objects fitted by \code{\link{bnec}}

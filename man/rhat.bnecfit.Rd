@@ -4,7 +4,7 @@
 \alias{rhat.bnecfit}
 \title{rhat.bnecfit}
 \usage{
-\method{rhat}{bnecfit}(object, rhat_cutoff = 1.05, ...)
+rhat.bnecfit(object, rhat_cutoff = 1.05, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bnecfit}} as

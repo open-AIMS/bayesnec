@@ -21,3 +21,22 @@ An object of class \code{\link{bayesmanecfit}}.
 \code{\link{bayesmanecfit}} object containing Bayesian model averaging
 statistics.
 }
+\examples{
+\dontrun{
+library(bayesnec)
+nec4param <- pull_out(manec_example, model = "nec4param")
+ecx4param <- pull_out(manec_example, model = "ecx4param")
+# Go from two bayesnecfit objects to a bayesmanecfit object.
+#   In this example case it is redundant because it recovers the original
+#   `manec_example`.
+nec4param + ecx4param
+# Add a bayesnecfit object to an existing bayesmanecfit object
+nechorme4 <- nec_data |>
+  dplyr::mutate(y = qlogis(y)) |>
+  (\(.)bnec(formula = y ~ crf(x, model = "nechorme4"),
+            data = ., iter = 200, warmup = 150, chains = 2,
+            stan_model_args = list(save_dso = FALSE)))()
+nechorme4 + manec_example
+}
+
+}

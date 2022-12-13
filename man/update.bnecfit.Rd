@@ -80,8 +80,8 @@ smaller_manec <- update(manec_example, chains = 1, iter = 50,
 # change to Beta distribution by adding newdata with original `nec_data$y`
 # function will throw informative message.
 beta_manec <- update(manec_example, newdata = nec_data, recompile = TRUE,
-                     chains = 1, iter = 50, family = Beta(link = "identity"),
-                     force_fit = TRUE)
+                     chains = 1, iter = 50,
+                     family = Beta(link = "identity"), force_fit = TRUE)
 }
 
 }
