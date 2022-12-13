@@ -75,6 +75,7 @@ plot.bnecfit <- function(x, ...) {
 #' @importFrom stats quantile model.frame
 #' @importFrom grDevices adjustcolor
 #' @importFrom chk chk_lgl chk_character
+#'
 #' @export
 plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
                              position_legend = "topright", add_ec10 = FALSE,

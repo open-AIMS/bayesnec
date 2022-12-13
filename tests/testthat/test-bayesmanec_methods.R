@@ -28,8 +28,8 @@ test_that("rhat behaves as expected", {
   rhat_p <- suppressMessages(rhat(manec_example))
   rhat2_p <-  rhat(manec_example, rhat_cutoff = 1)
   expect_message(rhat(manec_example, rhat_cutoff = 1))
-  expect_equal(names(rhat2_p), c("rhat_vals", "failed"))
-  expect_equal(names(rhat_p$rhat_vals), names(manec_example$mod_fits))
+  expect_equal(names(rhat2_p), manec_example$success_models)
+  expect_equal(names(rhat_p[[1]]), c("rhat_vals", "failed"))
 })
 
 test_that("summary behaves as expected", {
