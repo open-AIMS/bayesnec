@@ -54,25 +54,21 @@ A \code{\link[ggplot2]{ggplot}} object.
 plotting method.
 }
 \examples{
-\donttest{
+\dontrun{
 library(brms)
-library(bayesnec)
-options(mc.cores = 2)
-data(nec_data)
-
-necs <- bnec(y ~ crf(x, c("nec3param", "nec4param")), data = nec_data,
-             iter = 2e2, family = Beta(link = "identity"))
-nec3param <- pull_out(necs, "nec3param")
-autoplot(nec3param)
-autoplot(nec3param, nec = FALSE)
-autoplot(nec3param, ecx = TRUE, ecx_val = 50)
+nec4param <- pull_out(manec_example, "nec4param")
+autoplot(nec4param)
+autoplot(nec4param, nec = FALSE)
+autoplot(nec4param, ecx = TRUE, ecx_val = 50)
 
 # plot model averaged predictions
-autoplot(necs)
+autoplot(manec_example)
 # plot all panels together
-autoplot(necs, ecx = TRUE, ecx_val = 50, all_models = TRUE)
+autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE)
+}
+\dontrun{
 # plots multiple models, one at a time, with interactive prompt
-autoplot(necs, ecx = TRUE, ecx_val = 50, all_models = TRUE,
+autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE,
          multi_facet = FALSE)
 }
 }
