@@ -44,6 +44,7 @@ library(ggplot2)
 ## Comparing posterior endpoint values
 
 ```{r, results = "hide"}
+set.seed(333)
 library(brms)
 library(bayesnec)
 data(nec_data)
@@ -53,17 +54,17 @@ make_ecx_data <- function(top, bot, ec50, beta, x) {
 }
 x <- seq(0, 10, length = 12)
 y <- make_ecx_data(x = x, bot = 0, top = 1, beta = 0.5, ec50 = 5)
-set.seed(10)
+set.seed(333)
 dat <- data.frame(x = rep(x, 15), y = rnorm(15 * length(x), y, 0.2))
 # Fit a set of models
-exmp <- bnec(y ~ crf(x, model = "decline"), data = dat, iter = 2e3, refresh = 0)
+exmp <- bnec(y ~ crf(x, model = "decline"), data = dat, refresh = 0)
 ```
 
 ```{r}
 class(exmp)
 ```
 
-This call fits all models that are suitable for modelling Gaussian-distributed response data, excluding all of the hormesis models, which we are not considering here. We have reduced the iterations back to the `brms` default to make the example lighter, but we do not recommend this in practice. Now that we have our example fit, we can use this to make different model sets, purely for the purposes of illustrating `compare_posterior` in `bayesnec` and highlighting the rich information that is contained in the Bayesian posterior draws.
+This call fits all models that are suitable for modelling Gaussian-distributed response data, excluding all of the hormesis models, which we are not considering here. Now that we have our example fit, we can use this to make different model sets, purely for the purposes of illustrating `compare_posterior` in `bayesnec` and highlighting the rich information that is contained in the Bayesian posterior draws.
 
 We can pull out the **nec** models and the **ecx** models separately, to create two alternative model fits of this data that we can compare to each other, as well as the original **all** model fit.
 
@@ -102,13 +103,13 @@ ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
 ```
 
 ```{r, echo = FALSE}
-probs <- post_comp$prob_diff %>%
-  tibble::column_to_rownames(var = "comparison") %>%
-  dplyr::select(prob) %>%
+probs <- post_comp$prob_diff |>
+  tibble::column_to_rownames(var = "comparison") |>
+  dplyr::select(prob) |>
   dplyr::mutate(prob = round(prob, 2))
 ```
 
-This shows the differences among the three estimates. There is no difference in the **ecx** and **all** estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth **ecx** type curve and thus those models have high weight. The **nec** based *EC~10~* estimates are greater than the **ecx** estimates in this case.
+This shows the differences among the three estimates. There is no difference in the **ecx** and **all** estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth **ecx** type curve and thus those models have high weight. The **nec** based *EC~10~* estimates are greater than the **ecx** based estimates in this case.
 
 We can formally test the probability that the endpoint estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as `prob_diff`. Here you can see there is `r probs["all-ecx", "prob"] * 100`% chance that **all** is greater than **ecx**. There is only a `r probs["ecx-nec", "prob"] * 100`% chance that **ecx** is greater than **nec**, and a `r (1 - probs["ecx-nec", "prob"]) * 100`% chance that the **nec** is greater than **ecx**.
 

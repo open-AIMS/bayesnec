@@ -9,22 +9,7 @@ vignette: >
 bibliography: bayesnec.bib
 ---
 
-```{r setup, include = FALSE}
-set.seed(333)
-stopifnot(require(knitr))
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  warning = FALSE,
-  message = FALSE,
-  fig.path = "vignette-fig-",
-  fig.asp = 0.8,
-  out.width = "60%",
-  fig.align = "center",
-  dpi = 120,
-  eval = identical(Sys.getenv("NOT_CRAN"), "true")
-)
-```
+
 
 ## Overview
 
@@ -56,13 +41,10 @@ The priors used in the default model fit can be extracted using `pull_prior`, an
 
 To set specified priors, it is simplest to start by letting `bnec` find the priors on its own, i.e. by not specifying the `brm` argument `prior` at all.
 
-```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
-library(bayesnec)
-library(brms)
-options(mc.cores = parallel::detectCores())
-```
 
-```{r, results = "hide"}
+
+
+```r
 library(brms)
 library(bayesnec)
 data(nec_data)
@@ -74,25 +56,49 @@ exmp_a <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
                iter = 1e4, control = list(adapt_delta = 0.99))
 ```
 
-```{r}
+
+```r
 class(exmp_a)
+#> [1] "bayesnecfit" "bnecfit"
 ```
 
 We can view the prior and posterior probability densities of all the parameters in the model using the function `check_prior`, based on the `hypothesis` function of `brms`. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.
 
-```{r exmp3-checkpriors, fig.width = 9, fig.asp = 0.35, out.width = "100%"}
+
+```r
 check_priors(exmp_a)
 ```
 
+<img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;" />
+
 In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function `pull_prior` to inspect what `bnec` came up with on its own, and decide how best to modify those priors to be more desirable.
 
-```{r}
+
+```r
 pull_prior(exmp_a)
+#> [[1]]
+#>                       prior class      coef group resp dpar nlpar               lb
+#>                normal(0, 5)     b                            beta                 
+#>                normal(0, 5)     b Intercept                  beta                 
+#>  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009
+#>  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009
+#>                  beta(5, 2)     b                             top                0
+#>                  beta(5, 2)     b Intercept                   top                0
+#>           gamma(0.01, 0.01)   phi                                                0
+#>                ub       source
+#>                           user
+#>                   (vectorized)
+#>  3.22051966293556         user
+#>  3.22051966293556 (vectorized)
+#>                 1         user
+#>                 1 (vectorized)
+#>                        default
 ```
 
 `bnec` chose a `gamma` prior on the *NEC* parameter of **nec3param** because the predictor `nec_data$x` is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
 
-```{r, results = "hide"}
+
+```r
 set.seed(333)
 my_prior <- c(prior_string("beta(5, 1)", nlpar = "top"),
               prior_string("normal(1.3, 2.7)", nlpar = "nec"),
@@ -104,15 +110,22 @@ exmp_b <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
 
 Two things are of note. If the user is specifying their own priors, `bnec` requires them to specify priors for **all** parameters. The `pull_prior` function shows the priors *after* the model was fitted, but suppose the user does not know what parameters were comprised in a particular model. In those instances, the user can call the function `show_params(model = "all")` to inspect the parameters of each function, or some targeted function in particular.
 
-```{r}
+
+```r
 show_params(model = "nec3param")
+#> [[1]]
+#> y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#> top ~ 1
+#> beta ~ 1
+#> nec ~ 1
 ```
 
 ### bayesmanecfit
 
 The user can also specify a named list of priors when one or more models are being fitted to the same dataset.
 
-```{r, results = "hide"}
+
+```r
 set.seed(333)
 my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
@@ -128,18 +141,41 @@ exmp_c <- bnec(y ~ crf(x, model = c("nec3param", "nec4param")), data = nec_data,
 
 `pull_prior` also works for an object of class `bayesmanecfit`, as does `check_priors` which allows an option of passing a filename to save the prior and posterior probability density plots to a pdf.
 
-```{r eval = FALSE}
+
+```r
 pull_prior(exmp_c)
 check_priors(exmp_c, filename = "Check_priors")
 ```
 
-```{r echo = FALSE}
-pull_prior(exmp_c)
+
+```
+#> $nec3param
+#>              prior class      coef group resp dpar nlpar lb ub       source
+#>      gamma(0.5, 2)     b                            beta               user
+#>      gamma(0.5, 2)     b Intercept                  beta       (vectorized)
+#>   normal(1.3, 2.7)     b                             nec               user
+#>   normal(1.3, 2.7)     b Intercept                   nec       (vectorized)
+#>         beta(5, 1)     b                             top               user
+#>         beta(5, 1)     b Intercept                   top       (vectorized)
+#>  gamma(0.01, 0.01)   phi                                  0         default
+#> 
+#> $nec4param
+#>              prior class      coef group resp dpar nlpar lb ub       source
+#>      gamma(0.5, 2)     b                            beta               user
+#>      gamma(0.5, 2)     b Intercept                  beta       (vectorized)
+#>         beta(1, 5)     b                             bot               user
+#>         beta(1, 5)     b Intercept                   bot       (vectorized)
+#>   normal(1.3, 2.7)     b                             nec               user
+#>   normal(1.3, 2.7)     b Intercept                   nec       (vectorized)
+#>         beta(5, 1)     b                             top               user
+#>         beta(5, 1)     b Intercept                   top       (vectorized)
+#>  gamma(0.01, 0.01)   phi                                  0         default
 ```
 
 The user can also specify priors for one model only out of the entire set, `bayesnec` will return a message stating that it is searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.
 
-```{r,  results = "hide"}
+
+```r
 set.seed(333)
 my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
                                 prior_string("normal(1.3, 2.7)", nlpar = "nec"),
@@ -157,7 +193,8 @@ exmp_d <- bnec(y ~ crf(x, model = c("nec3param", "nec4param")), data = nec_data,
 
 Finally the user can also extend an existing `bayesmanecfit` object with the function `amend`, also by specifying custom-built `priors`.
 
-```{r,  results = "hide"}
+
+```r
 set.seed(333)
 necsigm_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
                     prior_string("gamma(2, 6.5)", nlpar = "beta"),

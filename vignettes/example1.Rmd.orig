@@ -22,8 +22,7 @@ knitr::opts_chunk$set(
   out.width = "60%",
   fig.align = "center",
   dpi = 120,
-  eval = identical(Sys.getenv("NOT_CRAN"), "true"),
-  cache = T
+  eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
 
@@ -94,9 +93,9 @@ The response variable is considered to follow a binomial distribution when it is
 
 
 ```{r}
-binom_data <- "https://pastebin.com/raw/zfrUha88" %>%
-  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
-  dplyr::rename(raw_x = raw.x) %>%
+binom_data <- "https://pastebin.com/raw/zfrUha88" |>
+  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) |>
+  dplyr::rename(raw_x = raw.x) |>
   dplyr::mutate(raw_x = as.numeric(as.character(raw_x)))
 
 str(binom_data)
@@ -197,9 +196,9 @@ summary(exp_1b)
 Sometimes the response variable is distributed between `0` and `1` but is not a straight-forward Binomial because it is a proportion on the continuous scale. A common example in coral ecology is maximum quantum yield (the proportion of light used for photosynthesis when all reaction centres are open) which is a measure of photosynthetic efficiency calculated from Pulse-Amplitude-Modulation (PAM) data. Here we have a proportion value that is not based on trials and successes. In this case there are no theoretical trials, and the data must be modelled using a Beta distribution instead.
 
 ```{r, results = "hide"}
-prop_data <- "https://pastebin.com/raw/123jq46d" %>%
-  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) %>%
-  dplyr::rename(raw_x = raw.x) %>%
+prop_data <- "https://pastebin.com/raw/123jq46d" |>
+  read.table(header = TRUE, dec = ",", stringsAsFactors = FALSE) |>
+  dplyr::rename(raw_x = raw.x) |>
   dplyr::mutate(across(where(is.character), as.numeric))
 
 set.seed(333)
@@ -217,12 +216,12 @@ Where data are a count (of, for example, individuals or cells), the response is 
 
 ```{r}
 data(nec_data)
-count_data <- nec_data %>%
+count_data <- nec_data |>
   dplyr::mutate(
-    y = (y * 100 + rnorm(nrow(nec_data), 0, 15)) %>%
-      round %>%
-      as.integer %>%
-      abs
+    y = (y * 100 + rnorm(nrow(nec_data), 0, 15)) |>
+      round() |>
+      as.integer() |>
+      abs()
   )
 
 str(count_data)
@@ -266,7 +265,7 @@ Where data are a measured variable, the response is likely to be Gamma distribut
 
 ```{r}
 data(nec_data)
-measure_data <- nec_data %>%
+measure_data <- nec_data |>
   dplyr::mutate(measure = exp(y))
 ```
 
