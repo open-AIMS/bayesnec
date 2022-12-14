@@ -19,30 +19,35 @@ test_that("new loo_controls are incorporated", {
   }
   expect_equal(get_new_method(manec_gausian_identity), "pseudobma")
   my_ctrls <- list(weights = list(method = "stacking"))
-  manec_example_stack <- amend(manec_gausian_identity,
-                               loo_controls = my_ctrls) %>%
-    suppressWarnings %>%
-    expect_message
+  manec_example_stack <- amend(
+    manec_gausian_identity, loo_controls = my_ctrls
+  ) %>%
+    suppressMessages %>%
+    suppressWarnings    
   expect_equal(get_new_method(manec_example_stack), "stacking")
   my_ctrls <- list(fitting = list(moment_match = TRUE),
                    weights = list(method = "stacking"))
-  manec_example_stack2 <- amend(manec_gausian_identity,
-                                loo_controls = my_ctrls) %>%
-    suppressWarnings %>%
-    expect_message
+  manec_example_stack2 <- amend(
+    manec_gausian_identity, loo_controls = my_ctrls
+  ) %>%
+    suppressMessages %>%
+    suppressWarnings    
   expect_equal(get_new_method(manec_example_stack2), "stacking")
   # changing original to moment match alters weights
   my_ctrls <- list(fitting = list(moment_match = TRUE))
-  manec_example_stack3 <- amend(manec_gausian_identity,
-                                loo_controls = my_ctrls) %>%
-    suppressWarnings %>%
-    expect_message
+  manec_example_stack3 <- amend(
+    manec_gausian_identity, loo_controls = my_ctrls
+  ) %>%
+    suppressMessages %>%
+    suppressWarnings    
   expect_equal(get_new_method(manec_example_stack3), "pseudobma")
   expect_false(
-    all(manec_gausian_identity$mod_stats$wi == manec_example_stack$mod_stats$wi)
+    all(manec_gausian_identity$mod_stats$wi ==
+          manec_example_stack$mod_stats$wi)
   )
   expect_false(
-    all(manec_gausian_identity$mod_stats$wi == manec_example_stack2$mod_stats$wi)
+    all(manec_gausian_identity$mod_stats$wi ==
+          manec_example_stack2$mod_stats$wi)
   )
   expect_false(
     all(manec_example_stack$mod_stats$wi == manec_example_stack2$mod_stats$wi)
