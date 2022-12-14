@@ -3,6 +3,8 @@
 #' Subsets model(s) from an existing object of class \code{\link{bayesmanecfit}}
 #'
 #' @inheritParams bnec
+#' 
+#' @importFrom chk chk_character
 #'
 #' @param manec An object of class \code{\link{bayesmanecfit}} as returned by
 #' \code{\link{bnec}}.
@@ -32,6 +34,7 @@ pull_out <- function(manec, model, loo_controls, ...) {
   if (length(model) > 1) {
     stop("Argument model can only take one value. See ?pull_out and ?models.")
   }
+  chk_character(model)
   old_method <- attributes(manec$mod_stats$wi)$method
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(), weights = list(method = old_method))

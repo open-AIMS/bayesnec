@@ -42,9 +42,12 @@ formula.bayesnecfit <- function(x, ...) {
 #' @method formula bayesmanecfit
 #'
 #' @inherit formula description return examples
+#' 
+#' @importFrom chk chk_character
 #'
 #' @export
 formula.bayesmanecfit <- function(x, model, ...) {
+  chk_character(model)
   pull_out(x, model) |>
     suppressMessages() |>
     suppressWarnings() |>

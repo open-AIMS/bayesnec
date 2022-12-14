@@ -86,9 +86,12 @@ model.frame.bayesnecfit <- function(formula, ...) {
 #' @inherit model.frame description return examples details
 #'
 #' @importFrom stats model.frame
+#' 
+#' @importFrom chk chk_character
 #'
 #' @export
 model.frame.bayesmanecfit <- function(formula, model, ...) {
+  chk_character(model)  
   pull_out(formula, model) |>
     suppressMessages() |>
     suppressWarnings() |>

@@ -24,10 +24,14 @@
 #' library(bayesnec)
 #' data(manec_example)
 #' exmp <- pull_brmsfit(manec_example, model = "nec4param")
-#' sample_priors(exmp$prior)
+#' sample_priors(exmp$prior, plot = NA)
 #'
 #' @export
 sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
+  chk_numeric(n_samples)
+  if(plot != "ggplot" & plot != "base") {
+    stop("plot must be a character string of either ggplot or base")
+  }
   fcts <- c(gamma = rgamma, normal = rnorm, beta = rbeta, uniform = runif)
   priors <- as.data.frame(priors) |>
     filter(class=="b")

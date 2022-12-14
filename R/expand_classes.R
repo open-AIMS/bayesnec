@@ -10,10 +10,13 @@
 #'
 #' @importFrom brms posterior_epred as_draws_df
 #' @importFrom stats quantile fitted residuals terms
+#' @importFrom chk chk_numeric
 #'
 #' @export
 expand_nec <- function(object, formula, x_range = NA, precision = 1000,
                        sig_val = 0.01, loo_controls, ...) {
+  chk_numeric(precision)
+  chk_numeric(sig_val)
   fam_tag <- object$fit$family$family
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(), weights = list())
@@ -96,10 +99,14 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
 #'
 #' @importFrom loo loo_model_weights
 #' @importFrom stats quantile
+#' @importFrom chk chk_numeric
 #'
 #' @export
 expand_manec <- function(object, formula, x_range = NA, precision = 1000,
                          sig_val = 0.01, loo_controls) {
+  chk_numeric(precision)
+  chk_numeric(sig_val)
+  if (!is.na(x_range[1])) {chk_numeric(x_range)}
   model_set <- names(object)
   success_models <- model_set[sapply(object, is_prebayesnecfit)]
   if (length(success_models) == 0) {

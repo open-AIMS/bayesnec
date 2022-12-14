@@ -40,6 +40,9 @@ check_priors <- function(object, filename = NA) {
 #'
 #' @export
 check_priors.bayesnecfit <- function(object, filename = NA) {
+  if (!is.na(filename)) {
+    chk_character(filename)
+  }
   brms_fit <- object$fit
   all_pars <- rownames(brms::fixef(brms_fit))
   all_data <- vector(mode = "list", length = length(all_pars))
@@ -75,6 +78,9 @@ check_priors.bayesnecfit <- function(object, filename = NA) {
 #'
 #' @export
 check_priors.bayesmanecfit <- function(object, filename = NA) {
+  if (!is.na(filename)) {
+    chk_character(filename)
+  }
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE,
         width = 12, height = 4)

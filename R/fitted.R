@@ -67,10 +67,14 @@ fitted.bayesnecfit <- function(object, ...) {
 #' @inherit fitted description return examples
 #'
 #' @importFrom brms posterior_summary posterior_epred
+#' @importFrom chk chk_lgl
 #'
 #' @export
 fitted.bayesmanecfit <- function(object, summary = TRUE, robust = FALSE,
                                  probs = c(0.025, 0.975), ...) {
+  chk_lgl(summary)
+  chk_lgl(robust)
+  chk_numeric(probs)
   av_post_preds <- posterior_epred(object, ...)
   if (!summary) {
     av_post_preds

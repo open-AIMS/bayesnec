@@ -20,6 +20,7 @@
 #' (mean, median, 95% highest density intervals) of the dispersion metric.
 #'
 #' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
+#' @importFrom chk chk_lgl
 #'
 #' @references
 #' Zuur, A. F., Hilbe, J. M., & Ieno, E. N. (2013). A Beginner's Guide to GLM
@@ -27,7 +28,7 @@
 #' Highland Statistics Limited.
 #'
 #' @examples
-#' \donttest{
+#' \donotrun{
 #' library(bayesnec)
 #' data(nec_data)
 #' nec_data$y <- as.integer(round(nec_data$y * 100))
@@ -36,6 +37,8 @@
 #' }
 #' @export
 dispersion <- function(model, summary = FALSE, seed = 10) {
+  chk_lgl(summary)
+  chk_number(seed)
   formula <- model$bayesnecformula
   model <- model$fit
   mod_dat <- model.frame(formula, data = model$data)
