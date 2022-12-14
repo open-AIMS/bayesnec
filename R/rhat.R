@@ -6,20 +6,13 @@
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @name rhat
-#' @aliases rhat
 #' @order 1
-#'
-#' @usage NULL
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
 #' @param rhat_cutoff A \code{\link[base]{numeric}} vector indicating the Rhat
 #' cut-off used to test for model convergence.
 #' @param ... Unused.
-#'
-#' @method rhat bnecfit
-#'
-#' @importFrom brms rhat
 #'
 #' @return A \code{\link[base]{list}} containing a vector or Rhat values
 #' returned for each parameter for a \code{\link[brms]{brmsfit}} object,
@@ -32,12 +25,7 @@
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' rhat(nec4param)
 #' }
-#'
-#' @export
-#' @export rhat
-rhat.bnecfit <- function(object, rhat_cutoff = 1.05, ... ) {
-  UseMethod("rhat")
-}
+NULL
 
 #' @rdname rhat
 #' @order 2

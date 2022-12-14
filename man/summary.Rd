@@ -2,7 +2,6 @@
 % Please edit documentation in R/summary.R
 \name{summary}
 \alias{summary}
-\alias{summary.bnecfit}
 \alias{summary.bayesnecfit}
 \alias{summary.bayesmanecfit}
 \title{Generates a summary for objects fitted by \code{\link{bnec}}}
@@ -24,8 +23,14 @@ If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
 }
 \value{
-A summary of the fitted model as returned for a
-\code{\link[brms]{brmsfit}} object.
+A summary of the fitted model. In the case of a
+\code{\link{bayesnecfit}} object, the summary contains most of the original
+contents of a \code{\link[brms]{brmsfit}} object with the addition of
+an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
+displays the family distribution information, model weights and averaging
+method, the estimated model-averaged NEC, and R2 estimates for each
+individual model. Warning messages are also printed to screen in case
+model fits are not satisfactory with regards to their Rhats.
 }
 \description{
 Generates a summary for objects fitted by \code{\link{bnec}}.
@@ -39,5 +44,4 @@ summary(manec_example)
 nec4param <- pull_out(manec_example, "nec4param")
 summary(nec4param)
 }
-
 }

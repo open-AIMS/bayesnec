@@ -2,7 +2,6 @@
 % Please edit documentation in R/rhat.R
 \name{rhat}
 \alias{rhat}
-\alias{rhat.bnecfit}
 \alias{rhat.bayesnecfit}
 \alias{rhat.bayesmanecfit}
 \title{Extract Diagnostic Quantities of 'brms' Models}
@@ -38,5 +37,4 @@ rhat(manec_example)
 nec4param <- pull_out(manec_example, model = "nec4param")
 rhat(nec4param)
 }
-
 }

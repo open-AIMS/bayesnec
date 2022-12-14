@@ -30,6 +30,6 @@ test_that("summary behaves as expected", {
 })
 
 test_that("formula/model.frame behaves as expected", {
-  expect_s3_class(formula(nec4param), "brmsformula")
+  expect_s3_class(formula(nec4param), "bayesnecformula")
   expect_s3_class(model.frame(nec4param), "data.frame")
 })

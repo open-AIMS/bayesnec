@@ -5,19 +5,12 @@
 #' \code{\link{bayesmanecfit}}.
 #'
 #' @name posterior_predict
-#' @aliases posterior_predict
 #' @order 1
-#'
-#' @usage NULL
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
 #' @param ... Additional arguments to
 #' \code{\link[brms]{posterior_predict}}.
-#'
-#' @method posterior_predict bnecfit
-#'
-#' @importFrom brms posterior_predict
 #'
 #' @return See \code{?brms::posterior_predict}.
 #'
@@ -41,12 +34,7 @@
 #'   lines(sort(x), preds[i, order(x)], type = "l", col = alpha("black", 0.1))
 #' }
 #' }
-#'
-#' @export
-#' @export posterior_predict
-posterior_predict.bnecfit <- function(object, ...) {
-  UseMethod("posterior_predict")
-}
+NULL
 
 #' @rdname posterior_predict
 #' @order 2

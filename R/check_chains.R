@@ -1,35 +1,36 @@
-#' check_chains
+#' Checking chain convergence
 #'
 #' Plots HMC chains for a \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} model fit as returned by \code{\link{bnec}}.
 #'
+#' @name check_chains
+#' @order 1
+#'
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
-#' @param ... arguments used when class is \code{\link{bayesmanecfit}}.
+#' @param ... Unused.
 #'
 #' @return No return value, generates a plot or writes a pdf to file.
 #'
 #' @examples
+#' \dontrun{
 #' library(bayesnec)
-#' data(manec_example)
-#'
-#' # print to device
 #' check_chains(manec_example)
-#'
+#' nec4param <- pull_out(manec_example, model = "nec4param")
+#' check_chains(nec4param)
+#' }
 #' @export
 check_chains <- function(x, ...) {
   UseMethod("check_chains")
 }
 
 
-#' check_chains.bayesnecfit
+#' @rdname check_chains
+#' @order 2
 #'
-#' Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
-#' by \code{\link{bnec}}.
+#' @method check_chains bayesnecfit
 #'
-#' @inheritParams check_chains
-#'
-#' @inherit check_chains return examples
+#' @inherit check_chains description return examples
 #'
 #' @importFrom brms fixef as_draws_array
 #' @importFrom stats acf
@@ -80,32 +81,30 @@ check_chains.bayesnecfit <- function(x, ...) {
   mtext(x$model, side = 3, outer = TRUE)
 }
 
-#' check_chains.bayesmanecfit
-#'
-#' Plots HMC chains for a \code{\link{bayesnecfit}} model fit as returned
-#' by \code{\link{bnec}}.
-#'
-#' @inheritParams check_chains
+#' @rdname check_chains
+#' @order 3
 #'
 #' @param filename An optional \code{\link[base]{character}} vector to be used
 #' as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non
 #' empty character string will indicate the user wants to save the plots.
 #'
+#' @method check_chains bayesmanecfit
+#'
+#' @inherit check_chains description return examples
+#'
 #' @importFrom grDevices pdf dev.off
 #' @importFrom chk chk_character
 #'
-#' @inherit check_chains return examples
-#'
 #' @export
-check_chains.bayesmanecfit <- function(x, ..., filename = NA) {
-  if(!is.na(filename)){
+check_chains.bayesmanecfit <- function(x, filename = NA, ...) {
+  if (!is.na(filename)) {
     chk_character(filename)
   }
   if (!is.na(filename)) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE)
   }
   for (m in seq_len(length(x$mod_fits))) {
-    check_chains(x = pull_out(x, model = names(x$mod_fits)[m]), ...)
+    check_chains(x = pull_out(x, model = names(x$mod_fits)[m]))
   }
   if (!is.na(filename)) {
     dev.off()

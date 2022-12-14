@@ -354,52 +354,18 @@ check_formula.bayesnecformula <- function(formula, data,
   formula
 }
 
-#' Extracting the model frame from a \code{\link{bayesnecformula}}
+#' @rdname model.frame
+#' @order 4
 #'
-#' Recovers evaluated \code{\link[base]{data.frame}} given input \code{data}
-#' and a formula of class \code{\link{bayesnecformula}}.
-#'
-#' @param formula A formula of class \code{\link{bayesnecformula}}.
 #' @param data A \code{\link[base]{data.frame}} containing the variables
 #' specified in \code{formula}.
-#' @param ... Additional arguments to be passed to 
-#' \code{\link{check_formula}}.
+#'
+#' @method model.frame bayesnecformula
+#'
+#' @inherit model.frame description return examples details
 #'
 #' @importFrom stats model.frame na.omit
 #'
-#' @details If the formula contains transformations to variables x and y,
-#' these are evaluated and returned as part of the 
-#' \code{\link[base]{data.frame}}.
-#'
-#' @return A \code{\link[base]{data.frame}} with additional attributes
-#' detailing the population-level variables (attribute \code{"bnec_pop"})
-#' (response y, predictor x, and, if binomial a formula, trials) and, if
-#' applicable, the group-level variables (attribute \code{"bnec_group"}).
-#'
-#' @examples
-#' library(bayesnec)
-#' nec3param <- function(beta, nec, top, x) {
-#'   top * exp(-exp(beta) * (x - nec) *
-#'     ifelse(x - nec < 0, 0, 1))
-#' }
-#' 
-#' data <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
-#'                    group_1 = sample(c("a", "b"), 10, replace = TRUE),
-#'                    group_2 = sample(c("c", "d"), 10, replace = TRUE))
-#' data$y <- nec3param(beta = -0.2, nec = 4, top = 100, data$x)
-#' 
-#' f_1 <- y ~ crf(x, "nec3param")
-#' f_2 <- "y | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
-#' f_3 <- y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)
-#' f_4 <- y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)
-#' 
-#' m_1 <- model.frame(bnf(f_1), data)
-#' attr(m_1, "bnec_pop")
-#' model.frame(bnf(f_2), data)
-#' m_3 <- model.frame(bnf(f_3), data)
-#' attr(m_3, "bnec_group")
-#' model.frame(bnf(f_4), data)
-#' 
 #' @export
 model.frame.bayesnecformula <- function(formula, data, ...) {
   if (!inherits(data, "data.frame")) {

@@ -5,18 +5,11 @@
 #' \code{\link{bayesmanecfit}}.
 #'
 #' @name plot
-#' @aliases plot
 #' @order 1
-#'
-#' @usage NULL
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
 #' @param ... Additional arguments to \code{\link[graphics]{plot}}.
-#'
-#' @method plot bnecfit
-#'
-#' @importFrom graphics plot
 #'
 #' @return A \code{\link[graphics]{plot}} of the fitted model.
 #'
@@ -34,12 +27,7 @@
 #' # plot all panels together
 #' plot(manec_example, add_ec10 = TRUE, all_models = TRUE)
 #' }
-#'
-#' @export
-#' @export plot
-plot.bnecfit <- function(x, ...) {
-  UseMethod("plot")
-}
+NULL
 
 #' @rdname plot
 #' @order 2

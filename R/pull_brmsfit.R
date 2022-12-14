@@ -19,37 +19,27 @@ pull_brmsfit <- function(object, ...) {
   UseMethod("pull_brmsfit")
 }
 
-#' Plots the prior and posterior parameter probability densities from an
-#' object of class \code{\link{bayesnecfit}}.
+#' @rdname pull_brmsfit
+#' @order 2
 #'
-#' @inheritParams pull_brmsfit
-#'
-#' @param object An object of class \code{\link{bayesnecfit}} returned by
-#' \code{\link{bnec}}.
+#' @method pull_brmsfit bayesnecfit
 #'
 #' @inherit pull_brmsfit examples return
-#'
-#' @noRd
 #'
 #' @export
 pull_brmsfit.bayesnecfit <- function(object, ...) {
   object$fit
 }
 
-#' Plots the prior and posterior parameter probability densities from an
-#' object of class \code{\link{bayesmanecfit}}.
+#' @rdname pull_brmsfit
+#' @order 3
 #'
-#' @inheritParams pull_brmsfit
-#'
-#' @param object An object of class \code{\link{bayesmanecfit}} returned by
-#' \code{\link{bnec}}.
 #' @param model An optional \code{\link[base]{character}} vector specifying
 #' the model to extract.
-#' @param ... Unused.
+#'
+#' @method pull_brmsfit bayesmanecfit
 #'
 #' @inherit pull_brmsfit examples return
-#'
-#' @noRd
 #'
 #' @export
 pull_brmsfit.bayesmanecfit <- function(object, model = NA, ...) {

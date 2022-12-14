@@ -5,19 +5,20 @@
 #' \code{\link{bayesmanecfit}}.
 #'
 #' @name summary
-#' @aliases summary
 #' @order 1
-#'
-#' @usage NULL
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
 #' @param ... Unused.
 #'
-#' @method summary bnecfit
-#'
-#' @return A summary of the fitted model as returned for a
-#' \code{\link[brms]{brmsfit}} object.
+#' @return A summary of the fitted model. In the case of a
+#' \code{\link{bayesnecfit}} object, the summary contains most of the original
+#' contents of a \code{\link[brms]{brmsfit}} object with the addition of
+#' an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
+#' displays the family distribution information, model weights and averaging
+#' method, the estimated model-averaged NEC, and R2 estimates for each
+#' individual model. Warning messages are also printed to screen in case
+#' model fits are not satisfactory with regards to their Rhats.
 #'
 #' @examples
 #' \donttest{
@@ -26,12 +27,7 @@
 #' nec4param <- pull_out(manec_example, "nec4param")
 #' summary(nec4param)
 #' }
-#'
-#' @export
-#' @export summary
-summary.bnecfit <- function(object, ...) {
-  UseMethod("summary")
-}
+NULL
 
 #' @rdname summary
 #' @order 2
@@ -75,11 +71,6 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 
 #' @rdname summary
 #' @order 3
-#'
-#' @param ecx Should summary ECx values be calculated? Defaults to FALSE.
-#' @param ecx_vals ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
-#' If no value is specified by the user, returns calculations for EC10, EC50,
-#' and EC90.
 #'
 #' @method summary bayesmanecfit
 #'

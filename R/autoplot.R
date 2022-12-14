@@ -1,3 +1,152 @@
+#' bayesnec standard ggplot2 plotting method
+#'
+#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
+#' plotting method.
+#'
+#' @name autoplot
+#' @order 1
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
+#' @param nec Should NEC values be added to the plot? Defaults to TRUE.
+#' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
+#' @param xform A function to apply to the returned estimated concentration
+#' values.
+#'
+#' @return A \code{\link[ggplot2]{ggplot}} object.
+#'
+#' @examples
+#' \dontrun{
+#' library(brms)
+#' nec4param <- pull_out(manec_example, "nec4param")
+#' autoplot(nec4param)
+#' autoplot(nec4param, nec = FALSE)
+#' autoplot(nec4param, ecx = TRUE, ecx_val = 50)
+#'
+#' # plot model averaged predictions
+#' autoplot(manec_example)
+#' # plot all panels together
+#' autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE)
+#' }
+#' \dontrun{
+#' # plots multiple models, one at a time, with interactive prompt
+#' autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE,
+#'          multi_facet = FALSE)
+#' }
+NULL
+
+#' @rdname autoplot
+#' @order 2
+#'
+#' @method autoplot bayesnecfit
+#'
+#' @inherit autoplot description return examples
+#'
+#' @importFrom dplyr mutate
+#' @importFrom chk chk_lgl
+#'
+#' @export
+autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
+                                 xform = identity) {
+
+  x <- object
+  if(!inherits(x, "bnecfit")){ 
+    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
+  }
+  chk_lgl(nec)
+  chk_lgl(ecx)
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")
+    } 
+
+  ggbnec_data(x, add_nec = nec, add_ecx = ecx,
+              xform = xform, ...) |>
+    mutate(model = x$model) |>
+    ggbnec(nec = nec, ecx = ecx)
+}
+
+#' @rdname autoplot
+#' @order 2
+#'
+#' @param all_models Should all individual models be plotted separately\
+#' (defaults to FALSE) or should model averaged predictions be plotted instead?
+#' @param plot Should output \code{\link[ggplot2]{ggplot}} output be plotted?
+#' Only relevant if \code{all = TRUE} and \code{multi_facet = FALSE}.
+#' @param ask Indicates if the user is prompted before a new page is plotted.
+#' Only relevant if \code{plot = TRUE} and \code{multi_facet = FALSE}.
+#' @param newpage Indicates if the first set of plots should be plotted to a
+#' new page. Only relevant if \code{plot = TRUE} and
+#' \code{multi_facet = FALSE}.
+#' @param multi_facet Should all plots be plotted in one single panel via
+#' facets? Defaults to TRUE.
+#'
+#' @method autoplot bayesmanecfit
+#'
+#' @inherit autoplot description return examples
+#'
+#' @importFrom dplyr mutate
+#' @importFrom purrr map_dfr
+#' @importFrom grDevices devAskNewPage
+#' @importFrom chk chk_lgl
+#'
+#' @export
+autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
+                                   xform = identity,
+                                   all_models = FALSE, plot = TRUE, ask = TRUE,
+                                   newpage = TRUE, multi_facet = TRUE) {
+  
+  x <- object
+  
+  if(!inherits(x, "bnecfit")){ 
+    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
+  }
+  chk_lgl(nec)
+  chk_lgl(ecx)
+  if(!inherits(xform, "function")){ 
+    stop("xform must be a function.")
+  } 
+  chk_lgl(all_models) 
+  chk_lgl(plot) 
+  chk_lgl(ask) 
+  chk_lgl(newpage) 
+  chk_lgl(multi_facet) 
+  
+  if (all_models) {
+    all_fits <- lapply(x$success_models, pull_out, manec = x) |>
+      suppressMessages() |>
+      suppressWarnings()
+    if (multi_facet) {
+      names(all_fits) <- x$success_models
+      map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
+              xform = xform, ..., .id = "model") |>
+        ggbnec(nec = nec, ecx = ecx)
+    } else {
+      if (plot) {
+        default_ask <- devAskNewPage()
+        on.exit(devAskNewPage(default_ask))
+        devAskNewPage(ask = FALSE)
+      }
+      plots <- vector(mode = "list", length = length(all_fits))
+      for (i in seq_along(all_fits)) {
+        plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
+                                   xform = xform, ...) |>
+          mutate(model = x$success_models[i]) |>
+          ggbnec(nec = nec, ecx = ecx)
+        plot(plots[[i]], newpage = newpage || i > 1)
+        if (i == 1) {
+          devAskNewPage(ask = ask)
+        }
+      }
+      invisible(plots)
+    }
+  } else {
+    ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform, ...) |>
+      mutate(model = "Model averaged predictions") |>
+      ggbnec(nec = nec, ecx = ecx)
+  }
+}
+
 #' @param brms_fit A \code{\link[brms]{brmsfit}} object.
 #' @param bayesnecformula A \code{\link{bayesnecformula}} formula object.
 #'
@@ -269,150 +418,4 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
           panel.border = element_rect(colour = NA, fill = NA)) +
     labs(x = "Predictor",
          y = "Response")
-}
-
-#' autoplot.bayesnecfit
-#'
-#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
-#' plotting method.
-#'
-#' @param object An object of class \code{\link{bayesnecfit}} as returned by
-#' function \code{\link{bnec}}.
-#' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
-#' @param nec Should NEC values be added to the plot? Defaults to TRUE.
-#' @param ecx Should ECx values be added to the plot? Defaults to FALSE..
-#' @param xform A function to apply to the returned estimated concentration
-#' values.
-#'
-#' @return A \code{\link[ggplot2]{ggplot}} object.
-#'
-#' @importFrom dplyr mutate
-#' @importFrom chk chk_lgl
-#' @family autoplot methods
-#'
-#' @examples
-#' \dontrun{
-#' library(brms)
-#' nec4param <- pull_out(manec_example, "nec4param")
-#' autoplot(nec4param)
-#' autoplot(nec4param, nec = FALSE)
-#' autoplot(nec4param, ecx = TRUE, ecx_val = 50)
-#'
-#' # plot model averaged predictions
-#' autoplot(manec_example)
-#' # plot all panels together
-#' autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE)
-#' }
-#' \dontrun{
-#' # plots multiple models, one at a time, with interactive prompt
-#' autoplot(manec_example, ecx = TRUE, ecx_val = 50, all_models = TRUE,
-#'          multi_facet = FALSE)
-#' }
-#' @export
-autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                 xform = identity) {
-
-  x <- object
-  if(!inherits(x, "bnecfit")){ 
-    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
-  }
-  chk_lgl(nec)
-  chk_lgl(ecx)
-  if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")
-    } 
-
-  ggbnec_data(x, add_nec = nec, add_ecx = ecx,
-              xform = xform, ...) |>
-    mutate(model = x$model) |>
-    ggbnec(nec = nec, ecx = ecx)
-}
-
-#' autoplot.bayesmanecfit
-#'
-#' \code{\link[bayesnec:bayesnec-package]{bayesnec}} standard \pkg{ggplot2}
-#' plotting method.
-#'
-#' @inheritParams autoplot.bayesnecfit
-#'
-#' @param object An object of class \code{\link{bayesmanecfit}} as returned by
-#' function \code{\link{bnec}}.
-#' @param ... Additional arguments to be passed to \code{\link{ggbnec_data}}.
-#' @param all_models Should all individual models be plotted separately\
-#' (defaults to FALSE) or should model averaged predictions be plotted instead?
-#' @param plot Should output \code{\link[ggplot2]{ggplot}} output be plotted?
-#' Only relevant if \code{all = TRUE} and \code{multi_facet = FALSE}.
-#' @param ask Indicates if the user is prompted before a new page is plotted.
-#' Only relevant if \code{plot = TRUE} and \code{multi_facet = FALSE}.
-#' @param newpage Indicates if the first set of plots should be plotted to a
-#' new page. Only relevant if \code{plot = TRUE} and
-#' \code{multi_facet = FALSE}.
-#' @param multi_facet Should all plots be plotted in one single panel via
-#' facets? Defaults to TRUE.
-#'
-#' @return A \code{\link[ggplot2]{ggplot}} object.
-#'
-#' @inherit autoplot.bayesnecfit examples
-#' @family autoplot methods
-#'
-#' @importFrom dplyr mutate
-#' @importFrom purrr map_dfr
-#' @importFrom grDevices devAskNewPage
-#' @importFrom chk chk_lgl
-#' 
-#' @export
-autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
-                                   xform = identity,
-                                   all_models = FALSE, plot = TRUE, ask = TRUE,
-                                   newpage = TRUE, multi_facet = TRUE) {
-  
-  x <- object
-  
-  if(!inherits(x, "bnecfit")){ 
-    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
-  }
-  chk_lgl(nec)
-  chk_lgl(ecx)
-  if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")
-  } 
-  chk_lgl(all_models) 
-  chk_lgl(plot) 
-  chk_lgl(ask) 
-  chk_lgl(newpage) 
-  chk_lgl(multi_facet) 
-  
-  if (all_models) {
-    all_fits <- lapply(x$success_models, pull_out, manec = x) |>
-      suppressMessages() |>
-      suppressWarnings()
-    if (multi_facet) {
-      names(all_fits) <- x$success_models
-      map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
-              xform = xform, ..., .id = "model") |>
-        ggbnec(nec = nec, ecx = ecx)
-    } else {
-      if (plot) {
-        default_ask <- devAskNewPage()
-        on.exit(devAskNewPage(default_ask))
-        devAskNewPage(ask = FALSE)
-      }
-      plots <- vector(mode = "list", length = length(all_fits))
-      for (i in seq_along(all_fits)) {
-        plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
-                                   xform = xform, ...) |>
-          mutate(model = x$success_models[i]) |>
-          ggbnec(nec = nec, ecx = ecx)
-        plot(plots[[i]], newpage = newpage || i > 1)
-        if (i == 1) {
-          devAskNewPage(ask = ask)
-        }
-      }
-      invisible(plots)
-    }
-  } else {
-    ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform, ...) |>
-      mutate(model = "Model averaged predictions") |>
-      ggbnec(nec = nec, ecx = ecx)
-  }
 }

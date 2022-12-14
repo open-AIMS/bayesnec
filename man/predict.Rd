@@ -2,7 +2,6 @@
 % Please edit documentation in R/predict.R
 \name{predict}
 \alias{predict}
-\alias{predict.bnecfit}
 \alias{predict.bayesnecfit}
 \alias{predict.bayesmanecfit}
 \title{Generates mean posterior predictions for objects fitted by
@@ -55,5 +54,4 @@ preds <- predict(nec4param, make_newdata = FALSE)
 x <- pull_brmsfit(nec4param)$data$x
 plot(x, preds[, 1])
 }
-
 }

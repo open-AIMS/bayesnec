@@ -2,7 +2,6 @@
 % Please edit documentation in R/plot.R
 \name{plot}
 \alias{plot}
-\alias{plot.bnecfit}
 \alias{plot.bayesnecfit}
 \alias{plot.bayesmanecfit}
 \title{Generates a plot for objects fitted by \code{\link{bnec}}}
@@ -105,5 +104,4 @@ plot(manec_example)
 # plot all panels together
 plot(manec_example, add_ec10 = TRUE, all_models = TRUE)
 }
-
 }

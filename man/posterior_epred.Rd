@@ -2,7 +2,6 @@
 % Please edit documentation in R/posterior_epred.R
 \name{posterior_epred}
 \alias{posterior_epred}
-\alias{posterior_epred.bnecfit}
 \alias{posterior_epred.bayesnecfit}
 \alias{posterior_epred.bayesmanecfit}
 \title{Generates posterior linear predictions for objects fitted by
@@ -47,5 +46,4 @@ for (i in seq_len(nrow(preds))[-1]) {
   lines(sort(x), preds[i, order(x)], type = "l", col = alpha("black", 0.1))
 }
 }
-
 }

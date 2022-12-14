@@ -2,7 +2,6 @@
 % Please edit documentation in R/fitted.R
 \name{fitted}
 \alias{fitted}
-\alias{fitted.bnecfit}
 \alias{fitted.bayesnecfit}
 \alias{fitted.bayesmanecfit}
 \title{Generates mean posterior linear predictions for objects fitted by
@@ -57,5 +56,4 @@ fits <- fitted(nec4param, make_newdata = FALSE)
 x <- pull_brmsfit(nec4param)$data$x
 plot(x, fits[, 1])
 }
-
 }

@@ -6,10 +6,7 @@
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @name fitted
-#' @aliases fitted
 #' @order 1
-#'
-#' @usage NULL
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
@@ -17,10 +14,6 @@
 #' object is of class \code{\link{bayesnecfit}}, or to
 #' \code{\link[brms]{posterior_epred.brmsfit}} if object is of class
 #' \code{\link{bayesmanecfit}}.
-#'
-#' @method fitted bnecfit
-#'
-#' @importFrom stats fitted
 #'
 #' @return See \code{?brms:fitted.brmsfit}.
 #'
@@ -40,12 +33,7 @@
 #' x <- pull_brmsfit(nec4param)$data$x
 #' plot(x, fits[, 1])
 #' }
-#'
-#' @export
-#' @export fitted
-fitted.bnecfit <- function(object, ...) {
-  UseMethod("fitted")
-}
+NULL
 
 #' @rdname fitted
 #' @order 2

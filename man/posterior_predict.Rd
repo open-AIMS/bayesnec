@@ -2,7 +2,6 @@
 % Please edit documentation in R/posterior_predict.R
 \name{posterior_predict}
 \alias{posterior_predict}
-\alias{posterior_predict.bnecfit}
 \alias{posterior_predict.bayesnecfit}
 \alias{posterior_predict.bayesmanecfit}
 \title{Generates posterior predictions for objects fitted by \code{\link{bnec}}}
@@ -46,5 +45,4 @@ for (i in seq_len(nrow(preds))[-1]) {
   lines(sort(x), preds[i, order(x)], type = "l", col = alpha("black", 0.1))
 }
 }
-
 }

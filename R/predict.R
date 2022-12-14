@@ -6,10 +6,7 @@
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @name predict
-#' @aliases predict
 #' @order 1
-#'
-#' @usage NULL
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
@@ -18,10 +15,6 @@
 #' \code{\link[brms]{posterior_predict.brmsfit}} if object is of class
 #' \code{\link{bayesmanecfit}}.
 #'
-#' @method predict bnecfit
-#' 
-#' @importFrom stats predict
-#' 
 #' @return See \code{?brms::predict.brmsfit}.
 #'
 #' @examples
@@ -38,12 +31,7 @@
 #' x <- pull_brmsfit(nec4param)$data$x
 #' plot(x, preds[, 1])
 #' }
-#'
-#' @export
-#' @export predict
-predict.bnecfit <- function(object, ...) {
-  UseMethod("predict")
-}
+NULL
 
 #' @rdname predict
 #' @order 2
