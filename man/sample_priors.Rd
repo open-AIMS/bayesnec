@@ -22,6 +22,13 @@ A \code{\link[base]{list}} containing the initialisation values.
 \description{
 Creates list or generates a plot of prior samples
 }
+\examples{
+library(bayesnec)
+data(manec_example)
+exmp <- pull_brmsfit(manec_example, model = "nec4param")
+sample_priors(exmp$prior)
+
+}
 \seealso{
 \code{\link{bnec}}
 }

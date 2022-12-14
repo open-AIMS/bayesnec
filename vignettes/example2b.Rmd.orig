@@ -10,6 +10,7 @@ bibliography: bayesnec.bib
 ---
 
 ```{r setup, include = FALSE}
+set.seed(333)
 stopifnot(require(knitr))
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -21,7 +22,8 @@ knitr::opts_chunk$set(
   out.width = "60%",
   fig.align = "center",
   dpi = 120,
-  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+  eval = identical(Sys.getenv("NOT_CRAN"), "true"),
+  cache = T
 )
 ```
 

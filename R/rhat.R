@@ -52,7 +52,7 @@ rhat.bayesnecfit <- function(object, rhat_cutoff = 1.05, ...) {
 #' @rdname rhat
 #' @order 3
 #'
-#' @method rhat bayesnecfit
+#' @method rhat bayesmanecfit
 #'
 #' @inherit rhat description return examples
 #'

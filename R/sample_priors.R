@@ -14,15 +14,23 @@
 #' @importFrom ggplot2 ggplot aes geom_histogram facet_wrap
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect starts_with
+#' @importFrom dplyr filter
 #' @importFrom rlang .data
 #'
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
+#' @examples
+#' library(bayesnec)
+#' data(manec_example)
+#' exmp <- pull_brmsfit(manec_example, model = "nec4param")
+#' sample_priors(exmp$prior)
+#'
 #' @export
 sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   fcts <- c(gamma = rgamma, normal = rnorm, beta = rbeta, uniform = runif)
-  priors <- as.data.frame(priors)
+  priors <- as.data.frame(priors) |>
+    filter(class=="b")
   priors <- priors[priors$prior != "", ]
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
@@ -37,7 +45,7 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
     v1 <- as.numeric(bits[2])
     v2 <- as.numeric(bits[3])
     out[[j]] <- fcts[[fct_i]](n_samples, v1, v2)
-    if (any(!is.na(priors[j, c("lb", "ub")]))) {
+    if (any(!is.na(as.numeric(priors[j, c("lb", "ub")])))) {
       n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
       if (n_bounds == 2) {
         bounds <- as.numeric(priors[j, c("lb", "ub")])

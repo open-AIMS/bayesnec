@@ -10,6 +10,7 @@ bibliography: bayesnec.bib
 ---
 
 ```{r setup, include = FALSE}
+set.seed(333)
 stopifnot(require(knitr))
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -21,7 +22,8 @@ knitr::opts_chunk$set(
   out.width = "60%",
   fig.align = "center",
   dpi = 120,
-  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+  eval = identical(Sys.getenv("NOT_CRAN"), "true"),
+  cache = T
 )
 ```
 
@@ -39,7 +41,7 @@ The `bayesnec` is an R package to fit concentration(dose) — response curves to
 
 Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for *NEC* estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting *NEC* models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor) as well as the "response" variable. The package requires a simplified model formula, which together with the data is used to wrangle more complex non-linear model formula(s), as well as to generate priors and initial values required to call a `brms` model. While the distribution of the predictor and response variables can be specified directly, `bayesnec` will automatically attempt to assign the correct distribution to use based on the characteristics of the provided data.
 
-This project started with an implementation of the *NEC* model based on that described in (Pires et al. 2002) and [@Fox2010] using R2jags [@Fisher2020]. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported Gaussian-, Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed response data, `bayesnec` additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of  concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist-based packages such as `drc`[@Ritz2016]. These models do not employ segmented linear regression (i.e., use of a `step` function) but simply models the response as a smooth function of concentration.
+This project started with an implementation of the *NEC* model based on that described in (Pires et al. 2002) and [@Fox2010] using R2jags [@Fisher2020]. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported Gaussian-, Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed response data, `bayesnec` additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of  concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist-based packages such as `drc`[@Ritz2016]. These models do not employ segmented linear regression (i.e., use of a `step` function) but model the response as a smooth function of concentration.
 
 Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively, it is possible to fit a custom model set, a specific model set, or all the available models. Further information on fitting multi-models using `bayesnec` can be found in the [Multi model usage][e2] vignette. For detailed information on the models available in `bayesnec` see the [Model details][e2b] vignette.
 
@@ -129,7 +131,7 @@ The function shows the progress of the `brms` fit and returns the usual `brms` o
 
 Initially `bayesnec` will attempt to use starting values generated for that type of model formula and family. It will run the iterations and then test if all chains are valid. If the model does not have valid chains `bayesnec` will discard that model and an error will be returned indicating the model could not be fit successfully.
 
-We can see the summary of our fitted model parameters using:
+Whenever the `model` argument of `crf` is a single model `bnec` will return an object of class `bayesnecfit`. We can see the summary of our fitted model parameters using:
 
 ```{r}
 summary(exp_1)
@@ -162,6 +164,11 @@ exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
 ```
 
 Fitting this data with the `betabinomial2` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
+
+
+```{r exmp1-bbinom, fig.width = 5, message = FALSE}
+autoplot(exp_1b, xform = exp)
+```
 
 ```{r message = FALSE}
 exp_1b$dispersion
@@ -210,7 +217,6 @@ Where data are a count (of, for example, individuals or cells), the response is 
 
 ```{r}
 data(nec_data)
-set.seed(330)
 count_data <- nec_data %>%
   dplyr::mutate(
     y = (y * 100 + rnorm(nrow(nec_data), 0, 15)) %>%
@@ -243,6 +249,7 @@ We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates 
 When count data are overdispersed and cannot be modelled using the Poisson distribution, the Negative binomial distribution is generally used. We can do this by calling `family = "negbinomial"`.
 
 ```{r, warning = FALSE, results = "hide"}
+set.seed(333)
 exp_3b <- bnec(y ~ crf(x, model = "nec4param"), data = count_data,
                family = "negbinomial")
 ```
@@ -264,6 +271,7 @@ measure_data <- nec_data %>%
 ```
 
 ```{r, warning = FALSE, results = "hide"}
+set.seed(333)
 exp_4 <- bnec(measure ~ crf(x, model = "nec4param"), data = measure_data)
 ```
 

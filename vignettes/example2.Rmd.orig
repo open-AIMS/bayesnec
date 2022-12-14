@@ -10,6 +10,7 @@ bibliography: bayesnec.bib
 ---
 
 ```{r setup, include = FALSE}
+set.seed(333)
 stopifnot(require(knitr))
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -21,7 +22,8 @@ knitr::opts_chunk$set(
   out.width = "60%",
   fig.align = "center",
   dpi = 120,
-  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+  eval = identical(Sys.getenv("NOT_CRAN"), "true"),
+  cache = T
 )
 ```
 
@@ -37,7 +39,7 @@ The background of `bayesnec` is covered in the [Single model usage][e1] vignette
 
 It is also possible to obtain all individual model fits from the fitted `bayesnecfit` model object if required using the `pull_out` function, and also to update an existing model fit with additional models, or to drop models using the function `amend`.
 
-Multi-model inference can be useful where there are a range of plausible models that could be used [@Burnham2002] and has been recently adopted in ecotoxicology for Species Sensitivity Distribution (SSD) model inference [@Thorley2018]. The approach may have considerable value in concentration-response modelling because there is often no *a priori* knowledge of the functional form that the response relationship should take. In this case model averaging can be a useful way of allowing the data to drive the model selection processing, with weights proportional to how well the individual models fits the data. Well-fitting models will have high weights, dominating the model averaged outcome. Conversely, poorly fitting models will have very low model weights and will therefore have little influence on the outcome. Where multiple models fit the data equally well, these can equally influence the outcome, and the resultant posterior predictions reflect that model uncertainty. It is possible to specify the `"stacking"` method [@Yao2018] for model weights if desired (through the argument `loo_controls`) which aims to minimise prediction error. We do not currently recommend using stacking weights given the typical sample sizes associated with most concentration—response experiments, and because the main motivation for model averaging within the `bayesnec` package is to properly capture model uncertainty rather than reduce prediction error.
+Multi-model inference can be useful where there are a range of plausible models that could be used [@Burnham2002] and has been recently adopted in ecotoxicology for Species Sensitivity Distribution (SSD) model inference [@Thorley2018]. The approach may have considerable value in concentration-response modelling because there is often no *a priori* knowledge of the functional form that the response relationship should take. In this case model averaging can be a useful way of allowing the data to drive the model selection process, with weights proportional to how well the individual models fits the data. Well-fitting models will have high weights, dominating the model averaged outcome. Conversely, poorly fitting models will have very low model weights and will therefore have little influence on the outcome. Where multiple models fit the data equally well, these can equally influence the outcome, and the resultant posterior predictions reflect that model uncertainty. It is possible to specify the `"stacking"` method [@Yao2018] for model weights if desired (through the argument `loo_controls`) which aims to minimise prediction error. We do not currently recommend using stacking weights given the typical sample sizes associated with most concentration—response experiments, and because the main motivation for model averaging within the `bayesnec` package is to properly capture model uncertainty rather than reduce prediction error.
 
 # Examples
 
@@ -67,24 +69,24 @@ make_ecx_data <- function(top, bot, ec50, beta, x) {
 }
 x <- seq(0, 10, length = 12)
 y <- make_ecx_data(x = x, bot = 0, top = 1, beta = 0.5, ec50 = 5)
-set.seed(10)
+set.seed(333)
 df_ <- data.frame(x = rep(x, 15), y = rnorm(15 * length(x), y, 0.2))
 exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3)
 ```
 
-Here we run `bnec` using `model =  "decline"` using a simulated data example for a Beta-distributed response variable. We are using the `"decline"` set here because we are not going to consider hormesis (these allow an initial increase in the response), largely to save time in fitting this example. Moreover, you might want to consider saving the output as an `.RData` file---doing do can be a useful way of fitting large model sets (ie `model = "all"`, or `model = "decline"`) at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
+Here we run `bnec` using `model =  "decline"` using a simulated data example for a Beta-distributed response variable. We are using the `"decline"` set here because we are not going to consider hormesis (these allow an initial increase in the response), largely to save time in fitting this example. Moreover, you might want to consider saving the output as an `.RData` file---doing so can be a useful way of fitting large model sets (ie `model = "all"`, or `model = "decline"`) at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
 
 Whenever the `model` argument of `crf` is a model set, or a concatenation of specific models, `bnec` will return an object of class `bayesmanecfit`.
 
 ### Exploring a `bayesmanecfit` model
 
-We have created some plotting method functions for our `bayesnec` model types, so we can plot a `bayesmanecfit` model object simply with `autoplot`.
+We have created some plotting method functions for both the `bayesnecfit` and `bayesmanecfit` model fits, so we can plot a `bayesmanecfit` model object simply with `autoplot`.
 
 ```{r exmp2-decline, fig.width = 5}
 autoplot(exp_5)
 ```
 
-The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the **ecx**-containing models in the set. Note that we do not currently recommend reporting these values as the *NEC* (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to `"pseudobma"` using Bayesian bootstrap from `loo`), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).
+The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set that were able to fit successfully using the default `bnec` settings. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the **ecx**-containing models in the set. Note that we do not currently recommend reporting these values as the *NEC* (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to `"pseudobma"` using Bayesian bootstrap from `loo`), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).
 
 ```{r}
 exp_5$mod_stats
@@ -98,7 +100,7 @@ All these model fits are satisfactory despite the relatively low number of itera
 summary(exp_5)
 ```
 
-The `bayesmanecfit` object also contains all of the original fits, which can be extracted using the `pull_out` function. For example, we can pull out the model **ecx4param**.
+The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
 
 ```{r exmp2-ecx4param, fig.width = 5}
 exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
@@ -111,9 +113,9 @@ This would extract the **nec4param** model from the `bayesmanecfit` and create a
 autoplot(exp_5, all_models = TRUE)
 ```
 
-You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the **ecxlin** and **neclin** models in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions as much. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.
+You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the **ecxlin** and **neclin** models in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.
  
-We can assess the chains for one of the higher weighted models to make sure this is good. It is probably good practice to do this for all models with a high weight.
+We can assess the chains for one of the higher weighted models to make sure they show good convergence. It is good practice to do this for all models with a high weight, as these are the models most influencing the multi-model inference.
 
 ```{r exmp2-goodmod, fig.width = 7, fig.asp = 1.2}
 plot(exp_5$mod_fits$ecxwb1$fit)

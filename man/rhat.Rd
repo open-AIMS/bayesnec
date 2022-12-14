@@ -8,7 +8,7 @@
 \usage{
 \method{rhat}{bayesnecfit}(object, rhat_cutoff = 1.05, ...)
 
-\method{rhat}{bayesnecfit}(object, rhat_cutoff = 1.05, ...)
+\method{rhat}{bayesmanecfit}(object, rhat_cutoff = 1.05, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
