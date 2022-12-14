@@ -293,7 +293,7 @@ For the Binomial, Beta, and Beta-binomial families, estimates for $\tau = \text{
 
 ### Priors for predictor-scaled parameters
 
-The parameters $\eta = \text{NEC}$ and $\eta = \text{ec50}$ scale according to the predictor variable because both of these are estimated in units of the predictor (usually concentration). To stabilise model fitting, the $\eta = \text{NEC}$ and $\eta = \text{ec50}$ parameters are bounded to the upper and lower observed range in the predictor, under the assumption that the range of concentrations in the experiment were sufficient to cover the full range of the response outcomes. Note that this assumption may not always hold if the data are from an experiment that is badly designed, and the outcome of any analysis resulting in either $\eta$ or $\eta$ being estimated at the bounds of the predictor data range should be interpreted with caution. The priors used reflect the characteristics of the observed data that are used to predict the appropriate family. If the predictor variable is strictly positive, a Gamma prior is used, with maximum density ($\mu$, see above) at the median value of the predictor, and a shape parameter of 5. If the predictor variable is truncated at both 0 and 1, a `beta(2, 2)` prior is used. For predictor variables ranging from -$\infty$ to $\infty$, a Gaussian prior is used, with a mean set at the median of the predictor values and a standard deviation of 2.5 time the standard deviation of the predictor variable.
+The parameters $\eta = \text{NEC}$ and $\eta = \text{ec50}$ scale according to the predictor variable because both of these are estimated in units of the predictor (usually concentration). To stabilise model fitting, the $\eta = \text{NEC}$ and $\eta = \text{ec50}$ parameters are bounded to the upper and lower observed range in the predictor, under the assumption that the range of concentrations in the experiment were sufficient to cover the full range of the response outcomes. Note that this assumption may not always hold if the data are from an experiment that is badly designed, and the outcome of any analysis resulting in either $\eta$ or $\eta$ being estimated at the bounds of the predictor data range should be interpreted with caution. The priors used reflect the characteristics of the observed data that are used to predict the appropriate family. If the predictor variable is strictly positive, a Gamma prior is used, with maximum density ($\mu$, see above) at the median value of the predictor, and a shape parameter of 5. If the predictor variable is truncated at both 0 and 1, a `beta(2, 2)` prior is used. For predictor variables ranging from -$\infty$ to $\infty$, a Gaussian prior is used, with a mean set at the median of the predictor values and a standard deviation of 10 time the standard deviation of the predictor variable.
 
 ### Priors for other parameters
 
@@ -357,7 +357,7 @@ If a recognized model name is provided, a single model of the specified type is 
 
 Models fitted by `bnec` will invariably inherit a class `bnecfit` which carries three exclusive methods: `+`, `c` and `update`. The first two are used to append one or multiple models to an existing fit, whereas the latter is used to update the fitting characteristics of an existing model (e.g. change the number of iterations or warm-up period, or simply change the HMC fitting parameters). When `bnec` fits a single C-R model type, the output object also inherits the `bayesnecfit` class. This class contains the `brmsfit` object in addition to the mean predicted values, summary estimates of each model parameter, and a full posterior distribution of the *NSEC* estimate. Alternatively, if `bnec` fits a custom set of models, or a package-pre-defined model-set (e.g. `model = "all"` in the input formula), the output object is going to inherit the `bayesmanecfit` class. Differently from a `bayesnecfit` object, `bayesmanecfit` comprises a model weighted estimate of predicted posterior values of *NSEC*.
 
-Both `bayesnecfit` and `bayesmanecfit` classes contain methods for `summary`, `print`, `predict`, `model.frame`, plotting (`plot` and `autoplot`), as well as custom functions for extracting effect concentrations and related threshold values (`nec`, `ecx` and `nsec`) that, in the case of a `bayesmanecfit`, return model weighted estimates.
+Both `bayesnecfit` and `bayesmanecfit` classes contain methods for `summary`, `print`, `predict`, `model.frame`, `fitted`, `posterior_predict`, `posterior_edpred` and plotting (`plot` and `autoplot`). Wherever possible, these methods have been implemented such they are consistent with other model fitting packages in R, and in particular \pkg{brms}. We have also implemented a range of custom functions for extracting effect concentrations and related threshold values (`nec`, `ecx` and `nsec`) that, in the case of a `bayesmanecfit`, return model weighted estimates.
 
 The `summary` method provides the usual summary of model parameters and any relevant model fit statistics as returned in the underlying `brm` model fit(s). In the specific case of a `bayesmanecfit` object, the summary includes a list of fitted models, their respective model weights, and a model-averaged *NEC*---which is reported with a warning when it contains *NSEC* values (see below Section \ref{modsuit}).
 
@@ -396,7 +396,7 @@ To ensure a `bnec` fit retains the same level of objectivity as an equivalent fr
 
 ### User-specified priors
 
-In \pkg{bayesnec} we chose to provide default priors that are data-dependent. They were designed to be somewhat informative (relative to each parameter's region) but that would, in data-sufficient cases, return fits without HMC divergent transitions in Stan. Default "blanket" priors are not currently provided for non-linear models by the model-building underlying package \pkg{brms}, and we note that defining the extent to which a prior is vague or weakly/strongly informative ultimately depends on the likelihood [@gelman2017entropy]. Therefore, there may be situations where the default \pkg{bayesnec} priors do not behave as desired, or the user wants to provide customised priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the predictor variable). Conversely, priors may be too vague, leading to poor model convergence. Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for \pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual \pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brmsfit` object (`sample_priors(fit$fit$prior)`, see \autoref{fig:sampleprior}).
+In \pkg{bayesnec} we chose to provide default priors that are data-dependent. They were designed to be somewhat informative (relative to each parameter's region) but that would, in data-sufficient cases, return fits without HMC divergent transitions in Stan. Default "blanket" priors are not currently provided for non-linear models by the model-building underlying package \pkg{brms}, and we note that defining the extent to which a prior is vague or weakly/strongly informative ultimately depends on the likelihood [@gelman2017entropy]. Therefore, there may be situations where the default \pkg{bayesnec} priors do not behave as desired, or the user wants to provide customised priors. For example, the default priors may be too informative, yielding unreasonably tight confidence bands (although this is only likely where there are few data or unique values of the predictor variable). Conversely, priors may be too vague, leading to poor model convergence. Alternatively, the default priors may be of the wrong statistical family if there was insufficient information in the provided data for \pkg{bayesnec} to correctly predict the appropriate ones to use. The priors used in the default model fit can be extracted using `pull_prior`, and a sample or plot of prior values can be obtained from the individual \pkg{brms} model fits through the function `sample_priors` which samples directly from the `prior` element in the `brmsfit` object (`sample_priors(pull_brmsfit(fit)$prior)`, see \autoref{fig:sampleprior}).
 
 ```{r sampleprior, echo=FALSE, fig.height = 3.5, fig.width = 4.5, fig.cap = "Frequency histograms of samples of the default priors used by bnec for fitting the \\texttt{nec4param} model to the example data."}
 sample_priors(pull_brmsfit(fit)$prior)
@@ -436,6 +436,7 @@ library(MASS)
 library(corpcor)
 library(dplyr)
 library(ggdist)
+set.seed(333)
 options(mc.cores = parallel::detectCores())
 
 rounded <- function(value, precision = 1) {
@@ -633,7 +634,7 @@ summary(manecfit_ametryn)
 
 For a `bayesmanecfit` object with multiple model fits, `summary` first displays the class, the family and links that have been used for the model fits, the number of posterior draws contained within each model fit, and a table of the model weights for each model. For the amatryn data set, weights are spread among several **ecx** models, with a small amount of weight for the two **nec** models (*nec3param* and *nec4parm*).
 
-Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC values in the case of the fitted *ECx* models. In units of log concentration, the estimated no-effect toxicity value for ametryn is `r manecfit_ametryn$w_nec["Estimate"]`, which is equivalent to `r signif(exp(manecfit_ametryn$w_nec), 3)["Estimate"]` ${\mu}gL^{-1}$. The 95% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighed pooled posterior sample.
+Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC values in the case of the fitted *ECx* models. In units of log concentration, the estimated no-effect toxicity value for ametryn is `r signif(manecfit_ametryn$w_nec["Estimate"], 3)`, which is equivalent to `r signif(exp(manecfit_ametryn$w_nec), 3)["Estimate"]` ${\mu}gL^{-1}$. The 95% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighed pooled posterior sample.
 
 Finally, Bayesian $R^2$ estimates are also provided [@gelman2019], as an indicator of overall model fit. This is useful because model weights are always relative to the models actually included in the model set for the given data. The $R^2$ provides an indicator of model fit that can be compared objectively across data sets as an indication of the quality of the fit of any of the supplied models to the data.
 
@@ -650,17 +651,19 @@ ametryn_plot <- autoplot(manecfit_ametryn)
 ```
 
 ```{r fullbayesmanecplotametrynALLplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Individual model fits to the ametryn dataset, showing the estimated no effect concentration for each. Data are the maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated ametryn (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\texttt{NEC} models, and the NSEC values estimated from all smooth \\texttt{ECx} models."}
-ametryn_plot_all <- autoplot(manecfit_ametryn, all_models = TRUE)
+ametryn_plot_all <- autoplot(manecfit_ametryn, all_models = TRUE, xform = exp)
 ametryn_plot_all +
   ylab(expression(""*Delta*"F"/"F m'")) +
-  xlab(expression("Concentration "~"("*mu*"g/L)"))
+  xlab(expression("Concentration "~"("*mu*"g/L)")) +
+  scale_x_continuous(trans = "log", labels = round_digits)
 ```
 
 ```{r fullbayesmanecplotametrynplot, echo = FALSE, fig.width = 6, fig.height = 3, fig.cap = "Full model averaged bayesmanecfit to the ametryn dataset, showing the estimated model-averaged no effect concentration. Data are the maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated ametryn (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\texttt{NEC} models, and the NSEC values estimated from all smooth \\texttt{ECx} models. Only the \\texttt{decline} model set was used (ie. hormesis models were excluded)."}
-ametryn_plot <- autoplot(manecfit_ametryn)
+ametryn_plot <- autoplot(manecfit_ametryn, xform = exp)
 ametryn_plot +
   ylab(expression(""*Delta*"F"/"F m'")) +
-  xlab(expression("Concentration "~"("*mu*"g/L)"))
+  xlab(expression("Concentration "~"("*mu*"g/L)")) +
+  scale_x_continuous(trans = "log", labels = round_digits)
 ```
 
 
@@ -736,7 +739,8 @@ We use the \pkg{bayesnec} `autoplot` , together with \pkg{ggpubr} to make a pane
 
 ```{r fullbayesmanecpreplot, echo = TRUE, results = "hide", cache = FALSE}
 all_plots <- lapply(cleaned_fits, function(x) {
-  autoplot(x) +
+  autoplot(x, xform = exp) +
+  scale_x_continuous(trans = "log", labels = round_digits) +
   theme(axis.title.x = element_blank(),
          axis.title.y = element_blank(),
          strip.background = element_blank(),
