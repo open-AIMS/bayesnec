@@ -1,15 +1,49 @@
-#' summary.bayesnecfit
+#' Generates a summary for objects fitted by \code{\link{bnec}}
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} as returned
-#' by \code{\link{bnec}}.
+#' Generates a summary for objects fitted by \code{\link{bnec}}.
+#' \code{object} should be of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#'
+#' @name summary
+#' @aliases summary
+#' @order 1
+#'
+#' @usage NULL
+#'
+#' @param object An object of class \code{\link{bayesnecfit}} or
+#' \code{\link{bayesmanecfit}}.
+#' @param ... Unused.
+#'
+#' @method summary bnecfit
+#'
+#' @return A summary of the fitted model as returned for a
+#' \code{\link[brms]{brmsfit}} object.
+#'
+#' @examples
+#' \donttest{
+#' library(bayesnec)
+#' summary(manec_example)
+#' nec4param <- pull_out(manec_example, "nec4param")
+#' summary(nec4param)
+#' }
+#'
+#' @export
+#' @export summary
+summary.bnecfit <- function(object, ...) {
+  UseMethod("summary")
+}
+
+#' @rdname summary
+#' @order 2
+#'
 #' @param ecx Should summary ECx values be calculated? Defaults to FALSE.
 #' @param ecx_vals ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
 #' If no value is specified by the user, returns calculations for EC10, EC50,
 #' and EC90.
-#' @param ... Unused.
 #'
-#' @return A summary of the fitted model as returned for a
-#' \code{\link[brms]{brmsfit}} object.
+#' @method summary bayesnecfit
+#'
+#' @inherit summary description return examples
 #'
 #' @importFrom brms bayes_R2
 #' @importFrom chk chk_numeric chk_lgl
@@ -39,22 +73,22 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
   allot_class(out, "necsummary")
 }
 
-#' summary.bayesmanecfit
+#' @rdname summary
+#' @order 3
 #'
-#' @param object An object of class \code{\link{bayesmanecfit}} as
-#' returned by \code{\link{bnec}}.
 #' @param ecx Should summary ECx values be calculated? Defaults to FALSE.
 #' @param ecx_vals ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
 #' If no value is specified by the user, returns calculations for EC10, EC50,
 #' and EC90.
-#' @param ... Unused.
 #'
-#' @return A \code{\link[base]{list}} containing a summary of the model fit as
-#' returned by a \code{\link[brms]{brmsfit}} object for each model.
+#' @method summary bayesmanecfit
+#'
+#' @inherit summary description return examples
 #'
 #' @importFrom purrr map
 #' @importFrom brms bayes_R2
 #' @importFrom chk chk_lgl chk_numeric
+#'
 #' @export
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   ecx_vals = c(10, 50, 90)) {
