@@ -26,7 +26,7 @@ Creates list or generates a plot of prior samples
 library(bayesnec)
 data(manec_example)
 exmp <- pull_brmsfit(manec_example, model = "nec4param")
-sample_priors(exmp$prior)
+sample_priors(exmp$prior, plot = NA)
 
 }
 \seealso{
