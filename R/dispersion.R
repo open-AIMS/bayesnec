@@ -28,7 +28,7 @@
 #' Highland Statistics Limited.
 #'
 #' @examples
-#' \donotrun{
+#' \dontrun{
 #' library(bayesnec)
 #' data(nec_data)
 #' nec_data$y <- as.integer(round(nec_data$y * 100))
