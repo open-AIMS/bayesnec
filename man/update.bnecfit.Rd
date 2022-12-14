@@ -69,18 +69,18 @@ Update an object of class \code{\link{bnecfit}} as fitted by function
 \code{\link{bnec}}.
 }
 \examples{
-\donttest{
+\dontrun{
 library(bayesnec)
 data(manec_example)
 # due to package size issues, `manec_example` does not contain original
 # stanfit DSO, so need to recompile here
-smaller_manec <- update(manec_example, chains = 1, iter = 50,
+smaller_manec <- update(manec_example, chains = 2, iter = 50,
                         recompile = TRUE)
 # original `manec_example` is fit with a Gaussian
 # change to Beta distribution by adding newdata with original `nec_data$y`
 # function will throw informative message.
 beta_manec <- update(manec_example, newdata = nec_data, recompile = TRUE,
-                     chains = 1, iter = 50,
+                     chains = 2, iter = 50,
                      family = Beta(link = "identity"), force_fit = TRUE)
 }
 
