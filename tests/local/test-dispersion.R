@@ -1,5 +1,4 @@
 library(bayesnec)
-data(nec_data)
 
 test_that("dispersion works because family is binomial", {
   nec_data$y <- as.integer(round(nec_data$y * 100))

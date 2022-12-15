@@ -93,8 +93,16 @@ manec_fits <- list(manec_gausian_identity = manec_gausian_identity,
 
 nec_fits <- lapply(manec_fits, pull_out, model = "nec4param")
 
-mod_1 <- pull_out(manec_example, "nec4param")
-mod_2 <- pull_out(manec_example, "ecx4param")
+mod_1 <- nec_data |>
+  dplyr::mutate(y = qlogis(y)) |>
+  (\(.)bnec(formula = y ~ crf(x, model = "nec4param"),
+            data = ., iter = 200, warmup = 150, chains = 2,
+            stan_model_args = list(save_dso = FALSE)))()
+mod_2 <- nec_data |>
+  dplyr::mutate(y = qlogis(y)) |>
+  (\(.)bnec(formula = y ~ crf(x, model = "ecx4param"),
+            data = ., iter = 200, warmup = 150, chains = 2,
+            stan_model_args = list(save_dso = FALSE)))()
 mod_3 <- nec_data |>
   dplyr::mutate(y = qlogis(y)) |>
   (\(.)bnec(formula = y ~ crf(x, model = "nechorme4"),
@@ -115,10 +123,9 @@ mod_6 <- nec_data |>
             data = ., iter = 200, warmup = 150, chains = 2,
             stan_model_args = list(save_dso = FALSE)))()
 
-data("nec_data")
 other_data <- nec_data
 colnames(other_data) <- c("a", "b")
-nec_data <- nec_data %>% 
+nec_data <- nec_data %>%
   mutate(count = as.integer(round(y * 20)),
          trials = as.integer(20))
 a <- nec_data$x

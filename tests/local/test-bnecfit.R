@@ -1,7 +1,6 @@
 library(bayesnec)
 library(dplyr)
 
-data(manec_example)
 nec_ <- pull_out(manec_example, "nec4param")
 ecx_ <- pull_out(manec_example, "ecx4param")
 
