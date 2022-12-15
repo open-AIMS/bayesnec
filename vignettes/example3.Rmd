@@ -77,22 +77,14 @@ In this case the priors seem reasonably vague, however there will be times when 
 ```r
 pull_prior(exmp_a)
 #> [[1]]
-#>                       prior class      coef group resp dpar nlpar               lb
-#>                normal(0, 5)     b                            beta                 
-#>                normal(0, 5)     b Intercept                  beta                 
-#>  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009
-#>  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009
-#>                  beta(5, 2)     b                             top                0
-#>                  beta(5, 2)     b Intercept                   top                0
-#>           gamma(0.01, 0.01)   phi                                                0
-#>                ub       source
-#>                           user
-#>                   (vectorized)
-#>  3.22051966293556         user
-#>  3.22051966293556 (vectorized)
-#>                 1         user
-#>                 1 (vectorized)
-#>                        default
+#>                       prior class      coef group resp dpar nlpar               lb               ub       source
+#>                normal(0, 5)     b                            beta                                           user
+#>                normal(0, 5)     b Intercept                  beta                                   (vectorized)
+#>  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556         user
+#>  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556 (vectorized)
+#>                  beta(5, 2)     b                             top                0                1         user
+#>                  beta(5, 2)     b Intercept                   top                0                1 (vectorized)
+#>           gamma(0.01, 0.01)   phi                                                0                       default
 ```
 
 `bnec` chose a `gamma` prior on the *NEC* parameter of **nec3param** because the predictor `nec_data$x` is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.

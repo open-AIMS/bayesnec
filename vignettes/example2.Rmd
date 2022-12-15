@@ -76,22 +76,14 @@ The default plot looks exactly the same as our regular `bayesnecfit` plot, but t
 
 ```r
 exp_5$mod_stats
-#>               model      waic           wi dispersion_Estimate dispersion_Q2.5
-#> nec4param nec4param -84.92507 3.741179e-01                  NA              NA
-#> neclin       neclin -52.66663 3.648402e-04                  NA              NA
-#> ecxlin       ecxlin -27.79390 4.941572e-07                  NA              NA
-#> ecxwb1       ecxwb1 -75.01551 2.041221e-02                  NA              NA
-#> ecxwb2       ecxwb2 -84.78641 2.888583e-01                  NA              NA
-#> ecxll5       ecxll5 -83.92689 1.715541e-01                  NA              NA
-#> ecxll4       ecxll4 -81.84448 1.446921e-01                  NA              NA
-#>           dispersion_Q97.5
-#> nec4param               NA
-#> neclin                  NA
-#> ecxlin                  NA
-#> ecxwb1                  NA
-#> ecxwb2                  NA
-#> ecxll5                  NA
-#> ecxll4                  NA
+#>               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
+#> nec4param nec4param -84.28966 3.345886e-01                  NA              NA               NA
+#> neclin       neclin -52.73199 4.283370e-04                  NA              NA               NA
+#> ecxlin       ecxlin -28.00996 6.680369e-07                  NA              NA               NA
+#> ecxwb1       ecxwb1 -74.98723 2.069028e-02                  NA              NA               NA
+#> ecxwb2       ecxwb2 -85.08951 3.623052e-01                  NA              NA               NA
+#> ecxll5       ecxll5 -83.23897 1.398459e-01                  NA              NA               NA
+#> ecxll4       ecxll4 -81.74055 1.421409e-01                  NA              NA               NA
 ```
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged *NEC* is reported, however a warning is provided indicating it contains *NSEC* values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default `brms` Rhat criteria. For this example all the **ecx**-containing models have high weights, which we would expect given that type of model was used to generate the underlying example.
@@ -110,19 +102,19 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -84.93 0.37
-#> neclin    -52.67 0.00
-#> ecxlin    -27.79 0.00
-#> ecxwb1    -75.02 0.02
-#> ecxwb2    -84.79 0.29
-#> ecxll5    -83.93 0.17
-#> ecxll4    -81.84 0.14
+#> nec4param -84.29 0.33
+#> neclin    -52.73 0.00
+#> ecxlin    -28.01 0.00
+#> ecxwb1    -74.99 0.02
+#> ecxwb2    -85.09 0.36
+#> ecxll5    -83.24 0.14
+#> ecxll4    -81.74 0.14
 #> 
 #> 
 #> Summary of weighted NEC posterior estimates:
 #> NB: Model set contains the ECX models: ecxlin;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
 #>     Estimate Q2.5 Q97.5
-#> NEC     3.38 2.09  3.95
+#> NEC     3.35 2.08  4.00
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -133,7 +125,7 @@ summary(exp_5)
 #> ecxwb1        0.85      0.01 0.83  0.86
 #> ecxwb2        0.86      0.01 0.84  0.87
 #> ecxll5        0.86      0.01 0.84  0.87
-#> ecxll4        0.85      0.01 0.84  0.87
+#> ecxll4        0.85      0.01 0.83  0.87
 ```
 
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
@@ -187,21 +179,24 @@ check_priors(pull_out(exp_5, "nec4param"))
 check_priors(exp_5, filename = "example_5_all_priors")
 ```
 
-Where  a large number of models are failing to converge, obviously it would be better to adjust `iter` and `warmup` in the `bnec` call, as well as some of the other arguments to `brms` such as `adapt_delta`. See the `?brm` documentation for more details. In the example above, only a single model had poor convergence according to Rhat criterion. It is possible to exclude such models from the model set using `amend` and the `bayesmanecfit` Rhat method, via:
+Where  a large number of models are failing to converge, obviously it would be better to adjust `iter` and `warmup` in the `bnec` call, as well as some of the other arguments to `brms` such as `adapt_delta`. See the `?brm` documentation for more details. It is possible to investigate if models from a  `bayesmanecfit` class achieved convergence according to Rhat:
 
 
 ```r
-exp_5_new <- amend(exp_5, drop = rhat(exp_5)$failed)
-#> Error in `amend.bayesmanecfit()` at ]8;line = 31:col = 2;file://C:\Users\rfisher\OneDrive - Australian Institute of Marine Science\RunR\bayesnec\R\amend.Rbayesnec/R/amend.R:31:2]8;;:
-#> ! `drop` must be character.
+rhat(exp_5) |>
+  sapply("[[", "failed")
+#> nec4param    neclin    ecxlin    ecxwb1    ecxwb2    ecxll5    ecxll4 
+#>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE
 ```
 
 Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case one model fails, although we note that this is a very stringent criterion, and we have also used less than the default `bayesnec` value of `iter` (10,000).
 
 
 ```r
-rhat(exp_5, rhat_cutoff = 1.01)$failed
-#> NULL
+rhat(exp_5, rhat_cutoff = 1.01) |>
+  sapply("[[", "failed")
+#> nec4param    neclin    ecxlin    ecxwb1    ecxwb2    ecxll5    ecxll4 
+#>      TRUE     FALSE     FALSE      TRUE     FALSE      TRUE     FALSE
 ```
 
 ### Extracting endpoint values
@@ -227,7 +222,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.661753 2.669852 4.157703 
+#> 3.641915 2.699609 4.187460 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -236,7 +231,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.090090 4.832196 5.357903 
+#> 5.100009 4.832196 5.367822 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -252,7 +247,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_nec
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.548790 3.161283 4.022962
+#> 3.558387 3.158986 4.053701
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].
