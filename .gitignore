@@ -12,6 +12,7 @@ TODO.md
 docs/
 ignore/
 pdfs/
+cache/
 
 tests/*.rds
 tests/*.rda
