@@ -295,14 +295,14 @@ vignette for more details).</p>
 <span>              data <span class="op">=</span> <span class="va">binom_data</span><span class="op">)</span></span></code></pre></div>
 <p>The function shows the progress of the <code>brms</code> fit and
 returns the usual <code>brms</code> output (with a few other elements
-added to this list). The function <code>plot(exp_1$fit)</code> can be
-used to plot the chains, so we can assess mixing and look for other
-potential issues with the model fit. We can also run a pairs plot that
-can help to assess issues with identifiability, and which also looks OK.
-There are a range of other model diagnostics that can be explored for
-<code>brms</code> model fits, using the <code>object$fit</code> syntax.
-We encourage you to explore the rich material already on GitHub
-regarding use and validation of <a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a> models.</p>
+added to this list). The function <code>plot(pull_brmsfit(exp_1))</code>
+can be used to plot the chains, so we can assess mixing and look for
+other potential issues with the model fit. We can also run a pairs plot
+that can help to assess issues with identifiability, and which also
+looks OK. There are a range of other model diagnostics that can be
+explored for <code>brms</code> model fits, using the function
+<code>pull_brmsfit</code>. We encourage you to explore the rich material
+already on GitHub regarding use and validation of <a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a> models.</p>
 <p>Initially <code>bayesnec</code> will attempt to use starting values
 generated for that type of model formula and family. It will run the
 iterations and then test if all chains are valid. If the model does not
