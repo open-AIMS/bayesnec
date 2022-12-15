@@ -1,0 +1,42 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+name: test-coverage
+
+jobs:
+  test-coverage:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::covr
+          needs: coverage
+
+      - name: Test coverage
+        run: |
+          test1 <- covr::package_coverage()
+          system("mv tests/testthat tests/done")
+          system("mv tests/local tests/testthat")
+          test2 <- covr::package_coverage()
+          system("mv tests/testthat tests/local")
+          system("mv tests/done tests/testthat")
+          combined_cov <- c(test1, test2)
+          attr(combined_cov, "class") <- attr(test1, "class")
+          attr(combined_cov, "package") <- attr(test1, "package")
+          attr(combined_cov, "relative") <- attr(test1, "relative")
+          covr::codecov(coverage = combined_cov, quiet = FALSE)
+        shell: Rscript {0}
