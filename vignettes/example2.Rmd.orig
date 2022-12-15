@@ -116,7 +116,7 @@ You can see that some of these models represent very bad fits, and accordingly h
 We can assess the chains for one of the higher weighted models to make sure they show good convergence. It is good practice to do this for all models with a high weight, as these are the models most influencing the multi-model inference.
 
 ```{r exmp2-goodmod, fig.width = 7, fig.asp = 1.2}
-plot(exp_5$mod_fits$ecxwb1$fit)
+plot(pull_brmsfit(exp_5, "ecxwb1"))
 ```
 
 Assessing chains for all the models in `bayesmanecfit` does not work as well using the default `brms` plotting method. Instead use `check_chains` and make sure to pass a `filename` argument, which means plots are automatically saved to pdf with a message.
@@ -142,7 +142,7 @@ rhat(exp_5) |>
   sapply("[[", "failed")
 ```
 
-Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case one model fails, although we note that this is a very stringent criterion, and we have also used less than the default `bayesnec` value of `iter` (10,000).
+Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case two models fail, although we note that this is a very stringent criterion, and we have also used less than the default `bayesnec` value of `iter` (10,000).
 
 ```{r}
 rhat(exp_5, rhat_cutoff = 1.01) |>
