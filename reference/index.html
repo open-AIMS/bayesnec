@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
       </span>
     </div>
 
@@ -75,16 +75,11 @@
       </tr></tbody><tbody><tr><td>
           <p><code><a href="amend.html">amend()</a></code> </p>
         </td>
-        <td><p>Amends an existing <code>bayesmanecfit</code> object, for example, by
-adding or removing fitted models.</p></td>
+        <td><p>Amends an existing <code>bayesmanecfit</code> object</p></td>
       </tr><tr><td>
-          <p><code><a href="autoplot.bayesmanecfit.html">autoplot(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="autoplot.html">autoplot(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="autoplot.html">autoplot(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
         </td>
-        <td><p>autoplot.bayesmanecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="autoplot.bayesnecfit.html">autoplot(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>autoplot.bayesnecfit</p></td>
+        <td><p>bayesnec standard ggplot2 plotting method</p></td>
       </tr><tr><td>
           <p><code><a href="average_endpoints.html">average_endpoints()</a></code> </p>
         </td>
@@ -123,6 +118,10 @@ adding or removing fitted models.</p></td>
         </td>
         <td><p>bnec</p></td>
       </tr><tr><td>
+          <p><code><a href="bnec_newdata.html">bnec_newdata()</a></code> </p>
+        </td>
+        <td><p>bnec_newdata</p></td>
+      </tr><tr><td>
           <p><code><a href="bnecfit-class.html">bnecfit-class</a></code> <code><a href="bnecfit-class.html">bnecfit</a></code> </p>
         </td>
         <td><p>Class <code>bnecfit</code> of models fitted with function <code>bnec</code></p></td>
@@ -135,19 +134,7 @@ statistics.</p></td>
       </tr><tr><td>
           <p><code><a href="check_chains.html">check_chains()</a></code> </p>
         </td>
-        <td><p>check_chains</p></td>
-      </tr><tr><td>
-          <p><code><a href="check_chains.bayesmanecfit.html">check_chains(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>check_chains.bayesmanecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="check_chains.bayesnecfit.html">check_chains(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>check_chains.bayesnecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="check_chains.default.html">check_chains(<i>&lt;default&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>check_chains.default</p></td>
+        <td><p>Checking chain convergence</p></td>
       </tr><tr><td>
           <p><code><a href="check_formula.html">check_formula()</a></code> </p>
         </td>
@@ -177,8 +164,7 @@ object of class <code>bayesnecfit</code> or <code>bayesmanecfit</code>.</p></td>
       </tr><tr><td>
           <p><code><a href="ecx.html">ecx()</a></code> </p>
         </td>
-        <td><p>Extracts the predicted ECx value as desired from an object of class
-<code>bayesnecfit</code> or <code>bayesnecfit</code>.</p></td>
+        <td><p>Extracts the predicted ECx value</p></td>
       </tr><tr><td>
           <p><code><a href="expand_manec.html">expand_manec()</a></code> </p>
         </td>
@@ -189,13 +175,14 @@ objects.</p></td>
         </td>
         <td><p>Extracts a range of statistics from a <code>prebayesnecfit</code> object.</p></td>
       </tr><tr><td>
-          <p><code><a href="formula.bayesmanecfit.html">formula(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="fitted.html">fitted(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="fitted.html">fitted(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
         </td>
-        <td><p>formula.bayesmanecfit</p></td>
+        <td><p>Generates mean posterior linear predictions for objects fitted by
+<code>bnec</code></p></td>
       </tr><tr><td>
-          <p><code><a href="formula.bayesnecfit.html">formula(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="formula.html">formula(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="formula.html">formula(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
         </td>
-        <td><p>formula.bayesnecfit</p></td>
+        <td><p>Retrieve formulas from models fitted by <code>bnec</code></p></td>
       </tr><tr><td>
           <p><code><a href="ggbnec_data.html">ggbnec_data()</a></code> </p>
         </td>
@@ -229,17 +216,9 @@ objects.</p></td>
         </td>
         <td><p>Class <code>manecsummary</code> of models fitted with the <span class="pkg">brms</span> package</p></td>
       </tr><tr><td>
-          <p><code><a href="model.frame.bayesmanecfit.html">model.frame(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="model.frame.html">model.frame(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="model.frame.html">model.frame(<i>&lt;bayesmanecfit&gt;</i>)</a></code> <code><a href="model.frame.html">model.frame(<i>&lt;bayesnecformula&gt;</i>)</a></code> </p>
         </td>
-        <td><p>model.frame.bayesmanecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="model.frame.bayesnecfit.html">model.frame(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>model.frame.bayesnecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="model.frame.bayesnecformula.html">model.frame(<i>&lt;bayesnecformula&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>Extracting the model frame from a <code>bayesnecformula</code></p></td>
+        <td><p>Model.frame methods in bayesnec.</p></td>
       </tr><tr><td>
           <p><code><a href="models.html">models()</a></code> </p>
         </td>
@@ -263,13 +242,9 @@ objects.</p></td>
         <td><p>Extracts the predicted NSEC value as desired from an object of class
 <code>bayesnecfit</code> or <code>bayesmanecfit</code>.</p></td>
       </tr><tr><td>
-          <p><code><a href="plot.bayesmanecfit.html">plot(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="plot.html">plot(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="plot.html">plot(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
         </td>
-        <td><p>plot.bayesmanecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="plot.bayesnecfit.html">plot(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>plot.bayesnecfit</p></td>
+        <td><p>Generates a plot for objects fitted by <code>bnec</code></p></td>
       </tr><tr><td>
           <p><code><a href="plus-.bnecfit.html">`+`(<i>&lt;bnecfit&gt;</i>)</a></code> </p>
         </td>
@@ -277,9 +252,18 @@ objects.</p></td>
 <code>bayesmanecfit</code> object containing Bayesian model averaging
 statistics.</p></td>
       </tr><tr><td>
+          <p><code><a href="posterior_epred.html">posterior_epred(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="posterior_epred.html">posterior_epred(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+        </td>
+        <td><p>Generates posterior linear predictions for objects fitted by
+<code>bnec</code></p></td>
+      </tr><tr><td>
           <p><code><a href="posterior_epred_beta_binomial2.html">posterior_epred_beta_binomial2()</a></code> </p>
         </td>
         <td><p>posterior_epred_beta_binomial2</p></td>
+      </tr><tr><td>
+          <p><code><a href="posterior_predict.html">posterior_predict(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="posterior_predict.html">posterior_predict(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+        </td>
+        <td><p>Generates posterior predictions for objects fitted by <code>bnec</code></p></td>
       </tr><tr><td>
           <p><code><a href="posterior_predict_beta_binomial2.html">posterior_predict_beta_binomial2()</a></code> </p>
         </td>
@@ -289,29 +273,19 @@ statistics.</p></td>
         </td>
         <td><p>Class <code>prebayesnecfit</code> of models fitted with the <span class="pkg">brms</span> package</p></td>
       </tr><tr><td>
-          <p><code><a href="predict.bayesmanecfit.html">predict(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="predict.html">predict(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="predict.html">predict(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
         </td>
-        <td><p>predict.bayesmanecfit</p></td>
+        <td><p>Generates mean posterior predictions for objects fitted by
+<code>bnec</code></p></td>
       </tr><tr><td>
-          <p><code><a href="predict.bayesnecfit.html">predict(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="print.html">print(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="print.html">print(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
         </td>
-        <td><p>predict.bayesnecfit</p></td>
+        <td><p>Prints a summary for objects fitted by <code>bnec</code></p></td>
       </tr><tr><td>
-          <p><code><a href="print.bayesmanecfit.html">print(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="pull_brmsfit.html">pull_brmsfit()</a></code> </p>
         </td>
-        <td><p>print.bayesmanecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="print.bayesnecfit.html">print(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>print.bayesnecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="print.manecsummary.html">print(<i>&lt;manecsummary&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>print.manecsummary</p></td>
-      </tr><tr><td>
-          <p><code><a href="print.necsummary.html">print(<i>&lt;necsummary&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>print.necsummary</p></td>
+        <td><p>Extract and object of class <code>brmsfit</code> from
+<code>bayesnecfit</code> or <code>bayesmanecfit</code>.</p></td>
       </tr><tr><td>
           <p><code><a href="pull_out.html">pull_out()</a></code> </p>
         </td>
@@ -321,13 +295,9 @@ statistics.</p></td>
         </td>
         <td><p>pull_prior</p></td>
       </tr><tr><td>
-          <p><code><a href="rhat.bayesmanecfit.html">rhat(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="rhat.html">rhat(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="rhat.html">rhat(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
         </td>
-        <td><p>rhat.bayesmanecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="rhat.bayesnecfit.html">rhat(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>rhat.bayesnecfit</p></td>
+        <td><p>Extract Diagnostic Quantities of 'brms' Models</p></td>
       </tr><tr><td>
           <p><code><a href="sample_priors.html">sample_priors()</a></code> </p>
         </td>
@@ -337,13 +307,9 @@ statistics.</p></td>
         </td>
         <td><p>show_params</p></td>
       </tr><tr><td>
-          <p><code><a href="summary.bayesmanecfit.html">summary(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
+          <p><code><a href="summary.html">summary(<i>&lt;bayesnecfit&gt;</i>)</a></code> <code><a href="summary.html">summary(<i>&lt;bayesmanecfit&gt;</i>)</a></code> </p>
         </td>
-        <td><p>summary.bayesmanecfit</p></td>
-      </tr><tr><td>
-          <p><code><a href="summary.bayesnecfit.html">summary(<i>&lt;bayesnecfit&gt;</i>)</a></code> </p>
-        </td>
-        <td><p>summary.bayesnecfit</p></td>
+        <td><p>Generates a summary for objects fitted by <code>bnec</code></p></td>
       </tr><tr><td>
           <p><code><a href="update.bnecfit.html">update(<i>&lt;bnecfit&gt;</i>)</a></code> </p>
         </td>

@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
       </span>
     </div>
 
@@ -106,6 +106,17 @@ and "base" returns a histogram in base R.</p></dd>
     <div class="dont-index"><p><code><a href="bnec.html">bnec</a></code></p></div>
     </div>
 
+    <div id="ref-examples">
+    <h2>Examples</h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">manec_example</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">sample_priors</span><span class="op">(</span><span class="va">exmp</span><span class="op">$</span><span class="va">prior</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</span>
+<span class="r-plt img"><img src="sample_priors-1.png" alt="" width="700" height="433"></span>
+<span class="r-in"><span></span></span>
+</code></pre></div>
+    </div>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top"><h2 data-toc-skip>Contents</h2>

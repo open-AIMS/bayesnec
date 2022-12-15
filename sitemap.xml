@@ -40,10 +40,7 @@
     <loc>/reference/amend.html</loc>
   </url>
   <url>
-    <loc>/reference/autoplot.bayesmanecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/autoplot.bayesnecfit.html</loc>
+    <loc>/reference/autoplot.html</loc>
   </url>
   <url>
     <loc>/reference/average_endpoints.html</loc>
@@ -73,19 +70,13 @@
     <loc>/reference/bnec.html</loc>
   </url>
   <url>
+    <loc>/reference/bnec_newdata.html</loc>
+  </url>
+  <url>
     <loc>/reference/bnecfit-class.html</loc>
   </url>
   <url>
     <loc>/reference/c.bnecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/check_chains.bayesmanecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/check_chains.bayesnecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/check_chains.default.html</loc>
   </url>
   <url>
     <loc>/reference/check_chains.html</loc>
@@ -118,10 +109,10 @@
     <loc>/reference/expand_nec.html</loc>
   </url>
   <url>
-    <loc>/reference/formula.bayesmanecfit.html</loc>
+    <loc>/reference/fitted.html</loc>
   </url>
   <url>
-    <loc>/reference/formula.bayesnecfit.html</loc>
+    <loc>/reference/formula.html</loc>
   </url>
   <url>
     <loc>/reference/ggbnec_data.html</loc>
@@ -151,13 +142,7 @@
     <loc>/reference/manecsummary-class.html</loc>
   </url>
   <url>
-    <loc>/reference/model.frame.bayesmanecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/model.frame.bayesnecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/model.frame.bayesnecformula.html</loc>
+    <loc>/reference/model.frame.html</loc>
   </url>
   <url>
     <loc>/reference/models.html</loc>
@@ -175,16 +160,19 @@
     <loc>/reference/nsec.html</loc>
   </url>
   <url>
-    <loc>/reference/plot.bayesmanecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/plot.bayesnecfit.html</loc>
+    <loc>/reference/plot.html</loc>
   </url>
   <url>
     <loc>/reference/plus-.bnecfit.html</loc>
   </url>
   <url>
+    <loc>/reference/posterior_epred.html</loc>
+  </url>
+  <url>
     <loc>/reference/posterior_epred_beta_binomial2.html</loc>
+  </url>
+  <url>
+    <loc>/reference/posterior_predict.html</loc>
   </url>
   <url>
     <loc>/reference/posterior_predict_beta_binomial2.html</loc>
@@ -193,22 +181,13 @@
     <loc>/reference/prebayesnecfit-class.html</loc>
   </url>
   <url>
-    <loc>/reference/predict.bayesmanecfit.html</loc>
+    <loc>/reference/predict.html</loc>
   </url>
   <url>
-    <loc>/reference/predict.bayesnecfit.html</loc>
+    <loc>/reference/print.html</loc>
   </url>
   <url>
-    <loc>/reference/print.bayesmanecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/print.bayesnecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/print.manecsummary.html</loc>
-  </url>
-  <url>
-    <loc>/reference/print.necsummary.html</loc>
+    <loc>/reference/pull_brmsfit.html</loc>
   </url>
   <url>
     <loc>/reference/pull_out.html</loc>
@@ -217,10 +196,7 @@
     <loc>/reference/pull_prior.html</loc>
   </url>
   <url>
-    <loc>/reference/rhat.bayesmanecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/rhat.bayesnecfit.html</loc>
+    <loc>/reference/rhat.html</loc>
   </url>
   <url>
     <loc>/reference/sample_priors.html</loc>
@@ -229,10 +205,7 @@
     <loc>/reference/show_params.html</loc>
   </url>
   <url>
-    <loc>/reference/summary.bayesmanecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/summary.bayesnecfit.html</loc>
+    <loc>/reference/summary.html</loc>
   </url>
   <url>
     <loc>/reference/update.bnecfit.html</loc>

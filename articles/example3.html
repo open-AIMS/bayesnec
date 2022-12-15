@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
       </span>
     </div>
 
@@ -94,7 +94,7 @@
 
       
 
-      </header><script src="example3_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Priors</h1>
@@ -110,83 +110,189 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>The main focus here is to explain the default priors used in <code>bayesnec</code> and to showcase how the user can interrogate the priors used in a <code>bayesec</code> model and alternatively specify their own priors, should they wish to. This might be needed depending on the model and the data because <code>bayesnec</code> tries to find reasonable and yet only weakly informative priors for the model parameters by default. First we describe the default priors used in <code>bayesnec</code> and then follow up with a demonstration of how the user can specify priors in multiple ways for objects of class <code>bayesnecfit</code> and <code>bayesmanecfit</code>.</p>
+<p>The main focus here is to explain the default priors used in
+<code>bayesnec</code> and to showcase how the user can interrogate the
+priors used in a <code>bayesec</code> model and alternatively specify
+their own priors, should they wish to. This might be needed depending on
+the model and the data because <code>bayesnec</code> tries to find
+reasonable and yet only weakly informative priors for the model
+parameters by default. First we describe the default priors used in
+<code>bayesnec</code> and then follow up with a demonstration of how the
+user can specify priors in multiple ways for objects of class
+<code>bayesnecfit</code> and <code>bayesmanecfit</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="default-priors-in-bayesnec">Default priors in <code>bayesnec</code><a class="anchor" aria-label="anchor" href="#default-priors-in-bayesnec"></a>
 </h2>
-<p>The default priors used in <code>bayesnec</code> can generally be considered “weakly informative”. They are constructed for each parameter of each model being fitted based on the characteristics of either the input response and predictor data, depending on which is relevant to the specific parameter scaling. In the case of parameters that scale with the response, priors are constructed based on the relevant link scaling, whether that be identity or the default (or user specific) link function for a specific distribution. The priors are constructed by <code>bnec</code> internally based on the chosen model, the distribution (including the relevant link function), the predictor and the response.</p>
+<p>The default priors used in <code>bayesnec</code> can generally be
+considered “weakly informative”. They are constructed for each parameter
+of each model being fitted based on the characteristics of either the
+input response and predictor data, depending on which is relevant to the
+specific parameter scaling. In the case of parameters that scale with
+the response, priors are constructed based on the relevant link scaling,
+whether that be identity or the default (or user specific) link function
+for a specific distribution. The priors are constructed by
+<code>bnec</code> internally based on the chosen model, the distribution
+(including the relevant link function), the predictor and the
+response.</p>
 <div class="section level3">
 <h3 id="priors-for-response-scaled-parameters">Priors for response-scaled parameters<a class="anchor" aria-label="anchor" href="#priors-for-response-scaled-parameters"></a>
 </h3>
-<p>Only the parameters <strong>top</strong> and <strong>bot</strong> scale specifically with the response. For Gaussian-distributed response data (or any response data for which the link ensures valid values of the response can take from <code>+Inf</code> to <code>-Inf</code>, including <code>log</code> and <code>logit</code>) priors are <code>normal</code> with a standard deviation of <code>2.5</code> and a mean set at the 90<sup>th</sup> and 10<sup>th</sup> quantiles for <strong>top</strong> and <strong>bot</strong> respectively. For Poisson-, Negative Binomial- and Gamma-distributed data the response is bounded by <code>0</code> and thus priors are <code>Gamma</code>, with a mean scaled to correspond to the 75<sup>th</sup> and 25<sup>th</sup> quantiles for <strong>top</strong> and <strong>bot</strong> respectively. The mean is linked mathematically to the shape (<em>s</em>) and rate parameters (<em>r</em>) by the equation <span class="math inline">\(mean = s \times (1/r)\)</span> with the Gamma shape parameter set at 2. For the Binomial, Beta, and Beta Binomial families estimates for <strong>top</strong> and <strong>bot</strong> must necessarily be constrained between <code>0</code> and <code>1</code> when modelled on the <code>"identity"</code> link (the default in <code>bayesnec</code>). Because of this constraint there is no need to adjust scaling based on the response. <code>bayesnec</code> uses <code>beta(5, 1)</code> and <code>beta(1, 5)</code> priors to provide a broad density centred across the upper and lower <code>0</code> to <code>1</code> range for the <strong>top</strong> and <strong>bot</strong> parameters, respectively.</p>
+<p>Only the parameters <strong>top</strong> and <strong>bot</strong>
+scale specifically with the response. For Gaussian-distributed response
+data (or any response data for which the link ensures valid values of
+the response can take from <code>+Inf</code> to <code>-Inf</code>,
+including <code>log</code> and <code>logit</code>) priors are
+<code>normal</code> with a standard deviation of <code>2.5</code> times
+the standard deivation of the response data, and a mean set at the
+90<sup>th</sup> and 10<sup>th</sup> quantiles for <strong>top</strong>
+and <strong>bot</strong> respectively. For Poisson-, Negative Binomial-
+and Gamma-distributed data the response is bounded by <code>0</code> and
+thus priors are <code>Gamma</code>, with a mean scaled to correspond to
+the 75<sup>th</sup> and 25<sup>th</sup> quantiles for
+<strong>top</strong> and <strong>bot</strong> respectively. The mean is
+linked mathematically to the shape (<em>s</em>) and rate parameters
+(<em>r</em>) by the equation <span class="math inline">\(mean = s \times
+(1/r)\)</span> with the Gamma shape parameter set at 2. For the
+Binomial, Beta, and Beta Binomial families estimates for
+<strong>top</strong> and <strong>bot</strong> must necessarily be
+constrained between <code>0</code> and <code>1</code> when modelled on
+the <code>"identity"</code> link (the default in <code>bayesnec</code>).
+Because of this constraint there is no need to adjust scaling based on
+the response. <code>bayesnec</code> uses <code>beta(5, 2)</code> and
+<code>beta(2, 5)</code> priors to provide a broad density centred across
+the upper and lower <code>0</code> to <code>1</code> range for the
+<strong>top</strong> and <strong>bot</strong> parameters,
+respectively.</p>
 </div>
 <div class="section level3">
 <h3 id="priors-for-predictor-scaled-parameters">Priors for predictor-scaled parameters<a class="anchor" aria-label="anchor" href="#priors-for-predictor-scaled-parameters"></a>
 </h3>
-<p>The parameters <strong>nec</strong> and <strong>ec50</strong> scale with respect to the predictor because both of these are parameters in concentration-response curves the are estimated in units of concentration. To stabilise model fitting the <strong>nec</strong> and <strong>ec50</strong> parameters are bounded to the upper and lower observed range in the predictor, under the assumption that the range of concentrations in the experiment were sufficient to cover the full range of the response outcomes. The priors used reflect the characteristics of the observed data that are used to guess the appropriate distribution. If the predictor data are bounded to <code>0</code> and <code>&gt;1</code>, a <code>Gamma</code> prior is used, with maximum density (mean, see above) at the median value of the predictor, and a shape parameter of 5. If the predictor data are bounded to <code>0</code> and <code>1</code> a <code>beta(2, 2)</code> prior is used. For predictor data ranging from <code>+Inf</code> to <code>-Inf</code> a <code>normal</code> prior is used, with a mean set at the median of the predictor values and a standard deviation of 2.5.</p>
+<p>The parameters <strong>nec</strong> and <strong>ec50</strong> scale
+with respect to the predictor because both of these are parameters in
+concentration-response curves the are estimated in units of
+concentration. To stabilise model fitting the <strong>nec</strong> and
+<strong>ec50</strong> parameters are bounded to the upper and lower
+observed range in the predictor, under the assumption that the range of
+concentrations in the experiment were sufficient to cover the full range
+of the response outcomes. The priors used reflect the characteristics of
+the observed data that are used to guess the appropriate distribution.
+If the predictor data are bounded to <code>0</code> and
+<code>&gt;1</code>, a <code>Gamma</code> prior is used, with maximum
+density (mean, see above) at the median value of the predictor, and a
+shape parameter of 5. If the predictor data are bounded to
+<code>0</code> and <code>1</code> a <code>beta(2, 2)</code> prior is
+used. For predictor data ranging from <code>+Inf</code> to
+<code>-Inf</code> a <code>normal</code> prior is used, with a mean set
+at the median of the predictor values and a standard deviation of 10
+times the standard deviation of the predictor values.</p>
 </div>
 <div class="section level3">
 <h3 id="priors-for-other-parameters">Priors for other parameters<a class="anchor" aria-label="anchor" href="#priors-for-other-parameters"></a>
 </h3>
-<p>For the parameters <strong>beta</strong>, <strong>slope</strong>, <strong>d</strong> and <strong>f</strong>, we first ensured any relevant transformations in the model formula such that theoretical values of <code>-Inf</code> to <code>+Inf</code> are allowable, and a <code>normal(0, 1)</code> prior is used. For example, in the <strong>nec3param</strong> model, <strong>beta</strong> is an exponential decay parameter which must by definition be bounded to <code>0</code> and <code>+Inf</code>. Calling <code>exp(beta)</code> in the model formula ensures the exponent meets these requirements. Note also that a mean of <code>0</code> and standard deviation of <code>1</code> represents a relatively broad prior on the exponential scaling. See the <strong>Model details</strong> vignette or <code>?model("all")</code> for more information on all the models available in <code>bayesnec</code> and their specific formulation.</p>
+<p>For the parameters <strong>beta</strong>, <strong>slope</strong>,
+<strong>d</strong> and <strong>f</strong>, we first ensured any relevant
+transformations in the model formula such that theoretical values of
+<code>-Inf</code> to <code>+Inf</code> are allowable, and a
+<code>normal(0, 5)</code> prior is used. For example, in the
+<strong>nec3param</strong> model, <strong>beta</strong> is an
+exponential decay parameter which must by definition be bounded to
+<code>0</code> and <code>+Inf</code>. Calling <code>exp(beta)</code> in
+the model formula ensures the exponent meets these requirements. Note
+also that a mean of <code>0</code> and standard deviation of
+<code>5</code> represents a relatively broad prior on the exponential
+scaling. See the <strong>Model details</strong> vignette or
+<code>?model("all")</code> for more information on all the models
+available in <code>bayesnec</code> and their specific formulation.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="user-specified-priors">User specified priors<a class="anchor" aria-label="anchor" href="#user-specified-priors"></a>
 </h2>
-<p>There may be situations were the default <code>bayesnec</code> priors to not behave as desired, or the user wants to provide informative priors. For example the default priors may be too informative, yielding unreasonably tight confidence bands, although this is only likely where there are few data. Conversely, priors may be too vague, leading to poor model convergence. Alternatively, as indicated in the example below, the default priors may be of the wrong statistical distribution if there was insufficient information in the provided data for <code>bayesnec</code> to guess correctly the appropriate ones to use.</p>
-<p>The priors used in the default model fit can be extracted using <code>pull_prior</code>, and a sample or plot of prior values can be obtained from the individual <code>brms</code> model fits through the function <code>sample_priors</code> which samples directly from the <code>prior</code> element in the <code>brm</code> model fit. We can also use the function <code>check_prior</code> (based on the <code>hypothesis</code> function of <code>brms</code>) to assess how the posterior probability density for each parameter differs from that of the prior.</p>
+<p>There may be situations were the default <code>bayesnec</code> priors
+to not behave as desired, or the user wants to provide informative
+priors. For example the default priors may be too informative, yielding
+unreasonably tight confidence bands, although this is only likely where
+there are few data. Conversely, priors may be too vague, leading to poor
+model convergence, or an inability of <code>bayesnec</code> to find
+appropriate starting values. Alternatively, as indicated in the example
+below, the default priors may be of the wrong statistical distribution
+if there was insufficient information in the provided data for
+<code>bayesnec</code> to guess correctly the appropriate one to use.</p>
+<p>The priors used in the default model fit can be extracted using
+<code>pull_prior</code>, and a sample or plot of prior values can be
+obtained from the individual <code>brms</code> model fits through the
+function <code>sample_priors</code> which samples directly from the
+<code>prior</code> element in the <code>brm</code> model fit. We can
+also use the function <code>check_prior</code> (based on the
+<code>hypothesis</code> function of <code>brms</code>) to assess how the
+posterior probability density for each parameter differs from that of
+the prior.</p>
 <div class="section level3">
 <h3 id="bayesnecfit">bayesnecfit<a class="anchor" aria-label="anchor" href="#bayesnecfit"></a>
 </h3>
-<p>To set specified priors, it is simplest to start by letting <code>bnec</code> find the priors on its own, i.e. by not specifying the <code>brm</code> argument <code>prior</code> at all.</p>
+<p>To set specified priors, it is simplest to start by letting
+<code>bnec</code> find the priors on its own, i.e. by not specifying the
+<code>brm</code> argument <code>prior</code> at all.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># a single model</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exmp_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "bayesnecfit" "bnecfit"</span></span></code></pre></div>
-<p>We can view the prior and posterior probability densities of all the parameters in the model using the function <code>check_prior</code>, based on the <code>hypothesis</code> function of <code>brms</code>. This can be useful to assess if priors are suitably vague, and/or if they might be having an undesirable influence on the posterior.</p>
+<p>We can view the prior and posterior probability densities of all the
+parameters in the model using the function <code>check_prior</code>,
+based on the <code>hypothesis</code> function of <code>brms</code>. This
+can be useful to assess if priors are suitably vague, and/or if they
+might be having an undesirable influence on the posterior.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;"></p>
-<p>In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function <code>pull_prior</code> to inspect what <code>bnec</code> came up with on its own, and decide how best to modify those priors to be more desirable.</p>
+<p>In this case the priors seem reasonably vague, however there will be
+times when it is necessary to modify these priors. The user can take
+advantage of the function <code>pull_prior</code> to inspect what
+<code>bnec</code> came up with on its own, and decide how best to modify
+those priors to be more desirable.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt;                       prior class      coef group resp</span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b                     </span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b Intercept           </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b                     </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept           </span></span>
-<span><span class="co">#&gt;                  beta(5, 2)     b                     </span></span>
-<span><span class="co">#&gt;                  beta(5, 2)     b Intercept           </span></span>
-<span><span class="co">#&gt;           gamma(0.01, 0.01)   phi                     </span></span>
-<span><span class="co">#&gt;  dpar nlpar               lb               ub       source</span></span>
-<span><span class="co">#&gt;        beta                                           user</span></span>
-<span><span class="co">#&gt;        beta                                   (vectorized)</span></span>
-<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556         user</span></span>
-<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556 (vectorized)</span></span>
-<span><span class="co">#&gt;         top                0                1         user</span></span>
-<span><span class="co">#&gt;         top                0                1 (vectorized)</span></span>
-<span><span class="co">#&gt;                            0                       default</span></span></code></pre></div>
-<p><code>bnec</code> chose a <code>gamma</code> prior on the <em>NEC</em> parameter of <strong>nec3param</strong> because the predictor <code>nec_data$x</code> is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let’s go ahead and specify something else, say a normal with larger variance.</p>
+<span><span class="co">#&gt;                       prior class      coef group resp dpar nlpar               lb               ub       source</span></span>
+<span><span class="co">#&gt;                normal(0, 5)     b                            beta                                           user</span></span>
+<span><span class="co">#&gt;                normal(0, 5)     b Intercept                  beta                                   (vectorized)</span></span>
+<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556         user</span></span>
+<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556 (vectorized)</span></span>
+<span><span class="co">#&gt;                  beta(5, 2)     b                             top                0                1         user</span></span>
+<span><span class="co">#&gt;                  beta(5, 2)     b Intercept                   top                0                1 (vectorized)</span></span>
+<span><span class="co">#&gt;           gamma(0.01, 0.01)   phi                                                0                       default</span></span></code></pre></div>
+<p><code>bnec</code> chose a <code>gamma</code> prior on the
+<em>NEC</em> parameter of <strong>nec3param</strong> because the
+predictor <code>nec_data$x</code> is non-zero positive. However, imagine
+that in theory the predictor could have had negative values, it just
+happened to not have in this particular dataset. So let’s go ahead and
+specify something else, say a normal with larger variance.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">my_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="va">my_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
 <span>              <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
 <span>              <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
 <span><span class="va">exmp_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_prior</span>,</span>
 <span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Two things are of note. If the user is specifying their own priors, <code>bnec</code> requires them to specify priors for <strong>all</strong> parameters. The <code>pull_prior</code> function shows the priors <em>after</em> the model was fitted, but suppose the user does not know what parameters were comprised in a particular model. In those instances, the user can call the function <code>show_params(model = "all")</code> to inspect the parameters of each function, or some targeted function in particular.</p>
+<p>Two things are of note. If the user is specifying their own priors,
+<code>bnec</code> requires them to specify priors for
+<strong>all</strong> parameters. The <code>pull_prior</code> function
+shows the priors <em>after</em> the model was fitted, but suppose the
+user does not know what parameters were comprised in a particular model.
+In those instances, the user can call the function
+<code>show_params(model = "all")</code> to inspect the parameters of
+each function, or some targeted function in particular.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/show_params.html">show_params</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
@@ -198,79 +304,75 @@
 <div class="section level3">
 <h3 id="bayesmanecfit">bayesmanecfit<a class="anchor" aria-label="anchor" href="#bayesmanecfit"></a>
 </h3>
-<p>The user can also specify a named list of priors when one or more models are being fitted to the same dataset.</p>
+<p>The user can also specify a named list of priors when one or more
+models are being fitted to the same dataset.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>                  nec4param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(1, 5)"</span>, nlpar <span class="op">=</span> <span class="st">"bot"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
 <span><span class="va">exmp_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_priors</span>,</span>
 <span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><code>pull_prior</code> also works for an object of class <code>bayesmanecfit</code>, as does <code>check_priors</code> which allows an option of passing a filename to save the prior and posterior probability density plots to a pdf.</p>
+<p><code>pull_prior</code> also works for an object of class
+<code>bayesmanecfit</code>, as does <code>check_priors</code> which
+allows an option of passing a filename to save the prior and posterior
+probability density plots to a pdf.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_c</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_c</span>, filename <span class="op">=</span> <span class="st">"Check_priors"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">#&gt; $nec3param</span></span>
-<span><span class="co">#&gt;              prior class      coef group resp dpar nlpar</span></span>
-<span><span class="co">#&gt;      gamma(0.5, 2)     b                            beta</span></span>
-<span><span class="co">#&gt;      gamma(0.5, 2)     b Intercept                  beta</span></span>
-<span><span class="co">#&gt;   normal(1.3, 2.7)     b                             nec</span></span>
-<span><span class="co">#&gt;   normal(1.3, 2.7)     b Intercept                   nec</span></span>
-<span><span class="co">#&gt;         beta(5, 1)     b                             top</span></span>
-<span><span class="co">#&gt;         beta(5, 1)     b Intercept                   top</span></span>
-<span><span class="co">#&gt;  gamma(0.01, 0.01)   phi                                </span></span>
-<span><span class="co">#&gt;  lb ub       source</span></span>
-<span><span class="co">#&gt;                user</span></span>
-<span><span class="co">#&gt;        (vectorized)</span></span>
-<span><span class="co">#&gt;                user</span></span>
-<span><span class="co">#&gt;        (vectorized)</span></span>
-<span><span class="co">#&gt;                user</span></span>
-<span><span class="co">#&gt;        (vectorized)</span></span>
-<span><span class="co">#&gt;   0         default</span></span>
+<span><span class="co">#&gt;              prior class      coef group resp dpar nlpar lb ub       source</span></span>
+<span><span class="co">#&gt;      gamma(0.5, 2)     b                            beta               user</span></span>
+<span><span class="co">#&gt;      gamma(0.5, 2)     b Intercept                  beta       (vectorized)</span></span>
+<span><span class="co">#&gt;   normal(1.3, 2.7)     b                             nec               user</span></span>
+<span><span class="co">#&gt;   normal(1.3, 2.7)     b Intercept                   nec       (vectorized)</span></span>
+<span><span class="co">#&gt;         beta(5, 1)     b                             top               user</span></span>
+<span><span class="co">#&gt;         beta(5, 1)     b Intercept                   top       (vectorized)</span></span>
+<span><span class="co">#&gt;  gamma(0.01, 0.01)   phi                                  0         default</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $nec4param</span></span>
-<span><span class="co">#&gt;              prior class      coef group resp dpar nlpar</span></span>
-<span><span class="co">#&gt;      gamma(0.5, 2)     b                            beta</span></span>
-<span><span class="co">#&gt;      gamma(0.5, 2)     b Intercept                  beta</span></span>
-<span><span class="co">#&gt;         beta(1, 5)     b                             bot</span></span>
-<span><span class="co">#&gt;         beta(1, 5)     b Intercept                   bot</span></span>
-<span><span class="co">#&gt;   normal(1.3, 2.7)     b                             nec</span></span>
-<span><span class="co">#&gt;   normal(1.3, 2.7)     b Intercept                   nec</span></span>
-<span><span class="co">#&gt;         beta(5, 1)     b                             top</span></span>
-<span><span class="co">#&gt;         beta(5, 1)     b Intercept                   top</span></span>
-<span><span class="co">#&gt;  gamma(0.01, 0.01)   phi                                </span></span>
-<span><span class="co">#&gt;  lb ub       source</span></span>
-<span><span class="co">#&gt;                user</span></span>
-<span><span class="co">#&gt;        (vectorized)</span></span>
-<span><span class="co">#&gt;                user</span></span>
-<span><span class="co">#&gt;        (vectorized)</span></span>
-<span><span class="co">#&gt;                user</span></span>
-<span><span class="co">#&gt;        (vectorized)</span></span>
-<span><span class="co">#&gt;                user</span></span>
-<span><span class="co">#&gt;        (vectorized)</span></span>
-<span><span class="co">#&gt;   0         default</span></span></code></pre>
-<p>The user can also specify priors for one model only out of the entire set, <code>bayesnec</code> will return a message stating that it is searching for priors on its own when they are either ill-formed (e.g. incomplete or have a typo), or the user simply decided not to specify priors for a particular model, e.g.</p>
+<span><span class="co">#&gt;              prior class      coef group resp dpar nlpar lb ub       source</span></span>
+<span><span class="co">#&gt;      gamma(0.5, 2)     b                            beta               user</span></span>
+<span><span class="co">#&gt;      gamma(0.5, 2)     b Intercept                  beta       (vectorized)</span></span>
+<span><span class="co">#&gt;         beta(1, 5)     b                             bot               user</span></span>
+<span><span class="co">#&gt;         beta(1, 5)     b Intercept                   bot       (vectorized)</span></span>
+<span><span class="co">#&gt;   normal(1.3, 2.7)     b                             nec               user</span></span>
+<span><span class="co">#&gt;   normal(1.3, 2.7)     b Intercept                   nec       (vectorized)</span></span>
+<span><span class="co">#&gt;         beta(5, 1)     b                             top               user</span></span>
+<span><span class="co">#&gt;         beta(5, 1)     b Intercept                   top       (vectorized)</span></span>
+<span><span class="co">#&gt;  gamma(0.01, 0.01)   phi                                  0         default</span></span></code></pre>
+<p>The user can also specify priors for one model only out of the entire
+set, <code>bayesnec</code> will return a message stating that it is
+searching for priors on its own when they are either ill-formed
+(e.g. incomplete or have a typo), or the user simply decided not to
+specify priors for a particular model, e.g.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="va">my_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>nec3param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>                  nec4param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,</span>
 <span>                                <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(1, 5)"</span>, nlpar <span class="op">=</span> <span class="st">"bot"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
 <span><span class="va">exmp_d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_priors</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
 <span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><code>prior = my_priors[[1]]</code> would also have worked because the argument priors can either take a <code>brmsprior</code> object directly, or a named list containing model-specific <code>brmsprior</code> objects.</p>
-<p>Finally the user can also extend an existing <code>bayesmanecfit</code> object with the function <code>amend</code>, also by specifying custom-built <code>priors</code>.</p>
+<p><code>prior = my_priors[[1]]</code> would also have worked because
+the argument priors can either take a <code>brmsprior</code> object
+directly, or a named list containing model-specific
+<code>brmsprior</code> objects.</p>
+<p>Finally the user can also extend an existing
+<code>bayesmanecfit</code> object with the function <code>amend</code>,
+also by specifying custom-built <code>priors</code>.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">necsigm_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="va">necsigm_priors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
 <span>                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(2, 6.5)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span>,</span>
 <span>                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(1.3, 2.7)"</span>, nlpar <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span>,</span>
 <span>                    <span class="fu"><a href="https://rdrr.io/pkg/brms/man/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"normal(0, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"d"</span><span class="op">)</span><span class="op">)</span></span>

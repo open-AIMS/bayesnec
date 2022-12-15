@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
       </span>
     </div>
 
@@ -94,7 +94,7 @@
 
       
 
-      </header><script src="example4_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Comparing posterior predictions</h1>
@@ -110,7 +110,29 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>With <code>bayesnec</code> we have included a function that allows bootstrapped comparisons of posterior predictions. The main focus here is to showcase how the user can fit several different <code>bnec</code> model fits and can compare differences in the posterior predictions across these fits for individual endpoint estimates (e.g. <em>NEC</em>, <em>NSEC</em> or <em>ECx</em>) or across a range of predictor values. Below we demonstrate usage of <code>compare_posterior</code> for objects of class <code>bayesnecfit</code> and <code>bayesmanecfit</code>. In this example we compare different types of models and model sets using a single dataset. However, the intent of this function is to allow comparison across different datasets that might represent, for example, different levels of a fixed factor covariate. At this time <code>bnec</code> does not allow inclusion of an interaction with a fixed factor. Including an interaction term within each of the non-linear models implemented in <code>bayesnec</code> is relatively straightforward, and may be introduced in future releases. However, in many cases the functional form of the response may change with different levels of a given factor. The substantial complexity of defining all possible non-linear model combinations at each factor level means it unlikely this could be feasibly implemented in <code>bayesnec</code> in the short term. In the meantime the greatest flexibility in the functional form of individual model fits can be readily obtained using models fitted independently to data within each factor level.</p>
+<p>With <code>bayesnec</code> we have included a function that allows
+bootstrapped comparisons of posterior predictions. The main focus here
+is to showcase how the user can fit several different <code>bnec</code>
+model fits and can compare differences in the posterior predictions
+across these fits for individual endpoint estimates (e.g. <em>NEC</em>,
+<em>NSEC</em> or <em>ECx</em>) or across a range of predictor values.
+Below we demonstrate usage of <code>compare_posterior</code> for objects
+of class <code>bayesnecfit</code> and <code>bayesmanecfit</code>. In
+this example we compare different types of models and model sets using a
+single dataset. However, the intent of this function is to allow
+comparison across different datasets that might represent, for example,
+different levels of a fixed factor covariate. At this time
+<code>bnec</code> does not allow inclusion of an interaction with a
+fixed factor. Including an interaction term within each of the
+non-linear models implemented in <code>bayesnec</code> is relatively
+straightforward, and may be introduced in future releases. However, in
+many cases the functional form of the response may change with different
+levels of a given factor. The substantial complexity of defining all
+possible non-linear model combinations at each factor level means it
+unlikely this could be feasibly implemented in <code>bayesnec</code> in
+the short term. In the meantime the greatest flexibility in the
+functional form of individual model fits can be readily obtained using
+models fitted independently to data within each factor level.</p>
 <p>To run this vignette, we will also need some additional packages</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
@@ -118,7 +140,8 @@
 <h3 id="comparing-posterior-endpoint-values">Comparing posterior endpoint values<a class="anchor" aria-label="anchor" href="#comparing-posterior-endpoint-values"></a>
 </h3>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms" class="external-link">brms</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
 <span></span>
@@ -127,111 +150,209 @@
 <span><span class="op">}</span></span>
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, length <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu">make_ecx_data</span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, bot <span class="op">=</span> <span class="fl">0</span>, top <span class="op">=</span> <span class="fl">1</span>, beta <span class="op">=</span> <span class="fl">0.5</span>, ec50 <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">15</span><span class="op">)</span>, y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">15</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">y</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># Fit a set of models</span></span>
-<span><span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">dat</span>, iter <span class="op">=</span> <span class="fl">2e3</span>, refresh <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">dat</span>, refresh <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "bayesmanecfit" "bnecfit"</span></span></code></pre></div>
-<p>This call fits all models that are suitable for modelling Gaussian-distributed response data, excluding all of the hormesis models, which we are not considering here. We have reduced the iterations back to the <code>brms</code> default to make the example lighter, but we do not recommend this in practice. Now that we have our example fit, we can use this to make different model sets, purely for the purposes of illustrating <code>compare_posterior</code> in <code>bayesnec</code> and highlighting the rich information that is contained in the Bayesian posterior draws.</p>
-<p>We can pull out the <strong>nec</strong> models and the <strong>ecx</strong> models separately, to create two alternative model fits of this data that we can compare to each other, as well as the original <strong>all</strong> model fit.</p>
+<p>This call fits all models that are suitable for modelling
+Gaussian-distributed response data, excluding all of the hormesis
+models, which we are not considering here. Now that we have our example
+fit, we can use this to make different model sets, purely for the
+purposes of illustrating <code>compare_posterior</code> in
+<code>bayesnec</code> and highlighting the rich information that is
+contained in the Bayesian posterior draws.</p>
+<p>We can pull out the <strong>nec</strong> models and the
+<strong>ecx</strong> models separately, to create two alternative model
+fits of this data that we can compare to each other, as well as the
+original <strong>all</strong> model fit.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exmp_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exmp</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span></span>
 <span><span class="va">exmp_ecx</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exmp</span>, model <span class="op">=</span> <span class="st">"ecx"</span><span class="op">)</span></span></code></pre></div>
-<p>Now we have three different averaged model fits, all of class <code>bayemanec</code> in this case (because they all contain multiple fits). We can compare their posterior estimates of the ecx10 values using <code>compare_posterior</code>.</p>
+<p>Now we have three different averaged model fits, all of class
+<code>bayemanec</code> in this case (because they all contain multiple
+fits). We can compare their posterior estimates of the ecx10 values
+using <code>compare_posterior</code>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">post_comp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"all"</span> <span class="op">=</span> <span class="va">exmp</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">exmp_ecx</span>,</span>
 <span>                                    <span class="st">"nec"</span> <span class="op">=</span> <span class="va">exmp_nec</span><span class="op">)</span>,</span>
 <span>                               comparison <span class="op">=</span> <span class="st">"ecx"</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">post_comp</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "posterior_list" "posterior_data" "diff_list"     </span></span>
-<span><span class="co">#&gt; [4] "diff_data"      "prob_diff"</span></span></code></pre></div>
-<p>The <code>compare_posterior</code> function outputs several elements in a named list. This includes the <strong>posterior_data</strong> for each model in the comparison as a <code>data.frame</code> which we can use to plot a <code>geom_density</code> plot of the posterior estimates, so they can be compared visually.</p>
+<span><span class="co">#&gt; [1] "posterior_list" "posterior_data" "diff_list"      "diff_data"      "prob_diff"</span></span></code></pre></div>
+<p>The <code>compare_posterior</code> function outputs several elements
+in a named list. This includes the <strong>posterior_data</strong> for
+each model in the comparison as a <code>data.frame</code> which we can
+use to plot a <code>geom_density</code> plot of the posterior estimates,
+so they can be compared visually.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp</span><span class="op">$</span><span class="va">posterior_data</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density.html" class="external-link">geom_density</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>group <span class="op">=</span> <span class="va">model</span>, colour <span class="op">=</span> <span class="va">model</span>, fill <span class="op">=</span> <span class="va">model</span><span class="op">)</span>,</span>
 <span>               alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette-fig-exmp4-posterior-1.png" alt="plot of chunk exmp4-posterior" width="60%" style="display: block; margin: auto;"></p>
-<p>From this you can see that the <em>EC<sub>10</sub></em> estimates are very similar for the <strong>ecx</strong> and <strong>all</strong> model sets. This is because the <strong>ecx</strong> model types dominate the model weights in this <strong>all</strong> fit, see <code>wi</code> in <code>exmp$mod_stats</code>. The <em>EC<sub>10</sub></em> estimate is slightly lower (more conservative) for the <strong>ecx</strong> based models.</p>
-<p>The <code>data.frame</code> <code>diff_data</code> can be used to make a similar plot, but specifically for the differences among models.</p>
+<p>From this you can see that the <em>EC<sub>10</sub></em> estimates are
+very similar for the <strong>ecx</strong> and <strong>all</strong> model
+sets. This is because the <strong>ecx</strong> model types dominate the
+model weights in this <strong>all</strong> fit, see <code>wi</code> in
+<code>exmp$mod_stats</code>. The <em>EC<sub>10</sub></em> estimate is
+slightly lower (more conservative) for the <strong>ecx</strong> based
+models.</p>
+<p>The <code>data.frame</code> <code>diff_data</code> can be used to
+make a similar plot, but specifically for the differences among
+models.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp</span><span class="op">$</span><span class="va">diff_data</span>, mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">diff</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density.html" class="external-link">geom_density</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>group <span class="op">=</span> <span class="va">comparison</span>, colour <span class="op">=</span> <span class="va">comparison</span>,</span>
 <span>                             fill <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette-fig-exmp4-differences-1.png" alt="plot of chunk exmp4-differences" width="60%" style="display: block; margin: auto;"></p>
-<p>This shows the differences among the three estimates. There is no difference in the <strong>ecx</strong> and <strong>all</strong> estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth <strong>ecx</strong> type curve and thus those models have high weight. The <strong>nec</strong> based <em>EC<sub>10</sub></em> estimates are greater than the <strong>ecx</strong> estimates in this case.</p>
-<p>We can formally test the probability that the endpoint estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as <code>prob_diff</code>. Here you can see there is 48% chance that <strong>all</strong> is greater than <strong>ecx</strong>. There is only a 33% chance that <strong>ecx</strong> is greater than <strong>nec</strong>, and a 67% chance that the <strong>nec</strong> is greater than <strong>ecx</strong>.</p>
+<p>This shows the differences among the three estimates. There is no
+difference in the <strong>ecx</strong> and <strong>all</strong>
+estimates (the probability density overlaps zero - red shaded curve).
+This is because for this example the simulated data are from a smooth
+<strong>ecx</strong> type curve and thus those models have high weight.
+The <strong>nec</strong> based <em>EC<sub>10</sub></em> estimates are
+greater than the <strong>ecx</strong> based estimates in this case.</p>
+<p>We can formally test the probability that the endpoint estimate for
+one model set is greater than the other using posterior differencing.
+This is contained in the compare posterior output as
+<code>prob_diff</code>. Here you can see there is 55% chance that
+<strong>all</strong> is greater than <strong>ecx</strong>. There is only
+a 22% chance that <strong>ecx</strong> is greater than
+<strong>nec</strong>, and a 78% chance that the <strong>nec</strong> is
+greater than <strong>ecx</strong>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">post_comp</span><span class="op">$</span><span class="va">prob_diff</span></span>
-<span><span class="co">#&gt;   comparison     prob</span></span>
-<span><span class="co">#&gt; 1    all-ecx 0.483125</span></span>
-<span><span class="co">#&gt; 2    all-nec 0.332500</span></span>
-<span><span class="co">#&gt; 3    ecx-nec 0.329375</span></span></code></pre></div>
+<span><span class="co">#&gt;   comparison      prob</span></span>
+<span><span class="co">#&gt; 1    all-ecx 0.5545693</span></span>
+<span><span class="co">#&gt; 2    all-nec 0.2944118</span></span>
+<span><span class="co">#&gt; 3    ecx-nec 0.2221528</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="comparing-posterior-fitted-values">Comparing posterior fitted values<a class="anchor" aria-label="anchor" href="#comparing-posterior-fitted-values"></a>
 </h3>
-<p>The user can also compare posterior fitted values across the full range of x values, using <code>comparison = "fitted"</code>.</p>
+<p>The user can also compare posterior fitted values across the full
+range of x values, using <code>comparison = "fitted"</code>.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">post_comp_fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_posterior.html">compare_posterior</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"all"</span> <span class="op">=</span> <span class="va">exmp</span>, <span class="st">"ecx"</span> <span class="op">=</span> <span class="va">exmp_ecx</span>,</span>
 <span>                                           <span class="st">"nec"</span> <span class="op">=</span> <span class="va">exmp_nec</span><span class="op">)</span>,</span>
 <span>                                      comparison <span class="op">=</span> <span class="st">"fitted"</span><span class="op">)</span></span></code></pre></div>
-<p>In the case of <code>comparison = "fitted"</code> most of the elements returned by <code>compare_posterior</code> are class <code>data.frame</code>, with summary values for the posteriors, difference values and probabilities returned for each value of the predictor, for each model or model comparison.</p>
+<p>In the case of <code>comparison = "fitted"</code> most of the
+elements returned by <code>compare_posterior</code> are class
+<code>data.frame</code>, with summary values for the posteriors,
+difference values and probabilities returned for each value of the
+predictor, for each model or model comparison.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   model          x  Estimate      Q2.5    Q97.5</span></span>
-<span><span class="co">#&gt; 1   all 0.09090909 0.9560272 0.9079987 1.005893</span></span>
-<span><span class="co">#&gt; 2   all 0.29313544 0.9559913 0.9079906 1.005071</span></span>
-<span><span class="co">#&gt; 3   all 0.49536178 0.9559812 0.9079895 1.004756</span></span>
-<span><span class="co">#&gt; 4   all 0.69758813 0.9559264 0.9079880 1.004655</span></span>
-<span><span class="co">#&gt; 5   all 0.89981447 0.9558704 0.9079857 1.004118</span></span>
-<span><span class="co">#&gt; 6   all 1.10204082 0.9557849 0.9079824 1.003546</span></span>
+<span><span class="co">#&gt;   model          x Estimate      Q2.5    Q97.5</span></span>
+<span><span class="co">#&gt; 1   all 0.09090909 1.019064 0.9661288 1.081557</span></span>
+<span><span class="co">#&gt; 2   all 0.29313544 1.018926 0.9661288 1.079875</span></span>
+<span><span class="co">#&gt; 3   all 0.49536178 1.018739 0.9661288 1.078295</span></span>
+<span><span class="co">#&gt; 4   all 0.69758813 1.018546 0.9661170 1.076359</span></span>
+<span><span class="co">#&gt; 5   all 0.89981447 1.018291 0.9660999 1.074599</span></span>
+<span><span class="co">#&gt; 6   all 1.10204082 1.017883 0.9660999 1.072197</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   comparison diff.Estimate   diff.Q2.5 diff.Q97.5</span></span>
-<span><span class="co">#&gt; 1    all-ecx  0.0005514382 -0.06892429 0.06687044</span></span>
-<span><span class="co">#&gt; 2    all-ecx  0.0004998985 -0.06877963 0.06680648</span></span>
-<span><span class="co">#&gt; 3    all-ecx  0.0004271837 -0.06881629 0.06668127</span></span>
-<span><span class="co">#&gt; 4    all-ecx  0.0004301296 -0.06887058 0.06666006</span></span>
-<span><span class="co">#&gt; 5    all-ecx  0.0002705520 -0.06895098 0.06624540</span></span>
-<span><span class="co">#&gt; 6    all-ecx  0.0002613768 -0.06843418 0.06591832</span></span>
-<span><span class="co">#&gt;            x</span></span>
-<span><span class="co">#&gt; 1 0.09090909</span></span>
-<span><span class="co">#&gt; 2 0.29313544</span></span>
-<span><span class="co">#&gt; 3 0.49536178</span></span>
-<span><span class="co">#&gt; 4 0.69758813</span></span>
-<span><span class="co">#&gt; 5 0.89981447</span></span>
-<span><span class="co">#&gt; 6 1.10204082</span></span></code></pre></div>
-<p>Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the <strong>ecx</strong> model set begins to decline earlier than the <strong>nec</strong> set, which is flat prior to the <strong>nec</strong> step point, and then declines more rapidly.</p>
+<span><span class="co">#&gt;   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x</span></span>
+<span><span class="co">#&gt; 1    all-ecx  -0.004558534 -0.08537598 0.07724148 0.09090909</span></span>
+<span><span class="co">#&gt; 2    all-ecx  -0.004414021 -0.08404266 0.07642943 0.29313544</span></span>
+<span><span class="co">#&gt; 3    all-ecx  -0.004368055 -0.08321144 0.07519140 0.49536178</span></span>
+<span><span class="co">#&gt; 4    all-ecx  -0.004269343 -0.08075704 0.07393649 0.69758813</span></span>
+<span><span class="co">#&gt; 5    all-ecx  -0.004246644 -0.07927299 0.07251096 0.89981447</span></span>
+<span><span class="co">#&gt; 6    all-ecx  -0.004167774 -0.07736581 0.07094054 1.10204082</span></span></code></pre></div>
+<p>Using the collated posterior_data we can plot the predicted curves
+with confidence bounds for each of the input models. This shows clearly
+that the <strong>ecx</strong> model set begins to decline earlier than
+the <strong>nec</strong> set, which is flat prior to the
+<strong>nec</strong> step point, and then declines more rapidly.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">Estimate</span>, color <span class="op">=</span> <span class="va">model</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">Estimate</span>, color <span class="op">=</span> <span class="va">model</span><span class="op">)</span>,</span>
+<span>            linewidth <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">geom_ribbon</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, ymin <span class="op">=</span> <span class="va">Q2.5</span>, ymax <span class="op">=</span> <span class="va">Q97.5</span>, fill <span class="op">=</span> <span class="va">model</span><span class="op">)</span>,</span>
 <span>              alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Concentration"</span>, y <span class="op">=</span> <span class="st">"Posterior estimate"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette-fig-exmp4-fitted-1.png" alt="plot of chunk exmp4-fitted" width="60%" style="display: block; margin: auto;"></p>
-<p>We can plot the differences between pairs of models in the list by plotting <code>diff.Estimate</code> from <code>diff_data</code> and using colours for the different comparisons. This plot highlights where the differences among these model sets are the greatest and explains the differences we see above in the <em>EC<sub>10</sub></em> endpoint estimates. The <strong>ecx</strong> and <strong>all</strong> model sets are relatively similar across the entire range of concentrations (red band overlaps zero). The green band is the difference between <strong>nec</strong> and <strong>all</strong> (specifically <strong>all</strong>-<strong>nec</strong>) and the blue band is the difference between <strong>nec</strong> and <strong>ecx</strong> (specifically <strong>ecx</strong>-<strong>nec</strong>). You can see from the green and blue bands that the <strong>nec</strong> set has slightly lower estimates than <strong>all</strong> and <strong>ecx</strong> at low to moderate predictor values; the <strong>nec</strong> based curve then crosses the other two, predicting higher values of the response at around a concentration of 4-5; then drops rapidly, producing lower predictions than the other curves at around 5.</p>
+<p>We can plot the differences between pairs of models in the list by
+plotting <code>diff.Estimate</code> from <code>diff_data</code> and
+using colours for the different comparisons. This plot highlights where
+the differences among these model sets are the greatest and explains the
+differences we see above in the <em>EC<sub>10</sub></em> endpoint
+estimates. The <strong>ecx</strong> and <strong>all</strong> model sets
+are relatively similar across the entire range of concentrations (red
+band overlaps zero). The green band is the difference between
+<strong>nec</strong> and <strong>all</strong> (specifically
+<strong>all</strong>-<strong>nec</strong>) and the blue band is the
+difference between <strong>nec</strong> and <strong>ecx</strong>
+(specifically <strong>ecx</strong>-<strong>nec</strong>). You can see
+from the green and blue bands that the <strong>nec</strong> set has
+slightly lower estimates than <strong>all</strong> and
+<strong>ecx</strong> at low to moderate predictor values; the
+<strong>nec</strong> based curve then crosses the other two, predicting
+higher values of the response at around a concentration of 4-5; then
+drops rapidly, producing lower predictions than the other curves at
+around 5.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">diff.Estimate</span>, color <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>,</span>
-<span>            size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
+<span>            linewidth <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">geom_ribbon</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, ymin  <span class="op">=</span> <span class="va">diff.Q2.5</span>, ymax <span class="op">=</span> <span class="va">diff.Q97.5</span>,</span>
 <span>              fill <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Concentration"</span>, y <span class="op">=</span> <span class="st">"Posterior difference"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette-fig-exmp4-fitteddiff-1.png" alt="plot of chunk exmp4-fitteddiff" width="60%" style="display: block; margin: auto;"></p>
-<p>And finally we can plot the probability that one model is greater than the other by plotting <code>prob</code> from <code>diff_data</code>. The pattern of this plot is identical to the plot of differences, but the y axis now shows the probability of these differences. The red line hovers around 0.5 clearly indicating the lack of significant difference in the <strong>ecx</strong> and <strong>all</strong> model sets at any point of the predictor axis. The green and blue curves pass through 0.5 at several points, meaning there are parts of the curve where there is no significant difference between the <strong>nec</strong> and the <strong>ecx</strong> or <strong>all</strong> model set predictions. The greatest probability of difference among these curves is between values of ~3 and ~4 of the predictor, where the probability of difference trends towards low values (<strong>ecx</strong> is higher than <strong>nec</strong>), and at around 5, where the probability difference is very high (<strong>nec</strong> is higher than <strong>ecx</strong>). These are the two points where the <strong>ecx</strong> set deviates most from the <strong>nec</strong> set.</p>
+<p>And finally we can plot the probability that one model is greater
+than the other by plotting <code>prob</code> from
+<code>diff_data</code>. The pattern of this plot is identical to the
+plot of differences, but the y axis now shows the probability of these
+differences. The red line hovers around 0.5 clearly indicating the lack
+of significant difference in the <strong>ecx</strong> and
+<strong>all</strong> model sets at any point of the predictor axis. The
+green and blue curves pass through 0.5 at several points, meaning there
+are parts of the curve where there is no significant difference between
+the <strong>nec</strong> and the <strong>ecx</strong> or
+<strong>all</strong> model set predictions. The greatest probability of
+difference among these curves is between values of ~3 and ~4 of the
+predictor, where the probability of difference trends towards low values
+(<strong>ecx</strong> is higher than <strong>nec</strong>), and at
+around 5, where the probability difference is very high
+(<strong>nec</strong> is higher than <strong>ecx</strong>). These are
+the two points where the <strong>ecx</strong> set deviates most from the
+<strong>nec</strong> set.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">prob_diff</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">prob</span>, color <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, size <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>mapping <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">prob</span>, color <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>,</span>
+<span>            linewidth <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Concentration"</span>, y <span class="op">=</span> <span class="st">"Probability of difference"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette-fig-exmp4-probplot-1.png" alt="plot of chunk exmp4-probplot" width="60%" style="display: block; margin: auto;"></p>
-<p>Here we use the difference in the <strong>ecx</strong> and <strong>nec</strong> models sets purely to showcase the functionality of <code>compare_posterior</code> and highlight some of the strengths of using a Bayesian approach. These differences are expected in this case, because the simulated data we used are from a smooth <strong>exc</strong> function. The <strong>nec</strong> models are fitting a break-point model that has a single mean value up to the <strong>nec</strong>, followed by a relatively sharp decline. When fitted to these smooth curves the <strong>nec</strong> models do not really fit the data well and produce inflated (less conservative) estimates of the <em>EC<sub>10</sub></em> value. Fortunately, the model averaging approach solves this issue by yielding a very low weight to the <strong>nec</strong> based models, and the <strong>all</strong> model set is indistinguishable from the <strong>ecx</strong> set, which contains the underlying true generating model in this case. As such, this is not really an interesting example—other than illustrating the behaviour of <strong>nec</strong> model types in this setting.</p>
-<p>The <code>compare_posterior</code> function was actually developed with the intention of comparing model sets based on different data to assess statistically the difference in either the endpoint estimates, or across the entire fitted curve, amongst factors of interest. Examples would include assessing for changes in toxicity across different WET tests through time, or comparing different levels of a factor treatment variable (such as climate change scenarios), to look at how these interact with concentration to impact toxicity.</p>
+<p>Here we use the difference in the <strong>ecx</strong> and
+<strong>nec</strong> models sets purely to showcase the functionality of
+<code>compare_posterior</code> and highlight some of the strengths of
+using a Bayesian approach. These differences are expected in this case,
+because the simulated data we used are from a smooth
+<strong>exc</strong> function. The <strong>nec</strong> models are
+fitting a break-point model that has a single mean value up to the
+<strong>nec</strong>, followed by a relatively sharp decline. When
+fitted to these smooth curves the <strong>nec</strong> models do not
+really fit the data well and produce inflated (less conservative)
+estimates of the <em>EC<sub>10</sub></em> value. Fortunately, the model
+averaging approach solves this issue by yielding a very low weight to
+the <strong>nec</strong> based models, and the <strong>all</strong>
+model set is indistinguishable from the <strong>ecx</strong> set, which
+contains the underlying true generating model in this case. As such,
+this is not really an interesting example—other than illustrating the
+behaviour of <strong>nec</strong> model types in this setting.</p>
+<p>The <code>compare_posterior</code> function was actually developed
+with the intention of comparing model sets based on different data to
+assess statistically the difference in either the endpoint estimates, or
+across the entire fitted curve, amongst factors of interest. Examples
+would include assessing for changes in toxicity across different WET
+tests through time, or comparing different levels of a factor treatment
+variable (such as climate change scenarios), to look at how these
+interact with concentration to impact toxicity.</p>
 </div>
 </div>
   </div>

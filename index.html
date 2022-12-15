@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
       </span>
     </div>
 
@@ -100,6 +100,7 @@
 <div class="page-header"><h1 id="bayesnec-">bayesnec <img src="reference/figures/logo.png" width="180" alt="bayesnec Logo" align="right"><a class="anchor" aria-label="anchor" href="#bayesnec-"></a>
 </h1></div>
 <!-- badges: start -->
+
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
@@ -109,12 +110,12 @@
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <p>To install the latest release version from CRAN use</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">install.packages</span>(<span class="st">"bayesnec"</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">"bayesnec"</span>)</span></code></pre></div>
 <p>The current development version can be downloaded from GitHub via</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(<span class="st">"remotes"</span>)) {</span>
-<span id="cb2-2"><a href="#cb2-2"></a>  <span class="kw">install.packages</span>(<span class="st">"remotes"</span>)</span>
-<span id="cb2-3"><a href="#cb2-3"></a>}</span>
-<span id="cb2-4"><a href="#cb2-4"></a>remotes<span class="op">::</span><span class="kw">install_github</span>(<span class="st">"open-aims/bayesnec"</span>, <span class="dt">ref =</span> <span class="st">"dev"</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">"remotes"</span>)) {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">install.packages</span>(<span class="st">"remotes"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">"open-aims/bayesnec"</span>, <span class="at">ref =</span> <span class="st">"dev"</span>)</span></code></pre></div>
 <p>Because <code>bayesnec</code> is based on <code>brms</code> and <a href="https://mc-stan.org/" class="external-link">Stan</a>, a C++ compiler is required. The program <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> comes with a C++ compiler for Windows. On Mac, you should install Xcode. See the prerequisites section on this <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started" class="external-link">link</a> for further instructions on how to get the compilers running.</p>
 </div>
 <div class="section level2">
@@ -170,7 +171,7 @@
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html" class="external-link"><img src="https://img.shields.io/badge/lifecycle-maturing-blue.svg" alt="Lifecycle: maturing"></a></li>
-<li><a href="https://github.com/open-AIMS/bayesnec/actions" class="external-link"><img src="https://github.com/open-AIMS/bayesnec/workflows/R-CMD-check/badge.svg" alt="R build status"></a></li>
+<li><a href="https://github.com/open-AIMS/bayesnec/actions" class="external-link"><img src="https://github.com/open-AIMS/bayesnec/actions/workflows/R-CMD-check.yaml/badge.svg?branch=dev" alt="R build status"></a></li>
 <li><a href="https://app.codecov.io/gh/open-aims/bayesnec?branch=master" class="external-link"><img src="https://codecov.io/gh/open-aims/bayesnec/branch/master/graph/badge.svg" alt="Codecov test coverage"></a></li>
 <li><a href="https://cran.r-project.org/package=bayesnec" class="external-link"><img src="https://www.r-pkg.org/badges/version/bayesnec" alt="CRAN Version"></a></li>
 <li><a href="https://CRAN.R-project.org/package=bayesnec" class="external-link"><img src="https://cranlogs.r-pkg.org/badges/bayesnec?color=brightgreen" alt="Downloads"></a></li>

@@ -19,7 +19,7 @@ compares these via bootstrap re sampling."><meta property="og:image" content="/l
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
       </span>
     </div>
 
@@ -87,7 +87,9 @@ compares these via bootstrap re sampling.</p>
 <span>  hormesis_def <span class="op">=</span> <span class="st">"control"</span>,</span>
 <span>  sig_val <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  <span class="va">precision</span>,</span>
-<span>  x_range <span class="op">=</span> <span class="cn">NA</span></span>
+<span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  make_newdata <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -127,12 +129,24 @@ estimate NEC as an interpolated NOEC value from smooth ECx curves.</p></dd>
 
 
 <dt>precision</dt>
-<dd><p>The number of unique x values over which to find ECx -
+<dd><p>The number of unique x values over which to find ECx --
 large values will make the ECx estimate more precise.</p></dd>
 
 
 <dt>x_range</dt>
 <dd><p>A range of x values over which to consider extracting ECx.</p></dd>
+
+
+<dt>make_newdata</dt>
+<dd><p>Only used if <code>comparison = "fitted"</code>. Should the
+user allow the package to create <code>newdata</code> for predictions?
+If so, arguments <code>precision</code> and <code>x_range</code> will be used. Defaults
+to TRUE. See details.</p></dd>
+
+
+<dt>...</dt>
+<dd><p>Further arguments that control posterior predictions via
+<code><a href="https://mc-stan.org/rstantools/reference/posterior_epred.html" class="external-link">posterior_epred</a></code>.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -143,9 +157,37 @@ large values will make the ECx estimate more precise.</p></dd>
 in posterior predictions of the <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or
 <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> model fits contained in <code>x</code>. See Details.</p>
     </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p><code>type</code> "relative" is calculated as the percentage decrease
+from the maximum predicted value of the response (top) to the minimum
+predicted value of the response. Type "absolute" (the default) is
+calculated as the percentage decrease from the maximum value of the
+response (top) to 0 (or bot for a 4 parameter model fit). Type "direct"
+provides a direct estimate of the x value for a given y.
+Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
+model is estimated at a percent decline from the control.</p>
+<p>For <code>hormesis_def</code>, if "max", then ECx or NSEC values -- i.e.,
+depending on argument <code>comparison</code> -- are calculated
+as a decline from the maximum estimates (i.e. the peak at NEC);
+if "control", then ECx or NSEC values are calculated relative to the
+control, which is assumed to be the lowest observed concentration.</p>
+<p>The argument <code>make_newdata</code> is only used if
+<code>comparison = "fitted"</code>. It is relevant to those who want the package
+to create a data.frame from which to make predictions. This is done via
+<code><a href="bnec_newdata.html">bnec_newdata</a></code> and uses arguments <code>precision</code> and
+<code>x_range</code>. If <code>make_newdata = FALSE</code> and no additional
+<code>newdata</code> argument is provided (via <code>...</code>), then the predictions
+are made for the raw data. Else, to generate predictions for a specific
+user-specific data.frame, set <code>make_newdata = FALSE</code> and provide
+an additional data.frame via the <code>newdata</code> argument. For guidance
+on how to structure <code>newdata</code>, see for example
+<code><a href="https://mc-stan.org/rstantools/reference/posterior_epred.html" class="external-link">posterior_epred</a></code>.</p>
+    </div>
     <div id="see-also">
     <h2>See also</h2>
-    <div class="dont-index"><p><code><a href="bnec.html">bnec</a></code></p></div>
+    <div class="dont-index"><p><code><a href="bnec.html">bnec</a></code> <code><a href="ecx.html">ecx</a></code> <code><a href="nsec.html">nsec</a></code>
+<code><a href="nec.html">nec</a></code> <code><a href="bnec_newdata.html">bnec_newdata</a></code></p></div>
     </div>
 
     <div id="ref-examples">

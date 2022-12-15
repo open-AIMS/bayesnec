@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
       </span>
     </div>
 
@@ -94,7 +94,7 @@
 
       
 
-      </header><script src="example2b_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Model details</h1>
@@ -110,87 +110,207 @@
 <div class="section level2">
 <h2 id="models-in-bayesnec">Models in <code>bayesnec</code><a class="anchor" aria-label="anchor" href="#models-in-bayesnec"></a>
 </h2>
-<p>There are a range of models available in <code>bayesnec</code> and the working <code>bnec</code> function supports individual model fitting, as well as multi-model fitting with Bayesian model averaging.</p>
-<p>The argument <code>model</code> in a <code>bayesnecformula</code> is a character string indicating the name(s) of the desired model (see <code><a href="../reference/models.html">?models</a></code> for more details, and the list of models available). If a recognised model name is provided, a single model of the specified type is fit, and <code>bnec</code> returns a model object of class <code>bayesnecfit</code>. If a vector of two or more of the available models are supplied, <code>bnec</code> returns a model object of class <code>bayesmanecfit</code> containing Bayesian model averaged predictions for the supplied models, providing they were successfully fitted.</p>
-<p>Model averaging is achieved through a weighted sample of each fitted models’ posterior predictions, with weights derived using the <code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry 2017)</span>. Individual <code>brms</code> model fits can be extracted from the <code>mod_fits</code> element and can be examined individually.</p>
-<p>The <code>model</code> may also be one of <code>"all"</code>, meaning all of the available models will be fit; <code>"ecx"</code> meaning only models excluding the <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter will be fit; <code>"nec"</code> meaning only models with a specific <span class="math inline">\(\eta = \text{NEC}\)</span> step parameter will be fit; <code>"bot_free"</code> meaning only models without a <code>"bot"</code> parameter (without a bottom plateau) will be fit; <code>"zero_bounded"</code> are models that are bounded to be zero; or <code>"decline"</code> excludes all hormesis models, i.e., only allows a strict decline in response across the whole predictor range (see below <strong>Parameter definitions</strong>). There are a range of other pre-defined model groups available. The full list of currently implemented model groups can be seen using:</p>
+<p>There are a range of models available in <code>bayesnec</code> and
+the working <code>bnec</code> function supports individual model
+fitting, as well as multi-model fitting with Bayesian model
+averaging.</p>
+<p>The argument <code>model</code> in a <code>bayesnecformula</code> is
+a character string indicating the name(s) of the desired model (see
+<code><a href="../reference/models.html">?models</a></code> for more details, and the list of models
+available). If a recognised model name is provided, a single model of
+the specified type is fit, and <code>bnec</code> returns a model object
+of class <code>bayesnecfit</code>. If a vector of two or more of the
+available models are supplied, <code>bnec</code> returns a model object
+of class <code>bayesmanecfit</code> containing Bayesian model averaged
+predictions for the supplied models, providing they were successfully
+fitted.</p>
+<p>Model averaging is achieved through a weighted sample of each fitted
+models’ posterior predictions, with weights derived using the
+<code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry
+2017)</span>. Individual <code>brms</code> model fits can be extracted
+from the <code>mod_fits</code> element and can be examined
+individually.</p>
+<p>The <code>model</code> may also be one of <code>"all"</code>, meaning
+all of the available models will be fit; <code>"ecx"</code> meaning only
+models excluding the <span class="math inline">\(\eta =
+\text{NEC}\)</span> step parameter will be fit; <code>"nec"</code>
+meaning only models with a specific <span class="math inline">\(\eta =
+\text{NEC}\)</span> step parameter will be fit; <code>"bot_free"</code>
+meaning only models without a <code>"bot"</code> parameter (without a
+bottom plateau) will be fit; <code>"zero_bounded"</code> are models that
+are bounded to be zero; or <code>"decline"</code> excludes all hormesis
+models, i.e., only allows a strict decline in response across the whole
+predictor range (see below <strong>Parameter definitions</strong>).
+There are a range of other pre-defined model groups available. The full
+list of currently implemented model groups can be seen using:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/models.html">models</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $nec</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"     </span></span>
-<span><span class="co">#&gt;  [4] "nechorme4"     "necsigm"       "neclin"       </span></span>
-<span><span class="co">#&gt;  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr" </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr" </span></span>
 <span><span class="co">#&gt; [10] "nechormepwr01"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $ecx</span></span>
-<span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"     </span></span>
-<span><span class="co">#&gt;  [4] "ecxsigm"     "ecxwb1"      "ecxwb2"     </span></span>
-<span><span class="co">#&gt;  [7] "ecxwb1p3"    "ecxwb2p3"    "ecxll5"     </span></span>
-<span><span class="co">#&gt; [10] "ecxll4"      "ecxll3"      "ecxhormebc4"</span></span>
-<span><span class="co">#&gt; [13] "ecxhormebc5"</span></span>
+<span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"     </span></span>
+<span><span class="co">#&gt; [11] "ecxll3"      "ecxhormebc4" "ecxhormebc5"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $all</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"     </span></span>
-<span><span class="co">#&gt;  [4] "nechorme4"     "necsigm"       "neclin"       </span></span>
-<span><span class="co">#&gt;  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr" </span></span>
-<span><span class="co">#&gt; [10] "nechormepwr01" "ecxlin"        "ecxexp"       </span></span>
-<span><span class="co">#&gt; [13] "ecxsigm"       "ecx4param"     "ecxwb1"       </span></span>
-<span><span class="co">#&gt; [16] "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"     </span></span>
-<span><span class="co">#&gt; [19] "ecxll5"        "ecxll4"        "ecxll3"       </span></span>
-<span><span class="co">#&gt; [22] "ecxhormebc4"   "ecxhormebc5"  </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr" </span></span>
+<span><span class="co">#&gt; [10] "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"     </span></span>
+<span><span class="co">#&gt; [19] "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $bot_free</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"      </span></span>
-<span><span class="co">#&gt;  [4] "neclin"        "neclinhorme"   "nechormepwr"  </span></span>
-<span><span class="co">#&gt;  [7] "ecxlin"        "ecxexp"        "ecxsigm"      </span></span>
-<span><span class="co">#&gt; [10] "ecxwb1p3"      "ecxwb2p3"      "ecxll3"       </span></span>
-<span><span class="co">#&gt; [13] "ecxhormebc4"   "nechormepwr01"</span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"        "ecxexp"        "ecxsigm"      </span></span>
+<span><span class="co">#&gt; [10] "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"   "nechormepwr01"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $zero_bounded</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"      </span></span>
-<span><span class="co">#&gt;  [4] "nechormepwr"   "nechormepwr01" "ecxexp"       </span></span>
-<span><span class="co">#&gt;  [7] "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"     </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"     </span></span>
 <span><span class="co">#&gt; [10] "ecxll3"        "ecxhormebc4"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $decline</span></span>
-<span><span class="co">#&gt;  [1] "nec3param" "nec4param" "necsigm"   "neclin"   </span></span>
-<span><span class="co">#&gt;  [5] "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param"</span></span>
-<span><span class="co">#&gt;  [9] "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3" </span></span>
-<span><span class="co">#&gt; [13] "ecxll5"    "ecxll4"    "ecxll3"</span></span></code></pre></div>
+<span><span class="co">#&gt;  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"   </span></span>
+<span><span class="co">#&gt; [13] "ecxll4"    "ecxll3"   </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $hormesis</span></span>
+<span><span class="co">#&gt; [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"   "ecxhormebc5"</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="parameter-definitions">Parameter definitions<a class="anchor" aria-label="anchor" href="#parameter-definitions"></a>
 </h2>
-<p>Where possible we have aimed for consistency in the interpretable meaning of the individual parameters across models. Across the currently implemented model set, models contain from two (basic linear or exponential decay, see <strong>ecxlin</strong> or <strong>ecxexp</strong>) to five possible parameters (<strong>nechorme4</strong>), including:</p>
-<p><span class="math inline">\(\tau = \text{top}\)</span>, usually interpretable as either the y-intercept or the upper plateau representing the mean concentration of the response at zero concentration;</p>
-<p><span class="math inline">\(\eta = \text{NEC}\)</span>, the No-Effect-Concentration value (the x concentration value where the breakpoint in the regression is estimated at, see <strong>Model types for <em>NEC</em> and <em>EC<sub>x</sub></em> estimation</strong> and <span class="citation">(Fox 2010)</span> for more details on parameter based <em>NEC</em> estimation);</p>
-<p><span class="math inline">\(\beta = \text{beta}\)</span>, generally the exponential decay rate of response, either from 0 concentration or from the estimated <span class="math inline">\(\eta\)</span> value, with the exception of the <strong>neclinhorme</strong> model where it represents a linear decay from <span class="math inline">\(\eta\)</span> because slope (<span class="math inline">\(\alpha\)</span>) is required for the linear increase;</p>
-<p><span class="math inline">\(\delta = \text{bottom}\)</span>, representing the lower plateau for the response at infinite concentration;</p>
-<p><span class="math inline">\(\alpha = \text{slope}\)</span>, the linear decay rate in the models <strong>neclin</strong> and <strong>ecxlin</strong>, or the linear increase rate prior to <span class="math inline">\(\eta\)</span> for all hormesis models;</p>
-<p><span class="math inline">\(\omega\)</span> = <span class="math inline">\(\text{EC\textsubscript{50}}\)</span> notionally the 50% effect concentration but may be influenced by scaling and should therefore not be strictly interpreted, and</p>
-<p><span class="math inline">\(\epsilon = \text{d}\)</span>, the exponent in the <strong>ecxsigm</strong> and <strong>necisgm</strong> models.</p>
-<p><span class="math inline">\(\zeta = \text{f}\)</span> A scaling exponent exclusive to model <strong>ecxll5</strong>.</p>
-<p>In addition to the model parameters, all <strong>nec</strong>-containing models have a step function used to define the breakpoint in the regression, which can be defined as</p>
+<p>Where possible we have aimed for consistency in the interpretable
+meaning of the individual parameters across models. Across the currently
+implemented model set, models contain from two (basic linear or
+exponential decay, see <strong>ecxlin</strong> or
+<strong>ecxexp</strong>) to five possible parameters
+(<strong>nechorme4</strong>), including:</p>
+<p><span class="math inline">\(\tau = \text{top}\)</span>, usually
+interpretable as either the y-intercept or the upper plateau
+representing the mean concentration of the response at zero
+concentration;</p>
+<p><span class="math inline">\(\eta = \text{NEC}\)</span>, the
+No-Effect-Concentration value (the x concentration value where the
+breakpoint in the regression is estimated at, see <strong>Model types
+for <em>NEC</em> and <em>EC<sub>x</sub></em> estimation</strong> and
+<span class="citation">(Fox 2010)</span> for more details on parameter
+based <em>NEC</em> estimation);</p>
+<p><span class="math inline">\(\beta = \text{beta}\)</span>, generally
+the exponential decay rate of response, either from 0 concentration or
+from the estimated <span class="math inline">\(\eta\)</span> value, with
+the exception of the <strong>neclinhorme</strong> model where it
+represents a linear decay from <span class="math inline">\(\eta\)</span>
+because slope (<span class="math inline">\(\alpha\)</span>) is required
+for the linear increase;</p>
+<p><span class="math inline">\(\delta = \text{bottom}\)</span>,
+representing the lower plateau for the response at infinite
+concentration;</p>
+<p><span class="math inline">\(\alpha = \text{slope}\)</span>, the
+linear decay rate in the models <strong>neclin</strong> and
+<strong>ecxlin</strong>, or the linear increase rate prior to <span class="math inline">\(\eta\)</span> for all hormesis models;</p>
+<p><span class="math inline">\(\omega\)</span> = <span class="math inline">\(\text{EC\textsubscript{50}}\)</span> notionally
+the 50% effect concentration but may be influenced by scaling and should
+therefore not be strictly interpreted, and</p>
+<p><span class="math inline">\(\epsilon = \text{d}\)</span>, the
+exponent in the <strong>ecxsigm</strong> and <strong>necisgm</strong>
+models.</p>
+<p><span class="math inline">\(\zeta = \text{f}\)</span> A scaling
+exponent exclusive to model <strong>ecxll5</strong>.</p>
+<p>In addition to the model parameters, all
+<strong>nec</strong>-containing models have a step function used to
+define the breakpoint in the regression, which can be defined as</p>
 <p><span class="math display">\[
-f(x_i, \eta) = \begin{cases} 
+f(x_i, \eta) = \begin{cases}
       0, &amp; x_i - \eta &lt; 0 \\
       1, &amp; x_i - \eta \geq 0 \\
    \end{cases}
 \]</span></p>
 </div>
 <div class="section level2">
-<h2 id="model-types-for-nec-and-ecx-estimation">Model types for <em>NEC</em> and <em>EC<sub>x</sub></em> estimation<a class="anchor" aria-label="anchor" href="#model-types-for-nec-and-ecx-estimation"></a>
+<h2 id="model-types-for-nec-and-ecx-estimation">Model types for <em>NEC</em> and <em>EC<sub>x</sub></em>
+estimation<a class="anchor" aria-label="anchor" href="#model-types-for-nec-and-ecx-estimation"></a>
 </h2>
-<p>All models provide an estimate for the No-Effect-Concentration (<em>NEC</em>). For model types with <strong>nec</strong> as a prefix, the <em>NEC</em> is directly estimated as parameter <span class="math inline">\(\eta = \text{NEC}\)</span> in the model, as per <span class="citation">(Fox 2010)</span>. Models with <strong>ecx</strong> as a prefix are continuous curve models, typically used for extracting <em>EC<sub>x</sub></em> values from concentration-response data. In this instance the <em>NEC</em> reported is actually the No-Significant-Effect-Concentration (<em>NSEC</em>), defined as the concentration at which there is a user supplied (see <code>sig_val</code>) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote (<span class="math inline">\(\tau = \text{top}\)</span>) of the response (i.e. the response value is significantly lower than that expected in the case of no exposure). The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha value (Type-I error rate) of 0.01 for a one-sided test of significance. See <code><a href="../reference/nsec.html">?nsec</a></code> for more details. We currently recommend only using the <code>"nec"</code> model set for estimation of <em>NEC</em> values, as the <em>NSEC</em> concept has yet to be formally peer-reviewed.</p>
-<p><em>EC<sub>x</sub></em> estimates can be equally obtained from both <code>"nec"</code> and <code>"ecx"</code> models. <em>EC<sub>x</sub></em> estimates will usually be lower (more conservative) for <code>"ecx"</code> models fitted to the same data as <code>"nec"</code> models (see the <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Comparing posterior predictions</a>) vignette for an example. However, we recommend using <code>"all"</code> models where <em>EC<sub>x</sub></em> estimation is required because <code>"nec"</code> models can fit some datasets better than <code>"ecx"</code> models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield <em>EC<sub>x</sub></em> estimates that are the most representative of the underlying relationship in the dataset.</p>
-<p>There is ambiguity in the definition of <em>EC<sub>x</sub></em> estimates from hormesis models—these allow an initial increase in the response <span class="citation">(see Mattson 2008)</span> and include models with the character string <code>horme</code> in their name—as well as those that have no natural lower bound on the scale of the response (models with the string <strong>lin</strong> in their name, in the case of Gaussian response data). For this reason the <code>ecx</code> function has arguments <code>hormesis_def</code> and <code>type</code>, both character vectors indicating the desired behaviour. For <code>hormesis_def = "max"</code>, <em>EC<sub>x</sub></em> values are calculated as a decline from the maximum estimates (i.e., the peak at <span class="math inline">\(\eta = \text{NEC}\)</span>); and <code>hormesis_def = "control"</code> (the default) indicates that <em>EC<sub>x</sub></em> values should be calculated relative to the control, which is assumed to be the lowest observed concentration. For <code>type = "relative"</code> <em>EC<sub>x</sub></em> is calculated as the percentage decrease from the maximum predicted value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to the minimum predicted value of the response (i.e., <em>relative</em> to the observed data). For <code>type = "absolute"</code> (the default) <em>EC<sub>x</sub></em> is calculated as the percentage decrease from the maximum value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to 0 (or <span class="math inline">\(\delta = \text{bottom}\)</span> for models with that parameter). For <code>type = "direct"</code>, a direct interpolation of the response on the predictor is obtained.</p>
+<p>All models provide an estimate for the No-Effect-Concentration
+(<em>NEC</em>). For model types with <strong>nec</strong> as a prefix,
+the <em>NEC</em> is directly estimated as parameter <span class="math inline">\(\eta = \text{NEC}\)</span> in the model, as per
+<span class="citation">(Fox 2010)</span>. Models with
+<strong>ecx</strong> as a prefix are continuous curve models, typically
+used for extracting <em>EC<sub>x</sub></em> values from
+concentration-response data. In this instance the <em>NEC</em> reported
+is actually the No-Significant-Effect-Concentration (<em>NSEC</em>),
+defined as the concentration at which there is a user supplied (see
+<code>sig_val</code>) percentage certainty (based on the Bayesian
+posterior estimate) that the response falls below the estimated value of
+the upper asymptote (<span class="math inline">\(\tau =
+\text{top}\)</span>) of the response (i.e. the response value is
+significantly lower than that expected in the case of no exposure). The
+default value for <code>sig_val</code> is 0.01, which corresponds to an
+alpha value (Type-I error rate) of 0.01 for a one-sided test of
+significance. See <code><a href="../reference/nsec.html">?nsec</a></code> for more details. We currently
+recommend only using the <code>"nec"</code> model set for estimation of
+<em>NEC</em> values, as the <em>NSEC</em> concept has yet to be formally
+peer-reviewed.</p>
+<p><em>EC<sub>x</sub></em> estimates can be equally obtained from both
+<code>"nec"</code> and <code>"ecx"</code> models.
+<em>EC<sub>x</sub></em> estimates will usually be lower (more
+conservative) for <code>"ecx"</code> models fitted to the same data as
+<code>"nec"</code> models (see the <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Comparing
+posterior predictions</a>) vignette for an example. However, we
+recommend using <code>"all"</code> models where <em>EC<sub>x</sub></em>
+estimation is required because <code>"nec"</code> models can fit some
+datasets better than <code>"ecx"</code> models and the model averaging
+approach will place the greatest weight for the outcome that best fits
+the supplied data. This approach will yield <em>EC<sub>x</sub></em>
+estimates that are the most representative of the underlying
+relationship in the dataset.</p>
+<p>There is ambiguity in the definition of <em>EC<sub>x</sub></em>
+estimates from hormesis models—these allow an initial increase in the
+response <span class="citation">(see Mattson 2008)</span> and include
+models with the character string <code>horme</code> in their name—as
+well as those that have no natural lower bound on the scale of the
+response (models with the string <strong>lin</strong> in their name, in
+the case of Gaussian response data). For this reason the
+<code>ecx</code> function has arguments <code>hormesis_def</code> and
+<code>type</code>, both character vectors indicating the desired
+behaviour. For <code>hormesis_def = "max"</code>,
+<em>EC<sub>x</sub></em> values are calculated as a decline from the
+maximum estimates (i.e., the peak at <span class="math inline">\(\eta =
+\text{NEC}\)</span>); and <code>hormesis_def = "control"</code> (the
+default) indicates that <em>EC<sub>x</sub></em> values should be
+calculated relative to the control, which is assumed to be the lowest
+observed concentration. For <code>type = "relative"</code>
+<em>EC<sub>x</sub></em> is calculated as the percentage decrease from
+the maximum predicted value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to the minimum
+predicted value of the response (i.e., <em>relative</em> to the observed
+data). For <code>type = "absolute"</code> (the default)
+<em>EC<sub>x</sub></em> is calculated as the percentage decrease from
+the maximum value of the response (<span class="math inline">\(\tau =
+\text{top}\)</span>) to 0 (or <span class="math inline">\(\delta =
+\text{bottom}\)</span> for models with that parameter). For
+<code>type = "direct"</code>, a direct interpolation of the response on
+the predictor is obtained.</p>
 </div>
 <div class="section level2">
 <h2 id="model-suitability-for-response-types">Model suitability for response types<a class="anchor" aria-label="anchor" href="#model-suitability-for-response-types"></a>
 </h2>
-<p>Models that have an exponential decay (most models with parameter <span class="math inline">\(\beta = \text{beta}\)</span>) with no <span class="math inline">\(\delta = \text{bottom}\)</span> parameter are 0-bounded and are not suitable for the Gaussian family, or any family modelled using a <code>"logit"</code> or <code>"log"</code> link because they cannot generate predictions of negative response values. Conversely, models with a linear decay (containing the string <strong>lin</strong> in their name) are not suitable for modelling families that are 0-bounded (Gamma, Poisson, Negative Binomial, Beta, Binomial, Beta-Binomial) using an <code>"identity"</code> link. These restrictions do not need to be controlled by the user, as a call to <code>bnec</code> with <code>models = "all"</code> in the formula will simply exclude inappropriate models, albeit with a message.</p>
-<p>Strictly speaking, models with a linear hormesis increase are not suitable for modelling responses that are 0, 1-bounded (Binomial-, Beta- and Beta-Binomial-distributed), however they are currently allowed in <code>bayesnec</code>, with a reasonable fit achieved through a combination of the appropriate distribution being applied to the response, and <code>bayesnec</code>’s <code>make_inits</code> function which ensures initial values passed to <code>brms</code> yield response values within the range of the user-supplied response data.</p>
+<p>Models that have an exponential decay (most models with parameter
+<span class="math inline">\(\beta = \text{beta}\)</span>) with no <span class="math inline">\(\delta = \text{bottom}\)</span> parameter are
+0-bounded and are not suitable for the Gaussian family, or any family
+modelled using a <code>"logit"</code> or <code>"log"</code> link because
+they cannot generate predictions of negative response values.
+Conversely, models with a linear decay (containing the string
+<strong>lin</strong> in their name) are not suitable for modelling
+families that are 0-bounded (Gamma, Poisson, Negative Binomial, Beta,
+Binomial, Beta-Binomial) using an <code>"identity"</code> link. These
+restrictions do not need to be controlled by the user, as a call to
+<code>bnec</code> with <code>models = "all"</code> in the formula will
+simply exclude inappropriate models, albeit with a message.</p>
+<p>Strictly speaking, models with a linear hormesis increase are not
+suitable for modelling responses that are 0, 1-bounded (Binomial-, Beta-
+and Beta-Binomial-distributed), however they are currently allowed in
+<code>bayesnec</code>, with a reasonable fit achieved through a
+combination of the appropriate distribution being applied to the
+response, and <code>bayesnec</code>’s <code>make_inits</code> function
+which ensures initial values passed to <code>brms</code> yield response
+values within the range of the user-supplied response data.</p>
 </div>
 <div class="section level2">
 <h2 id="model-definitions">Model definitions<a class="anchor" aria-label="anchor" href="#model-definitions"></a>
@@ -203,35 +323,56 @@ f(x_i, \eta) = \begin{cases}
 <div class="section level5">
 <h5 id="ecxlin">ecxlin<a class="anchor" aria-label="anchor" href="#ecxlin"></a>
 </h5>
-<p>The <strong>ecxlin</strong> model is a basic linear decay model, given by the equation: <span class="math display">\[y_i = \tau - e^{\alpha} x_i\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxlin</strong> model is a basic linear decay model,
+given by the equation: <span class="math display">\[y_i = \tau -
+e^{\alpha} x_i\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ top - exp(slope) * x </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>Because the model contains linear predictors it is not suitable for 0, 1-bounded data (i.e. Binomial and Beta families with an <code>"identity"</code> link function). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (Gamma, Poisson, Negative Binomial with an <code>"identity"</code> link).</p>
+<p>Because the model contains linear predictors it is not suitable for
+0, 1-bounded data (i.e. Binomial and Beta families with an
+<code>"identity"</code> link function). As the model includes a linear
+decline with concentration, it is also not suitable for 0,
+<code>Inf</code> bounded data (Gamma, Poisson, Negative Binomial with an
+<code>"identity"</code> link).</p>
 </div>
 <div class="section level5">
 <h5 id="ecxexp">ecxexp<a class="anchor" aria-label="anchor" href="#ecxexp"></a>
 </h5>
-<p>The <strong>ecxexp</strong> model is a basic exponential decay model, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} x_i}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxexp</strong> model is a basic exponential decay model,
+given by the equation: <span class="math display">\[y_i = \tau
+e^{-e^{\beta} x_i}\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * x) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data
+or the use of a <code>"logit"</code> or <code>"log"</code> link
+function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxsigm">ecxsigm<a class="anchor" aria-label="anchor" href="#ecxsigm"></a>
 </h5>
-<p>The <strong>ecxsigm</strong> model is a simple sigmoidal decay model, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} x_i^{e^\epsilon}}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxsigm</strong> model is a simple sigmoidal decay model,
+given by the equation: <span class="math display">\[y_i = \tau
+e^{-e^{\beta} x_i^{e^\epsilon}}\]</span> with the respective
+<code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * x^exp(d)) </span></span>
 <span><span class="co">#&gt; d ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data
+or the use of a <code>"logit"</code> or <code>"log"</code> link
+function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecx4param">ecx4param<a class="anchor" aria-label="anchor" href="#ecx4param"></a>
 </h5>
-<p>The <strong>ecx4param</strong> model is a 4-parameter sigmoidal decay model, given by the equation: <span class="math display">\[y_i = \tau + (\delta - \tau)/(1 + e^{e^{\beta} (\omega - x_i)})\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecx4param</strong> model is a 4-parameter sigmoidal decay
+model, given by the equation: <span class="math display">\[y_i = \tau +
+(\delta - \tau)/(1 + e^{e^{\beta} (\omega - x_i)})\]</span> with the
+respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
@@ -241,7 +382,10 @@ f(x_i, \eta) = \begin{cases}
 <div class="section level5">
 <h5 id="ecxwb1">ecxwb1<a class="anchor" aria-label="anchor" href="#ecxwb1"></a>
 </h5>
-<p>The <strong>ecxwb1</strong> model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \omega)}}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxwb1</strong> model is a 4-parameter sigmoidal decay
+model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta}
+(x_i - \omega)}}\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
@@ -251,38 +395,59 @@ f(x_i, \eta) = \begin{cases}
 <div class="section level5">
 <h5 id="ecxwb1p3">ecxwb1p3<a class="anchor" aria-label="anchor" href="#ecxwb1p3"></a>
 </h5>
-<p>The <strong>ecxwb1p3</strong> model is a 3-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \omega)}}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxwb1p3</strong> model is a 3-parameter sigmoidal decay
+model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i -
+\omega)}}\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data
+or the use of a <code>"logit"</code> or <code>"log"</code> link
+function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxwb2">ecxwb2<a class="anchor" aria-label="anchor" href="#ecxwb2"></a>
 </h5>
-<p>The <strong>ecxwb2</strong> model is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxwb2</strong> model is a 4-parameter sigmoidal decay
+model which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) (1 -
+e^{-e^{e^{\beta} (x_i - \omega)}})\]</span> with the respective
+<code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>While very similar to the <strong>ecxwb1</strong> <span class="citation">(according to Ritz et al. 2016)</span>, fitted <strong>ecxwb1</strong> and <strong>ecxwb2</strong> models can differ slightly.</p>
+<p>While very similar to the <strong>ecxwb1</strong> <span class="citation">(according to Ritz et al. 2016)</span>, fitted
+<strong>ecxwb1</strong> and <strong>ecxwb2</strong> models can differ
+slightly.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxwb2p3">ecxwb2p3<a class="anchor" aria-label="anchor" href="#ecxwb2p3"></a>
 </h5>
-<p>The <strong>ecxwb2p3</strong> model is a 3-parameter sigmoidal decay model, which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxwb2p3</strong> model is a 3-parameter sigmoidal decay
+model, which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta}
+(x_i - \omega)}})\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span></code></pre>
-<p>While very similar to the <strong>ecxwb1p3</strong> <span class="citation">(according to Ritz et al. 2016)</span>, fitted <strong>ecxwb1p3</strong> and <strong>ecxwb2p3</strong> models can differ slightly. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.</p>
+<p>While very similar to the <strong>ecxwb1p3</strong> <span class="citation">(according to Ritz et al. 2016)</span>, fitted
+<strong>ecxwb1p3</strong> and <strong>ecxwb2p3</strong> models can
+differ slightly. The model is 0-bounded, thus not suitable for Gaussian
+response data or the use of a logit or log link function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxll5">ecxll5<a class="anchor" aria-label="anchor" href="#ecxll5"></a>
 </h5>
-<p>The <strong>ecxll5</strong> model is a 5-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.5 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) / (1 + e^{-e^{\beta} (x_i - \omega)})^{e^\zeta}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxll5</strong> model is a 5-parameter sigmoidal
+log-logistic decay model, which is a slight reformulation of the LL.5
+model of <span class="citation">Ritz et al. (2016)</span>, given by the
+equation: <span class="math display">\[y_i = \delta + (\tau - \delta) /
+(1 + e^{-e^{\beta} (x_i - \omega)})^{e^\zeta}\]</span> with the
+respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^exp(f) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -293,7 +458,12 @@ f(x_i, \eta) = \begin{cases}
 <div class="section level5">
 <h5 id="ecxll4">ecxll4<a class="anchor" aria-label="anchor" href="#ecxll4"></a>
 </h5>
-<p>The <strong>ecxll4</strong> model is a 4-parameter sigmoidal log-logistic decay model which is a slight reformulation of the LL.4 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta)/ (1 + e^{e^{\beta} (x_i - \omega)})\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxll4</strong> model is a 4-parameter sigmoidal
+log-logistic decay model which is a slight reformulation of the LL.4
+model of <span class="citation">Ritz et al. (2016)</span>, given by the
+equation: <span class="math display">\[y_i = \delta + (\tau - \delta)/
+(1 + e^{e^{\beta} (x_i - \omega)})\]</span> with the respective
+<code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -303,17 +473,30 @@ f(x_i, \eta) = \begin{cases}
 <div class="section level5">
 <h5 id="ecxll3">ecxll3<a class="anchor" aria-label="anchor" href="#ecxll3"></a>
 </h5>
-<p>The <strong>ecxll3</strong> model is a 3-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.3 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = 0 + (\tau - 0)/ (1 + e^{e^{\beta} (x_i - \omega)})\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxll3</strong> model is a 3-parameter sigmoidal
+log-logistic decay model, which is a slight reformulation of the LL.3
+model of <span class="citation">Ritz et al. (2016)</span>, given by the
+equation: <span class="math display">\[y_i = 0 + (\tau - 0)/ (1 +
+e^{e^{\beta} (x_i - \omega)})\]</span> with the respective
+<code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data
+or the use of a <code>"logit"</code> or <code>"log"</code> link
+function.</p>
 </div>
 <div class="section level5">
 <h5 id="ecxhormebc5">ecxhormebc5<a class="anchor" aria-label="anchor" href="#ecxhormebc5"></a>
 </h5>
-<p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the “Brain-Cousens” (BC.5) model of <span class="citation">Ritz et al. (2016)</span>, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxhormebc5</strong> model is a 5 parameter log-logistic
+model modified to accommodate a non-linear hormesis at low
+concentrations. It has been modified from to the “Brain-Cousens” (BC.5)
+model of <span class="citation">Ritz et al. (2016)</span>, given by the
+equation: <span class="math display">\[y_i = \delta + (\tau - \delta +
+e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})\]</span> with the
+respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -324,13 +507,19 @@ f(x_i, \eta) = \begin{cases}
 <div class="section level5">
 <h5 id="ecxhormebc4">ecxhormebc4<a class="anchor" aria-label="anchor" href="#ecxhormebc4"></a>
 </h5>
-<p>The <strong>ecxhormebc4</strong> model is a 5-parameter log-logistic model similar to the <strong>exchormebc5</strong> model but with a lower bound of 0, given by the equation: <span class="math display">\[y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>ecxhormebc4</strong> model is a 5-parameter log-logistic
+model similar to the <strong>exchormebc5</strong> model but with a lower
+bound of 0, given by the equation: <span class="math display">\[y_i = 0
++ (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})\]</span>
+with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data
+or the use of a <code>"logit"</code> or <code>"log"</code> link
+function.</p>
 </div>
 </div>
 <div class="section level3">
@@ -341,27 +530,47 @@ f(x_i, \eta) = \begin{cases}
 <div class="section level5">
 <h5 id="neclin">neclin<a class="anchor" aria-label="anchor" href="#neclin"></a>
 </h5>
-<p>The <strong>neclin</strong> model is a basic linear decay model equivalent to <strong>ecxlin</strong> with the addition of the <em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>neclin</strong> model is a basic linear decay model
+equivalent to <strong>ecxlin</strong> with the addition of the
+<em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau - e^{\alpha} \left(x_i - \eta \right)
+f(x_i, \eta)\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ top - exp(slope) * (x - nec) * step(x - nec) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span></code></pre>
-<p>Because the model contains linear predictors it is not suitable for 0, 1-bounded data (Binomial and Beta distributions with <code>"identity"</code> link). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (Gamma, Poisson, Negative Binomial with <code>"identity"</code> link).</p>
+<p>Because the model contains linear predictors it is not suitable for
+0, 1-bounded data (Binomial and Beta distributions with
+<code>"identity"</code> link). As the model includes a linear decline
+with concentration, it is also not suitable for 0, <code>Inf</code>
+bounded data (Gamma, Poisson, Negative Binomial with
+<code>"identity"</code> link).</p>
 </div>
 <div class="section level5">
 <h5 id="nec3param">nec3param<a class="anchor" aria-label="anchor" href="#nec3param"></a>
 </h5>
-<p>The <strong>nec3param</strong> model is a basic exponential decay model equivalent to <strong>ecxexp</strong> with the addition of the <em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>nec3param</strong> model is a basic exponential decay
+model equivalent to <strong>ecxexp</strong> with the addition of the
+<em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right)
+f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span></code></pre>
-<p>For Binomial-distributed response data in the case of <code>"identity"</code> link this model is equivalent to that in <span class="citation">Fox (2010)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function.</p>
+<p>For Binomial-distributed response data in the case of
+<code>"identity"</code> link this model is equivalent to that in <span class="citation">Fox (2010)</span>. The model is 0-bounded, thus not
+suitable for Gaussian response data or the use of a <code>"logit"</code>
+or <code>"log"</code> link function.</p>
 </div>
 <div class="section level5">
 <h5 id="nec4param">nec4param<a class="anchor" aria-label="anchor" href="#nec4param"></a>
 </h5>
-<p>The <strong>nec4param</strong> model is a 3-parameter decay model with the addition of the <em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>nec4param</strong> model is a 3-parameter decay model
+with the addition of the <em>NEC</em> step function, given by the
+equation: <span class="math display">\[y_i = \delta + (\tau - \delta)
+e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the
+respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -371,102 +580,188 @@ f(x_i, \eta) = \begin{cases}
 <div class="section level5">
 <h5 id="nechorme">nechorme<a class="anchor" aria-label="anchor" href="#nechorme"></a>
 </h5>
-<p>The <strong>nechorme</strong> model is a basic exponential decay model with an <em>NEC</em> step function equivalent to <strong>nec3param</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation <span class="math display">\[y_i = (\tau + e^{\alpha} x_i) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>nechorme</strong> model is a basic exponential decay
+model with an <em>NEC</em> step function equivalent to
+<strong>nec3param</strong>, with the addition of a linear increase prior
+to <span class="math inline">\(\eta\)</span>, given by the equation
+<span class="math display">\[y_i = (\tau + e^{\alpha} x_i) e^{-e^{\beta}
+\left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective
+<code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ (top + exp(slope) * x) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>The <strong>nechorme</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
+<p>The <strong>nechorme</strong> model is a <em>hormesis</em> model
+<span class="citation">(Mattson 2008)</span>, allowing an initial
+increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not
+suitable for Gaussian response data or the use of a <code>"logit"</code>
+or <code>"log"</code> link function. In this case the linear version
+(<strong>neclinhorme</strong>) should be used.</p>
 </div>
 <div class="section level5">
 <h5 id="nechormepwr">nechormepwr<a class="anchor" aria-label="anchor" href="#nechormepwr"></a>
 </h5>
-<p>The <strong>nechormepwr</strong> model is a basic exponential decay model with an <em>NEC</em> step function equivalent to <strong>nec3param</strong>, with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + x_i^{1/(1+e^{\alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>nechormepwr</strong> model is a basic exponential decay
+model with an <em>NEC</em> step function equivalent to
+<strong>nec3param</strong>, with the addition of a power increase prior
+to <span class="math inline">\(\eta\)</span>, given by the equation:
+<span class="math display">\[y_i = (\tau + x_i^{1/(1+e^{\alpha})})
+e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the
+respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ (top + x^(1/(1 + exp(slope)))) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>The <strong>nechormepwr</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function. Because the model can generate predictions &gt; 1 it should not be used for Binomial and Beta distributions with <code>"identity"</code> link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
+<p>The <strong>nechormepwr</strong> model is a <em>hormesis</em> model
+<span class="citation">(Mattson 2008)</span>, allowing an initial
+increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not
+suitable for Gaussian response data or the use of a <code>"logit"</code>
+or <code>"log"</code> link function. Because the model can generate
+predictions &gt; 1 it should not be used for Binomial and Beta
+distributions with <code>"identity"</code> link. In this case the
+<strong>nechromepwr01</strong> model should be used.</p>
 </div>
 <div class="section level5">
 <h5 id="neclinhorme">neclinhorme<a class="anchor" aria-label="anchor" href="#neclinhorme"></a>
 </h5>
-<p>The <strong>neclinhorme</strong> model is a basic linear decay model with an <em>NEC</em> step function equivalent to <strong>neclin</strong>, with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + e^{\alpha} x_i) - e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)\]</span> with the respective <code>brmsformula</code> being.</p>
+<p>The <strong>neclinhorme</strong> model is a basic linear decay model
+with an <em>NEC</em> step function equivalent to
+<strong>neclin</strong>, with the addition of a linear increase prior to
+<span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + e^{\alpha} x_i) - e^{\beta}
+\left(x_i - \eta \right) f(x_i, \eta)\]</span> with the respective
+<code>brmsformula</code> being.</p>
 <pre><code><span><span class="co">#&gt; y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>The <strong>neclinhorme</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. This model contains linear predictors and is not suitable for 0, 1-bounded data (Binomial and Beta distributions with <code>"identity"</code> link). As the model includes a linear decline with concentration, it is also not suitable for 0, <code>Inf</code> bounded data (Gamma, Poisson, Negative Binomial with <code>"identity"</code> link).</p>
+<p>The <strong>neclinhorme</strong> model is a <em>hormesis</em> model
+<span class="citation">(Mattson 2008)</span>, allowing an initial
+increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. This model contains linear
+predictors and is not suitable for 0, 1-bounded data (Binomial and Beta
+distributions with <code>"identity"</code> link). As the model includes
+a linear decline with concentration, it is also not suitable for 0,
+<code>Inf</code> bounded data (Gamma, Poisson, Negative Binomial with
+<code>"identity"</code> link).</p>
 </div>
 <div class="section level5">
 <h5 id="nechorme4">nechorme4<a class="anchor" aria-label="anchor" href="#nechorme4"></a>
 </h5>
-<p>The <strong>nechorme4</strong> model is 4 parameter decay model with an <em>NEC</em> step function equivalent to <strong>nec4param</strong> with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta ) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>nechorme4</strong> model is 4 parameter decay model with
+an <em>NEC</em> step function equivalent to <strong>nec4param</strong>
+with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta
+) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the
+respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>The <strong>nechorme4</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>.</p>
+<p>The <strong>nechorme4</strong> model is a <em>hormesis</em> model
+<span class="citation">(Mattson 2008)</span>, allowing an initial
+increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>.</p>
 </div>
 <div class="section level5">
 <h5 id="nechorme4pwr">nechorme4pwr<a class="anchor" aria-label="anchor" href="#nechorme4pwr"></a>
 </h5>
-<p>The <strong>nechorme4pwr</strong> model is 4 parameter decay model with an <em>NEC</em> step function equivalent to <strong>nec4param</strong> with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + x_i^{1/(1+e^{\alpha})}) - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>nechorme4pwr</strong> model is 4 parameter decay model
+with an <em>NEC</em> step function equivalent to
+<strong>nec4param</strong> with the addition of a power increase prior
+to <span class="math inline">\(\eta\)</span>, given by the equation:
+<span class="math display">\[y_i = \delta + ((\tau +
+x_i^{1/(1+e^{\alpha})}) - \delta) e^{-e^{\beta} \left(x_i - \eta \right)
+f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + ((top + x^(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>The <strong>nechorme4pwr</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial power increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. Because the model can generate predictions &gt; 1 it should not be used for Binomial and Beta distributions with <code>"identity"</code> link. In this case the <strong>nechromepwr01</strong> model should be used.</p>
+<p>The <strong>nechorme4pwr</strong> model is a <em>hormesis</em> model
+<span class="citation">(Mattson 2008)</span>, allowing an initial power
+increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. Because the model can generate
+predictions &gt; 1 it should not be used for Binomial and Beta
+distributions with <code>"identity"</code> link. In this case the
+<strong>nechromepwr01</strong> model should be used.</p>
 </div>
 <div class="section level5">
 <h5 id="nechormepwr01">nechormepwr01<a class="anchor" aria-label="anchor" href="#nechormepwr01"></a>
 </h5>
-<p>The <strong>nechormepwr01</strong> model is a basic exponential decay model with an <em>NEC</em> step function equivalent to <strong>nec3param</strong>, with the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>nechormepwr01</strong> model is a basic exponential decay
+model with an <em>NEC</em> step function equivalent to
+<strong>nec3param</strong>, with the addition of a power increase prior
+to <span class="math inline">\(\eta\)</span>, given by the equation:
+<span class="math display">\[y_i = \left(\frac{1}{(1 +
+((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta
+\right) f(x_i, \eta)}\]</span> with the respective
+<code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span></code></pre>
-<p>The <strong>nechormepwr01</strong> model is a <em>hormesis</em> model <span class="citation">(Mattson 2008)</span>, allowing an initial increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function. In this case the linear version (<strong>neclinhorme</strong>) should be used.</p>
+<p>The <strong>nechormepwr01</strong> model is a <em>hormesis</em> model
+<span class="citation">(Mattson 2008)</span>, allowing an initial
+increase in the response variable at concentrations below <span class="math inline">\(\eta\)</span>. The model is 0-bounded, thus not
+suitable for Gaussian response data or the use of a <code>"logit"</code>
+or <code>"log"</code> link function. In this case the linear version
+(<strong>neclinhorme</strong>) should be used.</p>
 </div>
 <div class="section level5">
 <h5 id="necsigm">necsigm<a class="anchor" aria-label="anchor" href="#necsigm"></a>
 </h5>
-<p>The <strong>necsigm</strong> model is a basic exponential decay model equivalent to <strong>ecxlin</strong> with the addition of the <em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon}f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+<p>The <strong>necsigm</strong> model is a basic exponential decay model
+equivalent to <strong>ecxlin</strong> with the addition of the
+<em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i,
+\eta))^{e^\epsilon}f(x_i, \eta)}\]</span> with the respective
+<code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
 <span><span class="co">#&gt; nec ~ 1</span></span>
 <span><span class="co">#&gt; d ~ 1</span></span></code></pre>
-<p>The model is 0-bounded, thus not suitable for Gaussian response data or the use of a <code>"logit"</code> or <code>"log"</code> link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an <em>NEC</em> step function because where there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.</p>
+<p>The model is 0-bounded, thus not suitable for Gaussian response data
+or the use of a <code>"logit"</code> or <code>"log"</code> link
+function. In addition, there may be theoretical issues with combining a
+sigmoidal decay model with an <em>NEC</em> step function because where
+there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of
+No-Effect-Concentrations using this model are not currently recommended
+without further testing.</p>
 </div>
 </div>
 </div>
 <div class="section level2">
-<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+<h2 class="unnumbered" id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
-<div id="refs" class="references">
-<div id="ref-Fox2010">
-<p>Fox, David R. 2010. “A Bayesian approach for determining the no effect concentration and hazardous concentration in ecotoxicology.” <em>Ecotoxicology and Environmental Safety</em> 73 (2): 123–31.</p>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-Fox2010" class="csl-entry">
+Fox, David R. 2010. <span>“<span class="nocase">A Bayesian approach for
+determining the no effect concentration and hazardous concentration in
+ecotoxicology</span>.”</span> <em>Ecotoxicology and Environmental
+Safety</em> 73 (2): 123–31.
 </div>
-<div id="ref-Mattson2008">
-<p>Mattson, Mark P. 2008. “Hormesis Defined.” <em>Ageing Research Reviews</em> 7 (1): 1–7. <a href="https://doi.org/https://doi.org/10.1016/j.arr.2007.08.007" class="external-link">https://doi.org/https://doi.org/10.1016/j.arr.2007.08.007</a>.</p>
+<div id="ref-Mattson2008" class="csl-entry">
+Mattson, Mark P. 2008. <span>“Hormesis Defined.”</span> <em>Ageing
+Research Reviews</em> 7 (1): 1–7. https://doi.org/<a href="https://doi.org/10.1016/j.arr.2007.08.007" class="external-link">https://doi.org/10.1016/j.arr.2007.08.007</a>.
 </div>
-<div id="ref-Ritz2016">
-<p>Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard. 2016. “Dose-Response Analysis Using R.” <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021" class="external-link">https://doi.org/10.1371/journal.pone.0146021</a>.</p>
+<div id="ref-Ritz2016" class="csl-entry">
+Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard.
+2016. <span>“<span>Dose-Response Analysis Using R</span>.”</span>
+<em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021" class="external-link">https://doi.org/10.1371/journal.pone.0146021</a>.
 </div>
-<div id="ref-vehtari2020">
-<p>Vehtari, Aki, Jonah Gabry, Mans Magnusson, Yuling Yao, Paul-Christian Bürkner, Topi Paananen, and Andrew Gelman. 2020. <em>Loo: Efficient Leave-One-Out Cross-Validation and Waic for Bayesian Models</em>. <a href="https://mc-stan.org/loo/" class="external-link">https://mc-stan.org/loo/</a>.</p>
+<div id="ref-vehtari2020" class="csl-entry">
+Vehtari, Aki, Jonah Gabry, Mans Magnusson, Yuling Yao, Paul-Christian
+Bürkner, Topi Paananen, and Andrew Gelman. 2020. <em>Loo: Efficient
+Leave-One-Out Cross-Validation and WAIC for Bayesian Models</em>. <a href="https://mc-stan.org/loo/" class="external-link">https://mc-stan.org/loo/</a>.
 </div>
-<div id="ref-vehtari2017">
-<p>Vehtari, Aki, Andrew Gelman, and Jonah Gabry. 2017. “Practical Bayesian Model Evaluation Using Leave-One-Out Cross-Validation and Waic.” <em>Statistics and Computing</em> 27 (5): 1413–32. <a href="https://doi.org/10.1007/s11222-016-9696-4" class="external-link">https://doi.org/10.1007/s11222-016-9696-4</a>.</p>
+<div id="ref-vehtari2017" class="csl-entry">
+Vehtari, Aki, Andrew Gelman, and Jonah Gabry. 2017. <span>“Practical
+Bayesian Model Evaluation Using Leave-One-Out Cross-Validation and
+WAIC.”</span> <em>Statistics and Computing</em> 27: 1413–32. <a href="https://doi.org/10.1007/s11222-016-9696-4" class="external-link">https://doi.org/10.1007/s11222-016-9696-4</a>.
 </div>
 </div>
 </div>

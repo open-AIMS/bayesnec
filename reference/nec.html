@@ -20,7 +20,7 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.0.2.5</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
       </span>
     </div>
 
@@ -80,7 +80,12 @@ bayesnecfit or bayesmanecfit."><meta property="og:image" content="/logo.png"><!-
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nec</span><span class="op">(</span><span class="va">object</span>, posterior <span class="op">=</span> <span class="cn">FALSE</span>, xform <span class="op">=</span> <span class="cn">NA</span>, prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nec</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  posterior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
+<span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -126,8 +131,10 @@ lower 95% credible interval bounds
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">nec</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> bayesmanecfit contains ecx model types and therefore nec estimate includes nsec values.</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       50%      2.5%     97.5% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1.4478059 0.5081005 1.5070988 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       Q50      Q2.5     Q97.5 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.4625664 0.6851413 1.5142265 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"toxicity_estimate")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "nec"</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
