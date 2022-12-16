@@ -1,5 +1,6 @@
 library(bayesnec)
-library(dplyr)
+rstan::rstan_options(auto_write = TRUE)
+options(mc.cores = 1)
 
 nec_ <- pull_out(manec_example, "nec4param")
 ecx_ <- pull_out(manec_example, "ecx4param")
@@ -9,33 +10,33 @@ test_that("Adding only works if either if bnecfit", {
   expect_error(NA + nec_)
   expect_error(NULL + nec_)
   expect_error("a" + nec_)
-  expect_s3_class(ecx_ + nec_, c("bayesmanecfit", "bnecfit")) %>%
-    expect_message
-  expect_s3_class(manec_example + nec_, c("bayesmanecfit", "bnecfit")) %>%
-    expect_message %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning
+  expect_s3_class(ecx_ + nec_, c("bayesmanecfit", "bnecfit")) |>
+    expect_message()
+  expect_s3_class(manec_example + nec_, c("bayesmanecfit", "bnecfit")) |>
+    expect_message() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning()
   expect_s3_class(manec_example + manec_example,
-                  c("bayesmanecfit", "bnecfit")) %>%
-    expect_message %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning
+                  c("bayesmanecfit", "bnecfit")) |>
+    expect_message() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning()
   expect_s3_class(manec_example + nec_ + ecx_,
-                  c("bayesmanecfit", "bnecfit")) %>%
-    expect_message %>%
-    expect_message %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning
+                  c("bayesmanecfit", "bnecfit")) |>
+    expect_message() |>
+    expect_message() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning()
 })
 
 test_that("Concat only works if datasets are identical", {
@@ -51,28 +52,28 @@ test_that("Concatenating only works if either if bnecfit", {
   expect_true(is.list(c(NA, nec_)))
   expect_true(is.list(c(NULL, nec_)))
   expect_true(is.list(c("a", nec_)))
-  expect_s3_class(c(ecx_, nec_), c("bayesmanecfit", "bnecfit")) %>%
-    expect_message
-  expect_s3_class(c(manec_example, nec_), c("bayesmanecfit", "bnecfit")) %>%
-    expect_message %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning
+  expect_s3_class(c(ecx_, nec_), c("bayesmanecfit", "bnecfit")) |>
+    expect_message()
+  expect_s3_class(c(manec_example, nec_), c("bayesmanecfit", "bnecfit")) |>
+    expect_message() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning()
   expect_s3_class(c(manec_example, manec_example),
-                  c("bayesmanecfit", "bnecfit")) %>%
-    expect_message %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning
+                  c("bayesmanecfit", "bnecfit")) |>
+    expect_message() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning()
   expect_s3_class(c(manec_example, nec_, ecx_),
-                  c("bayesmanecfit", "bnecfit")) %>%
-    expect_message %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning %>%
-    expect_warning
+                  c("bayesmanecfit", "bnecfit")) |>
+    expect_message() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning() |>
+    expect_warning()
 })
 
 test_that("Update works with regular fitting arguments", {
@@ -99,15 +100,15 @@ test_that("Different distribution triggers error or message", {
 
 test_that("Update works with regular fitting arguments", {
   expect_s3_class(update(nec_, chains = 2, iter = 50, recompile = TRUE,
-                         refresh = 0, verbose = FALSE), "bnecfit") %>%
-    suppressWarnings %>%
-    suppressMessages
+                         refresh = 0, verbose = FALSE), "bnecfit") |>
+    suppressWarnings() |>
+    suppressMessages()
 })
 
 test_that("Different distribution triggers error or message", {
   expect_error(update(manec_example, newdata = nec_data, recompile = TRUE,
                       chains = 2, iter = 50, family = Beta(link = "identity"),
-                      force_fit = TRUE, refresh = 0, verbose = FALSE)) %>%
-    suppressWarnings %>%
-    suppressMessages
+                      force_fit = TRUE, refresh = 0, verbose = FALSE)) |>
+    suppressWarnings() |>
+    suppressMessages()
 })

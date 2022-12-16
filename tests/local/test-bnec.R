@@ -1,7 +1,9 @@
 library(bayesnec)
+rstan::rstan_options(auto_write = TRUE)
+options(mc.cores = 1)
 
-fit1 <- manec_gausian_identity$mod_fits$nec4param$fit
-fit2 <- manec_gausian_identity$mod_fits$ecx4param$fit
+fit1 <- pull_brmsfit(manec_gausian_identity, "nec4param")
+fit2 <- pull_brmsfit(manec_gausian_identity, "ecx4param")
   
 test_that("models fit correctly", {
   expect_message(pull_out(manec_gausian_identity, "nec4param"))
@@ -102,12 +104,12 @@ test_that("gamma model returns expected family and link", {
 
 test_that("bnec takes model formula input and provides warning for unnecessary arguments", {
   m1 <- "Arguments x_var, y_var, trials_var, model, random and random_vars"
-  bnec(y ~ crf(x, "ecxlin"), data = nec_data, x_var = "x") %>%
-    expect_warning(m1) %>%
-    expect_message %>%
-    expect_error
-  bnec(y ~ crf(x, "ecxlin"), data = nec_data, model = "ecxlin") %>%
-    expect_warning(m1) %>%
-    expect_message %>%
-    expect_error
+  bnec(y ~ crf(x, "ecxlin"), data = nec_data, x_var = "x") |>
+    expect_warning(m1) |>
+    expect_message() |>
+    expect_error()
+  bnec(y ~ crf(x, "ecxlin"), data = nec_data, model = "ecxlin") |>
+    expect_warning(m1) |>
+    expect_message() |>
+    expect_error()
 })
