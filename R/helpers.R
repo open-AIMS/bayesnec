@@ -483,8 +483,13 @@ add_brm_defaults <- function(brm_args, model, family, predictor, response,
                    " fitted using a ", model, " model and a ", msg_tag,
                    " distribution."))
     response_link <- response_link_scale(response, family)
+    init_seed <- NULL
+    if ("seed" %in% names(brm_args)) {
+      init_seed <- brm_args$seed
+    }
     inits <- make_good_inits(model, predictor, response_link,
-                             priors = brm_args$prior, chains = brm_args$chains)
+                             priors = brm_args$prior, chains = brm_args$chains,
+                             seed = init_seed)
     if (length(inits) == 1 && "random" %in% names(inits)) {
       inits <- inits$random
     }
