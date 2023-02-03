@@ -14,7 +14,7 @@
 #' @importFrom ggplot2 ggplot aes geom_histogram facet_wrap
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect starts_with
-#' @importFrom dplyr filter
+#' @importFrom dplyr filter mutate
 #' @importFrom rlang .data
 #'
 #' @seealso \code{\link{bnec}}
@@ -29,12 +29,12 @@
 #' @export
 sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   chk_numeric(n_samples)
-  if(plot != "ggplot" & plot != "base") {
-    stop("plot must be a character string of either ggplot or base")
+  if (!plot %in% c("ggplot", "base")) {
+    stop("plot must be a character string of either \"ggplot\" or \"base\"")
   }
   fcts <- c(gamma = rgamma, normal = rnorm, beta = rbeta, uniform = runif)
   priors <- as.data.frame(priors) |>
-    filter(class=="b")
+    filter(class == "b")
   priors <- priors[priors$prior != "", ]
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
@@ -80,6 +80,7 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
       data.frame() |>
       pivot_longer(names_to = "param", values_to = "value",
                    cols = starts_with("b_")) |>
+      mutate(param = gsub("^b\\_", "", .data$param)) |>
       ggplot(mapping = aes(x = .data$value)) +
         geom_histogram() +
         facet_wrap(~.data$param, scales = "free_x")
