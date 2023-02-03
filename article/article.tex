@@ -7,30 +7,8 @@
 \usepackage[utf8]{inputenc}
 
 \author{
-			Rebecca Fisher
-					~\orcidlink{0000-0001-5148-6731}
-				\\
-		Australian Institute of Marine Science
-					\\University of Western Australia
-				 \And
-			Diego R. Barneche
-					~\orcidlink{0000-0002-4568-2362}
-				\\
-		Australian Institute of Marine Science
-					\\University of Western Australia
-				 \AND
-			Gerard Ricardo
-					~\orcidlink{0000-0002-7761-0806}
-				\\
-		University of Queensland
-					\\Australian Institute of Marine Science
-				 \And
-			David Fox
-					~\orcidlink{0000-0002-3178-7243}
-				\\
-		Environmetrics Australia
-					\\University of Melbourne
-				}
+Rebecca Fisher~\orcidlink{0000-0001-5148-6731}\\Australian Institute of Marine Science \And Diego R. Barneche~\orcidlink{0000-0002-4568-2362}\\Australian Institute of Marine Science \And Gerard Ricardo~\orcidlink{0000-0002-7761-0806}\\University of Queensland \And David Fox~\orcidlink{0000-0002-3178-7243}\\Environmetrics Australia
+}
 \title{\pkg{bayesnec}: An R Package for C-R Modelling and Estimation of toxicity metrics}
 
 \Plainauthor{Rebecca Fisher, Diego R. Barneche, Gerard Ricardo, David Fox}
@@ -54,35 +32,27 @@ The \pkg{bayesnec} package has been developed for R to fit concentration(dose) -
 %% \Acceptdate{2012-06-04}
 
 \Address{
-     Rebecca Fisher\\
-   Australian Institute of Marine Science\\
-   Australian Institute of Marine Science,Crawley, WA, Australia\\
-       University of Western Australia\\
-   The Indian Ocean Marine Research Centre,University of Western Australia,Crawley, WA, Australia\\
-    E-mail: \email{r.fisher@aims.gov.au}\\
+    Rebecca Fisher\\
+    University of Western Australia\\
+    Australian Institute of Marine Science,Crawley, WA, Australia\\
+  E-mail: \email{r.fisher@aims.gov.au}\\
   
-     Diego R. Barneche\\
-   Australian Institute of Marine Science\\
-   Australian Institute of Marine Science,Crawley, WA, Australia\\
-       University of Western Australia\\
-   The Indian Ocean Marine Research Centre University of Western Australia,Crawley, WA, Australia\\
-    
+      Diego R. Barneche\\
+    University of Western Australia\\
+    Australian Institute of Marine Science,Crawley, WA, Australia\\
   
-     Gerard Ricardo\\
-   University of Queensland\\
-   The University of Queensland,St Lucia, Qld, Australia\\
-       Australian Institute of Marine Science\\
-   Australian Institute of Marine Science,Townsville, Qld, Australia\\
-    
   
-     David Fox\\
-   Environmetrics Australia\\
-   Environmetrics Australia,Beaumaris, Victoria, Australia\\
-       University of Melbourne\\
-   University of MelbourneParkville, Victoria, Australia\\
-    
+      Gerard Ricardo\\
+    Australian Institute of Marine Science\\
+    The University of Queensland,St Lucia, Qld, Australia\\
   
-}
+  
+      David Fox\\
+    University of Melbourne\\
+    Environmetrics Australia,Beaumaris, Victoria, Australia\\
+  
+  
+  }
 
 
 % tightlist command for lists without linebreak
@@ -125,7 +95,7 @@ Estimates of uncertainty in parameters and derived thresholds are critical for e
 
 There is a wide array of packages available for Bayesian model fitting via Markov chain Monte Carlo methods, including WinBUGS \citep{Lunn2000}, JAGS \citep{Plummer2003} and Stan \citep{Carpenter2017}, that seamlessly interface with R through packages such as \pkg{R2WinBUGS}, \pkg{R2jags} \citep{Su2015} and \pkg{rstan} \citep{rstan2021}. These packages require coding in R and additional model specification in custom languages---which might involve non trivial coding, extensive debugging and optimisation that is often time consuming and requires specialist expertise. All of which might add a learning/application barrier to many potential users. Several extension packages which aim to reduce that barrier have recently become available, principally \pkg{brms} \citep{Burkner2017}, that allows a broad range of models to be easily fitted using \pkg{rstan}\citep{rstan2021} or \pkg{cmdstanr} \citep{cmdstanr2022} through simpler \pkg{lme4}-like formula syntax. However, even with packages like \pkg{brms}, Bayesian model fitting can be difficult to automate across all potential usage cases, particularly with respect to specifying valid initial parameter values and appropriate priors. In addition, as was the motivation for the development of the \pkg{drc} package in the frequentist setting, the R code required for fitting non-linear models and extracting the relevant outputs (e.g.~\emph{NEC}, \emph{EC\textsubscript{x}}) and their standard errors can be cumbersome in practice, and even more so in the Bayesian setting where model fits contain multiple posterior draws.
 
-The greater complexity associated with Bayesian model fitting has likely hindered the uptake of Bayesian statistics for C-R threshold derivation across the broader ecotoxicology and toxicology communities, who may not have access to specialist statistical expertise \citep{Fisher2019}. \pkg{bayesnec} version 2.1.0.0 (available on CRAN) builds upon an implementation of the \emph{NEC} model described in \citep{Fox2010, Pires2002}. The \pkg{bayesnec} package provides an accessible interface specifically for fitting \emph{NEC} and \emph{EC\textsubscript{x}} and other C-R models using Bayesian methods. A variety of models can be specified based on the known distribution of the ``concentration'' or ``dose'' variable (the predictor, x) as well as the ``response'' (y) variable. The model formula, including priors and initial values required to call \pkg{brms} are automatically generated based on information contained in the supplied data. A range of tools is supplied to aid the user in interrogating model fits, plotting and generating predicted values, as well as extracting the standard outputs, such as \emph{NEC} and \emph{EC\textsubscript{x}} - either as a full posterior draw or in summary form.
+The greater complexity associated with Bayesian model fitting has likely hindered the uptake of Bayesian statistics for C-R threshold derivation across the broader ecotoxicology and toxicology communities, who may not have access to specialist statistical expertise \citep{Fisher2019}. \pkg{bayesnec} version 2.1.0.1 (available on CRAN) builds upon an implementation of the \emph{NEC} model described in \citep{Fox2010, Pires2002}. The \pkg{bayesnec} package provides an accessible interface specifically for fitting \emph{NEC} and \emph{EC\textsubscript{x}} and other C-R models using Bayesian methods. A variety of models can be specified based on the known distribution of the ``concentration'' or ``dose'' variable (the predictor, x) as well as the ``response'' (y) variable. The model formula, including priors and initial values required to call \pkg{brms} are automatically generated based on information contained in the supplied data. A range of tools is supplied to aid the user in interrogating model fits, plotting and generating predicted values, as well as extracting the standard outputs, such as \emph{NEC} and \emph{EC\textsubscript{x}} - either as a full posterior draw or in summary form.
 
 \hypertarget{technical-details}{%
 \section{Technical details}\label{technical-details}}
@@ -137,7 +107,7 @@ In Bayesian inference, model parameters and their inherent uncertainty are estim
   \label{eqn1}
 \end{equation}
 
-In many cases, the denominator (a.k.a. ``evidence'' or ``marginal'') is analytically intractable, and therefore we resort to numerical approximations such as Markov Chain Monte Carlo (MCMC). \pkg{bayesnec} uses the extensive functionality of the \pkg{brms} package to write model code as well as fit models via a Stan program \citep{stan2021}, which typically defines a Bayesian posterior as a log density function conditioned on the data. Stan employs Hamiltonian Monte Carlo (HMC)---a type of MCMC algorithm---for its fitting mechanism, and automatically optimizes the discretization time parameter to match an acceptance-rate target using the no-U-turn sampling (NUTS) algorithm \citep{hoffman2014}. \pkg{bayesnec} first takes the input model or model-set (via its custom formula class, \texttt{bayesnecformula}) in conjunction with potential user-defined hierarchical effects, to generate an object of class \texttt{brmsformula}. Then, based on the package-(or user-)specified priors, and response model distribution, it calls \pkg{brms} \citep{Burkner2017, Burkner2018} to generate the Stan program code and fit the model through either \pkg{rstan} \citep{rstan2021} or \pkg{cmdstanr}\citep{cmdstanr2022}. In doing so, \pkg{bayesnec} (as of version 2.1.0.0) allows for response variables to be modelled with a variety of statistical distributions: Gaussian, Poisson, Binomial, Gamma, Negative-binomial, Beta and Beta-binomial. Future implementations of \pkg{bayesnec} might include additional distributions which are currently only implemented in \pkg{brms}. In addition to greater flexibility in the available response distributions, \pkg{bayesnec} includes a larger set of 23 \emph{NEC}- and \emph{EC\textsubscript{x}}- models (see below), including many of the commonly-used models in \pkg{drc} \citep{Ritz2016}.
+In many cases, the denominator (a.k.a. ``evidence'' or ``marginal'') is analytically intractable, and therefore we resort to numerical approximations such as Markov Chain Monte Carlo (MCMC). \pkg{bayesnec} uses the extensive functionality of the \pkg{brms} package to write model code as well as fit models via a Stan program \citep{stan2021}, which typically defines a Bayesian posterior as a log density function conditioned on the data. Stan employs Hamiltonian Monte Carlo (HMC)---a type of MCMC algorithm---for its fitting mechanism, and automatically optimizes the discretization time parameter to match an acceptance-rate target using the no-U-turn sampling (NUTS) algorithm \citep{hoffman2014}. \pkg{bayesnec} first takes the input model or model-set (via its custom formula class, \texttt{bayesnecformula}) in conjunction with potential user-defined hierarchical effects, to generate an object of class \texttt{brmsformula}. Then, based on the package-(or user-)specified priors, and response model distribution, it calls \pkg{brms} \citep{Burkner2017, Burkner2018} to generate the Stan program code and fit the model through either \pkg{rstan} \citep{rstan2021} or \pkg{cmdstanr}\citep{cmdstanr2022}. In doing so, \pkg{bayesnec} (as of version 2.1.0.1) allows for response variables to be modelled with a variety of statistical distributions: Gaussian, Poisson, Binomial, Gamma, Negative-binomial, Beta and Beta-binomial. Future implementations of \pkg{bayesnec} might include additional distributions which are currently only implemented in \pkg{brms}. In addition to greater flexibility in the available response distributions, \pkg{bayesnec} includes a larger set of 23 \emph{NEC}- and \emph{EC\textsubscript{x}}- models (see below), including many of the commonly-used models in \pkg{drc} \citep{Ritz2016}.
 
 \subsection[Models in bayesnec]{Models in \pkg{bayesnec}}\label{mdbnc}
 
@@ -418,18 +388,19 @@ The class \texttt{bayesnecformula} (generated by the function \texttt{bayesnecfo
 \begin{CodeChunk}
 \begin{CodeInput}
 R> library(bayesnec)
+R> set.seed(15)
 R> df <- data.frame(x = rgamma(100, 2, 0.1), y = rnorm(100))
 R> form <- bnf(y ~ crf(log(x), model = "nec3param"))
 R> head(model.frame(form, df))
 \end{CodeInput}
 \begin{CodeOutput}
-            y    log(x)
-1  0.03771351  2.468220
-2  0.47951428  2.858047
-3  0.39487660  2.839169
-4 -1.88143992  4.061052
-5  0.47111211 -1.117538
-6  0.87742651  3.247422
+           y   log(x)
+1  0.6359487 2.908942
+2 -2.1002068 3.824482
+3 -0.1424703 2.409545
+4 -2.0900877 2.077855
+5 -2.1590899 1.271083
+6  0.1975523 3.108878
 \end{CodeOutput}
 \end{CodeChunk}
 
@@ -440,11 +411,10 @@ Here we use one of the package's built-in datasets from \citet{jones2003meps} wh
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> data(herbicide)
 R> # filter for one herbicide only
 R> data <- herbicide[herbicide$herbicide == "diuron", ]
-R> set.seed(333)
-R> fit <- bnec(fvfm ~ crf(log(concentration), model = "nec4param"), data = data)
+R> fit <- bnec(fvfm ~ crf(log(concentration), model = "nec4param"), data = data,
++             seed = 15)
 \end{CodeInput}
 \end{CodeChunk}
 
@@ -481,14 +451,14 @@ Formula: fvfm ~ bot + (top - bot) * exp(-exp(beta) * (log(concentration) - nec) 
 
 Population-Level Effects: 
      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-bot      0.01      0.00     0.00     0.02 1.00     4591     4179
-top      0.67      0.01     0.65     0.68 1.00     5349     4716
-beta    -0.34      0.04    -0.41    -0.26 1.00     4010     4467
-nec     -0.40      0.04    -0.49    -0.33 1.00     4536     4356
+bot      0.01      0.00     0.00     0.02 1.00     4535     4222
+top      0.67      0.01     0.65     0.68 1.00     5255     4773
+beta    -0.34      0.04    -0.41    -0.26 1.00     4334     4310
+nec     -0.40      0.04    -0.48    -0.32 1.00     4663     5213
 
 Family Specific Parameters: 
     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-phi   168.56     29.94   117.66   232.74 1.00     5682     5468
+phi   167.71     28.95   117.30   233.49 1.00     5968     4893
 
 Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -631,13 +601,12 @@ We start by describing the analysis workflow for a single herbicide, ametryn. We
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> data("herbicide")
 R> ametryn <- herbicide %>%
 +   dplyr::mutate(concentration = log(concentration)) %>% 
-+   dplyr::filter(herbicide=="ametryn")
-R> manecfit_ametryn <- bayesnec::bnec(fvfm ~ crf(concentration, 
-+                                    model = "decline"), 
-+                                    data = ametryn)
++   dplyr::filter(herbicide == "ametryn")
+R> manecfit_ametryn <- bayesnec::bnec(
++   fvfm ~ crf(concentration, model = "decline"), data = ametryn, seed = 15
++ )
 \end{CodeInput}
 \end{CodeChunk}
 
@@ -676,20 +645,22 @@ Number of posterior draws per model:  8000
 
 Model weights (Method: pseudobma_bb_weights):
              waic   wi
-nec3param -451.16 0.04
-nec4param -456.83 0.06
-ecxexp    -320.45 0.00
-ecx4param -465.36 0.45
-ecxwb1p3  -323.32 0.00
-ecxwb2p3  -447.07 0.02
-ecxll4    -465.35 0.44
-ecxll3    -431.95 0.00
+nec3param -450.88 0.03
+nec4param -456.50 0.04
+ecxexp    -320.52 0.00
+ecx4param -465.13 0.39
+ecxwb1    -443.74 0.02
+ecxwb2    -461.22 0.11
+ecxwb1p3  -323.43 0.00
+ecxwb2p3  -447.03 0.02
+ecxll4    -465.18 0.39
+ecxll3    -432.07 0.00
 
 
 Summary of weighted NEC posterior estimates:
-NB: Model set contains the ECX models: ecxexp;ecx4param;ecxwb1p3;ecxwb2p3;ecxll4;ecxll3; weighted NEC estimates include NSEC surrogates for NEC
+NB: Model set contains the ECX models: ecxexp;ecx4param;ecxwb1;ecxwb2;ecxwb1p3;ecxwb2p3;ecxll4;ecxll3; weighted NEC estimates include NSEC surrogates for NEC
     Estimate  Q2.5 Q97.5
-NEC    -1.66 -2.10 -0.43
+NEC    -1.65 -2.12 -0.44
 
 
 Bayesian R2 estimates:
@@ -698,6 +669,8 @@ nec3param     0.99      0.00 0.99  0.99
 nec4param     0.99      0.00 0.99  0.99
 ecxexp        0.89      0.01 0.87  0.91
 ecx4param     0.99      0.00 0.99  0.99
+ecxwb1        0.99      0.00 0.98  0.99
+ecxwb2        0.99      0.00 0.99  0.99
 ecxwb1p3      0.94      0.01 0.90  0.96
 ecxwb2p3      0.99      0.00 0.99  0.99
 ecxll4        0.99      0.00 0.99  0.99
@@ -707,7 +680,7 @@ ecxll3        0.99      0.00 0.98  0.99
 
 For a \texttt{bayesmanecfit} object with multiple model fits, \texttt{summary} first displays the class, the family and links that have been used for the model fits, the number of posterior draws contained within each model fit, and a table of the model weights for each model. For the amatryn data set, weights are spread among several \textbf{ecx} models, with a small amount of weight for the two \textbf{nec} models (\emph{nec3param} and \emph{nec4parm}).
 
-Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC values in the case of the fitted \emph{ECx} models. In units of log concentration, the estimated no-effect toxicity value for ametryn is -1.66, which is equivalent to 0.19 \({\mu}gL^{-1}\). The 95\% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighed pooled posterior sample.
+Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC values in the case of the fitted \emph{ECx} models. In units of log concentration, the estimated no-effect toxicity value for ametryn is -1.65, which is equivalent to 0.193 \({\mu}gL^{-1}\). The 95\% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighed pooled posterior sample.
 
 Finally, Bayesian \(R^2\) estimates are also provided \citep{gelman2019}, as an indicator of overall model fit. This is useful because model weights are always relative to the models actually included in the model set for the given data. The \(R^2\) provides an indicator of model fit that can be compared objectively across data sets as an indication of the quality of the fit of any of the supplied models to the data.
 
@@ -757,14 +730,12 @@ We start by modelling the concentration-response curves for all seven photo toxi
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> library(dplyr)
-R> library(purrr)
-R> data("herbicide")
 R> manecfit <- herbicide %>%
 +   dplyr::mutate(concentration = log(concentration)) %>%
 +   split(f = ~ herbicide) %>%
 +   purrr::map(function(x) {
-+     bayesnec::bnec(fvfm ~ crf(concentration, model = "decline"), data = x)
++     bayesnec::bnec(fvfm ~ crf(concentration, model = "decline"), data = x,
++                    seed = 15)
 +   })
 R> save(manecfit, file = "manecfits.RData")
 \end{CodeInput}
@@ -776,8 +747,8 @@ Once we have our list of fitted \texttt{bayesmanecfit} objects for each herbicid
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> ## lapply(manecfit, check_chains)
-R> ## lapply(manecfit, check_priors)
+R> # Note for the decline model set there are no fits
+R> #   with bad rhat values for this example.
 R> cleaned_fits <- purrr::map(manecfit, function(x) {
 +   bad_fits <- rhat(x)$failed
 +   out_fit <- x
@@ -785,7 +756,6 @@ R> cleaned_fits <- purrr::map(manecfit, function(x) {
 +     out_fit <- bayesnec::amend(x, drop = bad_fits)
 +   }
 +   out_fit
-+   # note for the decline model set there are no fits with bad rhat values for this example.
 + })
 \end{CodeInput}
 \end{CodeChunk}
@@ -798,7 +768,8 @@ R> library(tidyr)
 R> modtab <- purrr::map_dfr(cleaned_fits, function(x) {
 +   x$mod_stats %>%
 +     dplyr::select(model, wi) %>%
-+     dplyr::mutate(wi = round(wi, 3))}, .id = "herbicide") %>%
++     dplyr::mutate(wi = round(wi, 3))
++ }, .id = "herbicide") %>%
 +   tidyr::pivot_wider(names_from = herbicide, values_from = wi)
 \end{CodeInput}
 \end{CodeChunk}
@@ -808,35 +779,33 @@ This collated table of model weights shows that the best fitting models vary sub
 \begin{CodeChunk}
 \begin{table}
 
+\caption{\label{tab:weightsTab}Fitted valid models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}.}
 \centering
 \begin{tabular}[t]{l|r|r|r|r|r|r|r}
 \hline
 model & ametryn & atrazine & diuron & hexazinone & irgarol & simazine & tebuthiuron\\
 \hline
-nec3param & 0.040 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.017\\
+nec3param & 0.033 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.019\\
 \hline
-nec4param & 0.056 & 0.002 & 0.000 & 0.000 & 0.001 & 0.000 & 0.004\\
+nec4param & 0.042 & 0.002 & 0.000 & 0.000 & 0.001 & 0.000 & 0.004\\
 \hline
 ecxexp & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000\\
 \hline
-ecx4param & 0.445 & NA & 0.341 & 0.184 & 0.333 & 0.200 & 0.006\\
+ecx4param & 0.388 & 0.170 & 0.331 & 0.126 & 0.289 & 0.222 & 0.002\\
 \hline
-ecxwb1p3 & 0.000 & 0.000 & 0.000 & 0.010 & 0.000 & 0.015 & 0.000\\
+ecxwb1 & 0.016 & 0.634 & 0.215 & 0.000 & 0.339 & 0.115 & 0.000\\
 \hline
-ecxwb2p3 & 0.015 & 0.002 & 0.001 & 0.088 & 0.001 & 0.059 & 0.689\\
+ecxwb2 & 0.109 & NA & 0.000 & 0.019 & 0.034 & 0.022 & 0.270\\
 \hline
-ecxll4 & 0.444 & 0.183 & 0.322 & NA & 0.335 & 0.243 & NA\\
+ecxwb1p3 & 0.000 & 0.000 & 0.000 & 0.016 & 0.000 & 0.023 & 0.000\\
 \hline
-ecxll3 & 0.000 & 0.000 & 0.111 & 0.717 & 0.000 & 0.341 & 0.000\\
+ecxwb2p3 & 0.017 & 0.002 & 0.000 & 0.074 & 0.001 & 0.060 & 0.701\\
 \hline
-ecxwb1 & NA & 0.499 & 0.223 & 0.000 & 0.328 & 0.123 & 0.000\\
+ecxll4 & 0.394 & 0.191 & 0.341 & 0.128 & 0.334 & 0.218 & 0.002\\
 \hline
-ecxwb2 & NA & 0.004 & 0.002 & NA & NA & 0.019 & 0.284\\
-\hline
-ecxll5 & NA & 0.308 & NA & NA & NA & NA & NA\\
+ecxll3 & 0.000 & 0.001 & 0.112 & 0.638 & 0.000 & 0.341 & 0.001\\
 \hline
 \end{tabular}
-\caption{\label{tab:weightsTab}Fitted valid models and their relative pseudo-BMA weights for C-R curves for the effects seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}.}
 \end{table}
 
 \end{CodeChunk}
@@ -845,6 +814,7 @@ We use the \pkg{bayesnec} \texttt{autoplot} , together with \pkg{ggpubr} to make
 
 \begin{CodeChunk}
 \begin{CodeInput}
+R> library(ggpubr)
 R> all_plots <- lapply(cleaned_fits, function(x) {
 +   autoplot(x, xform = exp) +
 +   scale_x_continuous(trans = "log", labels = round_digits) +
@@ -852,9 +822,12 @@ R> all_plots <- lapply(cleaned_fits, function(x) {
 +          axis.title.y = element_blank(),
 +          strip.background = element_blank(),
 +          strip.text.x = element_blank()) +
-+     ggtitle("")})
-R> figure <- ggpubr::ggarrange(plotlist = all_plots, nrow = 4, ncol = 2, labels = names(all_plots),
-+   font.label = list(color = "black", size = 12, face = "plain"), align = "hv")
++     ggtitle("")
++ })
+R> figure <- ggpubr::ggarrange(
++   plotlist = all_plots, nrow = 4, ncol = 2, labels = names(all_plots),
++   font.label = list(color = "black", size = 12, face = "plain"), align = "hv"
++ )
 \end{CodeInput}
 \end{CodeChunk}
 
@@ -878,9 +851,9 @@ Finally, we also use the \texttt{compare\_posterior} function to extract and plo
 \begin{CodeChunk}
 \begin{CodeInput}
 R> post_comp <- compare_posterior(cleaned_fits, comparison = "nec")
-R> prob_diff <- post_comp$prob_diff %>% 
-+   separate(col = comparison, into = c("herbicide", "columns")) %>% 
-+   pivot_wider(names_from = columns, values_from = prob)
+R> prob_diff <- post_comp$prob_diff %>%
++   tidyr::separate(col = comparison, into = c("herbicide", "columns")) %>%
++   tidyr::pivot_wider(names_from = columns, values_from = prob)
 \end{CodeInput}
 \end{CodeChunk}
 
@@ -904,17 +877,17 @@ R> prob_diff <- post_comp$prob_diff %>%
 \hline
 herbicide & atrazine & diuron & hexazinone & irgarol & simazine & tebuthiuron\\
 \hline
-ametryn & 0.0261283 & 0.8287286 & 0.0652582 & 0.9341168 & 0.0103763 & 0.0095012\\
+ametryn & 0.0265033 & 0.8209776 & 0.0611326 & 0.9126141 & 0.0097512 & 0.0103763\\
 \hline
-atrazine & NA & 0.9843730 & 0.8334792 & 0.9862483 & 0.0397550 & 0.0098762\\
+atrazine & NA & 0.9873734 & 0.8191024 & 0.9877485 & 0.0383798 & 0.0106263\\
 \hline
-diuron & NA & NA & 0.0143768 & 0.7303413 & 0.0093762 & 0.0097512\\
+diuron & NA & NA & 0.0161270 & 0.7107138 & 0.0093762 & 0.0105013\\
 \hline
-hexazinone & NA & NA & NA & 0.9872484 & 0.0172522 & 0.0096262\\
+hexazinone & NA & NA & NA & 0.9869984 & 0.0162520 & 0.0106263\\
 \hline
-irgarol & NA & NA & NA & NA & 0.0092512 & 0.0096262\\
+irgarol & NA & NA & NA & NA & 0.0095012 & 0.0106263\\
 \hline
-simazine & NA & NA & NA & NA & NA & 0.0408801\\
+simazine & NA & NA & NA & NA & NA & 0.0412552\\
 \hline
 \end{tabular}
 \end{table}

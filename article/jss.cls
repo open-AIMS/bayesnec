@@ -206,18 +206,7 @@
 \newenvironment{Schunk}{}{}
 \DefineVerbatimEnvironment{Code}{Verbatim}{}
 \DefineVerbatimEnvironment{CodeInput}{Verbatim}{fontshape=sl}
-% \DefineVerbatimEnvironment{CodeOutput}{Verbatim}{}
-% Code output replacement
-\usepackage{listings} 
-\lstset{% 
-  % basicstyle=\ttfamily, 
-  breaklines=true,
-  escapeinside = ||,
-  breakindent=0pt} 
-\lstnewenvironment{CodeOutput}{}{} 
-
-
-
+\DefineVerbatimEnvironment{CodeOutput}{Verbatim}{}
 \newenvironment{CodeChunk}{}{}
 \setkeys{Gin}{width=0.8\textwidth}
 %% footer

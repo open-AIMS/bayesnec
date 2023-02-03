@@ -698,8 +698,8 @@ Because we want to run the analysis for all seven herbicides separately we first
 Once we have our list of fitted `bayesmanecfit` objects for each herbicide, can use `rhat` to check that all models fitted successfully for each, and find any models that fail the `rhat` criteria of <1.05 and removing these using the function `amend`. We achieve this across all the herbicides using \pkg{purrr}. As for the single herbicide fit (see \ref{isingle}), we should also check the chains and priors for each fitted model, although we have skipped that step here.
 
 ```{r fullbayesmanecgoodfits, echo = TRUE, results = "hide", cache = TRUE, dependson = "fullbayesmanec"}
-## lapply(manecfit, check_chains)
-## lapply(manecfit, check_priors)
+# Note for the decline model set there are no fits
+#   with bad rhat values for this example.
 cleaned_fits <- purrr::map(manecfit, function(x) {
   bad_fits <- rhat(x)$failed
   out_fit <- x
@@ -707,7 +707,6 @@ cleaned_fits <- purrr::map(manecfit, function(x) {
     out_fit <- bayesnec::amend(x, drop = bad_fits)
   }
   out_fit
-  # note for the decline model set there are no fits with bad rhat values for this example.
 })
 ```
 
