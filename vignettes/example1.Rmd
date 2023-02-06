@@ -19,13 +19,13 @@ bibliography: bayesnec.bib
 
 # `bayesnec`
 
-The `bayesnec` is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage "x", *ECx*) thresholds from non-linear models fitted using Bayesian Hamiltonian Monte Carlo (HMC) via `brms` [@Burkner2017; @Burkner2018] and `stan`. The package is an adaptation and extension of an initial package `jagsNEC` [@Fisher2020] which was based on the `R2jags` package [@Su2015] and `jags` [@Plummer2003].
+The `bayesnec` is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (NEC), No-Significant-Effect-Concentration (NSEC), and Effect-Concentration (of specified percentage "x", *ECx*) thresholds from non-linear models fitted using Bayesian Hamiltonian Monte Carlo (HMC) via `brms` [@Burkner2017; @Burkner2018] and `stan`. The package is an adaptation and extension of an initial package `jagsNEC` [@Fisher2020] which was based on the `R2jags` package [@Su2015] and `jags` [@Plummer2003].
 
 # Background
 
-Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for *NEC* estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting *NEC* models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor) as well as the "response" variable. The package requires a simplified model formula, which together with the data is used to wrangle more complex non-linear model formula(s), as well as to generate priors and initial values required to call a `brms` model. While the distribution of the predictor and response variables can be specified directly, `bayesnec` will automatically attempt to assign the correct distribution to use based on the characteristics of the provided data.
+Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for NEC estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting NEC models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor) as well as the "response" variable. The package requires a simplified model formula, which together with the data is used to wrangle more complex non-linear model formula(s), as well as to generate priors and initial values required to call a `brms` model. While the distribution of the predictor and response variables can be specified directly, `bayesnec` will automatically attempt to assign the correct distribution to use based on the characteristics of the provided data.
 
-This project started with an implementation of the *NEC* model based on that described in (Pires et al. 2002) and [@Fox2010] using R2jags [@Fisher2020]. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported Gaussian-, Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed response data, `bayesnec` additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of  concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist-based packages such as `drc`[@Ritz2016]. These models do not employ segmented linear regression (i.e., use of a `step` function) but model the response as a smooth function of concentration.
+This project started with an implementation of the NEC model based on that described in (Pires et al. 2002) and [@Fox2010] using R2jags [@Fisher2020]. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported Gaussian-, Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed response data, `bayesnec` additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available `brms` families. We have since also further added a range of alternative NEC model types, as well as a range of  concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist-based packages such as `drc`[@Ritz2016]. These models do not employ segmented linear regression (i.e., use of a `step` function) but model the response as a smooth function of concentration.
 
 Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively, it is possible to fit a custom model set, a specific model set, or all the available models. Further information on fitting multi-models using `bayesnec` can be found in the [Multi model usage][e2] vignette. For detailed information on the models available in `bayesnec` see the [Model details][e2b] vignette.
 
@@ -73,7 +73,7 @@ library(tidyr)
 
 ## Fitting the `nec4param` model using `bnec`
 
-Here we include some examples showing how to use the package to fit an *NEC* model to binomial, proportional, count and continuous response data. The examples are those used at: <https://github.com/gerard-ricardo/NECs/blob/master/NECs>, but here we are showing how to fit models to these data using the `bayesnec` package. Note however, the default behaviour in `bayesnec` is to use the `"identity"` link because the native link functions for each family (e.g., `"logit"` for Binomial, `"log"` for Poisson) introduce non-linear transformation on formulas which are already non-linear. So please be aware that estimates of *NEC* or *ECx* might not be as expected when using link functions other than identity (see the [Model details][e2b] vignette for more information and the models available in `bayesnec`).
+Here we include some examples showing how to use the package to fit an NEC model to binomial, proportional, count and continuous response data. The examples are those used at: <https://github.com/gerard-ricardo/NECs/blob/master/NECs>, but here we are showing how to fit models to these data using the `bayesnec` package. Note however, the default behaviour in `bayesnec` is to use the `"identity"` link because the native link functions for each family (e.g., `"logit"` for Binomial, `"log"` for Poisson) introduce non-linear transformation on formulas which are already non-linear. So please be aware that estimates of NEC or *ECx* might not be as expected when using link functions other than identity (see the [Model details][e2b] vignette for more information and the models available in `bayesnec`).
 
 ### Binomial data
 
@@ -101,7 +101,7 @@ In this case for `raw_x`, lowest concentration is 0.1 and the highest is 400. Th
 
 The data are binomial, with the column `suc` indicating the number of successes in the binomial call, and column `tot` indicating the number of trials.
 
-The main working function in `bayesnec` is the function `bnec`, which calls the other necessary functions and fits the `brms` model. We can run `bnec` by supplying `formula`: a special formula which comprises the relationship between response and predictor, and the C-R model (or models) chosen to be fitted; and `data`: a `data.frame` containing the data for the model fitting, here, `binom_data`.
+The main working function in `bayesnec` is the function `bnec`, which calls the other necessary functions and fits the `brms` model. We can run `bnec` by supplying `formula`: a special formula which comprises the relationship between response and predictor, and the CR model (or models) chosen to be fitted; and `data`: a `data.frame` containing the data for the model fitting, here, `binom_data`.
 
 The basic `bayesnec` formula should be of the form:
 
@@ -110,7 +110,7 @@ The basic `bayesnec` formula should be of the form:
 suc | trials(tot) ~ crf(log(raw_x), model = "your_model")
 ```
 
-where the left-hand side of the formula is implemented exactly as in `brms`, including the `trials` term. The right-hand side of the formula contains the special internal function `crf` (which stands for concentration-response function), and takes the predictor (including any simple function transformations such as `log`) and the desired C-R model or suite of models. As with any formula in R, the name of the terms need to be exactly as they are in the input data.frame.
+where the left-hand side of the formula is implemented exactly as in `brms`, including the `trials` term. The right-hand side of the formula contains the special internal function `crf` (which stands for concentration-response function), and takes the predictor (including any simple function transformations such as `log`) and the desired CR model or suite of models. As with any formula in R, the name of the terms need to be exactly as they are in the input data.frame.
 
 `bnec` will guess the data types for use, although as mentioned above we could manually specify `family` as `"binomial"` (or `binomial`, or `binomial()`). `bnec` will also generate appropriate priors for the `brms` model call, although these can also be specified manually (see the [Priors][e3] vignette for more details).
 
@@ -164,7 +164,7 @@ summary(exp_1)
 
 Note the Rhat values in this example are one, indicating convergence.
 
-The functions `plot` (extending `base` plot method) and `autoplot` (extending `ggplot2` plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class `bayesnecfit`) from the call to `bnec`. **Notice, however, that in this case we log-transformed the predictor `raw_x` in the input formula.** This causes `brms` to pass these transformations onto Stan's native code, and therefore estimates of *NEC* will be on that same scale. So we need to transform them back to the data scale using the additional argument `xform`.
+The functions `plot` (extending `base` plot method) and `autoplot` (extending `ggplot2` plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class `bayesnecfit`) from the call to `bnec`. **Notice, however, that in this case we log-transformed the predictor `raw_x` in the input formula.** This causes `brms` to pass these transformations onto Stan's native code, and therefore estimates of NEC will be on that same scale. So we need to transform them back to the data scale using the additional argument `xform`.
 
 
 ```r
@@ -211,7 +211,7 @@ exp_1b$dispersion
 #> [1] NA NA NA
 ```
 
-Now that we have a better fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object. As explained above, we need to transform *NEC* back to the data scale.
+Now that we have a better fit to these data, we can interpret the results. The estimated NEC value can be obtained directly from the fitted model object. As explained above, we need to transform NEC back to the data scale.
  
 
 ```r
@@ -220,7 +220,7 @@ summary(exp(exp_1b$nec_posterior))
 #>   14.10   64.88   79.01   76.10   88.34  199.24
 ```
 
-EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
+EC*x* estimates can also be obtained from the NEC model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the NEC model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
 
 
 ```r
@@ -235,7 +235,7 @@ ecx(exp_1b, xform = exp)
 #> [1] "ecx"
 ```
 
-A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for *NEC*, as the `nec_intercept` population-level effect in the model---again, its value will depend on the scale of the predictor variable.
+A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for NEC, as the `nec_intercept` population-level effect in the model---again, its value will depend on the scale of the predictor variable.
 
 
 ```r

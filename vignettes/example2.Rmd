@@ -71,7 +71,7 @@ autoplot(exp_5)
 
 <img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%" style="display: block; margin: auto;" />
 
-The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set that were able to fit successfully using the default `bnec` settings. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* estimates that are used as an approximation to *NEC* for all the **ecx**-containing models in the set. Note that we do not currently recommend reporting these values as the *NEC* (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to `"pseudobma"` using Bayesian bootstrap from `loo`), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).
+The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set that were able to fit successfully using the default `bnec` settings. The NEC estimate on this plot (and in the summary output below) is based on a mix of actual NEC estimates, as well as the NSEC estimates that are used as an approximation to NEC for all the **ecx**-containing models in the set. Note that we do not currently recommend reporting these values as the NEC (see the [Model details][e2b] vignette for more information). The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to `"pseudobma"` using Bayesian bootstrap from `loo`), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).
 
 
 ```r
@@ -86,7 +86,7 @@ exp_5$mod_stats
 #> ecxll4       ecxll4 -81.74055 1.421409e-01                  NA              NA               NA
 ```
 
-We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged *NEC* is reported, however a warning is provided indicating it contains *NSEC* values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default `brms` Rhat criteria. For this example all the **ecx**-containing models have high weights, which we would expect given that type of model was used to generate the underlying example.
+We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged NEC is reported, however a warning is provided indicating it contains NSEC values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default `brms` Rhat criteria. For this example all the **ecx**-containing models have high weights, which we would expect given that type of model was used to generate the underlying example.
 
 All these model fits are satisfactory despite the relatively low number of iterations set in our example, but the summary would also include a warning if there were fits with divergent transitions.
 
@@ -201,20 +201,20 @@ rhat(exp_5, rhat_cutoff = 1.01) |>
 
 ### Extracting endpoint values
 
-The models prefixed with **ecx** are all models that do not have the *NEC* as a parameter in the model. That is, they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plots above for these models are an approximation based on *NSEC* and should not be used without careful consideration of the validity of this endpoint value (see the [Model details][e2b] vignette for more details). A formal model averaged estimate of *NEC* should be obtained with `model = "nec"`. We can use the helper functions `pull_out` and `amend` to alter the model set as required. `pull_out` has a `model` argument and can be used to pull a single model out (as above) or to pull out a specific set of models.
+The models prefixed with **ecx** are all models that do not have the NEC as a parameter in the model. That is, they are smooth curves as a function of concentration and have no breakpoint. The NEC on the plots above for these models are an approximation based on NSEC and should not be used without careful consideration of the validity of this endpoint value (see the [Model details][e2b] vignette for more details). A formal model averaged estimate of NEC should be obtained with `model = "nec"`. We can use the helper functions `pull_out` and `amend` to alter the model set as required. `pull_out` has a `model` argument and can be used to pull a single model out (as above) or to pull out a specific set of models.
 
-We can use this to obtain first a set of *NEC* only models from the existing set.
+We can use this to obtain first a set of NEC only models from the existing set.
 
 
 ```r
 exp_5_nec <- pull_out(exp_5, model = "nec")
 ```
 
-In this case, because we have already fitted `"decline"` models, we can ignore the message regarding the missing *NEC* models---these are all models that are not appropriate for a `Beta` family with a `logit` link function, or allow hormesis, which we did not consider in this example.
+In this case, because we have already fitted `"decline"` models, we can ignore the message regarding the missing NEC models---these are all models that are not appropriate for a `Beta` family with a `logit` link function, or allow hormesis, which we did not consider in this example.
 
-Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
+Now we have two model sets, an NEC set, and a mixed NEC and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
 
-Now we can use the `ecx` function to get *EC~10~* and *EC~50~* values. We can do this using our all model set, because it is valid to use *NEC* models for estimating *ECx* (see more information in the [Model details][e2b] vignette).
+Now we can use the `ecx` function to get *EC~10~* and *EC~50~* values. We can do this using our all model set, because it is valid to use NEC models for estimating *ECx* (see more information in the [Model details][e2b] vignette).
 
 
 ```r
@@ -240,7 +240,7 @@ ECx50
 #> [1] "ecx"
 ```
 
-The weighted *NEC* estimates can be extracted directly from the *NEC* model set object, as they are an explicit parameter in these models.
+The weighted NEC estimates can be extracted directly from the NEC model set object, as they are an explicit parameter in these models.
 
 
 ```r
@@ -250,11 +250,11 @@ NECvals
 #> 3.558387 3.158986 4.053701
 ```
 
-Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].
+Note that the new NEC estimates from the *NEC*-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].
 
 ### Putting it all together
 
-Now we can make a combined plot of our output, showing the model averaged *NEC* model and the "all averaged model", along with the relevant thresholds.
+Now we can make a combined plot of our output, showing the model averaged NEC model and the "all averaged model", along with the relevant thresholds.
 
 
 ```r

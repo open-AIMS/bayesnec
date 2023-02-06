@@ -56,8 +56,8 @@
 #' \code{\link{bnec}} serves as a wrapper for (currently) 23 (mostly) non-linear
 #' equations that are classically applied to concentration(dose)-response
 #' problems. The primary goal of these equations is to provide the user with
-#' estimates of No-Effect-Concentration (*NEC*),
-#' No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration
+#' estimates of No-Effect-Concentration (NEC),
+#' No-Significant-Effect-Concentration (NSEC), and Effect-Concentration
 #' (of specified percentage 'x', *ECx*) thresholds.
 #' These in turn are fitted through the \code{\link[brms]{brm}} function from
 #' package \pkg{brms} and therefore further arguments to \code{\link[brms]{brm}}
