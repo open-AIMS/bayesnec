@@ -70,7 +70,7 @@ calculates a geometric mean.
 The geometric mean of values are simply the mean calculated on a
 log scale and back transformed through \code{\link[base]{exp}}, although we
 have added the capacity to accommodate zero values. Note that the function
-assumes that \code{x} has been modelled on the natural scale. Often C-R
+assumes that \code{x} has been modelled on the natural scale. Often CR
 models are more stable on a log-transformed or sqrt scaling. If the input
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits are
 already based on a re-scaling of the x (concentration) axis, it is important
