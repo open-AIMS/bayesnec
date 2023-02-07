@@ -32,5 +32,7 @@ article/*
 !article/jss.bst
 !article/jss.cls
 !article/jsslogo.jpg
+!article/render_tex_pdf.R
+article*.*
 Check_priors_plots.pdf
 doc/
