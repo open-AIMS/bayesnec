@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.1</span>
       </span>
     </div>
 
@@ -113,7 +113,7 @@
 </h2>
 <p>The <code>bayesnec</code> is an R package to fit concentration(dose)
 — response curves to toxicity data, and derive No-Effect-Concentration
-(<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and
+(NEC), No-Significant-Effect-Concentration (NSEC), and
 Effect-Concentration (of specified percentage “x”, <em>ECx</em>)
 thresholds from non-linear models fitted using Bayesian Hamiltonian
 Monte Carlo (HMC) via <code>brms</code> <span class="citation">(Paul
@@ -130,38 +130,39 @@ package <span class="citation">(Su and Yajima 2015)</span> and
 <p>Bayesian model fitting can be difficult to automate across a broad
 range of usage cases, particularly with respect to specifying valid
 initial values and appropriate priors. This is one reason the use of
-Bayesian statistics for <em>NEC</em> estimation (or even <em>ECx</em>
-estimation) is not currently widely adopted across the broader
-ecotoxicological community, who rarely have access to specialist
-statistical expertise. The <code>bayesnec</code> package provides an
-accessible interface specifically for fitting <em>NEC</em> models and
-other concentration—response models using Bayesian methods. A range of
-models are specified based on the known distribution of the
-“concentration” or “dose” variable (the predictor) as well as the
-“response” variable. The package requires a simplified model formula,
-which together with the data is used to wrangle more complex non-linear
-model formula(s), as well as to generate priors and initial values
-required to call a <code>brms</code> model. While the distribution of
-the predictor and response variables can be specified directly,
-<code>bayesnec</code> will automatically attempt to assign the correct
-distribution to use based on the characteristics of the provided
-data.</p>
-<p>This project started with an implementation of the <em>NEC</em> model
-based on that described in (Pires et al. 2002) and <span class="citation">(Fox 2010)</span> using R2jags <span class="citation">(Fisher, Ricardo, and Fox 2020)</span>. The package has
-been further generalised to allow a large range of response variables to
-be modelled using the appropriate statistical distribution. While the
-original <code>jagsNEC</code> implementation supported Gaussian-,
-Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed
-response data, <code>bayesnec</code> additionally supports the
-Beta-Binomial distribution, and can be easily extended to include any of
-the available <code>brms</code> families. We have since also further
-added a range of alternative <em>NEC</em> model types, as well as a
-range of concentration—response models (such as 4-parameter logistic and
-Weibull models) that are commonly used in frequentist-based packages
-such as <code>drc</code><span class="citation">(Ritz et al.
-2016)</span>. These models do not employ segmented linear regression
-(i.e., use of a <code>step</code> function) but model the response as a
-smooth function of concentration.</p>
+Bayesian statistics for NEC estimation (or even <em>ECx</em> estimation)
+is not currently widely adopted across the broader ecotoxicological
+community, who rarely have access to specialist statistical expertise.
+The <code>bayesnec</code> package provides an accessible interface
+specifically for fitting NEC models and other concentration—response
+models using Bayesian methods. A range of models are specified based on
+the known distribution of the “concentration” or “dose” variable (the
+predictor) as well as the “response” variable. The package requires a
+simplified model formula, which together with the data is used to
+wrangle more complex non-linear model formula(s), as well as to generate
+priors and initial values required to call a <code>brms</code> model.
+While the distribution of the predictor and response variables can be
+specified directly, <code>bayesnec</code> will automatically attempt to
+assign the correct distribution to use based on the characteristics of
+the provided data.</p>
+<p>This project started with an implementation of the NEC model based on
+that described in (Pires et al. 2002) and <span class="citation">(Fox
+2010)</span> using R2jags <span class="citation">(Fisher, Ricardo, and
+Fox 2020)</span>. The package has been further generalised to allow a
+large range of response variables to be modelled using the appropriate
+statistical distribution. While the original <code>jagsNEC</code>
+implementation supported Gaussian-, Poisson-, Binomial-, Gamma-,
+Negative Binomial- and Beta-distributed response data,
+<code>bayesnec</code> additionally supports the Beta-Binomial
+distribution, and can be easily extended to include any of the available
+<code>brms</code> families. We have since also further added a range of
+alternative NEC model types, as well as a range of
+concentration—response models (such as 4-parameter logistic and Weibull
+models) that are commonly used in frequentist-based packages such as
+<code>drc</code><span class="citation">(Ritz et al. 2016)</span>. These
+models do not employ segmented linear regression (i.e., use of a
+<code>step</code> function) but model the response as a smooth function
+of concentration.</p>
 <p>Specific models can be fit directly using <code>bnec</code>, which is
 what we discuss here. Alternatively, it is possible to fit a custom
 model set, a specific model set, or all the available models. Further
@@ -212,16 +213,16 @@ for further instructions on how to get the compilers running.</p>
 <code>bnec</code><a class="anchor" aria-label="anchor" href="#fitting-the-nec4param-model-using-bnec"></a>
 </h3>
 <p>Here we include some examples showing how to use the package to fit
-an <em>NEC</em> model to binomial, proportional, count and continuous
-response data. The examples are those used at: <a href="https://github.com/gerard-ricardo/NECs/blob/master/NECs" class="external-link uri">https://github.com/gerard-ricardo/NECs/blob/master/NECs</a>,
+an NEC model to binomial, proportional, count and continuous response
+data. The examples are those used at: <a href="https://github.com/gerard-ricardo/NECs/blob/master/NECs" class="external-link uri">https://github.com/gerard-ricardo/NECs/blob/master/NECs</a>,
 but here we are showing how to fit models to these data using the
 <code>bayesnec</code> package. Note however, the default behaviour in
 <code>bayesnec</code> is to use the <code>"identity"</code> link because
 the native link functions for each family (e.g., <code>"logit"</code>
 for Binomial, <code>"log"</code> for Poisson) introduce non-linear
 transformation on formulas which are already non-linear. So please be
-aware that estimates of <em>NEC</em> or <em>ECx</em> might not be as
-expected when using link functions other than identity (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
+aware that estimates of NEC or <em>ECx</em> might not be as expected
+when using link functions other than identity (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
 details</a> vignette for more information and the models available in
 <code>bayesnec</code>).</p>
 <div class="section level4">
@@ -266,7 +267,7 @@ the number of successes in the binomial call, and column
 <code>bnec</code>, which calls the other necessary functions and fits
 the <code>brms</code> model. We can run <code>bnec</code> by supplying
 <code>formula</code>: a special formula which comprises the relationship
-between response and predictor, and the C-R model (or models) chosen to
+between response and predictor, and the CR model (or models) chosen to
 be fitted; and <code>data</code>: a <code>data.frame</code> containing
 the data for the model fitting, here, <code>binom_data</code>.</p>
 <p>The basic <code>bayesnec</code> formula should be of the form:</p>
@@ -277,7 +278,7 @@ the data for the model fitting, here, <code>binom_data</code>.</p>
 right-hand side of the formula contains the special internal function
 <code>crf</code> (which stands for concentration-response function), and
 takes the predictor (including any simple function transformations such
-as <code>log</code>) and the desired C-R model or suite of models. As
+as <code>log</code>) and the desired CR model or suite of models. As
 with any formula in R, the name of the terms need to be exactly as they
 are in the input data.frame.</p>
 <p><code>bnec</code> will guess the data types for use, although as
@@ -353,9 +354,9 @@ plot from the data included in the returned object (class
 <strong>Notice, however, that in this case we log-transformed the
 predictor <code>raw_x</code> in the input formula.</strong> This causes
 <code>brms</code> to pass these transformations onto Stan’s native code,
-and therefore estimates of <em>NEC</em> will be on that same scale. So
-we need to transform them back to the data scale using the additional
-argument <code>xform</code>.</p>
+and therefore estimates of NEC will be on that same scale. So we need to
+transform them back to the data scale using the additional argument
+<code>xform</code>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span></code></pre></div>
 <p><img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%" style="display: block; margin: auto;"></p>
@@ -400,18 +401,18 @@ is only relevant for Poisson and Binomial data.</p>
 <code class="sourceCode R"><span><span class="va">exp_1b</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; [1] NA NA NA</span></span></code></pre></div>
 <p>Now that we have a better fit to these data, we can interpret the
-results. The estimated <em>NEC</em> value can be obtained directly from
-the fitted model object. As explained above, we need to transform
-<em>NEC</em> back to the data scale.</p>
+results. The estimated NEC value can be obtained directly from the
+fitted model object. As explained above, we need to transform NEC back
+to the data scale.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec_posterior</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
 <span><span class="co">#&gt;   14.10   64.88   79.01   76.10   88.34  199.24</span></span></code></pre></div>
-<p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em>
-model fit, using the function <code>ecx</code>. Note these may differ
-from a typical 4-parameter non-linear model, as the <em>NEC</em> model
-is a broken stick non-linear regression and will often fall more sharply
-than a smooth 4-parameter non-linear curve. See both the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
+<p>EC<em>x</em> estimates can also be obtained from the NEC model fit,
+using the function <code>ecx</code>. Note these may differ from a
+typical 4-parameter non-linear model, as the NEC model is a broken stick
+non-linear regression and will often fall more sharply than a smooth
+4-parameter non-linear curve. See both the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
 details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Comparing
 posterior predictions</a> vignettes for more information.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -426,9 +427,9 @@ posterior predictions</a> vignettes for more information.</p>
 <span><span class="co">#&gt; [1] "ecx"</span></span></code></pre></div>
 <p>A summary method has also been developed for <code>bayesnecfit</code>
 objects that gives an overall summary of the model statistics, which
-also include the estimate for <em>NEC</em>, as the
-<code>nec_intercept</code> population-level effect in the model—again,
-its value will depend on the scale of the predictor variable.</p>
+also include the estimate for NEC, as the <code>nec_intercept</code>
+population-level effect in the model—again, its value will depend on the
+scale of the predictor variable.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Object of class bayesnecfit containing the following non-linear model: nec4param</span></span>
@@ -480,7 +481,7 @@ data must be modelled using a Beta distribution instead.</p>
 <code class="sourceCode R"><span><span class="va">prop_data</span> <span class="op">&lt;-</span> <span class="st">"https://pastebin.com/raw/123jq46d"</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span>header <span class="op">=</span> <span class="cn">TRUE</span>, dec <span class="op">=</span> <span class="st">","</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>raw_x <span class="op">=</span> <span class="va">raw.x</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">across</a></span><span class="op">(</span><span class="fu">where</span><span class="op">(</span><span class="va">is.character</span><span class="op">)</span>, <span class="va">as.numeric</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">across</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/where.html" class="external-link">where</a></span><span class="op">(</span><span class="va">is.character</span><span class="op">)</span>, <span class="va">as.numeric</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exp_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">resp</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,</span>

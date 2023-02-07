@@ -19,7 +19,7 @@ calculates a geometric mean."><meta property="og:image" content="/logo.png"><!--
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.1</span>
       </span>
     </div>
 
@@ -170,7 +170,7 @@ of the <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or <code><a
     <p>The geometric mean of values are simply the mean calculated on a
 log scale and back transformed through <code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></code>, although we
 have added the capacity to accommodate zero values. Note that the function
-assumes that <code>x</code> has been modelled on the natural scale. Often C-R
+assumes that <code>x</code> has been modelled on the natural scale. Often CR
 models are more stable on a log-transformed or sqrt scaling. If the input
 <code><a href="bayesnecfit-class.html">bayesnecfit</a></code> or <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code> model fits are
 already based on a re-scaling of the x (concentration) axis, it is important

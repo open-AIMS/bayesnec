@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.1</span>
       </span>
     </div>
 
@@ -224,13 +224,11 @@ we can plot a <code>bayesmanecfit</code> model object simply with
 <code>bayesnecfit</code> plot, but the output is based on a weighted
 average of all the model fits in the <code>model = "decline"</code>
 model set that were able to fit successfully using the default
-<code>bnec</code> settings. The <em>NEC</em> estimate on this plot (and
-in the summary output below) is based on a mix of actual <em>NEC</em>
-estimates, as well as the <em>NSEC</em> estimates that are used as an
-approximation to <em>NEC</em> for all the
-<strong>ecx</strong>-containing models in the set. Note that we do not
-currently recommend reporting these values as the <em>NEC</em> (see the
-<a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
+<code>bnec</code> settings. The NEC estimate on this plot (and in the
+summary output below) is based on a mix of actual NEC estimates, as well
+as the NSEC estimates that are used as an approximation to NEC for all
+the <strong>ecx</strong>-containing models in the set. Note that we do
+not currently recommend reporting these values as the NEC (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
 details</a> vignette for more information). The fitted
 <code>bayesmanecfit</code> object contains different elements to the
 <code>bayesnecfit</code>. In particular, <code>mod_stats</code> contains
@@ -253,13 +251,13 @@ Binomial distribution, otherwise NA).</p>
 <p>We can obtain a neater summary of the model fit by using the
 <code>summary</code> method for a <code>bayesmanecfit</code> object. A
 list of fitted models, and model weights are provided. In addition, the
-model averaged <em>NEC</em> is reported, however a warning is provided
-indicating it contains <em>NSEC</em> values. A warning message also
-indicates that the <strong>ecxll5</strong> model may have convergence
-issues according to the default <code>brms</code> Rhat criteria. For
-this example all the <strong>ecx</strong>-containing models have high
-weights, which we would expect given that type of model was used to
-generate the underlying example.</p>
+model averaged NEC is reported, however a warning is provided indicating
+it contains NSEC values. A warning message also indicates that the
+<strong>ecxll5</strong> model may have convergence issues according to
+the default <code>brms</code> Rhat criteria. For this example all the
+<strong>ecx</strong>-containing models have high weights, which we would
+expect given that type of model was used to generate the underlying
+example.</p>
 <p>All these model fits are satisfactory despite the relatively low
 number of iterations set in our example, but the summary would also
 include a warning if there were fits with divergent transitions.</p>
@@ -375,36 +373,35 @@ of <code>iter</code> (10,000).</p>
 <h4 id="extracting-endpoint-values">Extracting endpoint values<a class="anchor" aria-label="anchor" href="#extracting-endpoint-values"></a>
 </h4>
 <p>The models prefixed with <strong>ecx</strong> are all models that do
-not have the <em>NEC</em> as a parameter in the model. That is, they are
-smooth curves as a function of concentration and have no breakpoint. The
-<em>NEC</em> on the plots above for these models are an approximation
-based on <em>NSEC</em> and should not be used without careful
-consideration of the validity of this endpoint value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
+not have the NEC as a parameter in the model. That is, they are smooth
+curves as a function of concentration and have no breakpoint. The NEC on
+the plots above for these models are an approximation based on NSEC and
+should not be used without careful consideration of the validity of this
+endpoint value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
 details</a> vignette for more details). A formal model averaged estimate
-of <em>NEC</em> should be obtained with <code>model = "nec"</code>. We
-can use the helper functions <code>pull_out</code> and
-<code>amend</code> to alter the model set as required.
-<code>pull_out</code> has a <code>model</code> argument and can be used
-to pull a single model out (as above) or to pull out a specific set of
-models.</p>
-<p>We can use this to obtain first a set of <em>NEC</em> only models
-from the existing set.</p>
+of NEC should be obtained with <code>model = "nec"</code>. We can use
+the helper functions <code>pull_out</code> and <code>amend</code> to
+alter the model set as required. <code>pull_out</code> has a
+<code>model</code> argument and can be used to pull a single model out
+(as above) or to pull out a specific set of models.</p>
+<p>We can use this to obtain first a set of NEC only models from the
+existing set.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span></span></code></pre></div>
 <p>In this case, because we have already fitted <code>"decline"</code>
-models, we can ignore the message regarding the missing <em>NEC</em>
-models—these are all models that are not appropriate for a
-<code>Beta</code> family with a <code>logit</code> link function, or
-allow hormesis, which we did not consider in this example.</p>
-<p>Now we have two model sets, an <em>NEC</em> set, and a mixed
-<em>NEC</em> and <em>ECx</em> set. Of course, before we use this model
-set for any inference, we would need to check the chain mixing and
-<code>acf</code> plot for each of the input models. For the “all” set,
-the model with the highest weight is <strong>nec4param</strong>.</p>
+models, we can ignore the message regarding the missing NEC models—these
+are all models that are not appropriate for a <code>Beta</code> family
+with a <code>logit</code> link function, or allow hormesis, which we did
+not consider in this example.</p>
+<p>Now we have two model sets, an NEC set, and a mixed NEC and
+<em>ECx</em> set. Of course, before we use this model set for any
+inference, we would need to check the chain mixing and <code>acf</code>
+plot for each of the input models. For the “all” set, the model with the
+highest weight is <strong>nec4param</strong>.</p>
 <p>Now we can use the <code>ecx</code> function to get
 <em>EC<sub>10</sub></em> and <em>EC<sub>50</sub></em> values. We can do
-this using our all model set, because it is valid to use <em>NEC</em>
-models for estimating <em>ECx</em> (see more information in the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
+this using our all model set, because it is valid to use NEC models for
+estimating <em>ECx</em> (see more information in the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
 details</a> vignette).</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ECx10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
@@ -427,28 +424,26 @@ details</a> vignette).</p>
 <span><span class="co">#&gt; [1] 50</span></span>
 <span><span class="co">#&gt; attr(,"toxicity_estimate")</span></span>
 <span><span class="co">#&gt; [1] "ecx"</span></span></code></pre></div>
-<p>The weighted <em>NEC</em> estimates can be extracted directly from
-the <em>NEC</em> model set object, as they are an explicit parameter in
-these models.</p>
+<p>The weighted NEC estimates can be extracted directly from the NEC
+model set object, as they are an explicit parameter in these models.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_nec</span></span>
 <span><span class="va">NECvals</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
 <span><span class="co">#&gt; 3.558387 3.158986 4.053701</span></span></code></pre></div>
-<p>Note that the new <em>NEC</em> estimates from the
-<strong>nec</strong>-containing model fits are slightly higher than
-those reported in the summary output of all the fitted models. This can
-happen for smooth curves, which is what was used as the underlying data
-generation model in the simulations here, and is explored in more detail
-in the <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Compare
+<p>Note that the new NEC estimates from the <em>NEC</em>-containing
+model fits are slightly higher than those reported in the summary output
+of all the fitted models. This can happen for smooth curves, which is
+what was used as the underlying data generation model in the simulations
+here, and is explored in more detail in the <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Compare
 posteriors vigenette</a>.</p>
 </div>
 <div class="section level4">
 <h4 id="putting-it-all-together">Putting it all together<a class="anchor" aria-label="anchor" href="#putting-it-all-together"></a>
 </h4>
 <p>Now we can make a combined plot of our output, showing the model
-averaged <em>NEC</em> model and the “all averaged model”, along with the
-relevant thresholds.</p>
+averaged NEC model and the “all averaged model”, along with the relevant
+thresholds.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">preds</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_pred_vals</span><span class="op">$</span><span class="va">data</span></span>
 <span></span>
