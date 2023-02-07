@@ -379,6 +379,8 @@ The parameters \(\eta = \text{NEC}\) and \(\eta = \text{ec50}\) scale according 
 
 For the parameters \(\beta = \text{beta}\), \(\alpha = \text{slope}\) and \(\epsilon = \text{d}\) we first ensured any relevant transformations in the model formula such that theoretical values with the range -\(\infty\) to \(\infty\) are allowable, and a \texttt{normal(0,\ 5)} (location and scale) prior is used. For example in the \texttt{nec3param} model, \(\beta = \text{beta}\) is an exponential decay parameter, which must by definition be bounded to 0 and \(\infty\). Calling \texttt{exp(beta)} in the model formula ensures the exponent meets these requirements. Note also that a mean of 0 and standard deviation of 5 represents a relatively broad prior on this exponential scaling, so this is usually a weakly informative prior in practice.
 
+\newpage
+
 \subsection[Model averaging]{Model averaging}\label{modavg}
 
 Multi-model inference can be useful where there are a range of plausible models that could be used \citep{Burnham2002} and has been recently adopted in ecotoxicology for Species Sensitivity Distribution (SSD) model inference \citep{Thorley2018, fox2020, Dalgarno}. The approach may have considerable value in CR modelling because there is often no a priori knowledge of the functional form that the response relationship should take. In this case, model averaging can be a useful way of allowing the data to drive the model selection process, with weights proportional to how well the individual models fit the data. Well-fitting models will have high weights, dominating the model averaged outcome. Conversely, poorly fitting models will have very low model weights and will therefore have little influence on the outcome. Where multiple models fit the data equally well, these can equally influence the outcome, and the resultant posterior predictions reflect that model uncertainty.
@@ -391,6 +393,8 @@ Multi-model inference can be useful where there are a range of plausible models 
 \subsection[The fitting function bnec]{The fitting function \emph{bnec}}\label{ffbnec}
 
 The main working function in \pkg{bayesnec} is \texttt{bnec}. We have attempted to make the \texttt{bnec} function as easy to use as possible, targeting the \proglang{R} user that is familiar with the usual model fitting syntax in \proglang{R}, but without specialist expertise in non-linear modelling and Bayesian statistics. We can run \texttt{bnec} by supplying the argument \texttt{formula}: a special custom formula which comprises the relationship between response and predictor, and the CR model (or models) chosen to be fitted; and \texttt{data}: a \texttt{data.frame} containing the data for the model fitting.
+
+\newpage
 
 \hypertarget{the-input-formula}{%
 \subsection{The input formula}\label{the-input-formula}}
@@ -434,6 +438,8 @@ R> head(model.frame(form, df))
 \end{CodeOutput}
 \end{CodeChunk}
 
+\newpage
+
 \hypertarget{example}{%
 \subsection{Example}\label{example}}
 
@@ -456,7 +462,7 @@ If a recognized model name is provided, a single model of the specified type is 
 
 Models fitted by \texttt{bnec} will invariably inherit a class \texttt{bnecfit} which carries three exclusive methods: \texttt{+}, \texttt{c} and \texttt{update}. The first two are used to append one or multiple models to an existing fit, whereas the latter is used to update the fitting characteristics of an existing model (e.g., change the number of iterations or warm-up period, or simply change the HMC fitting parameters). When \texttt{bnec} fits a single CR model type, the output object also inherits the \texttt{bayesnecfit} class. This class contains the \texttt{brmsfit} object in addition to the mean predicted values, summary estimates of each model parameter, and a full posterior distribution of the NSEC estimate. Alternatively, if \texttt{bnec} fits a custom set of models, or a package-pre-defined model-set (e.g.~\texttt{model\ =\ "all"} in the input formula), the output object is going to inherit the \texttt{bayesmanecfit} class. Differently from a \texttt{bayesnecfit} object, \texttt{bayesmanecfit} comprises a model weighted estimate of predicted posterior values of NSEC.
 
-Both \texttt{bayesnecfit} and \texttt{bayesmanecfit} classes contain methods for \texttt{summary}, \texttt{print}, \texttt{predict}, \texttt{model.frame}, \texttt{fitted}, \texttt{posterior\_predict}, \texttt{posterior\_edpred} and plotting (\texttt{plot} and \texttt{autoplot}). Wherever possible, these methods have been implemented such they are consistent with other model fitting packages in \proglang{R}, and in particular \pkg{brms}. We have also implemented a range of custom functions for extracting effect concentrations and related threshold values (\texttt{nec}, \texttt{ecx} and \texttt{nsec}) that, in the case of a \texttt{bayesmanecfit}, return model weighted estimates.
+Both \texttt{bayesnecfit} and \texttt{bayesmanecfit} classes contain methods for \texttt{summary}, \texttt{print}, \texttt{predict}, \texttt{model.frame}, \texttt{fitted}, \texttt{posterior\_predict}, \texttt{posterior\_edpred} and plotting (\texttt{plot} and \newline \texttt{autoplot}). Wherever possible, these methods have been implemented such they are consistent with other model fitting packages in \proglang{R}, and in particular \pkg{brms}. We have also implemented a range of custom functions for extracting effect concentrations and related threshold values (\texttt{nec}, \texttt{ecx} and \texttt{nsec}) that, in the case of a \texttt{bayesmanecfit}, return model weighted estimates.
 
 The \texttt{summary} method provides the usual summary of model parameters and any relevant model fit statistics as returned in the underlying \texttt{brm} model fit(s). In the specific case of a \texttt{bayesmanecfit} object, the summary includes a list of fitted models, their respective model weights, and a model-averaged NEC---which is reported with a warning when it contains NSEC values (see below Section \ref{modsuit}).
 
@@ -502,8 +508,6 @@ R2     0.99      0.00 0.98  0.99
 
 As mentioned above, the visualization of a particular model fit can be done via either \pkg{base} \proglang{R} (\texttt{plot}) and \pkg{ggplot2} \citep{ggplot} (\texttt{autoplot}). Here we pass the additional argument \texttt{xform} which ensures that the NEC estimate is transformed to the proper scale (because the original formula contained \texttt{log(concentration)}):
 
-\newpage
-
 \begin{CodeChunk}
 \begin{CodeInput}
 R> round_digits <- function(x) sprintf("%.2f", x)
@@ -516,7 +520,7 @@ R> autoplot(fit, xform = exp) +
 
 }
 
-\caption{\pkg{ggplot2} `autoplot` of the example fit. The solid black line is the fitted median of the posterior prediction, dashed black lines are the 95\% credible intervals, and the vertical lines show the estimated \textit{NEC} value.}(\#fig:base-plot)
+\caption{\pkg{ggplot2} `autoplot` of the example fit. The solid black line is the fitted median of the posterior prediction, dashed black lines are the 95\% credible intervals, and the vertical lines show the estimated \textit{NEC} value.}\label{fig:base-plot}
 \end{figure}
 \end{CodeChunk}
 
@@ -539,7 +543,7 @@ R> plot(pull_brmsfit(fit))
 
 }
 
-\caption[Default \pkg{brms} plot of the \texttt{nec4param} model showing the posterior densities and chain mixing for each of the included parameters]{Default \pkg{brms} plot of the \texttt{nec4param} model showing the posterior densities and chain mixing for each of the included parameters.}(\#fig:brmsplot)
+\caption[Default \pkg{brms} plot of the \texttt{nec4param} model showing the posterior densities and chain mixing for each of the included parameters]{Default \pkg{brms} plot of the \texttt{nec4param} model showing the posterior densities and chain mixing for each of the included parameters.}\label{fig:brmsplot}
 \end{figure}
 \end{CodeChunk}
 
@@ -561,7 +565,7 @@ In \pkg{bayesnec} we chose to provide default priors that are data-dependent. Th
 
 }
 
-\caption[Frequency histograms of samples of the default priors used by \pkg{bayesnec} for fitting the \texttt{nec4param} model to the example data]{Frequency histograms of samples of the default priors used by \pkg{bayesnec} for fitting the \texttt{nec4param} model to the example data.}(\#fig:sampleprior)
+\caption[Frequency histograms of samples of the default priors used by \pkg{bayesnec} for fitting the \texttt{nec4param} model to the example data]{Frequency histograms of samples of the default priors used by \pkg{bayesnec} for fitting the \texttt{nec4param} model to the example data.}\label{fig:sampleprior}
 \end{figure}
 \end{CodeChunk}
 
@@ -574,7 +578,7 @@ We can also use the function \texttt{check\_priors} (based on the \texttt{hypoth
 
 }
 
-\caption[A comparison of the prior and posterior parameter probability densities for the \texttt{nec4param} model fit to the example data]{A comparison of the prior and posterior parameter probability densities for the \texttt{nec4param} model fit to the example data.}(\#fig:checkpriorsingle)
+\caption[A comparison of the prior and posterior parameter probability densities for the \texttt{nec4param} model fit to the example data]{A comparison of the prior and posterior parameter probability densities for the \texttt{nec4param} model fit to the example data.}\label{fig:checkpriorsingle}
 \end{figure}
 \end{CodeChunk}
 
@@ -609,7 +613,7 @@ We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-eff
 
 }
 
-\caption[A comparison of the \pkg{bayesnec} and \pkg{drc} model fits and estimated NEC values for the \texttt{nec3param} model, fit to data on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h]{A comparison of the \pkg{bayesnec} and \pkg{drc} model fits and estimated NEC values for the \texttt{nec3param} model, fit to data on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h.}(\#fig:drccomparisonplot)
+\caption[A comparison of the \pkg{bayesnec} and \pkg{drc} model fits and estimated NEC values for the \texttt{nec3param} model, fit to data on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h]{A comparison of the \pkg{bayesnec} and \pkg{drc} model fits and estimated NEC values for the \texttt{nec3param} model, fit to data on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated hexazinone and tebuthiuron (range 0.3 to 1000 ug per L) for 10 h.}\label{fig:drccomparisonplot}
 \end{figure}
 \end{CodeChunk}
 
@@ -736,7 +740,7 @@ R> ametryn_plot <- autoplot(manecfit_ametryn)
 
 }
 
-\caption{Individual model fits to the ametryn dataset, showing the estimated no effect concentration for each. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated ametryn (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models.}(\#fig:fullbayesmanecplotametrynALLplot)
+\caption{Individual model fits to the ametryn dataset, showing the estimated no effect concentration for each. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated ametryn (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models.}\label{fig:fullbayesmanecplotametrynALLplot}
 \end{figure}
 \end{CodeChunk}
 
@@ -747,7 +751,7 @@ R> ametryn_plot <- autoplot(manecfit_ametryn)
 
 }
 
-\caption{Full model averaged bayesmanecfit to the ametryn dataset, showing the estimated model-averaged no effect concentration. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated ametryn (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}(\#fig:fullbayesmanecplotametrynplot)
+\caption{Full model averaged bayesmanecfit to the ametryn dataset, showing the estimated model-averaged no effect concentration. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated ametryn (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}\label{fig:fullbayesmanecplotametrynplot}
 \end{figure}
 \end{CodeChunk}
 
@@ -811,7 +815,7 @@ This collated table of model weights shows that the best fitting models vary sub
 \begin{CodeChunk}
 \begin{table}
 
-\caption{(\#tab:weightsTab)Fitted valid models and their relative pseudo-BMA weights for CR curves for the effects seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}.}
+\caption{\label{tab:weightsTab}Fitted valid models and their relative pseudo-BMA weights for CR curves for the effects seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}.}
 \centering
 \begin{tabular}[t]{l|r|r|r|r|r|r|r}
 \hline
@@ -870,7 +874,7 @@ R> figure <- ggpubr::ggarrange(
 
 }
 
-\caption{Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}(\#fig:fullbayesmanecplot)
+\caption{Full model averaged bayesmanecfits to seven phototoxicity datasets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 ug per L) for 10 h. N(SEC) values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \texttt{NEC} models, and the NSEC values estimated from all smooth \texttt{ECx} models. Only the \texttt{decline} model set was used (ie. hormesis models were excluded).}\label{fig:fullbayesmanecplot}
 \end{figure}
 \end{CodeChunk}
 
@@ -898,14 +902,14 @@ R> prob_diff$Herbicide <- stringr::str_to_sentence(prob_diff$Herbicide)
 
 }
 
-\caption[Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}]{Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}. Shown are medians with 80\%  uncertainty intervals.}(\#fig:necplots)
+\caption[Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}]{Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \textit{Seriatopora hystrix}. Shown are medians with 80\%  uncertainty intervals.}\label{fig:necplots}
 \end{figure}
 \end{CodeChunk}
 
 \begin{CodeChunk}
 \begin{table}
 
-\caption{(\#tab:probdiffs)Probability of differences in no-effect toxicity for seven herbicides. Values are based on the proportional overlap in predicted posterior probability density of the N(S)EC estimates.}
+\caption{\label{tab:probdiffs}Probability of differences in no-effect toxicity for seven herbicides. Values are based on the proportional overlap in predicted posterior probability density of the N(S)EC estimates.}
 \centering
 \begin{tabular}[t]{l|r|r|r|r|r|r}
 \hline
@@ -937,7 +941,9 @@ In order to be accessible to a broad community of varying statistical capabiliti
 
 We have made considerable effort to ensure that \pkg{bayesnec} makes a sensible prediction for the appropriate family, constructs appropriate weakly informative priors, and generates sensible initial values. However, this is a difficult task across such a broad range of non-linear models, and across the potential range of ecotoxicological data that may be used. The user must interrogate their model fits using the wide array of helper functions, and use their own judgement regarding the appropriateness of model inferences for their own application. Of particular importance are examination of model fit statistics through the \texttt{summary} and \texttt{rhat} methods, visual inspection of all model fits in \texttt{bayesmanecfit} objects (via \texttt{plot(...,\ all\_models\ =\ TRUE)} and \texttt{check\_chains(...,\ all\_models\ =\ TRUE)}) and an assessment of the posterior versus prior probability densities to ensure default priors are appropriate (using \texttt{check\_priors}).
 
-The model averaging approach implemented in \pkg{bayesnec} is widely used in a range of settings \citep[in ecology for example, see][ for a thorough review]{Dormann2018}. However, model averaging is relatively new to ecotoxicology \citep[but see, for example,][]{Shao2014, Thorley2018, fox2020, Wheeler2009}. In \pkg{bayesnec} we have implemented a broad range of potential models, and the default behaviour is to fit them all (if appropriate for the natural range of the response). More research is required to understand how model-set selection influences model inference. While some studies suggest using a broad range of models may be optimal \citep{Wheeler2009}, others indicate that including multiple models of similar shape may overweight the representation of that shape in model averaged predictions \citep{fox2020}. In addition, it is important to understand that when models are added or removed from the model-set, this can sometimes have a substantial influence on model predictions (potentially changing estimated ECx values, for example). As the model-set in \pkg{bayesnec} may change through time it is important to keep a record of the models that were actually fitted in a given analysis, in the event it is necessary to reproduce a set of results. A potentially better strategy is to build a docker (\url{https://docs.docker.com/get-docker/}) container, an approach representing one strategy towards overcoming the reproducibility crisis \citep{Baker2016}. Considerations of analytical reproducibility are particularly relevant to CR modelling, where the model outcomes can often have far reaching management implications.
+The model averaging approach implemented in \pkg{bayesnec} is widely used in a range of settings \citep[in ecology for example, see][ for a thorough review]{Dormann2018}. However, model averaging is relatively new to ecotoxicology \citep[but see, for example,][]{Shao2014, Thorley2018, fox2020, Wheeler2009}. In \pkg{bayesnec} we have implemented a broad range of potential models, and the default behaviour is to fit them all (if appropriate for the natural range of the response). More research is required to understand how model-set selection influences model inference. While some studies suggest using a broad range of models may be optimal \citep{Wheeler2009}, others indicate that including multiple models of similar shape may overweight the representation of that shape in model averaged predictions \citep{fox2020}. In addition, it is important to understand that when models are added or removed from the model-set, this can sometimes have a substantial influence on model predictions (potentially changing estimated ECx values, for example). As the model-set in \pkg{bayesnec} may change through time it is important to keep a record of the models that were actually fitted in a given analysis, in the event it is necessary to reproduce a set of results.
+
+Considerations of analytical reproducibility are particularly relevant to CR modelling, where the model outcomes can often have far reaching management implications. It is challenging to fit complex non-linear models in practice, particularly for non-Gaussian response variables. As noted above, the Bayesian approach adopted in \pkg{bayesnec} using weakly informative priors to develop appropriate initial values works reasonably well to produce relatively stable model fits across a range of datasets. However, some models can fail and this can result in changes in the model set, possibly leading to variation in the resulting multi-model inference. To help with reproducibility \pkg{bayesnec} now allows a seed to be passed to \pkg{brm} and \proglang{Stan}, to ensure full reproducibility of the output. If a seed is used in the \code{bnec} call, it will also be used internally to generate initial values. Although in \proglang{R} seeds are consistent across versions and operational systems, and therefore the initial values will be the same across different users for a given seed, the underlying \proglang{Stan} model fitting mechanism may yield slightly different parameter estimates for known reasons relating to floating point operations \citep[see chapter 20 in][]{stan2021}. A potentially better strategy for ensuring reproducibility is to build a docker (\url{https://docs.docker.com/get-docker/}) container, an approach representing one strategy towards overcoming the reproducibility crisis \citep{Baker2016}. Also note that while setting a seed can be useful to obtain consistent outputs it might be worth examining how robust the inference is across different seeds.
 
 \subsection[Model suitability for NEC and ECx estimation]{Model suitability for \textit{NEC} and \textit{EC\textsubscript{x}} estimation}\label{modsuit}
 
