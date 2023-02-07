@@ -1,9 +1,19 @@
 modify_tex <- function(file_in, file_out) {
   tex <- readLines(file_in)
   author_ands <- grep("\\\\AND", tex, ignore.case = TRUE)
-  tex[author_ands] <- gsub("AND Diego", "And Diego", tex[author_ands]) %>%
-    gsub("And Gerard", "AND Gerard", .) %>%
-    gsub("AND David", "And David", .)
+  if (Sys.info()["sysname"] == "Windows") {
+    for (i in seq_along(author_ands)) {
+      if (i %in% c(1, 3)) {
+        tex[author_ands[i]] <- gsub("\\\\AND", "\\\\And", tex[author_ands[i]])
+      } else {
+        tex[author_ands[i]] <- gsub("\\\\And", "\\\\AND", tex[author_ands[i]])
+      }
+    }
+  } else {
+    tex[author_ands] <- gsub("AND Diego", "And Diego", tex[author_ands]) %>%
+      gsub("And Gerard", "AND Gerard", .) %>%
+      gsub("AND David", "And David", .)
+  }
   tab_begs <- grep("^\\\\begin\\{table", tex)
   tab_caps <- grep("^\\\\caption\\{", tex)
   tar_caps <- sapply(tab_begs, function(x)which((tab_caps - x) == 2))
