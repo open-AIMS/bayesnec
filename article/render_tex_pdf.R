@@ -21,7 +21,9 @@ modify_tex <- function(file_in, file_out) {
   cap_txt  <- tex[tab_caps]
   tex <- tex[-tab_caps]
   end_tabs <- grep("^\\\\end\\{tabular", tex)
-  tex <- c(tex[1:end_tabs[1]], cap_txt[1], tex[(end_tabs[1] + 1):end_tabs[2]],
+  beg_cen_cap <- "\\captionsetup{justification=centering}"
+  tex <- c(tex[1:end_tabs[1]], beg_cen_cap, cap_txt[1],
+           tex[(end_tabs[1] + 1):end_tabs[2]], beg_cen_cap,
            cap_txt[2], tex[(end_tabs[2] + 1):length(tex)])
   writeLines(tex, file_out)
   tex

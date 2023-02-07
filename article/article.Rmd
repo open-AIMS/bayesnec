@@ -63,6 +63,7 @@ keywords:
 preamble: |
   \usepackage{amsmath}
   \usepackage{float}
+  \usepackage{caption}
 bibliography: article.bib
 output:
   bookdown::pdf_book:
