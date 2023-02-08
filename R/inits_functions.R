@@ -109,7 +109,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e5, seed = NULL, ...) {
   are_good <- all(sapply(init_ranges, check_init_predictions, limits))
   n_t <- 1
   while (!are_good && n_t <= n_trials) {
-    set.seed(seed + n_t)
+    if (!is.null(seed)) {set.seed(seed + n_t)}
     inits <- make_inits(model, fct_args, ...)
     init_ranges <- lapply(inits, get_init_predictions, x, pred_fct, fct_args)
     are_good <- all(sapply(init_ranges, check_init_predictions, limits))
