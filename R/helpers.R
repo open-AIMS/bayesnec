@@ -202,7 +202,8 @@ check_init_predictions <- function(x, limits) {
   min(x) >= min(limits) & 
     max(x) <= max(limits) &
     !any(is.na(x)) &
-    diff(range(x))!=0
+    diff(range(x))!=0 &
+    length(unique(x))>2
 }
 
 #' @noRd
