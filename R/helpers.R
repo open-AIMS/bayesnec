@@ -199,11 +199,14 @@ get_init_predictions <- function(y, x, fct, .args) {
 
 #' @noRd
 check_init_predictions <- function(x, limits) {
-  min(x) >= min(limits) & 
-    max(x) <= max(limits) &
+    min(x) > min(limits) & 
+    max(x) < max(limits) &
     !any(is.na(x)) &
-    diff(range(x))!=0 &
-    length(unique(x))>2
+    !any(is.infinite(x)) & 
+    !any(is.nan(x)) & 
+    diff(range(round(x, 3)))!=0 &
+    length(unique(signif(x, 1)))>2 &
+    x[1]>x[length(x)]
 }
 
 #' @noRd

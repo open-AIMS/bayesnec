@@ -19,13 +19,13 @@ bibliography: bayesnec.bib
 
 # `bayesnec`
 
-The `bayesnec` is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (NEC), No-Significant-Effect-Concentration (NSEC), and Effect-Concentration (of specified percentage "x", *ECx*) thresholds from non-linear models fitted using Bayesian Hamiltonian Monte Carlo (HMC) via `brms` [@Burkner2017; @Burkner2018] and `stan`. The package is an adaptation and extension of an initial package `jagsNEC` [@Fisher2020] which was based on the `R2jags` package [@Su2015] and `jags` [@Plummer2003].
+The `bayesnec` is an R package to fit concentration(dose) — response curves to toxicity data, and derive No-Effect-Concentration (*NEC*), No-Significant-Effect-Concentration (*NSEC*), and Effect-Concentration (of specified percentage "x", *ECx*) thresholds from non-linear models fitted using Bayesian Hamiltonian Monte Carlo (HMC) via `brms` [@Burkner2017; @Burkner2018] and `stan`. The package is an adaptation and extension of an initial package `jagsNEC` [@Fisher2020] which was based on the `R2jags` package [@Su2015] and `jags` [@Plummer2003].
 
 # Background
 
-Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for NEC estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting NEC models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor) as well as the "response" variable. The package requires a simplified model formula, which together with the data is used to wrangle more complex non-linear model formula(s), as well as to generate priors and initial values required to call a `brms` model. While the distribution of the predictor and response variables can be specified directly, `bayesnec` will automatically attempt to assign the correct distribution to use based on the characteristics of the provided data.
+Bayesian model fitting can be difficult to automate across a broad range of usage cases, particularly with respect to specifying valid initial values and appropriate priors. This is one reason the use of Bayesian statistics for *NEC* estimation (or even *ECx* estimation) is not currently widely adopted across the broader ecotoxicological community, who rarely have access to specialist statistical expertise. The `bayesnec` package provides an accessible interface specifically for fitting *NEC* models and other concentration—response models using Bayesian methods. A range of models are specified based on the known distribution of the "concentration" or "dose" variable (the predictor) as well as the "response" variable. The package requires a simplified model formula, which together with the data is used to wrangle more complex non-linear model formula(s), as well as to generate priors and initial values required to call a `brms` model. While the distribution of the predictor and response variables can be specified directly, `bayesnec` will automatically attempt to assign the correct distribution to use based on the characteristics of the provided data.
 
-This project started with an implementation of the NEC model based on that described in (Pires et al. 2002) and [@Fox2010] using R2jags [@Fisher2020]. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported Gaussian-, Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed response data, `bayesnec` additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available `brms` families. We have since also further added a range of alternative NEC model types, as well as a range of  concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist-based packages such as `drc`[@Ritz2016]. These models do not employ segmented linear regression (i.e., use of a `step` function) but model the response as a smooth function of concentration.
+This project started with an implementation of the *NEC* model based on that described in (Pires et al. 2002) and [@Fox2010] using R2jags [@Fisher2020]. The package has been further generalised to allow a large range of response variables to be modelled using the appropriate statistical distribution. While the original `jagsNEC` implementation supported Gaussian-, Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed response data, `bayesnec` additionally supports the Beta-Binomial distribution, and can be easily extended to include any of the available `brms` families. We have since also further added a range of alternative *NEC* model types, as well as a range of  concentration—response models (such as 4-parameter logistic and Weibull models) that are commonly used in frequentist-based packages such as `drc`[@Ritz2016]. These models do not employ segmented linear regression (i.e., use of a `step` function) but model the response as a smooth function of concentration.
 
 Specific models can be fit directly using `bnec`, which is what we discuss here. Alternatively, it is possible to fit a custom model set, a specific model set, or all the available models. Further information on fitting multi-models using `bayesnec` can be found in the [Multi model usage][e2] vignette. For detailed information on the models available in `bayesnec` see the [Model details][e2b] vignette.
 
@@ -73,7 +73,7 @@ library(tidyr)
 
 ## Fitting the `nec4param` model using `bnec`
 
-Here we include some examples showing how to use the package to fit an NEC model to binomial, proportional, count and continuous response data. The examples are those used at: <https://github.com/gerard-ricardo/NECs/blob/master/NECs>, but here we are showing how to fit models to these data using the `bayesnec` package. Note however, the default behaviour in `bayesnec` is to use the `"identity"` link because the native link functions for each family (e.g., `"logit"` for Binomial, `"log"` for Poisson) introduce non-linear transformation on formulas which are already non-linear. So please be aware that estimates of NEC or *ECx* might not be as expected when using link functions other than identity (see the [Model details][e2b] vignette for more information and the models available in `bayesnec`).
+Here we include some examples showing how to use the package to fit an *NEC* model to binomial, proportional, count and continuous response data. The examples are those used at: <https://github.com/gerard-ricardo/NECs/blob/master/NECs>, but here we are showing how to fit models to these data using the `bayesnec` package. Note however, the default behaviour in `bayesnec` is to use the `"identity"` link because the native link functions for each family (e.g., `"logit"` for Binomial, `"log"` for Poisson) introduce non-linear transformation on formulas which are already non-linear. So please be aware that estimates of *NEC* or *ECx* might not be as expected when using link functions other than identity (see the [Model details][e2b] vignette for more information and the models available in `bayesnec`).
 
 ### Binomial data
 
@@ -101,7 +101,7 @@ In this case for `raw_x`, lowest concentration is 0.1 and the highest is 400. Th
 
 The data are binomial, with the column `suc` indicating the number of successes in the binomial call, and column `tot` indicating the number of trials.
 
-The main working function in `bayesnec` is the function `bnec`, which calls the other necessary functions and fits the `brms` model. We can run `bnec` by supplying `formula`: a special formula which comprises the relationship between response and predictor, and the CR model (or models) chosen to be fitted; and `data`: a `data.frame` containing the data for the model fitting, here, `binom_data`.
+The main working function in `bayesnec` is the function `bnec`, which calls the other necessary functions and fits the `brms` model. We can run `bnec` by supplying `formula`: a special formula which comprises the relationship between response and predictor, and the C-R model (or models) chosen to be fitted; and `data`: a `data.frame` containing the data for the model fitting, here, `binom_data`.
 
 The basic `bayesnec` formula should be of the form:
 
@@ -110,7 +110,7 @@ The basic `bayesnec` formula should be of the form:
 suc | trials(tot) ~ crf(log(raw_x), model = "your_model")
 ```
 
-where the left-hand side of the formula is implemented exactly as in `brms`, including the `trials` term. The right-hand side of the formula contains the special internal function `crf` (which stands for concentration-response function), and takes the predictor (including any simple function transformations such as `log`) and the desired CR model or suite of models. As with any formula in R, the name of the terms need to be exactly as they are in the input data.frame.
+where the left-hand side of the formula is implemented exactly as in `brms`, including the `trials` term. The right-hand side of the formula contains the special internal function `crf` (which stands for concentration-response function), and takes the predictor (including any simple function transformations such as `log`) and the desired C-R model or suite of models. As with any formula in R, the name of the terms need to be exactly as they are in the input data.frame.
 
 `bnec` will guess the data types for use, although as mentioned above we could manually specify `family` as `"binomial"` (or `binomial`, or `binomial()`). `bnec` will also generate appropriate priors for the `brms` model call, although these can also be specified manually (see the [Priors][e3] vignette for more details).
 
@@ -147,12 +147,12 @@ summary(exp_1)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.05      0.02     0.02     0.08 1.00     2927     2889
-#> top      0.83      0.01     0.81     0.84 1.00     4886     4242
-#> beta     0.81      0.13     0.57     1.08 1.00     2598     3148
-#> nec      4.43      0.03     4.36     4.48 1.00     2952     3911
+#> bot      0.05      0.02     0.02     0.08 1.00     3260     2641
+#> top      0.83      0.01     0.81     0.84 1.00     4225     4343
+#> beta     0.81      0.13     0.56     1.08 1.00     2971     3042
+#> nec      4.43      0.03     4.36     4.48 1.00     3425     3777
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
@@ -164,7 +164,7 @@ summary(exp_1)
 
 Note the Rhat values in this example are one, indicating convergence.
 
-The functions `plot` (extending `base` plot method) and `autoplot` (extending `ggplot2` plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class `bayesnecfit`) from the call to `bnec`. **Notice, however, that in this case we log-transformed the predictor `raw_x` in the input formula.** This causes `brms` to pass these transformations onto Stan's native code, and therefore estimates of NEC will be on that same scale. So we need to transform them back to the data scale using the additional argument `xform`.
+The functions `plot` (extending `base` plot method) and `autoplot` (extending `ggplot2` plot method) can be used to plot the fitted model. You can also make your own plot from the data included in the returned object (class `bayesnecfit`) from the call to `bnec`. **Notice, however, that in this case we log-transformed the predictor `raw_x` in the input formula.** This causes `brms` to pass these transformations onto Stan's native code, and therefore estimates of *NEC* will be on that same scale. So we need to transform them back to the data scale using the additional argument `xform`.
 
 
 ```r
@@ -181,7 +181,7 @@ This model fit does not look great. You can see that the error bounds around the
 ```r
 exp_1$dispersion
 #> Estimate     Q2.5    Q97.5 
-#> 19.60473 13.09429 30.74410
+#> 19.65742 13.22821 30.92392
 ```
 
 ### Beta-Binomial
@@ -211,22 +211,22 @@ exp_1b$dispersion
 #> [1] NA NA NA
 ```
 
-Now that we have a better fit to these data, we can interpret the results. The estimated NEC value can be obtained directly from the fitted model object. As explained above, we need to transform NEC back to the data scale.
+Now that we have a better fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object. As explained above, we need to transform *NEC* back to the data scale.
  
 
 ```r
 summary(exp(exp_1b$nec_posterior))
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   14.10   64.88   79.01   76.10   88.34  199.24
+#>   22.16   65.47   78.20   75.93   87.32  198.25
 ```
 
-EC*x* estimates can also be obtained from the NEC model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the NEC model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
+EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
 
 
 ```r
 ecx(exp_1b, xform = exp)
 #>      Q50     Q2.5    Q97.5 
-#> 82.96216 41.33093 99.37447 
+#> 82.56186 43.33243 98.57387 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -235,7 +235,7 @@ ecx(exp_1b, xform = exp)
 #> [1] "ecx"
 ```
 
-A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for NEC, as the `nec_intercept` population-level effect in the model---again, its value will depend on the scale of the predictor variable.
+A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for *NEC*, as the `nec_intercept` population-level effect in the model---again, its value will depend on the scale of the predictor variable.
 
 
 ```r
@@ -255,16 +255,16 @@ summary(exp_1b)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.13      0.06     0.03     0.24 1.00     1406     1603
-#> top      0.84      0.03     0.77     0.88 1.00     1673     1715
-#> beta     0.85      0.71    -0.18     3.68 1.01      594      257
-#> nec      4.37      0.20     3.67     4.62 1.01      661      268
+#> bot      0.13      0.05     0.03     0.23 1.00     2075     1843
+#> top      0.84      0.03     0.78     0.88 1.00     1680     2132
+#> beta     0.82      0.65    -0.18     3.09 1.00      718      284
+#> nec      4.36      0.19     3.67     4.59 1.00      723      255
 #> 
 #> Family Specific Parameters: 
 #>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.33      1.28     3.24     8.31 1.00     1860     3193
+#> phi     5.30      1.21     3.31     8.14 1.00     1888     1137
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
@@ -315,10 +315,10 @@ count_data <- nec_data |>
 str(count_data)
 #> 'data.frame':	100 obs. of  2 variables:
 #>  $ x: num  1.019 0.816 0.371 0.401 1.295 ...
-#>  $ y: int  111 120 92 105 75 82 98 83 84 94 ...
+#>  $ y: int  92 70 87 121 77 66 92 86 108 120 ...
 summary(count_data$y)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   11.00   67.00   83.50   80.13   95.75  120.00
+#>    1.00   67.75   80.50   77.80   95.00  130.00
 summary(count_data$x)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #> 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052
@@ -341,8 +341,8 @@ autoplot(exp_3)
 
 ```r
 exp_3$dispersion
-#>     Estimate         Q2.5        Q97.5 
-#>  0.431762747  0.001623024 21.137608229
+#>    Estimate        Q2.5       Q97.5 
+#>   4.9198699   0.7354375 153.4861929
 ```
 
 We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the `family` argument.
@@ -408,16 +408,16 @@ summary(exp_4)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.88     1.07 1.00     4246     4626
-#> top      2.44      0.01     2.41     2.46 1.00     6687     5291
-#> beta     0.65      0.10     0.46     0.84 1.00     3587     4338
-#> nec      1.50      0.02     1.46     1.53 1.00     4224     5183
+#> bot      0.98      0.05     0.89     1.07 1.00     4177     4606
+#> top      2.44      0.01     2.41     2.46 1.00     6506     5287
+#> beta     0.65      0.10     0.46     0.84 1.00     3537     4013
+#> nec      1.50      0.02     1.46     1.53 1.00     4166     4963
 #> 
 #> Family Specific Parameters: 
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   516.57     74.96   381.07   671.52 1.00     6091     4974
+#> shape   517.85     75.05   385.62   683.24 1.00     5707     4976
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 

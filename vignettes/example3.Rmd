@@ -25,7 +25,7 @@ Only the parameters **top** and **bot** scale specifically with the response. Fo
 
 ### Priors for predictor-scaled parameters
 
-The parameters *NEC* and **ec50** scale with respect to the predictor because both of these are parameters in concentration-response curves the are estimated in units of concentration. To stabilise model fitting the *NEC* and **ec50** parameters are bounded to the upper and lower observed range in the predictor, under the assumption that the range of concentrations in the experiment were sufficient to cover the full range of the response outcomes. The priors used reflect the characteristics of the observed data that are used to guess the appropriate distribution. If the predictor data are bounded to `0` and  `>1`, a `Gamma` prior is used, with maximum density (mean, see above) at the median value of the predictor, and a shape parameter of 5. If the predictor data are bounded to `0` and `1` a `beta(2, 2)` prior is used. For predictor data ranging from `+Inf` to `-Inf` a `normal` prior is used, with a mean set at the median of the predictor values and a standard deviation of 10 times the standard deviation of the predictor values.
+The parameters **nec** and **ec50** scale with respect to the predictor because both of these are parameters in concentration-response curves the are estimated in units of concentration. To stabilise model fitting the **nec** and **ec50** parameters are bounded to the upper and lower observed range in the predictor, under the assumption that the range of concentrations in the experiment were sufficient to cover the full range of the response outcomes. The priors used reflect the characteristics of the observed data that are used to guess the appropriate distribution. If the predictor data are bounded to `0` and  `>1`, a `Gamma` prior is used, with maximum density (mean, see above) at the median value of the predictor, and a shape parameter of 5. If the predictor data are bounded to `0` and `1` a `beta(2, 2)` prior is used. For predictor data ranging from `+Inf` to `-Inf` a `normal` prior is used, with a mean set at the median of the predictor values and a standard deviation of 10 times the standard deviation of the predictor values.
 
 ### Priors for other parameters
 
@@ -77,17 +77,25 @@ In this case the priors seem reasonably vague, however there will be times when 
 ```r
 pull_prior(exmp_a)
 #> [[1]]
-#>                       prior class      coef group resp dpar nlpar               lb               ub       source
-#>                normal(0, 5)     b                            beta                                           user
-#>                normal(0, 5)     b Intercept                  beta                                   (vectorized)
-#>  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556         user
-#>  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556 (vectorized)
-#>                  beta(5, 2)     b                             top                0                1         user
-#>                  beta(5, 2)     b Intercept                   top                0                1 (vectorized)
-#>           gamma(0.01, 0.01)   phi                                                0                       default
+#>                       prior class      coef group resp dpar nlpar               lb               ub
+#>                normal(0, 5)     b                            beta                                  
+#>                normal(0, 5)     b Intercept                  beta                                  
+#>  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556
+#>  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556
+#>                  beta(5, 2)     b                             top                0                1
+#>                  beta(5, 2)     b Intercept                   top                0                1
+#>           gamma(0.01, 0.01)   phi                                                0                 
+#>        source
+#>          user
+#>  (vectorized)
+#>          user
+#>  (vectorized)
+#>          user
+#>  (vectorized)
+#>       default
 ```
 
-`bnec` chose a `gamma` prior on the NEC parameter of **nec3param** because the predictor `nec_data$x` is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
+`bnec` chose a `gamma` prior on the *NEC* parameter of **nec3param** because the predictor `nec_data$x` is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
 
 
 ```r

@@ -105,13 +105,13 @@ make_good_inits <- function(model, x, y, n_trials = 1e5, seed = NULL, ...) {
   fct_args <- setdiff(fct_args, "x")
   set.seed(seed)
   inits <- make_inits(model, fct_args, ...)
-  init_ranges <- lapply(inits, get_init_predictions, x, pred_fct, fct_args)
+  init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
   are_good <- all(sapply(init_ranges, check_init_predictions, limits))
   n_t <- 1
   while (!are_good && n_t <= n_trials) {
     if (!is.null(seed)) {set.seed(seed + n_t)}
     inits <- make_inits(model, fct_args, ...)
-    init_ranges <- lapply(inits, get_init_predictions, x, pred_fct, fct_args)
+    init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
     are_good <- all(sapply(init_ranges, check_init_predictions, limits))
     n_t <- n_t + 1
   }

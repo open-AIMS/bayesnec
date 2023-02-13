@@ -487,14 +487,14 @@ Formula: fvfm ~ bot + (top - bot) * exp(-exp(beta) * (log(concentration) - nec) 
 
 Population-Level Effects: 
      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-bot      0.01      0.00     0.00     0.02 1.00     4897     4217
-top      0.67      0.01     0.65     0.68 1.00     6299     5048
-beta    -0.34      0.04    -0.41    -0.26 1.00     4515     4476
-nec     -0.40      0.04    -0.49    -0.32 1.00     4999     5086
+bot      0.01      0.00     0.00     0.02 1.00     4682     3900
+top      0.67      0.01     0.65     0.68 1.00     5051     4486
+beta    -0.34      0.04    -0.41    -0.26 1.00     4419     3510
+nec     -0.40      0.04    -0.49    -0.32 1.00     4616     5065
 
 Family Specific Parameters: 
     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-phi   168.15     29.60   117.62   232.19 1.00     6519     5519
+phi   166.51     29.53   116.22   232.25 1.00     5843     5110
 
 Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -680,21 +680,22 @@ Number of posterior draws per model:  8000
 Model weights (Method: pseudobma_bb_weights):
              waic   wi
 nec3param -450.96 0.02
-nec4param -456.57 0.04
-ecxexp    -320.53 0.00
-ecx4param -465.23 0.41
-ecxwb1    -443.90 0.01
-ecxwb2    -461.35 0.12
-ecxwb1p3  -323.27 0.00
-ecxwb2p3  -447.10 0.02
-ecxll4    -465.07 0.38
-ecxll3    -431.99 0.00
+nec4param -456.50 0.03
+ecxexp    -320.65 0.00
+ecx4param -464.97 0.30
+ecxwb1    -443.76 0.01
+ecxwb2    -461.19 0.08
+ecxwb1p3  -323.20 0.00
+ecxwb2p3  -447.14 0.01
+ecxll5    -464.47 0.25
+ecxll4    -464.96 0.30
+ecxll3    -432.24 0.00
 
 
 Summary of weighted NEC posterior estimates:
-NB: Model set contains the ECX models: ecxexp;ecx4param;ecxwb1;ecxwb2;ecxwb1p3;ecxwb2p3;ecxll4;ecxll3; weighted NEC estimates include NSEC surrogates for NEC
+NB: Model set contains the ECX models: ecxexp;ecx4param;ecxwb1;ecxwb2;ecxwb1p3;ecxwb2p3;ecxll5;ecxll4;ecxll3; weighted NEC estimates include NSEC surrogates for NEC
     Estimate  Q2.5 Q97.5
-NEC    -1.65 -2.13 -0.45
+NEC    -1.59 -2.09 -0.47
 
 
 Bayesian R2 estimates:
@@ -707,6 +708,7 @@ ecxwb1        0.99      0.00 0.98  0.99
 ecxwb2        0.99      0.00 0.99  0.99
 ecxwb1p3      0.94      0.01 0.90  0.96
 ecxwb2p3      0.99      0.00 0.99  0.99
+ecxll5        0.99      0.00 0.99  0.99
 ecxll4        0.99      0.00 0.99  0.99
 ecxll3        0.99      0.00 0.98  0.99
 \end{CodeOutput}
@@ -714,7 +716,7 @@ ecxll3        0.99      0.00 0.98  0.99
 
 For a \texttt{bayesmanecfit} object with multiple model fits, \texttt{summary} first displays the class, the family and links that have been used for the model fits, the number of posterior draws contained within each model fit, and a table of the model weights for each model. For the amatryn data set, weights are spread among several \textbf{ecx} models, with a small amount of weight for the two \emph{NEC} models (\emph{nec3param} and \emph{nec4parm}).
 
-Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC values in the case of the fitted \emph{ECx} models. In units of log concentration, the estimated no-effect toxicity value for ametryn is -1.65, which is equivalent to 0.193 \({\mu}gL^{-1}\). The 95\% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighed pooled posterior sample.
+Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC values in the case of the fitted \emph{ECx} models. In units of log concentration, the estimated no-effect toxicity value for ametryn is -1.59, which is equivalent to 0.204 \({\mu}gL^{-1}\). The 95\% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighed pooled posterior sample.
 
 Finally, Bayesian \(R^2\) estimates are also provided \citep{gelman2019}, as an indicator of overall model fit. This is useful because model weights are always relative to the models actually included in the model set for the given data. The \(R^2\) provides an indicator of model fit that can be compared objectively across data sets as an indication of the quality of the fit of any of the supplied models to the data.
 
@@ -822,25 +824,27 @@ This collated table of model weights shows that the best fitting models vary sub
 \hline
 Model & Ametryn & Atrazine & Diuron & Hexazinone & Irgarol & Simazine & Tebuthiuron\\
 \hline
-nec3param & 0.024 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.021\\
+nec3param & 0.021 & 0.000 & 0.000 & 0.000 & 0.001 & 0.000 & 0.013\\
 \hline
-nec4param & 0.041 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.004\\
+nec4param & 0.028 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.003\\
 \hline
 ecxexp & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000\\
 \hline
-ecx4param & 0.410 & 0.163 & 0.354 & 0.128 & 0.350 & 0.210 & 0.003\\
+ecx4param & 0.301 & 0.125 & 0.322 & 0.114 & 0.283 & 0.189 & 0.001\\
 \hline
-ecxwb1 & 0.011 & 0.665 & 0.210 & 0.000 & 0.311 & 0.102 & 0.000\\
+ecxwb1 & 0.015 & 0.440 & 0.208 & 0.000 & 0.229 & 0.100 & 0.000\\
 \hline
-ecxwb2 & 0.118 & NA & 0.000 & 0.019 & 0.026 & 0.021 & 0.272\\
+ecxwb2 & 0.079 & 0.002 & 0.001 & 0.019 & 0.031 & 0.016 & 0.161\\
 \hline
-ecxwb1p3 & 0.000 & 0.000 & 0.000 & 0.007 & 0.000 & 0.021 & 0.000\\
+ecxwb1p3 & 0.000 & 0.000 & 0.000 & 0.009 & 0.000 & 0.016 & 0.000\\
 \hline
-ecxwb2p3 & 0.018 & 0.001 & 0.000 & 0.075 & 0.001 & 0.060 & 0.698\\
+ecxwb2p3 & 0.012 & 0.002 & 0.001 & 0.069 & 0.001 & 0.052 & 0.520\\
 \hline
-ecxll4 & 0.378 & 0.168 & 0.322 & 0.107 & 0.311 & 0.214 & 0.003\\
+ecxll5 & 0.249 & 0.295 & NA & 0.023 & 0.188 & 0.143 & 0.301\\
 \hline
-ecxll3 & 0.000 & 0.001 & 0.114 & 0.662 & 0.000 & 0.371 & 0.000\\
+ecxll4 & 0.295 & 0.135 & 0.358 & 0.124 & 0.265 & 0.192 & 0.001\\
+\hline
+ecxll3 & 0.000 & 0.000 & 0.111 & 0.643 & 0.000 & 0.291 & 0.000\\
 \hline
 \end{tabular}
 \end{table}
@@ -916,17 +920,17 @@ R> prob_diff$Herbicide <- stringr::str_to_sentence(prob_diff$Herbicide)
 \hline
 Herbicide & Atrazine & Diuron & Hexazinone & Irgarol & Simazine & Tebuthiuron\\
 \hline
-Ametryn & 0.0251281 & 0.8233529 & 0.0591324 & 0.9173647 & 0.0112514 & 0.0105013\\
+Ametryn & 0.0203775 & 0.8557320 & 0.0492562 & 0.9356170 & 0.0108764 & 0.0102513\\
 \hline
-Atrazine & NA & 0.9863733 & 0.8144768 & 0.9873734 & 0.0393799 & 0.0107513\\
+Atrazine & NA & 0.9874984 & 0.8451056 & 0.9883735 & 0.0347543 & 0.0111264\\
 \hline
-Diuron & NA & NA & 0.0162520 & 0.7228404 & 0.0101263 & 0.0105013\\
+Diuron & NA & NA & 0.0137517 & 0.7358420 & 0.0103763 & 0.0102513\\
 \hline
-Hexazinone & NA & NA & NA & 0.9856232 & 0.0176272 & 0.0106263\\
+Hexazinone & NA & NA & NA & 0.9884986 & 0.0167521 & 0.0102513\\
 \hline
-Irgarol & NA & NA & NA & NA & 0.0101263 & 0.0105013\\
+Irgarol & NA & NA & NA & NA & 0.0103763 & 0.0103763\\
 \hline
-Simazine & NA & NA & NA & NA & NA & 0.0453807\\
+Simazine & NA & NA & NA & NA & NA & 0.0762595\\
 \hline
 \end{tabular}
 \end{table}

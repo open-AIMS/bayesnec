@@ -90,7 +90,7 @@ The default plot looks exactly the same as our regular `bayesnecfit` plot, but t
 exp_5$mod_stats
 ```
 
-We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged *NEC* is reported, however a warning is provided indicating it contains *NSEC* values. A warning message also indicates that the **ecxll5** model may have convergence issues according to the default `brms` Rhat criteria. For this example all the **ecx**-containing models have high weights, which we would expect given that type of model was used to generate the underlying example.
+We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged *NEC* is reported, however a warning is provided indicating it contains *NSEC* values. For this example all the nec4param and ecxwb2 models have the highest weights.
 
 All these model fits are satisfactory despite the relatively low number of iterations set in our example, but the summary would also include a warning if there were fits with divergent transitions.
 
