@@ -1,7 +1,6 @@
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-bayesnec <img src="man/figures/logo.png" width = 180 alt="bayesnec Logo" align="right" />
-=========================================================================================
+# bayesnec <img src="man/figures/logo.png" width = 180 alt="bayesnec Logo" align="right" />
 
 <!-- badges: start -->
 
@@ -22,8 +21,7 @@ Version](https://www.r-pkg.org/badges/version/bayesnec)](https://cran.r-project.
 Love](https://badges.frapsoft.com/os/v2/open-source.svg?v=103)
 <!-- badges: end -->
 
-Overview
---------
+## Overview
 
 `bayesnec` is a toxicity estimate and No-Effect-Concentration estimation
 package that uses [`brms`](https://github.com/paul-buerkner/brms) to fit
@@ -31,8 +29,7 @@ concentration(dose)-response data using Bayesian methods for the purpose
 of estimating both ECX values, but more particularly NEC. Please see
 `?bnec` for a more detailed help file.
 
-Installation
-------------
+## Installation
 
 To install the latest release version from CRAN use
 
@@ -53,8 +50,7 @@ prerequisites section on this
 [link](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started) for
 further instructions on how to get the compilers running.
 
-Usage
------
+## Usage
 
 Usage and further information about `bayesnec` can be seen on the
 [project page](https://open-aims.github.io/bayesnec/) and the
@@ -62,9 +58,8 @@ Usage and further information about `bayesnec` can be seen on the
 for the individual functions can be found on the [reference
 page](https://open-aims.github.io/bayesnec/reference/).
 
-Further Information
--------------------
+## Further Information
 
 `bayesnec` is provided by the [Australian Institute of Marine
 Science](https://www.aims.gov.au) under the GPL-2 License
-([GPL-2](https://opensource.org/licenses/GPL-2.0)).
+([GPL-2](https://opensource.org/license/gpl-2-0/)).
