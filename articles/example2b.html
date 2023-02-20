@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.2</span>
       </span>
     </div>
 
@@ -147,32 +147,36 @@ list of currently implemented model groups can be seen using:</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/models.html">models</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $nec</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr" </span></span>
-<span><span class="co">#&gt; [10] "nechormepwr01"</span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"       </span></span>
+<span><span class="co">#&gt;  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $ecx</span></span>
-<span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"     </span></span>
-<span><span class="co">#&gt; [11] "ecxll3"      "ecxhormebc4" "ecxhormebc5"</span></span>
+<span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"     </span></span>
+<span><span class="co">#&gt;  [7] "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4"</span></span>
+<span><span class="co">#&gt; [13] "ecxhormebc5"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $all</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr" </span></span>
-<span><span class="co">#&gt; [10] "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"     </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"       </span></span>
+<span><span class="co">#&gt;  [7] "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"       </span></span>
+<span><span class="co">#&gt; [13] "ecxsigm"       "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"     </span></span>
 <span><span class="co">#&gt; [19] "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $bot_free</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"        "ecxexp"        "ecxsigm"      </span></span>
-<span><span class="co">#&gt; [10] "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"   "nechormepwr01"</span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"  </span></span>
+<span><span class="co">#&gt;  [7] "ecxlin"        "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"       </span></span>
+<span><span class="co">#&gt; [13] "ecxhormebc4"   "nechormepwr01"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $zero_bounded</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"     </span></span>
-<span><span class="co">#&gt; [10] "ecxll3"        "ecxhormebc4"  </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"       </span></span>
+<span><span class="co">#&gt;  [7] "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $decline</span></span>
-<span><span class="co">#&gt;  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"   </span></span>
-<span><span class="co">#&gt; [13] "ecxll4"    "ecxll3"   </span></span>
+<span><span class="co">#&gt;  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"   </span></span>
+<span><span class="co">#&gt;  [9] "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"   </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $hormesis</span></span>
-<span><span class="co">#&gt; [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"   "ecxhormebc5"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"</span></span>
+<span><span class="co">#&gt; [7] "ecxhormebc4"   "ecxhormebc5"</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="parameter-definitions">Parameter definitions<a class="anchor" aria-label="anchor" href="#parameter-definitions"></a>
@@ -190,8 +194,9 @@ concentration;</p>
 <p><span class="math inline">\(\eta = \text{NEC}\)</span>, the
 No-Effect-Concentration value (the x concentration value where the
 breakpoint in the regression is estimated at, see <strong>Model types
-for NEC and ECx estimation</strong> and <span class="citation">(Fox
-2010)</span> for more details on parameter based NEC estimation);</p>
+for <em>NEC</em> and <em>EC<sub>x</sub></em> estimation</strong> and
+<span class="citation">(Fox 2010)</span> for more details on parameter
+based <em>NEC</em> estimation);</p>
 <p><span class="math inline">\(\beta = \text{beta}\)</span>, generally
 the exponential decay rate of response, either from 0 concentration or
 from the estimated <span class="math inline">\(\eta\)</span> value, with
@@ -213,9 +218,9 @@ exponent in the <strong>ecxsigm</strong> and <strong>necisgm</strong>
 models.</p>
 <p><span class="math inline">\(\zeta = \text{f}\)</span> A scaling
 exponent exclusive to model <strong>ecxll5</strong>.</p>
-<p>In addition to the model parameters, all <em>NEC</em>-containing
-models have a step function used to define the breakpoint in the
-regression, which can be defined as</p>
+<p>In addition to the model parameters, all
+<strong>nec</strong>-containing models have a step function used to
+define the breakpoint in the regression, which can be defined as</p>
 <p><span class="math display">\[
 f(x_i, \eta) = \begin{cases}
       0, &amp; x_i - \eta &lt; 0 \\
@@ -224,17 +229,18 @@ f(x_i, \eta) = \begin{cases}
 \]</span></p>
 </div>
 <div class="section level2">
-<h2 id="model-types-for-nec-and-ecx-estimation">Model types for NEC and ECx estimation<a class="anchor" aria-label="anchor" href="#model-types-for-nec-and-ecx-estimation"></a>
+<h2 id="model-types-for-nec-and-ecx-estimation">Model types for <em>NEC</em> and <em>EC<sub>x</sub></em>
+estimation<a class="anchor" aria-label="anchor" href="#model-types-for-nec-and-ecx-estimation"></a>
 </h2>
-<p>All models provide an estimate for the No-Effect-Concentration (NEC).
-For model types with <em>NEC</em> as a prefix, the NEC is directly
-estimated as parameter <span class="math inline">\(\eta =
-\text{NEC}\)</span> in the model, as per <span class="citation">(Fox
-2010)</span>. Models with <strong>ecx</strong> as a prefix are
-continuous curve models, typically used for extracting ECx values from
-concentration-response data. In this instance the NEC reported is
-actually the No-Significant-Effect-Concentration (NSEC), defined as the
-concentration at which there is a user supplied (see
+<p>All models provide an estimate for the No-Effect-Concentration
+(<em>NEC</em>). For model types with <strong>nec</strong> as a prefix,
+the <em>NEC</em> is directly estimated as parameter <span class="math inline">\(\eta = \text{NEC}\)</span> in the model, as per
+<span class="citation">(Fox 2010)</span>. Models with
+<strong>ecx</strong> as a prefix are continuous curve models, typically
+used for extracting <em>EC<sub>x</sub></em> values from
+concentration-response data. In this instance the <em>NEC</em> reported
+is actually the No-Significant-Effect-Concentration (<em>NSEC</em>),
+defined as the concentration at which there is a user supplied (see
 <code>sig_val</code>) percentage certainty (based on the Bayesian
 posterior estimate) that the response falls below the estimated value of
 the upper asymptote (<span class="math inline">\(\tau =
@@ -244,40 +250,47 @@ default value for <code>sig_val</code> is 0.01, which corresponds to an
 alpha value (Type-I error rate) of 0.01 for a one-sided test of
 significance. See <code><a href="../reference/nsec.html">?nsec</a></code> for more details. We currently
 recommend only using the <code>"nec"</code> model set for estimation of
-NEC values, as the NSEC concept has yet to be formally
+<em>NEC</em> values, as the <em>NSEC</em> concept has yet to be formally
 peer-reviewed.</p>
-<p>ECx estimates can be equally obtained from both <code>"nec"</code>
-and <code>"ecx"</code> models. ECx estimates will usually be lower (more
+<p><em>EC<sub>x</sub></em> estimates can be equally obtained from both
+<code>"nec"</code> and <code>"ecx"</code> models.
+<em>EC<sub>x</sub></em> estimates will usually be lower (more
 conservative) for <code>"ecx"</code> models fitted to the same data as
 <code>"nec"</code> models (see the <a href="https://open-aims.github.io/bayesnec/articles/example4.html" class="external-link">Comparing
 posterior predictions</a>) vignette for an example. However, we
-recommend using <code>"all"</code> models where ECx estimation is
-required because <code>"nec"</code> models can fit some datasets better
-than <code>"ecx"</code> models and the model averaging approach will
-place the greatest weight for the outcome that best fits the supplied
-data. This approach will yield ECx estimates that are the most
-representative of the underlying relationship in the dataset.</p>
-<p>There is ambiguity in the definition of ECx estimates from hormesis
-models—these allow an initial increase in the response <span class="citation">(see Mattson 2008)</span> and include models with the
-character string <code>horme</code> in their name—as well as those that
-have no natural lower bound on the scale of the response (models with
-the string <strong>lin</strong> in their name, in the case of Gaussian
-response data). For this reason the <code>ecx</code> function has
-arguments <code>hormesis_def</code> and <code>type</code>, both
-character vectors indicating the desired behaviour. For
-<code>hormesis_def = "max"</code>, ECx values are calculated as a
-decline from the maximum estimates (i.e., the peak at <span class="math inline">\(\eta = \text{NEC}\)</span>); and
-<code>hormesis_def = "control"</code> (the default) indicates that ECx
-values should be calculated relative to the control, which is assumed to
-be the lowest observed concentration. For <code>type = "relative"</code>
-ECx is calculated as the percentage decrease from the maximum predicted
-value of the response (<span class="math inline">\(\tau =
-\text{top}\)</span>) to the minimum predicted value of the response
-(i.e., <em>relative</em> to the observed data). For
-<code>type = "absolute"</code> (the default) ECx is calculated as the
-percentage decrease from the maximum value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to 0 (or <span class="math inline">\(\delta = \text{bottom}\)</span> for models with
-that parameter). For <code>type = "direct"</code>, a direct
-interpolation of the response on the predictor is obtained.</p>
+recommend using <code>"all"</code> models where <em>EC<sub>x</sub></em>
+estimation is required because <code>"nec"</code> models can fit some
+datasets better than <code>"ecx"</code> models and the model averaging
+approach will place the greatest weight for the outcome that best fits
+the supplied data. This approach will yield <em>EC<sub>x</sub></em>
+estimates that are the most representative of the underlying
+relationship in the dataset.</p>
+<p>There is ambiguity in the definition of <em>EC<sub>x</sub></em>
+estimates from hormesis models—these allow an initial increase in the
+response <span class="citation">(see Mattson 2008)</span> and include
+models with the character string <code>horme</code> in their name—as
+well as those that have no natural lower bound on the scale of the
+response (models with the string <strong>lin</strong> in their name, in
+the case of Gaussian response data). For this reason the
+<code>ecx</code> function has arguments <code>hormesis_def</code> and
+<code>type</code>, both character vectors indicating the desired
+behaviour. For <code>hormesis_def = "max"</code>,
+<em>EC<sub>x</sub></em> values are calculated as a decline from the
+maximum estimates (i.e., the peak at <span class="math inline">\(\eta =
+\text{NEC}\)</span>); and <code>hormesis_def = "control"</code> (the
+default) indicates that <em>EC<sub>x</sub></em> values should be
+calculated relative to the control, which is assumed to be the lowest
+observed concentration. For <code>type = "relative"</code>
+<em>EC<sub>x</sub></em> is calculated as the percentage decrease from
+the maximum predicted value of the response (<span class="math inline">\(\tau = \text{top}\)</span>) to the minimum
+predicted value of the response (i.e., <em>relative</em> to the observed
+data). For <code>type = "absolute"</code> (the default)
+<em>EC<sub>x</sub></em> is calculated as the percentage decrease from
+the maximum value of the response (<span class="math inline">\(\tau =
+\text{top}\)</span>) to 0 (or <span class="math inline">\(\delta =
+\text{bottom}\)</span> for models with that parameter). For
+<code>type = "direct"</code>, a direct interpolation of the response on
+the predictor is obtained.</p>
 </div>
 <div class="section level2">
 <h2 id="model-suitability-for-response-types">Model suitability for response types<a class="anchor" aria-label="anchor" href="#model-suitability-for-response-types"></a>
@@ -307,7 +320,8 @@ values within the range of the user-supplied response data.</p>
 <h2 id="model-definitions">Model definitions<a class="anchor" aria-label="anchor" href="#model-definitions"></a>
 </h2>
 <div class="section level3">
-<h3 id="ecx-models">ECx models<a class="anchor" aria-label="anchor" href="#ecx-models"></a>
+<h3 id="ecx-models">
+<em>EC<sub>x</sub></em> models<a class="anchor" aria-label="anchor" href="#ecx-models"></a>
 </h3>
 <p><img src="vignette-fig-exmp2b-theoretical_ecx_curves.png" title="" alt="" width="100%"></p>
 <div class="section level5">
@@ -513,17 +527,18 @@ function.</p>
 </div>
 </div>
 <div class="section level3">
-<h3 id="nec-models">NEC models<a class="anchor" aria-label="anchor" href="#nec-models"></a>
+<h3 id="nec-models">
+<em>NEC</em> models<a class="anchor" aria-label="anchor" href="#nec-models"></a>
 </h3>
 <p><img src="vignette-fig-exmp2b-theoretical_nec_curves.png" title="" alt="" width="100%"></p>
 <div class="section level5">
 <h5 id="neclin">neclin<a class="anchor" aria-label="anchor" href="#neclin"></a>
 </h5>
 <p>The <strong>neclin</strong> model is a basic linear decay model
-equivalent to <strong>ecxlin</strong> with the addition of the NEC step
-function, given by the equation: <span class="math display">\[y_i = \tau
-- e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)\]</span> with the
-respective <code>brmsformula</code> being</p>
+equivalent to <strong>ecxlin</strong> with the addition of the
+<em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau - e^{\alpha} \left(x_i - \eta \right)
+f(x_i, \eta)\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ top - exp(slope) * (x - nec) * step(x - nec) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; slope ~ 1</span></span>
@@ -539,10 +554,10 @@ bounded data (Gamma, Poisson, Negative Binomial with
 <h5 id="nec3param">nec3param<a class="anchor" aria-label="anchor" href="#nec3param"></a>
 </h5>
 <p>The <strong>nec3param</strong> model is a basic exponential decay
-model equivalent to <strong>ecxexp</strong> with the addition of the NEC
-step function, given by the equation: <span class="math display">\[y_i =
-\tau e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with
-the respective <code>brmsformula</code> being</p>
+model equivalent to <strong>ecxexp</strong> with the addition of the
+<em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right)
+f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
@@ -556,9 +571,10 @@ or <code>"log"</code> link function.</p>
 <h5 id="nec4param">nec4param<a class="anchor" aria-label="anchor" href="#nec4param"></a>
 </h5>
 <p>The <strong>nec4param</strong> model is a 3-parameter decay model
-with the addition of the NEC step function, given by the equation: <span class="math display">\[y_i = \delta + (\tau - \delta) e^{-e^{\beta}
-\left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the respective
-<code>brmsformula</code> being</p>
+with the addition of the <em>NEC</em> step function, given by the
+equation: <span class="math display">\[y_i = \delta + (\tau - \delta)
+e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the
+respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -569,7 +585,7 @@ with the addition of the NEC step function, given by the equation: <span class="
 <h5 id="nechorme">nechorme<a class="anchor" aria-label="anchor" href="#nechorme"></a>
 </h5>
 <p>The <strong>nechorme</strong> model is a basic exponential decay
-model with an NEC step function equivalent to
+model with an <em>NEC</em> step function equivalent to
 <strong>nec3param</strong>, with the addition of a linear increase prior
 to <span class="math inline">\(\eta\)</span>, given by the equation
 <span class="math display">\[y_i = (\tau + e^{\alpha} x_i) e^{-e^{\beta}
@@ -591,7 +607,7 @@ or <code>"log"</code> link function. In this case the linear version
 <h5 id="nechormepwr">nechormepwr<a class="anchor" aria-label="anchor" href="#nechormepwr"></a>
 </h5>
 <p>The <strong>nechormepwr</strong> model is a basic exponential decay
-model with an NEC step function equivalent to
+model with an <em>NEC</em> step function equivalent to
 <strong>nec3param</strong>, with the addition of a power increase prior
 to <span class="math inline">\(\eta\)</span>, given by the equation:
 <span class="math display">\[y_i = (\tau + x_i^{1/(1+e^{\alpha})})
@@ -615,8 +631,9 @@ distributions with <code>"identity"</code> link. In this case the
 <h5 id="neclinhorme">neclinhorme<a class="anchor" aria-label="anchor" href="#neclinhorme"></a>
 </h5>
 <p>The <strong>neclinhorme</strong> model is a basic linear decay model
-with an NEC step function equivalent to <strong>neclin</strong>, with
-the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + e^{\alpha} x_i) - e^{\beta}
+with an <em>NEC</em> step function equivalent to
+<strong>neclin</strong>, with the addition of a linear increase prior to
+<span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = (\tau + e^{\alpha} x_i) - e^{\beta}
 \left(x_i - \eta \right) f(x_i, \eta)\]</span> with the respective
 <code>brmsformula</code> being.</p>
 <pre><code><span><span class="co">#&gt; y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) </span></span>
@@ -637,8 +654,8 @@ a linear decline with concentration, it is also not suitable for 0,
 <h5 id="nechorme4">nechorme4<a class="anchor" aria-label="anchor" href="#nechorme4"></a>
 </h5>
 <p>The <strong>nechorme4</strong> model is 4 parameter decay model with
-an NEC step function equivalent to <strong>nec4param</strong> with the
-addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta
+an <em>NEC</em> step function equivalent to <strong>nec4param</strong>
+with the addition of a linear increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta
 ) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span> with the
 respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
@@ -655,10 +672,13 @@ increase in the response variable at concentrations below <span class="math inli
 <h5 id="nechorme4pwr">nechorme4pwr<a class="anchor" aria-label="anchor" href="#nechorme4pwr"></a>
 </h5>
 <p>The <strong>nechorme4pwr</strong> model is 4 parameter decay model
-with an NEC step function equivalent to <strong>nec4param</strong> with
-the addition of a power increase prior to <span class="math inline">\(\eta\)</span>, given by the equation: <span class="math display">\[y_i = \delta + ((\tau + x_i^{1/(1+e^{\alpha})}) -
-\delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\]</span>
-with the respective <code>brmsformula</code> being</p>
+with an <em>NEC</em> step function equivalent to
+<strong>nec4param</strong> with the addition of a power increase prior
+to <span class="math inline">\(\eta\)</span>, given by the equation:
+<span class="math display">\[y_i = \delta + ((\tau +
+x_i^{1/(1+e^{\alpha})}) - \delta) e^{-e^{\beta} \left(x_i - \eta \right)
+f(x_i, \eta)}\]</span> with the respective <code>brmsformula</code>
+being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + ((top + x^(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -676,7 +696,7 @@ distributions with <code>"identity"</code> link. In this case the
 <h5 id="nechormepwr01">nechormepwr01<a class="anchor" aria-label="anchor" href="#nechormepwr01"></a>
 </h5>
 <p>The <strong>nechormepwr01</strong> model is a basic exponential decay
-model with an NEC step function equivalent to
+model with an <em>NEC</em> step function equivalent to
 <strong>nec3param</strong>, with the addition of a power increase prior
 to <span class="math inline">\(\eta\)</span>, given by the equation:
 <span class="math display">\[y_i = \left(\frac{1}{(1 +
@@ -699,10 +719,10 @@ or <code>"log"</code> link function. In this case the linear version
 <h5 id="necsigm">necsigm<a class="anchor" aria-label="anchor" href="#necsigm"></a>
 </h5>
 <p>The <strong>necsigm</strong> model is a basic exponential decay model
-equivalent to <strong>ecxlin</strong> with the addition of the NEC step
-function, given by the equation: <span class="math display">\[y_i = \tau
-e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon}f(x_i,
-\eta)}\]</span> with the respective <code>brmsformula</code> being</p>
+equivalent to <strong>ecxlin</strong> with the addition of the
+<em>NEC</em> step function, given by the equation: <span class="math display">\[y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i,
+\eta))^{e^\epsilon}f(x_i, \eta)}\]</span> with the respective
+<code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
 <span><span class="co">#&gt; beta ~ 1</span></span>
@@ -711,8 +731,8 @@ e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon}f(x_i,
 <p>The model is 0-bounded, thus not suitable for Gaussian response data
 or the use of a <code>"logit"</code> or <code>"log"</code> link
 function. In addition, there may be theoretical issues with combining a
-sigmoidal decay model with an NEC step function because where there is
-an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of
+sigmoidal decay model with an <em>NEC</em> step function because where
+there is an upper plateau in the data the location of <span class="math inline">\(\eta\)</span> may become ambiguous. Estimation of
 No-Effect-Concentrations using this model are not currently recommended
 without further testing.</p>
 </div>
