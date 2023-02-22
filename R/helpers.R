@@ -204,9 +204,8 @@ check_init_predictions <- function(x, limits) {
     !any(is.na(x)) &
     !any(is.infinite(x)) & 
     !any(is.nan(x)) & 
-    diff(range(round(x, 3)))!=0 &
-    length(unique(signif(x, 1)))>2 &
-    x[1]>x[length(x)]
+    x[1]>x[length(x)] &
+    length(unique(x))>3 
 }
 
 #' @noRd
