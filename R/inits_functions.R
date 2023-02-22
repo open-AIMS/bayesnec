@@ -98,7 +98,7 @@ make_inits <- function(model, fct_args, priors, chains) {
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
-make_good_inits <- function(model, x, y, n_trials = 1e5, seed = NULL, ...) {
+make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
   limits <- range(y, na.rm = TRUE)
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
@@ -109,7 +109,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e5, seed = NULL, ...) {
   are_good <- all(sapply(init_ranges, check_init_predictions, limits))
   n_t <- 1
   while (!are_good && n_t <= n_trials) {
-    if (!is.null(seed)) {set.seed(seed + n_t)}
+    #if (!is.null(seed)) {set.seed(seed + n_t)}
     inits <- make_inits(model, fct_args, ...)
     init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
     are_good <- all(sapply(init_ranges, check_init_predictions, limits))
