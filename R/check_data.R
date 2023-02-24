@@ -43,7 +43,7 @@ check_data <- function(data, family, model) {
             "response values to decline with increasing values of predictor.")
   }
   fam_tag <- family$family
-  x_type <- set_distribution(x)
+  x_type <- set_distribution(x, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
   if (min(x) == 0 & x_type == "Gamma") {
     min_val <- min(x[x > 0])
     data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)

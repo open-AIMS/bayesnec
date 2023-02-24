@@ -32,7 +32,8 @@ define_prior <- function(model, family, predictor, response) {
     }
   }
   response <- response_link_scale(response, family)
-  x_type <- set_distribution(predictor)
+  x_type <- set_distribution(predictor, silence_y_msgs = TRUE,
+                             silence_x_msgs = FALSE)
   u_t_g <- paste0("gamma(2, ",
                   1 / (quantile(response, probs = 0.75) / 2),
                   ")")
@@ -79,7 +80,8 @@ define_prior <- function(model, family, predictor, response) {
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot",
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   # x-dependent priors
-  x_type <- set_distribution(predictor)
+  x_type <- set_distribution(predictor, silence_y_msgs = TRUE,
+                             silence_x_msgs = FALSE)
   pr_nec <- prior_string(x_prs[x_type], nlpar = "nec",
                          lb = min(predictor), ub = max(predictor))
   pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50",
