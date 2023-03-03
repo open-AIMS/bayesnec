@@ -61,7 +61,7 @@ define_prior <- function(model, family, predictor, response) {
                binomial = "beta(2, 5)",
                beta_binomial2 = "beta(2, 5)",
                beta = "beta(2, 5)")
-  x_prs <- c(beta = "beta(2, 2)",
+  x_prs <- c(Beta = "beta(2, 2)",
              Gamma = paste0("gamma(5, ",
                             1 / (quantile(predictor,
                                           probs = 0.5) / 2),
@@ -80,8 +80,6 @@ define_prior <- function(model, family, predictor, response) {
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot",
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   # x-dependent priors
-  x_type <- set_distribution(predictor, silence_y_msgs = TRUE,
-                             silence_x_msgs = FALSE)
   pr_nec <- prior_string(x_prs[x_type], nlpar = "nec",
                          lb = min(predictor), ub = max(predictor))
   pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50",
