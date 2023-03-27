@@ -6,12 +6,12 @@
 \alias{rhat.bayesmanecfit}
 \title{Extract Diagnostic Quantities of 'brms' Models}
 \usage{
-\method{rhat}{bayesnecfit}(object, rhat_cutoff = 1.05, ...)
+\method{rhat}{bayesnecfit}(x, rhat_cutoff = 1.05, ...)
 
-\method{rhat}{bayesmanecfit}(object, rhat_cutoff = 1.05, ...)
+\method{rhat}{bayesmanecfit}(x, rhat_cutoff = 1.05, ...)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnecfit}} or
+\item{x}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector indicating the Rhat
@@ -27,7 +27,7 @@ for each of the fitted models.
 \description{
 Extract Rhat statistic that can be used to diagnose sampling behaviour
 of the algorithms applied by 'Stan' at the back-end of 'brms'.
-\code{object} should be of class
+\code{x} should be of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \examples{
