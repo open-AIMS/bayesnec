@@ -2,13 +2,13 @@
 #'
 #' Extract Rhat statistic that can be used to diagnose sampling behaviour
 #' of the algorithms applied by 'Stan' at the back-end of 'brms'.
-#' \code{object} should be of class
+#' \code{x} should be of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @name rhat
 #' @order 1
 #'
-#' @param object An object of class \code{\link{bayesnecfit}} or
+#' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}}.
 #' @param rhat_cutoff A \code{\link[base]{numeric}} vector indicating the Rhat
 #' cut-off used to test for model convergence.
@@ -38,14 +38,14 @@ NULL
 #' @importFrom chk chk_numeric
 #'
 #' @export
-rhat.bayesnecfit <- function(object, rhat_cutoff = 1.05, ...) {
+rhat.bayesnecfit <- function(x, rhat_cutoff = 1.05, ...) {
   chk_numeric(rhat_cutoff)
-  rhat_vals <- pull_brmsfit(object) |>
+  rhat_vals <- pull_brmsfit(x) |>
     rhat() |>
     clean_rhat_names()
   failed <- any(rhat_vals > rhat_cutoff)
   out <- list(list(rhat_vals = rhat_vals, failed = failed))
-  names(out) <- object$model
+  names(out) <- x$model
   out
 }
 
@@ -59,12 +59,12 @@ rhat.bayesnecfit <- function(object, rhat_cutoff = 1.05, ...) {
 #' @importFrom brms rhat
 #'
 #' @export
-rhat.bayesmanecfit <- function(object, rhat_cutoff = 1.05, ...) {
-  out <- sapply(object$success_models, function(x, object, ...) {
-    pull_out(object, model = x) |>
+rhat.bayesmanecfit <- function(x, rhat_cutoff = 1.05, ...) {
+  out <- sapply(x$success_models, function(m, x, ...) {
+    pull_out(x, model = m) |>
       suppressMessages() |>
       rhat(...)
-  }, object = object, rhat_cutoff = rhat_cutoff, USE.NAMES = FALSE)
+  }, x = x, rhat_cutoff = rhat_cutoff, USE.NAMES = FALSE)
   failed <- sapply(out, "[[", "failed")
   if (all(failed)) {
     message("All models failed the rhat_cutoff of ", rhat_cutoff)
