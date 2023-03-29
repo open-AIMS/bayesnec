@@ -5,6 +5,7 @@ fit1 <- manec_example$mod_fits[["nec4param"]]
 fit2 <- manec_example$mod_fits[["ecx4param"]]
 
 test_that("expand_nec defaults work for nec model", {
+  skip_on_cran()
   nec_fit <- expand_nec(fit1, fit1$bayesnecformula, model = "nec4param") %>%
     suppressWarnings
   expect_equal(names(nec_fit), c("fit", "model", "init", "bayesnecformula",
@@ -20,6 +21,7 @@ test_that("expand_nec defaults work for nec model", {
 })
 
 test_that("expand_nec arguments work for nec model", {
+  skip_on_cran()
   nec_fit <- expand_nec(fit1, fit1$bayesnecformula, model = "nec4param",
                         x_range = c(0.01, 4), precision = 20) %>%
     suppressWarnings
@@ -36,6 +38,7 @@ test_that("expand_nec arguments work for nec model", {
 })
 
 test_that("expand_ecx defaults work for ecx model", {
+  skip_on_cran()
   ecx_fit <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param") %>%
     suppressWarnings
   expect_equal(names(ecx_fit), c("fit", "model", "init", "bayesnecformula",
@@ -51,6 +54,7 @@ test_that("expand_ecx defaults work for ecx model", {
 })
 
 test_that("expand_ecx arguments work for ecx model", {
+  skip_on_cran()
   ecx_fit <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param",
                         x_range = c(0.01, 4), precision = 20) %>%
     suppressWarnings
@@ -67,6 +71,7 @@ test_that("expand_ecx arguments work for ecx model", {
 })
 
 test_that("expand_ecx sig_val argument work for ecx model", {
+  skip_on_cran()
   ecx_fit_a <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param") %>%
     suppressWarnings
   ecx_fit_b <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param",
@@ -81,6 +86,7 @@ test_null <- NULL
 tt2 <- tt1["nec4param"]
 
 test_that("expand_manec warnings work correctly", {
+  skip_on_cran()
   expect_error(expand_manec(test_null))
   expect_message(expand_manec(tt2, formulas[["nec4param"]]),
                  "Only nec4param is fitted, no model averaging done.")
@@ -90,6 +96,7 @@ test_that("expand_manec warnings work correctly", {
 })
 
 test_that("expand_manec defaults work correctly", {
+  skip_on_cran()
   tt3 <- expand_manec(tt1, formulas) %>%
     suppressMessages %>%
     suppressWarnings
@@ -99,6 +106,7 @@ test_that("expand_manec defaults work correctly", {
 })
 
 test_that("expand_manec defaults work correctly", {
+  skip_on_cran()
   tt4 <- expand_manec(tt1, formulas, x_range = c(0.01, 4), precision = 20) %>%
     suppressMessages %>%
     suppressWarnings
@@ -111,6 +119,7 @@ test_that("new loo_controls are incorporated", {
   get_new_method <- function(x) {
     attributes(x$mod_stats$wi)$method
   }
+  skip_on_cran()
   expand_manec(tt1, formulas) %>%
     get_new_method %>%
     expect_null %>%
