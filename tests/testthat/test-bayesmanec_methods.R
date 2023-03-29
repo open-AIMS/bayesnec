@@ -8,6 +8,7 @@ test_that("predict is silent", {
 })
 
 test_that("predict/fitted is a matrix of appropriately name elements", {
+  skip_on_cran()
   pred_p <- predict(manec_example)
   expect_equal(class(pred_p), c("matrix", "array"))
   expect_equal(dim(pred_p), c(100, 4))
@@ -19,12 +20,14 @@ test_that("predict/fitted is a matrix of appropriately name elements", {
 })
 
 test_that("plot returns null, is invisible, and is silent", {
+  skip_on_cran()
   expect_null(plot(manec_example))
   expect_silent(plot(manec_example))
   expect_invisible(plot(manec_example))
 })
 
 test_that("rhat behaves as expected", {
+  skip_on_cran()
   rhat_p <- suppressMessages(rhat(manec_example))
   rhat2_p <-  rhat(manec_example, rhat_cutoff = 1)
   expect_message(rhat(manec_example, rhat_cutoff = 1))
@@ -33,6 +36,7 @@ test_that("rhat behaves as expected", {
 })
 
 test_that("summary behaves as expected", {
+  skip_on_cran()
   summary.p <- suppressWarnings(summary(manec_example))
   expect_equal(class(summary.p), "manecsummary")
   expect_equal(names(summary.p), c("models", "family", "sample_size",
@@ -42,6 +46,7 @@ test_that("summary behaves as expected", {
 })
 
 test_that("formula behaves as expected", {
+  skip_on_cran()
   expect_error(formula(manec_example))
   expect_s3_class(formula(manec_example, "nec4param"), "bayesnecformula")
   expect_s3_class(formula(manec_example, model = "nec4param"),
@@ -52,6 +57,7 @@ test_that("formula behaves as expected", {
 })
 
 test_that("model.frame behaves as expected", {
+  skip_on_cran()
   expect_error(model.frame(manec_example))
   expect_s3_class(model.frame(manec_example, "nec4param"),
                   "data.frame")

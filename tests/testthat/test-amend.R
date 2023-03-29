@@ -4,6 +4,7 @@ library(dplyr)
 data(manec_example)
 
 test_that("input checks work correctly and return appropriate messages", {
+  skip_on_cran()
   general_error <- paste(
     "Nothing to amend, please specify a proper model to either add or drop, or",
     "changes to loo_controls;\n Returning original model set."
