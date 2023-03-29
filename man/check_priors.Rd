@@ -23,9 +23,11 @@ Plots the prior and posterior parameter probability densities from an
 object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \examples{
+\dontrun{
 library(bayesnec)
 data(manec_example)
 check_priors(manec_example)
+}
 
 }
 \seealso{

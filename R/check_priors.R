@@ -12,9 +12,11 @@
 #' @return A plot of the prior and posterior parameter probability densities.
 #'
 #' @examples
+#' \dontrun{
 #' library(bayesnec)
 #' data(manec_example)
 #' check_priors(manec_example)
+#' }
 #'
 #' @export
 check_priors <- function(object, filename = NA) {
