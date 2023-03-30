@@ -1,6 +1,4 @@
 library(bayesnec)
-library(brms)
-library(formula.tools)
 
 test_that("checks that gsub statement is replacing all wanted x correctly", {
   # neclin

@@ -1,5 +1,5 @@
 library(bayesnec)
-library(dplyr)
+library(brms)
 library(testthat)
 
 random_filename <- function(nchar) {
@@ -16,15 +16,14 @@ add_na <- function(x, n = 3) {
 data(nec_data)
 other_data <- nec_data
 colnames(other_data) <- c("a", "b")
-nec_data <- nec_data %>% 
-  mutate(count = as.integer(round(y * 20)),
-         trials = as.integer(20),
-         log_x = log(x))
+nec_data$count <- as.integer(round(nec_data$y * 20))
+nec_data$trials <- as.integer(20)
+nec_data$log_x <- log(nec_data$x)
 
 data(manec_example)
-nec4param <- pull_out(manec_example, model = "nec4param") %>%
-  suppressMessages %>%
-  suppressWarnings
-ecx4param <- pull_out(manec_example, model = "ecx4param") %>%
-  suppressMessages %>%
-  suppressWarnings
+nec4param <- pull_out(manec_example, model = "nec4param") |>
+  suppressMessages() |>
+  suppressWarnings()
+ecx4param <- pull_out(manec_example, model = "ecx4param") |>
+  suppressMessages() |>
+  suppressWarnings()

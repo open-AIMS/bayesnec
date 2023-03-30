@@ -1,5 +1,4 @@
 library(bayesnec)
-library(dplyr)
 
 nec3param <- function(beta, nec, top, x) {
   top * exp(-exp(beta) * (x - nec) *
@@ -34,14 +33,14 @@ test_that("Parameter checks", {
   f_2 <- y | trials(tr) ~ crf(x, "nec") + (nec + bot | group_1)
   expect_s3_class(check_formula(bnf(f_2), data, run_par_checks = FALSE),
                   "bayesnecformula")
-  check_formula(bnf(f_2), data, run_par_checks = TRUE) %>%
-    expect_message("Performing single parameter checks on all models...") %>%
-    expect_message("\"bot\" not valid parameters") %>%
-    expect_message("\"bot\" not valid parameters") %>%
-    expect_message("\"bot\" not valid parameters") %>%
-    expect_message("\"bot\" not valid parameters") %>%
-    expect_message("\"bot\" not valid parameters") %>%
-    expect_message("\"bot\" not valid parameters") %>%
+  check_formula(bnf(f_2), data, run_par_checks = TRUE) |>
+    expect_message("Performing single parameter checks on all models...") |>
+    expect_message("\"bot\" not valid parameters") |>
+    expect_message("\"bot\" not valid parameters") |>
+    expect_message("\"bot\" not valid parameters") |>
+    expect_message("\"bot\" not valid parameters") |>
+    expect_message("\"bot\" not valid parameters") |>
+    expect_message("\"bot\" not valid parameters") |>
     expect_message("\"bot\" not valid parameters")
   f_3 <- "log(y) | trials(tr) ~ crf(sqrt(x), \"nec3param\")"
   expect_s3_class(check_formula(bnf(f_3), data), "bayesnecformula")
