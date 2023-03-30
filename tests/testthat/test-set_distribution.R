@@ -1,5 +1,4 @@
 library(bayesnec)
-library(brms)
 
 r_pois <- rpois(1000, lambda = 10)
 r_norm <- rnorm(1000)

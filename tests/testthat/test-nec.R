@@ -1,7 +1,4 @@
 library(bayesnec)
-library(brms)
-
-data(manec_example)
 
 test_that("nec returns expected object types", {
   nec_summary <- suppressMessages(nec(manec_example))

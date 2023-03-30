@@ -1,5 +1,4 @@
 library(bayesnec)
-library(brms)
 
 test_that("predict is silent", {
   expect_silent(predict(nec4param))
