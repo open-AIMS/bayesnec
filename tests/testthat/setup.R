@@ -1,6 +1,7 @@
 library(bayesnec)
 library(brms)
 library(testthat)
+options(mc.cores = 1)
 
 random_filename <- function(nchar) {
   paste0(c(round(runif(nchar) * 15), sample(letters, nchar),

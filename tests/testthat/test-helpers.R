@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("handle_set works", {
   m_0 <- paste0("Nothing to amend, please specify a model to either add",
                 " or drop that differs from the original set.")

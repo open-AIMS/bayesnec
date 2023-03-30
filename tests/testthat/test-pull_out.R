@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("fails without model argument", {
   expect_error(pull_out(manec_example))
 })

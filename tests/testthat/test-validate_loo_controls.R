@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("rejects non-lists", {
   err <- "loo_controls should be a named list of two elements\\. See \\?bnec"
   fam_tag <- ""

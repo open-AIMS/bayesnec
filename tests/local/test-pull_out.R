@@ -1,7 +1,3 @@
-library(bayesnec)
-rstan::rstan_options(auto_write = TRUE)
-options(mc.cores = 1)
-
 test_that("loo_controls work", {
   my_ctrls <- list(fitting = list(moment_match = TRUE))
   pull_out(manec_gausian_identity, model = "nec", loo_controls = my_ctrls) |>

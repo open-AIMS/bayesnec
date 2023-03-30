@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("properly drops zero bounded models for logit and log links", {
   beta_family_logit <- validate_family(Beta(link="logit"))
   binomial_family_logit <- validate_family(binomial(link = "logit"))

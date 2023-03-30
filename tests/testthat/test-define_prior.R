@@ -1,5 +1,3 @@
-library(bayesnec)
-
 pred_a <- rnorm(100)
 pred_na <- add_na(pred_a)
 resp_a <- 1:100

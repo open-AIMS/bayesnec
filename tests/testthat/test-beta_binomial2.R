@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("beta_binomial2 works", {
   out_lpmf <- beta_binomial2_lpmf(y = c(2, 4, 6), mu = c(0.25, 0.5, 0.75),
                                   phi = 1 / 3, trials = 12)

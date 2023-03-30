@@ -1,7 +1,3 @@
-library(bayesnec)
-rstan::rstan_options(auto_write = TRUE)
-options(mc.cores = 1)
-
 fit1 <- pull_brmsfit(manec_gausian_identity, "nec4param")
 fit2 <- pull_brmsfit(manec_gausian_identity, "ecx4param")
   

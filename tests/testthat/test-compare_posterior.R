@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("input errors work as intended", {
   expect_error(compare_posterior(list(ecx4param, nec4param)),
                "Argument x must be a named list.")

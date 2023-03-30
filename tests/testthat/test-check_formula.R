@@ -1,5 +1,3 @@
-library(bayesnec)
-
 nec3param <- function(beta, nec, top, x) {
   top * exp(-exp(beta) * (x - nec) *
     ifelse(x - nec < 0, 0, 1))
