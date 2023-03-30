@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("predict is silent", {
   expect_silent(predict(manec_example))
 })

@@ -1,7 +1,6 @@
 library(bayesnec)
 library(dplyr)
 library(testthat)
-rstan::rstan_options(auto_write = TRUE)
 options(mc.cores = 1)
 
 muted_bnec <- function(...) {

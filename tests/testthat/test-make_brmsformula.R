@@ -1,5 +1,3 @@
-library(bayesnec)
-
 b_top <- 100
 b_beta <- -0.2
 b_nec <- 4

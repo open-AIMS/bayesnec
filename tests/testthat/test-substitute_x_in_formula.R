@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("checks that gsub statement is replacing all wanted x correctly", {
   # neclin
   rhs_neclin <- bayesnec:::bf_neclin

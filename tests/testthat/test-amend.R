@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("input checks work correctly and return appropriate messages", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

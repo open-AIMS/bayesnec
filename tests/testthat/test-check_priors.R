@@ -1,5 +1,3 @@
-library(bayesnec)
-
 test_that("returns ggplot for bayesnecfit objects", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

@@ -1,5 +1,3 @@
-library(bayesnec)
-
 data <- data.frame(pred = 1:10, resp = 1:10, tr = 10, wgt = 15,
                    g_1 = "a", g_2 = "b")
 
