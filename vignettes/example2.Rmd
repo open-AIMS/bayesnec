@@ -200,9 +200,9 @@ rhat(exp_5, rhat_cutoff = 1.01) |>
 #> Error in UseMethod("rhat"): no applicable method for 'rhat' applied to an object of class "c('bayesmanecfit', 'bnecfit')"
 ```
 
-### Extracting endpoint values
+### Extracting estimate values
 
-The models prefixed with **ecx** are all models that do not have the *NEC* as a parameter in the model. That is, they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plots above for these models are an approximation based on *NSEC* [@fisherfox2023] and should only be used with careful consideration of the validity of this endpoint value (see the [Model details][e2b] vignette for more details). If a true model averaged estimate of *NEC* based only on threshold models is desired, this can be obtained with `model = "nec"`. We can use the helper functions `pull_out` and `amend` to alter the model set as required. `pull_out` has a `model` argument and can be used to pull a single model out (as above) or to pull out a specific set of models.
+The models prefixed with **ecx** are all models that do not have the *NEC* as a parameter in the model. That is, they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plots above for these models are an approximation based on *NSEC* [@fisherfox2023] and should only be used with careful consideration of the validity of this estimate value (see the [Model details][e2b] vignette for more details). If a true model averaged estimate of *NEC* based only on threshold models is desired, this can be obtained with `model = "nec"`. We can use the helper functions `pull_out` and `amend` to alter the model set as required. `pull_out` has a `model` argument and can be used to pull a single model out (as above) or to pull out a specific set of models.
 
 We can use this to obtain first a set of *NEC* only models from the existing set.
 
