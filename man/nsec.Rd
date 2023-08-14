@@ -11,6 +11,7 @@ nsec(
   precision = 1000,
   posterior = FALSE,
   x_range = NA,
+  hormesis_def = "control",
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975)
 )
@@ -33,6 +34,9 @@ just the median and 95 credible intervals.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
+\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
+of "max" or "control". See Details.}
+
 \item{xform}{A function to apply to the returned estimated concentration
 values.}
 
@@ -49,6 +53,10 @@ Extracts the predicted NSEC value as desired from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \details{
+For \code{hormesis_def}, if "max", then NSEC values are calculated
+as a decline from the maximum estimates (i.e. the peak at NEC);
+if "control", then ECx values are calculated relative to the control, which
+is assumed to be the lowest observed concentration.
 
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 \code{\link{compare_fitted}} do not require the same level of flexibility
