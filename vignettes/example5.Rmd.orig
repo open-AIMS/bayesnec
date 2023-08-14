@@ -3,7 +3,7 @@ title: "Running `bayesnec`"
 output:
   rmarkdown::html_vignette:
 vignette: >
-  %\VignetteIndexEntry{Model details}
+  %\VignetteIndexEntry{Running `bayesnec`}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: bayesnec.bib
