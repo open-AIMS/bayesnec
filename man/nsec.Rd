@@ -13,7 +13,11 @@ nsec(
   x_range = NA,
   hormesis_def = "control",
   xform = identity,
-  prob_vals = c(0.5, 0.025, 0.975)
+  prob_vals = c(0.5, 0.025, 0.975),
+  x_var,
+  group_var,
+  by_group = TRUE,
+  horme = FALSE
 )
 }
 \arguments{
