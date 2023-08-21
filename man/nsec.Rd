@@ -16,6 +16,7 @@ nsec(
   prob_vals = c(0.5, 0.025, 0.975),
   x_var,
   group_var,
+  curveid,
   by_group = TRUE,
   horme = FALSE
 )
@@ -47,6 +48,15 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{x_var}{A character indicating the name of the predictor (x) data in object}
+
+\item{group_var}{A character indicating the name of the grouping variable in object}
+
+\item{by_group}{A logical indicating if nsec values should be returned for
+each level in group_var, or marginalised across all groups.}
+
+\item{curvid}{A character indicating the name of the grouping variable in object}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and

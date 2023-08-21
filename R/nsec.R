@@ -20,6 +20,11 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param x_var A character indicating the name of the predictor (x) data in object
+#' @param group_var A character indicating the name of the grouping variable in object
+#' @param curvid A character indicating the name of the grouping variable in object
+#' @param by_group A logical indicating if nsec values should be returned for 
+#' each level in group_var, or marginalised across all groups.
 #'
 #' @details For \code{hormesis_def}, if "max", then NSEC values are calculated
 #' as a decline from the maximum estimates (i.e. the peak at NEC);
@@ -59,6 +64,7 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
                  xform = identity, prob_vals = c(0.5, 0.025, 0.975),
                  x_var, 
                  group_var, 
+                 curveid,
                  by_group = TRUE,
                  horme = FALSE) {
   UseMethod("nsec")
@@ -206,10 +212,6 @@ nsec_fct <- function(y, reference, x_vec) {
 #'
 #' @param object An object of class \code{\link{brmsfit}} returned by
 #' \code{\link{brms}}.
-#' @param x_var A character indicating the name of the predictor (x) data in object
-#' @param group_var A character indicating the name of the grouping variable in object
-#' @param by_group A logical indicating if nsec values should be returned for 
-#' each level in group_var, or marginalised across all groups.
 #'
 #' @inherit nsec
 #' 
@@ -370,7 +372,9 @@ nsec.brmsfit <- function(object,
 nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
                      x_range = NA,
                      hormesis_def = "control", xform = identity,
-                     prob_vals = c(0.5, 0.025, 0.975)) {
+                     prob_vals = c(0.5, 0.025, 0.975), x_var,
+                     curveid = NA, 
+                     horme = FALSE) {
   chk_numeric(sig_val)
   chk_numeric(precision)
   
@@ -388,53 +392,71 @@ nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
   }
-  
-  # if (length(grep("ecx", object$model)) > 0) {
-  #   mod_class <- "ecx"
-  # } else {
-  #   mod_class <- "nec"
-  # }
-  newdata_list <- newdata_eval(
-    object, precision = precision, x_range = x_range
-  )
-  p_samples <- predict(object, newdata = newdata_list$newdata,
-                       interval = "confidence", level = prob_vals[3]-prob_vals[2])
-  x_vec <- newdata_list$x_vec
-  
-  # calculate the reference level
-  ref_dat <- data.frame(min(newdata_list$newdata))
-  colnames(ref_dat) <- colnames(newdata_list$newdata)
-  reference <- predict(object, newdata = ref_dat,
-                       interval = "confidence" , 
-                       level = 1-(sig_val*2))["Lower"]
-  
-  #   if (grepl("horme", object$model)) {
-  #   n <- seq_len(nrow(p_samples))
-  #   p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
-  #                           p_samples, hormesis_def, fct = "rbind")
-  #   nec_posterior <- as_draws_df(object$fit)[["b_nec_Intercept"]]
-  #   if (hormesis_def == "max") {
-  #     reference <- quantile(apply(p_samples, 2, max), probs = sig_val)
-  #   }
-  # }
-  nsec_out <- apply(p_samples, 2, nsec_fct, reference, x_vec)
-  # formula <- formula(object)
-  # x_call <- x$call
-  # if (inherits(x_call, "call")) {
-  #   x_call[[2]] <- str2lang("nsec_out")
-  #   nsec_out <- eval(x_call)
-  # }
-  if (inherits(xform, "function")) {
-    nsec_out <- xform(nsec_out)
+
+  if(is.na(x_range)){
+    x_range = range(object$data[x_var])
   }
-  nsec_estimate <-nsec_out
-  names(nsec_estimate) <- clean_names(nsec_estimate)
+  x_vec <- seq(min(x_range), max(x_range), length=precision)
+  
+  if(is.na(curveid)){
+    pred_dat <- data.frame(x_vec)
+    names(pred_dat) <- x_var
+  
+    p_samples <- suppressWarnings(predict(object, newdata = pred_dat,
+                      interval = "confidence", level = prob_vals[3]-prob_vals[2]))
+    # check curve goes down
+    if (p_samples[1, "Prediction"]<p_samples[2, "Prediction"]){
+      stop("nsec can currently only be estimated for curves that represent an overall decreasing function")
+    }
+      
+    # calculate the reference level
+    ref_dat <- data.frame(min(x_vec))
+    colnames(ref_dat) <- colnames(x_vec)
+    reference <- suppressWarnings(predict(object, newdata = ref_dat,
+                         interval = "confidence" , 
+                         level = 1-(sig_val*2))["Lower"])
+  
+    nsec_out <- apply(p_samples, 2, nsec_fct, reference, x_vec)
+    if (inherits(xform, "function")) {
+      xform(nsec_out)
+    } 
+    out_vals <- as.numeric(unlist(nsec_out))
+  } else {
+    groups <-  unlist(unique(object$data[, 4]))
+    out_vals <- lapply(groups, FUN = function(g){
+      dat_list <- list(x_vec, g) 
+      names(dat_list) <- c(x_var, curveid)
+      pred_dat <- expand.grid(dat_list)
+
+      p_samples <- suppressWarnings(predict(object, newdata = pred_dat,
+                                            interval = "confidence", level = prob_vals[3]-prob_vals[2]))
+      # check curve goes down
+      if (p_samples[1, "Prediction"]<p_samples[2, "Prediction"]){
+        stop("nsec can currently only be estimated for curves that represent an overall decreasing function")
+      }
+      
+      # calculate the reference level
+      ref_dat <- data.frame(min(x_vec))
+      colnames(ref_dat) <- colnames(x_vec)
+      reference <- suppressWarnings(predict(object, newdata = ref_dat,
+                                            interval = "confidence" , 
+                                            level = 1-(sig_val*2))["Lower"])
+      
+      nsec_out <- apply(p_samples, 2, nsec_fct, reference, x_vec)
+
+      if (inherits(xform, "function")) {
+        nsec_out <- xform(nsec_out)
+      }
+      nsec_out
+    })  
+    names(out_vals) <- groups
+    out_vals <- do.call("rbind", out_vals) 
+  }
+
+  nsec_estimate <- out_vals
   attr(nsec_estimate, "precision") <- precision
-  attr(nsec_out, "precision") <- precision
   attr(nsec_estimate, "sig_val") <- sig_val
-  attr(nsec_out, "sig_val") <- sig_val
   attr(nsec_estimate, "toxicity_estimate") <- "nsec"
-  attr(nsec_out, "toxicity_estimate") <-  "nsec"
   nsec_estimate
   
 }
