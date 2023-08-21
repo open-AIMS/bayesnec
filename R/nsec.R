@@ -22,13 +22,14 @@
 #' 0.975 (95 percent credible intervals).
 #' @param x_var A character indicating the name of the predictor (x) data in object
 #' @param group_var A character indicating the name of the grouping variable in object
-#' @param curvid A character indicating the name of the grouping variable in object
+#' @param curveid A character indicating the name of the grouping variable in object
 #' @param by_group A logical indicating if nsec values should be returned for 
 #' each level in group_var, or marginalised across all groups.
+#' @param horme Logical indicating if hormesis is evident.
 #'
 #' @details For \code{hormesis_def}, if "max", then NSEC values are calculated
 #' as a decline from the maximum estimates (i.e. the peak at NEC);
-#' if "control", then ECx values are calculated relative to the control, which
+#' if "control", then NSEC values are calculated relative to the control, which
 #' is assumed to be the lowest observed concentration.
 #' 
 #' Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
@@ -306,7 +307,7 @@ nsec.brmsfit <- function(object,
     
     if (horme) {
       n <- seq_len(nrow(p_samples))
-      p_samples <- bayesnec:::do_wrapper(n, bayesnec:::modify_posterior, object, x_vec,
+      p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
                                          p_samples, hormesis_def, fct = "rbind")
       nec_posterior <- as_draws_df(object$fit)[["b_nec_Intercept"]]
       if (hormesis_def == "max") {
@@ -332,7 +333,7 @@ nsec.brmsfit <- function(object,
       ecnsec <- quantile(ecnsecP, probs = prob_vals)      
       if (horme) {
         n <- seq_len(nrow(p_samples))
-        p_samples <- bayesnec:::do_wrapper(n, bayesnec:::modify_posterior, object, x_vec,
+        p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
                                            p_samples, hormesis_def, fct = "rbind")
         nec_posterior <- as_draws_df(object$fit)[["b_nec_Intercept"]]
         if (hormesis_def == "max") {
