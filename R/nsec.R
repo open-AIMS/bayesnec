@@ -9,9 +9,6 @@
 #' estimate NEC as an interpolated NOEC value from smooth ECx curves.
 #' @param precision The number of unique x values over which to find NSEC -
 #' large values will make the NSEC estimate more precise.
-#' @param posterior A \code{\link[base]{logical}} value indicating if the full
-#' posterior sample of calculated NSEC values should be returned instead of
-#' just the median and 95 credible intervals.
 #' @param hormesis_def A \code{\link[base]{character}} vector, taking values
 #' of "max" or "control". See Details.
 #' @param xform A function to apply to the returned estimated concentration
@@ -20,12 +17,6 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
-#' @param x_var A character indicating the name of the predictor (x) data in object
-#' @param group_var A character indicating the name of the grouping variable in object
-#' @param curveid A character indicating the name of the grouping variable in object
-#' @param by_group A logical indicating if nsec values should be returned for 
-#' each level in group_var, or marginalised across all groups.
-#' @param horme Logical indicating if hormesis is evident.
 #'
 #' @details For \code{hormesis_def}, if "max", then NSEC values are calculated
 #' as a decline from the maximum estimates (i.e. the peak at NEC);
@@ -61,13 +52,8 @@
 #'
 #' @export
 nsec <- function(object, sig_val = 0.01, precision = 1000,
-                 posterior = FALSE, x_range = NA, hormesis_def = "control",
-                 xform = identity, prob_vals = c(0.5, 0.025, 0.975),
-                 x_var, 
-                 group_var, 
-                 curveid,
-                 by_group = TRUE,
-                 horme = FALSE) {
+                 x_range = NA, hormesis_def = "control",
+                 xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
   UseMethod("nsec")
 }
 
@@ -75,6 +61,9 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} returned by
 #' \code{\link{bnec}}.
+#' @param posterior A \code{\link[base]{logical}} value indicating if the full
+#' posterior sample of calculated NSEC values should be returned instead of
+#' just the median and 95 credible intervals.
 #'
 #' @inherit nsec details seealso return examples
 #' 
@@ -86,9 +75,10 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
 #'
 #' @export
 nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
-                             posterior = FALSE, x_range = NA,
+                             x_range = NA,
                              hormesis_def = "control", xform = identity,
-                             prob_vals = c(0.5, 0.025, 0.975)) {
+                             prob_vals = c(0.5, 0.025, 0.975), 
+                             posterior = FALSE) {
   chk_numeric(sig_val)
   chk_numeric(precision)
   chk_logical(posterior)
@@ -166,6 +156,9 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
 #' \code{\link{bnec}}.
 #'
 #' @inherit nsec details seealso return examples
+#' @param posterior A \code{\link[base]{logical}} value indicating if the full
+#' posterior sample of calculated NSEC values should be returned instead of
+#' just the median and 95 credible intervals.
 #' 
 #' @importFrom stats quantile
 #'
@@ -173,9 +166,9 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
 #'
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
-                               posterior = FALSE, x_range = NA,
+                               x_range = NA,
                                hormesis_def = "control", xform = identity,
-                               prob_vals = c(0.5, 0.025, 0.975)) {
+                               prob_vals = c(0.5, 0.025, 0.975), posterior = FALSE) {
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
   }
@@ -227,8 +220,14 @@ nsec_fct <- function(y, reference, x_vec) {
 #'
 #' @param object An object of class \code{\link{brmsfit}} returned by
 #' \code{\link{brms}}.
-#'
-#' @inherit nsec
+#' @param posterior A \code{\link[base]{logical}} value indicating if the full
+#' posterior sample of calculated NSEC values should be returned instead of
+#' just the median and 95 credible intervals.
+#' @param x_var A character indicating the name of the predictor (x) data in object
+#' @param group_var A character indicating the name of the grouping variable in object
+#' @param by_group A logical indicating if nsec values should be returned for 
+#' each level in group_var, or marginalised across all groups.
+#' @param horme Logical indicating if hormesis is evident.
 #' 
 #' @importFrom stats quantile
 #' @importFrom dplyr bind_cols
@@ -241,11 +240,11 @@ nsec_fct <- function(y, reference, x_vec) {
 nsec.brmsfit <- function(object,
                          sig_val = 0.01,                         
                          precision = 1000,    
-                         posterior = FALSE,    
+                         x_range = NA,                         
                          hormesis_def = "control",  
-                         xform = identity,                         
-                         x_range = NA,   
-                         prob_vals = c(0.5, 0.025, 0.975),                         
+                         xform = identity,    
+                         prob_vals = c(0.5, 0.025, 0.975), 
+                         posterior = FALSE,
                          x_var, 
                          group_var = NA, 
                          by_group = FALSE,
@@ -400,8 +399,10 @@ nsec.brmsfit <- function(object,
 #'
 #' @param object An object of class \code{\link{drc}} returned by
 #' \code{\link{drc}}.
-#'
-#' @inherit nsec
+#' @param x_var A character indicating the name of the predictor (x) data in object
+#' each level in group_var, or marginalised across all groups.
+#' @param horme Logical indicating if hormesis is evident. Not currently implemented.
+#' @param curveid A character indicating the name of the grouping variable in object
 #' 
 #' @importFrom chk chk_logical chk_numeric
 #' 
@@ -411,9 +412,10 @@ nsec.brmsfit <- function(object,
 nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
                      x_range = NA,
                      hormesis_def = "control", xform = identity,
-                     prob_vals = c(0.5, 0.025, 0.975), x_var,
-                     curveid = NA, 
-                     horme = FALSE) {
+                     prob_vals = c(0.5, 0.025, 0.975),
+                     x_var,
+                     horme = FALSE,
+                     curveid = NA) {
   chk_numeric(sig_val)
   chk_numeric(precision)
   
