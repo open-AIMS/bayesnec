@@ -6,8 +6,8 @@ b_nec <- 4
 fct <- function(...)as.integer(round(bayesnec:::pred_nec3param(...)))
 dat <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
                   group1 = "a", group2 = "b", group3 = "b", group4 = "b", 
-                  group5 = "b", group6 = "c", z = 19, k = 20, sei = 30)
-dat$y <- fct(b_beta, b_nec, b_top, dat$x)
+                  group5 = "b", group6 = "c", z = 19, k = 20, sei = 30) %>%
+  dplyr::mutate(y = fct(b_beta, b_nec, b_top, x))
 
 x0 <- y | trials(tr) + weights(wght) + se(sei) +
   cens(k) ~ crf(sqrt(x), "nec") +

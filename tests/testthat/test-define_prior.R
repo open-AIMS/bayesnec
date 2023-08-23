@@ -1,4 +1,5 @@
 library(bayesnec)
+library(brms)
 
 pred_a <- rnorm(100)
 pred_na <- add_na(pred_a)
@@ -6,6 +7,8 @@ resp_a <- 1:100
 resp_na <- add_na(resp_a)
 pred_b <- pred_a[-1]
 resp_b <- resp_a[-1]
+
+data(manec_example)
 
 test_that("model is always properly specified as character", {
   p_a <- define_prior(model = "nec3param", family = gaussian(),

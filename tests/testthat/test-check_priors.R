@@ -1,9 +1,9 @@
 library(bayesnec)
+library(ggplot2)
+
+data(manec_example)
 
 test_that("returns ggplot for bayesnecfit objects", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
   p <- check_priors(nec4param)
   expect_error(print(p), NA)
   expect_silent(check_priors(nec4param))
@@ -11,9 +11,6 @@ test_that("returns ggplot for bayesnecfit objects", {
 })
 
 test_that("returns pdf for bayesmanecfit objects", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
   filename <- random_filename(15)
   expect_invisible(check_priors(manec_example, filename = filename))
   on.exit(file.remove(paste(filename, ".pdf", sep = "")))
