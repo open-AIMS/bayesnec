@@ -53,12 +53,10 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 
 \item{group_var}{A character indicating the name of the grouping variable in object}
 
-\item{curveid}{A character indicating the name of the grouping variable in object}
-
 \item{by_group}{A logical indicating if nsec values should be returned for
 each level in group_var, or marginalised across all groups.}
 
-\item{horme}{Logical indicating if hormesis is evident.}
+\item{curvid}{A character indicating the name of the grouping variable in object}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
@@ -71,7 +69,7 @@ Extracts the predicted NSEC value as desired from an object of class
 \details{
 For \code{hormesis_def}, if "max", then NSEC values are calculated
 as a decline from the maximum estimates (i.e. the peak at NEC);
-if "control", then NSEC values are calculated relative to the control, which
+if "control", then ECx values are calculated relative to the control, which
 is assumed to be the lowest observed concentration.
 
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
