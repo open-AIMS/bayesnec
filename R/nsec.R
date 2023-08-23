@@ -117,11 +117,6 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
                                re_formula = NA)
   x_vec <- newdata_list$x_vec
   reference <- quantile(p_samples[, 1], sig_val)
-  ecnsecP <- apply(p_samples, MARGIN = 1, FUN = function(r){
-    #(max(r) - diff(range(r)))/reference * 100
-    (1-diff(c(min(r), reference))/(diff(range(r)))) * 100
-  })
-  ecnsec <- quantile(ecnsecP, probs = prob_vals)
   if (grepl("horme", object$model)) {
     n <- seq_len(nrow(p_samples))
     p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
@@ -150,8 +145,6 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
   attr(nsec_out, "sig_val") <- sig_val
   attr(nsec_estimate, "toxicity_estimate") <- "nsec"
   attr(nsec_out, "toxicity_estimate") <-  "nsec"
-  attr(nsec_estimate, "ecnsec_relativeP") <- ecnsec
-  attr(nsec_out, "ecnsec_relativeP") <-  ecnsecP
   if (!posterior) {
     nsec_estimate
   } else {
@@ -187,18 +180,13 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
                 posterior = posterior, hormesis_def = hormesis_def,
                 x_range = x_range, xform = xform, prob_vals = prob_vals)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
-    sample_out <- sample(out, n_s)
-    attr(sample_out, "ecnsec_relativeP") <- sample(attributes(out)$ecnsec_relativeP, n_s)
-    sample_out
+    sample(out, n_s)
   }
   sample_size <- object$sample_size
   to_iter <- seq_len(length(object$success_models))
   nsec_out <- sapply(to_iter, sample_nsec, object, sig_val, precision,
                      posterior = TRUE, hormesis_def, x_range,
                      xform, prob_vals, sample_size)
-  ecnsecP <- unlist(lapply(nsec_out, 
-                    FUN = function(p){attributes(p)$ecnsec_relativeP}))
-  ecnsec <- quantile(ecnsecP, probs = prob_vals)
   nsec_out <- unlist(nsec_out)
   nsec_estimate <- quantile(nsec_out, probs = prob_vals)
   names(nsec_estimate) <- clean_names(nsec_estimate)
@@ -208,8 +196,6 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   attr(nsec_out, "sig_val") <- sig_val
   attr(nsec_estimate, "toxicity_estimate") <- "nsec"
   attr(nsec_out, "toxicity_estimate") <-  "nsec"
-  attr(nsec_estimate, "ecnsec_relativeP") <- ecnsec
-  attr(nsec_out, "ecnsec_relativeP") <-  ecnsecP
   if (!posterior) {
     nsec_estimate
   } else {
@@ -230,7 +216,6 @@ nsec_fct <- function(y, reference, x_vec) {
 #' @inherit nsec
 #' 
 #' @importFrom stats quantile
-#' @importFrom dplyr bind_cols
 #' @importFrom brms as_draws_df posterior_epred
 #' @importFrom chk chk_logical chk_numeric
 #' 
@@ -298,11 +283,6 @@ nsec.brmsfit <- function(object,
       stop(paste(attributes(p_samples)$condition, "Do you need to specify a group_var variable?", sep=""))
     }
     reference <- quantile(p_samples[, 1], sig_val)
-    ecnsecP <- apply(p_samples, MARGIN = 1, FUN = function(r){
-      #(max(r) - diff(range(r)))/reference * 100
-      (1-diff(c(min(r), reference))/(diff(range(r)))) * 100
-    })
-    ecnsec <- quantile(ecnsecP, probs = prob_vals)
     
     if (horme) {
       n <- seq_len(nrow(p_samples))
@@ -325,11 +305,7 @@ nsec.brmsfit <- function(object,
       
       p_samples <- posterior_epred(object, newdata = pred_dat, re_formula = NA)
       reference <- quantile(p_samples[, 1], sig_val)
-      ecnsecP <- apply(p_samples, MARGIN = 1, FUN = function(r){
-        #(max(r) - diff(range(r)))/reference * 100
-        (1-diff(c(min(r), reference))/(diff(range(r)))) * 100
-      })
-      ecnsec <- quantile(ecnsecP, probs = prob_vals)      
+      
       if (horme) {
         n <- seq_len(nrow(p_samples))
         p_samples <- bayesnec:::do_wrapper(n, bayesnec:::modify_posterior, object, x_vec,
@@ -341,57 +317,43 @@ nsec.brmsfit <- function(object,
       }    
       
       nsec_out <- apply(p_samples, 1, nsec_fct, reference, x_vec)
-      nsec_out <- unlist(nsec_out)
-      attr(nsec_out, "ecnsec_relativeP") <- ecnsec
-      nsec_out
-    })
-    ecnsec <- lapply(out_vals, 
-                     FUN = function(p){attributes(p)$ecnsec_relativeP})
-    names(ecnsec) <- groups
+      unlist(nsec_out)
+      
+    })    
   }
   
-  if(by_group & posterior & !is.na(group_var)){
+  if(by_group & posterior & !is.na(group_var)){   
     names(out_vals) <- groups
     out_vals <- out_vals |> bind_cols() |> 
       pivot_longer(everything(), names_to = group_var, values_to = "NSEC")
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
   }
   
   if(by_group & !posterior & !is.na(group_var)){   
     names(out_vals) <- groups
     out_vals <- lapply(out_vals, quantile, probs = prob_vals) |> 
       bind_rows(.id = group_var)
-    names(out_vals) <- clean_names(out_vals)
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
   }
   
-  if(!by_group & posterior & !is.na(group_var)){
-    out_vals <- as.numeric((unlist(out_vals)))
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
+  if(!by_group & posterior & !is.na(group_var)){   
+    out_vals <- as.numeric(unlist(out_vals))
   }
   
   if(!by_group & !posterior & !is.na(group_var)){   
     out_vals <- quantile(unlist(out_vals), probs = prob_vals)
-    names(out_vals) <- clean_names(out_vals)
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
   }
   
-  if(posterior & is.na(group_var)){ 
-    out_vals <- unlist(nsec_out)
-    attr(out_vals, "ecnsec_relativeP") <- ecnsecP
+  if(posterior & is.na(group_var)){   
+    out_vals <- as.numeric(unlist(nsec_out))
   }
   
   if(!posterior & is.na(group_var)){   
-    
     out_vals <- quantile(unlist(nsec_out), probs = prob_vals)
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
-    names(out_vals) <- clean_names(out_vals)
   }
   
+  names(out_vals) <- clean_names(out_vals)
   attr(out_vals, "precision") <- precision
   attr(out_vals, "sig_val") <- sig_val
   attr(out_vals, "toxicity_estimate") <- "nsec"
-
   return(out_vals)
 }
 
@@ -453,16 +415,12 @@ nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
     reference <- suppressWarnings(predict(object, newdata = ref_dat,
                          interval = "confidence" , 
                          level = 1-(sig_val*2))["Lower"])
-    ecnsec <- apply(p_samples, MARGIN = 2, FUN = function(r){
-      (1-diff(c(min(r), reference))/(diff(range(r)))) * 100
-    })
-    
+  
     nsec_out <- apply(p_samples, 2, nsec_fct, reference, x_vec)
     if (inherits(xform, "function")) {
       xform(nsec_out)
     } 
     out_vals <- as.numeric(unlist(nsec_out))
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
   } else {
     groups <-  unlist(unique(object$data[, 4]))
     out_vals <- lapply(groups, FUN = function(g){
@@ -483,22 +441,16 @@ nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
       reference <- suppressWarnings(predict(object, newdata = ref_dat,
                                             interval = "confidence" , 
                                             level = 1-(sig_val*2))["Lower"])
-      ecnsec <- apply(p_samples, MARGIN = 2, FUN = function(r){
-        (1-diff(c(min(r), reference))/(diff(range(r)))) * 100
-      })
       
       nsec_out <- apply(p_samples, 2, nsec_fct, reference, x_vec)
 
       if (inherits(xform, "function")) {
         nsec_out <- xform(nsec_out)
       }
-      attr(nsec_out, "ecnsec_relativeP") <- ecnsec
       nsec_out
     })  
     names(out_vals) <- groups
-    ecnsec <- do.call("rbind", lapply(out_vals, FUN = function(x){attributes(x)$ecnsec_relativeP}))
     out_vals <- do.call("rbind", out_vals) 
-    attr(out_vals, "ecnsec_relativeP") <- ecnsec
   }
 
   nsec_estimate <- out_vals
