@@ -71,9 +71,6 @@
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
     </li>
-    <li>
-      <a href="../articles/example5.html">Running `bayesnec`</a>
-    </li>
   </ul>
 </li>
 <li>
@@ -222,40 +219,38 @@ we can plot a <code>bayesmanecfit</code> model object simply with
 <code>autoplot</code>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%"><p class="caption">
-plot of chunk exmp2-decline
-</p>
-</div>
+<p><img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%" style="display: block; margin: auto;"></p>
 <p>The default plot looks exactly the same as our regular
 <code>bayesnecfit</code> plot, but the output is based on a weighted
 average of all the model fits in the <code>model = "decline"</code>
 model set that were able to fit successfully using the default
 <code>bnec</code> settings. The <em>NEC</em> estimate on this plot (and
 in the summary output below) is based on a mix of actual <em>NEC</em>
-estimates, as well as the <em>NSEC</em> <span class="citation">(Fisher
-and Fox, n.d.)</span> estimates that are used as an approximation to
-<em>NEC</em> for all the <strong>ecx</strong>-containing models in the
-set. The fitted <code>bayesmanecfit</code> object contains different
-elements to the <code>bayesnecfit</code>. In particular,
-<code>mod_stats</code> contains the table of model fit statistics for
-all the fitted models. This includes the model name, the WAIC (as
-returned from <code>brms</code>), wi (the model weight, currently
-defaulting to <code>"pseudobma"</code> using Bayesian bootstrap from
-<code>loo</code>), and the dispersion estimates (only reported if
-response is modelled with a Poisson or Binomial distribution, otherwise
-NA).</p>
+estimates, as well as the <em>NSEC</em> estimates that are used as an
+approximation to <em>NEC</em> for all the
+<strong>ecx</strong>-containing models in the set. Note that we do not
+currently recommend reporting these values as the <em>NEC</em> (see the
+<a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
+details</a> vignette for more information). The fitted
+<code>bayesmanecfit</code> object contains different elements to the
+<code>bayesnecfit</code>. In particular, <code>mod_stats</code> contains
+the table of model fit statistics for all the fitted models. This
+includes the model name, the WAIC (as returned from <code>brms</code>),
+wi (the model weight, currently defaulting to <code>"pseudobma"</code>
+using Bayesian bootstrap from <code>loo</code>), and the dispersion
+estimates (only reported if response is modelled with a Poisson or
+Binomial distribution, otherwise NA).</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span></span>
 <span><span class="co">#&gt;               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span></span>
-<span><span class="co">#&gt; nec4param nec4param -84.52493 3.403122e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; neclin       neclin -52.40717 4.982417e-04                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxlin       ecxlin -27.77174 2.571332e-07                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecx4param ecx4param -82.09029 1.228082e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb1       ecxwb1 -75.38960 1.470637e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb2       ecxwb2 -84.82635 2.754053e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxll5       ecxll5 -83.78197 1.561911e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxll4       ecxll4 -81.47512 9.007833e-02                  NA              NA               NA</span></span></code></pre></div>
+<span><span class="co">#&gt; nec4param nec4param -84.96967 3.637654e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; neclin       neclin -52.59813 1.207255e-03                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxlin       ecxlin -28.10481 6.266861e-06                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecx4param ecx4param -81.41660 8.886246e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb1       ecxwb1 -75.28228 1.496326e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb2       ecxwb2 -84.93990 2.699796e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll5       ecxll5 -84.07431 1.622270e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll4       ecxll4 -81.61968 9.898875e-02                  NA              NA               NA</span></span></code></pre></div>
 <p>We can obtain a neater summary of the model fit by using the
 <code>summary</code> method for a <code>bayesmanecfit</code> object. A
 list of fitted models, and model weights are provided. In addition, the
@@ -276,20 +271,20 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Model weights (Method: pseudobma_bb_weights):</span></span>
 <span><span class="co">#&gt;             waic   wi</span></span>
-<span><span class="co">#&gt; nec4param -84.52 0.34</span></span>
-<span><span class="co">#&gt; neclin    -52.41 0.00</span></span>
-<span><span class="co">#&gt; ecxlin    -27.77 0.00</span></span>
-<span><span class="co">#&gt; ecx4param -82.09 0.12</span></span>
-<span><span class="co">#&gt; ecxwb1    -75.39 0.01</span></span>
-<span><span class="co">#&gt; ecxwb2    -84.83 0.28</span></span>
-<span><span class="co">#&gt; ecxll5    -83.78 0.16</span></span>
-<span><span class="co">#&gt; ecxll4    -81.48 0.09</span></span>
+<span><span class="co">#&gt; nec4param -84.97 0.36</span></span>
+<span><span class="co">#&gt; neclin    -52.60 0.00</span></span>
+<span><span class="co">#&gt; ecxlin    -28.10 0.00</span></span>
+<span><span class="co">#&gt; ecx4param -81.42 0.09</span></span>
+<span><span class="co">#&gt; ecxwb1    -75.28 0.01</span></span>
+<span><span class="co">#&gt; ecxwb2    -84.94 0.27</span></span>
+<span><span class="co">#&gt; ecxll5    -84.07 0.16</span></span>
+<span><span class="co">#&gt; ecxll4    -81.62 0.10</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Summary of weighted NEC posterior estimates:</span></span>
 <span><span class="co">#&gt; NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC</span></span>
 <span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     3.32 2.00  3.97</span></span>
+<span><span class="co">#&gt; NEC     3.35 2.14  3.98</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
@@ -297,11 +292,11 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt; nec4param     0.86      0.01 0.84  0.87</span></span>
 <span><span class="co">#&gt; neclin        0.83      0.01 0.80  0.84</span></span>
 <span><span class="co">#&gt; ecxlin        0.80      0.01 0.77  0.82</span></span>
-<span><span class="co">#&gt; ecx4param     0.85      0.01 0.84  0.87</span></span>
+<span><span class="co">#&gt; ecx4param     0.85      0.01 0.83  0.87</span></span>
 <span><span class="co">#&gt; ecxwb1        0.85      0.01 0.83  0.86</span></span>
 <span><span class="co">#&gt; ecxwb2        0.86      0.01 0.84  0.87</span></span>
 <span><span class="co">#&gt; ecxll5        0.86      0.01 0.84  0.87</span></span>
-<span><span class="co">#&gt; ecxll4        0.85      0.01 0.84  0.87</span></span></code></pre></div>
+<span><span class="co">#&gt; ecxll4        0.85      0.01 0.83  0.87</span></span></code></pre></div>
 <p>The <code>bayesmanecfit</code> object also contains all of the
 individual <code>brms</code> model fits, which can be extracted using
 the <code>pull_out</code> function. For example, we can pull out and
@@ -309,11 +304,7 @@ plot the model <strong>ecx4param</strong>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5_nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"ecx4param"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_5_nec4param</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-ecx4param-1.png" alt="plot of chunk exmp2-ecx4param" width="60%"><p class="caption">
-plot of chunk exmp2-ecx4param
-</p>
-</div>
+<p><img src="vignette-fig-exmp2-ecx4param-1.png" alt="plot of chunk exmp2-ecx4param" width="60%" style="display: block; margin: auto;"></p>
 <p>This would extract the <strong>nec4param</strong> model from the
 <code>bayesmanecfit</code> and create a new object of class
 <code>bayesnecfit</code> which contains just a single fit. This would be
@@ -323,11 +314,7 @@ using <code>bnec</code>. All of the models in the
 argument <code>all_models = TRUE</code>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_5</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-allmods-1.png" alt="plot of chunk exmp2-allmods" width="60%"><p class="caption">
-plot of chunk exmp2-allmods
-</p>
-</div>
+<p><img src="vignette-fig-exmp2-allmods-1.png" alt="plot of chunk exmp2-allmods" width="60%" style="display: block; margin: auto;"></p>
 <p>You can see that some of these models represent very bad fits, and
 accordingly have extremely low model weights, such as the
 <strong>ecxlin</strong> and <strong>neclin</strong> models in this
@@ -342,11 +329,7 @@ all models with a high weight, as these are the models most influencing
 the multi-model inference.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot.html">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">exp_5</span>, <span class="st">"ecxwb1"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-goodmod-1.png" alt="plot of chunk exmp2-goodmod" width="60%"><p class="caption">
-plot of chunk exmp2-goodmod
-</p>
-</div>
+<p><img src="vignette-fig-exmp2-goodmod-1.png" alt="plot of chunk exmp2-goodmod" width="60%" style="display: block; margin: auto;"></p>
 <p>Assessing chains for all the models in <code>bayesmanecfit</code>
 does not work as well using the default <code>brms</code> plotting
 method. Instead use <code>check_chains</code> and make sure to pass a
@@ -360,11 +343,7 @@ an individual model fit, but also saving all fits to a file in the
 working directory.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-checkpriors-1.png" alt="plot of chunk exmp2-checkpriors" width="60%"><p class="caption">
-plot of chunk exmp2-checkpriors
-</p>
-</div>
+<p><img src="vignette-fig-exmp2-checkpriors-1.png" alt="plot of chunk exmp2-checkpriors" width="60%" style="display: block; margin: auto;"></p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exp_5</span>, filename <span class="op">=</span> <span class="st">"example_5_all_priors"</span><span class="op">)</span></span></code></pre></div>
 <p>Where a large number of models are failing to converge, obviously it
@@ -389,25 +368,24 @@ of <code>iter</code> (10,000).</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rhat.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span>, rhat_cutoff <span class="op">=</span> <span class="fl">1.01</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="st">"[["</span>, <span class="st">"failed"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 </span></span>
-<span><span class="co">#&gt;      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt;     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE</span></span></code></pre></div>
 </div>
 <div class="section level4">
-<h4 id="extracting-toxicity-values">Extracting toxicity values<a class="anchor" aria-label="anchor" href="#extracting-toxicity-values"></a>
+<h4 id="extracting-endpoint-values">Extracting endpoint values<a class="anchor" aria-label="anchor" href="#extracting-endpoint-values"></a>
 </h4>
 <p>The models prefixed with <strong>ecx</strong> are all models that do
 not have the <em>NEC</em> as a parameter in the model. That is, they are
 smooth curves as a function of concentration and have no breakpoint. The
 <em>NEC</em> on the plots above for these models are an approximation
-based on <em>NSEC</em> <span class="citation">(Fisher and Fox,
-n.d.)</span> and should only be used with careful consideration of the
-validity of this toxicity value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
-details</a> vignette for more details). If a true model averaged
-estimate of <em>NEC</em> based only on threshold models is desired, this
-can be obtained with <code>model = "nec"</code>. We can use the helper
-functions <code>pull_out</code> and <code>amend</code> to alter the
-model set as required. <code>pull_out</code> has a <code>model</code>
-argument and can be used to pull a single model out (as above) or to
-pull out a specific set of models.</p>
+based on <em>NSEC</em> and should not be used without careful
+consideration of the validity of this endpoint value (see the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html" class="external-link">Model
+details</a> vignette for more details). A formal model averaged estimate
+of <em>NEC</em> should be obtained with <code>model = "nec"</code>. We
+can use the helper functions <code>pull_out</code> and
+<code>amend</code> to alter the model set as required.
+<code>pull_out</code> has a <code>model</code> argument and can be used
+to pull a single model out (as above) or to pull out a specific set of
+models.</p>
 <p>We can use this to obtain first a set of <em>NEC</em> only models
 from the existing set.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -432,7 +410,7 @@ details</a> vignette).</p>
 <span><span class="va">ECx50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
 <span><span class="va">ECx10</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 3.622077 2.709280 4.157703 </span></span>
+<span><span class="co">#&gt; 3.651834 2.719447 4.177541 </span></span>
 <span><span class="co">#&gt; attr(,"precision")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -441,7 +419,7 @@ details</a> vignette).</p>
 <span><span class="co">#&gt; [1] "ecx"</span></span>
 <span><span class="va">ECx50</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 5.100009 4.832196 5.368070 </span></span>
+<span><span class="co">#&gt; 5.100009 4.852034 5.367822 </span></span>
 <span><span class="co">#&gt; attr(,"precision")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -455,7 +433,7 @@ these models.</p>
 <code class="sourceCode R"><span><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_nec</span></span>
 <span><span class="va">NECvals</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 3.558723 3.153759 4.024148</span></span></code></pre></div>
+<span><span class="co">#&gt; 3.545875 3.164917 4.038829</span></span></code></pre></div>
 <p>Note that the new <em>NEC</em> estimates from the
 <strong>nec</strong>-containing model fits are slightly higher than
 those reported in the summary output of all the fitted models. This can
@@ -492,11 +470,7 @@ relevant thresholds.</p>
 <span>        axis.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">16</span><span class="op">)</span>,</span>
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        strip.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">16</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-pretty-1.png" alt="plot of chunk exmp2-pretty" width="60%"><p class="caption">
-plot of chunk exmp2-pretty
-</p>
-</div>
+<p><img src="vignette-fig-exmp2-pretty-1.png" alt="plot of chunk exmp2-pretty" width="60%" style="display: block; margin: auto;"></p>
 </div>
 </div>
 </div>
@@ -508,11 +482,6 @@ plot of chunk exmp2-pretty
 Burnham, K P, and D R Anderson. 2002. <em><span class="nocase">Model
 Selection and Multimodel Inference; A Practical Information-Theoretic
 Approach</span></em>. 2nd ed. New York: Springer.
-</div>
-<div id="ref-fisherfox2023" class="csl-entry">
-Fisher, Rebecca, and David R. Fox. n.d. <span>“Introducing the
-No-Significant-Effect Concentration.”</span> <em>Environmental
-Toxicology and Chemistry</em> n/a (n/a). https://doi.org/<a href="https://doi.org/10.1002/etc.5610" class="external-link">https://doi.org/10.1002/etc.5610</a>.
 </div>
 <div id="ref-Thorley2018" class="csl-entry">
 Thorley, Joe, and Carl Schwarz. 2018. <em><span class="nocase">ssdtools:

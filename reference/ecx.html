@@ -47,9 +47,6 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="/logo.png"><!-- 
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
     </li>
-    <li>
-      <a href="../articles/example5.html">Running `bayesnec`</a>
-    </li>
   </ul></li>
 <li>
   <a href="../news/index.html">Changelog</a>
@@ -154,7 +151,7 @@ lower 95% credible interval bounds.</p>
 from the maximum predicted value of the response (top) to the minimum
 predicted value of the response. Type "absolute" (the default) is
 calculated as the percentage decrease from the maximum value of the
-response (top) to 0. Type "direct"
+response (top) to 0 (or 'bot' for a four-parameter model fit). Type "direct"
 provides a direct estimate of the x value for a given y.
 Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
 model is estimated at a percent decline from the control.</p>
@@ -189,7 +186,7 @@ metric in that case.</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">ecx</span><span class="op">(</span><span class="va">manec_example</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      Q50     Q2.5    Q97.5 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1.675900 1.593802 1.723770 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.679091 1.629545 1.723770 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"precision")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"ecx_val")</span>
@@ -197,8 +194,8 @@ metric in that case.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"toxicity_estimate")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "ecx"</span>
 <span class="r-in"><span><span class="fu">ecx</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       Q50      Q2.5     Q97.5 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1.5003750 0.9175523 1.5705850 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      Q50     Q2.5    Q97.5 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.500375 0.994145 1.569069 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"precision")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"ecx_val")</span>
