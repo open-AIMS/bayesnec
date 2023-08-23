@@ -71,6 +71,9 @@
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
     </li>
+    <li>
+      <a href="../articles/example5.html">Running `bayesnec`</a>
+    </li>
   </ul>
 </li>
 <li>
@@ -113,7 +116,8 @@
 </h2>
 <p>The <code>bayesnec</code> is an R package to fit concentration(dose)
 — response curves to toxicity data, and derive No-Effect-Concentration
-(<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>), and
+(<em>NEC</em>), No-Significant-Effect-Concentration (<em>NSEC</em>,
+<span class="citation">(Fisher and Fox, n.d.)</span>), and
 Effect-Concentration (of specified percentage “x”, <em>ECx</em>)
 thresholds from non-linear models fitted using Bayesian Hamiltonian
 Monte Carlo (HMC) via <code>brms</code> <span class="citation">(Paul
@@ -330,12 +334,12 @@ parameters using:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     3260     2641</span></span>
-<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4225     4343</span></span>
-<span><span class="co">#&gt; beta     0.81      0.13     0.56     1.08 1.00     2971     3042</span></span>
-<span><span class="co">#&gt; nec      4.43      0.03     4.36     4.48 1.00     3425     3777</span></span>
+<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     3083     2640</span></span>
+<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4450     4511</span></span>
+<span><span class="co">#&gt; beta     0.80      0.14     0.55     1.07 1.00     2662     3207</span></span>
+<span><span class="co">#&gt; nec      4.42      0.03     4.36     4.47 1.00     2755     3686</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
+<span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
 <span><span class="co">#&gt; scale reduction factor on split chains (at convergence, Rhat = 1).</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -358,7 +362,11 @@ we need to transform them back to the data scale using the additional
 argument <code>xform</code>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%" style="display: block; margin: auto;"></p>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%"><p class="caption">
+plot of chunk exmp1-binom
+</p>
+</div>
 <p>There are many built in methods available for <code>brmsfit</code>
 objects and we encourage you to make use of these in full.</p>
 <p>This model fit does not look great. You can see that the error bounds
@@ -377,7 +385,7 @@ such as the Beta-Binomial.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 19.65742 13.22821 30.92392</span></span></code></pre></div>
+<span><span class="co">#&gt; 19.61959 13.31819 30.90004</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-binomial">Beta-Binomial<a class="anchor" aria-label="anchor" href="#beta-binomial"></a>
@@ -395,7 +403,11 @@ Note that a dispersion estimate is not provided here, as overdispersion
 is only relevant for Poisson and Binomial data.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp1-bbinom-1.png" alt="plot of chunk exmp1-bbinom" width="60%" style="display: block; margin: auto;"></p>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-bbinom-1.png" alt="plot of chunk exmp1-bbinom" width="60%"><p class="caption">
+plot of chunk exmp1-bbinom
+</p>
+</div>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_1b</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; [1] NA NA NA</span></span></code></pre></div>
@@ -406,7 +418,7 @@ the fitted model object. As explained above, we need to transform
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">nec_posterior</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;   22.16   65.47   78.20   75.93   87.32  198.25</span></span></code></pre></div>
+<span><span class="co">#&gt;   18.65   65.09   78.60   75.27   87.73  197.15</span></span></code></pre></div>
 <p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em>
 model fit, using the function <code>ecx</code>. Note these may differ
 from a typical 4-parameter non-linear model, as the <em>NEC</em> model
@@ -417,7 +429,7 @@ posterior predictions</a> vignettes for more information.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 82.56186 43.33243 98.57387 </span></span>
+<span><span class="co">#&gt; 82.96216 43.33243 98.17357 </span></span>
 <span><span class="co">#&gt; attr(,"precision")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -446,16 +458,16 @@ its value will depend on the scale of the predictor variable.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.13      0.05     0.03     0.23 1.00     2075     1843</span></span>
-<span><span class="co">#&gt; top      0.84      0.03     0.78     0.88 1.00     1680     2132</span></span>
-<span><span class="co">#&gt; beta     0.82      0.65    -0.18     3.09 1.00      718      284</span></span>
-<span><span class="co">#&gt; nec      4.36      0.19     3.67     4.59 1.00      723      255</span></span>
+<span><span class="co">#&gt; bot      0.13      0.05     0.03     0.23 1.00     3135     2891</span></span>
+<span><span class="co">#&gt; top      0.84      0.03     0.78     0.88 1.00     1947     2637</span></span>
+<span><span class="co">#&gt; beta     0.84      0.67    -0.20     2.91 1.00     1072      466</span></span>
+<span><span class="co">#&gt; nec      4.36      0.19     3.66     4.58 1.00     1156      621</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Family Specific Parameters: </span></span>
 <span><span class="co">#&gt;     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; phi     5.30      1.21     3.31     8.14 1.00     1888     1137</span></span>
+<span><span class="co">#&gt; phi     5.33      1.25     3.31     8.20 1.00     2449     3764</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
+<span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
 <span><span class="co">#&gt; scale reduction factor on split chains (at convergence, Rhat = 1).</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -487,7 +499,11 @@ data must be modelled using a Beta distribution instead.</p>
 <span>              data <span class="op">=</span> <span class="va">prop_data</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp1-beta-1.png" alt="plot of chunk exmp1-beta" width="60%" style="display: block; margin: auto;"></p>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-beta-1.png" alt="plot of chunk exmp1-beta" width="60%"><p class="caption">
+plot of chunk exmp1-beta
+</p>
+</div>
 </div>
 <div class="section level4">
 <h4 id="poisson-data">Poisson data<a class="anchor" aria-label="anchor" href="#poisson-data"></a>
@@ -510,10 +526,10 @@ overdispersed. Then we plot the concentration (i.e. predictor) data.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt; 'data.frame':    100 obs. of  2 variables:</span></span>
 <span><span class="co">#&gt;  $ x: num  1.019 0.816 0.371 0.401 1.295 ...</span></span>
-<span><span class="co">#&gt;  $ y: int  92 70 87 121 77 66 92 86 108 120 ...</span></span>
+<span><span class="co">#&gt;  $ y: int  94 94 87 103 82 88 97 77 83 96 ...</span></span>
 <span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">y</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;    1.00   67.75   80.50   77.80   95.00  130.00</span></span>
+<span><span class="co">#&gt;   12.00   64.75   83.00   77.91   95.00  122.00</span></span>
 <span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
 <span><span class="co">#&gt; 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052</span></span></code></pre></div>
@@ -527,11 +543,15 @@ example.</p>
 <span><span class="va">exp_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp1-poisson-1.png" alt="plot of chunk exmp1-poisson" width="60%" style="display: block; margin: auto;"></p>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-poisson-1.png" alt="plot of chunk exmp1-poisson" width="60%"><p class="caption">
+plot of chunk exmp1-poisson
+</p>
+</div>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3</span><span class="op">$</span><span class="va">dispersion</span></span>
-<span><span class="co">#&gt;    Estimate        Q2.5       Q97.5 </span></span>
-<span><span class="co">#&gt;   4.9198699   0.7354375 153.4861929</span></span></code></pre></div>
+<span><span class="co">#&gt;   Estimate       Q2.5      Q97.5 </span></span>
+<span><span class="co">#&gt;  1.5030581  0.1409635 28.9891154</span></span></code></pre></div>
 <p>We first plot the model chains (with <code>plot(exp_3$fit)</code>)
 and parameter estimates to check the fit. The chains look OK. However,
 our plot of the fit is not very convincing. The model uncertainty is
@@ -560,7 +580,11 @@ model usage</a> vignettes for options to fit other models to these
 data.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%" style="display: block; margin: auto;"></p>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%"><p class="caption">
+plot of chunk exmp1-negbinbase
+</p>
+</div>
 </div>
 <div class="section level4">
 <h4 id="measure-data">Measure data<a class="anchor" aria-label="anchor" href="#measure-data"></a>
@@ -582,7 +606,11 @@ example.</p>
 <span><span class="va">exp_4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">measure</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">measure_data</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp1-gammabase-1.png" alt="plot of chunk exmp1-gammabase" width="60%" style="display: block; margin: auto;"></p>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-gammabase-1.png" alt="plot of chunk exmp1-gammabase" width="60%"><p class="caption">
+plot of chunk exmp1-gammabase
+</p>
+</div>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Object of class bayesnecfit containing the following non-linear model: nec4param</span></span>
@@ -600,16 +628,16 @@ example.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.98      0.05     0.89     1.07 1.00     4177     4606</span></span>
-<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     6506     5287</span></span>
-<span><span class="co">#&gt; beta     0.65      0.10     0.46     0.84 1.00     3537     4013</span></span>
-<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.53 1.00     4166     4963</span></span>
+<span><span class="co">#&gt; bot      0.98      0.05     0.89     1.07 1.00     3812     4175</span></span>
+<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     6645     5065</span></span>
+<span><span class="co">#&gt; beta     0.65      0.10     0.46     0.84 1.00     3337     3650</span></span>
+<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     4051     4914</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Family Specific Parameters: </span></span>
 <span><span class="co">#&gt;       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; shape   517.85     75.05   385.62   683.24 1.00     5707     4976</span></span>
+<span><span class="co">#&gt; shape   517.35     76.26   386.06   684.16 1.00     6313     5196</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Draws were sampled using sample(hmc). For each parameter, Bulk_ESS</span></span>
+<span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
 <span><span class="co">#&gt; scale reduction factor on split chains (at convergence, Rhat = 1).</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -634,6 +662,11 @@ package for Bayesian multilevel models using Stan</span>.”</span>
 Bürkner, Paul-Christian. 2018. <span>“Advanced <span>Bayesian</span>
 Multilevel Modeling with the <span>R</span> Package <span class="nocase">brms</span>.”</span> <em>The R Journal</em> 10 (1):
 395–411. <a href="https://doi.org/10.32614/RJ-2018-017" class="external-link">https://doi.org/10.32614/RJ-2018-017</a>.
+</div>
+<div id="ref-fisherfox2023" class="csl-entry">
+Fisher, Rebecca, and David R. Fox. n.d. <span>“Introducing the
+No-Significant-Effect Concentration.”</span> <em>Environmental
+Toxicology and Chemistry</em> n/a (n/a). https://doi.org/<a href="https://doi.org/10.1002/etc.5610" class="external-link">https://doi.org/10.1002/etc.5610</a>.
 </div>
 <div id="ref-Fisher2020" class="csl-entry">
 Fisher, Rebecca, Gerard Ricardo, and David Fox. 2020. <span>“<span class="nocase">Bayesian concentration-response modelling using

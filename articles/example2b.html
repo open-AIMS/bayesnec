@@ -71,6 +71,9 @@
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
     </li>
+    <li>
+      <a href="../articles/example5.html">Running `bayesnec`</a>
+    </li>
   </ul>
 </li>
 <li>
@@ -245,13 +248,13 @@ defined as the concentration at which there is a user supplied (see
 posterior estimate) that the response falls below the estimated value of
 the upper asymptote (<span class="math inline">\(\tau =
 \text{top}\)</span>) of the response (i.e. the response value is
-significantly lower than that expected in the case of no exposure). The
-default value for <code>sig_val</code> is 0.01, which corresponds to an
-alpha value (Type-I error rate) of 0.01 for a one-sided test of
-significance. See <code><a href="../reference/nsec.html">?nsec</a></code> for more details. We currently
-recommend only using the <code>"nec"</code> model set for estimation of
-<em>NEC</em> values, as the <em>NSEC</em> concept has yet to be formally
-peer-reviewed.</p>
+significantly lower than that expected in the case of no exposure) <span class="citation">(Fisher and Fox, n.d.)</span>. The default value for
+<code>sig_val</code> is 0.01, which corresponds to an alpha value
+(Type-I error rate) of 0.01 for a one-sided test of significance. See
+<code><a href="../reference/nsec.html">?nsec</a></code> and <span class="citation">(Fisher and Fox,
+n.d.)</span> for more details. To obtain true model averaged estimates
+of the <em>NEC</em> based on threshold models, you must use only the
+<code>"nec"</code> model set for estimation of <em>NEC</em> values.</p>
 <p><em>EC<sub>x</sub></em> estimates can be equally obtained from both
 <code>"nec"</code> and <code>"ecx"</code> models.
 <em>EC<sub>x</sub></em> estimates will usually be lower (more
@@ -742,6 +745,11 @@ without further testing.</p>
 <h2 class="unnumbered" id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-fisherfox2023" class="csl-entry">
+Fisher, Rebecca, and David R. Fox. n.d. <span>“Introducing the
+No-Significant-Effect Concentration.”</span> <em>Environmental
+Toxicology and Chemistry</em> n/a (n/a). https://doi.org/<a href="https://doi.org/10.1002/etc.5610" class="external-link">https://doi.org/10.1002/etc.5610</a>.
+</div>
 <div id="ref-Fox2010" class="csl-entry">
 Fox, David R. 2010. <span>“<span class="nocase">A Bayesian approach for
 determining the no effect concentration and hazardous concentration in

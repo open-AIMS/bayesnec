@@ -47,6 +47,9 @@ averaged predictions based on WAIC model weights"><meta property="og:image" cont
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
     </li>
+    <li>
+      <a href="../articles/example5.html">Running `bayesnec`</a>
+    </li>
   </ul></li>
 <li>
   <a href="../news/index.html">Changelog</a>
@@ -177,7 +180,7 @@ formula.</p></dd>
 
 
 <dt>...</dt>
-<dd><p>Further arguments to <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code>.</p></dd>
+<dd><p>Further arguments to <code><a href="https://paul-buerkner.github.io/brms/reference/brm.html" class="external-link">brm</a></code>.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -197,8 +200,8 @@ problems. The primary goal of these equations is to provide the user with
 estimates of No-Effect-Concentration (NEC),
 No-Significant-Effect-Concentration (NSEC), and Effect-Concentration
 (of specified percentage 'x', <em>ECx</em>) thresholds.
-These in turn are fitted through the <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code> function from
-package <span class="pkg">brms</span> and therefore further arguments to <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code>
+These in turn are fitted through the <code><a href="https://paul-buerkner.github.io/brms/reference/brm.html" class="external-link">brm</a></code> function from
+package <span class="pkg">brms</span> and therefore further arguments to <code><a href="https://paul-buerkner.github.io/brms/reference/brm.html" class="external-link">brm</a></code>
 are allowed. In the absence of those arguments, <code>bnec</code> makes
 its best attempt to calculate distribution family, priors and initialisation
 values for the user based on the characteristics of the data. Moreover, in
@@ -231,7 +234,7 @@ parameter (without a bottom plateau) will be fit; "zero_bounded" are models
 that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
 only allows a strict decline in response across the whole predictor range.
 Notice that if one of these group strings is provided together with a
-user-specified named list for the <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code>'s argument
+user-specified named list for the <code><a href="https://paul-buerkner.github.io/brms/reference/brm.html" class="external-link">brm</a></code>'s argument
 <code>prior</code>, the list names need to contain
 the actual model names, and not the group string , e.g. if
 <code>model = "ecx"</code> and <code>prior = my_priors</code> then
@@ -252,8 +255,8 @@ response (i.e. the response value is significantly
 lower than that expected in the case of no exposure).
 The default value for <code>sig_val</code> is 0.01, which corresponds to an alpha
 value of 0.01 for a one-sided test of significance.</p>
-<p><b>Further argument to <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code></b></p>
-<p>If not supplied via the <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code> argument <code>family</code>, the
+<p><b>Further argument to <code><a href="https://paul-buerkner.github.io/brms/reference/brm.html" class="external-link">brm</a></code></b></p>
+<p>If not supplied via the <code><a href="https://paul-buerkner.github.io/brms/reference/brm.html" class="external-link">brm</a></code> argument <code>family</code>, the
 appropriate distribution will be guessed based on the characteristics of the
 input data. Guesses include: "bernoulli" / bernoulli / bernoulli(), "Beta" /
 Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial2" /
@@ -267,11 +270,11 @@ model using the "negbinomial" family.</p>
 <p>Other families can be considered as required, please raise an
 <a href="https://github.com/open-AIMS/bayesnec/issues" class="external-link">issue</a> on the GitHub
 development site if your required family is not currently available.</p>
-<p>As a default, <code>bnec</code> sets the <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brm</a></code> argument
+<p>As a default, <code>bnec</code> sets the <code><a href="https://paul-buerkner.github.io/brms/reference/brm.html" class="external-link">brm</a></code> argument
 <code>sample_prior</code> to "yes" in order to sample draws from the priors in
 addition to the posterior distributions. Among others, these samples can be
 used to calculate Bayes factors for point hypotheses via
-<code><a href="https://rdrr.io/pkg/brms/man/hypothesis.brmsfit.html" class="external-link">hypothesis</a></code>.</p>
+<code><a href="https://paul-buerkner.github.io/brms/reference/hypothesis.brmsfit.html" class="external-link">hypothesis</a></code>.</p>
 <p>Model averaging is achieved through a weighted sample of each fitted models
 posterior predictions, with weights derived using functions
 <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code> and <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> from

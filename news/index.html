@@ -46,6 +46,9 @@
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
     </li>
+    <li>
+      <a href="../articles/example5.html">Running `bayesnec`</a>
+    </li>
   </ul></li>
 <li>
   <a href="../news/index.html">Changelog</a>
@@ -70,7 +73,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="page-header" data-toc-text="2.1.0.3" id="bayesnec-2103">bayesnec 2.1.0.3<a class="anchor" aria-label="anchor" href="#bayesnec-2103"></a></h2>
+<h2 class="page-header" data-toc-text="2.1.0.3" id="bayesnec-2103">bayesnec 2.1.0.3<small>2023-03-29</small><a class="anchor" aria-label="anchor" href="#bayesnec-2103"></a></h2>
 <ul><li><p>Improved speed in test runs for CRAN (<a href="https://github.com/open-AIMS/bayesnec/commit/d5d097fb" class="external-link">d5d097fb</a>).</p></li>
 <li><p>Aligned generic method consistency for <code>rhat</code> (<a href="https://github.com/open-AIMS/bayesnec/commit/afb10577" class="external-link">afb10577</a>).</p></li>
 <li><p>Fixed a bug relating to 01 bounded x data in <code>define_prior</code> (<a href="https://github.com/open-AIMS/bayesnec/commit/3ab93e0" class="external-link">3ab93e0</a>).</p></li>
@@ -85,7 +88,7 @@
     <div class="section level2">
 <h2 class="page-header" data-toc-text="2.1.0.1" id="bayesnec-2101">bayesnec 2.1.0.1<small>2023-02-07</small><a class="anchor" aria-label="anchor" href="#bayesnec-2101"></a></h2>
 <ul><li><p>Cleaned parameter title names in <code>sample_priors</code> (<a href="https://github.com/open-AIMS/bayesnec/commit/6973bae1" class="external-link">6973bae1</a>).</p></li>
-<li><p>Small tweak to initialisation search, such that the seed used for a <code>bnec</code> call (via <code>...</code> arguments to <code><a href="https://rdrr.io/pkg/brms/man/brm.html" class="external-link">brms::brm</a></code>) gets recycled and therefore it generates the same initialisation values across platforms (<a href="https://github.com/open-AIMS/bayesnec/commit/c74a3c46" class="external-link">c74a3c46</a>).</p></li>
+<li><p>Small tweak to initialisation search, such that the seed used for a <code>bnec</code> call (via <code>...</code> arguments to <code><a href="https://paul-buerkner.github.io/brms/reference/brm.html" class="external-link">brms::brm</a></code>) gets recycled and therefore it generates the same initialisation values across platforms (<a href="https://github.com/open-AIMS/bayesnec/commit/c74a3c46" class="external-link">c74a3c46</a>).</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="page-header" data-toc-text="2.1.0.0" id="bayesnec-2100">bayesnec 2.1.0.0<small>2022-12-15</small><a class="anchor" aria-label="anchor" href="#bayesnec-2100"></a></h2>
@@ -132,12 +135,12 @@
 </ul></div>
     <div class="section level2">
 <h2 class="page-header" data-toc-text="1.1.0" id="bayesnec-110">bayesnec 1.1.0<a class="anchor" aria-label="anchor" href="#bayesnec-110"></a></h2>
-<ul><li><p>Added <code><a href="https://rdrr.io/pkg/brms/man/brmsfamily.html" class="external-link">brms::bernoulli</a></code> to the list of allowed model distributions (<a href="https://github.com/open-AIMS/bayesnec/commit/76064617a299a07da29c690a7d07715c889bfa65" class="external-link"><code>7606461</code></a>).</p></li>
+<ul><li><p>Added <code><a href="https://paul-buerkner.github.io/brms/reference/brmsfamily.html" class="external-link">brms::bernoulli</a></code> to the list of allowed model distributions (<a href="https://github.com/open-AIMS/bayesnec/commit/76064617a299a07da29c690a7d07715c889bfa65" class="external-link"><code>7606461</code></a>).</p></li>
 <li><p>Made <code>identity</code> the default link (<a href="https://github.com/open-AIMS/bayesnec/commit/664086715092dfd9a61b766ea13230743beee0b7" class="external-link"><code>6640867</code></a>).</p></li>
 <li><p>Added more controls and tweaks to checking model relative to input data (<a href="https://github.com/open-AIMS/bayesnec/commit/85a38196a5e963df956787174cd5235c7e65ae02" class="external-link"><code>85a3819</code></a>), <a href="https://github.com/open-AIMS/bayesnec/commit/065a44513d509d9812c872bcc130e6c2db402049" class="external-link"><code>065a445</code></a>).</p></li>
 <li><p>Added <code>formula</code> and <code>model.frame</code> methods to main classes (<a href="https://github.com/open-AIMS/bayesnec/commit/9df4a64d1fb1ced15824a0d388d61e712dba7d92" class="external-link"><code>9df4a64</code></a>).</p></li>
 <li><p>Upgraded <code>ggbnec</code> to <code>autoplot</code> as <code>bayesnec</code> standard <code>ggplot2</code> plotting method (<a href="https://github.com/open-AIMS/bayesnec/commit/65fe15fec2c2a13f34d3238c05a841dffd7a1780" class="external-link"><code>65fe15f</code></a>).</p></li>
-<li><p>Enhanced handling of argument <code>loo_controls</code> in <code>bnec</code> to allow argument for both <code><a href="https://rdrr.io/pkg/brms/man/add_criterion.html" class="external-link">brms::add_criterion</a></code> and <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo::loo_model_weights</a></code> (<a href="https://github.com/open-AIMS/bayesnec/commit/9712fcce54adc83dbd26edc9ce659dda354fed6a" class="external-link"><code>9712fcc</code></a>).</p></li>
+<li><p>Enhanced handling of argument <code>loo_controls</code> in <code>bnec</code> to allow argument for both <code><a href="https://paul-buerkner.github.io/brms/reference/add_criterion.html" class="external-link">brms::add_criterion</a></code> and <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo::loo_model_weights</a></code> (<a href="https://github.com/open-AIMS/bayesnec/commit/9712fcce54adc83dbd26edc9ce659dda354fed6a" class="external-link"><code>9712fcc</code></a>).</p></li>
 <li><p>Added Bayesian R<sup>2</sup> to <code>summary</code> (<a href="https://github.com/open-AIMS/bayesnec/commit/9a71a3cc2b9cfacf5920094cbd16f7da81709e4a" class="external-link"><code>9a71a3c</code></a>).</p></li>
 <li><p>Expanded <code>bnec</code>’s capacity to accept input x and y vectors, data frames (<a href="https://github.com/open-AIMS/bayesnec/commit/f256b399ab9115fffa7349a7a9daef21090f53f5" class="external-link"><code>f256b39</code></a>) and formulas (<a href="https://github.com/open-AIMS/bayesnec/commit/32e74ac419c39c660aceb3d0914622de753a7a83" class="external-link"><code>32e74ac</code></a>).</p></li>
 <li><p>Corrected error for logit link cases for the beta_binomial2 where data contain 0 and 1 to ensure appropriate prior values on top and bot (<a href="https://github.com/open-AIMS/bayesnec/commit/41582378a1a55c9420f69e578cfc98dc23182515" class="external-link"><code>4158237</code></a>).</p></li>
