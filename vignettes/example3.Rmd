@@ -69,10 +69,7 @@ We can view the prior and posterior probability densities of all the parameters 
 check_priors(exmp_a)
 ```
 
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%" />
-<p class="caption">plot of chunk exmp3-checkpriors</p>
-</div>
+<img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;" />
 
 In this case the priors seem reasonably vague, however there will be times when it is necessary to modify these priors. The user can take advantage of the function `pull_prior` to inspect what `bnec` came up with on its own, and decide how best to modify those priors to be more desirable.
 
@@ -80,22 +77,22 @@ In this case the priors seem reasonably vague, however there will be times when 
 ```r
 pull_prior(exmp_a)
 #> [[1]]
-#>                       prior class      coef group resp dpar nlpar               lb               ub
-#>                normal(0, 5)     b                            beta                                  
-#>                normal(0, 5)     b Intercept                  beta                                  
-#>  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556
-#>  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556
-#>                  beta(5, 2)     b                             top                0                1
-#>                  beta(5, 2)     b Intercept                   top                0                1
-#>           gamma(0.01, 0.01)   phi                                                0                 
-#>        source
-#>          user
-#>  (vectorized)
-#>          user
-#>  (vectorized)
-#>          user
-#>  (vectorized)
-#>       default
+#>                       prior class      coef group resp dpar nlpar               lb
+#>                normal(0, 5)     b                            beta                 
+#>                normal(0, 5)     b Intercept                  beta                 
+#>  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009
+#>  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009
+#>                  beta(5, 2)     b                             top                0
+#>                  beta(5, 2)     b Intercept                   top                0
+#>           gamma(0.01, 0.01)   phi                                                0
+#>                ub       source
+#>                           user
+#>                   (vectorized)
+#>  3.22051966293556         user
+#>  3.22051966293556 (vectorized)
+#>                 1         user
+#>                 1 (vectorized)
+#>                        default
 ```
 
 `bnec` chose a `gamma` prior on the *NEC* parameter of **nec3param** because the predictor `nec_data$x` is non-zero positive. However, imagine that in theory the predictor could have had negative values, it just happened to not have in this particular dataset. So let's go ahead and specify something else, say a normal with larger variance.
