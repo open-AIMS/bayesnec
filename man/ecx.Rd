@@ -58,7 +58,7 @@ Extracts the predicted ECx value as desired from an object of class
 from the maximum predicted value of the response (top) to the minimum
 predicted value of the response. Type "absolute" (the default) is
 calculated as the percentage decrease from the maximum value of the
-response (top) to 0. Type "direct"
+response (top) to 0 (or 'bot' for a four-parameter model fit). Type "direct"
 provides a direct estimate of the x value for a given y.
 Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
 model is estimated at a percent decline from the control.
