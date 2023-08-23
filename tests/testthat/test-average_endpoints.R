@@ -1,3 +1,5 @@
+library(bayesnec)
+
 test_that("x must be a named list", {
   expect_error(average_endpoints(list(ecx4param, nec4param)))
   expect_error(average_endpoints(ecx4param, nec4param))

@@ -1,3 +1,7 @@
+library(bayesnec)
+rstan::rstan_options(auto_write = TRUE)
+options(mc.cores = 1)
+
 nec_ <- pull_out(manec_example, "nec4param")
 ecx_ <- pull_out(manec_example, "ecx4param")
 

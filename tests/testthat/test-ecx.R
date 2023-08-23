@@ -1,3 +1,5 @@
+library(bayesnec)
+
 test_that("prob_vals warnings behave as expected", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

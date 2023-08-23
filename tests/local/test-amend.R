@@ -1,3 +1,7 @@
+library(bayesnec)
+rstan::rstan_options(auto_write = TRUE)
+options(mc.cores = 1)
+
 muted_amend <- function(...) {
   amend(...) |>
     suppressWarnings() |>

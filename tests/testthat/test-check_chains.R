@@ -1,3 +1,5 @@
+library(bayesnec)
+
 test_that("returns null", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

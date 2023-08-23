@@ -1,3 +1,5 @@
+library(bayesnec)
+
 test_that("nec returns expected object types", {
   nec_summary <- suppressMessages(nec(manec_example))
   expect_equal(length(nec_summary), 3)

@@ -1,3 +1,5 @@
+library(bayesnec)
+
 fit1 <- manec_example$mod_fits[["nec4param"]]
 fit2 <- manec_example$mod_fits[["ecx4param"]]
 

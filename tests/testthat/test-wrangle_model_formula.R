@@ -1,3 +1,5 @@
+library(bayesnec)
+
 data <- data.frame(pred = 1:10, resp = 1:10)
 
 test_that("correct classes", {

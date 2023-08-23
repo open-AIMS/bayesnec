@@ -1,3 +1,5 @@
+library(bayesnec)
+
 test_that("bayesnecformula is agnostic with respect to the formula structure", {
   expect_identical(bayesnecformula(y ~ crf(x, "nec3param")),
                    bnf(y ~ crf(x, "nec3param")))
