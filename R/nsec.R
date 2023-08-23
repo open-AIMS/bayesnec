@@ -17,6 +17,7 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param ... Further arguments to pass to class specific methods.
 #'
 #' @details For \code{hormesis_def}, if "max", then NSEC values are calculated
 #' as a decline from the maximum estimates (i.e. the peak at NEC);
@@ -53,7 +54,7 @@
 #' @export
 nsec <- function(object, sig_val = 0.01, precision = 1000,
                  x_range = NA, hormesis_def = "control",
-                 xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
+                 xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("nsec")
 }
 
@@ -75,9 +76,8 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
 #'
 #' @export
 nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
-                             x_range = NA,
-                             hormesis_def = "control", xform = identity,
-                             prob_vals = c(0.5, 0.025, 0.975), 
+                             x_range = NA, hormesis_def = "control", 
+                             xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
                              posterior = FALSE) {
   chk_numeric(sig_val)
   chk_numeric(precision)
@@ -166,20 +166,23 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
 #'
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
-                               x_range = NA,
-                               hormesis_def = "control", xform = identity,
-                               prob_vals = c(0.5, 0.025, 0.975), posterior = FALSE) {
+                               x_range = NA, hormesis_def = "control", 
+                               xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
+                               posterior = FALSE) {
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
   }
   sample_nsec <- function(x, object, sig_val, precision,
-                          posterior, hormesis_def,
-                          x_range, xform, prob_vals, sample_size) {
+                          hormesis_def,
+                          x_range, xform, prob_vals, 
+                          posterior,
+                          sample_size) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
     out <- nsec(target, sig_val = sig_val, precision = precision,
-                posterior = posterior, hormesis_def = hormesis_def,
-                x_range = x_range, xform = xform, prob_vals = prob_vals)
+                hormesis_def = hormesis_def,
+                x_range = x_range, xform = xform, prob_vals = prob_vals,
+                posterior = posterior)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
     sample_out <- sample(out, n_s)
     attr(sample_out, "ecnsec_relativeP") <- sample(attributes(out)$ecnsec_relativeP, n_s)
@@ -188,8 +191,8 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   sample_size <- object$sample_size
   to_iter <- seq_len(length(object$success_models))
   nsec_out <- sapply(to_iter, sample_nsec, object, sig_val, precision,
-                     posterior = TRUE, hormesis_def, x_range,
-                     xform, prob_vals, sample_size)
+                     hormesis_def, x_range,
+                     xform, prob_vals, posterior = TRUE, sample_size)
   ecnsecP <- unlist(lapply(nsec_out, 
                     FUN = function(p){attributes(p)$ecnsec_relativeP}))
   ecnsec <- quantile(ecnsecP, probs = prob_vals)
@@ -237,13 +240,9 @@ nsec_fct <- function(y, reference, x_vec) {
 #' @noRd
 #'
 #' @export
-nsec.brmsfit <- function(object,
-                         sig_val = 0.01,                         
-                         precision = 1000,    
-                         x_range = NA,                         
-                         hormesis_def = "control",  
-                         xform = identity,    
-                         prob_vals = c(0.5, 0.025, 0.975), 
+nsec.brmsfit <- function(object, sig_val = 0.01, precision = 1000,    
+                         x_range = NA, hormesis_def = "control",  
+                         xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
                          posterior = FALSE,
                          x_var, 
                          group_var = NA, 
@@ -410,9 +409,8 @@ nsec.brmsfit <- function(object,
 #'
 #' @export
 nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
-                     x_range = NA,
-                     hormesis_def = "control", xform = identity,
-                     prob_vals = c(0.5, 0.025, 0.975),
+                     x_range = NA, hormesis_def = "control", 
+                     xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
                      x_var,
                      horme = FALSE,
                      curveid = NA) {
