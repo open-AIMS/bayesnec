@@ -121,8 +121,6 @@ library(bayesnec)
 set.seed(333)
 exp_1 <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
               data = binom_data)
-#> Error in file(con, "r"): cannot open the connection
-#> Error in sink(type = "output"): invalid connection
 ```
 
 The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(pull_brmsfit(exp_1))` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks OK. There are a range of other model diagnostics that can be explored for `brms` model fits, using the function `pull_brmsfit`. We encourage you to explore the rich material already on GitHub regarding use and validation of [brms](https://github.com/paul-buerkner/brms) models.
@@ -134,7 +132,34 @@ Whenever the `model` argument of `crf` is a single model `bnec` will return an o
 
 ```r
 summary(exp_1)
-#> Error in summary(exp_1): object 'exp_1' not found
+#> Object of class bayesnecfit containing the following non-linear model: nec4param
+#> 
+#>  Family: binomial 
+#>   Links: mu = identity 
+#> Formula: suc | trials(tot) ~ bot + (top - bot) * exp(-exp(beta) * (log(raw_x) - nec) * step(log(raw_x) - nec)) 
+#>          bot ~ 1
+#>          top ~ 1
+#>          beta ~ 1
+#>          nec ~ 1
+#>    Data: data (Number of observations: 48) 
+#>   Draws: 4 chains, each with iter = 10000; warmup = 8000; thin = 1;
+#>          total post-warmup draws = 8000
+#> 
+#> Population-Level Effects: 
+#>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#> bot      0.05      0.02     0.02     0.08 1.00     3227     2901
+#> top      0.83      0.01     0.81     0.84 1.00     4317     4163
+#> beta     0.80      0.13     0.57     1.07 1.00     3044     3274
+#> nec      4.42      0.03     4.36     4.47 1.00     3324     3267
+#> 
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+#> and Tail_ESS are effective sample size measures, and Rhat is the potential
+#> scale reduction factor on split chains (at convergence, Rhat = 1).
+#> 
+#> 
+#> Bayesian R2 estimates:
+#>    Estimate Est.Error Q2.5 Q97.5
+#> R2     0.81      0.00 0.80  0.82
 ```
 
 Note the Rhat values in this example are one, indicating convergence.
@@ -144,8 +169,9 @@ The functions `plot` (extending `base` plot method) and `autoplot` (extending `g
 
 ```r
 autoplot(exp_1, xform = exp)
-#> Error in autoplot(exp_1, xform = exp): object 'exp_1' not found
 ```
+
+<img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%" style="display: block; margin: auto;" />
 
 There are many built in methods available for `brmsfit` objects and we encourage you to make use of these in full.
 
@@ -154,7 +180,8 @@ This model fit does not look great. You can see that the error bounds around the
 
 ```r
 exp_1$dispersion
-#> Error in eval(expr, envir, enclos): object 'exp_1' not found
+#> Estimate     Q2.5    Q97.5 
+#> 19.62945 13.30884 31.47308
 ```
 
 ### Beta-Binomial
@@ -190,7 +217,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 ```r
 summary(exp(exp_1b$nec_posterior))
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   19.29   65.04   78.25   75.56   87.30  196.32
+#>   19.00   68.50   80.85   78.75   90.47  197.67
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
@@ -199,7 +226,7 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 ```r
 ecx(exp_1b, xform = exp)
 #>      Q50     Q2.5    Q97.5 
-#> 82.56186 42.93213 98.57387 
+#> 84.96366 44.53333 99.37447 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -228,23 +255,23 @@ summary(exp_1b)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.13      0.05     0.03     0.23 1.00     2426     2639
-#> top      0.84      0.03     0.78     0.88 1.00     2270     2967
-#> beta     0.82      0.65    -0.18     3.04 1.01      493      164
-#> nec      4.36      0.20     3.67     4.58 1.00      535      174
+#> bot      0.13      0.05     0.03     0.24 1.05     1605     2210
+#> top      0.84      0.02     0.77     0.88 1.05     1493     1081
+#> beta     0.94      0.76    -0.16     4.21 1.12       24       72
+#> nec      4.39      0.19     3.70     4.60 1.11       26       90
 #> 
 #> Family Specific Parameters: 
 #>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.34      1.29     3.24     8.30 1.00     2104     3023
+#> phi     5.51      1.26     3.30     8.16 1.02      670     1880
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>    Estimate Est.Error Q2.5 Q97.5
-#> R2     0.76      0.04 0.67  0.81
+#> R2     0.77      0.04 0.67  0.81
 ```
 
 ### Beta data
@@ -288,10 +315,10 @@ count_data <- nec_data |>
 str(count_data)
 #> 'data.frame':	100 obs. of  2 variables:
 #>  $ x: num  1.019 0.816 0.371 0.401 1.295 ...
-#>  $ y: int  96 97 103 75 86 77 68 78 94 89 ...
+#>  $ y: int  70 98 87 92 89 98 97 68 103 96 ...
 summary(count_data$y)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   14.00   63.00   81.00   75.49   94.00  126.00
+#>    2.00   65.75   82.00   77.93   95.25  130.00
 summary(count_data$x)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #> 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052
@@ -314,8 +341,8 @@ autoplot(exp_3)
 
 ```r
 exp_3$dispersion
-#>    Estimate        Q2.5       Q97.5 
-#>  1.23649458  0.06900952 21.87790948
+#>   Estimate       Q2.5      Q97.5 
+#>  1.7225021  0.2600055 59.7924674
 ```
 
 We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the `family` argument.
@@ -381,16 +408,16 @@ summary(exp_4)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.88     1.07 1.00     3789     5044
-#> top      2.44      0.01     2.41     2.46 1.00     6505     5346
-#> beta     0.65      0.10     0.47     0.85 1.00     3179     4187
-#> nec      1.50      0.02     1.46     1.54 1.00     3869     4693
+#> bot      0.98      0.05     0.88     1.07 1.00     3692     4072
+#> top      2.44      0.01     2.41     2.46 1.00     6943     5046
+#> beta     0.65      0.10     0.46     0.84 1.00     3125     3537
+#> nec      1.50      0.02     1.46     1.54 1.00     3987     4228
 #> 
 #> Family Specific Parameters: 
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   517.36     73.71   384.59   676.58 1.00     6540     4876
+#> shape   518.10     73.97   387.13   671.03 1.00     6994     5005
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
