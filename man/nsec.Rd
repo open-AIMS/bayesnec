@@ -9,10 +9,16 @@ nsec(
   object,
   sig_val = 0.01,
   precision = 1000,
+  posterior = FALSE,
   x_range = NA,
   hormesis_def = "control",
   xform = identity,
-  prob_vals = c(0.5, 0.025, 0.975)
+  prob_vals = c(0.5, 0.025, 0.975),
+  x_var,
+  group_var,
+  curveid,
+  by_group = TRUE,
+  horme = FALSE
 )
 }
 \arguments{
@@ -27,6 +33,10 @@ estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 \item{precision}{The number of unique x values over which to find NSEC -
 large values will make the NSEC estimate more precise.}
 
+\item{posterior}{A \code{\link[base]{logical}} value indicating if the full
+posterior sample of calculated NSEC values should be returned instead of
+just the median and 95 credible intervals.}
+
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
 \item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
@@ -38,6 +48,17 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{x_var}{A character indicating the name of the predictor (x) data in object}
+
+\item{group_var}{A character indicating the name of the grouping variable in object}
+
+\item{curveid}{A character indicating the name of the grouping variable in object}
+
+\item{by_group}{A logical indicating if nsec values should be returned for
+each level in group_var, or marginalised across all groups.}
+
+\item{horme}{Logical indicating if hormesis is evident.}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
