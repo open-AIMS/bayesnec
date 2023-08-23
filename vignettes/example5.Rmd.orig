@@ -17,7 +17,7 @@ bibliography: bayesnec.bib
 [e3]: https://open-aims.github.io/bayesnec/articles/example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 
-The `bayesnec` package makes use of the R package `brms` [@Burkner2017; @Burkner2018]  (https://cran.r-project.org/web/packages/brms/index.html) which relies on `stan` (https://mc-stan.org/). You will need to have either `RStan` (https://mc-stan.org/users/interfaces/rstan.html) or  `cmdstanr`(https://mc-stan.org/cmdstanr/) installed and configured on your computer to run `bayesnec`.
+The `bayesnec` package makes use of the R package `brms` [@Burkner2017; @Burkner2018]  (https://cran.r-project.org/package=brms) which relies on `stan` (https://mc-stan.org/). You will need to have either `RStan` (https://mc-stan.org/users/interfaces/rstan.html) or  `cmdstanr`(https://mc-stan.org/cmdstanr/) installed and configured on your computer to run `bayesnec`.
 
 Quick start guides can be found for both `RStan` https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started and `cmdstanr` https://mc-stan.org/cmdstanr/articles/cmdstanr.html. However, in our experience getting either package to work can be a bit fiddly, particularly on Windows machines. 
 

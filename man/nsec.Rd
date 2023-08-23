@@ -9,11 +9,11 @@ nsec(
   object,
   sig_val = 0.01,
   precision = 1000,
-  posterior = FALSE,
   x_range = NA,
   hormesis_def = "control",
   xform = identity,
-  prob_vals = c(0.5, 0.025, 0.975)
+  prob_vals = c(0.5, 0.025, 0.975),
+  ...
 )
 }
 \arguments{
@@ -28,10 +28,6 @@ estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 \item{precision}{The number of unique x values over which to find NSEC -
 large values will make the NSEC estimate more precise.}
 
-\item{posterior}{A \code{\link[base]{logical}} value indicating if the full
-posterior sample of calculated NSEC values should be returned instead of
-just the median and 95 credible intervals.}
-
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
 \item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
@@ -43,6 +39,8 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{...}{Further arguments to pass to class specific methods.}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
@@ -55,7 +53,7 @@ Extracts the predicted NSEC value as desired from an object of class
 \details{
 For \code{hormesis_def}, if "max", then NSEC values are calculated
 as a decline from the maximum estimates (i.e. the peak at NEC);
-if "control", then ECx values are calculated relative to the control, which
+if "control", then NSEC values are calculated relative to the control, which
 is assumed to be the lowest observed concentration.
 
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and

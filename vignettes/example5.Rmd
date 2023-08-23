@@ -17,7 +17,7 @@ bibliography: bayesnec.bib
 [e3]: https://open-aims.github.io/bayesnec/articles/example3.html
 [e4]: https://open-aims.github.io/bayesnec/articles/example4.html
 
-The `bayesnec` package makes use of the R package `brms` [@Burkner2017; @Burkner2018]  (https://cran.r-project.org/web/packages/brms/index.html) which relies on `stan` (https://mc-stan.org/). You will need to have either `RStan` (https://mc-stan.org/users/interfaces/rstan.html) or  `cmdstanr`(https://mc-stan.org/cmdstanr/) installed and configured on your computer to run `bayesnec`.
+The `bayesnec` package makes use of the R package `brms` [@Burkner2017; @Burkner2018]  (https://cran.r-project.org/package=brms) which relies on `stan` (https://mc-stan.org/). You will need to have either `RStan` (https://mc-stan.org/users/interfaces/rstan.html) or  `cmdstanr`(https://mc-stan.org/cmdstanr/) installed and configured on your computer to run `bayesnec`.
 
 Quick start guides can be found for both `RStan` https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started and `cmdstanr` https://mc-stan.org/cmdstanr/articles/cmdstanr.html. However, in our experience getting either package to work can be a bit fiddly, particularly on Windows machines. 
 
@@ -408,16 +408,16 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ```
 
 ```
-## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/ Running MCMC with 4 chains, at most 16 in parallel...
+## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/ Running MCMC with 4 chains, at most 16 in parallel...
 ## 
+## Chain 1 finished in 4.6 seconds.
+## Chain 2 finished in 4.7 seconds.
 ## Chain 3 finished in 4.9 seconds.
-## Chain 4 finished in 5.0 seconds.
-## Chain 1 finished in 5.2 seconds.
-## Chain 2 finished in 5.3 seconds.
+## Chain 4 finished in 4.9 seconds.
 ## 
 ## All 4 chains finished successfully.
-## Mean chain execution time: 5.1 seconds.
-## Total execution time: 5.3 seconds.
+## Mean chain execution time: 4.8 seconds.
+## Total execution time: 5.0 seconds.
 ```
 
 ```r
@@ -435,15 +435,15 @@ summary(fit)
 ## Group-Level Effects: 
 ## ~patient (Number of levels: 59) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.58      0.07     0.46     0.73 1.00      871     1442
+## sd(Intercept)     0.58      0.07     0.46     0.73 1.00      969     1661
 ## 
 ## Population-Level Effects: 
 ##            Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept      1.77      0.12     1.53     2.01 1.00      839     1209
-## zAge           0.09      0.08    -0.07     0.25 1.01      858     1685
-## zBase          0.70      0.12     0.48     0.94 1.00      918     1281
-## Trt1          -0.27      0.17    -0.61     0.06 1.01      771     1326
-## zBase:Trt1     0.06      0.16    -0.27     0.37 1.00     1035     1698
+## Intercept      1.77      0.12     1.51     2.00 1.01      649     1261
+## zAge           0.09      0.09    -0.08     0.27 1.01      718     1305
+## zBase          0.70      0.12     0.46     0.93 1.01      720     1260
+## Trt1          -0.26      0.17    -0.59     0.07 1.01      638     1194
+## zBase:Trt1     0.05      0.16    -0.26     0.38 1.01      871     1346
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
