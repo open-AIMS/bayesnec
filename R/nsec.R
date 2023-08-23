@@ -154,11 +154,11 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
 #'
 #' @param object An object of class \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
+#'
+#' @inherit nsec details seealso return examples
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
 #' posterior sample of calculated NSEC values should be returned instead of
 #' just the median and 95 credible intervals.
-#'
-#' @inherit nsec details seealso return examples
 #' 
 #' @importFrom stats quantile
 #'
