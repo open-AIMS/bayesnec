@@ -4,7 +4,7 @@ library(testthat)
 options(mc.cores = 1)
 
 muted_bnec <- function(...) {
-  bnec(... , refresh = -1) |>
+  bnec(..., open_progress = FALSE, verbose = FALSE, refresh = -1) |>
     suppressWarnings() |>
     suppressMessages()
 }
