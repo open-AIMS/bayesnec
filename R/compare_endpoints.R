@@ -1,4 +1,4 @@
-#' compare_estimates
+#' compare_endpoints
 #'
 #' Extracts posterior predicted values from a list of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
@@ -26,12 +26,12 @@
 #' data(manec_example)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' compare_estimates(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50,
+#' compare_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50,
 #' comparison="ecx")
 #' }
 #'
 #' @export
-compare_estimates <- function(x, comparison = "nec", ecx_val = 10,
+compare_endpoints <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
                               sig_val = 0.01, precision = 100, x_range = NA) {
   if ((comparison %in% c("nec", "ecx", "nsec")) == FALSE) {

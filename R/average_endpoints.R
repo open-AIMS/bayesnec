@@ -1,6 +1,6 @@
-#' average_estimates
+#' average_endpoints
 #'
-#' Extracts posterior predicted estimate values from a list of class
+#' Extracts posterior predicted endpoint values from a list of class
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 #' calculates a geometric mean.
 #'
@@ -8,7 +8,7 @@
 #' @inheritParams ecx
 #' @inheritParams nsec
 #'
-#' @param estimate The type of estimate to use in the mean. Takes values
+#' @param endpoint The type of endpoint to use in the mean. Takes values
 #' "nec", "ecx" or "nsec".
 #'
 #' @details The geometric mean of values are simply the mean calculated on a
@@ -23,7 +23,7 @@
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return The geometric mean of the estimates estimate values
+#' @return The geometric mean of the endpoints estimate values
 #' of the \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}
 #' model fits contained in \code{x}. See Details.
 #'
@@ -37,11 +37,11 @@
 #' data(manec_example)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' average_estimates(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+#' average_endpoints(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 #' }
 #'
 #' @export
-average_estimates <- function(x, estimate = "nec", ecx_val = 10,
+average_endpoints <- function(x, endpoint = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", sig_val = 0.01,
                               precision = 1000, x_range = NA, xform = identity,
@@ -49,8 +49,8 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list")
   }
-  if (!is.character(estimate)) {
-    stop("Argument estimate must be a character vector")
+  if (!is.character(endpoint)) {
+    stop("Argument endpoint must be a character vector")
   }
   chk_lgl(posterior)
   chk_character(type)
@@ -65,16 +65,16 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   }
-  if (estimate == "nec") {
+  if (endpoint == "nec") {
     posterior_list <- lapply(x, return_nec_post, xform = xform)
   }
-  if (estimate == "ecx") {
+  if (endpoint == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
                              posterior = TRUE, type = type,
                              hormesis_def = hormesis_def, x_range = x_range,
                              xform = xform)
   }
-  if (estimate == "nsec") {
+  if (endpoint == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, precision = precision,
                              posterior = TRUE, hormesis_def = hormesis_def,
                              x_range = x_range, xform = xform)
