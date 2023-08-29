@@ -536,9 +536,25 @@ has_family_changed <- function(x, data, ...) {
 }
 
 #' @noRd
+clean_aterms <- function(data) {
+  aterms <- c("^trials\\(", "^me\\(", "^mi\\(", "^mo\\(", "^se\\(", "^cs\\(")
+  for (i in seq_along(aterms)) {
+    has_aterm <- grepl(aterms[i], names(data))
+    if (any(has_aterm)) {
+      names(data)[has_aterm] <- names(data)[has_aterm] |>
+        str2lang() |>
+        (`[[`)(2) |>
+        all.vars()
+    }
+  }
+  data
+}
+
+#' @noRd
 find_transformations <- function(data) {
   bnec_pop_vars <- attr(data, "bnec_pop")
-  # what bout when no variable?
+  # remove aterms from data name
+  data <- clean_aterms(data)
   unname(bnec_pop_vars[!bnec_pop_vars %in% names(data)])
 }
 
