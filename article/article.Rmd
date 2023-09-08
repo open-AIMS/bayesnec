@@ -473,7 +473,7 @@ ggdrc_data <- function(x) {
                         top = pars_mv[i, 2], df_x$log_x)
   }
   preds <- apply(Y, 2, median_hdci, na.rm = TRUE) |>
-    do.call("rbind.data.frame", args = .) |>
+    do.call("rbind.data.frame", args = _) |>
     dplyr::select(y, ymin, ymax)
   e_df <- data.frame(x_e = c(df_x$log_x, rev(df_x$log_x)),
                      y_e = c(preds$y, rep(NA, nrow(preds))),
@@ -770,7 +770,7 @@ prob_diff$Herbicide <- stringr::str_to_sentence(prob_diff$Herbicide)
 ```{r necplots,  echo = FALSE, fig.width = 6, fig.height = 4, fig.cap = "Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \\textit{Seriatopora hystrix}. Shown are medians with 80\\%  uncertainty intervals."}
 post_comp$posterior_data |> 
   dplyr::mutate(conc = exp(value)) |>
-  ggplot(data = ., mapping = aes(x = conc)) +
+  ggplot(data = _, mapping = aes(x = conc)) +
     geom_density(mapping = aes(group = model, colour = model, fill = model),
                  alpha = 0.3) +
     xlab(expression("Concentration "~"("*mu*"g/L)")) +
