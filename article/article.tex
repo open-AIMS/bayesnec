@@ -387,16 +387,16 @@ Formula: fvfm ~ bot + (top - bot) * exp(-exp(beta) * (log(concentration) - nec) 
 
 Population-Level Effects: 
      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-bot      0.01      0.00     0.00     0.02 1.00     4064     3744
-top      0.67      0.01     0.65     0.68 1.00     6059     5357
-beta    -0.34      0.04    -0.41    -0.26 1.00     3950     3991
-nec     -0.40      0.04    -0.49    -0.32 1.00     4207     4198
+bot      0.01      0.00     0.00     0.02 1.00     4443     4304
+top      0.67      0.01     0.65     0.68 1.00     6014     5456
+beta    -0.34      0.04    -0.41    -0.26 1.00     3922     3535
+nec     -0.40      0.04    -0.48    -0.32 1.00     4311     4704
 
 Family Specific Parameters: 
     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-phi   167.90     30.11   117.42   231.43 1.00     5462     5089
+phi   168.52     30.23   116.24   233.60 1.00     5969     5022
 
-Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 and Tail_ESS are effective sample size measures, and Rhat is the potential
 scale reduction factor on split chains (at convergence, Rhat = 1).
 
@@ -531,8 +531,8 @@ We start by describing the analysis workflow for a single herbicide, ametryn. We
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> ametryn <- herbicide %>%
-+   dplyr::mutate(concentration = log(concentration)) %>% 
+R> ametryn <- herbicide |>
++   dplyr::mutate(concentration = log(concentration)) |> 
 +   dplyr::filter(herbicide == "ametryn")
 R> manecfit_ametryn <- bayesnec::bnec(
 +   fvfm ~ crf(concentration, model = "decline"), data = ametryn, seed = 17
@@ -662,9 +662,9 @@ We start by modelling the concentration-response curves for all seven photo toxi
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> manecfit <- herbicide %>%
-+   dplyr::mutate(concentration = log(concentration)) %>%
-+   split(f = ~ herbicide) %>%
+R> manecfit <- herbicide |>
++   dplyr::mutate(concentration = log(concentration)) |>
++   split(f = ~ herbicide) |>
 +   purrr::map(function(x) {
 +     bayesnec::bnec(fvfm ~ crf(concentration, model = "decline"), data = x,
 +                    seed = 17)
@@ -697,10 +697,10 @@ To facilitate comparison across the herbicides, we create a collated table of mo
 R> library("tidyr")
 R> library("stringr")
 R> modtab <- purrr::map_dfr(cleaned_fits, function(x) {
-+   x$mod_stats %>%
-+     dplyr::select(model, wi) %>%
++   x$mod_stats |>
++     dplyr::select(model, wi) |>
 +     dplyr::mutate(wi = round(wi, 3))
-+ }, .id = "herbicide") %>%
++ }, .id = "herbicide") |>
 +   tidyr::pivot_wider(names_from = herbicide, values_from = wi) |> 
 +   data.frame()
 R> colnames(modtab) <- stringr::str_to_title(colnames(modtab))
@@ -718,27 +718,27 @@ This collated table of model weights shows that the best fitting models vary sub
 \hline
 Model & Ametryn & Atrazine & Diuron & Hexazinone & Irgarol & Simazine & Tebuthiuron\\
 \hline
-nec3param & 0.032 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.020\\
+nec3param & 0.020 & 0.000 & 0.000 & 0.000 & 0.001 & 0.000 & 0.018\\
 \hline
-nec4param & 0.037 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.004\\
+nec4param & 0.027 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.003\\
 \hline
 ecxexp & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000\\
 \hline
-ecx4param & 0.381 & 0.128 & 0.243 & 0.117 & 0.270 & 0.180 & 0.001\\
+ecx4param & 0.318 & 0.131 & 0.228 & 0.118 & 0.255 & 0.188 & 0.001\\
 \hline
-ecxwb1 & 0.009 & 0.462 & 0.122 & 0.000 & 0.224 & 0.102 & 0.000\\
+ecxwb1 & 0.010 & 0.473 & 0.117 & 0.000 & 0.245 & 0.093 & 0.000\\
 \hline
-ecxwb2 & 0.112 & 0.002 & 0.001 & 0.018 & 0.031 & 0.020 & 0.157\\
+ecxwb2 & 0.083 & 0.001 & 0.001 & 0.014 & 0.027 & 0.017 & 0.168\\
 \hline
-ecxwb1p3 & 0.000 & 0.000 & 0.000 & 0.009 & 0.000 & 0.017 & 0.000\\
+ecxwb1p3 & 0.000 & 0.000 & 0.000 & 0.019 & 0.000 & 0.014 & 0.000\\
 \hline
-ecxwb2p3 & 0.016 & 0.003 & 0.001 & 0.072 & 0.001 & 0.050 & 0.521\\
+ecxwb2p3 & 0.017 & 0.001 & 0.001 & 0.060 & 0.001 & 0.052 & 0.501\\
 \hline
-ecxll4 & 0.413 & 0.137 & 0.212 & 0.120 & 0.270 & 0.180 & 0.001\\
+ecxll5 & 0.239 & 0.267 & 0.310 & 0.022 & 0.203 & 0.142 & 0.308\\
 \hline
-ecxll3 & 0.000 & 0.000 & 0.083 & 0.663 & 0.000 & 0.308 & 0.000\\
+ecxll4 & 0.286 & 0.124 & 0.259 & 0.098 & 0.267 & 0.196 & 0.001\\
 \hline
-ecxll5 & NA & 0.265 & 0.339 & NA & 0.202 & 0.144 & 0.296\\
+ecxll3 & 0.000 & 0.000 & 0.085 & 0.670 & 0.000 & 0.297 & 0.000\\
 \hline
 \end{tabular}
 \end{table}
@@ -786,8 +786,8 @@ Finally, we also use the \texttt{compare\_posterior} function to extract and plo
 \begin{CodeChunk}
 \begin{CodeInput}
 R> post_comp <- compare_posterior(cleaned_fits, comparison = "nec")
-R> prob_diff <- post_comp$prob_diff %>%
-+   tidyr::separate(col = comparison, into = c("herbicide", "columns")) %>%
+R> prob_diff <- post_comp$prob_diff |>
++   tidyr::separate(col = comparison, into = c("herbicide", "columns")) |>
 +   tidyr::pivot_wider(names_from = columns, values_from = prob)
 R> colnames(prob_diff) <- stringr::str_to_sentence(colnames(prob_diff))
 R> prob_diff$Herbicide <- stringr::str_to_sentence(prob_diff$Herbicide)
@@ -814,17 +814,17 @@ R> prob_diff$Herbicide <- stringr::str_to_sentence(prob_diff$Herbicide)
 \hline
 Herbicide & Atrazine & Diuron & Hexazinone & Irgarol & Simazine & Tebuthiuron\\
 \hline
-Ametryn & 0.024378 & 0.8518565 & 0.0556320 & 0.9268659 & 0.0116265 & 0.0096262\\
+Ametryn & 0.0198775 & 0.8613577 & 0.0502563 & 0.9371171 & 0.0105013 & 0.0096262\\
 \hline
-Atrazine & NA & 0.9872484 & 0.8289786 & 0.9876235 & 0.0382548 & 0.0106263\\
+Atrazine & NA & 0.9873734 & 0.8499812 & 0.9881235 & 0.0336292 & 0.0105013\\
 \hline
-Diuron & NA & NA & 0.0126266 & 0.7100888 & 0.0110014 & 0.0098762\\
+Diuron & NA & NA & 0.0155019 & 0.7348419 & 0.0095012 & 0.0095012\\
 \hline
-Hexazinone & NA & NA & NA & 0.9887486 & 0.0183773 & 0.0098762\\
+Hexazinone & NA & NA & NA & 0.9859982 & 0.0147518 & 0.0097512\\
 \hline
-Irgarol & NA & NA & NA & NA & 0.0107513 & 0.0096262\\
+Irgarol & NA & NA & NA & NA & 0.0093762 & 0.0095012\\
 \hline
-Simazine & NA & NA & NA & NA & NA & 0.0788849\\
+Simazine & NA & NA & NA & NA & NA & 0.0802600\\
 \hline
 \end{tabular}
 \end{table}
@@ -887,11 +887,11 @@ Bayesian analysis can take considerable time to run, and can also generate relat
 
 \begin{itemize}
 \item
-  0.5 minutes for a simple single model fit to the herbicide ametryn in the example herbicide data set (see Section \ref{example});
+  0.2 minutes for a simple single model fit to the herbicide ametryn in the example herbicide data set (see Section \ref{example});
 \item
-  4.1 minutes for the full \code{decline} model set fit to the herbicide ametryn in the example herbicide data set (see Section \ref{isingle}); and
+  2.1 minutes for the full \code{decline} model set fit to the herbicide ametryn in the example herbicide data set (see Section \ref{isingle}); and
 \item
-  23.1 minutes to fit the full \code{decline} model set to all seven herbicides in the example herbicide data set (see Section \ref{iall})
+  16 minutes to fit the full \code{decline} model set to all seven herbicides in the example herbicide data set (see Section \ref{iall})
 \end{itemize}
 
 These computing times can be substantially reduced by running the four chains in parallel, by passing the argument \code{cores = 4} via the \code{bnec(...)} call, and will also vary widely among different hardware and operating systems.
