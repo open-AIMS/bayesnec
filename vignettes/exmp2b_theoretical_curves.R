@@ -36,11 +36,19 @@ b_nec <- quantile(x_vec, 0.3)
 model_names <- names(all_args)
 names(model_names) <- model_names
 
+ecx_levels <- c(
+  "ecxlin", "excexp", "ecxexp", "ecxsigm", "ecx4param", "ecxwb1", "ecxwb1p3",
+  "ecxwb2", "ecxwb2p3", "ecxll5", "ecxll4", "ecxll3", "ecxhormebc5",
+  "ecxhormebc4"
+)
 ecx_data <- purrr::map_dfr(
   grep("^pred_ecx", model_names, value = TRUE), make_plot_data,
   args_ = all_args, x = x_vec, .id = "fct"
 ) %>%
-  dplyr::mutate(fct = gsub("pred_", "", fct, fixed = TRUE))
+  dplyr::mutate(
+    fct = gsub("pred_", "", fct, fixed = TRUE) |>
+      factor(x = _, levels = .env$ecx_levels)
+  )
 
 ecx_plots <- ggplot(data = ecx_data, mapping = aes(x, y)) +
   geom_line(colour = "darkgrey", linetype = 1) +
@@ -53,11 +61,18 @@ ecx_plots <- ggplot(data = ecx_data, mapping = aes(x, y)) +
 ggsave("vignettes/vignette-fig-exmp2b-theoretical_ecx_curves.png",
        ecx_plots, width = 7.8, height = 6.4, dev = "png", dpi = 100)
 
+nec_levels <- c(
+  "neclin", "nec3param", "nec4param", "nechorme", "nechormepwr", "neclinhorme",
+  "nechorme4", "nechorme4pwr", "nechormepwr01", "necsigm"
+)
 nec_data <- purrr::map_dfr(
   grep("^pred_nec", model_names, value = TRUE), make_plot_data,
   args_ = all_args, x = x_vec, .id = "fct"
 ) %>%
-  dplyr::mutate(fct = gsub("pred_", "", fct, fixed = TRUE))
+  dplyr::mutate(
+    fct = gsub("pred_", "", fct, fixed = TRUE) |>
+      factor(x = _, levels = .env$nec_levels)
+  )
 
 nec_plots <- ggplot(data = nec_data, mapping = aes(x, y)) +
   geom_line(colour = "darkgrey", linetype = 1) +
