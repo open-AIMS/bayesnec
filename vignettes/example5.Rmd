@@ -178,12 +178,6 @@ library(posterior)
 ```
 
 ```
-## The following object is masked from 'package:bayesnec':
-## 
-##     sd
-```
-
-```
 ## The following objects are masked from 'package:stats':
 ## 
 ##     mad, sd, var
@@ -226,12 +220,6 @@ library(bayesplot)
 
 ```
 ## The following object is masked from 'package:posterior':
-## 
-##     rhat
-```
-
-```
-## The following object is masked from 'package:bayesnec':
 ## 
 ##     rhat
 ```
@@ -420,16 +408,16 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ```
 
 ```
-## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/ Running MCMC with 4 chains, at most 16 in parallel...
+## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/- Running MCMC with 4 chains, at most 16 in parallel...
 ## 
-## Chain 1 finished in 4.8 seconds.
-## Chain 3 finished in 5.0 seconds.
-## Chain 4 finished in 5.0 seconds.
-## Chain 2 finished in 5.1 seconds.
+## Chain 1 finished in 4.5 seconds.
+## Chain 2 finished in 4.6 seconds.
+## Chain 4 finished in 4.8 seconds.
+## Chain 3 finished in 4.9 seconds.
 ## 
 ## All 4 chains finished successfully.
-## Mean chain execution time: 5.0 seconds.
-## Total execution time: 5.2 seconds.
+## Mean chain execution time: 4.7 seconds.
+## Total execution time: 5.0 seconds.
 ```
 
 ```r
@@ -447,15 +435,15 @@ summary(fit)
 ## Group-Level Effects: 
 ## ~patient (Number of levels: 59) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.58      0.07     0.46     0.74 1.00      962     1802
+## sd(Intercept)     0.58      0.07     0.46     0.73 1.00      937     1510
 ## 
 ## Population-Level Effects: 
 ##            Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept      1.77      0.12     1.54     2.01 1.00      690     1170
-## zAge           0.09      0.09    -0.08     0.27 1.00      712     1497
-## zBase          0.70      0.12     0.46     0.94 1.00      676     1292
-## Trt1          -0.27      0.17    -0.61     0.06 1.01      724     1130
-## zBase:Trt1     0.05      0.16    -0.27     0.37 1.00      768     1589
+## Intercept      1.77      0.12     1.55     2.00 1.00      655     1254
+## zAge           0.09      0.09    -0.09     0.26 1.01      659     1234
+## zBase          0.70      0.12     0.46     0.94 1.01      744     1152
+## Trt1          -0.27      0.16    -0.61     0.06 1.01      680     1145
+## zBase:Trt1     0.05      0.16    -0.27     0.38 1.01      867     1709
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential

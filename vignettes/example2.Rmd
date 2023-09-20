@@ -67,12 +67,8 @@ We have created some plotting method functions for both the `bayesnecfit` and `b
 
 ```r
 autoplot(exp_5)
+#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%" />
-<p class="caption">plot of chunk exmp2-decline</p>
-</div>
 
 The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set that were able to fit successfully using the default `bnec` settings. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* [@fisherfox2023] estimates that are used as an approximation to *NEC* for all the **ecx**-containing models in the set. The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to `"pseudobma"` using Bayesian bootstrap from `loo`), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).
 
@@ -80,14 +76,14 @@ The default plot looks exactly the same as our regular `bayesnecfit` plot, but t
 ```r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5
-#> nec4param nec4param -84.08587 3.167082e-01                  NA              NA
-#> neclin       neclin -52.54750 1.288932e-03                  NA              NA
-#> ecxlin       ecxlin -27.84821 6.343701e-05                  NA              NA
-#> ecx4param ecx4param -81.45303 9.248546e-02                  NA              NA
-#> ecxwb1       ecxwb1 -75.42426 1.656067e-02                  NA              NA
-#> ecxwb2       ecxwb2 -84.88567 3.093365e-01                  NA              NA
-#> ecxll5       ecxll5 -83.36809 1.461909e-01                  NA              NA
-#> ecxll4       ecxll4 -81.88474 1.173659e-01                  NA              NA
+#> nec4param nec4param -84.66314 3.487049e-01                  NA              NA
+#> neclin       neclin -52.34508 1.368522e-03                  NA              NA
+#> ecxlin       ecxlin -27.71840 1.298068e-07                  NA              NA
+#> ecx4param ecx4param -81.97368 1.141786e-01                  NA              NA
+#> ecxwb1       ecxwb1 -74.74953 1.228802e-02                  NA              NA
+#> ecxwb2       ecxwb2 -85.39821 3.397824e-01                  NA              NA
+#> ecxll5       ecxll5 -83.34345 1.187143e-01                  NA              NA
+#> ecxll4       ecxll4 -80.82614 6.496319e-02                  NA              NA
 #>           dispersion_Q97.5
 #> nec4param               NA
 #> neclin                  NA
@@ -115,20 +111,20 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -84.09 0.32
-#> neclin    -52.55 0.00
-#> ecxlin    -27.85 0.00
-#> ecx4param -81.45 0.09
-#> ecxwb1    -75.42 0.02
-#> ecxwb2    -84.89 0.31
-#> ecxll5    -83.37 0.15
-#> ecxll4    -81.88 0.12
+#> nec4param -84.66 0.35
+#> neclin    -52.35 0.00
+#> ecxlin    -27.72 0.00
+#> ecx4param -81.97 0.11
+#> ecxwb1    -74.75 0.01
+#> ecxwb2    -85.40 0.34
+#> ecxll5    -83.34 0.12
+#> ecxll4    -80.83 0.06
 #> 
 #> 
 #> Summary of weighted NEC posterior estimates:
 #> NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
 #>     Estimate Q2.5 Q97.5
-#> NEC     3.37 2.00  3.95
+#> NEC     3.36 2.04  3.95
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -140,7 +136,7 @@ summary(exp_5)
 #> ecxwb1        0.85      0.01 0.83  0.86
 #> ecxwb2        0.86      0.01 0.84  0.87
 #> ecxll5        0.86      0.01 0.84  0.87
-#> ecxll4        0.85      0.01 0.84  0.87
+#> ecxll4        0.85      0.01 0.83  0.87
 ```
 
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
@@ -149,24 +145,20 @@ The `bayesmanecfit` object also contains all of the individual `brms` model fits
 ```r
 exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
 autoplot(exp_5_nec4param)
+#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-ecx4param-1.png" alt="plot of chunk exmp2-ecx4param" width="60%" />
-<p class="caption">plot of chunk exmp2-ecx4param</p>
-</div>
 
 This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. All of the models in the `bayesmanecfit` can be simultaneously plotted using the argument `all_models = TRUE`.
 
 
 ```r
 autoplot(exp_5, all_models = TRUE)
+#> Error in `map()`:
+#> ℹ In index: 1.
+#> ℹ With name: nec4param.
+#> Caused by error in `if (family$family == "binomial" | family == "beta_binomial") ...`:
+#> ! the condition has length > 1
 ```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-allmods-1.png" alt="plot of chunk exmp2-allmods" width="60%" />
-<p class="caption">plot of chunk exmp2-allmods</p>
-</div>
 
 You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the **ecxlin** and **neclin** models in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.
  
@@ -223,7 +215,7 @@ Here we get a message because none of our models failed the default Rhat criteri
 rhat(exp_5, rhat_cutoff = 1.01) |>
   sapply("[[", "failed")
 #> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
-#>     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE      TRUE      TRUE
+#>     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
 ```
 
 ### Extracting toxicity values
@@ -249,7 +241,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.622077 2.719447 4.157703 
+#> 3.641915 2.769042 4.127946 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -258,7 +250,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.109928 4.842115 5.357903 
+#> 5.100009 4.861953 5.357903 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -274,7 +266,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_nec
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.540435 3.139987 4.045654
+#> 3.547066 3.134446 4.044064
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].
@@ -306,11 +298,7 @@ autoplot(exp_5, nec = FALSE, all = FALSE) +
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 12),
         strip.text.x = element_text(size = 16))
+#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-pretty-1.png" alt="plot of chunk exmp2-pretty" width="60%" />
-<p class="caption">plot of chunk exmp2-pretty</p>
-</div>
 
 # References
