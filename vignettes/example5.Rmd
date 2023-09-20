@@ -136,8 +136,101 @@ b.  Make sure all these packages are installed and loaded.
 
 ```r
 library(cmdstanr)
+```
+
+```
+## This is cmdstanr version 0.5.3
+```
+
+```
+## - CmdStanR documentation and vignettes: mc-stan.org/cmdstanr
+```
+
+```
+## - CmdStan path: C:/cmdstan
+```
+
+```
+## - CmdStan version: 2.30.0
+```
+
+```
+## 
+## A newer version of CmdStan is available. See ?install_cmdstan() to install it.
+## To disable this check set option or environment variable CMDSTANR_NO_VER_CHECK=TRUE.
+```
+
+```r
 library(posterior)
+```
+
+```
+## Warning: package 'posterior' was built under R version 4.2.3
+```
+
+```
+## This is posterior version 1.4.1
+```
+
+```
+## 
+## Attaching package: 'posterior'
+```
+
+```
+## The following objects are masked from 'package:stats':
+## 
+##     mad, sd, var
+```
+
+```
+## The following objects are masked from 'package:base':
+## 
+##     %in%, match
+```
+
+```r
 library(bayesplot)
+```
+
+```
+## This is bayesplot version 1.10.0
+```
+
+```
+## - Online documentation and vignettes at mc-stan.org/bayesplot
+```
+
+```
+## - bayesplot theme set to bayesplot::theme_default()
+```
+
+```
+##    * Does _not_ affect other ggplot2 plots
+```
+
+```
+##    * See ?bayesplot_theme_set for details on theme setting
+```
+
+```
+## 
+## Attaching package: 'bayesplot'
+```
+
+```
+## The following object is masked from 'package:posterior':
+## 
+##     rhat
+```
+
+```
+## The following object is masked from 'package:brms':
+## 
+##     rhat
+```
+
+```r
 color_scheme_set("brightblue")
 ```
 
@@ -315,15 +408,15 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ```
 
 ```
-## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/- Running MCMC with 4 chains, at most 16 in parallel...
+## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/- Running MCMC with 4 chains, at most 16 in parallel...
 ## 
-## Chain 3 finished in 4.5 seconds.
-## Chain 2 finished in 4.8 seconds.
-## Chain 4 finished in 4.8 seconds.
-## Chain 1 finished in 5.4 seconds.
+## Chain 2 finished in 5.1 seconds.
+## Chain 1 finished in 5.2 seconds.
+## Chain 3 finished in 5.3 seconds.
+## Chain 4 finished in 5.5 seconds.
 ## 
 ## All 4 chains finished successfully.
-## Mean chain execution time: 4.9 seconds.
+## Mean chain execution time: 5.3 seconds.
 ## Total execution time: 5.5 seconds.
 ```
 
@@ -342,15 +435,15 @@ summary(fit)
 ## Group-Level Effects: 
 ## ~patient (Number of levels: 59) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.59      0.07     0.46     0.74 1.00      857     1635
+## sd(Intercept)     0.58      0.07     0.46     0.75 1.01      800     1523
 ## 
 ## Population-Level Effects: 
 ##            Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept      1.78      0.12     1.53     2.00 1.00      723     1133
-## zAge           0.09      0.09    -0.07     0.26 1.00      812     1511
-## zBase          0.70      0.12     0.45     0.94 1.00      785     1289
-## Trt1          -0.28      0.17    -0.61     0.06 1.00      759     1365
-## zBase:Trt1     0.06      0.17    -0.26     0.40 1.00      808     1427
+## Intercept      1.78      0.12     1.55     2.00 1.01      601     1411
+## zAge           0.09      0.09    -0.08     0.26 1.00      730     1288
+## zBase          0.71      0.12     0.48     0.95 1.00      725     1060
+## Trt1          -0.27      0.17    -0.61     0.06 1.01      647      995
+## zBase:Trt1     0.04      0.17    -0.29     0.36 1.00      856     1273
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential

@@ -67,8 +67,12 @@ We have created some plotting method functions for both the `bayesnecfit` and `b
 
 ```r
 autoplot(exp_5)
-#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%" />
+<p class="caption">plot of chunk exmp2-decline</p>
+</div>
 
 The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set that were able to fit successfully using the default `bnec` settings. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* [@fisherfox2023] estimates that are used as an approximation to *NEC* for all the **ecx**-containing models in the set. The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to `"pseudobma"` using Bayesian bootstrap from `loo`), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).
 
@@ -76,14 +80,14 @@ The default plot looks exactly the same as our regular `bayesnecfit` plot, but t
 ```r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5
-#> nec4param nec4param -84.27926 3.014199e-01                  NA              NA
-#> neclin       neclin -52.79191 2.623904e-03                  NA              NA
-#> ecxlin       ecxlin -27.94184 3.761823e-07                  NA              NA
-#> ecx4param ecx4param -81.52933 8.838216e-02                  NA              NA
-#> ecxwb1       ecxwb1 -75.57556 1.735654e-02                  NA              NA
-#> ecxwb2       ecxwb2 -85.20960 3.016702e-01                  NA              NA
-#> ecxll5       ecxll5 -84.05179 1.798918e-01                  NA              NA
-#> ecxll4       ecxll4 -81.94990 1.086551e-01                  NA              NA
+#> nec4param nec4param -84.31855 2.954818e-01                  NA              NA
+#> neclin       neclin -52.66493 1.935145e-03                  NA              NA
+#> ecxlin       ecxlin -27.76148 5.979878e-07                  NA              NA
+#> ecx4param ecx4param -81.79204 9.972846e-02                  NA              NA
+#> ecxwb1       ecxwb1 -74.81455 1.189726e-02                  NA              NA
+#> ecxwb2       ecxwb2 -85.30221 3.168789e-01                  NA              NA
+#> ecxll5       ecxll5 -83.74542 1.454074e-01                  NA              NA
+#> ecxll4       ecxll4 -82.30576 1.286705e-01                  NA              NA
 #>           dispersion_Q97.5
 #> nec4param               NA
 #> neclin                  NA
@@ -111,20 +115,20 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -84.28 0.30
-#> neclin    -52.79 0.00
-#> ecxlin    -27.94 0.00
-#> ecx4param -81.53 0.09
-#> ecxwb1    -75.58 0.02
-#> ecxwb2    -85.21 0.30
-#> ecxll5    -84.05 0.18
-#> ecxll4    -81.95 0.11
+#> nec4param -84.32 0.30
+#> neclin    -52.66 0.00
+#> ecxlin    -27.76 0.00
+#> ecx4param -81.79 0.10
+#> ecxwb1    -74.81 0.01
+#> ecxwb2    -85.30 0.32
+#> ecxll5    -83.75 0.15
+#> ecxll4    -82.31 0.13
 #> 
 #> 
 #> Summary of weighted NEC posterior estimates:
 #> NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
 #>     Estimate Q2.5 Q97.5
-#> NEC     3.34 2.01  3.99
+#> NEC     3.30 2.04  3.96
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -145,20 +149,24 @@ The `bayesmanecfit` object also contains all of the individual `brms` model fits
 ```r
 exp_5_nec4param <- pull_out(exp_5, model = "ecx4param")
 autoplot(exp_5_nec4param)
-#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp2-ecx4param-1.png" alt="plot of chunk exmp2-ecx4param" width="60%" />
+<p class="caption">plot of chunk exmp2-ecx4param</p>
+</div>
 
 This would extract the **nec4param** model from the `bayesmanecfit` and create a new object of class `bayesnecfit` which contains just a single fit. This would be identical to fitting the **ecx4param** as a single model using `bnec`. All of the models in the `bayesmanecfit` can be simultaneously plotted using the argument `all_models = TRUE`.
 
 
 ```r
 autoplot(exp_5, all_models = TRUE)
-#> Error in `map()`:
-#> ℹ In index: 1.
-#> ℹ With name: nec4param.
-#> Caused by error in `if (family$family == "binomial" | family == "beta_binomial") ...`:
-#> ! the condition has length > 1
 ```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp2-allmods-1.png" alt="plot of chunk exmp2-allmods" width="60%" />
+<p class="caption">plot of chunk exmp2-allmods</p>
+</div>
 
 You can see that some of these models represent very bad fits, and accordingly have extremely low model weights, such as the **ecxlin** and **neclin** models in this example. There is no harm in leaving in poor models with low weight, precisely because they have such a low model weight and therefore will not influence posterior predictions. However, it is important to assess the adequacy of model fits of all models, because a poor fit may be more to do with a model that has not converged.
  
@@ -204,7 +212,8 @@ Where  a large number of models are failing to converge, obviously it would be b
 ```r
 rhat(exp_5) |>
   sapply("[[", "failed")
-#> Error in UseMethod("rhat"): no applicable method for 'rhat' applied to an object of class "c('bayesmanecfit', 'bnecfit')"
+#> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
+#>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE
 ```
 
 Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case two models fail, although we note that this is a very stringent criterion, and we have also used less than the default `bayesnec` value of `iter` (10,000).
@@ -213,7 +222,8 @@ Here we get a message because none of our models failed the default Rhat criteri
 ```r
 rhat(exp_5, rhat_cutoff = 1.01) |>
   sapply("[[", "failed")
-#> Error in UseMethod("rhat"): no applicable method for 'rhat' applied to an object of class "c('bayesmanecfit', 'bnecfit')"
+#> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
+#>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
 ```
 
 ### Extracting toxicity values
@@ -239,7 +249,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.631996 2.689690 4.167870 
+#> 3.602239 2.689690 4.137865 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -248,7 +258,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.100009 4.842115 5.377741 
+#> 5.100009 4.832196 5.367822 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -264,7 +274,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_nec
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.561120 3.185379 4.082693
+#> 3.553983 3.124025 4.041929
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].
@@ -296,7 +306,11 @@ autoplot(exp_5, nec = FALSE, all = FALSE) +
         axis.title = element_text(size = 16),
         axis.text = element_text(size = 12),
         strip.text.x = element_text(size = 16))
-#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp2-pretty-1.png" alt="plot of chunk exmp2-pretty" width="60%" />
+<p class="caption">plot of chunk exmp2-pretty</p>
+</div>
 
 # References
