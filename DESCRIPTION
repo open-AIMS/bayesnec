@@ -15,7 +15,6 @@ Biarch: true
 Imports:
     formula.tools,
     loo,
-    extraDistr,
     dplyr,
     tidyr,
     purrr,
