@@ -162,7 +162,7 @@ exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
                data = binom_data, family = beta_binomial2)
 ```
 
-Fitting this data with the `betabinomial2` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
+Fitting this data with the `beta_binomial` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
 
 
 ```{r exmp1-bbinom, fig.width = 5, message = FALSE}
