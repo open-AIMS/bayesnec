@@ -44,9 +44,7 @@ interpolated NOEC value from smooth ECx curves.}
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If "fitting" is provided with argument \code{pointwise = TRUE}
-(due to memory issues) and \code{family = "beta_binomial2"}, the
-\code{\link{bnec}} will fail because that is a custom family. If "weights" is
+If "weights" is
 not provided by the user, \code{\link{bnec}} will set the default
 \code{method} argument in \code{\link[loo]{loo_model_weights}} to
 "pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
@@ -61,7 +59,7 @@ containing the response variable.}
 
 \item{trials_var}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} indicating the column
-heading for the number of "trials" for binomial or beta_binomial2 response
+heading for the number of "trials" for binomial or "beta_binomial" response
 data, as it appears in "data" (if data is supplied).}
 
 \item{model}{Removed in version 2.0. Use formula instead. Used to be a
@@ -162,8 +160,8 @@ value of 0.01 for a one-sided test of significance.
 If not supplied via the \code{\link[brms]{brm}} argument \code{family}, the
 appropriate distribution will be guessed based on the characteristics of the
 input data. Guesses include: "bernoulli" / bernoulli / bernoulli(), "Beta" /
-Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial2" /
-beta_binomial2, "Gamma" / Gamma / Gamma(), "gaussian" / gaussian /
+Beta / Beta(), "binomial" / binomial / binomial(), "beta_binomial" /
+"beta_binomial", "Gamma" / Gamma / Gamma(), "gaussian" / gaussian /
 gaussian(), "negbinomial" / negbinomial / negbinomial(), or "poisson" /
 poisson / poisson(). Note, however, that "negbinomial" and "betabinomimal2"
 require knowledge on whether the data is over-dispersed. As

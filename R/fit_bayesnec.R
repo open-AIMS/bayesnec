@@ -42,14 +42,14 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
       data[, y_var] <- y
       x_var <- bnec_pop_vars[[which(names(bnec_pop_vars) == "x_var")]]
       data[, x_var] <- x
-      if (family$family == "binomial" || custom_name == "beta_binomial2") {
+      if (family$family == "binomial" || family$family == "beta_binomial") {
         t_var <- bnec_pop_vars[[which(names(bnec_pop_vars) == "trials_var")]]
         data[, t_var] <- tr
       }
     }
   }
   custom_name <- check_custom_name(family)
-  if (family$family == "binomial" || custom_name == "beta_binomial2") {
+  if (family$family == "binomial" || family$family == "beta_binomial") {
     response <- y / tr
   } else {
     response <- y
@@ -58,15 +58,12 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name)
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
-  if (custom_name == "beta_binomial2") {
-    all_args <- c(list(stanvars = stanvars), all_args)
-  }
   fit <- do.call(brm, all_args)
   pass <- are_chains_correct(fit, all_args$chains)
   if (!pass) {
     stop("Failed to fit model ", model, ".", call. = FALSE)
   }
-  msg_tag <- ifelse(family$family == "custom", custom_name, family$family)
+  msg_tag <- family$family
   message(paste0("Response variable modelled as a ", model, " model using a ",
                  msg_tag, " distribution."))
   out <- list(fit = fit, model = model, init = all_args$init,

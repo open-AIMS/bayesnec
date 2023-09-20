@@ -10,7 +10,7 @@
 #' @name bayesnec-package
 #' @aliases bayesnec
 #' @importFrom ggplot2 autoplot
-#' @importFrom brms bernoulli Beta negbinomial
+#' @importFrom brms bernoulli Beta negbinomial beta_binomial
 #'
 #' @references
 #' Bürkner P-C (2018) Advanced Bayesian Multilevel Modeling with the R Package

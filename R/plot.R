@@ -94,7 +94,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
-  if (family == "binomial" | custom_name == "beta_binomial2") {
+  if (family == "binomial" | family == "beta_binomial") {
     trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
     y_dat <- x$fit$data[[y_var]] / x$fit$data[[trials_var]]
   } else {
@@ -250,7 +250,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     x_var <- attr(bdat, "bnec_pop")[["x_var"]]
     family <- universal$fit$family$family
     custom_name <- check_custom_name(universal$fit$family)
-    if (family == "binomial" | custom_name == "beta_binomial2") {
+    if (family == "binomial" | family == "beta_binomial") {
       trials_var <- attr(bdat, "bnec_pop")[["trials_var"]]
       y_dat <- mod_dat[[y_var]] / mod_dat[[trials_var]]
     } else {

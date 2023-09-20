@@ -18,17 +18,13 @@ define_prior <- function(model, family, predictor, response) {
   custom_name <- check_custom_name(family)
   if (link_tag %in% c("logit", "log")) {
     fam_tag <- "gaussian"
-  } else {
-    if (custom_name == "beta_binomial2") {
-      fam_tag <- custom_name
-    } else {
-      fam_tag <- family$family
-    }
-  }
-  if (custom_name == "beta_binomial2" || family$family == "binomial") {
+  } else { 
+    fam_tag <- family$family
+   }
+  if (family$family == "beta_binomial" || family$family == "binomial") {
     if (is.integer(response) || max(response) > 1) {
       stop("Response vector must be passed as a proportion to define_prior",
-           " (not as integers) for the binomial and beta_binomial2 families.")
+           " (not as integers) for the binomial and beta_binomial families.")
     }
   }
   response <- response_link_scale(response, family)
@@ -49,7 +45,7 @@ define_prior <- function(model, family, predictor, response) {
                                  ", ", sd(response) * 2.5, ")"),
                bernoulli = "beta(5, 2)",
                binomial = "beta(5, 2)",
-               beta_binomial2 = "beta(5, 2)",
+               "beta_binomial" = "beta(5, 2)",
                beta = "beta(5, 2)")
   y_b_prs <- c(Gamma = u_b_g,
                poisson = u_b_g,
@@ -59,7 +55,7 @@ define_prior <- function(model, family, predictor, response) {
                                  ", ", sd(response) * 2.5, ")"),
                bernoulli = "beta(2, 5)",
                binomial = "beta(2, 5)",
-               beta_binomial2 = "beta(2, 5)",
+               "beta_binomial" = "beta(2, 5)",
                beta = "beta(2, 5)")
   x_prs <- c(Beta = "beta(2, 2)",
              Gamma = paste0("gamma(5, ",
@@ -71,9 +67,9 @@ define_prior <- function(model, family, predictor, response) {
                                         probs = 0.5),
                                ", ", sd(predictor) * 10, ")"))
   lbs <- c(Gamma = 0, poisson = 0, negbinomial = 0, gaussian = NA,
-           bernoulli = 0, binomial = 0, beta_binomial2 = 0, beta = 0)
+           bernoulli = 0, binomial = 0, "beta_binomial" = 0, beta = 0)
   ubs <- c(Gamma = NA, poisson = NA, negbinomial = NA, gaussian = NA,
-           bernoulli = 1, binomial = 1, beta_binomial2 = 1, beta = 1)
+           bernoulli = 1, binomial = 1, "beta_binomial" = 1, beta = 1)
   # y-dependent priors
   pr_top <- prior_string(y_t_prs[fam_tag], nlpar = "top",
                          lb = lbs[fam_tag], ub = ubs[fam_tag])

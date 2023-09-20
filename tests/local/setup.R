@@ -4,7 +4,7 @@ library(testthat)
 options(mc.cores = 1)
 
 muted_bnec <- function(...) {
-  bnec(... , refresh = -1) |>
+  bnec(... , refresh = 0, silent = 2) |>
     suppressWarnings() |>
     suppressMessages()
 }
@@ -76,7 +76,7 @@ manec_betabinomial <- nec_data |>
   dplyr::mutate(trials = 10, y = round(y * trials)) |>
   (\(x)retry_mb(y | trials(trials) ~
                   crf(x, model = c("nec4param", "ecx4param")),
-                data = x, chains = 2, family = "beta_binomial2"))()
+                data = x, chains = 2, family = "beta_binomial"))()
 
 message("\n# Poisson\n")
 manec_poisson_log <- nec_data |>

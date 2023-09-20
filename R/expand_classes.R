@@ -40,7 +40,7 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
   new_dat <- data.frame(x_seq)
   names(new_dat) <- x_var
   custom_name <- check_custom_name(fit$family)
-  if (fam_tag == "binomial" || custom_name == "beta_binomial2") {
+  if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
     trials_col_name <- attr(mod_dat, "bnec_pop")[["trials_var"]]
     new_dat[[trials_col_name]] <- 1
   }

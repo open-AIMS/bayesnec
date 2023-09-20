@@ -40,7 +40,7 @@ mod_fams <- c(gaussian = "gaussian",
               negbinomial = "negbinomial",
               bernoulli = "bernoulli",
               binomial = "binomial",
-              custom = "beta_binomial2",
+              beta_binomial = "beta_binomial",
               beta = "Beta")
 
 ############
@@ -180,21 +180,6 @@ bf_ecxhormebc4 <- brms::bf(y ~ 0 + (top - 0 + exp(slope) * x) /
                            top + beta + ec50 + slope ~ 1,
                            nl = TRUE)
 
-###############
-# CUSTOM FAMILY
-###############
-# from https://paul-buerkner.github.io/brms/articles/brms_customfamilies.html
-stan_funs <- "
-  real beta_binomial2_lpmf(int y, real mu, real phi, int T) {
-    return beta_binomial_lpmf(y | T, mu * phi, (1 - mu) * phi);
-  }
-  int beta_binomial2_rng(real mu, real phi, int T) {
-    return beta_binomial_rng(T, mu * phi, (1 - mu) * phi);
-  }
-"
-
-stanvars <- brms::stanvar(scode = stan_funs, block = "functions")
-
 ##################
 #PREDICT FUNCTIONS
 ##################
@@ -274,8 +259,6 @@ usethis::use_data(
   bf_ecxhormebc5,
   #ecxhormebc4
   bf_ecxhormebc4,
-  stan_funs,
-  stanvars,
   pred_functions,
   internal = TRUE, overwrite = TRUE
 )

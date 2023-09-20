@@ -34,7 +34,7 @@ check_models <- function(model, family, data) {
     }
   }
   if (link_tag == "identity" & fam_tag %in%
-        c("bernoulli", "beta", "binomial", "custom")) {
+        c("bernoulli", "beta", "binomial", "beta_binomial")) {
     use_model <-  model[!model %in% c("neclin", "neclinhorme", "ecxlin")]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
