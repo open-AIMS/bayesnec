@@ -147,10 +147,10 @@ summary(exp_1)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.05      0.02     0.02     0.08 1.00     3083     2640
-#> top      0.83      0.01     0.81     0.84 1.00     4450     4511
-#> beta     0.80      0.14     0.55     1.07 1.00     2662     3207
-#> nec      4.42      0.03     4.36     4.47 1.00     2755     3686
+#> bot      0.05      0.02     0.02     0.08 1.00     2854     2877
+#> top      0.83      0.01     0.81     0.84 1.00     4496     4368
+#> beta     0.81      0.13     0.56     1.07 1.00     2560     3502
+#> nec      4.43      0.03     4.36     4.47 1.00     3011     3301
 #> 
 #> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -184,7 +184,7 @@ This model fit does not look great. You can see that the error bounds around the
 ```r
 exp_1$dispersion
 #> Estimate     Q2.5    Q97.5 
-#> 19.61959 13.31819 30.90004
+#> 19.59174 13.19070 30.96303
 ```
 
 ### Beta-Binomial
@@ -223,7 +223,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 ```r
 summary(exp(exp_1b$nec_posterior))
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   18.65   65.09   78.60   75.27   87.73  197.15
+#>   21.45   65.82   78.91   76.14   88.12  195.98
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
@@ -232,7 +232,7 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 ```r
 ecx(exp_1b, xform = exp)
 #>      Q50     Q2.5    Q97.5 
-#> 82.96216 43.33243 98.17357 
+#> 82.96216 43.33243 98.97417 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -261,14 +261,14 @@ summary(exp_1b)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.13      0.05     0.03     0.23 1.00     3135     2891
-#> top      0.84      0.03     0.78     0.88 1.00     1947     2637
-#> beta     0.84      0.67    -0.20     2.91 1.00     1072      466
-#> nec      4.36      0.19     3.66     4.58 1.00     1156      621
+#> bot      0.13      0.06     0.03     0.23 1.00     2026     2441
+#> top      0.84      0.03     0.77     0.88 1.00     1956     2279
+#> beta     0.84      0.69    -0.17     3.16 1.01      477      190
+#> nec      4.37      0.20     3.67     4.59 1.01      515      185
 #> 
 #> Family Specific Parameters: 
 #>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.33      1.25     3.31     8.20 1.00     2449     3764
+#> phi     5.37      1.32     3.30     8.34 1.00     2237     2997
 #> 
 #> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -324,10 +324,10 @@ count_data <- nec_data |>
 str(count_data)
 #> 'data.frame':	100 obs. of  2 variables:
 #>  $ x: num  1.019 0.816 0.371 0.401 1.295 ...
-#>  $ y: int  94 94 87 103 82 88 97 77 83 96 ...
+#>  $ y: int  80 103 62 83 63 70 82 84 107 105 ...
 summary(count_data$y)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   12.00   64.75   83.00   77.91   95.00  122.00
+#>    5.00   62.00   81.00   75.89   94.25  130.00
 summary(count_data$x)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #> 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052
@@ -354,7 +354,7 @@ autoplot(exp_3)
 ```r
 exp_3$dispersion
 #>   Estimate       Q2.5      Q97.5 
-#>  1.5030581  0.1409635 28.9891154
+#>  2.7205148  0.4580892 67.9840841
 ```
 
 We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the `family` argument.
@@ -426,14 +426,14 @@ summary(exp_4)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.89     1.07 1.00     3812     4175
-#> top      2.44      0.01     2.41     2.46 1.00     6645     5065
-#> beta     0.65      0.10     0.46     0.84 1.00     3337     3650
-#> nec      1.50      0.02     1.46     1.54 1.00     4051     4914
+#> bot      0.98      0.05     0.88     1.07 1.00     3681     3411
+#> top      2.44      0.01     2.41     2.46 1.00     6749     5241
+#> beta     0.65      0.10     0.45     0.84 1.00     3222     3587
+#> nec      1.50      0.02     1.46     1.54 1.00     3992     4785
 #> 
 #> Family Specific Parameters: 
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   517.35     76.26   386.06   684.16 1.00     6313     5196
+#> shape   515.14     73.51   386.69   670.38 1.00     6307     5007
 #> 
 #> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
