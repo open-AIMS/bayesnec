@@ -147,12 +147,12 @@ summary(exp_1)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.05      0.02     0.02     0.08 1.00     3019     2728
-#> top      0.83      0.01     0.81     0.84 1.00     4478     4150
-#> beta     0.80      0.13     0.56     1.07 1.00     2613     3410
-#> nec      4.42      0.03     4.36     4.47 1.00     3081     3457
+#> bot      0.05      0.02     0.02     0.08 1.00     3102     3091
+#> top      0.83      0.01     0.81     0.84 1.00     4568     4757
+#> beta     0.81      0.13     0.56     1.08 1.00     2789     3419
+#> nec      4.43      0.03     4.36     4.48 1.00     3002     3852
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
@@ -180,7 +180,7 @@ This model fit does not look great. You can see that the error bounds around the
 ```r
 exp_1$dispersion
 #> Estimate     Q2.5    Q97.5 
-#> 19.70307 13.12498 30.33745
+#> 19.68452 13.14568 30.96848
 ```
 
 ### Beta-Binomial
@@ -195,7 +195,7 @@ exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
 #> Error in validate_family(family): You have specified family as custom, which is not currently implemented. bnec only allows: gaussian, Gamma, poisson, negbinomial, bernoulli, binomial, beta_binomial, Beta.
 ```
 
-Fitting this data with the `betabinomial2` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
+Fitting this data with the `beta_binomial` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
 
 
 
@@ -274,10 +274,10 @@ count_data <- nec_data |>
 str(count_data)
 #> 'data.frame':	100 obs. of  2 variables:
 #>  $ x: num  1.019 0.816 0.371 0.401 1.295 ...
-#>  $ y: int  65 86 68 103 74 75 105 96 96 113 ...
+#>  $ y: int  98 86 79 99 93 103 96 104 74 119 ...
 summary(count_data$y)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>    2.00   67.75   83.00   77.12   93.00  119.00
+#>    9.00   65.75   83.00   78.86   93.25  131.00
 summary(count_data$x)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #> 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052
@@ -296,8 +296,8 @@ exp_3 <- bnec(y ~ crf(x, model = "nec4param"), data = count_data)
 autoplot(exp_3)
 #> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 exp_3$dispersion
-#>   Estimate       Q2.5      Q97.5 
-#>  1.6342853  0.2688686 29.7960444
+#>    Estimate        Q2.5       Q97.5 
+#>  0.45157481  0.02611295 19.28381731
 ```
 
 We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the `family` argument.
@@ -358,16 +358,16 @@ summary(exp_4)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.88     1.07 1.00     3749     4256
-#> top      2.44      0.01     2.41     2.46 1.00     6307     5065
-#> beta     0.65      0.09     0.46     0.84 1.00     3483     4524
-#> nec      1.50      0.02     1.46     1.53 1.00     4470     5272
+#> bot      0.98      0.05     0.88     1.07 1.00     3512     3994
+#> top      2.44      0.01     2.41     2.46 1.00     6222     5092
+#> beta     0.65      0.10     0.46     0.85 1.00     2995     4037
+#> nec      1.50      0.02     1.46     1.54 1.00     3710     4801
 #> 
 #> Family Specific Parameters: 
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   516.27     74.43   384.68   675.82 1.00     6394     4425
+#> shape   516.62     73.27   383.86   675.93 1.00     6104     4973
 #> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
 #> scale reduction factor on split chains (at convergence, Rhat = 1).
 #> 
