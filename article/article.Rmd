@@ -44,15 +44,15 @@ author:
       'Australian Institute of Marine Science'
     orcid: 0000-0002-7761-0806
   - name: David Fox
-    address:
+     address:
+      - University of Melbourne     
+      - Parkville, Victoria, Australia  
+    address2:
       - Environmetrics Australia,
       - Beaumaris, Victoria, Australia
-    address2:
-      - University of Melbourne     
-      - Parkville, Victoria, Australia      
-    affiliation: 'Environmetrics Australia'
+    affiliation: 'University of Melbourne'
     affiliation2:
-      'University of Melbourne'
+      'Environmetrics Australia'
     orcid: 0000-0002-3178-7243
 abstract: >
   The \pkg{bayesnec} package has been developed for \proglang{R} to fit concentration(dose) - response curves (CR) to toxicity data for the purpose of deriving no-effect-concentration (NEC), no-significant-effect-concentration (NSEC), and effect-concentration (of specified percentage 'x', ECx) thresholds from non-linear models fitted using Bayesian Hamiltonian Monte Carlo (HMC) via \pkg{brms} [@Burkner2017; @Burkner2018] and \pkg{rstan} [@rstan2021] or \pkg{cmdstanr} [@cmdstanr2022]. In \pkg{bayesnec} it is possible to fit a single model, custom models-set, specific model-set or all of the available models. When multiple models are specified the \code{bnec} function returns a model weighted average estimate of predicted posterior values. A range of support functions and methods are also included to work with the returned single, or multi-model objects that allow extraction of raw, or model averaged predicted, NEC, NSEC and ECx values and to interrogate the fitted model or model-set. By combing Bayesian methods with model averaging, \pkg{bayesnec} provides a single estimate of toxicity and assocaited uncertainty that can be directly integrated into risk assessment frameworks.
