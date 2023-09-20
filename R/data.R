@@ -17,7 +17,7 @@ NULL
 #'
 #' @format An object of class \code{\link[brms]{customfamily}}
 #'
-#' @name beta_binomial2
+#' @name "beta_binomial"
 #' @docType data
 NULL
 

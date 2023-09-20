@@ -147,10 +147,10 @@ summary(exp_1)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.05      0.02     0.02     0.08 1.00     2854     2877
-#> top      0.83      0.01     0.81     0.84 1.00     4496     4368
-#> beta     0.81      0.13     0.56     1.07 1.00     2560     3502
-#> nec      4.43      0.03     4.36     4.47 1.00     3011     3301
+#> bot      0.05      0.02     0.02     0.08 1.00     3019     2728
+#> top      0.83      0.01     0.81     0.84 1.00     4478     4150
+#> beta     0.80      0.13     0.56     1.07 1.00     2613     3410
+#> nec      4.42      0.03     4.36     4.47 1.00     3081     3457
 #> 
 #> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -169,12 +169,8 @@ The functions `plot` (extending `base` plot method) and `autoplot` (extending `g
 
 ```r
 autoplot(exp_1, xform = exp)
+#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%" />
-<p class="caption">plot of chunk exmp1-binom</p>
-</div>
 
 There are many built in methods available for `brmsfit` objects and we encourage you to make use of these in full.
 
@@ -184,7 +180,7 @@ This model fit does not look great. You can see that the error bounds around the
 ```r
 exp_1$dispersion
 #> Estimate     Q2.5    Q97.5 
-#> 19.59174 13.19070 30.96303
+#> 19.70307 13.12498 30.33745
 ```
 
 ### Beta-Binomial
@@ -196,6 +192,7 @@ The Beta-Binomial model can be useful for overdispersed Binomial data.
 set.seed(333)
 exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
                data = binom_data, family = beta_binomial2)
+#> Error in validate_family(family): You have specified family as custom, which is not currently implemented. bnec only allows: gaussian, Gamma, poisson, negbinomial, bernoulli, binomial, beta_binomial, Beta.
 ```
 
 Fitting this data with the `betabinomial2` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
@@ -204,17 +201,13 @@ Fitting this data with the `betabinomial2` yields a much more realistic fit in t
 
 ```r
 autoplot(exp_1b, xform = exp)
+#> Error in autoplot(exp_1b, xform = exp): object 'exp_1b' not found
 ```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-bbinom-1.png" alt="plot of chunk exmp1-bbinom" width="60%" />
-<p class="caption">plot of chunk exmp1-bbinom</p>
-</div>
 
 
 ```r
 exp_1b$dispersion
-#> [1] NA NA NA
+#> Error in eval(expr, envir, enclos): object 'exp_1b' not found
 ```
 
 Now that we have a better fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object. As explained above, we need to transform *NEC* back to the data scale.
@@ -222,8 +215,7 @@ Now that we have a better fit to these data, we can interpret the results. The e
 
 ```r
 summary(exp(exp_1b$nec_posterior))
-#>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   21.45   65.82   78.91   76.14   88.12  195.98
+#> Error in summary(exp(exp_1b$nec_posterior)): object 'exp_1b' not found
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.
@@ -231,14 +223,7 @@ EC*x* estimates can also be obtained from the *NEC* model fit, using the functio
 
 ```r
 ecx(exp_1b, xform = exp)
-#>      Q50     Q2.5    Q97.5 
-#> 82.96216 43.33243 98.97417 
-#> attr(,"precision")
-#> [1] 1000
-#> attr(,"ecx_val")
-#> [1] 10
-#> attr(,"toxicity_estimate")
-#> [1] "ecx"
+#> Error in ecx(exp_1b, xform = exp): object 'exp_1b' not found
 ```
 
 A summary method has also been developed for `bayesnecfit` objects that gives an overall summary of the model statistics, which also include the estimate for *NEC*, as the `nec_intercept` population-level effect in the model---again, its value will depend on the scale of the predictor variable.
@@ -246,38 +231,7 @@ A summary method has also been developed for `bayesnecfit` objects that gives an
 
 ```r
 summary(exp_1b)
-#> Object of class bayesnecfit containing the following non-linear model: nec4param
-#> 
-#>  Family: beta_binomial2 
-#>   Links: mu = identity; phi = identity 
-#> Formula: suc | trials(tot) ~ bot + (top - bot) * exp(-exp(beta) * (log(raw_x) - nec) * step(log(raw_x) - nec)) 
-#>          bot ~ 1
-#>          top ~ 1
-#>          beta ~ 1
-#>          nec ~ 1
-#>    Data: data (Number of observations: 48) 
-#>   Draws: 4 chains, each with iter = 10000; warmup = 8000; thin = 1;
-#>          total post-warmup draws = 8000
-#> 
-#> Population-Level Effects: 
-#>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.13      0.06     0.03     0.23 1.00     2026     2441
-#> top      0.84      0.03     0.77     0.88 1.00     1956     2279
-#> beta     0.84      0.69    -0.17     3.16 1.01      477      190
-#> nec      4.37      0.20     3.67     4.59 1.01      515      185
-#> 
-#> Family Specific Parameters: 
-#>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> phi     5.37      1.32     3.30     8.34 1.00     2237     2997
-#> 
-#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
-#> and Tail_ESS are effective sample size measures, and Rhat is the potential
-#> scale reduction factor on split chains (at convergence, Rhat = 1).
-#> 
-#> 
-#> Bayesian R2 estimates:
-#>    Estimate Est.Error Q2.5 Q97.5
-#> R2     0.76      0.04 0.67  0.81
+#> Error in summary(exp_1b): object 'exp_1b' not found
 ```
 
 ### Beta data
@@ -299,12 +253,8 @@ exp_2 <- bnec(resp ~ crf(log(raw_x + 1), model = "nec4param"),
 
 ```r
 autoplot(exp_2, xform = function(x)exp(x) - 1)
+#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-beta-1.png" alt="plot of chunk exmp1-beta" width="60%" />
-<p class="caption">plot of chunk exmp1-beta</p>
-</div>
 
 ### Poisson data
 
@@ -324,10 +274,10 @@ count_data <- nec_data |>
 str(count_data)
 #> 'data.frame':	100 obs. of  2 variables:
 #>  $ x: num  1.019 0.816 0.371 0.401 1.295 ...
-#>  $ y: int  80 103 62 83 63 70 82 84 107 105 ...
+#>  $ y: int  65 86 68 103 74 75 105 96 96 113 ...
 summary(count_data$y)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>    5.00   62.00   81.00   75.89   94.25  130.00
+#>    2.00   67.75   83.00   77.12   93.00  119.00
 summary(count_data$x)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #> 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052
@@ -344,17 +294,10 @@ exp_3 <- bnec(y ~ crf(x, model = "nec4param"), data = count_data)
 
 ```r
 autoplot(exp_3)
-```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-poisson-1.png" alt="plot of chunk exmp1-poisson" width="60%" />
-<p class="caption">plot of chunk exmp1-poisson</p>
-</div>
-
-```r
+#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 exp_3$dispersion
 #>   Estimate       Q2.5      Q97.5 
-#>  2.7205148  0.4580892 67.9840841
+#>  1.6342853  0.2688686 29.7960444
 ```
 
 We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the `family` argument.
@@ -375,12 +318,8 @@ The resultant plot seems to indicate the Negative Binomial distribution works be
 
 ```r
 autoplot(exp_3b)
+#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 ```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%" />
-<p class="caption">plot of chunk exmp1-negbinbase</p>
-</div>
 
 ### Measure data
 
@@ -402,14 +341,7 @@ exp_4 <- bnec(measure ~ crf(x, model = "nec4param"), data = measure_data)
 
 ```r
 autoplot(exp_4)
-```
-
-<div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-gammabase-1.png" alt="plot of chunk exmp1-gammabase" width="60%" />
-<p class="caption">plot of chunk exmp1-gammabase</p>
-</div>
-
-```r
+#> Error in if (family$family == "binomial" | family == "beta_binomial") {: the condition has length > 1
 summary(exp_4)
 #> Object of class bayesnecfit containing the following non-linear model: nec4param
 #> 
@@ -426,14 +358,14 @@ summary(exp_4)
 #> 
 #> Population-Level Effects: 
 #>      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> bot      0.98      0.05     0.88     1.07 1.00     3681     3411
-#> top      2.44      0.01     2.41     2.46 1.00     6749     5241
-#> beta     0.65      0.10     0.45     0.84 1.00     3222     3587
-#> nec      1.50      0.02     1.46     1.54 1.00     3992     4785
+#> bot      0.98      0.05     0.88     1.07 1.00     3749     4256
+#> top      2.44      0.01     2.41     2.46 1.00     6307     5065
+#> beta     0.65      0.09     0.46     0.84 1.00     3483     4524
+#> nec      1.50      0.02     1.46     1.53 1.00     4470     5272
 #> 
 #> Family Specific Parameters: 
 #>       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-#> shape   515.14     73.51   386.69   670.38 1.00     6307     5007
+#> shape   516.27     74.43   384.68   675.82 1.00     6394     4425
 #> 
 #> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 #> and Tail_ESS are effective sample size measures, and Rhat is the potential

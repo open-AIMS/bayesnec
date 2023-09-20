@@ -125,7 +125,7 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
         x <- retrieve_var(bdat, "x_var", error = TRUE)
         y <- retrieve_var(bdat, "y_var", error = TRUE)
         custom_name <- check_custom_name(family)
-        if (family$family == "binomial" || custom_name == "beta_binomial2") {
+        if (family$family == "binomial" || family$family == "beta_binomial") {
           tr <- retrieve_var(bdat, "trials_var", error = TRUE)
           y <- y / tr
         }

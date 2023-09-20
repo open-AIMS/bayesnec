@@ -80,14 +80,14 @@ The default plot looks exactly the same as our regular `bayesnecfit` plot, but t
 ```r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5
-#> nec4param nec4param -84.51247 3.740878e-01                  NA              NA
-#> neclin       neclin -52.47196 8.112751e-04                  NA              NA
-#> ecxlin       ecxlin -27.80744 1.653019e-06                  NA              NA
-#> ecx4param ecx4param -81.17777 8.913611e-02                  NA              NA
-#> ecxwb1       ecxwb1 -75.67378 2.145520e-02                  NA              NA
-#> ecxwb2       ecxwb2 -84.74682 2.935177e-01                  NA              NA
-#> ecxll5       ecxll5 -83.31041 1.359736e-01                  NA              NA
-#> ecxll4       ecxll4 -81.07203 8.501668e-02                  NA              NA
+#> nec4param nec4param -84.08587 3.167082e-01                  NA              NA
+#> neclin       neclin -52.54750 1.288932e-03                  NA              NA
+#> ecxlin       ecxlin -27.84821 6.343701e-05                  NA              NA
+#> ecx4param ecx4param -81.45303 9.248546e-02                  NA              NA
+#> ecxwb1       ecxwb1 -75.42426 1.656067e-02                  NA              NA
+#> ecxwb2       ecxwb2 -84.88567 3.093365e-01                  NA              NA
+#> ecxll5       ecxll5 -83.36809 1.461909e-01                  NA              NA
+#> ecxll4       ecxll4 -81.88474 1.173659e-01                  NA              NA
 #>           dispersion_Q97.5
 #> nec4param               NA
 #> neclin                  NA
@@ -115,20 +115,20 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -84.51 0.37
-#> neclin    -52.47 0.00
-#> ecxlin    -27.81 0.00
-#> ecx4param -81.18 0.09
-#> ecxwb1    -75.67 0.02
-#> ecxwb2    -84.75 0.29
-#> ecxll5    -83.31 0.14
-#> ecxll4    -81.07 0.09
+#> nec4param -84.09 0.32
+#> neclin    -52.55 0.00
+#> ecxlin    -27.85 0.00
+#> ecx4param -81.45 0.09
+#> ecxwb1    -75.42 0.02
+#> ecxwb2    -84.89 0.31
+#> ecxll5    -83.37 0.15
+#> ecxll4    -81.88 0.12
 #> 
 #> 
 #> Summary of weighted NEC posterior estimates:
 #> NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
 #>     Estimate Q2.5 Q97.5
-#> NEC     3.36 2.10  3.98
+#> NEC     3.37 2.00  3.95
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -136,7 +136,7 @@ summary(exp_5)
 #> nec4param     0.86      0.01 0.84  0.87
 #> neclin        0.83      0.01 0.80  0.84
 #> ecxlin        0.80      0.01 0.77  0.82
-#> ecx4param     0.85      0.01 0.83  0.87
+#> ecx4param     0.85      0.01 0.84  0.87
 #> ecxwb1        0.85      0.01 0.83  0.86
 #> ecxwb2        0.86      0.01 0.84  0.87
 #> ecxll5        0.86      0.01 0.84  0.87
@@ -223,7 +223,7 @@ Here we get a message because none of our models failed the default Rhat criteri
 rhat(exp_5, rhat_cutoff = 1.01) |>
   sapply("[[", "failed")
 #> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
-#>      TRUE      TRUE     FALSE     FALSE      TRUE     FALSE      TRUE     FALSE
+#>     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE      TRUE      TRUE
 ```
 
 ### Extracting toxicity values
@@ -249,7 +249,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.641915 2.699609 4.147784 
+#> 3.622077 2.719447 4.157703 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -258,7 +258,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.100009 4.842115 5.367822 
+#> 5.109928 4.842115 5.357903 
 #> attr(,"precision")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -274,7 +274,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_nec
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.539051 3.173062 4.045574
+#> 3.540435 3.139987 4.045654
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].

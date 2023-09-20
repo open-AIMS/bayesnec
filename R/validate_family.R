@@ -12,11 +12,7 @@ validate_family <- function(family) {
   if (inherits(family, "function")) {
     family <- family()
   } else if (is.character(family)) {
-    if (family == "beta_binomial2") {
-      family <- get(family)
-    } else {
       family <- get(family)(link = "identity")
-    }
   }
   if (!inherits(family, "family")) {
     stop("Argument \"family\" either is not an actual family, ",

@@ -313,15 +313,7 @@ response_link_scale <- function(response, family) {
   lr <- linear_rescale
   custom_name <- check_custom_name(family)
   if (link_tag %in% c("logit", "log")) {
-    if (custom_name == "beta_binomial2") {
-      if (contains_zero(response)) {
-        response <- lr(response, r_out = c(min_z_val, max(response)))
-      }
-      if (contains_one(response)) {
-        response <- lr(response, r_out = c(min(response), max_o_val))
-      }
-      response <- binomial(link = link_tag)$linkfun(response)
-    } else if (family$family %in% c("bernoulli", "binomial")) {
+    if (family$family %in% c("bernoulli", "binomial", "beta_binomial")) {
       if (contains_zero(response)) {
         response <- lr(response, r_out = c(min_z_val, max(response)))
       }
@@ -484,7 +476,7 @@ add_brm_defaults <- function(brm_args, model, family, predictor, response,
     brm_args$prior <- priors
   }
   if (!("init" %in% names(brm_args)) || skip_check) {
-    msg_tag <- ifelse(family$family == "custom", custom_name, family$family)
+    msg_tag <- family$family
     message(paste0("Finding initial values which allow the response to be",
                    " fitted using a ", model, " model and a ", msg_tag,
                    " distribution."))
