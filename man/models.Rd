@@ -48,7 +48,7 @@ logit or log link function. Models with a linear decay
 families that are zero bounded (Gamma, Poisson, Negative binomial) using an
 identity link. Models with a linear decay or hormesis linear increase
 (all models with parameter "slope") are not suitable for modelling families
-that are 0, 1 bounded (binomial, beta, betabinomial2). These restrictions do
+that are 0, 1 bounded (binomial, beta, beta_binomial). These restrictions do
 not need to be controlled by the user and a call to \code{\link{bnec}} with
 \code{models = "all"} will simply exclude inappropriate models.
 }
