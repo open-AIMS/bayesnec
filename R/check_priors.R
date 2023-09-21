@@ -34,7 +34,7 @@ check_priors <- function(object, filename = NA) {
 #'
 #' @inherit check_priors examples return
 #' 
-#' @importFrom ggplot2 ggplot geom_density facet_wrap scale_fill_manual theme_bw
+#' @importFrom ggplot2 ggplot geom_density facet_wrap scale_fill_manual theme_bw labs
 #' @importFrom brms hypothesis
 #' @importFrom rlang .data
 #'
@@ -60,6 +60,7 @@ check_priors.bayesnecfit <- function(object, filename = NA) {
                  alpha = 0.5) +
     facet_wrap(~.data$ind, scales = "free") +
     scale_fill_manual(values = c(Prior = "grey90", Posterior = "grey30")) +
+    labs(x = "Value", y = "Density") +
     theme_bw()
 }
 
