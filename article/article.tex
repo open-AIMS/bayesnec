@@ -84,7 +84,7 @@ The \pkg{bayesnec} package has been developed for \proglang{R} to fit concentrat
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
 
-Concentration-response (CR) modelling (also known as dose-response modelling or dose-response analysis) is a key tool for assessing toxicity and deriving the toxicity thresholds used in the risk assessments that underpin protection of human health and the environment. It is widely used in the disciplines of pharmacology, toxicology and ecotoxicology, where parametric non-linear regression methods are used to model response data of interest, with the resulting fitted models used to estimate critical thresholds of concern. These thresholds may be used directly to assess risk \citep[e.g see][]{fisher2018c}, or are subsequently incorporated into a broader population-level risk assessment framework \citep[e.g.][]{Warne2015}. Typical thresholds derived from CR modelling include the effect-concentration of defined percentage `x' (ECx) and the no-effect-concentration (NEC), the latter being the generally preferred option \citep{Fox2008, Warne2015, Warne2018c}. In addition, the no-significant-effect-concentration (NSEC) has also been recently defined \citep{Fisher2023}, and may represent a good alternative estimate of ``no-effect'' concentrations when the threshold models required to derive trye NEC estimates are not appropriate \citep{Fisher2023, fisher2023ieam}.
+Concentration-response (CR) modelling (also known as dose-response modelling or dose-response analysis) is a key tool for assessing toxicity and deriving the toxicity thresholds used in the risk assessments that underpin protection of human health and the environment. It is widely used in the disciplines of pharmacology, toxicology and ecotoxicology, where parametric non-linear regression methods are used to model response data of interest, with the resulting fitted models used to estimate critical thresholds of concern. These thresholds may be used directly to assess risk \citep[e.g see][]{fisher2018c}, or are subsequently incorporated into a broader population-level risk assessment framework \citep[e.g.][]{Warne2015}. Typical thresholds derived from CR modelling include the effect-concentration of defined percentage `x' (ECx) and the no-effect-concentration (NEC), the latter being the generally preferred option \citep{Fox2008, Warne2015, Warne2018c}. In addition, the no-significant-effect-concentration (NSEC) has also been recently defined \citep{Fisher2023}, and may represent a good alternative estimate of ``no-effect'' concentrations when the threshold models required to derive true NEC estimates are not appropriate \citep{Fisher2023, fisher2023ieam}.
 
 In qualitative terms, CR models are typically a decreasing function of concentration, whereby the response may remain relatively stable for the initial portion of the curve, and then decays at some rate to zero (or some other lower bound at high concentration). An example is death of an organism resulting from ever increasing concentrations of a toxic pollutant. However, often the underlying mechanisms describing CR relationships are not known, and therefore numerous alternative non-linear CR equations have been proposed (e.g.~models in \pkg{drc}, \citet{Ritz2016}). These can be broadly grouped into two main ``model categories'' (see below Section \ref{mdbnc}) for the mathematical definition of each model): NEC models---threshold models which contain a step function comprising the ``break-point'' after which the predictor systematically alters the response \citep{Fox2010}; and Smooth transition models that are typically used for estimating effect concentrations of a specified effect (e.g.~ECx- models). They may or may not encompass the EC\textsubscript{50} as a parameter \citep{Ritz2016}. Each of these two groups can be further split into two categories depending on whether the initial portion of the curve is flat, or increasing---the latter being known as hormesis models \citep{Ritz2016}.
 
@@ -341,12 +341,11 @@ R> head(model.frame(form, df))
 
 \subsection[Example]{Example}\label{example}
 
-Here we use one of the package's built-in data sets from \citet{jones2003meps} which comprise assays of herbicide phytotoxicity on chlorophyll fluorescence measurements (Fv/Fm) of symbiotic dinoflagellates still in the host tissue of the coral. Full detail on this example data set is provided in Section \ref{iexample}.
+Here we use one of the package's built-in data sets, \code{"nec_data"}, which is a simulated data set based on the three parameter NEC model \code{nec3param} described in Section \ref{mdbnc}.
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> data <- herbicide[herbicide$herbicide == "diuron", ]
-R> fit <- bnec(fvfm ~ crf(log(concentration), model = "nec4param"), data = data,
+R> fit <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
 +             seed = 17)
 \end{CodeInput}
 \end{CodeChunk}
@@ -375,38 +374,36 @@ The \code{summary} method provides the usual summary of model parameters and any
 R> summary(fit)
 \end{CodeInput}
 \begin{CodeOutput}
-Object of class bayesnecfit containing the following non-linear model: nec4param
+Object of class bayesnecfit containing the following non-linear model: nec3param
 
  Family: beta 
   Links: mu = identity; phi = identity 
-Formula: fvfm ~ bot + (top - bot) * exp(-exp(beta) * (log(concentration) - nec) * step(log(concentration) - nec)) 
-         bot ~ 1
+Formula: y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
          top ~ 1
          beta ~ 1
          nec ~ 1
-   Data: data (Number of observations: 72) 
+   Data: data (Number of observations: 100) 
   Draws: 4 chains, each with iter = 10000; warmup = 8000; thin = 1;
          total post-warmup draws = 8000
 
 Population-Level Effects: 
      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-bot      0.01      0.00     0.00     0.02 1.00     4713     4531
-top      0.67      0.01     0.65     0.68 1.00     6453     5608
-beta    -0.34      0.04    -0.41    -0.26 1.00     4249     3527
-nec     -0.40      0.04    -0.49    -0.32 1.00     4613     4785
+top      0.89      0.01     0.88     0.90 1.00     6743     5367
+beta     0.54      0.06     0.42     0.66 1.00     5522     5291
+nec      1.54      0.02     1.50     1.57 1.00     5228     4596
 
 Family Specific Parameters: 
     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-phi   167.46     29.51   117.28   234.61 1.00     5837     5489
+phi    51.70      7.48    38.91    68.56 1.00     7020     5598
 
-Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
+Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 and Tail_ESS are effective sample size measures, and Rhat is the potential
 scale reduction factor on split chains (at convergence, Rhat = 1).
 
 
 Bayesian R2 estimates:
    Estimate Est.Error Q2.5 Q97.5
-R2     0.99      0.00 0.98  0.99
+R2     0.96      0.00 0.96  0.97
 \end{CodeOutput}
 \end{CodeChunk}
 
@@ -440,7 +437,8 @@ All diagnostic functions available in \pkg{brms} and \pkg{rstan} can be used on 
 
 \begin{CodeChunk}
 \begin{CodeInput}
-R> plot(pull_brmsfit(fit))
+R> brms_fit <- pull_brmsfit(fit)
+R> plot(brms_fit)
 \end{CodeInput}
 \begin{figure}[!ht]
 
@@ -448,7 +446,7 @@ R> plot(pull_brmsfit(fit))
 
 }
 
-\caption[Default \pkg{brms} plot of the \code{nec4param} model showing the posterior densities and chain mixing for each of the included parameters]{Default \pkg{brms} plot of the \code{nec4param} model showing the posterior densities and chain mixing for each of the included parameters.}\label{fig:brmsplot}
+\caption[Default \pkg{brms} plot of the \code{nec3param} model showing the posterior densities and chain mixing for each of the included parameters]{Default \pkg{brms} plot of the \code{nec3param} model showing the posterior densities and chain mixing for each of the included parameters.}\label{fig:brmsplot}
 \end{figure}
 \end{CodeChunk}
 
@@ -465,7 +463,7 @@ The priors used in the default model fit can be extracted using \code{pull_prior
 
 }
 
-\caption[Frequency histograms of samples of the default priors used by \pkg{bayesnec} for fitting the \code{nec4param} model to the example data]{Frequency histograms of samples of the default priors used by \pkg{bayesnec} for fitting the \code{nec4param} model to the example data.}\label{fig:sampleprior}
+\caption[Frequency histograms of samples of the default priors used by \pkg{bayesnec} for fitting the \code{nec3param} model to the example data]{Frequency histograms of samples of the default priors used by \pkg{bayesnec} for fitting the \code{nec3param} model to the example data.}\label{fig:sampleprior}
 \end{figure}
 \end{CodeChunk}
 
@@ -478,7 +476,7 @@ We can also use the function \code{check_priors} (based on the \code{hypothesis}
 
 }
 
-\caption[A comparison of the prior and posterior parameter probability densities for the \code{nec4param} model fit to the example data]{A comparison of the prior and posterior parameter probability densities for the \code{nec4param} model fit to the example data.}\label{fig:checkpriorsingle}
+\caption[A comparison of the prior and posterior parameter probability densities for the \code{nec3param} model fit to the example data]{A comparison of the prior and posterior parameter probability densities for the \code{nec3param} model fit to the example data.}\label{fig:checkpriorsingle}
 \end{figure}
 \end{CodeChunk}
 
@@ -504,7 +502,7 @@ While there are some commercial propriety software packages to support the analy
 
 The open-source flexible computing environment \proglang{R}, provides an ideal platform for reproducible analysis of toxicity data sets. The main existing tool in \proglang{R} that is widely used in ecotoxicology and toxicology is the frequentist-based package \pkg{drc} \citep{Ritz2016}. \pkg{drc} provides a suite of flexible and versatile model fitting and after-fitting functions for the analysis of dose-response data. The package includes a large range of built-in dose-reponse models that are parameterized using a unified structure with a coefficient b denoting the steepness of the dose-response curve (\(\beta = \text{beta}\) in \pkg{bayesnec}); c and d the lower and upper asymptotic limits of the response (\(\tau = \text{top}\) and \(\delta = \text{bottom}\) in \pkg{bayesnec}); and, for some models, e the effective dose ED50 (\(\omega\) = \(\text{EC\textsubscript{50}}\) in \pkg{bayesnec}) \citep{Ritz2016}. Estimation in \pkg{drc} is based on the maximum likelihood principle, which under the assumption of normally distributed response values simplifies to nonlinear least squares. \pkg{bayesnec} provides a Bayesian implementation of many of the non-linear models offered by \pkg{drc}.
 
-We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-effect-concentration model implemented in WinBugs by \citet{Fox2010} (the \code{nec3param} model in \pkg{bayesnec}, see Section \ref{nec-models}) for two selected herbicides from the data from \citet{jones2003meps}. In \pkg{bayesnec} this model is fit with the call \texttt{bnec(fvfm\ \textasciitilde{}\ crf(log\_x,\ model\ =\ "nec3param"),\ data\ =\ .x)}, and in \pkg{drc} using \texttt{drm(fvfm\ \textasciitilde{}\ log\_x,\ fct\ =\ NEC.3(),\ data\ =\ .x)}. The herbicides hexazinone and tebuthiuron were selected specifically for this comparison as visual inspection indicated they should provide a reasonable fit to the \citet{Fox2010} model as there was some evidence of a threshold effect. For both herbicides, the predicted \pkg{drc} and \pkg{bayesnec} values were nearly identical using the default behaviour of each package (\autoref{fig:drccomparisonplot}).
+We compared the \pkg{drc} and \pkg{bayesnec} fits for the three parameter no-effect-concentration model implemented in WinBugs by \citet{Fox2010} (the \code{nec3param} model in \pkg{bayesnec}, see Section \ref{nec-models}) for two selected herbicides from the data from \citet{jones2003meps}. The data comprise assays of herbicide phytotoxicity on chlorophyll fluorescence measurements (Fv/Fm) of symbiotic dinoflagellates still in the host tissue of the coral. Full detail on this example data set is provided in Section \ref{iexample}. In \pkg{bayesnec} this model is fit with the call \texttt{bnec(fvfm\ \textasciitilde{}\ crf(log\_x,\ model\ =\ "nec3param"),\ data\ =\ .x)}, and in \pkg{drc} using \texttt{drm(fvfm\ \textasciitilde{}\ log\_x,\ fct\ =\ NEC.3(),\ data\ =\ .x)}. The herbicides hexazinone and tebuthiuron were selected specifically for this comparison as visual inspection indicated they should provide a reasonable fit to the \citet{Fox2010} model as there was some evidence of a threshold effect. For both herbicides, the predicted \pkg{drc} and \pkg{bayesnec} values were nearly identical using the default behaviour of each package (\autoref{fig:drccomparisonplot}).
 
 \begin{CodeChunk}
 \begin{figure}[!ht]
@@ -613,7 +611,7 @@ ecxll3        0.99      0.00 0.98  0.99
 \end{CodeOutput}
 \end{CodeChunk}
 
-For a \code{bayesmanecfit} object with multiple model fits, \code{summary} first displays the class, the \code{family} and links that have been used for the model fits, the number of posterior draws contained within each model fit, and a table of the model weights for each model, showing the Widely Applicable Information Criterion (waic)\citep{watanabe2010asymptotic} from \pkg{loo} and weights (wi) which are based by default on the \code{"pseudobma"} method (\code{method = "pseudobma"}) with Bayesian bootstrap (\code{BB = TRUE}) (see above), but this can be easily modified via argument \code{loo_controls} using \code{amend}. For the amatryn data set, weights are highest for the \textbf{ecx4param} model, followed closely by tge \textbf{ecxll4} model, with some lesser support for the \code{ecxwb2} model, and very a small amount of support for the two \emph{NEC} models (\emph{nec3param} and \emph{nec4parm}).
+For a \code{bayesmanecfit} object with multiple model fits, \code{summary} first displays the class, the \code{family} and links that have been used for the model fits, the number of posterior draws contained within each model fit, and a table of the model weights for each model, showing the Widely Applicable Information Criterion (waic, \citet{watanabe2010asymptotic}) from \pkg{loo} and weights (wi) which are based by default on the \code{"pseudobma"} method (\code{method = "pseudobma"}) with Bayesian bootstrap (\code{BB = TRUE}) (see above), but this can be easily modified via argument \code{loo_controls} using \code{amend}. For the amatryn data set, weights are highest for the \textbf{ecx4param} model, followed closely by tge \textbf{ecxll4} model, with some lesser support for the \code{ecxwb2} model, and very a small amount of support for the two \emph{NEC} models (\emph{nec3param} and \emph{nec4parm}).
 
 Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC \citep{Fisher2023} values in the case of the fitted \emph{ECx} models. In units of log concentration, the estimated no-effect toxicity value for ametryn is -1.59, which is equivalent to 0.204 \({\mu}gL^{-1}\). The 95\% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighted pooled posterior sample.
 
