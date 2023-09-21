@@ -871,14 +871,6 @@ Making sure \pkg{brms} is properly working on your machine is essential before a
 attempt to use the \pkg{bayesnec} package for analyses, as if this dependency is not 
 working, \pkg{bayesnec} will not work. Instructions for installing these two packages can be found for \pkg{rstan} at (https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started) and \pkg{cmdstanr} (https://mc-stan.org/cmdstanr/articles/cmdstanr.html).
 
-Note that as of the current writing of this article, while \pkg{rstan} is available on CRAN, there is currently an issue running the CRAN version on some Windows machines. For this reason we recommend installing the development version of \pkg{rstan} using:
-
-```{r eval=FALSE}
-install.packages("rstan", 
-                 repos = c("https://mc-stan.org/r-packages/", 
-                           getOption("repos")))
-```
-
 # Future directions
 
 The \pkg{bayesnec} package is a work in progress, and we welcome suggestions and feedback that will improve the package performance and function. Our goal is to make \pkg{bayesnec} as user friendly as possible, and capable of dealing with most real world CR modelling applications in the hope that Bayesian statistics will become more widely used in applied risk assessment. Please submit requests through the package [Issues](https://github.com/open-AIMS/bayesnec/issues) on GitHub. Some suggested future enhancements include:
