@@ -24,7 +24,7 @@ test_that("expand_nec arguments work for nec model", {
     skip_on_cran()
   }
   nec_fit <- expand_nec(fit1, fit1$bayesnecformula, model = "nec4param",
-                        x_range = c(0.01, 4), precision = 20) |>
+                        x_range = c(0.01, 4), resolution = 20) |>
     suppressWarnings()
   expect_equal(names(nec_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
@@ -61,7 +61,7 @@ test_that("expand_ecx arguments work for ecx model", {
     skip_on_cran()
   }
   ecx_fit <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param",
-                        x_range = c(0.01, 4), precision = 20) |>
+                        x_range = c(0.01, 4), resolution = 20) |>
     suppressWarnings()
   expect_equal(names(ecx_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
@@ -120,7 +120,7 @@ test_that("expand_manec defaults work correctly", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  tt4 <- expand_manec(tt1, formulas, x_range = c(0.01, 4), precision = 20) |>
+  tt4 <- expand_manec(tt1, formulas, x_range = c(0.01, 4), resolution = 20) |>
     suppressMessages() |>
     suppressWarnings()
   expect_equal(dim(tt4$w_pred_vals$posterior), c(100, 20))

@@ -8,7 +8,7 @@
 nsec(
   object,
   sig_val = 0.01,
-  precision = 1000,
+  resolution = 1000,
   x_range = NA,
   hormesis_def = "control",
   xform = identity,
@@ -25,7 +25,7 @@ significance of the predicted posterior values.
 against the lowest observed concentration (assumed to be the control), to
 estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
-\item{precision}{The number of unique x values over which to find NSEC -
+\item{resolution}{The number of unique x values over which to find NSEC -
 large values will make the NSEC estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
@@ -61,7 +61,7 @@ Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 in the context of allowing argument \code{newdata}
 (from a \code{\link[brms]{posterior_predict}} perspective) to
 be supplied manually, as this is and should be handled within the function
-itself. The argument \code{precision} controls how precisely the
+itself. The argument \code{resolution} controls how precisely the
 \code{\link{ecx}} or \code{\link{nsec}} value is estimated, with
 argument \code{x_range} allowing estimation beyond the existing range of
 the observed data (otherwise the default range) which can be useful in a

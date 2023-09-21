@@ -11,7 +11,7 @@
 #' "nec", "nsec", "ecx" or "fitted".
 #' @param make_newdata Only used if \code{comparison = "fitted"}. Should the
 #' user allow the package to create \code{newdata} for predictions?
-#' If so, arguments \code{precision} and \code{x_range} will be used. Defaults
+#' If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 #' to TRUE. See details.
 #' @param ... Further arguments that control posterior predictions via
 #' \code{\link[brms]{posterior_epred}}.
@@ -37,7 +37,7 @@
 #' The argument \code{make_newdata} is only used if
 #' \code{comparison = "fitted"}. It is relevant to those who want the package
 #' to create a data.frame from which to make predictions. This is done via
-#' \code{\link{bnec_newdata}} and uses arguments \code{precision} and
+#' \code{\link{bnec_newdata}} and uses arguments \code{resolution} and
 #' \code{x_range}. If \code{make_newdata = FALSE} and no additional
 #' \code{newdata} argument is provided (via \code{...}), then the predictions
 #' are made for the raw data. Else, to generate predictions for a specific
@@ -65,7 +65,7 @@
 #' @export
 compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision, x_range = NA,
+                              sig_val = 0.01, resolution, x_range = NA,
                               make_newdata = TRUE, ...) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list.")
@@ -74,18 +74,18 @@ compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
     stop("Argument comparison must be a character vector.")
   }
   if (comparison != "fitted") {
-    if (missing(precision)) {
-      precision <- 500
+    if (missing(resolution)) {
+      resolution <- 500
     }
     out <- compare_estimates(x = x, comparison = comparison, ecx_val = ecx_val,
                              type = type, hormesis_def = hormesis_def,
-                             sig_val = sig_val, precision = precision,
+                             sig_val = sig_val, resolution = resolution,
                              x_range = x_range)
   } else {
-    if (missing(precision)) {
-      precision <- 50
+    if (missing(resolution)) {
+      resolution <- 50
     }
-    out <- compare_fitted(x = x, precision = precision, x_range = x_range,
+    out <- compare_fitted(x = x, resolution = resolution, x_range = x_range,
                           make_newdata = make_newdata, ...)
   }
   out

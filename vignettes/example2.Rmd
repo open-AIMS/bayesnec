@@ -250,7 +250,7 @@ ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
 #> 3.602239 2.689690 4.137865 
-#> attr(,"precision")
+#> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
 #> [1] 10
@@ -259,7 +259,7 @@ ECx10
 ECx50
 #>      Q50     Q2.5    Q97.5 
 #> 5.100009 4.832196 5.367822 
-#> attr(,"precision")
+#> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
 #> [1] 50

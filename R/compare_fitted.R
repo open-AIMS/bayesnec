@@ -7,12 +7,12 @@
 #' @inheritParams compare_posterior
 #' @param make_newdata Should the
 #' user allow the package to create \code{newdata} for predictions?
-#' If so, arguments \code{precision} and \code{x_range} will be used. Defaults
+#' If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 #' to TRUE. See details.
 #'
 #' @details The argument \code{make_newdata} is relevant to those who want the
 #' package to create a data.frame from which to make predictions. This is done
-#' via \code{\link{bnec_newdata}} and uses arguments \code{precision} and
+#' via \code{\link{bnec_newdata}} and uses arguments \code{resolution} and
 #' \code{x_range}. If \code{make_newdata = FALSE} and no additional
 #' \code{newdata} argument is provided (via \code{...}), then the predictions
 #' are made for the raw data. Else, to generate predictions for a specific
@@ -42,7 +42,7 @@
 #' }
 #'
 #' @export
-compare_fitted <- function(x, precision = 50, x_range = NA,
+compare_fitted <- function(x, resolution = 50, x_range = NA,
                            make_newdata = TRUE, ...) {
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
@@ -52,11 +52,11 @@ compare_fitted <- function(x, precision = 50, x_range = NA,
   names(posterior_list) <- names(x)
   for (i in seq_along(posterior_list)) {
     newdata_list <- newdata_eval_fitted(
-      x[[i]], precision = precision, x_range = x_range,
+      x[[i]], resolution = resolution, x_range = x_range,
       make_newdata = make_newdata, fct_eval = "compare_fitted", ...
     )
     x_vec <- newdata_list$x_vec
-    precision <- newdata_list$precision
+    resolution <- newdata_list$resolution
     dot_list$newdata <- newdata_list$newdata
     dot_list$re_formula <- newdata_list$re_formula
     dot_list$object <- x[[i]]

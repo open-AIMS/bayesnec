@@ -23,7 +23,7 @@
 #' \code{\link[stats]{formula}}.
 #' @slot pred_vals A \code{\link[base]{list}} containing a
 #' \code{\link[base]{data.frame}} of summary posterior predicted values
-#' and a vector containing based on the supplied \code{precision} and
+#' and a vector containing based on the supplied \code{resolution} and
 #' \code{x_range}.
 #' @slot top The estimate for parameter "top" in the fitted model.
 #' @slot beta The estimate for parameter "beta" in the fitted model.

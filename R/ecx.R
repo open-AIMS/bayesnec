@@ -9,7 +9,7 @@
 #' between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.
 #' @param type A \code{\link[base]{character}} vector, taking values of
 #' "relative", "absolute" (the default) or "direct". See Details.
-#' @param precision The number of unique x values over which to find ECx --
+#' @param resolution The number of unique x values over which to find ECx --
 #' large values will make the ECx estimate more precise.
 #' @param posterior A \code{\link[base]{logical}} value indicating if the full
 #' posterior sample of calculated ECx values should be returned instead of
@@ -42,7 +42,7 @@
 #' in the context of allowing argument \code{newdata}
 #' (from a \code{\link[brms]{posterior_predict}} perspective) to
 #' be supplied manually, as this is and should be handled within the function
-#' itself. The argument \code{precision} controls how precisely the
+#' itself. The argument \code{resolution} controls how precisely the
 #' \code{\link{ecx}} or \code{\link{nsec}} value is estimated, with 
 #' argument \code{x_range} allowing estimation beyond the existing range of
 #' the observed data (otherwise the default range) which can be useful in a
@@ -66,7 +66,7 @@
 #' }
 #'
 #' @export
-ecx <- function(object, ecx_val = 10, precision = 1000,
+ecx <- function(object, ecx_val = 10, resolution = 1000,
                 posterior = FALSE, type = "absolute",
                 hormesis_def = "control", x_range = NA,
                 xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
@@ -87,7 +87,7 @@ ecx <- function(object, ecx_val = 10, precision = 1000,
 #' @noRd
 #'
 #' @export
-ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
+ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
                             posterior = FALSE, type = "absolute",
                             hormesis_def = "control", x_range = NA,
                             xform = identity,
@@ -96,7 +96,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
   if (length(ecx_val)>1) {
     stop("You may only pass one ecx_val")  
   }
-  chk_numeric(precision)  
+  chk_numeric(resolution)  
   chk_logical(posterior)
   if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
     stop("type must be one of 'relative', 'absolute' (the default) or 'direct'. 
@@ -136,7 +136,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
          "response variable unless a model with a bot parameter is fit")
   }
   newdata_list <- newdata_eval(
-    object, precision = precision, x_range = x_range
+    object, resolution = resolution, x_range = x_range
   )
   p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
                                re_formula = NA)
@@ -161,8 +161,8 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
 
   ecx_estimate <- quantile(unlist(ecx_out), probs = prob_vals)
   names(ecx_estimate) <- clean_names(ecx_estimate)
-  attr(ecx_estimate, "precision") <- precision
-  attr(ecx_out, "precision") <- precision
+  attr(ecx_estimate, "resolution") <- resolution
+  attr(ecx_out, "resolution") <- resolution
   attr(ecx_estimate, "ecx_val") <- ecx_val
   attr(ecx_out, "ecx_val") <- ecx_val
   attr(ecx_estimate, "toxicity_estimate") <- "ecx"
@@ -202,13 +202,13 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, precision = 1000,
 #' @noRd
 #'
 #' @export
-ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
+ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", x_range = NA,
                               xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   chk_numeric(ecx_val)
-  chk_numeric(precision)  
+  chk_numeric(resolution)  
   chk_logical(posterior)
   if (length(ecx_val)>1) {
     stop("You may only pass one ecx_val")  
@@ -228,12 +228,12 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
-  sample_ecx <- function(x, object, ecx_val, precision,
+  sample_ecx <- function(x, object, ecx_val, resolution,
                          posterior, type, hormesis_def,
                          x_range, xform, prob_vals, sample_size) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
-    out <- ecx(target, ecx_val = ecx_val, precision = precision,
+    out <- ecx(target, ecx_val = ecx_val, resolution = resolution,
                posterior = posterior, type = type, hormesis_def = hormesis_def,
                x_range = x_range, xform = xform, prob_vals = prob_vals)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
@@ -241,14 +241,14 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, precision = 1000,
   }
   sample_size <- object$sample_size
   to_iter <- seq_len(length(object$success_models))
-  ecx_out <- sapply(to_iter, sample_ecx, object, ecx_val, precision,
+  ecx_out <- sapply(to_iter, sample_ecx, object, ecx_val, resolution,
                     posterior = TRUE, type, hormesis_def, x_range,
                     xform, prob_vals, sample_size)
   ecx_out <- unlist(ecx_out)
   ecx_estimate <- quantile(ecx_out, probs = prob_vals)
   names(ecx_estimate) <- clean_names(ecx_estimate)
-  attr(ecx_estimate, "precision") <- precision
-  attr(ecx_out, "precision") <- precision
+  attr(ecx_estimate, "resolution") <- resolution
+  attr(ecx_out, "resolution") <- resolution
   attr(ecx_estimate, "ecx_val") <- ecx_val
   attr(ecx_out, "ecx_val") <- ecx_val
   attr(ecx_estimate, "toxicity_estimate") <- "ecx"

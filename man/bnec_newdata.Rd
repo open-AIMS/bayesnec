@@ -4,13 +4,13 @@
 \alias{bnec_newdata}
 \title{bnec_newdata}
 \usage{
-bnec_newdata(x, precision = 100, x_range = NA)
+bnec_newdata(x, resolution = 100, x_range = NA)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.}
 
-\item{precision}{A \code{\link[base]{numeric}} vector of length 1 indicating
+\item{resolution}{A \code{\link[base]{numeric}} vector of length 1 indicating
 the number of x values over which to predict values.}
 
 \item{x_range}{A \code{\link[base]{numeric}} vector of length 2 indicating
@@ -26,8 +26,8 @@ Create a dataset for predictions
 \dontrun{
 library(bayesnec)
 nec4param <- pull_out(manec_example, model = "nec4param")
-# Make fine precision, predict out of range
-newdata <- bnec_newdata(nec4param, precision = 200, x_range = c(0, 4))
+# Make fine resolution, predict out of range
+newdata <- bnec_newdata(nec4param, resolution = 200, x_range = c(0, 4))
 nrow(newdata) == 200
 all(range(newdata$x) == c(0, 4))
 newdata2 <- bnec_newdata(manec_example) # default size

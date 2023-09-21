@@ -7,7 +7,7 @@
 ecx(
   object,
   ecx_val = 10,
-  precision = 1000,
+  resolution = 1000,
   posterior = FALSE,
   type = "absolute",
   hormesis_def = "control",
@@ -23,7 +23,7 @@ ecx(
 \item{ecx_val}{The desired percentage effect value. This must be a value
 between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
 
-\item{precision}{The number of unique x values over which to find ECx --
+\item{resolution}{The number of unique x values over which to find ECx --
 large values will make the ECx estimate more precise.}
 
 \item{posterior}{A \code{\link[base]{logical}} value indicating if the full
@@ -73,7 +73,7 @@ Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 in the context of allowing argument \code{newdata}
 (from a \code{\link[brms]{posterior_predict}} perspective) to
 be supplied manually, as this is and should be handled within the function
-itself. The argument \code{precision} controls how precisely the
+itself. The argument \code{resolution} controls how precisely the
 \code{\link{ecx}} or \code{\link{nsec}} value is estimated, with
 argument \code{x_range} allowing estimation beyond the existing range of
 the observed data (otherwise the default range) which can be useful in a

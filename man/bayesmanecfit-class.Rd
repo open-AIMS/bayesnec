@@ -42,7 +42,7 @@ data.}
 (i.e. observed - w_predicted_y).}
 
 \item{\code{w_pred_vals}}{A \code{\link[base]{list}} containing model-weighted
-posterior predicted values based on the supplied \code{precision} and
+posterior predicted values based on the supplied \code{resolution} and
 \code{x_range}.}
 
 \item{\code{w_nec}}{The summary stats (median and 95\% credibility intervals) of

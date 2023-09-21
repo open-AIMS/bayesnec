@@ -43,7 +43,7 @@ Generates mean posterior linear predictions for objects fitted by
 \examples{
 \dontrun{
 library(bayesnec)
-# Uses default `precision` and `x_range` to generate `newdata` internally
+# Uses default `resolution` and `x_range` to generate `newdata` internally
 fitted(manec_example)
 # Provide user-specified `newdata`
 nd_ <- data.frame(x = seq(0, 3, length.out = 200))

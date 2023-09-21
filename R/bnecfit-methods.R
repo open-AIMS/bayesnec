@@ -127,7 +127,7 @@ c.bnecfit <- function(x, ...) {
 #'
 #' @export
 update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
-                           x_range = NA, precision = 1000, sig_val = 0.01,
+                           x_range = NA, resolution = 1000, sig_val = 0.01,
                            loo_controls, force_fit = FALSE, ...) {
   original_class <- grep("bayes", class(object), value = TRUE)
   if (!original_class %in% c("bayesnecfit", "bayesmanecfit")) {
@@ -178,7 +178,7 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   formulas <- lapply(object, extract_formula)
   if (length(object) > 1) {
     object <- expand_manec(object, formula = formulas, x_range = x_range,
-                           precision = precision, sig_val = sig_val,
+                           resolution = resolution, sig_val = sig_val,
                            loo_controls = loo_controls)
     allot_class(object, c("bayesmanecfit", "bnecfit"))
   } else if (length(object) == 1) {
@@ -187,7 +187,7 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
            " specified incorrect arguments? See ?update.bnecfit")
     }
     mod_fits <- expand_nec(object[[1]], formula = formulas[[1]],
-                           x_range = x_range, precision = precision,
+                           x_range = x_range, resolution = resolution,
                            sig_val = sig_val, loo_controls = loo_controls,
                            model = names(object))
     allot_class(mod_fits, c("bayesnecfit", "bnecfit"))

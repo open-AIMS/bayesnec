@@ -29,7 +29,7 @@
 #' @slot w_residuals Model-weighted residual values
 #' (i.e. observed - w_predicted_y).
 #' @slot w_pred_vals A \code{\link[base]{list}} containing model-weighted
-#' posterior predicted values based on the supplied \code{precision} and
+#' posterior predicted values based on the supplied \code{resolution} and
 #' \code{x_range}.
 #' @slot w_nec The summary stats (median and 95% credibility intervals) of
 #' w_nec_posterior.

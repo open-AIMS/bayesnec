@@ -12,7 +12,7 @@ average_estimates(
   type = "absolute",
   hormesis_def = "control",
   sig_val = 0.01,
-  precision = 1000,
+  resolution = 1000,
   x_range = NA,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975)
@@ -44,7 +44,7 @@ significance of the predicted posterior values.
 against the lowest observed concentration (assumed to be the control), to
 estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
-\item{precision}{The number of unique x values over which to find ECx --
+\item{resolution}{The number of unique x values over which to find ECx --
 large values will make the ECx estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
