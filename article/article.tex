@@ -145,55 +145,54 @@ Note that strictly positive parameters (for example, \(\beta\) and \(\epsilon\))
 
 \code{ecxlin} is a basic linear decay model, given by the equation:
 \(y_i = \tau - e^{\alpha} x_i\)
-with the following \code{brmsformula}: \code{y ~ top - exp(slope) * x}. Because the model contains linear predictors it is not suitable for 0--1 bounded data (i.e., Binomial and Beta families with an \code{"identity"} link function). As the model includes a linear decline with concentration, it is also not suitable for 0 bounded data (Gamma, Poisson, Negative Binomial with an \code{"identity"} link).
+with the following \code{brmsformula}: \code{y \textasciitilde{} top - exp(slope) * x}. Because the model contains linear predictors it is not suitable for 0--1 bounded data (i.e., Binomial and Beta families with an \code{"identity"} link function). As the model includes a linear decline with concentration, it is also not suitable for 0 bounded data (Gamma, Poisson, Negative Binomial with an \code{"identity"} link).
 
 \code{ecxexp} is a basic exponential decay model, given by the equation: \(y_i = \tau e^{-e^{\beta} x_i}\)
-with the following \code{brmsformula}: y \textasciitilde{} top * exp(-exp(beta) * x). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
+with the following \code{brmsformula}: \code{y \textasciitilde{} top * exp(-exp(beta) * x)}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
 
 \code{ecxsigm} is a simple sigmoidal decay model, given by the equation:
 \(y_i = \tau e^{-e^{\beta} x_i^{e^\epsilon}}\)
-with the following \code{brmsformula}: y \textasciitilde{} top * exp(-exp(beta) * x\^{}exp(d)). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
+with the following \code{brmsformula}: \code{y \textasciitilde{} top * exp(-exp(beta) * x\^{}exp(d))}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
 
 \code{ecx4param} is a 4-parameter sigmoidal decay model, given by the equation:
 \(y_i = \tau + (\delta - \tau)/(1 + e^{e^{\beta} (\omega - x_i)})\)
-with the following \code{brmsformula}: y \textasciitilde{} top + (bot - top)/(1 + exp((ec50 - x) * exp(beta)))
+with the following \code{brmsformula}: \code{y \textasciitilde{} top + (bot - top)/(1 + exp((ec50 - x) * exp(beta)))}.
 
 \code{ecxwb1} is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull1 model of \citet{Ritz2016}, given by the equation:
 \(y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \omega)}}\)
-with the following \code{brmsformula}: y \textasciitilde{} bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50)))
+with the following \code{brmsformula}: \code{y \textasciitilde{} bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50)))}.
 
 \code{ecxwb1p3} is a 3-parameter sigmoidal decay model, equivalent to the \code{ecxwb1} model where \(\delta\) (bottom) is defined as 0, given by the equation:
 \(y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \omega)}}\)
-with the following \code{brmsformula}: y \textasciitilde{} 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
+with the following \code{brmsformula}: \code{y \textasciitilde{} 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50)))}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
 
 \code{ecxwb2} is a 4-parameter sigmoidal decay model which is a slight reformulation of the Weibull2 model of \citet{Ritz2016}, given by the equation:
 \(y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})\)
-with the following \code{brmsformula}: y \textasciitilde{} bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))). While very similar to the \code{ecxwb1} \citep[according to][]{Ritz2016}, fitted \code{ecxwb1} and \code{ecxwb2} models can differ slightly.
+with the following \code{brmsformula}: \code{y \textasciitilde{} bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50))))}. While very similar to the \code{ecxwb1} \citep[according to][]{Ritz2016}, fitted \code{ecxwb1} and \code{ecxwb2} models can differ slightly.
 
 \code{ecxwb2p3} is a 3-parameter sigmoidal decay model, equivalent to the \code{ecxwb2} model where the parameter \(\delta\) (bot) is defined as 0, given by the equation:
 \(y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})\)
-with the following \code{brmsformula}: y \textasciitilde{} 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
+with the following \code{brmsformula}: \code{y \textasciitilde{} 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50))))}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a logit or log link function.
 
 \code{ecxll5} is a 5-parameter sigmoidal log-logistic decay model, which is a slight reformulation of the LL.5 model of \citet{Ritz2016}, given by the equation:
 \(y_i = \delta + (\tau - \delta) / (1 + e^{-e^{\beta} (x_i - \omega)})^{e^\phi}\)
-with the following \code{brmsformula}: y \textasciitilde{} bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))\^{}exp(f).
+with the following \code{brmsformula}: \code{y \textasciitilde{} bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))\^{}exp(f)}.
 
 \code{ecxll4} is a 4-parameter sigmoidal log-logistic decay model, equivalent to the the \code{ecxll5} model, but where the parameter \(\phi\) (f) is defined as 0, given by the equation:
 \(y_i = \delta + (\tau - \delta)/ (1 + e^{e^{\beta} (x_i - \omega)})\)
-with the following \code{brmsformula}: y \textasciitilde{} bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))).
+with the following \code{brmsformula}: \code{y \textasciitilde{} bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))}.
 
 \code{ecxll3} is a 3-parameter sigmoidal log-logistic decay model, equivalent to the the \code{ecxll5} model, but where the parameters \(\phi\) (f) and \(\delta\) (bot) are both defined as 0, given by the equation:
 \(y_i = 0 + (\tau - 0)/ (1 + e^{e^{\beta} (x_i - \omega)})\)
-with the following \code{brmsformula}: y \textasciitilde{} 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))).
-The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
+with the following \code{brmsformula}: \code{y \textasciitilde{} 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50)))}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
 
 \code{ecxhormebc5} is a 5 parameter log-logistic model modified to accommodate a non-linear hormesis at low concentrations. It has been modified from to the ``Brain-Cousens'' (BC.5) model of \citet{Ritz2016}, given by the equation:
 \(y_i = \delta + (\tau - \delta + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})\)
-with the following \code{brmsformula}: y \textasciitilde{} bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))).
+with the following \code{brmsformula}: \code{y \textasciitilde{} bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50)))}.
 
 \code{ecxhormebc4} is a 5-parameter log-logistic model similar to the \code{exchormebc5} model but with a lower bound \(\delta\) (bot) of 0, given by the equation:
 \(y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})\)
-with the following \code{brmsformula}: y \textasciitilde{} 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
+with the following \code{brmsformula}: \code{y \textasciitilde{} 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50)))}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
 
 \begin{figure}[ht]
   \centering
@@ -206,43 +205,43 @@ with the following \code{brmsformula}: y \textasciitilde{} 0 + (top - 0 + exp(sl
 
 \code{neclin} is a basic linear decay model equivalent to \code{ecxlin} with the addition of the NEC step function, given by the equation:
 \(y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)\)
-with the following \code{brmsformula}: y \textasciitilde{} top - exp(slope) * (x - nec) * step(x - nec). Because the model contains linear predictors it is not suitable for 0--1 bounded data (Binomial and Beta distributions with \code{"identity"} link). As the model includes a linear decline with concentration, it is also not suitable for 0--\(\infty\) bounded data (Gamma, Poisson, Negative Binomial with \code{"identity"} link).
+with the following \code{brmsformula}: \code{y \textasciitilde{} top - exp(slope) * (x - nec) * step(x - nec)}. Because the model contains linear predictors it is not suitable for 0--1 bounded data (Binomial and Beta distributions with \code{"identity"} link). As the model includes a linear decline with concentration, it is also not suitable for 0--\(\infty\) bounded data (Gamma, Poisson, Negative Binomial with \code{"identity"} link).
 
 \code{nec3param} is a basic exponential decay model equivalent to \code{ecxexp} with the addition of the NEC step function, given by the equation:
 \(y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\)
-with the following \code{brmsformula}: y \textasciitilde{} top * exp(-exp(beta) * (x - nec) * step(x - nec)). For Binomial-distributed response data in the case of \code{"identity"} link this model is equivalent to that in \citet{Fox2010}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
+with the following \code{brmsformula}: \code{y \textasciitilde{} top * exp(-exp(beta) * (x - nec) * step(x - nec))}. For Binomial-distributed response data in the case of \code{"identity"} link this model is equivalent to that in \citet{Fox2010}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function.
 
 \code{nec4param} is a equivalent to the \code{nec3param} model, but with an additional parameter defining the lower bound (parameter \(\delta\) (bottom)), given by the equation:
 \(y_i = \delta + (\tau - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\)
-with the following \code{brmsformula}: y \textasciitilde{} bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)).
+with the following \code{brmsformula}: \code{y \textasciitilde{} bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec))}.
 
 \code{nechorme} is a basic exponential decay model with an NEC step function equivalent to \code{nec3param}, with the addition of a linear increase prior to \(\eta\), given by the equation
 \(y_i = (\tau + e^{\alpha} x_i) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\)
-with the following \code{brmsformula}: y \textasciitilde{} (top + exp(slope) * x) * exp(-exp(beta) * (x - nec) * step(x - nec)). The \code{nechorme} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function. In this case the linear version (\code{neclinhorme}) should be used.
+with the following \code{brmsformula}: \code{y \textasciitilde{} (top + exp(slope) * x) * exp(-exp(beta) * (x - nec) * step(x - nec))}. The \code{nechorme} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function. In this case the linear version (\code{neclinhorme}) should be used.
 
 \code{nechormepwr} is a basic exponential decay model with an NEC step function equivalent to \code{nec3param}, with the addition of a power increase prior to \(\eta\), given by the equation:
 \(y_i = (\tau + x_i^{1/(1+e^{\alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\)
-with the following \code{brmsformula}: y \textasciitilde{} (top + x\^{}(1/(1 + exp(slope)))) * exp(-exp(beta) * (x - nec) * step(x - nec)). The \code{nechormepwr} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function. Because the model can generate predictions \textgreater{} 1 it should not be used for Binomial and Beta distributions with \code{"identity"} link. In this case the \code{nechromepwr01} model should be used.
+with the following \code{brmsformula}: \code{y \textasciitilde{} (top + x\^{}(1/(1 + exp(slope)))) * exp(-exp(beta) * (x - nec) * step(x - nec))}. The \code{nechormepwr} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function. Because the model can generate predictions \textgreater{} 1 it should not be used for Binomial and Beta distributions with \code{"identity"} link. In this case the \code{nechromepwr01} model should be used.
 
 \code{neclinhorme} is a basic linear decay model with an NEC step function equivalent to \code{neclin}, with the addition of a linear increase prior to \(\eta\), given by the equation:
 \(y_i = (\tau + e^{\alpha} x_i) - e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)\)
-with the following \code{brmsformula}: y \textasciitilde{} (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec). The \code{neclinhorme} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\). This model contains linear predictors and is not suitable for 0--1 bounded data (Binomial and Beta distributions with \code{"identity"} link). As the model includes a linear decline with concentration, it is also not suitable for 0--\(\infty\) bounded data (Gamma, Poisson, Negative Binomial with \code{"identity"} link).
+with the following \code{brmsformula}: \code{y \textasciitilde{} (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec)}. The \code{neclinhorme} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\). This model contains linear predictors and is not suitable for 0--1 bounded data (Binomial and Beta distributions with \code{"identity"} link). As the model includes a linear decline with concentration, it is also not suitable for 0--\(\infty\) bounded data (Gamma, Poisson, Negative Binomial with \code{"identity"} link).
 
 \code{nechorme4} is 4 parameter decay model with an NEC step function equivalent to \code{nec4param} with the addition of a linear increase prior to \(\eta\), given by the equation:
 \(y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta ) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\)
-with the following \code{brmsformula}: y \textasciitilde{} bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)). The \code{nechorme4} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\).
+with the following \code{brmsformula}: \code{y \textasciitilde{} bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec))}. The \code{nechorme4} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\).
 
 \code{nechorme4pwr} is 4 parameter decay model with an NEC step function equivalent to \code{nec4param} with the addition of a power increase prior to \(\eta\), given by the equation:
 \(y_i = \delta + ((\tau + x_i^{1/(1+e^{\alpha})}) - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\)
-with the following \code{brmsformula}: y \textasciitilde{} bot + ((top + x\^{}(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)). The \code{nechorme4pwr} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial power increase in the response variable at concentrations below \(\eta\). Because the model can generate predictions \textgreater{} 1 it should not be used for Binomial and Beta distributions with \code{"identity"} link. In this case the \code{nechromepwr01} model should be used.
+with the following \code{brmsformula}: \code{y \textasciitilde{} bot + ((top + x\^{}(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec))}. The \code{nechorme4pwr} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial power increase in the response variable at concentrations below \(\eta\). Because the model can generate predictions \textgreater{} 1 it should not be used for Binomial and Beta distributions with \code{"identity"} link. In this case the \code{nechromepwr01} model should be used.
 
 \code{nechormepwr01} is a basic exponential decay model with an NEC step function equivalent to \code{nec3param}, with the addition of a power increase prior to \(\eta\), given by the equation:
 \(y_i = \left(\frac{1}{(1 + ((1/\tau)-1) e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}\)
-with the following \code{brmsformula}: y \textasciitilde{} (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)). The \code{nechormepwr01} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function. In this case the linear version (\code{neclinhorme}) should be used.
+with the following \code{brmsformula}: \code{y \textasciitilde{} (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec))}. The \code{nechormepwr01} model is a \emph{hormesis} model \citep{Mattson2008}, allowing an initial increase in the response variable at concentrations below \(\eta\). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function. In this case the linear version (\code{neclinhorme}) should be used.
 
 \code{necsigm} is a basic exponential decay model equivalent to \code{ecxlin} with the addition of the NEC step function, given by the equation:
-\(y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon}f(x_i, \eta)}\)
-with the following \code{brmsformula}: y \textasciitilde{} top * exp(-exp(beta) * (step(x - nec) * (x - nec))\^{}exp(d) * step(x - nec)). The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing, as the behaviour is currently unstable, see supplementary material in \citet{fisher2023ieam}.
+\(y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon} f(x_i, \eta)}\)
+with the following \code{brmsformula}: \code{y \textasciitilde{} top * exp(-exp(beta) * (step(x - nec) * (x - nec))\^{}exp(d) * step(x - nec))}. The model is 0-bounded, thus not suitable for Gaussian response data or the use of a \code{"logit"} or \code{"log"} link function. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing, as the behaviour is currently unstable, see supplementary material in \citet{fisher2023ieam}.
 
 \begin{figure}[ht]
   \centering
@@ -259,7 +258,7 @@ To undertake a Bayesian analysis, prior probability densities of the parameters 
 Considerable thought has gone into development of an algorithm to build default ``weakly'' informative priors for fitting models in \pkg{bayesnec}. The default priors are ``weakly'' informative in that in addition to specifying the relevant statistical \code{family} that appropriately captures the parameter's theoretical statistical distribution, when external
 subjective information is unavailable we also use information contained within the observed data to center the probability density of the prior within a plausible region of the parameter space, ensure priors are appropriately scaled relative to the range of the response and predictor data, and/or constrain priors to sensible bounds (described in more detail below). These weakly informative priors are used to help constrain the underlying routines so that they are less likely to consider what the researcher would deem highly improbable estimates, that may also cause the routines to become unstable resulting in failed model fits. Weakly informative priors can be particularly helpful in complex non-linear modelling to ensure reliable convergence. These types of priors specify the general shape and bounds of the probability distribution for a given parameter, whilst remaining sufficiently broad so as not to influence the parameter's estimated posterior distribution (given a reasonable amount of observed data). In this sense, appropriately weak priors should yield analytical outcomes that share the same level of \emph{objectivity} as equivalent frequentist approaches, whilst yielding robust parameter estimates with probabilistically interpretable uncertainty bounds.
 
-While we sacrifice Bayesian coherence by using features of the data to calibrate our default priors (see \citet{chipman2010} for another example of such an approach), our primary motivation is to facilitate easy implementation of \pkg{Bayesnec} in practice, and to ensure model stability and reliable model fits. Note, however that it is critical for users to interrogate these default priors, using for example, sensitivity analysis \citep{depaoli2020importance} and ensure they are appropriate given the data \citep{gelman2017entropy}. Priors are automatically saved as part of the \code{brmsfit} and \code{bayesnecfit} models, and there are functions for extracting the priors used, as well as plotting these in comparison to the resulting posterior distribution (see Section \ref{moddiag}). Care should be taken to ensure that the default priors are sufficiently weak relative to the posterior
+While we sacrifice Bayesian coherence by using features of the data to calibrate our default priors (see \citet{chipman2010} for another example of such an approach), our primary motivation is to facilitate easy implementation of \pkg{bayesnec} in practice, and to ensure model stability and reliable model fits. Note, however that it is critical for users to interrogate these default priors, using for example, sensitivity analysis \citep{depaoli2020importance} and ensure they are appropriate given the data \citep{gelman2017entropy}. Priors are automatically saved as part of the \code{brmsfit} and \code{bayesnecfit} models, and there are functions for extracting the priors used, as well as plotting these in comparison to the resulting posterior distribution (see Section \ref{moddiag}). Care should be taken to ensure that the default priors are sufficiently weak relative to the posterior
 
 \hypertarget{priors-for-response-scaled-parameters}{%
 \subsubsection{Priors for response-scaled parameters}\label{priors-for-response-scaled-parameters}}
@@ -388,13 +387,13 @@ Formula: y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec))
 
 Population-Level Effects: 
      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-top      0.89      0.01     0.88     0.90 1.00     6743     5367
-beta     0.54      0.06     0.42     0.66 1.00     5522     5291
-nec      1.54      0.02     1.50     1.57 1.00     5228     4596
+top      0.89      0.01     0.88     0.90 1.00     7246     5463
+beta     0.54      0.06     0.42     0.66 1.00     5328     5067
+nec      1.54      0.02     1.50     1.57 1.00     5170     4733
 
 Family Specific Parameters: 
     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-phi    51.70      7.48    38.91    68.56 1.00     7020     5598
+phi    51.89      7.51    38.89    68.20 1.00     7018     5731
 
 Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
 and Tail_ESS are effective sample size measures, and Rhat is the potential
@@ -576,23 +575,23 @@ Number of posterior draws per model:  8000
 
 Model weights (Method: pseudobma_bb_weights):
              waic   wi
-nec3param -450.82 0.02
-nec4param -456.73 0.03
+nec3param -450.78 0.02
+nec4param -456.58 0.03
 ecxexp    -320.61 0.00
-ecx4param -465.14 0.31
-ecxwb1    -443.58 0.01
-ecxwb2    -461.34 0.08
-ecxwb1p3  -323.30 0.00
-ecxwb2p3  -446.94 0.02
-ecxll5    -464.45 0.24
-ecxll4    -465.06 0.30
-ecxll3    -432.18 0.00
+ecx4param -465.28 0.32
+ecxwb1    -443.82 0.01
+ecxwb2    -461.45 0.08
+ecxwb1p3  -323.34 0.00
+ecxwb2p3  -446.92 0.02
+ecxll5    -464.57 0.24
+ecxll4    -465.10 0.29
+ecxll3    -431.95 0.00
 
 
 Summary of weighted NEC posterior estimates:
 NB: Model set contains the ECX models: ecxexp;ecx4param;ecxwb1;ecxwb2;ecxwb1p3;ecxwb2p3;ecxll5;ecxll4;ecxll3; weighted NEC estimates include NSEC surrogates for NEC
     Estimate  Q2.5 Q97.5
-NEC    -1.59 -2.09 -0.47
+NEC    -1.61 -2.11 -0.48
 
 
 Bayesian R2 estimates:
@@ -613,7 +612,7 @@ ecxll3        0.99      0.00 0.98  0.99
 
 For a \code{bayesmanecfit} object with multiple model fits, \code{summary} first displays the class, the \code{family} and links that have been used for the model fits, the number of posterior draws contained within each model fit, and a table of the model weights for each model, showing the Widely Applicable Information Criterion (waic, \citet{watanabe2010asymptotic}) from \pkg{loo} and weights (wi) which are based by default on the \code{"pseudobma"} method (\code{method = "pseudobma"}) with Bayesian bootstrap (\code{BB = TRUE}) (see above), but this can be easily modified via argument \code{loo_controls} using \code{amend}. For the amatryn data set, weights are highest for the \textbf{ecx4param} model, followed closely by tge \textbf{ecxll4} model, with some lesser support for the \code{ecxwb2} model, and very a small amount of support for the two \emph{NEC} models (\emph{nec3param} and \emph{nec4parm}).
 
-Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC \citep{Fisher2023} values in the case of the fitted \emph{ECx} models. In units of log concentration, the estimated no-effect toxicity value for ametryn is -1.59, which is equivalent to 0.204 \({\mu}gL^{-1}\). The 95\% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighted pooled posterior sample.
+Because \pkg{bayesnec} was primarily developed for estimating no-effect-concentrations, an estimate of model averaged NEC is also provided, in this case with a note that the weighted model averaged estimate contains NSEC \citep{Fisher2023} values in the case of the fitted \emph{ECx} models. In units of log concentration, the estimated no-effect toxicity value for ametryn is -1.61, which is equivalent to 0.201 \({\mu}gL^{-1}\). The 95\% credible intervals are also provided, based on the 0.025 and 97.5 quantiles of the weighted pooled posterior sample.
 
 Finally, Bayesian \(R^2\) estimates are also provided \citep{gelman2019}, as an indicator of overall model fit. This is useful because model weights are always relative to the models actually included in the model set for the given data. The \(R^2\) provides an indicator of model fit that can be compared objectively across data sets as an indication of the quality of the fit of any of the supplied models to the data.
 
@@ -719,27 +718,27 @@ This collated table of model weights shows that the best fitting models vary sub
 \hline
 Model & Ametryn & Atrazine & Diuron & Hexazinone & Irgarol & Simazine & Tebuthiuron\\
 \hline
-nec3param & 0.022 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.016\\
+nec3param & 0.020 & 0.000 & 0.000 & 0.000 & 0.001 & 0.000 & 0.018\\
 \hline
-nec4param & 0.026 & 0.002 & 0.000 & 0.000 & 0.001 & 0.000 & 0.003\\
+nec4param & 0.027 & 0.001 & 0.000 & 0.000 & 0.001 & 0.000 & 0.003\\
 \hline
 ecxexp & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 0.000\\
 \hline
-ecx4param & 0.301 & 0.139 & 0.220 & 0.133 & 0.268 & 0.177 & 0.001\\
+ecx4param & 0.318 & 0.131 & 0.228 & 0.118 & 0.255 & 0.188 & 0.001\\
 \hline
-ecxwb1 & 0.018 & 0.461 & 0.126 & 0.000 & 0.234 & 0.101 & 0.000\\
+ecxwb1 & 0.010 & 0.473 & 0.117 & 0.000 & 0.245 & 0.093 & 0.000\\
 \hline
-ecxwb2 & 0.080 & 0.002 & 0.000 & 0.017 & 0.032 & 0.018 & 0.170\\
+ecxwb2 & 0.083 & 0.001 & 0.001 & 0.014 & 0.027 & 0.017 & 0.168\\
 \hline
-ecxwb1p3 & 0.000 & 0.000 & 0.000 & 0.010 & 0.000 & 0.020 & 0.000\\
+ecxwb1p3 & 0.000 & 0.000 & 0.000 & 0.019 & 0.000 & 0.014 & 0.000\\
 \hline
-ecxwb2p3 & 0.021 & 0.001 & 0.000 & 0.061 & 0.001 & 0.051 & 0.512\\
+ecxwb2p3 & 0.017 & 0.001 & 0.001 & 0.060 & 0.001 & 0.052 & 0.501\\
 \hline
-ecxll5 & 0.215 & 0.257 & 0.317 & 0.021 & 0.192 & 0.142 & 0.297\\
+ecxll5 & 0.239 & 0.267 & 0.310 & 0.022 & 0.203 & 0.142 & 0.308\\
 \hline
-ecxll4 & 0.317 & 0.137 & 0.245 & 0.121 & 0.271 & 0.184 & 0.001\\
+ecxll4 & 0.286 & 0.124 & 0.259 & 0.098 & 0.267 & 0.196 & 0.001\\
 \hline
-ecxll3 & 0.000 & 0.000 & 0.091 & 0.637 & 0.000 & 0.307 & 0.000\\
+ecxll3 & 0.000 & 0.000 & 0.085 & 0.670 & 0.000 & 0.297 & 0.000\\
 \hline
 \end{tabular}
 \end{table}
@@ -815,17 +814,17 @@ R> prob_diff$Herbicide <- stringr::str_to_sentence(prob_diff$Herbicide)
 \hline
 Herbicide & Atrazine & Diuron & Hexazinone & Irgarol & Simazine & Tebuthiuron\\
 \hline
-Ametryn & 0.0211303 & 0.8678420 & 0.0485121 & 0.9317329 & 0.0115029 & 0.0095024\\
+Ametryn & 0.0198775 & 0.8613577 & 0.0502563 & 0.9371171 & 0.0105013 & 0.0096262\\
 \hline
-Atrazine & NA & 0.9869967 & 0.8400850 & 0.9879970 & 0.0397599 & 0.0101275\\
+Atrazine & NA & 0.9873734 & 0.8499812 & 0.9881235 & 0.0336292 & 0.0105013\\
 \hline
-Diuron & NA & NA & 0.0135034 & 0.7121780 & 0.0111278 & 0.0095024\\
+Diuron & NA & NA & 0.0155019 & 0.7348419 & 0.0095012 & 0.0095012\\
 \hline
-Hexazinone & NA & NA & NA & 0.9877469 & 0.0165041 & 0.0096274\\
+Hexazinone & NA & NA & NA & 0.9859982 & 0.0147518 & 0.0097512\\
 \hline
-Irgarol & NA & NA & NA & NA & 0.0111278 & 0.0095024\\
+Irgarol & NA & NA & NA & NA & 0.0093762 & 0.0095012\\
 \hline
-Simazine & NA & NA & NA & NA & NA & 0.0691423\\
+Simazine & NA & NA & NA & NA & NA & 0.0802600\\
 \hline
 \end{tabular}
 \end{table}
@@ -872,7 +871,7 @@ R session:
 
 \begin{itemize}
 \item
-  R version 4.2.2 (2022-10-31 ucrt); x86\_64, mingw32
+  R version 4.3.0 (2023-04-21); aarch64, darwin20
 \item
   base packages \citep{rcore}: stats, graphics, grDevices, utils, datasets, methods, base
 \item
