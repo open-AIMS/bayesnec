@@ -41,7 +41,7 @@ test_that("all model families return expected ecx values", {
 
 test_that("all model families return expected nec values", {
   lapply(manec_fits, function(x) {
-    expect_range(x$w_nec["Estimate"], 1.4, 1.6)
+    expect_range(x$w_ne["Estimate"], 1.4, 1.6)
   })
 })
 

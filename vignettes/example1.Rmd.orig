@@ -159,7 +159,7 @@ The Beta-Binomial model can be useful for overdispersed Binomial data.
 ```{r, results = "hide"}
 set.seed(333)
 exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
-               data = binom_data, family = beta_binomial2)
+               data = binom_data, family = beta_binomial(link = "identity"))
 ```
 
 Fitting this data with the `beta_binomial` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
@@ -176,7 +176,7 @@ exp_1b$dispersion
 Now that we have a better fit to these data, we can interpret the results. The estimated *NEC* value can be obtained directly from the fitted model object. As explained above, we need to transform *NEC* back to the data scale.
  
 ```{r}
-summary(exp(exp_1b$nec_posterior))
+summary(exp(exp_1b$ne_posterior))
 ```
 
 EC*x* estimates can also be obtained from the *NEC* model fit, using the function `ecx`. Note these may differ from a typical 4-parameter non-linear model, as the *NEC* model is a broken stick non-linear regression and will often fall more sharply than a smooth 4-parameter non-linear curve. See both the [Model details][e2b] and [Comparing posterior predictions][e4] vignettes for more information.

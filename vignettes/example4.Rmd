@@ -19,7 +19,7 @@ bibliography: bayesnec.bib
 
 # Overview
 
-With `bayesnec` we have included a function that allows bootstrapped comparisons of posterior predictions. The main focus here is to showcase how the user can fit several different `bnec` model fits and can compare differences in the posterior predictions across these fits for individual toxicity estimates (e.g. *NEC*, *NSEC* or *ECx*) or across a range of predictor values. Below we demonstrate usage of `compare_posterior` for objects of class `bayesnecfit` and `bayesmanecfit`. In this example we compare different types of models and model sets using a single dataset. However, the intent of this function is to allow comparison across different datasets that might represent, for example, different levels of a fixed factor covariate. At this time `bnec` does not allow inclusion of an interaction with a fixed factor. Including an interaction term within each of the non-linear models implemented in `bayesnec` is relatively straightforward, and may be introduced in future releases. However, in many cases the functional form of the response may change with different levels of a given factor. The substantial complexity of defining all possible non-linear model combinations at each factor level means it unlikely this could be feasibly implemented in `bayesnec` in the short term. In the meantime the greatest flexibility in the functional form of individual model fits can be readily obtained using models fitted independently to data within each factor level.
+With `bayesnec` we have included a function that allows bootstrapped comparisons of posterior predictions. The main focus here is to showcase how the user can fit several different `bnec` model fits and can compare differences in the posterior predictions across these fits for individual toxicity estimates (e.g. *NEC*, *N(S)EC*, *NSEC* or *ECx*) or across a range of predictor values. Below we demonstrate usage of `compare_posterior` for objects of class `bayesnecfit` and `bayesmanecfit`. In this example we compare different types of models and model sets using a single dataset. However, the intent of this function is to allow comparison across different datasets that might represent, for example, different levels of a fixed factor covariate. At this time `bnec` does not allow inclusion of an interaction with a fixed factor. Including an interaction term within each of the non-linear models implemented in `bayesnec` is relatively straightforward, and may be introduced in future releases. However, in many cases the functional form of the response may change with different levels of a given factor. The substantial complexity of defining all possible non-linear model combinations at each factor level means it unlikely this could be feasibly implemented in `bayesnec` in the short term. In the meantime the greatest flexibility in the functional form of individual model fits can be readily obtained using models fitted independently to data within each factor level.
 
 To run this vignette, we will also need some additional packages
 
@@ -111,15 +111,15 @@ ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
 
 This shows the differences among the three estimates. There is no difference in the **ecx** and **all** estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth **ecx** type curve and thus those models have high weight. The **nec** based *EC~10~* estimates are greater than the **ecx** based estimates in this case.
 
-We can formally test the probability that the toxicity estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as `prob_diff`. Here you can see there is 56% chance that **all** is greater than **ecx**. There is only a 21% chance that **ecx** is greater than **nec**, and a 79% chance that the **nec** is greater than **ecx**.
+We can formally test the probability that the toxicity estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as `prob_diff`. Here you can see there is 59% chance that **all** is greater than **ecx**. There is only a 19% chance that **ecx** is greater than **nec**, and a 81% chance that the **nec** is greater than **ecx**.
 
 
 ```r
 post_comp$prob_diff
-#>   comparison     prob
-#> 1    all-ecx 0.564125
-#> 2    all-nec 0.280750
-#> 3    ecx-nec 0.208875
+#>   comparison      prob
+#> 1    all-ecx 0.5870734
+#> 2    all-nec 0.2837855
+#> 3    ecx-nec 0.1923990
 ```
 
 ## Comparing posterior fitted values
@@ -139,20 +139,20 @@ In the case of `comparison = "fitted"` most of the elements returned by `compare
 ```r
 head(post_comp_fitted$posterior_data)
 #>   model          x Estimate      Q2.5    Q97.5
-#> 1   all 0.09090909 1.019540 0.9680707 1.083807
-#> 2   all 0.29313544 1.019370 0.9680707 1.081957
-#> 3   all 0.49536178 1.019281 0.9680707 1.080144
-#> 4   all 0.69758813 1.018957 0.9680707 1.078259
-#> 5   all 0.89981447 1.018561 0.9680707 1.076179
-#> 6   all 1.10204082 1.018096 0.9678797 1.073222
+#> 1   all 0.09090909 1.019281 0.9663742 1.085529
+#> 2   all 0.29313544 1.019163 0.9663742 1.083694
+#> 3   all 0.49536178 1.018979 0.9663742 1.081443
+#> 4   all 0.69758813 1.018762 0.9663062 1.079402
+#> 5   all 0.89981447 1.018338 0.9663062 1.076467
+#> 6   all 1.10204082 1.017858 0.9663062 1.073757
 head(post_comp_fitted$diff_data)
 #>   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x
-#> 1    all-ecx  -0.004067084 -0.08614325 0.07683992 0.09090909
-#> 2    all-ecx  -0.004002352 -0.08519819 0.07513419 0.29313544
-#> 3    all-ecx  -0.004040916 -0.08337290 0.07408995 0.49536178
-#> 4    all-ecx  -0.003881633 -0.08210909 0.07244398 0.69758813
-#> 5    all-ecx  -0.003786529 -0.07995237 0.07058510 0.89981447
-#> 6    all-ecx  -0.003723295 -0.07762445 0.06966917 1.10204082
+#> 1    all-ecx  -0.006297619 -0.09075729 0.08058961 0.09090909
+#> 2    all-ecx  -0.006249143 -0.08936831 0.07942624 0.29313544
+#> 3    all-ecx  -0.005968414 -0.08642680 0.07784780 0.49536178
+#> 4    all-ecx  -0.005687291 -0.08471564 0.07595849 0.69758813
+#> 5    all-ecx  -0.005393701 -0.08301348 0.07339266 0.89981447
+#> 6    all-ecx  -0.004855021 -0.08074017 0.07176768 1.10204082
 ```
 
 Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** set, which is flat prior to the **nec** step point, and then declines more rapidly.

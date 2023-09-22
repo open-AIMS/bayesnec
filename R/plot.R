@@ -121,7 +121,7 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   }
       
   ec10 <- xform(ec10)  
-  nec <- xform(x$nec)
+  nec <- xform(x$ne)
 
   if (jitter_x) {
     x_dat <- jitter(x_dat)
@@ -273,7 +273,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
       x_dat <- xform(x_dat)
       x_vec <- xform(x_vec)
     }
-    nec <- xform(x$w_nec)
+    nec <- xform(x$w_ne)
     ec10 <- xform(ec10)
     if (jitter_x) {
       x_dat <- jitter(x_dat)

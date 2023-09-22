@@ -26,7 +26,7 @@ available methods.
 the fitted model.}
 
 \item{\code{init}}{A \code{\link[base]{list}} containing the initialisation values
-for to fit the model.}
+to fit the model.}
 
 \item{\code{bayesnecformula}}{An object of class \code{\link{bayesnecformula}} and
 \code{\link[stats]{formula}}.}
@@ -40,7 +40,7 @@ and a vector containing based on the supplied \code{resolution} and
 
 \item{\code{beta}}{The estimate for parameter "beta" in the fitted model.}
 
-\item{\code{nec}}{The estimated NEC.}
+\item{\code{ne}}{The estimated NEC.}
 
 \item{\code{f}}{The estimate for parameter "f" in the fitted model, NA if
 absent for the fitted model type.}
@@ -63,9 +63,29 @@ absent for the fitted model type.}
 
 \item{\code{residuals}}{Residual values of the observed data from the fitted model.}
 
-\item{\code{nec_posterior}}{A full posterior estimate of the NEC.}
+\item{\code{ne_posterior}}{A full posterior estimate of the NEC.}
+
+\item{\code{ne_type}}{A \code{\link[base]{character}} vector indicating the type of
+no-effect toxicity estimate. Where the fitted model is an NEC model
+(threshold model, containing a step function) the no-effect estimate is
+a true no-effect-concentration (\code{NEC}, see Fox 2010). Where the fitted
+model is a smooth ECx model with no step function, the no-effect estimate is
+a no-significant-effect-concentration (\code{NSEC}, see Fisher and Fox 2023).}
 }}
 
+\references{
+Fisher R, Fox DR (2023). Introducing the no significant effect concentration
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+doi: 10.1002/etc.5610.
+
+Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
+estimating no-effect toxicity concentrations in ecotoxicology. Integrated
+Environmental Assessment and Management. doi:10.1002/ieam.4809.
+
+Fox DR (2010). A Bayesian Approach for Determining the No Effect
+Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
+and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
+}
 \seealso{
 \code{\link{bayesnec}},
 \code{\link{bnec}},

@@ -74,32 +74,25 @@ autoplot(exp_5)
 <p class="caption">plot of chunk exmp2-decline</p>
 </div>
 
-The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set that were able to fit successfully using the default `bnec` settings. The *NEC* estimate on this plot (and in the summary output below) is based on a mix of actual *NEC* estimates, as well as the *NSEC* [@fisherfox2023] estimates that are used as an approximation to *NEC* for all the **ecx**-containing models in the set. The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to `"pseudobma"` using Bayesian bootstrap from `loo`), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).
+The default plot looks exactly the same as our regular `bayesnecfit` plot, but the output is based on a weighted average of all the model fits in the `model = "decline"` model set that were able to fit successfully using the default `bnec` settings. Because the model set contains a mix of *NEC* and *ECx* models, no-effect toxicity estimate reported by default on this plot (and in the summary output below) is reported as a N(S)EC (see @fisher2023ieam).
+
+The fitted `bayesmanecfit` object contains different elements to the `bayesnecfit`. In particular, `mod_stats` contains the table of model fit statistics for all the fitted models. This includes the model name, the WAIC (as returned from `brms`), wi (the model weight, currently defaulting to `"pseudobma"` using Bayesian bootstrap from `loo`), and the dispersion estimates (only reported if response is modelled with a Poisson or Binomial distribution, otherwise NA).
 
 
 ```r
 exp_5$mod_stats
-#>               model      waic           wi dispersion_Estimate dispersion_Q2.5
-#> nec4param nec4param -84.66730 3.345580e-01                  NA              NA
-#> neclin       neclin -52.69826 1.188980e-03                  NA              NA
-#> ecxlin       ecxlin -28.03770 7.129511e-08                  NA              NA
-#> ecx4param ecx4param -81.99833 1.148731e-01                  NA              NA
-#> ecxwb1       ecxwb1 -75.37626 1.456155e-02                  NA              NA
-#> ecxwb2       ecxwb2 -85.04398 2.968324e-01                  NA              NA
-#> ecxll5       ecxll5 -83.72007 1.466282e-01                  NA              NA
-#> ecxll4       ecxll4 -81.54999 9.135764e-02                  NA              NA
-#>           dispersion_Q97.5
-#> nec4param               NA
-#> neclin                  NA
-#> ecxlin                  NA
-#> ecx4param               NA
-#> ecxwb1                  NA
-#> ecxwb2                  NA
-#> ecxll5                  NA
-#> ecxll4                  NA
+#>               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
+#> nec4param nec4param -84.65371 2.608502e-01                  NA              NA               NA
+#> neclin       neclin -52.59494 1.331228e-03                  NA              NA               NA
+#> ecxlin       ecxlin -28.00785 3.079882e-06                  NA              NA               NA
+#> ecx4param ecx4param -81.30557 7.685228e-02                  NA              NA               NA
+#> ecxwb1       ecxwb1 -75.32780 1.674133e-02                  NA              NA               NA
+#> ecxwb2       ecxwb2 -85.22303 2.758433e-01                  NA              NA               NA
+#> ecxll5       ecxll5 -85.45347 2.892289e-01                  NA              NA               NA
+#> ecxll4       ecxll4 -81.36184 7.914965e-02                  NA              NA               NA
 ```
 
-We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged *NEC* is reported, however a warning is provided indicating it contains *NSEC* values. For this example all the nec4param and ecxwb2 models have the highest weights.
+We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged no-effect estimate is reported, in this case as an N(S)EC. For this example the **nec4param** and **ecxwb2** models have the highest weights.
 
 All these model fits are satisfactory despite the relatively low number of iterations set in our example, but the summary would also include a warning if there were fits with divergent transitions.
 
@@ -115,20 +108,22 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -84.67 0.33
-#> neclin    -52.70 0.00
-#> ecxlin    -28.04 0.00
-#> ecx4param -82.00 0.11
-#> ecxwb1    -75.38 0.01
-#> ecxwb2    -85.04 0.30
-#> ecxll5    -83.72 0.15
-#> ecxll4    -81.55 0.09
+#> nec4param -84.65 0.26
+#> neclin    -52.59 0.00
+#> ecxlin    -28.01 0.00
+#> ecx4param -81.31 0.08
+#> ecxwb1    -75.33 0.02
+#> ecxwb2    -85.22 0.28
+#> ecxll5    -85.45 0.29
+#> ecxll4    -81.36 0.08
 #> 
 #> 
-#> Summary of weighted NEC posterior estimates:
-#> NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
-#>     Estimate Q2.5 Q97.5
-#> NEC     3.33 1.96  3.96
+#> Summary of weighted N(S)EC posterior estimates:
+#> NB: Model set contains a combination of ECx and NEC
+#>     models, and is therefore a model averaged
+#>     combination of NEC and NSEC estimates.
+#>        Estimate Q2.5 Q97.5
+#> N(S)EC     3.38 2.10  3.92
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -213,22 +208,22 @@ Where  a large number of models are failing to converge, obviously it would be b
 rhat(exp_5) |>
   sapply("[[", "failed")
 #> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
-#>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE
+#>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
 ```
 
-Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case two models fail, although we note that this is a very stringent criterion, and we have also used less than the default `bayesnec` value of `iter` (10,000).
+Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case one model fails, although we note that this is a very stringent criterion, and we have also used less than the default `bayesnec` value of `iter` (10,000).
 
 
 ```r
 rhat(exp_5, rhat_cutoff = 1.01) |>
   sapply("[[", "failed")
 #> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
-#>      TRUE      TRUE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
+#>      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
 ```
 
 ### Extracting toxicity values
 
-The models prefixed with **ecx** are all models that do not have the *NEC* as a parameter in the model. That is, they are smooth curves as a function of concentration and have no breakpoint. The *NEC* on the plots above for these models are an approximation based on *NSEC* [@fisherfox2023] and should only be used with careful consideration of the validity of this toxicity value (see the [Model details][e2b] vignette for more details). If a true model averaged estimate of *NEC* based only on threshold models is desired, this can be obtained with `model = "nec"`. We can use the helper functions `pull_out` and `amend` to alter the model set as required. `pull_out` has a `model` argument and can be used to pull a single model out (as above) or to pull out a specific set of models.
+The models prefixed with **ecx** are all models that do not have the *NEC* as a parameter in the model. That is, they are smooth curves as a function of concentration and have no breakpoint (no true No-Effect-Concentration, NEC). Thus the reported no-effect toxicity estimate is the NSEC [@fisherfox2023] (see the [Model details][e2b] vignette for more details). If a true model averaged estimate of *NEC* based only on threshold models is desired, this can be obtained with `model = "nec"`. We can use the helper functions `pull_out` and `amend` to alter the model set as required. `pull_out` has a `model` argument and can be used to pull a single model out (as above) or to pull out a specific set of models.
 
 We can use this to obtain first a set of *NEC* only models from the existing set.
 
@@ -249,7 +244,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.631996 2.709280 4.137865 
+#> 3.631996 2.729366 4.127946 
 #> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -258,7 +253,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.100009 4.852034 5.367822 
+#> 5.090090 4.842115 5.347984 
 #> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -271,10 +266,10 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 
 
 ```r
-NECvals <- exp_5_nec$w_nec
+NECvals <- exp_5_nec$w_ne
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.545780 3.128674 4.005698
+#> 3.537080 3.153199 4.048356
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].

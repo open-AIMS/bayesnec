@@ -71,7 +71,7 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
   if (mod_class == "ecx") {
     stop("nec is not a parameter in ecx model types.")
   }
-  nec_out <- object$nec_posterior
+  nec_out <- object$ne_posterior
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
   }
@@ -102,18 +102,19 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
 nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   chk_logical(posterior)
-  if(!inherits(xform, "function")){ 
-    stop("xform must be a function.")} 
+  if (!inherits(xform, "function")) {
+    stop("xform must be a function.")
+  }
   if (length(prob_vals) < 3 | prob_vals[1] < prob_vals[2] |
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
-  }  
+  }
   if (max(grepl("ecx", names(object$mod_fits))) == 1) {
     message("bayesmanecfit contains ecx model types and therefore nec",
             " estimate includes nsec values.")
   }
-  nec_out <- object$w_nec_posterior
+  nec_out <- object$w_ne_posterior
   if (inherits(xform, "function")) {
     nec_out <- xform(nec_out)
   }

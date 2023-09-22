@@ -9,9 +9,9 @@ test_that("expand_nec defaults work for nec model", {
     suppressWarnings()
   expect_equal(names(nec_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
-                                 "beta", "nec", "f", "bot", "d",
+                                 "beta", "ne", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
-                                 "residuals", "nec_posterior"))
+                                 "residuals", "ne_posterior", "ne_type"))
   expect_equal(class(nec_fit$fit), "brmsfit")
   expect_equal(nec_fit$model, "nec4param")
   expect_equal(dim(nec_fit$pred_vals$posterior), c(100, 1000))
@@ -28,9 +28,9 @@ test_that("expand_nec arguments work for nec model", {
     suppressWarnings()
   expect_equal(names(nec_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
-                                 "beta", "nec", "f", "bot", "d",
+                                 "beta", "ne", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
-                                 "residuals", "nec_posterior"))
+                                 "residuals", "ne_posterior", "ne_type"))
   expect_equal(class(nec_fit$fit), "brmsfit")
   expect_equal(nec_fit$model, "nec4param")
   expect_equal(dim(nec_fit$pred_vals$posterior), c(100, 20))
@@ -46,9 +46,9 @@ test_that("expand_ecx defaults work for ecx model", {
     suppressWarnings()
   expect_equal(names(ecx_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
-                                 "beta", "nec", "f", "bot", "d",
+                                 "beta", "ne", "f", "bot", "d",
                                  "slope", "ec50", "dispersion", "predicted_y",
-                                 "residuals", "nec_posterior"))
+                                 "residuals", "ne_posterior", "ne_type"))
   expect_equal(class(ecx_fit$fit), "brmsfit")
   expect_equal(ecx_fit$model, "ecx4param")
   expect_equal(dim(ecx_fit$pred_vals$posterior), c(100, 1000))
@@ -65,9 +65,9 @@ test_that("expand_ecx arguments work for ecx model", {
     suppressWarnings()
   expect_equal(names(ecx_fit), c("fit", "model", "init", "bayesnecformula",
                                  "pred_vals", "top",
-                                 "beta", "nec", "f", "bot", "d", "slope",
+                                 "beta", "ne", "f", "bot", "d", "slope",
                                  "ec50", "dispersion", "predicted_y",
-                                 "residuals", "nec_posterior"))
+                                 "residuals", "ne_posterior", "ne_type"))
   expect_equal(class(ecx_fit$fit), "brmsfit")
   expect_equal(ecx_fit$model, "ecx4param")
   expect_equal(dim(ecx_fit$pred_vals$posterior), c(100, 20))
@@ -84,7 +84,7 @@ test_that("expand_ecx sig_val argument work for ecx model", {
   ecx_fit_b <- expand_nec(fit2, fit2$bayesnecformula, model = "ecx4param",
                           sig_val = 0.2) |>
     suppressWarnings()
-  expect_gt(ecx_fit_a$nec["Estimate"], ecx_fit_b$nec["Estimate"])
+  expect_gt(ecx_fit_a$ne["Estimate"], ecx_fit_b$ne["Estimate"])
 })
 
 tt1 <- manec_example$mod_fits

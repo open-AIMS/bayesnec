@@ -147,25 +147,15 @@ library(cmdstanr)
 ```
 
 ```
-## - CmdStan path: C:/cmdstan
+## - CmdStan path: /Users/dbarneche/.cmdstan/cmdstan-2.33.1
 ```
 
 ```
-## - CmdStan version: 2.30.0
-```
-
-```
-## 
-## A newer version of CmdStan is available. See ?install_cmdstan() to install it.
-## To disable this check set option or environment variable CMDSTANR_NO_VER_CHECK=TRUE.
+## - CmdStan version: 2.33.1
 ```
 
 ```r
 library(posterior)
-```
-
-```
-## Warning: package 'posterior' was built under R version 4.2.3
 ```
 
 ```
@@ -244,7 +234,7 @@ cmdstan_path()
 ```
 
 ```
-## [1] "C:/cmdstan"
+## [1] "/Users/dbarneche/.cmdstan/cmdstan-2.33.1"
 ```
 
 If not, manually set it
@@ -255,7 +245,7 @@ set_cmdstan_path("C:/cmdstan")
 ```
 
 ```
-## CmdStan path set to: C:/cmdstan
+## Warning: Path not set. Can't find directory: C:/cmdstan
 ```
 
 To use `cmdstan` as a backend for `brms` call the relevant options.
@@ -303,7 +293,7 @@ mod$print()
 ```
 ## data {
 ##   int<lower=0> N;
-##   array[N] int<lower=0,upper=1> y; // or int<lower=0,upper=1> y[N];
+##   array[N] int<lower=0,upper=1> y;
 ## }
 ## parameters {
 ##   real<lower=0,upper=1> theta;
@@ -365,7 +355,7 @@ fit <- mod$sample(
 ## 
 ## All 4 chains finished successfully.
 ## Mean chain execution time: 0.0 seconds.
-## Total execution time: 0.3 seconds.
+## Total execution time: 0.2 seconds.
 ```
 
 Check that the model has successfully fitted by examining the model parameters
@@ -379,8 +369,8 @@ fit$summary()
 ## # A tibble: 2 × 10
 ##   variable   mean median    sd   mad      q5    q95  rhat ess_bulk ess_tail
 ##   <chr>     <num>  <num> <num> <num>   <num>  <num> <num>    <num>    <num>
-## 1 lp__     -7.26  -6.99  0.719 0.329 -8.73   -6.75   1.00    1658.    1861.
-## 2 theta     0.246  0.231 0.118 0.118  0.0811  0.463  1.00    1378.    1236.
+## 1 lp__     -7.26  -6.99  0.695 0.331 -8.70   -6.75   1.00    1661.    1619.
+## 2 theta     0.249  0.233 0.119 0.122  0.0816  0.468  1.00    1494.    1630.
 ```
 
 ### Run a model using brms
@@ -392,7 +382,7 @@ set_cmdstan_path("C:/cmdstan")
 ```
 
 ```
-## CmdStan path set to: C:/cmdstan
+## Warning: Path not set. Can't find directory: C:/cmdstan
 ```
 
 ```r
@@ -408,16 +398,75 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ```
 
 ```
-## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/ Running MCMC with 4 chains, at most 16 in parallel...
+## -\|/-\|/-\|/-\|
+```
+
+```
+## In file included from /var/folders/80/x2f5bfts2_n9g_2h7w8rx3jm0000gn/T/RtmpYbQkO3/model-170826490f811.hpp:1:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/src/stan/model/model_header.hpp:4:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math.hpp:19:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/rev.hpp:10:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/rev/fun.hpp:200:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/prim/functor.hpp:16:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/prim/functor/integrate_ode_rk45.hpp:6:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/prim/functor/ode_rk45.hpp:9:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/numeric/odeint.hpp:76:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/numeric/odeint/integrate/observer_collection.hpp:23:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/function.hpp:30:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/function/detail/prologue.hpp:17:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/function/function_base.hpp:21:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/type_index.hpp:29:
+## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/type_index/stl_type_index.hpp:47:
+## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:132:33: warning: 'unary_function<const std::error_category
+```
+
+```
+## /
+```
+
+```
+##  *, unsigned long>' is deprecated [-Wdeprecated-declarations]
+##         struct hash_base : std::unary_function<T, std::size_t> {};
+##                                 ^
+## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:692:18: note: in instantiation of template class 'boost::hash_detail::hash_base<const std::error_category *>' requested here
+##         : public boost::hash_detail::hash_base<T*>
+##                  ^
+## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:420:24: note: in instantiation of template class 'boost::hash<const std::error_category *>' requested here
+##         boost::hash<T> hasher;
+##                        ^
+## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:551:9: note: in instantiation of function template specialization 'boost::hash_combine<const std::error_category *>' requested here
+##         hash_combine(seed, &v.category());
+##         ^
+## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__functional/unary_function.h:23:29: note: 'unary_function<const std::error_category *, unsigned long>' has been explicitly marked deprecated here
+## struct _LIBCPP_TEMPLATE_VIS _LIBCPP_DEPRECATED_IN_CXX11 unary_function
+##                             ^
+## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__config:825:41: note: expanded from macro '_LIBCPP_DEPRECATED_IN_CXX11'
+## #    define _LIBCPP_DEPRECATED_IN_CXX11 _LIBCPP_DEPRECATED
+##                                         ^
+## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__config:810:49: note: expanded from macro '_LIBCPP_DEPRECATED'
+## #      define _LIBCPP_DEPRECATED __attribute__((deprecated))
+##                                                 ^
+```
+
+```
+## -\|/-\|/-\|/-\|/-\|/-\|/
+```
+
+```
+## 1 warning generated.
+```
+
+```
+## -\|/- Running MCMC with 4 chains, at most 10 in parallel...
 ## 
-## Chain 1 finished in 4.5 seconds.
-## Chain 4 finished in 4.6 seconds.
-## Chain 2 finished in 4.9 seconds.
-## Chain 3 finished in 5.0 seconds.
+## Chain 2 finished in 1.8 seconds.
+## Chain 3 finished in 1.7 seconds.
+## Chain 4 finished in 1.7 seconds.
+## Chain 1 finished in 1.9 seconds.
 ## 
 ## All 4 chains finished successfully.
-## Mean chain execution time: 4.7 seconds.
-## Total execution time: 5.1 seconds.
+## Mean chain execution time: 1.8 seconds.
+## Total execution time: 2.0 seconds.
 ```
 
 ```r
@@ -435,15 +484,15 @@ summary(fit)
 ## Group-Level Effects: 
 ## ~patient (Number of levels: 59) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.58      0.07     0.47     0.73 1.00      874     1818
+## sd(Intercept)     0.58      0.07     0.46     0.74 1.01      919     1769
 ## 
 ## Population-Level Effects: 
 ##            Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept      1.77      0.12     1.55     2.01 1.00      687     1294
-## zAge           0.09      0.09    -0.09     0.26 1.01      648     1403
-## zBase          0.70      0.13     0.45     0.97 1.01      731     1232
-## Trt1          -0.27      0.17    -0.60     0.05 1.00      728     1558
-## zBase:Trt1     0.05      0.17    -0.29     0.37 1.01      855     1298
+## Intercept      1.78      0.12     1.55     2.01 1.01      761     1328
+## zAge           0.10      0.09    -0.08     0.27 1.01      781     1456
+## zBase          0.71      0.12     0.48     0.94 1.00      813     1431
+## Trt1          -0.27      0.16    -0.61     0.04 1.01      550     1301
+## zBase:Trt1     0.05      0.16    -0.27     0.38 1.01      926     1473
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential

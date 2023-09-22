@@ -306,7 +306,7 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
   if (add_nec) {
-    out <- bind_nec(out, x$nec, xform = xform)
+    out <- bind_nec(out, x$ne, xform = xform)
   }
   if (add_ecx) {
     ecx_vals <- ecx(x, xform = xform, ...)
@@ -350,7 +350,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
   if (add_nec) {
-    out <- bind_nec(out, x$w_nec, xform = xform)
+    out <- bind_nec(out, x$w_ne, xform = xform)
   }
   if (add_ecx) {
     ecx_vals <- ecx(x, xform = xform, ...)

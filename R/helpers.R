@@ -82,7 +82,7 @@ extract_waic_estimate <- function(x) {
 
 #' @noRd
 w_nec_calc <- function(index, mod_fits, sample_size, mod_stats) {
-  sample(mod_fits[[index]]$nec_posterior,
+  sample(mod_fits[[index]]$ne_posterior,
          as.integer(round(sample_size * mod_stats[index, "wi"])))
 }
 
@@ -273,9 +273,9 @@ clean_mod_weights <- function(x) {
 #' @noRd
 clean_nec_vals <- function(x, all_models, ecx_models) {
   if (is_bayesnecfit(x)) {
-    mat <- t(as.matrix(x$nec))
+    mat <- t(as.matrix(x$ne))
   } else if (is_bayesmanecfit(x)) {
-    mat <- t(as.matrix(x$w_nec))
+    mat <- t(as.matrix(x$w_ne))
   } else {
     stop("Wrong input class.")
   }
@@ -367,10 +367,10 @@ return_x_range <- function(x) {
 #' @noRd
 return_nec_post <- function(m, xform) {
   if (is_bayesnecfit(m)) {
-    out <- unname(m$nec_posterior)
+    out <- unname(m$ne_posterior)
   }
   if (is_bayesmanecfit(m)) {
-    out <- unname(m$w_nec_posterior)
+    out <- unname(m$w_ne_posterior)
   }
   if (inherits(xform, "function")) {
     out <- xform(out)

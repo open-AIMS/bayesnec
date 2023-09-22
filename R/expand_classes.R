@@ -28,7 +28,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   extract_params <- c("top", "beta", "nec", "f",
                       "bot", "d", "slope", "ec50")
   extracted_params <- lapply(extract_params, extract_pars, fit)
-  names(extracted_params) <- extract_params
+  names(extracted_params) <- gsub("^nec$", "ne", extract_params)
   mod_dat <- model.frame(formula, data = fit$data)
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   x <- fit$data[[x_var]]
@@ -50,7 +50,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   pred_data <- data.frame(x = x_seq, Estimate = y_pred_m[, "Estimate"],
                           Q2.5 = y_pred_m[, "Q2.5"],
                           Q97.5 = y_pred_m[, "Q97.5"])
-  if (is.na(extracted_params$nec["Estimate"])) {
+  if (is.na(extracted_params$ne["Estimate"])) {
     mod_class <- "ecx"
   } else {
     mod_class <- "nec"
@@ -58,16 +58,16 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   if (mod_class == "ecx") {
     reference <- quantile(pred_posterior[, 1], sig_val)
     grab <- apply(pred_posterior - reference, 1, min_abs)
-    nec_posterior <- pred_data$x[grab]
+    ne_posterior <- pred_data$x[grab]
     x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
     x_call <- str2lang(eval(parse(text = x_str)))
     if (inherits(x_call, "call")) {
-      x_call[[2]] <- str2lang("nec_posterior")
-      nec_posterior <- eval(x_call)
+      x_call[[2]] <- str2lang("ne_posterior")
+      ne_posterior <- eval(x_call)
     }
-    extracted_params$nec <- estimates_summary(nec_posterior)
+    extracted_params$ne <- estimates_summary(ne_posterior)
   } else {
-    nec_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
+    ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
   }
   pred_vals <- list(data = pred_data, posterior = pred_posterior)
   od <- dispersion(object, summary = TRUE)
@@ -78,7 +78,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
   c(object, list(pred_vals = pred_vals), extracted_params,
     list(dispersion = od, predicted_y = predicted_y, residuals = residuals,
-         nec_posterior = nec_posterior))
+         ne_posterior = ne_posterior,
+         ne_type = ifelse(mod_class == "nec", "NEC", "NSEC")))
 }
 
 #' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
@@ -130,6 +131,12 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_fits <- object[success_models]
   object <- object[success_models]
   formula <- formula[success_models]
+  ne_lab <- "NEC"
+  if (all(success_models %in% mod_groups$ecx)) {
+    ne_lab <- "NSEC"
+  } else if (any(success_models %in% mod_groups$ecx) & any(success_models %in% mod_groups$nec)) {
+    ne_lab <- "N(S)EC"
+  }
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(), weights = list())
   } else {
@@ -155,7 +162,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   attr(mod_stats$wi, "method") <- loo_w_controls$method
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- extract_simdat(object[[1]])$n_samples
-  nec_posterior <- unlist(lapply(success_models, w_nec_calc,
+  ne_posterior <- unlist(lapply(success_models, w_nec_calc,
                                  object, sample_size, mod_stats))
   y_pred <- rowSums(do_wrapper(success_models, w_pred_calc,
                                object, mod_stats))
@@ -166,11 +173,11 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   pred_data <- cbind(x = x,
                      data.frame(t(apply(post_pred, 2,
                                         estimates_summary))))
-  nec <- estimates_summary(nec_posterior)
+  nec <- estimates_summary(ne_posterior)
   list(mod_fits = mod_fits, success_models = success_models,
        mod_stats = mod_stats, sample_size = sample_size,
-       w_nec_posterior = nec_posterior, w_predicted_y = y_pred,
+       w_ne_posterior = ne_posterior, w_predicted_y = y_pred,
        w_residuals = mod_dat[[y_var]] - y_pred,
        w_pred_vals = list(data = pred_data, posterior = post_pred),
-       w_nec = nec)
+       w_ne = nec, ne_type = ne_lab)
 }

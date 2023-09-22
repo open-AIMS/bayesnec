@@ -32,38 +32,27 @@ The `model` may also be one of `"all"`, meaning all of the available models will
 library(bayesnec)
 models()
 #> $nec
-#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"      
-#>  [6] "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"
+#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"
 #> 
 #> $ecx
-#>  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"     
-#>  [7] "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4"
-#> [13] "ecxhormebc5"
+#>  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"
 #> 
 #> $all
-#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"      
-#>  [6] "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"
-#> [11] "ecxlin"        "ecxexp"        "ecxsigm"       "ecx4param"     "ecxwb1"       
-#> [16] "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"       
-#> [21] "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  
+#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"      
+#> [14] "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  
 #> 
 #> $bot_free
-#>  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"  
-#>  [6] "nechormepwr"   "ecxlin"        "ecxexp"        "ecxsigm"       "ecxwb1p3"     
-#> [11] "ecxwb2p3"      "ecxll3"        "ecxhormebc4"   "nechormepwr01"
+#>  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"        "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
+#> [14] "nechormepwr01"
 #> 
 #> $zero_bounded
-#>  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01"
-#>  [6] "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"       
-#> [11] "ecxhormebc4"  
+#>  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
 #> 
 #> $decline
-#>  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param"
-#>  [8] "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"   
+#>  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"   
 #> 
 #> $hormesis
-#> [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr" 
-#> [6] "nechormepwr01" "ecxhormebc4"   "ecxhormebc5"
+#> [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"   "ecxhormebc5"
 ```
 
 # Parameter definitions
@@ -97,7 +86,9 @@ $$
 
 # Model types for *NEC* and *EC~x~* estimation
 
-All models provide an estimate for the No-Effect-Concentration (*NEC*). For model types with **nec** as a prefix, the *NEC* is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per @Fox2010. Models with **ecx** as a prefix are continuous curve models, typically used for extracting *EC~x~* values from concentration-response data. In this instance the *NEC* reported is actually the No-Significant-Effect-Concentration (*NSEC*), defined as the concentration at which there is a user supplied (see `sig_val`) percentage certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote ($\tau = \text{top}$) of the response (i.e. the response value is significantly lower than that expected in the case of no exposure) [@fisherfox2023]. The default value for `sig_val` is 0.01, which corresponds to an alpha value (Type-I error rate) of 0.01 for a one-sided test of significance. See `?nsec` and [@fisherfox2023] for more details. To obtain true model averaged estimates of the *NEC* based on threshold models, you must use only the `"nec"` model set for estimation of *NEC* values.
+In principle all models provide an estimate for "no-effect" toxicity concentration. As seen above, for model strings with **nec** as a prefix, the NEC is directly estimated as parameter $\eta = \text{NEC}$ in the model, as per @Fox2010. On the other hand, model strings with **ecx** as a prefix are continuous curve models with no threshold, typically used for extracting ECx values from concentration-response data. In this instance, the NEC reported is actually the No-Significant-Effect-Concentration [NSEC, see details in @fisherfox2023], defined as the concentration at which there is a user supplied certainty (based on the Bayesian posterior estimate) that the response falls below the estimated value of the upper asymptote ($\tau = \text{top}$) of the response (i.e., the response value is significantly lower than that expected in the case of no exposure). The default value for this NSEC proportion is 0.01, which corresponds to an alpha value (Type-I error rate) of 0.01 for a one-sided test of significance. The NSEC concept has been recently explored using simulation studies and case study examples, and when combined with the NEC estimates of threshold models within a model‐
+averaging approach, can yield robust estimates of N(S)EC and of their uncertainty within a single
+analysis framework [@fisher2023ieam]. Both NEC and NSEC can be calculated from fitted models using the functions \code{nec} and \code{nsec}. The model averaged N(S)EC is automatically returned as part of the fitted model for any \code{bayesmanecfit} that contains a combination of both \code{"nec"} and \code{"ecx"} models. The significance level used can be adjusted from the default value using \code{amend}.
 
 *EC~x~* estimates can be equally obtained from both `"nec"` and `"ecx"` models. *EC~x~* estimates will usually be lower (more conservative) for `"ecx"` models fitted to the same data as `"nec"` models (see the [Comparing posterior predictions][e4]) vignette for an example. However, we recommend using `"all"` models where *EC~x~* estimation is required because `"nec"` models can fit some datasets better than `"ecx"` models and the model averaging approach will place the greatest weight for the outcome that best fits the supplied data. This approach will yield *EC~x~* estimates that are the most representative of the underlying relationship in the dataset.
 
