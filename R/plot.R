@@ -139,7 +139,9 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
        col = adjustcolor(1, alpha.f = 0.25), ...)
   nec_tag <- summary(x, ecx = FALSE) |>
     (`[[`)("nec_vals") |>
-    rownames()
+    rownames() |>
+    suppressWarnings() |>
+    suppressMessages()
   if (!inherits(lxform, "function")) {
     if (length(xticks) == 1) {
       axis(side = 1)
@@ -289,7 +291,9 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
          col = adjustcolor(1, alpha.f = 0.25), ...)
     nec_tag <- summary(x, ecx = FALSE) |>
       (`[[`)("nec_vals") |>
-      rownames()
+      rownames() |>
+      suppressWarnings() |>
+      suppressMessages()
     if (!inherits(lxform, "function")) {
       if (length(xticks) == 1) {
         axis(side = 1)

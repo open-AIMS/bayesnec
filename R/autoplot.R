@@ -56,7 +56,9 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
-  summ <- summary(x, ecx = FALSE)
+  summ <- summary(x, ecx = FALSE) |>
+    suppressWarnings() |>
+    suppressMessages()
   ggbnec_data(x, add_nec = nec, add_ecx = ecx,
               xform = xform, ...) |>
     mutate(model = x$model, tag = rownames(.env$summ$nec_vals)) |>
@@ -112,7 +114,9 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
     if (multi_facet) {
       names(all_fits) <- x$success_models
       nec_labs <- map_dfr(all_fits, function(x) {
-        summ <- summary(x, ecx = FALSE)
+        summ <- summary(x, ecx = FALSE) |>
+          suppressWarnings() |>
+          suppressMessages()
         summ$nec_vals |>
           data.frame() |>
           rownames_to_column(var = "tag")
@@ -129,7 +133,9 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       }
       plots <- vector(mode = "list", length = length(all_fits))
       for (i in seq_along(all_fits)) {
-        summ_i <- summary(all_fits[[i]], ecx = FALSE)
+        summ_i <- summary(all_fits[[i]], ecx = FALSE) |>
+          suppressWarnings() |>
+          suppressMessages()
         plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
                                    xform = xform, ...) |>
           mutate(model = x$success_models[i],
@@ -143,7 +149,9 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       invisible(plots)
     }
   } else {
-    summ <- summary(x, ecx = FALSE)
+    summ <- summary(x, ecx = FALSE) |>
+      suppressWarnings() |>
+      suppressMessages()
     ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform, ...) |>
       mutate(model = "Model averaged predictions",
              tag = rownames(.env$summ$nec_vals)) |>
