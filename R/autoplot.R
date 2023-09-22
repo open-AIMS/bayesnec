@@ -230,7 +230,7 @@ bind_ecx <- function(data, ecx_vals) {
   df <- data[1:3, ]
   df[ ] <- NA
   df$ecx_vals <- ecx_vals
-  df$ecx_int[1] <- strsplit(names(ecx_vals)[1], "_", fixed = TRUE)[[1]][2]
+  df$ecx_int[1] <- attr(ecx_vals, "ecx_val")
   df$ecx_labs[1] <- rounded(ecx_vals[[1]], 2)
   df$ecx_labs_l[1] <- rounded(ecx_vals[[2]], 2)
   df$ecx_labs_u[1] <- rounded(ecx_vals[[3]], 2)
