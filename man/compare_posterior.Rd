@@ -11,7 +11,7 @@ compare_posterior(
   type = "absolute",
   hormesis_def = "control",
   sig_val = 0.01,
-  precision,
+  resolution,
   x_range = NA,
   make_newdata = TRUE,
   ...
@@ -39,14 +39,14 @@ significance of the predicted posterior values.
 against the lowest observed concentration (assumed to be the control), to
 estimate NEC as an interpolated NOEC value from smooth ECx curves.}
 
-\item{precision}{The number of unique x values over which to find ECx --
+\item{resolution}{The number of unique x values over which to find ECx --
 large values will make the ECx estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
 \item{make_newdata}{Only used if \code{comparison = "fitted"}. Should the
 user allow the package to create \code{newdata} for predictions?
-If so, arguments \code{precision} and \code{x_range} will be used. Defaults
+If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
 to TRUE. See details.}
 
 \item{...}{Further arguments that control posterior predictions via
@@ -81,7 +81,7 @@ control, which is assumed to be the lowest observed concentration.
 The argument \code{make_newdata} is only used if
 \code{comparison = "fitted"}. It is relevant to those who want the package
 to create a data.frame from which to make predictions. This is done via
-\code{\link{bnec_newdata}} and uses arguments \code{precision} and
+\code{\link{bnec_newdata}} and uses arguments \code{resolution} and
 \code{x_range}. If \code{make_newdata = FALSE} and no additional
 \code{newdata} argument is provided (via \code{...}), then the predictions
 are made for the raw data. Else, to generate predictions for a specific

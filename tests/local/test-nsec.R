@@ -4,7 +4,7 @@ test_that("works for bayesnecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  nsec1 <- nsec(fit, precision = 10)
+  nsec1 <- nsec(fit, resolution = 10)
   expect_equal(length(nsec1), 3)
   expect_equal(names(nsec1), c("Q50", "Q2.5", "Q97.5"))
 })
@@ -13,7 +13,7 @@ test_that("works for brmsfit pulled from bayesnecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  nsec1 <- nsec(fit_brms, precision = 10, x_var = "x") |>
+  nsec1 <- nsec(fit_brms, resolution = 10, x_var = "x") |>
     suppressWarnings()
   expect_equal(length(nsec1), 3)
   expect_equal(names(nsec1), c("Q50", "Q2.5", "Q97.5"))
@@ -23,7 +23,7 @@ test_that("works for brmsfit with interaction", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  nsec1 <- nsec(fit_brmsInt, precision = 10, x_var = "x", group_var = "herbicide") |>
+  nsec1 <- nsec(fit_brmsInt, resolution = 10, x_var = "x", group_var = "herbicide") |>
     suppressWarnings()
   expect_equal(length(nsec1), 3)
   expect_equal(names(nsec1), c("Q50", "Q2.5", "Q97.5"))
@@ -40,7 +40,7 @@ test_that("posterior passes correctly for brmsfit pulled from bayesnecfit", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
-  nsec3 <- nsec(fit_brms, posterior = TRUE, precision = 10, x_var = "x")
+  nsec3 <- nsec(fit_brms, posterior = TRUE, resolution = 10, x_var = "x")
   expect_equal(length(nsec3), 8000)
 })
 

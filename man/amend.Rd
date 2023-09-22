@@ -10,7 +10,7 @@ amend(
   add,
   loo_controls,
   x_range = NA,
-  precision = 1000,
+  resolution = 1000,
   sig_val = 0.01,
   priors
 )
@@ -37,7 +37,7 @@ not provided by the user, \code{\link{bnec}} will set the default
 \item{x_range}{A range of predictor values over which to consider extracting
 ECx.}
 
-\item{precision}{The length of the predictor vector used for posterior
+\item{resolution}{The length of the predictor vector used for posterior
 predictions, and over which to extract ECx values. Large values will be
 slower but more precise.}
 

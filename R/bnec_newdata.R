@@ -4,7 +4,7 @@
 #'
 #' @param x An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} as returned by \code{\link{bnec}}.
-#' @param precision A \code{\link[base]{numeric}} vector of length 1 indicating
+#' @param resolution A \code{\link[base]{numeric}} vector of length 1 indicating
 #' the number of x values over which to predict values.
 #' @param x_range A \code{\link[base]{numeric}} vector of length 2 indicating
 #' the range of x values over which to make predictions.
@@ -15,8 +15,8 @@
 #' \dontrun{
 #' library(bayesnec)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
-#' # Make fine precision, predict out of range
-#' newdata <- bnec_newdata(nec4param, precision = 200, x_range = c(0, 4))
+#' # Make fine resolution, predict out of range
+#' newdata <- bnec_newdata(nec4param, resolution = 200, x_range = c(0, 4))
 #' nrow(newdata) == 200
 #' all(range(newdata$x) == c(0, 4))
 #' newdata2 <- bnec_newdata(manec_example) # default size
@@ -24,7 +24,7 @@
 #' }
 #' 
 #' @export
-bnec_newdata <- function(x, precision = 100, x_range = NA) {
+bnec_newdata <- function(x, resolution = 100, x_range = NA) {
   UseMethod("bnec_newdata")
 }
 
@@ -38,16 +38,16 @@ bnec_newdata <- function(x, precision = 100, x_range = NA) {
 #' @importFrom stats model.frame
 #' @noRd
 #' @export
-bnec_newdata.bayesnecfit <- function(x, precision = 100, x_range = NA) {
-  check_args_newdata(precision, x_range)
+bnec_newdata.bayesnecfit <- function(x, resolution = 100, x_range = NA) {
+  check_args_newdata(resolution, x_range)
   data <- model.frame(x$bayesnecformula, data = x$fit$data)
   x_var <- attr(data, "bnec_pop")[["x_var"]]
   fit <- x$fit
   x_vec <- fit$data[[x_var]]
   if (any(is.na(x_range))) {
-    x_seq <- seq(min(x_vec), max(x_vec), length = precision)
+    x_seq <- seq(min(x_vec), max(x_vec), length = resolution)
   } else {
-    x_seq <- seq(min(x_range), max(x_range), length = precision)
+    x_seq <- seq(min(x_range), max(x_range), length = resolution)
   }
   newdata <- data.frame(x_seq)
   names(newdata) <- x_var
@@ -68,9 +68,9 @@ bnec_newdata.bayesnecfit <- function(x, precision = 100, x_range = NA) {
 #' @inherit bnec_newdata description return examples
 #' @noRd
 #' @export
-bnec_newdata.bayesmanecfit <- function(x, precision = 100, x_range = NA) {
+bnec_newdata.bayesmanecfit <- function(x, resolution = 100, x_range = NA) {
   model_set <- names(x$mod_fits)
   bayesnecfit_x <- pull_out(x, model = model_set[1]) |>
     suppressMessages()
-  bnec_newdata(bayesnecfit_x, precision, x_range)
+  bnec_newdata(bayesnecfit_x, resolution, x_range)
 }

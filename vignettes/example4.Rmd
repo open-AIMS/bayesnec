@@ -72,8 +72,7 @@ post_comp <- compare_posterior(list("all" = exmp, "ecx" = exmp_ecx,
                                     "nec" = exmp_nec),
                                comparison = "ecx", ecx_val = 10)
 names(post_comp)
-#> [1] "posterior_list" "posterior_data" "diff_list"      "diff_data"     
-#> [5] "prob_diff"
+#> [1] "posterior_list" "posterior_data" "diff_list"      "diff_data"      "prob_diff"
 ```
 
 The `compare_posterior` function outputs several elements in a named list. This includes the **posterior_data** for each model in the comparison as a `data.frame` which we can use to plot a `geom_density` plot of the posterior estimates, so they can be compared visually.
@@ -112,15 +111,15 @@ ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
 
 This shows the differences among the three estimates. There is no difference in the **ecx** and **all** estimates (the probability density overlaps zero - red shaded curve). This is because for this example the simulated data are from a smooth **ecx** type curve and thus those models have high weight. The **nec** based *EC~10~* estimates are greater than the **ecx** based estimates in this case.
 
-We can formally test the probability that the toxicity estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as `prob_diff`. Here you can see there is 63% chance that **all** is greater than **ecx**. There is only a 14% chance that **ecx** is greater than **nec**, and a 86% chance that the **nec** is greater than **ecx**.
+We can formally test the probability that the toxicity estimate for one model set is greater than the other using posterior differencing. This is contained in the compare posterior output as `prob_diff`. Here you can see there is 56% chance that **all** is greater than **ecx**. There is only a 21% chance that **ecx** is greater than **nec**, and a 79% chance that the **nec** is greater than **ecx**.
 
 
 ```r
 post_comp$prob_diff
 #>   comparison     prob
-#> 1    all-ecx 0.629875
-#> 2    all-nec 0.280125
-#> 3    ecx-nec 0.139500
+#> 1    all-ecx 0.564125
+#> 2    all-nec 0.280750
+#> 3    ecx-nec 0.208875
 ```
 
 ## Comparing posterior fitted values
@@ -140,20 +139,20 @@ In the case of `comparison = "fitted"` most of the elements returned by `compare
 ```r
 head(post_comp_fitted$posterior_data)
 #>   model          x Estimate      Q2.5    Q97.5
-#> 1   all 0.09090909 1.018974 0.9669091 1.082140
-#> 2   all 0.29313544 1.018878 0.9666844 1.080600
-#> 3   all 0.49536178 1.018672 0.9666137 1.078799
-#> 4   all 0.69758813 1.018472 0.9665252 1.077222
-#> 5   all 0.89981447 1.018167 0.9665189 1.075285
-#> 6   all 1.10204082 1.017729 0.9664166 1.072677
+#> 1   all 0.09090909 1.019540 0.9680707 1.083807
+#> 2   all 0.29313544 1.019370 0.9680707 1.081957
+#> 3   all 0.49536178 1.019281 0.9680707 1.080144
+#> 4   all 0.69758813 1.018957 0.9680707 1.078259
+#> 5   all 0.89981447 1.018561 0.9680707 1.076179
+#> 6   all 1.10204082 1.018096 0.9678797 1.073222
 head(post_comp_fitted$diff_data)
 #>   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x
-#> 1    all-ecx  -0.007744023 -0.08639748 0.07508838 0.09090909
-#> 2    all-ecx  -0.007587503 -0.08598559 0.07412591 0.29313544
-#> 3    all-ecx  -0.007381033 -0.08447768 0.07337031 0.49536178
-#> 4    all-ecx  -0.007291340 -0.08262596 0.07204010 0.69758813
-#> 5    all-ecx  -0.007203227 -0.08110714 0.07005437 0.89981447
-#> 6    all-ecx  -0.007061814 -0.07952138 0.06865346 1.10204082
+#> 1    all-ecx  -0.004067084 -0.08614325 0.07683992 0.09090909
+#> 2    all-ecx  -0.004002352 -0.08519819 0.07513419 0.29313544
+#> 3    all-ecx  -0.004040916 -0.08337290 0.07408995 0.49536178
+#> 4    all-ecx  -0.003881633 -0.08210909 0.07244398 0.69758813
+#> 5    all-ecx  -0.003786529 -0.07995237 0.07058510 0.89981447
+#> 6    all-ecx  -0.003723295 -0.07762445 0.06966917 1.10204082
 ```
 
 Using the collated posterior_data we can plot the predicted curves with confidence bounds for each of the input models. This shows clearly that the **ecx** model set begins to decline earlier than the **nec** set, which is flat prior to the **nec** step point, and then declines more rapidly.

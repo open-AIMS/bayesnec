@@ -33,7 +33,7 @@
 #' @export
 compare_estimates <- function(x, comparison = "nec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, precision = 100, x_range = NA) {
+                              sig_val = 0.01, resolution = 100, x_range = NA) {
   if ((comparison %in% c("nec", "ecx", "nsec")) == FALSE) {
     stop("comparison must be one of nec, ecx or nsec.")
   }
@@ -47,7 +47,7 @@ compare_estimates <- function(x, comparison = "nec", ecx_val = 10,
          Please see ?ecx for more details.")
   }
   chk_numeric(sig_val)
-  chk_numeric(precision)
+  chk_numeric(resolution)
   if (is.na(x_range[1])) {
     x_range <- return_x_range(x)
   } else {
@@ -57,12 +57,12 @@ compare_estimates <- function(x, comparison = "nec", ecx_val = 10,
     posterior_list <- lapply(x, return_nec_post, xform = identity)
   }
   if (comparison == "ecx") {
-    posterior_list <- lapply(x, ecx, ecx_val = ecx_val, precision = precision,
+    posterior_list <- lapply(x, ecx, ecx_val = ecx_val, resolution = resolution,
                              posterior = TRUE, type = type,
                              hormesis_def = hormesis_def, x_range = x_range)
   }
   if (comparison == "nsec") {
-    posterior_list <- lapply(x, nsec, sig_val = sig_val, precision = precision,
+    posterior_list <- lapply(x, nsec, sig_val = sig_val, resolution = resolution,
                              posterior = TRUE, hormesis_def = hormesis_def,
                              x_range = x_range)
   }

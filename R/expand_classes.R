@@ -13,9 +13,9 @@
 #' @importFrom chk chk_numeric
 #'
 #' @export
-expand_nec <- function(object, formula, x_range = NA, precision = 1000,
+expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
                        sig_val = 0.01, loo_controls, ...) {
-  chk_numeric(precision)
+  chk_numeric(resolution)
   chk_numeric(sig_val)
   fam_tag <- object$fit$family$family
   if (missing(loo_controls)) {
@@ -33,9 +33,9 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   x <- fit$data[[x_var]]
   if (any(is.na(x_range[1]))) {
-    x_seq <- seq(min(x), max(x), length = precision)
+    x_seq <- seq(min(x), max(x), length = resolution)
   } else {
-    x_seq <- seq(min(x_range), max(x_range), length = precision)
+    x_seq <- seq(min(x_range), max(x_range), length = resolution)
   }
   new_dat <- data.frame(x_seq)
   names(new_dat) <- x_var
@@ -102,9 +102,9 @@ expand_nec <- function(object, formula, x_range = NA, precision = 1000,
 #' @importFrom chk chk_numeric
 #'
 #' @export
-expand_manec <- function(object, formula, x_range = NA, precision = 1000,
+expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
                          sig_val = 0.01, loo_controls) {
-  chk_numeric(precision)
+  chk_numeric(resolution)
   chk_numeric(sig_val)
   if (!is.na(x_range[1])) {chk_numeric(x_range)}
   model_set <- names(object)
@@ -139,7 +139,7 @@ expand_manec <- function(object, formula, x_range = NA, precision = 1000,
   loo_w_controls <- loo_controls$weights
   for (i in seq_along(object)) {
     object[[i]] <- expand_nec(object[[i]], formula = formula[[i]],
-                              x_range = x_range, precision = precision,
+                              x_range = x_range, resolution = resolution,
                               sig_val = sig_val, loo_controls = loo_controls,
                               model = success_models[i])
   }

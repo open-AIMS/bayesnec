@@ -5,7 +5,7 @@
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #' @param sig_val Probability value to use as the lower quantile to test
 #' significance of the predicted posterior values.
-#' @param precision The number of unique x values over which to find NSEC -
+#' @param resolution The number of unique x values over which to find NSEC -
 #' large values will make the NSEC estimate more precise.
 #' @param hormesis_def A \code{\link[base]{character}} vector, taking values
 #' of "max" or "control". See Details.
@@ -32,7 +32,7 @@
 #' in the context of allowing argument \code{newdata}
 #' (from a \code{\link[brms]{posterior_predict}} perspective) to
 #' be supplied manually, as this is and should be handled within the function
-#' itself. The argument \code{precision} controls how precisely the
+#' itself. The argument \code{resolution} controls how precisely the
 #' \code{\link{ecx}} or \code{\link{nsec}} value is estimated, with 
 #' argument \code{x_range} allowing estimation beyond the existing range of
 #' the observed data (otherwise the default range) which can be useful in a
@@ -60,7 +60,7 @@
 #' }
 #'
 #' @export
-nsec <- function(object, sig_val = 0.01, precision = 1000,
+nsec <- function(object, sig_val = 0.01, resolution = 1000,
                  x_range = NA, hormesis_def = "control",
                  xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("nsec")
@@ -83,12 +83,12 @@ nsec <- function(object, sig_val = 0.01, precision = 1000,
 #' @noRd
 #'
 #' @export
-nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
+nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 1000,
                              x_range = NA, hormesis_def = "control", 
                              xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
                              posterior = FALSE) {
   chk_numeric(sig_val)
-  chk_numeric(precision)
+  chk_numeric(resolution)
   chk_logical(posterior)
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
@@ -105,7 +105,7 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
          " in that order.")
   }
   newdata_list <- newdata_eval(
-    object, precision = precision, x_range = x_range
+    object, resolution = resolution, x_range = x_range
   )
   p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
                                re_formula = NA)
@@ -138,8 +138,8 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
   }
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals)
   names(nsec_estimate) <- clean_names(nsec_estimate)
-  attr(nsec_estimate, "precision") <- precision
-  attr(nsec_out, "precision") <- precision
+  attr(nsec_estimate, "resolution") <- resolution
+  attr(nsec_out, "resolution") <- resolution
   attr(nsec_estimate, "sig_val") <- sig_val
   attr(nsec_out, "sig_val") <- sig_val
   attr(nsec_estimate, "toxicity_estimate") <- "nsec"
@@ -168,21 +168,21 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
 #' @noRd
 #'
 #' @export
-nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
+nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 1000,
                                x_range = NA, hormesis_def = "control", 
                                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
                                posterior = FALSE) {
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
   }
-  sample_nsec <- function(x, object, sig_val, precision,
+  sample_nsec <- function(x, object, sig_val, resolution,
                           hormesis_def,
                           x_range, xform, prob_vals, 
                           posterior,
                           sample_size) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
-    out <- nsec(target, sig_val = sig_val, precision = precision,
+    out <- nsec(target, sig_val = sig_val, resolution = resolution,
                 hormesis_def = hormesis_def,
                 x_range = x_range, xform = xform, prob_vals = prob_vals,
                 posterior = posterior)
@@ -193,7 +193,7 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   }
   sample_size <- object$sample_size
   to_iter <- seq_len(length(object$success_models))
-  nsec_out <- sapply(to_iter, sample_nsec, object, sig_val, precision,
+  nsec_out <- sapply(to_iter, sample_nsec, object, sig_val, resolution,
                      hormesis_def, x_range,
                      xform, prob_vals, posterior = TRUE, sample_size)
   ecnsecP <- unlist(lapply(nsec_out, 
@@ -202,8 +202,8 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, precision = 1000,
   nsec_out <- unlist(nsec_out)
   nsec_estimate <- quantile(nsec_out, probs = prob_vals)
   names(nsec_estimate) <- clean_names(nsec_estimate)
-  attr(nsec_estimate, "precision") <- precision
-  attr(nsec_out, "precision") <- precision
+  attr(nsec_estimate, "resolution") <- resolution
+  attr(nsec_out, "resolution") <- resolution
   attr(nsec_estimate, "sig_val") <- sig_val
   attr(nsec_out, "sig_val") <- sig_val
   attr(nsec_estimate, "toxicity_estimate") <- "nsec"
@@ -243,7 +243,7 @@ nsec_fct <- function(y, reference, x_vec) {
 #' @noRd
 #'
 #' @export
-nsec.brmsfit <- function(object, sig_val = 0.01, precision = 1000,    
+nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 1000,    
                          x_range = NA, hormesis_def = "control",  
                          xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
                          posterior = FALSE,
@@ -252,7 +252,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, precision = 1000,
                          by_group = FALSE,
                          horme = FALSE){
   chk_numeric(sig_val)
-  chk_numeric(precision)
+  chk_numeric(resolution)
   chk_logical(posterior)
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
@@ -288,7 +288,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, precision = 1000,
   if(is.na(x_range)){
     x_range = range(object$data[x_var])
   }
-  x_vec <- seq(min(x_range), max(x_range), length=precision)
+  x_vec <- seq(min(x_range), max(x_range), length=resolution)
 
   if(is.na(group_var)){
     pred_dat <- data.frame(x_vec)
@@ -390,7 +390,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, precision = 1000,
     names(out_vals) <- clean_names(out_vals)
   }
   
-  attr(out_vals, "precision") <- precision
+  attr(out_vals, "resolution") <- resolution
   attr(out_vals, "sig_val") <- sig_val
   attr(out_vals, "toxicity_estimate") <- "nsec"
 
@@ -411,14 +411,14 @@ nsec.brmsfit <- function(object, sig_val = 0.01, precision = 1000,
 #' @noRd
 #'
 #' @export
-nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
+nsec.drc <- function(object, sig_val = 0.01, resolution = 1000,
                      x_range = NA, hormesis_def = "control", 
                      xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
                      x_var,
                      horme = FALSE,
                      curveid = NA) {
   chk_numeric(sig_val)
-  chk_numeric(precision)
+  chk_numeric(resolution)
   
   if (length(sig_val)>1) {
     stop("You may only pass one sig_val")  
@@ -438,7 +438,7 @@ nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
   if(is.na(x_range)){
     x_range = range(object$data[x_var])
   }
-  x_vec <- seq(min(x_range), max(x_range), length=precision)
+  x_vec <- seq(min(x_range), max(x_range), length=resolution)
   
   if(is.na(curveid)){
     pred_dat <- data.frame(x_vec)
@@ -506,7 +506,7 @@ nsec.drc <- function(object, sig_val = 0.01, precision = 1000,
   }
 
   nsec_estimate <- out_vals
-  attr(nsec_estimate, "precision") <- precision
+  attr(nsec_estimate, "resolution") <- resolution
   attr(nsec_estimate, "sig_val") <- sig_val
   attr(nsec_estimate, "toxicity_estimate") <- "nsec"
   nsec_estimate

@@ -10,7 +10,7 @@
 #' the \code{formula}.
 #' @param x_range A range of predictor values over which to consider extracting
 #' ECx.
-#' @param precision The length of the predictor vector used for posterior
+#' @param resolution The length of the predictor vector used for posterior
 #' predictions, and over which to extract ECx values. Large values will be
 #' slower but more precise.
 #' @param sig_val Probability value to use as the lower quantile to test
@@ -205,10 +205,10 @@
 #' @importFrom chk chk_number
 #'
 #' @export
-bnec <- function(formula, data, x_range = NA, precision = 1000, sig_val = 0.01,
+bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  loo_controls, x_var = NULL, y_var = NULL, trials_var = NULL,
                  model = NULL, random = NULL, random_vars = NULL, ...) {
-  chk_number(precision)
+  chk_number(resolution)
   chk_number(sig_val)
 
   mf <- match.call(expand.dots = FALSE)
@@ -246,13 +246,13 @@ bnec <- function(formula, data, x_range = NA, precision = 1000, sig_val = 0.01,
     }
     formulas <- lapply(mod_fits, extract_formula)
     mod_fits <- expand_manec(mod_fits, formula = formulas, x_range = x_range,
-                             precision = precision, sig_val = sig_val,
+                             resolution = resolution, sig_val = sig_val,
                              loo_controls = loo_controls)
     if (length(mod_fits) > 1) {
       allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
     } else {
       mod_fits <- expand_nec(mod_fits[[1]], formula = formula,
-                             x_range = x_range, precision = precision,
+                             x_range = x_range, resolution = resolution,
                              sig_val = sig_val, loo_controls = loo_controls,
                              model = names(mod_fits))
       allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
@@ -261,7 +261,7 @@ bnec <- function(formula, data, x_range = NA, precision = 1000, sig_val = 0.01,
     mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
                             brm_args = brm_args)
     mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
-                          precision = precision, sig_val = sig_val,
+                          resolution = resolution, sig_val = sig_val,
                           loo_controls = loo_controls, model = model)
     allot_class(mod_fit, c("bayesnecfit", "bnecfit"))
   }

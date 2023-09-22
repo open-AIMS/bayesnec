@@ -8,7 +8,7 @@ expand_nec(
   object,
   formula,
   x_range = NA,
-  precision = 1000,
+  resolution = 1000,
   sig_val = 0.01,
   loo_controls,
   ...
@@ -24,7 +24,7 @@ R formula or an actual \code{\link[stats]{formula}} object. See
 \item{x_range}{A range of predictor values over which to consider extracting
 ECx.}
 
-\item{precision}{The length of the predictor vector used for posterior
+\item{resolution}{The length of the predictor vector used for posterior
 predictions, and over which to extract ECx values. Large values will be
 slower but more precise.}
 
