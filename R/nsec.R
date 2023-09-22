@@ -5,8 +5,6 @@
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #' @param sig_val Probability value to use as the lower quantile to test
 #' significance of the predicted posterior values.
-#' against the lowest observed concentration (assumed to be the control), to
-#' estimate NEC as an interpolated NOEC value from smooth ECx curves.
 #' @param precision The number of unique x values over which to find NSEC -
 #' large values will make the NSEC estimate more precise.
 #' @param hormesis_def A \code{\link[base]{character}} vector, taking values
@@ -105,11 +103,6 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, precision = 1000,
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
-  }
-  if (length(grep("ecx", object$model)) > 0) {
-    mod_class <- "ecx"
-  } else {
-    mod_class <- "nec"
   }
   newdata_list <- newdata_eval(
     object, precision = precision, x_range = x_range
