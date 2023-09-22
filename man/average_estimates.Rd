@@ -40,9 +40,7 @@ just the median and 95 credible intervals.}
 of "max" or "control". See Details.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values.
-against the lowest observed concentration (assumed to be the control), to
-estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+significance of the predicted posterior values.}
 
 \item{resolution}{The number of unique x values over which to find ECx --
 large values will make the ECx estimate more precise.}

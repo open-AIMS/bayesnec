@@ -8,7 +8,7 @@
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 #' \code{\link{bnec}}.
 #' @param comparison The posterior predictions to compare, takes values of
-#' "nec", "nsec", "ecx" or "fitted".
+#' "nec", "n(s)ec", "nsec", "ecx" or "fitted".
 #' @param make_newdata Only used if \code{comparison = "fitted"}. Should the
 #' user allow the package to create \code{newdata} for predictions?
 #' If so, arguments \code{resolution} and \code{x_range} will be used. Defaults
@@ -59,11 +59,11 @@
 #' data(manec_example)
 #' nec4param <- pull_out(manec_example, model = "nec4param")
 #' ecx4param <- pull_out(manec_example, model = "ecx4param")
-#' compare_posterior(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+#' compare_posterior(list("n(s)ec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 #' }
 #'
 #' @export
-compare_posterior <- function(x, comparison = "nec", ecx_val = 10,
+compare_posterior <- function(x, comparison = "n(s)ec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
                               sig_val = 0.01, resolution, x_range = NA,
                               make_newdata = TRUE, ...) {

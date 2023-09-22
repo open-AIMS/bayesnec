@@ -6,7 +6,7 @@
 \usage{
 compare_posterior(
   x,
-  comparison = "nec",
+  comparison = "n(s)ec",
   ecx_val = 10,
   type = "absolute",
   hormesis_def = "control",
@@ -23,7 +23,7 @@ compare_posterior(
 \code{\link{bnec}}.}
 
 \item{comparison}{The posterior predictions to compare, takes values of
-"nec", "nsec", "ecx" or "fitted".}
+"nec", "n(s)ec", "nsec", "ecx" or "fitted".}
 
 \item{ecx_val}{The desired percentage effect value. This must be a value
 between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
@@ -35,9 +35,7 @@ between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
 of "max" or "control". See Details.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
-significance of the predicted posterior values.
-against the lowest observed concentration (assumed to be the control), to
-estimate NEC as an interpolated NOEC value from smooth ECx curves.}
+significance of the predicted posterior values.}
 
 \item{resolution}{The number of unique x values over which to find ECx --
 large values will make the ECx estimate more precise.}
@@ -96,7 +94,7 @@ library(bayesnec)
 data(manec_example)
 nec4param <- pull_out(manec_example, model = "nec4param")
 ecx4param <- pull_out(manec_example, model = "ecx4param")
-compare_posterior(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
+compare_posterior(list("n(s)ec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 }
 
 }

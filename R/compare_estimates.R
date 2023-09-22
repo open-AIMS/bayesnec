@@ -31,11 +31,11 @@
 #' }
 #'
 #' @export
-compare_estimates <- function(x, comparison = "nec", ecx_val = 10,
+compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
                               type = "absolute", hormesis_def = "control",
                               sig_val = 0.01, resolution = 100, x_range = NA) {
-  if ((comparison %in% c("nec", "ecx", "nsec")) == FALSE) {
-    stop("comparison must be one of nec, ecx or nsec.")
+  if ((comparison %in% c("nec", "n(s)ec", "ecx", "nsec")) == FALSE) {
+    stop("comparison must be one of nec, n(s)ec, ecx or nsec.")
   }
   chk_numeric(ecx_val)
   if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
@@ -54,6 +54,9 @@ compare_estimates <- function(x, comparison = "nec", ecx_val = 10,
     chk_numeric(x_range)    
   }
   if (comparison == "nec") {
+    posterior_list <- lapply(x, nec, posterior = TRUE, xform = identity)
+  }
+  if (comparison == "n(s)ec") {
     posterior_list <- lapply(x, return_nec_post, xform = identity)
   }
   if (comparison == "ecx") {
