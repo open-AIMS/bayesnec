@@ -408,16 +408,16 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ```
 
 ```
-## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/- Running MCMC with 4 chains, at most 16 in parallel...
+## -\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/ Running MCMC with 4 chains, at most 16 in parallel...
 ## 
-## Chain 2 finished in 5.1 seconds.
-## Chain 1 finished in 5.2 seconds.
-## Chain 3 finished in 5.3 seconds.
-## Chain 4 finished in 5.5 seconds.
+## Chain 1 finished in 4.5 seconds.
+## Chain 4 finished in 4.6 seconds.
+## Chain 2 finished in 4.9 seconds.
+## Chain 3 finished in 5.0 seconds.
 ## 
 ## All 4 chains finished successfully.
-## Mean chain execution time: 5.3 seconds.
-## Total execution time: 5.5 seconds.
+## Mean chain execution time: 4.7 seconds.
+## Total execution time: 5.1 seconds.
 ```
 
 ```r
@@ -435,15 +435,15 @@ summary(fit)
 ## Group-Level Effects: 
 ## ~patient (Number of levels: 59) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.58      0.07     0.46     0.75 1.01      800     1523
+## sd(Intercept)     0.58      0.07     0.47     0.73 1.00      874     1818
 ## 
 ## Population-Level Effects: 
 ##            Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept      1.78      0.12     1.55     2.00 1.01      601     1411
-## zAge           0.09      0.09    -0.08     0.26 1.00      730     1288
-## zBase          0.71      0.12     0.48     0.95 1.00      725     1060
-## Trt1          -0.27      0.17    -0.61     0.06 1.01      647      995
-## zBase:Trt1     0.04      0.17    -0.29     0.36 1.00      856     1273
+## Intercept      1.77      0.12     1.55     2.01 1.00      687     1294
+## zAge           0.09      0.09    -0.09     0.26 1.01      648     1403
+## zBase          0.70      0.13     0.45     0.97 1.01      731     1232
+## Trt1          -0.27      0.17    -0.60     0.05 1.00      728     1558
+## zBase:Trt1     0.05      0.17    -0.29     0.37 1.01      855     1298
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential

@@ -80,14 +80,14 @@ The default plot looks exactly the same as our regular `bayesnecfit` plot, but t
 ```r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5
-#> nec4param nec4param -84.31855 2.954818e-01                  NA              NA
-#> neclin       neclin -52.66493 1.935145e-03                  NA              NA
-#> ecxlin       ecxlin -27.76148 5.979878e-07                  NA              NA
-#> ecx4param ecx4param -81.79204 9.972846e-02                  NA              NA
-#> ecxwb1       ecxwb1 -74.81455 1.189726e-02                  NA              NA
-#> ecxwb2       ecxwb2 -85.30221 3.168789e-01                  NA              NA
-#> ecxll5       ecxll5 -83.74542 1.454074e-01                  NA              NA
-#> ecxll4       ecxll4 -82.30576 1.286705e-01                  NA              NA
+#> nec4param nec4param -84.66730 3.345580e-01                  NA              NA
+#> neclin       neclin -52.69826 1.188980e-03                  NA              NA
+#> ecxlin       ecxlin -28.03770 7.129511e-08                  NA              NA
+#> ecx4param ecx4param -81.99833 1.148731e-01                  NA              NA
+#> ecxwb1       ecxwb1 -75.37626 1.456155e-02                  NA              NA
+#> ecxwb2       ecxwb2 -85.04398 2.968324e-01                  NA              NA
+#> ecxll5       ecxll5 -83.72007 1.466282e-01                  NA              NA
+#> ecxll4       ecxll4 -81.54999 9.135764e-02                  NA              NA
 #>           dispersion_Q97.5
 #> nec4param               NA
 #> neclin                  NA
@@ -115,20 +115,20 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -84.32 0.30
-#> neclin    -52.66 0.00
-#> ecxlin    -27.76 0.00
-#> ecx4param -81.79 0.10
-#> ecxwb1    -74.81 0.01
-#> ecxwb2    -85.30 0.32
-#> ecxll5    -83.75 0.15
-#> ecxll4    -82.31 0.13
+#> nec4param -84.67 0.33
+#> neclin    -52.70 0.00
+#> ecxlin    -28.04 0.00
+#> ecx4param -82.00 0.11
+#> ecxwb1    -75.38 0.01
+#> ecxwb2    -85.04 0.30
+#> ecxll5    -83.72 0.15
+#> ecxll4    -81.55 0.09
 #> 
 #> 
 #> Summary of weighted NEC posterior estimates:
 #> NB: Model set contains the ECX models: ecxlin;ecx4param;ecxwb1;ecxwb2;ecxll5;ecxll4; weighted NEC estimates include NSEC surrogates for NEC
 #>     Estimate Q2.5 Q97.5
-#> NEC     3.30 2.04  3.96
+#> NEC     3.33 1.96  3.96
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -136,11 +136,11 @@ summary(exp_5)
 #> nec4param     0.86      0.01 0.84  0.87
 #> neclin        0.83      0.01 0.80  0.84
 #> ecxlin        0.80      0.01 0.77  0.82
-#> ecx4param     0.85      0.01 0.83  0.87
+#> ecx4param     0.85      0.01 0.84  0.87
 #> ecxwb1        0.85      0.01 0.83  0.86
 #> ecxwb2        0.86      0.01 0.84  0.87
 #> ecxll5        0.86      0.01 0.84  0.87
-#> ecxll4        0.85      0.01 0.84  0.87
+#> ecxll4        0.85      0.01 0.83  0.87
 ```
 
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
@@ -223,7 +223,7 @@ Here we get a message because none of our models failed the default Rhat criteri
 rhat(exp_5, rhat_cutoff = 1.01) |>
   sapply("[[", "failed")
 #> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
-#>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
+#>      TRUE      TRUE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
 ```
 
 ### Extracting toxicity values
@@ -249,7 +249,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.602239 2.689690 4.137865 
+#> 3.631996 2.709280 4.137865 
 #> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -258,7 +258,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.100009 4.832196 5.367822 
+#> 5.100009 4.852034 5.367822 
 #> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -274,7 +274,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_nec
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.553983 3.124025 4.041929
+#> 3.545780 3.128674 4.005698
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].
