@@ -65,7 +65,7 @@ Environmental Assessment and Management. doi:10.1002/ieam.4809.
 
 Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
-and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012
+and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
 }
 \seealso{
 \code{\link{bayesnec}},
