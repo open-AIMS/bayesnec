@@ -45,24 +45,21 @@ NULL
 #'
 #' @importFrom dplyr mutate
 #' @importFrom chk chk_lgl
+#' @importFrom rlang .env
 #'
 #' @export
 autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                  xform = identity) {
-
   x <- object
-  if(!inherits(x, "bnecfit")){ 
-    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
-  }
   chk_lgl(nec)
   chk_lgl(ecx)
-  if(!inherits(xform, "function")){ 
+  if (!inherits(xform, "function")) {
     stop("xform must be a function.")
-    } 
-
+  }
+  summ <- summary(x, ecx = FALSE)
   ggbnec_data(x, add_nec = nec, add_ecx = ecx,
               xform = xform, ...) |>
-    mutate(model = x$model) |>
+    mutate(model = x$model, tag = rownames(.env$summ$nec_vals)) |>
     ggbnec(nec = nec, ecx = ecx)
 }
 
@@ -85,41 +82,44 @@ autoplot.bayesnecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
 #'
 #' @inherit autoplot description return examples
 #'
-#' @importFrom dplyr mutate
+#' @importFrom dplyr mutate left_join
 #' @importFrom purrr map_dfr
+#' @importFrom tibble rownames_to_column
 #' @importFrom grDevices devAskNewPage
 #' @importFrom chk chk_lgl
+#' @importFrom rlang .env
 #'
 #' @export
 autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
                                    xform = identity,
                                    all_models = FALSE, plot = TRUE, ask = TRUE,
                                    newpage = TRUE, multi_facet = TRUE) {
-  
   x <- object
-  
-  if(!inherits(x, "bnecfit")){ 
-    stop("x is not of class bnecfit. x should be an object returned from a call to the function bnec.")
-  }
   chk_lgl(nec)
   chk_lgl(ecx)
-  if(!inherits(xform, "function")){ 
+  if (!inherits(xform, "function")) {
     stop("xform must be a function.")
-  } 
-  chk_lgl(all_models) 
-  chk_lgl(plot) 
-  chk_lgl(ask) 
-  chk_lgl(newpage) 
-  chk_lgl(multi_facet) 
-  
+  }
+  chk_lgl(all_models)
+  chk_lgl(plot)
+  chk_lgl(ask)
+  chk_lgl(newpage)
+  chk_lgl(multi_facet)
   if (all_models) {
     all_fits <- lapply(x$success_models, pull_out, manec = x) |>
       suppressMessages() |>
       suppressWarnings()
     if (multi_facet) {
       names(all_fits) <- x$success_models
+      nec_labs <- map_dfr(all_fits, function(x) {
+        summ <- summary(x, ecx = FALSE)
+        summ$nec_vals |>
+          data.frame() |>
+          rownames_to_column(var = "tag")
+      }, .id = "model")
       map_dfr(all_fits, ggbnec_data, add_nec = nec, add_ecx = ecx,
               xform = xform, ..., .id = "model") |>
+        left_join(y = nec_labs, by = "model") |>
         ggbnec(nec = nec, ecx = ecx)
     } else {
       if (plot) {
@@ -129,9 +129,11 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       }
       plots <- vector(mode = "list", length = length(all_fits))
       for (i in seq_along(all_fits)) {
+        summ_i <- summary(all_fits[[i]], ecx = FALSE)
         plots[[i]] <- ggbnec_data(all_fits[[i]], add_nec = nec, add_ecx = ecx,
                                    xform = xform, ...) |>
-          mutate(model = x$success_models[i]) |>
+          mutate(model = x$success_models[i],
+                 tag = rownames(.env$summ_i$nec_vals)) |>
           ggbnec(nec = nec, ecx = ecx)
         plot(plots[[i]], newpage = newpage || i > 1)
         if (i == 1) {
@@ -141,8 +143,10 @@ autoplot.bayesmanecfit <- function(object, ..., nec = TRUE, ecx = FALSE,
       invisible(plots)
     }
   } else {
+    summ <- summary(x, ecx = FALSE)
     ggbnec_data(x, add_nec = nec, add_ecx = ecx, xform = xform, ...) |>
-      mutate(model = "Model averaged predictions") |>
+      mutate(model = "Model averaged predictions",
+             tag = rownames(.env$summ$nec_vals)) |>
       ggbnec(nec = nec, ecx = ecx)
   }
 }
@@ -386,10 +390,12 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
                  linetype = ltys, colour = "grey50",
                  lwd = lwds) +
       geom_text(data = x |> filter(!is.na(.data$nec_labs)),
-                mapping = aes(label = paste0("N(S)EC: ", .data$nec_labs, " (",
-                                             .data$nec_labs_l, "-",
-                                             .data$nec_labs_u, ")")),
-                x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, size = 3,
+                mapping = aes(
+                  label = paste0(
+                    .data$tag, ": ", .data$nec_labs, " (", .data$nec_labs_l,
+                    "-", .data$nec_labs_u, ")"
+                  )
+                ), x = Inf, y = Inf, hjust = 1.1, vjust = 1.5, size = 3,
                 colour = "grey50")
   }
   if (ecx) {
