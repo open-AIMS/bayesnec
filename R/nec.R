@@ -13,10 +13,20 @@
 #' 0.975 (95 percent credible intervals).
 #'
 #' @seealso \code{\link{bnec}}
+#' 
+#' @details The NEC is a parameter in a threshold model (for example, 
+#' see Fox 2010), and is a true measure 
+#' of No-effect-concentration (the minimum concentration above which an effect 
+#' is predicted to occur. 
 #'
 #' @return A vector containing the estimated NEC value, including upper and
-#' lower 95% credible interval bounds
-#' (or other interval as specified by prob_vals).
+#' lower 95% credible interval bounds (or other interval as specified by 
+#' prob_vals). 
+#' 
+#' @references
+#' Fox DR (2010). A Bayesian Approach for Determining the No Effect
+#' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
+#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 #' @examples
 #' library(bayesnec)

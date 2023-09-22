@@ -10,9 +10,9 @@ modify_tex <- function(file_in, file_out) {
       }
     }
   } else {
-    tex[author_ands] <- gsub("AND Diego", "And Diego", tex[author_ands]) %>%
-      gsub("And Gerard", "AND Gerard", .) %>%
-      gsub("AND David", "And David", .)
+    tex[author_ands] <- gsub("AND Diego", "And Diego", tex[author_ands]) |>
+      gsub("And Gerard", "AND Gerard", x = _) |>
+      gsub("AND David", "And David", x = _)
   }
   tab_begs <- grep("^\\\\begin\\{table", tex)
   tab_caps <- grep("^\\\\caption\\{", tex)
@@ -21,6 +21,16 @@ modify_tex <- function(file_in, file_out) {
   cap_txt  <- tex[tab_caps]
   tex <- tex[-tab_caps]
   end_tabs <- grep("^\\\\end\\{tabular", tex)
+  for (i in seq_along(tab_begs)) {
+    tmp_tab <- gsub("Ametryn", "Ame.", tex[tab_begs[i]:end_tabs[i]]) |>
+      gsub("Atrazine", "Atr.", x = _) |>
+      gsub("Diuron", "Diu.", x = _) |>
+      gsub("Hexazinone", "Hex.", x = _) |>
+      gsub("Irgarol", "Irg.", x = _) |>
+      gsub("Simazine", "Sim.", x = _) |>
+      gsub("Tebuthiuron", "Teb.", x = _)
+    tex[tab_begs[i]:end_tabs[i]] <- tmp_tab
+  }
   beg_cen_cap <- "\\captionsetup{justification=centering}"
   tex <- c(tex[1:end_tabs[1]], beg_cen_cap, cap_txt[1],
            tex[(end_tabs[1] + 1):end_tabs[2]], beg_cen_cap,

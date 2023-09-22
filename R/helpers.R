@@ -271,9 +271,21 @@ clean_mod_weights <- function(x) {
 }
 
 #' @noRd
-clean_nec_vals <- function(x) {
-  mat <- t(as.matrix(x$w_nec))
-  rownames(mat) <- "NEC"
+clean_nec_vals <- function(x, all_models, ecx_models) {
+  if (is_bayesnecfit(x)) {
+    mat <- t(as.matrix(x$nec))
+  } else if (is_bayesmanecfit(x)) {
+    mat <- t(as.matrix(x$w_nec))
+  } else {
+    stop("Wrong input class.")
+  }
+  neclab <- "NEC"
+  if (all(all_models %in% ecx_models)) {
+    neclab <- "NSEC"
+  } else if (!is.null(ecx_models)) {
+    neclab <- "N(S)EC"
+  }
+  rownames(mat) <- neclab
   mat
 }
 

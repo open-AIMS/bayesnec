@@ -1,12 +1,10 @@
-#' Extracts the predicted NSEC value as desired from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#' Extracts the predicted NSEC value as desired from an 
+#' object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #' @param sig_val Probability value to use as the lower quantile to test
 #' significance of the predicted posterior values.
-#' against the lowest observed concentration (assumed to be the control), to
-#' estimate NEC as an interpolated NOEC value from smooth ECx curves.
 #' @param resolution The number of unique x values over which to find NSEC -
 #' large values will make the NSEC estimate more precise.
 #' @param hormesis_def A \code{\link[base]{character}} vector, taking values
@@ -19,7 +17,12 @@
 #' 0.975 (95 percent credible intervals).
 #' @param ... Further arguments to pass to class specific methods.
 #'
-#' @details For \code{hormesis_def}, if "max", then NSEC values are calculated
+#' @details NSEC is no-effect toxicity metric that estimates the concentration 
+#' at which the modeled mean response is statistically indistinguishable from 
+#' the mean control response. See the detailed derivation in
+#' Fisher and Fox (2023).
+#' 
+#' For \code{hormesis_def}, if "max", then NSEC values are calculated
 #' as a decline from the maximum estimates (i.e. the peak at NEC);
 #' if "control", then NSEC values are calculated relative to the control, which
 #' is assumed to be the lowest observed concentration.
@@ -42,6 +45,11 @@
 #'
 #' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds.
+#' 
+#' @references
+#' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' doi: 10.1002/etc.5610.
 #'
 #' @examples
 #' \donttest{
@@ -95,11 +103,6 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 1000,
       prob_vals[1] > prob_vals[3] | prob_vals[2] > prob_vals[3]) {
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order.")
-  }
-  if (length(grep("ecx", object$model)) > 0) {
-    mod_class <- "ecx"
-  } else {
-    mod_class <- "nec"
   }
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range

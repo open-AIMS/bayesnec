@@ -11,7 +11,7 @@
 #'
 #' @importFrom stats rgamma rnorm rbeta runif
 #' @importFrom graphics hist
-#' @importFrom ggplot2 ggplot aes geom_histogram facet_wrap
+#' @importFrom ggplot2 ggplot aes geom_histogram facet_wrap theme_bw labs
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyselect starts_with
 #' @importFrom dplyr filter mutate
@@ -83,6 +83,8 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
       mutate(param = gsub("^b\\_", "", .data$param)) |>
       ggplot(mapping = aes(x = .data$value)) +
         geom_histogram() +
-        facet_wrap(~.data$param, scales = "free_x")
+        labs(x = "Value", y = "Count") +
+        facet_wrap(~.data$param, scales = "free_x") +
+        theme_bw()
   }
 }

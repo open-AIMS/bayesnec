@@ -59,13 +59,15 @@ print.bayesmanecfit <- function(x, ...) {
 #' @export
 #' @noRd
 print.necsummary <- function(x, ...) {
-  cat("Object of class bayesnecfit containing the following",
-      " non-linear model: ", x$model, "\n\n", sep = "")
+  cat("Object of class bayesnecfit containing the", x$model,
+      "model\n\n", sep = " ")
   print(x$brmssummary)
+  cat("\n\n")
   if (x$is_ecx) {
-    cat("\nNB: Model ", x$model, " is an ECX model and so ",
-        "the NEC estimate is an NSEC surrogate.\n", sep = "")
+    cat("NB: Model", x$model, "is an ECx model, thus",
+        "the NEC estimate is an\n", "   NSEC surrogate.\n", sep = " ")
   }
+  print_mat(x$nec_vals)
   if (!is.null(x$ecs)) {
     cat("\n\n")
     for (i in seq_along(x$ecs)) {
@@ -102,19 +104,21 @@ print.manecsummary <- function(x, ...) {
   cat("Model weights (Method: ", x$mod_weights_method, "):\n", sep = "")
   print_mat(x$mod_weights)
   cat("\n\n")
-  cat("Summary of weighted NEC posterior estimates:\n")
-  if (!is.null(x$ecx_mods)) {
-    cat("NB: Model set contains the ECX models: ",
-        paste0(x$ecx_mods, collapse = ";"),
-        "; weighted NEC estimates include NSEC surrogates for NEC\n", sep = "")
+  neclab <- rownames(x$nec_vals)
+  cat("Summary of weighted", neclab, "posterior estimates:\n", sep = " ")
+  if (neclab == "N(S)EC") {
+    cat("NB: Model set contains a combination of ECx and NEC\n",
+        "    models, and is therefore a model averaged\n",
+        "    combination of NEC and NSEC estimates.\n", sep = "")
   }
   print_mat(x$nec_vals)
   cat("\n\n")
   if (!is.null(x$ecs)) {
     for (i in seq_along(x$ecs)) {
       nice_ecx_out(x$ecs[[i]], names(x$ecs)[i])
-      "\n\n"
+      cat("\n")
     }
+    cat("\n")
   }
   cat("Bayesian R2 estimates:\n")
   print_mat(x$bayesr2)

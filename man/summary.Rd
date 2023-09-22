@@ -28,14 +28,26 @@ A summary of the fitted model. In the case of a
 contents of a \code{\link[brms]{brmsfit}} object with the addition of
 an R2. In the case of a \code{\link{bayesmanecfit}} object, summary
 displays the family distribution information, model weights and averaging
-method, the estimated model-averaged NEC, and R2 estimates for each
-individual model. Warning messages are also printed to screen in case
+method, and Bayesian R2 estimates for each individual model.
+Warning messages are also printed to screen in case
 model fits are not satisfactory with regards to their Rhats.
 }
 \description{
 Generates a summary for objects fitted by \code{\link{bnec}}.
 \code{object} should be of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.
+}
+\details{
+The summary method for both \code{\link{bayesnecfit}} and
+\code{\link{bayesmanecfit}} also returns a no-effect toxicity
+estimate. Where the fitted model(s) are NEC models (threshold models,
+containing a step function) the no-effect estimate is a true
+no-effect-concentration (NEC, see Fox 2010). Where the fitted model(s) are
+smooth ECx models with no step function, the no-effect estimate is a
+no-significant-effect-concentration (NSEC, see Fisher and Fox 2023). In the
+case of a \code{\link{bayesmanecfit}} that contains a mixture of both NEC and
+ECx models, the no-effect estimate is a model averaged combination of the NEC
+and NSEC estimates, and is reported as the N(S)EC (see Fisher et al. 2023).
 }
 \examples{
 \donttest{
@@ -44,4 +56,17 @@ summary(manec_example)
 nec4param <- pull_out(manec_example, "nec4param")
 summary(nec4param)
 }
+}
+\references{
+Fisher R, Fox DR (2023). Introducing the no significant effect concentration
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+doi: 10.1002/etc.5610.
+
+Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
+estimating no-effect toxicity concentrations in ecotoxicology. Integrated
+Environmental Assessment and Management. doi:10.1002/ieam.4809.
+
+Fox DR (2010). A Bayesian Approach for Determining the No Effect
+Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
+and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
 }

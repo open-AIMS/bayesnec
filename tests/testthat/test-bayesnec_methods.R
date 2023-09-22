@@ -22,8 +22,8 @@ test_that("plot returns null, is invisible, and is silent", {
 test_that("summary behaves as expected", {
   summary_p <- suppressWarnings(summary(nec4param))
   expect_equal(class(summary_p), "necsummary")
-  expect_equal(names(summary_p), c("brmssummary", "model", "is_ecx", "ecs",
-                                   "bayesr2"))
+  expect_equal(names(summary_p), c("brmssummary", "model", "is_ecx", "nec_vals",
+                                   "ecs", "bayesr2"))
 })
 
 test_that("formula/model.frame behaves as expected", {

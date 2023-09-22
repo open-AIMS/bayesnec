@@ -33,6 +33,8 @@
 #' \code{bayesnec:::summary.bayesnecfit} help file for details). Different
 #' from the single-model case of class \code{\link{bayesnecfit}}, these ECx
 #' estimates will be based on the model weights.
+#' @slot bayesr2 A table containing the Bayesian R2 for all models, as
+#' calculated by \code{\link[brms]{bayes_R2}}.
 #' @slot rhat_issues A \code{\link[base]{list}} detailing whether each fitted
 #' model exhibited convergence issues based on the Rhat evaluation.
 #'
@@ -42,6 +44,19 @@
 #'   \code{\link{bayesnecfit}},
 #'   \code{\link{bayesmanecfit}},
 #'   \code{\link{necsummary}}
+#'
+#' @references
+#' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' doi: 10.1002/etc.5610.
+#'
+#' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
+#' estimating no-effect toxicity concentrations in ecotoxicology. Integrated 
+#' Environmental Assessment and Management. doi:10.1002/ieam.4809.
+#' 
+#' Fox DR (2010). A Bayesian Approach for Determining the No Effect
+#' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
+#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 NULL
 
