@@ -1,7 +1,7 @@
 #' The 'bayesnec' package.
 #'
-#' @description A No-Effect toxicity estimation package that uses brms
-#' (https://github.com/paul-buerkner/brms) to fit concentration
+#' @description A No-Effect toxicity estimation package that uses brms (Bürkner 
+#' (2018), https://github.com/paul-buerkner/brms) to fit concentration
 #' (dose)-response data using Bayesian methods for the purpose of estimating
 #' both Effect Concentration (ECx) values, but more particularly NEC, but more 
 #' particularly 'NEC' (Fox 2010), 'NSEC' (Fisher and Fox 2023), and 'N(S)EC 
@@ -14,7 +14,10 @@
 #' @importFrom ggplot2 autoplot
 #' @importFrom brms bernoulli Beta negbinomial beta_binomial
 #'
-#'#' @references
+#' @references
+#' Bürkner P-C (2018) Advanced Bayesian Multilevel Modeling with the R Package
+#' brms. The R Journal, 10: 395-411. doi:10.32614/RJ-2018-017.
+#' 
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
 #' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
 #' doi: 10.1002/etc.5610.
