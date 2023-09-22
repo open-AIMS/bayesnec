@@ -610,6 +610,8 @@ rhat(manecfit_ametryn)
 
 Once we are satisfied with the model fits, we can examine the model statistics using \code{summary}:
 
+\newpage
+
 ```{r manec_summary, dependson = "fullbayesmanecgoodfits"}
 summary(manecfit_ametryn)
 ```
@@ -679,6 +681,7 @@ Because we want to run the analysis for all seven herbicides separately we first
 
 Once we have our list of fitted \code{bayesmanecfit} objects for each herbicide, we can use \code{rhat} to check that all models fitted successfully for each, as well as check the chains and priors for each fitted model, although we have skipped these steps here. It is also possible to simply remove any models that fail the \code{rhat} criteria of <1.05 using the function \code{amend}. Note for the "decline" model set, there are no fits with poor \code{rhat} values for this example. If there are models that fail to converge (have high \code{rhat} values for some parameters, divergent transitions or issues identified with chain mixing) it may be possible to improve those fits by re-running the model with a greater number of iterations, modified priors, or adjusting other fitting options within \pkg{brms} such as `adapt_delta`. Unfortunately, at this time \code{bnec} will not support model averaging across models fitted using varying numbers of iterations, so to improve the fit of a single model, all models in the set will need to be re-fit with the same (higher) number of iterations. We recommend exploring the required changes using a single \code{bayesnecfit} of any problematic models before re-running the complete \code{bayesmanecfit} set.
 
+\newpage
 
 ```{r fullbayesmanecgoodfits, echo = TRUE, results = "hide", cache = TRUE, dependson = "fullbayesmanec"}
 cleaned_fits <- purrr::map(manecfit, function(x) {
@@ -720,30 +723,19 @@ We use the \pkg{bayesnec} \code{autoplot}, together with \pkg{ggpubr} [@ggpubr] 
 library("ggpubr")
 all_plots <- lapply(cleaned_fits, function(x) {
   autoplot(x, xform = exp) +
-  scale_x_continuous(trans = "log", labels = round_digits) +
-  theme(axis.title.x = element_blank(),
-         axis.title.y = element_blank(),
-         strip.background = element_blank(),
-         strip.text.x = element_blank()) +
+    scale_x_continuous(trans = "log", labels = round_digits) +
+    theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          strip.background = element_blank(),
+          strip.text.x = element_blank()) +
     ggtitle("")
 })
-figure <- ggpubr::ggarrange(
-  plotlist = all_plots, nrow = 4, ncol = 2, labels = names(all_plots),
-  font.label = list(color = "black", size = 12, face = "plain"),
-  align = "hv"
-)
+figure <- ggpubr::ggarrange(plotlist = all_plots, nrow = 4,
+  ncol = 2, labels = names(all_plots), align = "hv",
+  font.label = list(color = "black", size = 12, face = "plain"))
 ```
 
-```{r fullbayesmanecplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Full model averaged bayesmanecfits to seven phototoxicity data sets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 $\\mu$g per L) for 10 h. N(S)EC values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\code{NEC} models, and the NSEC values estimated from all smooth \\code{ECx} models, summarised as a median and 95\\% credible intervals. Only the \\code{decline} model set was used (i.e., hormesis models were excluded)."}
-ggpubr::annotate_figure(
-  figure, left = ggpubr::text_grob(expression(""*Delta*"F"/"F m'"), rot = 90),
-  bottom = ggpubr::text_grob(expression("Concentration "~"("*mu*"g/L)"))
-)
-```
-
-Across the seven herbicides, the \code{bayesmanecfit} model averaged fits model the input data very well, with predictions generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn data set is evident in the weighted average predicted values as a broader confidence band at the estimated position of the NEC threshold point (\autoref{fig:fullbayesmanecplot}). 
-
-The values presented on the plot in \autoref{fig:fullbayesmanecplot} as N(S)EC are model averaged posterior densities of the NEC parameter obtained from all fitted *NEC* models, and the NSEC values estimated from all smooth *ECx* models. These values are the \pkg{bayesnec} estimates for the no-(significant)-effect concentration required for the integration of this toxicity data into the relevant regulatory framework in Australia, the Australian and New Zealand Water Quality Guidelines [@anzg]. While the recommendation that  NEC is the preferred toxicity estimate in this framework is well established [@Warne2015; @Warne2018c], use of the NSEC is relatively new [@Fisher2023] and while yet to gain formal approval for use in the Australian setting presents a potential alternative no-effect estimate for smooth curves. 
+Across the seven herbicides, the \code{bayesmanecfit} model averaged fits model the input data very well, with predictions generally very confident (\autoref{fig:fullbayesmanecplot}). The slight uncertainty in the appropriate model form for the ametryn data set is evident in the weighted average predicted values as a broader confidence band at the estimated position of the NEC threshold point (\autoref{fig:fullbayesmanecplot}). The N(S)EC values are model averaged posterior densities of the NEC parameter obtained from all fitted *NEC* models, and the NSEC values estimated from all smooth *ECx* models. These values are the \pkg{bayesnec} estimates for the no-(significant)-effect concentration required for the integration of this toxicity data into the relevant regulatory framework in Australia, the Australian and New Zealand Water Quality Guidelines [@anzg]. While the recommendation that  NEC is the preferred toxicity estimate in this framework is well established [@Warne2015; @Warne2018c], use of the NSEC is recent [@Fisher2023] and while yet to gain formal approval for use in the Australian setting presents a potential alternative no-effect estimate for smooth curves. 
 
 Finally, we also use the `compare_posterior` function to extract and plot the weighted averaged posterior samples for the N(S)EC toxicity values for all herbicides (\autoref{fig:necplots}). This shows clearly that irgarol, diuron and ametryn are the most toxic, and exhibit relatively similar toxicity, with their posterior densities substantially overlapping (\autoref{fig:necplots}). The herbicide tebuthiuron is the least toxic of these seven, followed by simazine, atrazine and finally hexazinone, which exhibits intermediate toxicity (\autoref{fig:necplots}). `compare_posterior` also calculates the probability of difference in toxicity across the herbicides, which confirm the visual results and can be used to infer significant differences in toxicity response (\autoref{tab:probdiffs}). 
 
@@ -754,6 +746,21 @@ prob_diff <- post_comp$prob_diff |>
   tidyr::pivot_wider(names_from = columns, values_from = prob)
 colnames(prob_diff) <- stringr::str_to_sentence(colnames(prob_diff))
 prob_diff$Herbicide <- stringr::str_to_sentence(prob_diff$Herbicide)
+```
+
+\newpage
+
+```{r fullbayesmanecplot, echo = FALSE, fig.width = 6, fig.height = 8, fig.cap = "Full model averaged bayesmanecfits to seven phototoxicity data sets, showing estimated no effect concentrations. Data are the maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates (in hospite) in \\textit{Seriatopora hystrix} exposed to elevated Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, or tebuthiuron (range 0.3 to 1000 $\\mu$g per L) for 10 h. N(S)EC values presented are model averaged posterior densities of the NEC parameter obtained from all fitted \\code{NEC} models, and the NSEC values estimated from all smooth \\code{ECx} models, summarised as a median and 95\\% credible intervals. Only the \\code{decline} model set was used (i.e., hormesis models were excluded)."}
+ggpubr::annotate_figure(
+  figure, left = ggpubr::text_grob(expression(""*Delta*"F"/"F m'"), rot = 90),
+  bottom = ggpubr::text_grob(expression("Concentration "~"("*mu*"g/L)"))
+)
+```
+
+\newpage
+
+```{r probdiffs, echo=FALSE}
+knitr::kable(prob_diff, caption="Probability of no-difference in no-effect toxicity for seven herbicides. Values are based on the proportional overlap in predicted posterior probability density of the N(S)EC estimates. Ame. = Ametryn; Atr. = Atrazine; Diu. = Diuron; Hex. = Hexazinone; Irg. = Irgarol; Sim. = Simazine; Teb. = Tebuthiuron.")
 ```
 
 ```{r necplots, echo = FALSE, fig.width = 6, fig.height = 4, fig.cap = "Posterior distributions for N(S)EC toxicity estimates for the effect of seven herbicides on maximum effective quantum yield ($\\Delta F / Fm'$) of symbiotic dinoflagellates of the coral \\textit{Seriatopora hystrix}. Shown are medians with 80\\%  uncertainty intervals."}
@@ -773,12 +780,6 @@ post_comp$posterior_data |>
                        labels = c(0.3, 1, 3, 10, 30)) +
     theme_classic()
 ```
-
-```{r probdiffs, echo=FALSE}
-knitr::kable(prob_diff, caption="Probability of no-difference in no-effect toxicity for seven herbicides. Values are based on the proportional overlap in predicted posterior probability density of the N(S)EC estimates. Ame. = Ametryn; Atr. = Atrazine; Diu. = Diuron; Hex. = Hexazinone; Irg. = Irgarol; Sim. = Simazine; Teb. = Tebuthiuron.")
-```
-
-\newpage
 
 # Discussion
 
