@@ -103,19 +103,20 @@
 #' use the function \code{\link{models}} or to check the parameters of a
 #' specific model use the function \code{\link{show_params}}.
 #' 
-#' All models provide an estimate for NEC. For model types with "nec" as a
-#' prefix, NEC is directly estimated as parameter "nec"
-#' in the model. Models with "ecx" as a prefix are continuous curve models,
-#' typically used for extracting ECx values 
-#' from concentration response data. In this instance the NEC value is defined
-#' as the concentration at which there is a user supplied
-#' (see argument \code{sig_val}) percentage certainty
-#' (based on the Bayesian posterior estimate) that the response
-#' falls below the estimated value of the upper asymptote (top) of the
-#' response (i.e. the response value is significantly
-#' lower than that expected in the case of no exposure).
-#' The default value for \code{sig_val} is 0.01, which corresponds to an alpha
-#' value of 0.01 for a one-sided test of significance.
+#' \bold{No-effect toxicity estimates}
+#' 
+#' Regardless of the model(s) fitted, the resulting object will contain a 
+#' no-effect toxicity estimate. Where the fitted model(s) are NEC models (threshold 
+#' models, containing a step function - all models with "nec" as a
+#' prefix) the no-effect estimate is a true  
+#' no-effect-concentration (NEC, see Fox 2010). Where the fitted model(s) are 
+#' smooth ECx models with no step function (all models with "ecx" as a
+#' prefix), the no-effect estimate is a no-significant-effect-concentration 
+#' (NSEC, see Fisher and Fox 2023). 
+#' In the case of a \code{\link{bayesmanecfit}} that contains a mixture of both 
+#' NEC and ECx models, the no-effect estimate is a model averaged combination of 
+#' the NEC and NSEC estimates, and is reported as the N(S)EC 
+#' (see Fisher et al. 2023).
 #'
 #' \bold{Further argument to \code{\link[brms]{brm}}}
 #'
@@ -174,6 +175,19 @@
 #'   \code{\link{check_formula}},
 #'   \code{\link{models}},
 #'   \code{\link{show_params}}
+#'   
+#' @references
+#' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' doi: 10.1002/etc.5610.
+#'
+#' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
+#' estimating no-effect toxicity concentrations in ecotoxicology. Integrated 
+#' Environmental Assessment and Management. doi:10.1002/ieam.4809.
+#' 
+#' Fox DR (2010). A Bayesian Approach for Determining the No Effect
+#' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
+#' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
 #'
 #' @examples
 #' \dontrun{

@@ -1,9 +1,11 @@
 #' The 'bayesnec' package.
 #'
-#' @description A No-Effect-Concentration (NEC) estimation package that uses brms
+#' @description A No-Effect toxicity estimation package that uses brms
 #' (https://github.com/paul-buerkner/brms) to fit concentration
 #' (dose)-response data using Bayesian methods for the purpose of estimating
-#' both Effect Concentration (ECx) values, but more particularly NEC. Please see ?bnec
+#' both Effect Concentration (ECx) values, but more particularly NEC, but more 
+#' particularly 'NEC' (Fox 2010), 'NSEC' (Fisher and Fox 2023), and 'N(S)EC 
+#' (Fisher et al. 2023). Please see ?bnec
 #' for more details.
 #'
 #' @docType package

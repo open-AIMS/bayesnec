@@ -1,5 +1,5 @@
-#' Extracts the predicted NSEC value as desired from an object of class
-#' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#' Extracts the predicted NSEC value as desired from an 
+#' object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
@@ -19,7 +19,12 @@
 #' 0.975 (95 percent credible intervals).
 #' @param ... Further arguments to pass to class specific methods.
 #'
-#' @details For \code{hormesis_def}, if "max", then NSEC values are calculated
+#' @details NSEC is no-effect toxicity metric that estimates the concentration 
+#' at which the modeled mean response is statistically indistinguishable from 
+#' the mean control response. See the detailed derivation in
+#' Fisher and Fox (2023).
+#' 
+#' For \code{hormesis_def}, if "max", then NSEC values are calculated
 #' as a decline from the maximum estimates (i.e. the peak at NEC);
 #' if "control", then NSEC values are calculated relative to the control, which
 #' is assumed to be the lowest observed concentration.
@@ -42,6 +47,11 @@
 #'
 #' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds.
+#' 
+#' @references
+#' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
+#' doi: 10.1002/etc.5610.
 #'
 #' @examples
 #' \donttest{
