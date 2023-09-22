@@ -568,6 +568,8 @@ So far we have demonstrated the basic usage of \pkg{bayesnec} and compared the r
 
 In our case study, the no-effect-toxicity values of a range of herbicides are first estimated and then their relative toxicity is compared. The response data are the maximum effective quantum yield (${\Delta F / Fm'}$) of symbiotic dinoflagellates still in the host tissue of the coral *Seriatopora hystrix* (in hospite or in vivo). ${\Delta F / Fm'}$ was calculated from Chlorophyll fluorescence parameters measured using a DIVING-PAM chlorophyll fluorometer (Walz) as described in more detail in @jones2003meps and @jones2003effects. The corals were exposed to elevated levels of eight different herbicides (Irgarol 1051, ametryn, diuron, hexazinone, atrazine, simazine, tebuthiuron, ioxynil) at concentrations ranging from 0.3 to 1000 $\mu$g / L) for 10 h. Data for ioxynil were excluded from analysis here as this herbicide did not show sufficient response at the maximum concentration. 
 
+\newpage
+
 ## Single herbicide analysis {short-title="Single herbicide" #isingle}
 
 We start by describing the analysis workflow for a single herbicide, ametryn. We first filter ametryn from the larger herbicide data set. The concentration data are log transformed prior to analysis to improve model stability and because this is the natural scaling of the concentration series for these data. As there was little evidence of hormesis (an initial increase in the response at low concentration) in these data (or in the other herbicides, see below \ref{iall}), we used only the \code{decline} model set as candidate models for the model averaging. Setting \code{model = "decline"} results in \pkg{bayesnec} attempting to fit a set of `r length(bayesnec::models()$decline)` models, and returning an object of class `bayesmancfit`.
@@ -776,7 +778,7 @@ post_comp$posterior_data |>
 knitr::kable(prob_diff, caption="Probability of no-difference in no-effect toxicity for seven herbicides. Values are based on the proportional overlap in predicted posterior probability density of the N(S)EC estimates. Ame. = Ametryn; Atr. = Atrazine; Diu. = Diuron; Hex. = Hexazinone; Irg. = Irgarol; Sim. = Simazine; Teb. = Tebuthiuron.")
 ```
 
-<!-- \newpage -->
+\newpage
 
 # Discussion
 
