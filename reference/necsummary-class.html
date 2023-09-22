@@ -5,7 +5,7 @@ as a necsummary object, which contains the original
 brmsfit object summary, the name of the
 non-linear model fitted, whether this model is an ECx-type model
 (see details below), and the ECx summary values should the user decide
-to calculate them."><meta property="og:image" content="/logo.png"><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
+to calculate them."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]--></head><body data-spy="scroll" data-target="#toc">
@@ -23,7 +23,7 @@ to calculate them."><meta property="og:image" content="/logo.png"><!-- mathjax -
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.3</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.1.0</span>
       </span>
     </div>
 
@@ -51,6 +51,9 @@ to calculate them."><meta property="og:image" content="/logo.png"><!-- mathjax -
     </li>
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
+    </li>
+    <li>
+      <a href="../articles/example5.html">Running `bayesnec`</a>
     </li>
   </ul></li>
 <li>
@@ -111,13 +114,35 @@ the fitted non-linear model.</p></dd>
 is an ECx-type model.</p></dd>
 
 
+<dt><code>nec_vals</code></dt>
+<dd><p>The NEC values. Note that if model is an ECx-type model,
+this estimate will be a NSEC proxy.</p></dd>
+
+
 <dt><code>ecs</code></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing the ECx values
 should the user decide to calculate them (see the non-exported
 <code>bayesnec:::summary.bayesnecfit</code> help file for details).</p></dd>
 
 
+<dt><code>bayesr2</code></dt>
+<dd><p>The model Bayesian R2 as calculated by
+<code><a href="https://mc-stan.org/rstantools/reference/bayes_R2.html" class="external-link">bayes_R2</a></code>.</p></dd>
+
+
 </dl></div>
+    <div id="references">
+    <h2>References</h2>
+    <p>Fisher R, Fox DR (2023). Introducing the no significant effect concentration
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+doi: 10.1002/etc.5610.</p>
+<p>Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
+estimating no-effect toxicity concentrations in ecotoxicology. Integrated
+Environmental Assessment and Management. doi:10.1002/ieam.4809.</p>
+<p>Fox DR (2010). A Bayesian Approach for Determining the No Effect
+Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
+and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.</p>
+    </div>
     <div id="see-also">
     <h2>See also</h2>
     <div class="dont-index"><p><code><a href="bayesnec-package.html">bayesnec</a></code>,

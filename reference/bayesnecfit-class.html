@@ -4,7 +4,7 @@ package are represented as a bayesnecfit object, which contain the
 original brmsfit fitted object, list of initialisation
 values used, the validated bayesnecformula, name of non-linear
 model that was fitted, posterior predictions, posterior parameter estimates
-and a series of other statistics."><meta property="og:image" content="/logo.png"><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
+and a series of other statistics."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
 <![endif]--></head><body data-spy="scroll" data-target="#toc">
@@ -22,7 +22,7 @@ and a series of other statistics."><meta property="og:image" content="/logo.png"
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.3</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.1.0</span>
       </span>
     </div>
 
@@ -50,6 +50,9 @@ and a series of other statistics."><meta property="og:image" content="/logo.png"
     </li>
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
+    </li>
+    <li>
+      <a href="../articles/example5.html">Running `bayesnec`</a>
     </li>
   </ul></li>
 <li>
@@ -105,7 +108,7 @@ the fitted model.</p></dd>
 
 <dt><code>init</code></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing the initialisation values
-for to fit the model.</p></dd>
+to fit the model.</p></dd>
 
 
 <dt><code>bayesnecformula</code></dt>
@@ -116,7 +119,7 @@ for to fit the model.</p></dd>
 <dt><code>pred_vals</code></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> containing a
 <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> of summary posterior predicted values
-and a vector containing based on the supplied <code>precision</code> and
+and a vector containing based on the supplied <code>resolution</code> and
 <code>x_range</code>.</p></dd>
 
 
@@ -128,7 +131,7 @@ and a vector containing based on the supplied <code>precision</code> and
 <dd><p>The estimate for parameter "beta" in the fitted model.</p></dd>
 
 
-<dt><code>nec</code></dt>
+<dt><code>ne</code></dt>
 <dd><p>The estimated NEC.</p></dd>
 
 
@@ -169,11 +172,32 @@ absent for the fitted model type.</p></dd>
 <dd><p>Residual values of the observed data from the fitted model.</p></dd>
 
 
-<dt><code>nec_posterior</code></dt>
+<dt><code>ne_posterior</code></dt>
 <dd><p>A full posterior estimate of the NEC.</p></dd>
 
 
+<dt><code>ne_type</code></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></code> vector indicating the type of
+no-effect toxicity estimate. Where the fitted model is an NEC model
+(threshold model, containing a step function) the no-effect estimate is
+a true no-effect-concentration (<code>NEC</code>, see Fox 2010). Where the fitted
+model is a smooth ECx model with no step function, the no-effect estimate is
+a no-significant-effect-concentration (<code>NSEC</code>, see Fisher and Fox 2023).</p></dd>
+
+
 </dl></div>
+    <div id="references">
+    <h2>References</h2>
+    <p>Fisher R, Fox DR (2023). Introducing the no significant effect concentration
+(NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+doi: 10.1002/etc.5610.</p>
+<p>Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
+estimating no-effect toxicity concentrations in ecotoxicology. Integrated
+Environmental Assessment and Management. doi:10.1002/ieam.4809.</p>
+<p>Fox DR (2010). A Bayesian Approach for Determining the No Effect
+Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
+and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.</p>
+    </div>
     <div id="see-also">
     <h2>See also</h2>
     <div class="dont-index"><p><code><a href="bayesnec-package.html">bayesnec</a></code>,

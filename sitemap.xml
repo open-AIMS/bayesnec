@@ -25,6 +25,9 @@
     <loc>/articles/example4.html</loc>
   </url>
   <url>
+    <loc>/articles/example5.html</loc>
+  </url>
+  <url>
     <loc>/articles/index.html</loc>
   </url>
   <url>
@@ -43,7 +46,7 @@
     <loc>/reference/autoplot.html</loc>
   </url>
   <url>
-    <loc>/reference/average_endpoints.html</loc>
+    <loc>/reference/average_estimates.html</loc>
   </url>
   <url>
     <loc>/reference/bayesmanecfit-class.html</loc>
@@ -56,15 +59,6 @@
   </url>
   <url>
     <loc>/reference/bayesnecformula.html</loc>
-  </url>
-  <url>
-    <loc>/reference/beta_binomial2.html</loc>
-  </url>
-  <url>
-    <loc>/reference/beta_binomial2_lpmf.html</loc>
-  </url>
-  <url>
-    <loc>/reference/beta_binomial2_rng.html</loc>
   </url>
   <url>
     <loc>/reference/bnec.html</loc>
@@ -88,7 +82,7 @@
     <loc>/reference/check_priors.html</loc>
   </url>
   <url>
-    <loc>/reference/compare_endpoints.html</loc>
+    <loc>/reference/compare_estimates.html</loc>
   </url>
   <url>
     <loc>/reference/compare_fitted.html</loc>
@@ -130,9 +124,6 @@
     <loc>/reference/is_necsummary.html</loc>
   </url>
   <url>
-    <loc>/reference/log_lik_beta_binomial2.html</loc>
-  </url>
-  <url>
     <loc>/reference/make_brmsformula.html</loc>
   </url>
   <url>
@@ -169,13 +160,7 @@
     <loc>/reference/posterior_epred.html</loc>
   </url>
   <url>
-    <loc>/reference/posterior_epred_beta_binomial2.html</loc>
-  </url>
-  <url>
     <loc>/reference/posterior_predict.html</loc>
-  </url>
-  <url>
-    <loc>/reference/posterior_predict_beta_binomial2.html</loc>
   </url>
   <url>
     <loc>/reference/prebayesnecfit-class.html</loc>
@@ -194,6 +179,9 @@
   </url>
   <url>
     <loc>/reference/pull_prior.html</loc>
+  </url>
+  <url>
+    <loc>/reference/quote-beta_binomial-quote.html</loc>
   </url>
   <url>
     <loc>/reference/rhat.html</loc>

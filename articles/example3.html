@@ -19,7 +19,6 @@
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
 <script src="../pkgdown.js"></script><meta property="og:title" content="Priors">
 <meta property="og:description" content="bayesnec">
-<meta property="og:image" content="/logo.png">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
@@ -40,7 +39,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.0.3</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.1.0</span>
       </span>
     </div>
 
@@ -70,6 +69,9 @@
     </li>
     <li>
       <a href="../articles/example4.html">Comparing posterior predictions</a>
+    </li>
+    <li>
+      <a href="../articles/example5.html">Running `bayesnec`</a>
     </li>
   </ul>
 </li>
@@ -254,7 +256,11 @@ can be useful to assess if priors are suitably vague, and/or if they
 might be having an undesirable influence on the posterior.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span></code></pre></div>
-<p><img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%" style="display: block; margin: auto;"></p>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%"><p class="caption">
+plot of chunk exmp3-checkpriors
+</p>
+</div>
 <p>In this case the priors seem reasonably vague, however there will be
 times when it is necessary to modify these priors. The user can take
 advantage of the function <code>pull_prior</code> to inspect what
@@ -263,22 +269,14 @@ those priors to be more desirable.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt;                       prior class      coef group resp dpar nlpar               lb               ub</span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b                            beta                                  </span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b Intercept                  beta                                  </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556</span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556</span></span>
-<span><span class="co">#&gt;                  beta(5, 2)     b                             top                0                1</span></span>
-<span><span class="co">#&gt;                  beta(5, 2)     b Intercept                   top                0                1</span></span>
-<span><span class="co">#&gt;           gamma(0.01, 0.01)   phi                                                0                 </span></span>
-<span><span class="co">#&gt;        source</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;       default</span></span></code></pre></div>
+<span><span class="co">#&gt;                       prior class      coef group resp dpar nlpar               lb               ub       source</span></span>
+<span><span class="co">#&gt;                normal(0, 5)     b                            beta                                           user</span></span>
+<span><span class="co">#&gt;                normal(0, 5)     b Intercept                  beta                                   (vectorized)</span></span>
+<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556         user</span></span>
+<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556 (vectorized)</span></span>
+<span><span class="co">#&gt;                  beta(5, 2)     b                             top                0                1         user</span></span>
+<span><span class="co">#&gt;                  beta(5, 2)     b Intercept                   top                0                1 (vectorized)</span></span>
+<span><span class="co">#&gt;           gamma(0.01, 0.01)   phi                                                0                       default</span></span></code></pre></div>
 <p><code>bnec</code> chose a <code>gamma</code> prior on the
 <em>NEC</em> parameter of <strong>nec3param</strong> because the
 predictor <code>nec_data$x</code> is non-zero positive. However, imagine
