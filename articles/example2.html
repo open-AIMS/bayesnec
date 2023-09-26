@@ -222,7 +222,7 @@ we can plot a <code>bayesmanecfit</code> model object simply with
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp2-decline-1.pdf" title="plot of chunk exmp2-decline" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp2-decline
 </p>
 </div>
@@ -247,14 +247,14 @@ NA).</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_5</span><span class="op">$</span><span class="va">mod_stats</span></span>
 <span><span class="co">#&gt;               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5</span></span>
-<span><span class="co">#&gt; nec4param nec4param -84.65371 2.608502e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; neclin       neclin -52.59494 1.331228e-03                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxlin       ecxlin -28.00785 3.079882e-06                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecx4param ecx4param -81.30557 7.685228e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb1       ecxwb1 -75.32780 1.674133e-02                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxwb2       ecxwb2 -85.22303 2.758433e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxll5       ecxll5 -85.45347 2.892289e-01                  NA              NA               NA</span></span>
-<span><span class="co">#&gt; ecxll4       ecxll4 -81.36184 7.914965e-02                  NA              NA               NA</span></span></code></pre></div>
+<span><span class="co">#&gt; nec4param nec4param -84.96557 3.288210e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; neclin       neclin -52.48550 2.765032e-04                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxlin       ecxlin -27.78986 6.449676e-06                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecx4param ecx4param -82.07242 1.014342e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb1       ecxwb1 -75.03545 1.148493e-02                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxwb2       ecxwb2 -85.41745 3.002406e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll5       ecxll5 -84.23712 1.602656e-01                  NA              NA               NA</span></span>
+<span><span class="co">#&gt; ecxll4       ecxll4 -81.99187 9.747066e-02                  NA              NA               NA</span></span></code></pre></div>
 <p>We can obtain a neater summary of the model fit by using the
 <code>summary</code> method for a <code>bayesmanecfit</code> object. A
 list of fitted models, and model weights are provided. In addition, the
@@ -275,14 +275,14 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Model weights (Method: pseudobma_bb_weights):</span></span>
 <span><span class="co">#&gt;             waic   wi</span></span>
-<span><span class="co">#&gt; nec4param -84.65 0.26</span></span>
-<span><span class="co">#&gt; neclin    -52.59 0.00</span></span>
-<span><span class="co">#&gt; ecxlin    -28.01 0.00</span></span>
-<span><span class="co">#&gt; ecx4param -81.31 0.08</span></span>
-<span><span class="co">#&gt; ecxwb1    -75.33 0.02</span></span>
-<span><span class="co">#&gt; ecxwb2    -85.22 0.28</span></span>
-<span><span class="co">#&gt; ecxll5    -85.45 0.29</span></span>
-<span><span class="co">#&gt; ecxll4    -81.36 0.08</span></span>
+<span><span class="co">#&gt; nec4param -84.97 0.33</span></span>
+<span><span class="co">#&gt; neclin    -52.49 0.00</span></span>
+<span><span class="co">#&gt; ecxlin    -27.79 0.00</span></span>
+<span><span class="co">#&gt; ecx4param -82.07 0.10</span></span>
+<span><span class="co">#&gt; ecxwb1    -75.04 0.01</span></span>
+<span><span class="co">#&gt; ecxwb2    -85.42 0.30</span></span>
+<span><span class="co">#&gt; ecxll5    -84.24 0.16</span></span>
+<span><span class="co">#&gt; ecxll4    -81.99 0.10</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Summary of weighted N(S)EC posterior estimates:</span></span>
@@ -290,7 +290,7 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt;     models, and is therefore a model averaged</span></span>
 <span><span class="co">#&gt;     combination of NEC and NSEC estimates.</span></span>
 <span><span class="co">#&gt;        Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; N(S)EC     3.38 2.10  3.92</span></span>
+<span><span class="co">#&gt; N(S)EC     3.34 1.98  3.97</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
@@ -302,7 +302,7 @@ include a warning if there were fits with divergent transitions.</p>
 <span><span class="co">#&gt; ecxwb1        0.85      0.01 0.83  0.86</span></span>
 <span><span class="co">#&gt; ecxwb2        0.86      0.01 0.84  0.87</span></span>
 <span><span class="co">#&gt; ecxll5        0.86      0.01 0.84  0.87</span></span>
-<span><span class="co">#&gt; ecxll4        0.85      0.01 0.83  0.87</span></span></code></pre></div>
+<span><span class="co">#&gt; ecxll4        0.85      0.01 0.84  0.87</span></span></code></pre></div>
 <p>The <code>bayesmanecfit</code> object also contains all of the
 individual <code>brms</code> model fits, which can be extracted using
 the <code>pull_out</code> function. For example, we can pull out and
@@ -311,7 +311,7 @@ plot the model <strong>ecx4param</strong>.</p>
 <code class="sourceCode R"><span><span class="va">exp_5_nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"ecx4param"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_5_nec4param</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-ecx4param-1.png" alt="plot of chunk exmp2-ecx4param" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp2-ecx4param-1.pdf" title="plot of chunk exmp2-ecx4param" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp2-ecx4param
 </p>
 </div>
@@ -325,7 +325,7 @@ argument <code>all_models = TRUE</code>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_5</span>, all_models <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-allmods-1.png" alt="plot of chunk exmp2-allmods" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp2-allmods-1.pdf" title="plot of chunk exmp2-allmods" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp2-allmods
 </p>
 </div>
@@ -344,7 +344,7 @@ the multi-model inference.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot.html">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">exp_5</span>, <span class="st">"ecxwb1"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-goodmod-1.png" alt="plot of chunk exmp2-goodmod" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp2-goodmod-1.pdf" title="plot of chunk exmp2-goodmod" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp2-goodmod
 </p>
 </div>
@@ -362,7 +362,7 @@ working directory.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_priors.html">check_priors</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-checkpriors-1.png" alt="plot of chunk exmp2-checkpriors" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp2-checkpriors-1.pdf" title="plot of chunk exmp2-checkpriors" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp2-checkpriors
 </p>
 </div>
@@ -379,7 +379,7 @@ convergence according to Rhat:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rhat.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="st">"[["</span>, <span class="st">"failed"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 </span></span>
-<span><span class="co">#&gt;     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt;     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE</span></span></code></pre></div>
 <p>Here we get a message because none of our models failed the default
 Rhat criterion. A more conservative cut off of 1.01 can also be used by
 changing the default argument to the desired value. In this case one
@@ -390,7 +390,7 @@ of <code>iter</code> (10,000).</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rhat.html">rhat</a></span><span class="op">(</span><span class="va">exp_5</span>, rhat_cutoff <span class="op">=</span> <span class="fl">1.01</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="st">"[["</span>, <span class="st">"failed"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 </span></span>
-<span><span class="co">#&gt;      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt;     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE      TRUE     FALSE</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="extracting-toxicity-values">Extracting toxicity values<a class="anchor" aria-label="anchor" href="#extracting-toxicity-values"></a>
@@ -432,7 +432,7 @@ details</a> vignette).</p>
 <span><span class="va">ECx50</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_5</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
 <span><span class="va">ECx10</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 3.631996 2.729366 4.127946 </span></span>
+<span><span class="co">#&gt; 3.631996 2.739285 4.157703 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -441,7 +441,7 @@ details</a> vignette).</p>
 <span><span class="co">#&gt; [1] "ecx"</span></span>
 <span><span class="va">ECx50</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 5.090090 4.842115 5.347984 </span></span>
+<span><span class="co">#&gt; 5.100009 4.852034 5.358647 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -455,7 +455,7 @@ these models.</p>
 <code class="sourceCode R"><span><span class="va">NECvals</span> <span class="op">&lt;-</span> <span class="va">exp_5_nec</span><span class="op">$</span><span class="va">w_ne</span></span>
 <span><span class="va">NECvals</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 3.537080 3.153199 4.048356</span></span></code></pre></div>
+<span><span class="co">#&gt; 3.533912 3.160582 4.035932</span></span></code></pre></div>
 <p>Note that the new <em>NEC</em> estimates from the
 <strong>nec</strong>-containing model fits are slightly higher than
 those reported in the summary output of all the fitted models. This can
@@ -493,7 +493,7 @@ relevant thresholds.</p>
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        strip.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">16</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-pretty-1.png" alt="plot of chunk exmp2-pretty" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp2-pretty-1.pdf" title="plot of chunk exmp2-pretty" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp2-pretty
 </p>
 </div>

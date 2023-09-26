@@ -195,7 +195,7 @@ so they can be compared visually.</p>
 <span>               alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp4-posterior-1.png" alt="plot of chunk exmp4-posterior" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp4-posterior-1.pdf" title="plot of chunk exmp4-posterior" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp4-posterior
 </p>
 </div>
@@ -215,7 +215,7 @@ models.</p>
 <span>                             fill <span class="op">=</span> <span class="va">comparison</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp4-differences-1.png" alt="plot of chunk exmp4-differences" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp4-differences-1.pdf" title="plot of chunk exmp4-differences" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp4-differences
 </p>
 </div>
@@ -229,17 +229,17 @@ greater than the <strong>ecx</strong> based estimates in this case.</p>
 <p>We can formally test the probability that the toxicity estimate for
 one model set is greater than the other using posterior differencing.
 This is contained in the compare posterior output as
-<code>prob_diff</code>. Here you can see there is 59% chance that
+<code>prob_diff</code>. Here you can see there is 56% chance that
 <strong>all</strong> is greater than <strong>ecx</strong>. There is only
-a 19% chance that <strong>ecx</strong> is greater than
-<strong>nec</strong>, and a 81% chance that the <strong>nec</strong> is
+a 20% chance that <strong>ecx</strong> is greater than
+<strong>nec</strong>, and a 80% chance that the <strong>nec</strong> is
 greater than <strong>ecx</strong>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">post_comp</span><span class="op">$</span><span class="va">prob_diff</span></span>
-<span><span class="co">#&gt;   comparison      prob</span></span>
-<span><span class="co">#&gt; 1    all-ecx 0.5870734</span></span>
-<span><span class="co">#&gt; 2    all-nec 0.2837855</span></span>
-<span><span class="co">#&gt; 3    ecx-nec 0.1923990</span></span></code></pre></div>
+<span><span class="co">#&gt;   comparison     prob</span></span>
+<span><span class="co">#&gt; 1    all-ecx 0.562750</span></span>
+<span><span class="co">#&gt; 2    all-nec 0.285625</span></span>
+<span><span class="co">#&gt; 3    ecx-nec 0.199750</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="comparing-posterior-fitted-values">Comparing posterior fitted values<a class="anchor" aria-label="anchor" href="#comparing-posterior-fitted-values"></a>
@@ -258,20 +258,20 @@ predictor, for each model or model comparison.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   model          x Estimate      Q2.5    Q97.5</span></span>
-<span><span class="co">#&gt; 1   all 0.09090909 1.019281 0.9663742 1.085529</span></span>
-<span><span class="co">#&gt; 2   all 0.29313544 1.019163 0.9663742 1.083694</span></span>
-<span><span class="co">#&gt; 3   all 0.49536178 1.018979 0.9663742 1.081443</span></span>
-<span><span class="co">#&gt; 4   all 0.69758813 1.018762 0.9663062 1.079402</span></span>
-<span><span class="co">#&gt; 5   all 0.89981447 1.018338 0.9663062 1.076467</span></span>
-<span><span class="co">#&gt; 6   all 1.10204082 1.017858 0.9663062 1.073757</span></span>
+<span><span class="co">#&gt; 1   all 0.09090909 1.019230 0.9678919 1.083722</span></span>
+<span><span class="co">#&gt; 2   all 0.29313544 1.019105 0.9678400 1.082196</span></span>
+<span><span class="co">#&gt; 3   all 0.49536178 1.018909 0.9677528 1.080417</span></span>
+<span><span class="co">#&gt; 4   all 0.69758813 1.018633 0.9676957 1.077756</span></span>
+<span><span class="co">#&gt; 5   all 0.89981447 1.018321 0.9676103 1.074734</span></span>
+<span><span class="co">#&gt; 6   all 1.10204082 1.017847 0.9675677 1.072334</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x</span></span>
-<span><span class="co">#&gt; 1    all-ecx  -0.006297619 -0.09075729 0.08058961 0.09090909</span></span>
-<span><span class="co">#&gt; 2    all-ecx  -0.006249143 -0.08936831 0.07942624 0.29313544</span></span>
-<span><span class="co">#&gt; 3    all-ecx  -0.005968414 -0.08642680 0.07784780 0.49536178</span></span>
-<span><span class="co">#&gt; 4    all-ecx  -0.005687291 -0.08471564 0.07595849 0.69758813</span></span>
-<span><span class="co">#&gt; 5    all-ecx  -0.005393701 -0.08301348 0.07339266 0.89981447</span></span>
-<span><span class="co">#&gt; 6    all-ecx  -0.004855021 -0.08074017 0.07176768 1.10204082</span></span></code></pre></div>
+<span><span class="co">#&gt; 1    all-ecx  -0.004770295 -0.08175806 0.07845176 0.09090909</span></span>
+<span><span class="co">#&gt; 2    all-ecx  -0.004612971 -0.08080406 0.07713482 0.29313544</span></span>
+<span><span class="co">#&gt; 3    all-ecx  -0.004402671 -0.07945351 0.07487955 0.49536178</span></span>
+<span><span class="co">#&gt; 4    all-ecx  -0.004134251 -0.07887442 0.07300054 0.69758813</span></span>
+<span><span class="co">#&gt; 5    all-ecx  -0.004121745 -0.07704115 0.07152242 0.89981447</span></span>
+<span><span class="co">#&gt; 6    all-ecx  -0.003968731 -0.07498910 0.07055202 1.10204082</span></span></code></pre></div>
 <p>Using the collated posterior_data we can plot the predicted curves
 with confidence bounds for each of the input models. This shows clearly
 that the <strong>ecx</strong> model set begins to decline earlier than
@@ -286,7 +286,7 @@ the <strong>nec</strong> set, which is flat prior to the
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Concentration"</span>, y <span class="op">=</span> <span class="st">"Posterior estimate"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp4-fitted-1.png" alt="plot of chunk exmp4-fitted" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp4-fitted-1.pdf" title="plot of chunk exmp4-fitted" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp4-fitted
 </p>
 </div>
@@ -318,7 +318,7 @@ around 5.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Concentration"</span>, y <span class="op">=</span> <span class="st">"Posterior difference"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp4-fitteddiff-1.png" alt="plot of chunk exmp4-fitteddiff" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp4-fitteddiff-1.pdf" title="plot of chunk exmp4-fitteddiff" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp4-fitteddiff
 </p>
 </div>
@@ -347,7 +347,7 @@ the two points where the <strong>ecx</strong> set deviates most from the
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Concentration"</span>, y <span class="op">=</span> <span class="st">"Probability of difference"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_classic</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp4-probplot-1.png" alt="plot of chunk exmp4-probplot" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp4-probplot-1.pdf" title="plot of chunk exmp4-probplot" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp4-probplot
 </p>
 </div>

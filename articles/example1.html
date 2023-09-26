@@ -334,10 +334,10 @@ parameters using:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     3290     3189</span></span>
-<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4612     4519</span></span>
-<span><span class="co">#&gt; beta     0.80      0.13     0.56     1.08 1.00     2899     3599</span></span>
-<span><span class="co">#&gt; nec      4.42      0.03     4.36     4.48 1.00     3422     3996</span></span>
+<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     3642     3246</span></span>
+<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4547     4118</span></span>
+<span><span class="co">#&gt; beta     0.81      0.13     0.56     1.08 1.00     3175     3910</span></span>
+<span><span class="co">#&gt; nec      4.42      0.03     4.36     4.48 1.00     3501     4196</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -367,7 +367,7 @@ argument <code>xform</code>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp1-binom-1.pdf" title="plot of chunk exmp1-binom" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp1-binom
 </p>
 </div>
@@ -389,7 +389,7 @@ such as the Beta-Binomial.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 19.63764 13.17076 31.03416</span></span></code></pre></div>
+<span><span class="co">#&gt; 19.63965 13.25933 30.83688</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-binomial">Beta-Binomial<a class="anchor" aria-label="anchor" href="#beta-binomial"></a>
@@ -408,7 +408,7 @@ is only relevant for Poisson and Binomial data.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-bbinom-1.png" alt="plot of chunk exmp1-bbinom" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp1-bbinom-1.pdf" title="plot of chunk exmp1-bbinom" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp1-bbinom
 </p>
 </div>
@@ -422,7 +422,7 @@ the fitted model object. As explained above, we need to transform
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">ne_posterior</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;   16.78   65.59   79.40   76.98   89.56  191.07</span></span></code></pre></div>
+<span><span class="co">#&gt;   16.78   66.01   78.53   75.65   87.51  196.65</span></span></code></pre></div>
 <p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em>
 model fit, using the function <code>ecx</code>. Note these may differ
 from a typical 4-parameter non-linear model, as the <em>NEC</em> model
@@ -433,7 +433,7 @@ posterior predictions</a> vignettes for more information.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 83.76276 42.93213 99.77477 </span></span>
+<span><span class="co">#&gt; 82.56186 42.92212 98.57387 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -462,14 +462,14 @@ its value will depend on the scale of the predictor variable.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.13      0.06     0.03     0.23 1.01      517     1961</span></span>
-<span><span class="co">#&gt; top      0.84      0.03     0.78     0.89 1.04       91       25</span></span>
-<span><span class="co">#&gt; beta     0.86      0.75    -0.21     4.09 1.02      153       76</span></span>
-<span><span class="co">#&gt; nec      4.37      0.21     3.66     4.62 1.02      163       80</span></span>
+<span><span class="co">#&gt; bot      0.13      0.05     0.03     0.23 1.00     1918     2488</span></span>
+<span><span class="co">#&gt; top      0.84      0.03     0.77     0.88 1.00     2442     1944</span></span>
+<span><span class="co">#&gt; beta     0.82      0.66    -0.20     2.91 1.00      753      452</span></span>
+<span><span class="co">#&gt; nec      4.36      0.19     3.68     4.58 1.00      804      426</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Family Specific Parameters: </span></span>
 <span><span class="co">#&gt;     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; phi     5.43      1.18     3.32     8.23 1.01     1731     3682</span></span>
+<span><span class="co">#&gt; phi     5.35      1.27     3.26     8.27 1.00     2597     2456</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -477,12 +477,12 @@ its value will depend on the scale of the predictor variable.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     4.37 3.66  4.62</span></span>
+<span><span class="co">#&gt; NEC     4.36 3.68  4.58</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
 <span><span class="co">#&gt;    Estimate Est.Error Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; R2     0.77      0.04 0.67  0.81</span></span></code></pre></div>
+<span><span class="co">#&gt; R2     0.76      0.04 0.67  0.81</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-data">Beta data<a class="anchor" aria-label="anchor" href="#beta-data"></a>
@@ -508,7 +508,7 @@ data must be modelled using a Beta distribution instead.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-beta-1.png" alt="plot of chunk exmp1-beta" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp1-beta-1.pdf" title="plot of chunk exmp1-beta" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp1-beta
 </p>
 </div>
@@ -534,10 +534,10 @@ overdispersed. Then we plot the concentration (i.e. predictor) data.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt; 'data.frame':    100 obs. of  2 variables:</span></span>
 <span><span class="co">#&gt;  $ x: num  1.019 0.816 0.371 0.401 1.295 ...</span></span>
-<span><span class="co">#&gt;  $ y: int  76 95 94 102 91 82 93 82 111 102 ...</span></span>
+<span><span class="co">#&gt;  $ y: int  85 104 55 78 86 66 97 60 102 88 ...</span></span>
 <span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">y</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;    4.00   70.50   87.50   79.84   97.00  121.00</span></span>
+<span><span class="co">#&gt;    0.00   65.50   85.50   78.64   96.25  141.00</span></span>
 <span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
 <span><span class="co">#&gt; 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052</span></span></code></pre></div>
@@ -552,14 +552,14 @@ example.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-poisson-1.png" alt="plot of chunk exmp1-poisson" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp1-poisson-1.pdf" title="plot of chunk exmp1-poisson" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp1-poisson
 </p>
 </div>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3</span><span class="op">$</span><span class="va">dispersion</span></span>
-<span><span class="co">#&gt;    Estimate        Q2.5       Q97.5 </span></span>
-<span><span class="co">#&gt;   3.7361984   0.4501145 114.1585737</span></span></code></pre></div>
+<span><span class="co">#&gt;   Estimate       Q2.5      Q97.5 </span></span>
+<span><span class="co">#&gt;   5.643979   0.950172 140.318539</span></span></code></pre></div>
 <p>We first plot the model chains (with <code>plot(exp_3$fit)</code>)
 and parameter estimates to check the fit. The chains look OK. However,
 our plot of the fit is not very convincing. The model uncertainty is
@@ -589,7 +589,7 @@ data.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp1-negbinbase-1.pdf" title="plot of chunk exmp1-negbinbase" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp1-negbinbase
 </p>
 </div>
@@ -615,7 +615,7 @@ example.</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp1-gammabase-1.png" alt="plot of chunk exmp1-gammabase" width="60%"><p class="caption">
+<embed src="vignette-fig-exmp1-gammabase-1.pdf" title="plot of chunk exmp1-gammabase" width="60%" type="application/pdf"></embed><p class="caption">
 plot of chunk exmp1-gammabase
 </p>
 </div>
@@ -636,14 +636,14 @@ plot of chunk exmp1-gammabase
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.98      0.05     0.88     1.07 1.00     3792     4259</span></span>
-<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     6864     5002</span></span>
-<span><span class="co">#&gt; beta     0.65      0.10     0.46     0.84 1.00     3201     3628</span></span>
-<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     4087     4834</span></span>
+<span><span class="co">#&gt; bot      0.98      0.05     0.88     1.07 1.00     4009     4400</span></span>
+<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     6920     5566</span></span>
+<span><span class="co">#&gt; beta     0.65      0.10     0.46     0.84 1.00     3458     4197</span></span>
+<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     4281     4999</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Family Specific Parameters: </span></span>
 <span><span class="co">#&gt;       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; shape   513.56     73.53   382.67   681.22 1.00     6410     5039</span></span>
+<span><span class="co">#&gt; shape   517.50     74.00   384.05   673.92 1.00     6521     5158</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
