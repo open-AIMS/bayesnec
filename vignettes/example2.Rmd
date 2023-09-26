@@ -70,7 +70,7 @@ autoplot(exp_5)
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%" />
+<embed src="vignette-fig-exmp2-decline-1.pdf" title="plot of chunk exmp2-decline" width="60%" type="application/pdf" />
 <p class="caption">plot of chunk exmp2-decline</p>
 </div>
 
@@ -82,14 +82,14 @@ The fitted `bayesmanecfit` object contains different elements to the `bayesnecfi
 ```r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-#> nec4param nec4param -84.65371 2.608502e-01                  NA              NA               NA
-#> neclin       neclin -52.59494 1.331228e-03                  NA              NA               NA
-#> ecxlin       ecxlin -28.00785 3.079882e-06                  NA              NA               NA
-#> ecx4param ecx4param -81.30557 7.685228e-02                  NA              NA               NA
-#> ecxwb1       ecxwb1 -75.32780 1.674133e-02                  NA              NA               NA
-#> ecxwb2       ecxwb2 -85.22303 2.758433e-01                  NA              NA               NA
-#> ecxll5       ecxll5 -85.45347 2.892289e-01                  NA              NA               NA
-#> ecxll4       ecxll4 -81.36184 7.914965e-02                  NA              NA               NA
+#> nec4param nec4param -84.96557 3.288210e-01                  NA              NA               NA
+#> neclin       neclin -52.48550 2.765032e-04                  NA              NA               NA
+#> ecxlin       ecxlin -27.78986 6.449676e-06                  NA              NA               NA
+#> ecx4param ecx4param -82.07242 1.014342e-01                  NA              NA               NA
+#> ecxwb1       ecxwb1 -75.03545 1.148493e-02                  NA              NA               NA
+#> ecxwb2       ecxwb2 -85.41745 3.002406e-01                  NA              NA               NA
+#> ecxll5       ecxll5 -84.23712 1.602656e-01                  NA              NA               NA
+#> ecxll4       ecxll4 -81.99187 9.747066e-02                  NA              NA               NA
 ```
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged no-effect estimate is reported, in this case as an N(S)EC. For this example the **nec4param** and **ecxwb2** models have the highest weights.
@@ -108,14 +108,14 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -84.65 0.26
-#> neclin    -52.59 0.00
-#> ecxlin    -28.01 0.00
-#> ecx4param -81.31 0.08
-#> ecxwb1    -75.33 0.02
-#> ecxwb2    -85.22 0.28
-#> ecxll5    -85.45 0.29
-#> ecxll4    -81.36 0.08
+#> nec4param -84.97 0.33
+#> neclin    -52.49 0.00
+#> ecxlin    -27.79 0.00
+#> ecx4param -82.07 0.10
+#> ecxwb1    -75.04 0.01
+#> ecxwb2    -85.42 0.30
+#> ecxll5    -84.24 0.16
+#> ecxll4    -81.99 0.10
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
@@ -123,7 +123,7 @@ summary(exp_5)
 #>     models, and is therefore a model averaged
 #>     combination of NEC and NSEC estimates.
 #>        Estimate Q2.5 Q97.5
-#> N(S)EC     3.38 2.10  3.92
+#> N(S)EC     3.34 1.98  3.97
 #> 
 #> 
 #> Bayesian R2 estimates:
@@ -135,7 +135,7 @@ summary(exp_5)
 #> ecxwb1        0.85      0.01 0.83  0.86
 #> ecxwb2        0.86      0.01 0.84  0.87
 #> ecxll5        0.86      0.01 0.84  0.87
-#> ecxll4        0.85      0.01 0.83  0.87
+#> ecxll4        0.85      0.01 0.84  0.87
 ```
 
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
@@ -147,7 +147,7 @@ autoplot(exp_5_nec4param)
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-ecx4param-1.png" alt="plot of chunk exmp2-ecx4param" width="60%" />
+<embed src="vignette-fig-exmp2-ecx4param-1.pdf" title="plot of chunk exmp2-ecx4param" width="60%" type="application/pdf" />
 <p class="caption">plot of chunk exmp2-ecx4param</p>
 </div>
 
@@ -159,7 +159,7 @@ autoplot(exp_5, all_models = TRUE)
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-allmods-1.png" alt="plot of chunk exmp2-allmods" width="60%" />
+<embed src="vignette-fig-exmp2-allmods-1.pdf" title="plot of chunk exmp2-allmods" width="60%" type="application/pdf" />
 <p class="caption">plot of chunk exmp2-allmods</p>
 </div>
 
@@ -173,7 +173,7 @@ plot(pull_brmsfit(exp_5, "ecxwb1"))
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-goodmod-1.png" alt="plot of chunk exmp2-goodmod" width="60%" />
+<embed src="vignette-fig-exmp2-goodmod-1.pdf" title="plot of chunk exmp2-goodmod" width="60%" type="application/pdf" />
 <p class="caption">plot of chunk exmp2-goodmod</p>
 </div>
 
@@ -192,7 +192,7 @@ check_priors(pull_out(exp_5, "nec4param"))
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-checkpriors-1.png" alt="plot of chunk exmp2-checkpriors" width="60%" />
+<embed src="vignette-fig-exmp2-checkpriors-1.pdf" title="plot of chunk exmp2-checkpriors" width="60%" type="application/pdf" />
 <p class="caption">plot of chunk exmp2-checkpriors</p>
 </div>
 
@@ -208,7 +208,7 @@ Where  a large number of models are failing to converge, obviously it would be b
 rhat(exp_5) |>
   sapply("[[", "failed")
 #> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
-#>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
+#>     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE     FALSE
 ```
 
 Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case one model fails, although we note that this is a very stringent criterion, and we have also used less than the default `bayesnec` value of `iter` (10,000).
@@ -218,7 +218,7 @@ Here we get a message because none of our models failed the default Rhat criteri
 rhat(exp_5, rhat_cutoff = 1.01) |>
   sapply("[[", "failed")
 #> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
-#>      TRUE     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE     FALSE
+#>     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE      TRUE     FALSE
 ```
 
 ### Extracting toxicity values
@@ -244,7 +244,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.631996 2.729366 4.127946 
+#> 3.631996 2.739285 4.157703 
 #> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -253,7 +253,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.090090 4.842115 5.347984 
+#> 5.100009 4.852034 5.358647 
 #> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -269,7 +269,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_ne
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.537080 3.153199 4.048356
+#> 3.533912 3.160582 4.035932
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].
@@ -304,7 +304,7 @@ autoplot(exp_5, nec = FALSE, all = FALSE) +
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp2-pretty-1.png" alt="plot of chunk exmp2-pretty" width="60%" />
+<embed src="vignette-fig-exmp2-pretty-1.pdf" title="plot of chunk exmp2-pretty" width="60%" type="application/pdf" />
 <p class="caption">plot of chunk exmp2-pretty</p>
 </div>
 

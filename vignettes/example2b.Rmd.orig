@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
   fig.asp = 0.8,
   out.width = "60%",
   fig.align = "center",
-  dpi = 120,
+  dev = "pdf",
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```
@@ -95,7 +95,7 @@ Strictly speaking, models with a linear hormesis increase are not suitable for m
 
 ## *EC~x~* models
 
-<img src="vignette-fig-exmp2b-theoretical_ecx_curves.png" title="" alt="" width="100%"/>
+<img src="vignette-fig-exmp2b-theoretical_ecx_curves.pdf" title="" alt="" width="100%"/>
 
 #### ecxlin
 
@@ -245,7 +245,7 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 
 ## *NEC* models
 
-<img src="vignette-fig-exmp2b-theoretical_nec_curves.png" title="" alt="" width="100%"/>
+<img src="vignette-fig-exmp2b-theoretical_nec_curves.pdf" title="" alt="" width="100%"/>
 
 #### neclin
 

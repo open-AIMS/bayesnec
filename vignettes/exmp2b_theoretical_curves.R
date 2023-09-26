@@ -58,8 +58,8 @@ ecx_plots <- ggplot(data = ecx_data, mapping = aes(x, y)) +
   theme_classic() +
   theme(axis.ticks = element_blank(),
         axis.text = element_blank())
-ggsave("vignettes/vignette-fig-exmp2b-theoretical_ecx_curves.png",
-       ecx_plots, width = 7.8, height = 6.4, dev = "png", dpi = 100)
+ggsave("vignettes/vignette-fig-exmp2b-theoretical_ecx_curves.pdf",
+       ecx_plots, width = 7.8, height = 6.4)
 
 nec_levels <- c(
   "neclin", "nec3param", "nec4param", "nechorme", "nechormepwr", "neclinhorme",
@@ -82,5 +82,5 @@ nec_plots <- ggplot(data = nec_data, mapping = aes(x, y)) +
   theme_classic() +
   theme(axis.ticks = element_blank(),
         axis.text = element_blank())
-ggsave("vignettes/vignette-fig-exmp2b-theoretical_nec_curves.png",
-       nec_plots, width = 7.8, height = 4.88, dev = "png", dpi = 100)
+ggsave("vignettes/vignette-fig-exmp2b-theoretical_nec_curves.pdf",
+       nec_plots, width = 7.8, height = 4.88)

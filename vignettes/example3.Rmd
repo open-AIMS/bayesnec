@@ -70,7 +70,7 @@ check_priors(exmp_a)
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%" />
+<embed src="vignette-fig-exmp3-checkpriors-1.pdf" title="plot of chunk exmp3-checkpriors" width="100%" type="application/pdf" />
 <p class="caption">plot of chunk exmp3-checkpriors</p>
 </div>
 
