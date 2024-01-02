@@ -1,5 +1,7 @@
 *.html
 *.R
 *.pdf
+*.png
+!vignette-fig-*.pdf
 !precompile.R
 !exmp2b_theoretical_curves.R
