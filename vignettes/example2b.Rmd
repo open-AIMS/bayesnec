@@ -32,27 +32,34 @@ The `model` may also be one of `"all"`, meaning all of the available models will
 library(bayesnec)
 models()
 #> $nec
-#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"
+#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"  
+#>  [8] "nechormepwr"   "nechorme4pwr"  "nechormepwr01"
 #> 
 #> $ecx
-#>  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"
+#>  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"   
+#>  [9] "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"
 #> 
 #> $all
-#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"      
-#> [14] "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  
+#>  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"  
+#>  [8] "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"       "ecx4param"    
+#> [15] "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"        "ecxll3"       
+#> [22] "ecxhormebc4"   "ecxhormebc5"  
 #> 
 #> $bot_free
-#>  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"        "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
-#> [14] "nechormepwr01"
+#>  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"       
+#>  [8] "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"   "nechormepwr01"
 #> 
 #> $zero_bounded
-#>  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
+#>  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"      
+#>  [8] "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  
 #> 
 #> $decline
-#>  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"   
+#>  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"   
+#> [10] "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"   
 #> 
 #> $hormesis
-#> [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"   "ecxhormebc5"
+#> [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"  
+#> [8] "ecxhormebc5"
 ```
 
 # Parameter definitions

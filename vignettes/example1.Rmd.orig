@@ -123,7 +123,7 @@ library(bayesnec)
 
 set.seed(333)
 exp_1 <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
-              data = binom_data)
+              data = binom_data, open_progress = FALSE)
 ```
 
 The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(pull_brmsfit(exp_1))` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks OK. There are a range of other model diagnostics that can be explored for `brms` model fits, using the function `pull_brmsfit`. We encourage you to explore the rich material already on GitHub regarding use and validation of [brms](https://github.com/paul-buerkner/brms) models.
@@ -159,7 +159,8 @@ The Beta-Binomial model can be useful for overdispersed Binomial data.
 ```{r, results = "hide"}
 set.seed(333)
 exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
-               data = binom_data, family = beta_binomial(link = "identity"))
+               data = binom_data, family = beta_binomial(link = "identity"),
+               open_progress = FALSE)
 ```
 
 Fitting this data with the `beta_binomial` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
@@ -203,7 +204,7 @@ prop_data <- "https://pastebin.com/raw/123jq46d" |>
 
 set.seed(333)
 exp_2 <- bnec(resp ~ crf(log(raw_x + 1), model = "nec4param"),
-              data = prop_data)
+              data = prop_data, open_progress = FALSE)
 ```
 
 ```{r exmp1-beta, warning = FALSE, fig.width = 5}
@@ -233,7 +234,8 @@ First, we supply `bnec` with `data` (here `count_data`), and specify our formula
 
 ```{r, warning = FALSE, results = "hide"}
 set.seed(333)
-exp_3 <- bnec(y ~ crf(x, model = "nec4param"), data = count_data)
+exp_3 <- bnec(y ~ crf(x, model = "nec4param"), data = count_data,
+              open_progress = FALSE)
 ```
 
 ```{r exmp1-poisson, warning = FALSE, fig.width = 5}
@@ -250,7 +252,7 @@ When count data are overdispersed and cannot be modelled using the Poisson distr
 ```{r, warning = FALSE, results = "hide"}
 set.seed(333)
 exp_3b <- bnec(y ~ crf(x, model = "nec4param"), data = count_data,
-               family = "negbinomial")
+               family = "negbinomial", open_progress = FALSE)
 ```
 
 The resultant plot seems to indicate the Negative Binomial distribution works better in terms of dispersion (more sensible wider confidence bands), however it still might not be the best model for these data. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
@@ -271,7 +273,8 @@ measure_data <- nec_data |>
 
 ```{r, warning = FALSE, results = "hide"}
 set.seed(333)
-exp_4 <- bnec(measure ~ crf(x, model = "nec4param"), data = measure_data)
+exp_4 <- bnec(measure ~ crf(x, model = "nec4param"), data = measure_data,
+              open_progress = FALSE)
 ```
 
 ```{r exmp1-gammabase, warning = FALSE, fig.width = 5}

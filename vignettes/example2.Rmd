@@ -53,7 +53,8 @@ x <- seq(0, 10, length = 12)
 y <- make_ecx_data(x = x, bot = 0, top = 1, beta = 0.5, ec50 = 5)
 set.seed(333)
 df_ <- data.frame(x = rep(x, 15), y = rnorm(15 * length(x), y, 0.2))
-exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3)
+exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3,
+              open_progress = FALSE)
 ```
 
 Here we run `bnec` using `model =  "decline"` using a simulated data example for a Beta-distributed response variable. We are using the `"decline"` set here because we are not going to consider hormesis (these allow an initial increase in the response), largely to save time in fitting this example. Moreover, you might want to consider saving the output as an `.RData` file---doing so can be a useful way of fitting large model sets (ie `model = "all"`, or `model = "decline"`) at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
@@ -82,14 +83,14 @@ The fitted `bayesmanecfit` object contains different elements to the `bayesnecfi
 ```r
 exp_5$mod_stats
 #>               model      waic           wi dispersion_Estimate dispersion_Q2.5 dispersion_Q97.5
-#> nec4param nec4param -84.96557 3.288210e-01                  NA              NA               NA
-#> neclin       neclin -52.48550 2.765032e-04                  NA              NA               NA
-#> ecxlin       ecxlin -27.78986 6.449676e-06                  NA              NA               NA
-#> ecx4param ecx4param -82.07242 1.014342e-01                  NA              NA               NA
-#> ecxwb1       ecxwb1 -75.03545 1.148493e-02                  NA              NA               NA
-#> ecxwb2       ecxwb2 -85.41745 3.002406e-01                  NA              NA               NA
-#> ecxll5       ecxll5 -84.23712 1.602656e-01                  NA              NA               NA
-#> ecxll4       ecxll4 -81.99187 9.747066e-02                  NA              NA               NA
+#> nec4param nec4param -84.71235 0.3266459430                  NA              NA               NA
+#> neclin       neclin -52.72181 0.0004911001                  NA              NA               NA
+#> ecxlin       ecxlin -27.81568 0.0006015808                  NA              NA               NA
+#> ecx4param ecx4param -81.67824 0.0972614372                  NA              NA               NA
+#> ecxwb1       ecxwb1 -75.70936 0.0183140713                  NA              NA               NA
+#> ecxwb2       ecxwb2 -84.77620 0.2454512947                  NA              NA               NA
+#> ecxll5       ecxll5 -84.61205 0.2204366725                  NA              NA               NA
+#> ecxll4       ecxll4 -81.55602 0.0907979003                  NA              NA               NA
 ```
 
 We can obtain a neater summary of the model fit by using the `summary` method for a `bayesmanecfit` object. A list of fitted models, and model weights are provided. In addition, the model averaged no-effect estimate is reported, in this case as an N(S)EC. For this example the **nec4param** and **ecxwb2** models have the highest weights.
@@ -108,14 +109,14 @@ summary(exp_5)
 #> 
 #> Model weights (Method: pseudobma_bb_weights):
 #>             waic   wi
-#> nec4param -84.97 0.33
-#> neclin    -52.49 0.00
-#> ecxlin    -27.79 0.00
-#> ecx4param -82.07 0.10
-#> ecxwb1    -75.04 0.01
-#> ecxwb2    -85.42 0.30
-#> ecxll5    -84.24 0.16
-#> ecxll4    -81.99 0.10
+#> nec4param -84.71 0.33
+#> neclin    -52.72 0.00
+#> ecxlin    -27.82 0.00
+#> ecx4param -81.68 0.10
+#> ecxwb1    -75.71 0.02
+#> ecxwb2    -84.78 0.25
+#> ecxll5    -84.61 0.22
+#> ecxll4    -81.56 0.09
 #> 
 #> 
 #> Summary of weighted N(S)EC posterior estimates:
@@ -123,19 +124,19 @@ summary(exp_5)
 #>     models, and is therefore a model averaged
 #>     combination of NEC and NSEC estimates.
 #>        Estimate Q2.5 Q97.5
-#> N(S)EC     3.34 1.98  3.97
+#> N(S)EC     3.37 2.11  3.98
 #> 
 #> 
 #> Bayesian R2 estimates:
 #>           Estimate Est.Error Q2.5 Q97.5
 #> nec4param     0.86      0.01 0.84  0.87
 #> neclin        0.83      0.01 0.80  0.84
-#> ecxlin        0.80      0.01 0.77  0.82
-#> ecx4param     0.85      0.01 0.84  0.87
+#> ecxlin        0.80      0.01 0.78  0.82
+#> ecx4param     0.85      0.01 0.83  0.87
 #> ecxwb1        0.85      0.01 0.83  0.86
 #> ecxwb2        0.86      0.01 0.84  0.87
 #> ecxll5        0.86      0.01 0.84  0.87
-#> ecxll4        0.85      0.01 0.84  0.87
+#> ecxll4        0.85      0.01 0.83  0.87
 ```
 
 The `bayesmanecfit` object also contains all of the individual `brms` model fits, which can be extracted using the `pull_out` function. For example, we can pull out and plot the model **ecx4param**.
@@ -218,7 +219,7 @@ Here we get a message because none of our models failed the default Rhat criteri
 rhat(exp_5, rhat_cutoff = 1.01) |>
   sapply("[[", "failed")
 #> nec4param    neclin    ecxlin ecx4param    ecxwb1    ecxwb2    ecxll5    ecxll4 
-#>     FALSE     FALSE     FALSE     FALSE     FALSE      TRUE      TRUE     FALSE
+#>     FALSE     FALSE     FALSE      TRUE     FALSE     FALSE     FALSE     FALSE
 ```
 
 ### Extracting toxicity values
@@ -244,7 +245,7 @@ ECx10 <- ecx(exp_5, ecx_val = 10)
 ECx50 <- ecx(exp_5, ecx_val = 50)
 ECx10
 #>      Q50     Q2.5    Q97.5 
-#> 3.631996 2.739285 4.157703 
+#> 3.641915 2.699609 4.177541 
 #> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -253,7 +254,7 @@ ECx10
 #> [1] "ecx"
 ECx50
 #>      Q50     Q2.5    Q97.5 
-#> 5.100009 4.852034 5.358647 
+#> 5.100009 4.842115 5.357903 
 #> attr(,"resolution")
 #> [1] 1000
 #> attr(,"ecx_val")
@@ -269,7 +270,7 @@ The weighted *NEC* estimates can be extracted directly from the *NEC* model set 
 NECvals <- exp_5_nec$w_ne
 NECvals
 #> Estimate     Q2.5    Q97.5 
-#> 3.533912 3.160582 4.035932
+#> 3.528531 3.129615 4.031603
 ```
 
 Note that the new *NEC* estimates from the **nec**-containing model fits are slightly higher than those reported in the summary output of all the fitted models. This can happen for smooth curves, which is what was used as the underlying data generation model in the simulations here, and is explored in more detail in the [Compare posteriors vigenette][e4].

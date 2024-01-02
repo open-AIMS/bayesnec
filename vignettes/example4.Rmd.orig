@@ -57,7 +57,8 @@ y <- make_ecx_data(x = x, bot = 0, top = 1, beta = 0.5, ec50 = 5)
 set.seed(333)
 dat <- data.frame(x = rep(x, 15), y = rnorm(15 * length(x), y, 0.2))
 # Fit a set of models
-exmp <- bnec(y ~ crf(x, model = "decline"), data = dat, refresh = 0)
+exmp <- bnec(y ~ crf(x, model = "decline"), data = dat, refresh = 0,
+             open_progress = FALSE)
 ```
 
 ```{r}

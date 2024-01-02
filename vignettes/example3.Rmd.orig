@@ -71,7 +71,8 @@ data(nec_data)
 set.seed(333)
 exmp_a <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
                family = Beta(link = "identity"),
-               iter = 1e4, control = list(adapt_delta = 0.99))
+               iter = 1e4, control = list(adapt_delta = 0.99),
+               open_progress = FALSE)
 ```
 
 ```{r}
@@ -99,7 +100,8 @@ my_prior <- c(prior_string("beta(5, 1)", nlpar = "top"),
               prior_string("gamma(0.5, 2)", nlpar = "beta"))
 exmp_b <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
                family = Beta(link = "identity"), prior = my_prior,
-               iter = 1e4, control = list(adapt_delta = 0.99))
+               iter = 1e4, control = list(adapt_delta = 0.99),
+               open_progress = FALSE)
 ```
 
 Two things are of note. If the user is specifying their own priors, `bnec` requires them to specify priors for **all** parameters. The `pull_prior` function shows the priors *after* the model was fitted, but suppose the user does not know what parameters were comprised in a particular model. In those instances, the user can call the function `show_params(model = "all")` to inspect the parameters of each function, or some targeted function in particular.
@@ -123,7 +125,8 @@ my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
                                 prior_string("beta(1, 5)", nlpar = "bot")))
 exmp_c <- bnec(y ~ crf(x, model = c("nec3param", "nec4param")), data = nec_data,
                family = Beta(link = "identity"), prior = my_priors,
-               iter = 1e4, control = list(adapt_delta = 0.99))
+               iter = 1e4, control = list(adapt_delta = 0.99),
+               open_progress = FALSE)
 ```
 
 `pull_prior` also works for an object of class `bayesmanecfit`, as does `check_priors` which allows an option of passing a filename to save the prior and posterior probability density plots to a pdf.
@@ -150,7 +153,8 @@ my_priors <- list(nec3param = c(prior_string("beta(5, 1)", nlpar = "top"),
                                 prior_string("beta(1, 5)", nlpar = "bot")))
 exmp_d <- bnec(y ~ crf(x, model = c("nec3param", "nec4param")), data = nec_data,
                family = Beta(link = "identity"), prior = my_priors[1],
-               iter = 1e4, control = list(adapt_delta = 0.99))
+               iter = 1e4, control = list(adapt_delta = 0.99),
+               open_progress = FALSE)
 ```
 
 `prior = my_priors[[1]]` would also have worked because the argument priors can either take a `brmsprior` object directly, or a named list containing model-specific `brmsprior` objects.
@@ -163,5 +167,6 @@ necsigm_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
                     prior_string("gamma(2, 6.5)", nlpar = "beta"),
                     prior_string("normal(1.3, 2.7)", nlpar = "nec"),
                     prior_string("normal(0, 2)", nlpar = "d"))
-exmp_e <- amend(exmp_d, add = "necsigm", priors = necsigm_priors)
+exmp_e <- amend(exmp_d, add = "necsigm", priors = necsigm_priors,
+                open_progress = FALSE)
 ```

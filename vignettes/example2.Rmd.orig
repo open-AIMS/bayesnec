@@ -69,7 +69,8 @@ x <- seq(0, 10, length = 12)
 y <- make_ecx_data(x = x, bot = 0, top = 1, beta = 0.5, ec50 = 5)
 set.seed(333)
 df_ <- data.frame(x = rep(x, 15), y = rnorm(15 * length(x), y, 0.2))
-exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3)
+exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3,
+              open_progress = FALSE)
 ```
 
 Here we run `bnec` using `model =  "decline"` using a simulated data example for a Beta-distributed response variable. We are using the `"decline"` set here because we are not going to consider hormesis (these allow an initial increase in the response), largely to save time in fitting this example. Moreover, you might want to consider saving the output as an `.RData` file---doing so can be a useful way of fitting large model sets (ie `model = "all"`, or `model = "decline"`) at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.

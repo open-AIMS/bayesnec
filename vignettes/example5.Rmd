@@ -398,11 +398,11 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ```
 
 ```
-## -\|/-\|/-\|/-\
+## -\|/-\|/-\|/-
 ```
 
 ```
-## In file included from /var/folders/80/x2f5bfts2_n9g_2h7w8rx3jm0000gn/T/RtmpCaq6aL/model-f81a115042e.hpp:1:
+## In file included from /var/folders/80/x2f5bfts2_n9g_2h7w8rx3jm0000gn/T/RtmpGymuJf/model-5a0b7979b3af.hpp:1:
 ## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/src/stan/model/model_header.hpp:4:
 ## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math.hpp:19:
 ## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/stan/math/rev.hpp:10:
@@ -417,15 +417,15 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/function/function_base.hpp:21:
 ## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/type_index.hpp:29:
 ## In file included from /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/type_index/stl_type_index.hpp:47:
-## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:132:33: warning: 'unary_function<const std::error_category *
+## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:132:33: warning: 'unary_function<const std::error_category
 ```
 
 ```
-## |
+## \
 ```
 
 ```
-## , unsigned long>' is deprecated [-Wdeprecated-declarations]
+## *, unsigned long>' is deprecated [-Wdeprecated-declarations]
 ##         struct hash_base : std::unary_function<T, std::size_t> {};
 ##                                 ^
 ## /Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/boost_1.78.0/boost/container_hash/hash.hpp:692:18: note: in instantiation of template class 'boost::hash_detail::hash_base<const std::error_category *>' requested here
@@ -438,25 +438,18 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ##         hash_combine(seed, &v.category());
 ##         ^
 ## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__functional/unary_function.h:23:29: note: 'unary_function<const std::error_category *, unsigned long>' has been explicitly marked deprecated here
-```
-
-```
-## /
-```
-
-```
 ## struct _LIBCPP_TEMPLATE_VIS _LIBCPP_DEPRECATED_IN_CXX11 unary_function
 ##                             ^
-## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__config:825:41: note: expanded from macro '_LIBCPP_DEPRECATED_IN_CXX11'
+## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__config:850:41: note: expanded from macro '_LIBCPP_DEPRECATED_IN_CXX11'
 ## #    define _LIBCPP_DEPRECATED_IN_CXX11 _LIBCPP_DEPRECATED
 ##                                         ^
-## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__config:810:49: note: expanded from macro '_LIBCPP_DEPRECATED'
+## /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1/__config:835:49: note: expanded from macro '_LIBCPP_DEPRECATED'
 ## #      define _LIBCPP_DEPRECATED __attribute__((deprecated))
 ##                                                 ^
 ```
 
 ```
-## -\|/-\|/-\|/-\|/-\|/-\|
+## |/-\|/-\|/-\|/-\|/-\|/-\|
 ```
 
 ```
@@ -464,15 +457,23 @@ fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
 ```
 
 ```
-## /-\|/ Running MCMC with 4 chains, at most 10 in parallel...
+## /-
+```
+
+```
+## ld: warning: duplicate -rpath '/Users/dbarneche/.cmdstan/cmdstan-2.33.1/stan/lib/stan_math/lib/tbb' ignored
+```
+
+```
+## \|/- Running MCMC with 4 chains, at most 10 in parallel...
 ## 
+## Chain 4 finished in 1.7 seconds.
 ## Chain 1 finished in 1.8 seconds.
-## Chain 2 finished in 1.8 seconds.
-## Chain 3 finished in 1.8 seconds.
-## Chain 4 finished in 1.8 seconds.
+## Chain 2 finished in 1.7 seconds.
+## Chain 3 finished in 1.7 seconds.
 ## 
 ## All 4 chains finished successfully.
-## Mean chain execution time: 1.8 seconds.
+## Mean chain execution time: 1.7 seconds.
 ## Total execution time: 1.9 seconds.
 ```
 
@@ -491,15 +492,15 @@ summary(fit)
 ## Group-Level Effects: 
 ## ~patient (Number of levels: 59) 
 ##               Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sd(Intercept)     0.59      0.07     0.46     0.74 1.00      930     1457
+## sd(Intercept)     0.58      0.07     0.46     0.73 1.01      793     1694
 ## 
 ## Population-Level Effects: 
 ##            Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## Intercept      1.77      0.12     1.54     2.02 1.01      747     1148
-## zAge           0.09      0.09    -0.08     0.26 1.00      771     1304
-## zBase          0.70      0.12     0.46     0.93 1.00      835     1426
-## Trt1          -0.26      0.17    -0.60     0.08 1.01      690      926
-## zBase:Trt1     0.05      0.17    -0.26     0.38 1.01      981     1720
+## Intercept      1.77      0.12     1.54     2.00 1.00      941     1752
+## zAge           0.09      0.09    -0.08     0.26 1.01      825     1493
+## zBase          0.70      0.12     0.46     0.93 1.01      723     1202
+## Trt1          -0.27      0.17    -0.58     0.06 1.00      847     1774
+## zBase:Trt1     0.05      0.17    -0.27     0.39 1.01      759     1316
 ## 
 ## Draws were sampled using sample(hmc). For each parameter, Bulk_ESS
 ## and Tail_ESS are effective sample size measures, and Rhat is the potential
