@@ -156,7 +156,8 @@ data within each factor level.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">15</span><span class="op">)</span>, y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">15</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">y</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># Fit a set of models</span></span>
-<span><span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">dat</span>, refresh <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">exmp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">dat</span>, refresh <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>             open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "bayesmanecfit" "bnecfit"</span></span></code></pre></div>
@@ -229,17 +230,17 @@ greater than the <strong>ecx</strong> based estimates in this case.</p>
 <p>We can formally test the probability that the toxicity estimate for
 one model set is greater than the other using posterior differencing.
 This is contained in the compare posterior output as
-<code>prob_diff</code>. Here you can see there is 56% chance that
+<code>prob_diff</code>. Here you can see there is 62% chance that
 <strong>all</strong> is greater than <strong>ecx</strong>. There is only
-a 20% chance that <strong>ecx</strong> is greater than
-<strong>nec</strong>, and a 80% chance that the <strong>nec</strong> is
+a 14% chance that <strong>ecx</strong> is greater than
+<strong>nec</strong>, and a 86% chance that the <strong>nec</strong> is
 greater than <strong>ecx</strong>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">post_comp</span><span class="op">$</span><span class="va">prob_diff</span></span>
-<span><span class="co">#&gt;   comparison     prob</span></span>
-<span><span class="co">#&gt; 1    all-ecx 0.562750</span></span>
-<span><span class="co">#&gt; 2    all-nec 0.285625</span></span>
-<span><span class="co">#&gt; 3    ecx-nec 0.199750</span></span></code></pre></div>
+<span><span class="co">#&gt;   comparison      prob</span></span>
+<span><span class="co">#&gt; 1    all-ecx 0.6160770</span></span>
+<span><span class="co">#&gt; 2    all-nec 0.2700338</span></span>
+<span><span class="co">#&gt; 3    ecx-nec 0.1443930</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="comparing-posterior-fitted-values">Comparing posterior fitted values<a class="anchor" aria-label="anchor" href="#comparing-posterior-fitted-values"></a>
@@ -258,20 +259,20 @@ predictor, for each model or model comparison.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">posterior_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   model          x Estimate      Q2.5    Q97.5</span></span>
-<span><span class="co">#&gt; 1   all 0.09090909 1.019230 0.9678919 1.083722</span></span>
-<span><span class="co">#&gt; 2   all 0.29313544 1.019105 0.9678400 1.082196</span></span>
-<span><span class="co">#&gt; 3   all 0.49536178 1.018909 0.9677528 1.080417</span></span>
-<span><span class="co">#&gt; 4   all 0.69758813 1.018633 0.9676957 1.077756</span></span>
-<span><span class="co">#&gt; 5   all 0.89981447 1.018321 0.9676103 1.074734</span></span>
-<span><span class="co">#&gt; 6   all 1.10204082 1.017847 0.9675677 1.072334</span></span>
+<span><span class="co">#&gt; 1   all 0.09090909 1.020778 0.9663590 1.084920</span></span>
+<span><span class="co">#&gt; 2   all 0.29313544 1.020645 0.9663378 1.083134</span></span>
+<span><span class="co">#&gt; 3   all 0.49536178 1.020406 0.9663378 1.080866</span></span>
+<span><span class="co">#&gt; 4   all 0.69758813 1.020050 0.9662984 1.078648</span></span>
+<span><span class="co">#&gt; 5   all 0.89981447 1.019724 0.9662984 1.076251</span></span>
+<span><span class="co">#&gt; 6   all 1.10204082 1.019195 0.9662886 1.073099</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">post_comp_fitted</span><span class="op">$</span><span class="va">diff_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   comparison diff.Estimate   diff.Q2.5 diff.Q97.5          x</span></span>
-<span><span class="co">#&gt; 1    all-ecx  -0.004770295 -0.08175806 0.07845176 0.09090909</span></span>
-<span><span class="co">#&gt; 2    all-ecx  -0.004612971 -0.08080406 0.07713482 0.29313544</span></span>
-<span><span class="co">#&gt; 3    all-ecx  -0.004402671 -0.07945351 0.07487955 0.49536178</span></span>
-<span><span class="co">#&gt; 4    all-ecx  -0.004134251 -0.07887442 0.07300054 0.69758813</span></span>
-<span><span class="co">#&gt; 5    all-ecx  -0.004121745 -0.07704115 0.07152242 0.89981447</span></span>
-<span><span class="co">#&gt; 6    all-ecx  -0.003968731 -0.07498910 0.07055202 1.10204082</span></span></code></pre></div>
+<span><span class="co">#&gt; 1    all-ecx  -0.006377007 -0.08644327 0.07743305 0.09090909</span></span>
+<span><span class="co">#&gt; 2    all-ecx  -0.006358821 -0.08530609 0.07573855 0.29313544</span></span>
+<span><span class="co">#&gt; 3    all-ecx  -0.006258424 -0.08354907 0.07444896 0.49536178</span></span>
+<span><span class="co">#&gt; 4    all-ecx  -0.006251275 -0.08176871 0.07254152 0.69758813</span></span>
+<span><span class="co">#&gt; 5    all-ecx  -0.005755167 -0.08009080 0.07157816 0.89981447</span></span>
+<span><span class="co">#&gt; 6    all-ecx  -0.005438621 -0.07845105 0.06951660 1.10204082</span></span></code></pre></div>
 <p>Using the collated posterior_data we can plot the predicted curves
 with confidence bounds for each of the input models. This shows clearly
 that the <strong>ecx</strong> model set begins to decline earlier than

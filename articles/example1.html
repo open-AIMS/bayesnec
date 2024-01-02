@@ -296,7 +296,7 @@ vignette for more details).</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exp_1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">suc</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tot</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,</span>
-<span>              data <span class="op">=</span> <span class="va">binom_data</span><span class="op">)</span></span></code></pre></div>
+<span>              data <span class="op">=</span> <span class="va">binom_data</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>The function shows the progress of the <code>brms</code> fit and
 returns the usual <code>brms</code> output (with a few other elements
 added to this list). The function <code>plot(pull_brmsfit(exp_1))</code>
@@ -334,10 +334,10 @@ parameters using:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     3642     3246</span></span>
-<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4547     4118</span></span>
-<span><span class="co">#&gt; beta     0.81      0.13     0.56     1.08 1.00     3175     3910</span></span>
-<span><span class="co">#&gt; nec      4.42      0.03     4.36     4.48 1.00     3501     4196</span></span>
+<span><span class="co">#&gt; bot      0.05      0.02     0.02     0.08 1.00     2739     2221</span></span>
+<span><span class="co">#&gt; top      0.83      0.01     0.81     0.84 1.00     4061     3847</span></span>
+<span><span class="co">#&gt; beta     0.80      0.13     0.55     1.08 1.00     2621     2570</span></span>
+<span><span class="co">#&gt; nec      4.43      0.03     4.36     4.48 1.00     2985     3664</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -345,7 +345,7 @@ parameters using:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     4.42 4.36  4.48</span></span>
+<span><span class="co">#&gt; NEC     4.43 4.36  4.48</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
@@ -389,7 +389,7 @@ such as the Beta-Binomial.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 19.63965 13.25933 30.83688</span></span></code></pre></div>
+<span><span class="co">#&gt; 19.66109 13.33580 30.55700</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-binomial">Beta-Binomial<a class="anchor" aria-label="anchor" href="#beta-binomial"></a>
@@ -399,7 +399,8 @@ data.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exp_1b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">suc</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tot</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,</span>
-<span>               data <span class="op">=</span> <span class="va">binom_data</span>, family <span class="op">=</span> <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/brmsfamily.html" class="external-link">beta_binomial</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span>               data <span class="op">=</span> <span class="va">binom_data</span>, family <span class="op">=</span> <span class="fu"><a href="https://paul-buerkner.github.io/brms/reference/brmsfamily.html" class="external-link">beta_binomial</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,</span>
+<span>               open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>Fitting this data with the <code>beta_binomial</code> yields a much
 more realistic fit in terms of the confidence bounds (check
 <code>autoplot(exp_1b, xform = exp)</code>) and the spread in the data.
@@ -422,7 +423,7 @@ the fitted model object. As explained above, we need to transform
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">exp_1b</span><span class="op">$</span><span class="va">ne_posterior</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;   16.78   66.01   78.53   75.65   87.51  196.65</span></span></code></pre></div>
+<span><span class="co">#&gt;   20.35   66.92   80.43   78.39   90.12  199.51</span></span></code></pre></div>
 <p>EC<em>x</em> estimates can also be obtained from the <em>NEC</em>
 model fit, using the function <code>ecx</code>. Note these may differ
 from a typical 4-parameter non-linear model, as the <em>NEC</em> model
@@ -432,8 +433,8 @@ details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example4.
 posterior predictions</a> vignettes for more information.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_1b</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 82.56186 42.92212 98.57387 </span></span>
+<span><span class="co">#&gt;       Q50      Q2.5     Q97.5 </span></span>
+<span><span class="co">#&gt;  84.16306  41.32092 105.77928 </span></span>
 <span><span class="co">#&gt; attr(,"resolution")</span></span>
 <span><span class="co">#&gt; [1] 1000</span></span>
 <span><span class="co">#&gt; attr(,"ecx_val")</span></span>
@@ -462,14 +463,14 @@ its value will depend on the scale of the predictor variable.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.13      0.05     0.03     0.23 1.00     1918     2488</span></span>
-<span><span class="co">#&gt; top      0.84      0.03     0.77     0.88 1.00     2442     1944</span></span>
-<span><span class="co">#&gt; beta     0.82      0.66    -0.20     2.91 1.00      753      452</span></span>
-<span><span class="co">#&gt; nec      4.36      0.19     3.68     4.58 1.00      804      426</span></span>
+<span><span class="co">#&gt; bot      0.13      0.06     0.03     0.24 1.01      423     1741</span></span>
+<span><span class="co">#&gt; top      0.84      0.03     0.77     0.88 1.01     1204     1373</span></span>
+<span><span class="co">#&gt; beta     0.90      0.78    -0.16     4.50 1.02      188       96</span></span>
+<span><span class="co">#&gt; nec      4.39      0.20     3.69     4.82 1.01      231      199</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Family Specific Parameters: </span></span>
 <span><span class="co">#&gt;     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; phi     5.35      1.27     3.26     8.27 1.00     2597     2456</span></span>
+<span><span class="co">#&gt; phi     5.32      1.27     3.22     8.36 1.01     1429     1274</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>
@@ -477,7 +478,7 @@ its value will depend on the scale of the predictor variable.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     Estimate Q2.5 Q97.5</span></span>
-<span><span class="co">#&gt; NEC     4.36 3.68  4.58</span></span>
+<span><span class="co">#&gt; NEC     4.39 3.69  4.82</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Bayesian R2 estimates:</span></span>
@@ -504,7 +505,7 @@ data must be modelled using a Beta distribution instead.</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exp_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">resp</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">raw_x</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,</span>
-<span>              data <span class="op">=</span> <span class="va">prop_data</span><span class="op">)</span></span></code></pre></div>
+<span>              data <span class="op">=</span> <span class="va">prop_data</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
@@ -534,10 +535,10 @@ overdispersed. Then we plot the concentration (i.e. predictor) data.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt; 'data.frame':    100 obs. of  2 variables:</span></span>
 <span><span class="co">#&gt;  $ x: num  1.019 0.816 0.371 0.401 1.295 ...</span></span>
-<span><span class="co">#&gt;  $ y: int  85 104 55 78 86 66 97 60 102 88 ...</span></span>
+<span><span class="co">#&gt;  $ y: int  89 84 86 81 70 91 95 40 105 95 ...</span></span>
 <span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">y</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;    0.00   65.50   85.50   78.64   96.25  141.00</span></span>
+<span><span class="co">#&gt;    6.00   70.00   85.00   78.52   95.00  122.00</span></span>
 <span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
 <span><span class="co">#&gt; 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052</span></span></code></pre></div>
@@ -548,7 +549,8 @@ default behaviour to guess the variable types works for this
 example.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
-<span><span class="va">exp_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">exp_3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data</span>,</span>
+<span>              open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
@@ -559,7 +561,7 @@ plot of chunk exmp1-poisson
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt;   Estimate       Q2.5      Q97.5 </span></span>
-<span><span class="co">#&gt;   5.643979   0.950172 140.318539</span></span></code></pre></div>
+<span><span class="co">#&gt;  2.4754333  0.2381778 72.1996804</span></span></code></pre></div>
 <p>We first plot the model chains (with <code>plot(exp_3$fit)</code>)
 and parameter estimates to check the fit. The chains look OK. However,
 our plot of the fit is not very convincing. The model uncertainty is
@@ -578,7 +580,7 @@ used. We can do this by calling <code>family = "negbinomial"</code>.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exp_3b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data</span>,</span>
-<span>               family <span class="op">=</span> <span class="st">"negbinomial"</span><span class="op">)</span></span></code></pre></div>
+<span>               family <span class="op">=</span> <span class="st">"negbinomial"</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p>The resultant plot seems to indicate the Negative Binomial
 distribution works better in terms of dispersion (more sensible wider
 confidence bands), however it still might not be the best model for
@@ -611,7 +613,8 @@ example.</p>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>measure <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
-<span><span class="va">exp_4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">measure</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">measure_data</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">exp_4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">measure</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">measure_data</span>,</span>
+<span>              open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
@@ -636,14 +639,14 @@ plot of chunk exmp1-gammabase
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Population-Level Effects: </span></span>
 <span><span class="co">#&gt;      Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; bot      0.98      0.05     0.88     1.07 1.00     4009     4400</span></span>
-<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     6920     5566</span></span>
-<span><span class="co">#&gt; beta     0.65      0.10     0.46     0.84 1.00     3458     4197</span></span>
-<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     4281     4999</span></span>
+<span><span class="co">#&gt; bot      0.98      0.05     0.89     1.07 1.00     4029     4853</span></span>
+<span><span class="co">#&gt; top      2.44      0.01     2.41     2.46 1.00     7073     4787</span></span>
+<span><span class="co">#&gt; beta     0.65      0.10     0.47     0.84 1.00     3537     4317</span></span>
+<span><span class="co">#&gt; nec      1.50      0.02     1.46     1.54 1.00     4240     4660</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Family Specific Parameters: </span></span>
 <span><span class="co">#&gt;       Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS</span></span>
-<span><span class="co">#&gt; shape   517.50     74.00   384.05   673.92 1.00     6521     5158</span></span>
+<span><span class="co">#&gt; shape   513.19     74.80   382.06   669.84 1.00     6875     5348</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS</span></span>
 <span><span class="co">#&gt; and Tail_ESS are effective sample size measures, and Rhat is the potential</span></span>

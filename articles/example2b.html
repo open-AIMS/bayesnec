@@ -149,27 +149,34 @@ list of currently implemented model groups can be seen using:</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://open-aims.github.io/bayesnec/" class="external-link">bayesnec</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/models.html">models</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $nec</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01"</span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"  </span></span>
+<span><span class="co">#&gt;  [8] "nechormepwr"   "nechorme4pwr"  "nechormepwr01"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $ecx</span></span>
-<span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"    "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"</span></span>
+<span><span class="co">#&gt;  [1] "ecx4param"   "ecxlin"      "ecxexp"      "ecxsigm"     "ecxwb1"      "ecxwb2"      "ecxwb1p3"    "ecxwb2p3"   </span></span>
+<span><span class="co">#&gt;  [9] "ecxll5"      "ecxll4"      "ecxll3"      "ecxhormebc4" "ecxhormebc5"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $all</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"      </span></span>
-<span><span class="co">#&gt; [14] "ecx4param"     "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"        "ecxll3"        "ecxhormebc4"   "ecxhormebc5"  </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nec4param"     "nechorme"      "nechorme4"     "necsigm"       "neclin"        "neclinhorme"  </span></span>
+<span><span class="co">#&gt;  [8] "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxlin"        "ecxexp"        "ecxsigm"       "ecx4param"    </span></span>
+<span><span class="co">#&gt; [15] "ecxwb1"        "ecxwb2"        "ecxwb1p3"      "ecxwb2p3"      "ecxll5"        "ecxll4"        "ecxll3"       </span></span>
+<span><span class="co">#&gt; [22] "ecxhormebc4"   "ecxhormebc5"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $bot_free</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"        "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  </span></span>
-<span><span class="co">#&gt; [14] "nechormepwr01"</span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "neclin"        "neclinhorme"   "nechormepwr"   "ecxlin"       </span></span>
+<span><span class="co">#&gt;  [8] "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"   "nechormepwr01"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $zero_bounded</span></span>
-<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"       "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  </span></span>
+<span><span class="co">#&gt;  [1] "nec3param"     "nechorme"      "necsigm"       "nechormepwr"   "nechormepwr01" "ecxexp"        "ecxsigm"      </span></span>
+<span><span class="co">#&gt;  [8] "ecxwb1p3"      "ecxwb2p3"      "ecxll3"        "ecxhormebc4"  </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $decline</span></span>
-<span><span class="co">#&gt;  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"    "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"   </span></span>
+<span><span class="co">#&gt;  [1] "nec3param" "nec4param" "neclin"    "ecxlin"    "ecxexp"    "ecxsigm"   "ecx4param" "ecxwb1"    "ecxwb2"   </span></span>
+<span><span class="co">#&gt; [10] "ecxwb1p3"  "ecxwb2p3"  "ecxll5"    "ecxll4"    "ecxll3"   </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $hormesis</span></span>
-<span><span class="co">#&gt; [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"   "ecxhormebc5"</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "nechorme"      "nechorme4"     "neclinhorme"   "nechormepwr"   "nechorme4pwr"  "nechormepwr01" "ecxhormebc4"  </span></span>
+<span><span class="co">#&gt; [8] "ecxhormebc5"</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="parameter-definitions">Parameter definitions<a class="anchor" aria-label="anchor" href="#parameter-definitions"></a>
