@@ -16,26 +16,35 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: r-lib/actions/setup-r@v2-branch
+
+      - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2-branch
+      - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::covr
           needs: coverage
 
       - name: Test coverage
         run: |
-          test1 <- covr::package_coverage()
-          system("mv tests/testthat tests/done")
-          system("mv tests/local tests/testthat")
-          test2 <- covr::package_coverage()
-          system("mv tests/testthat tests/local")
-          system("mv tests/done tests/testthat")
-          combined_cov <- c(test1, test2)
-          attr(combined_cov, "class") <- attr(test1, "class")
-          attr(combined_cov, "package") <- attr(test1, "package")
-          attr(combined_cov, "relative") <- attr(test1, "relative")
-          covr::codecov(coverage = combined_cov, quiet = FALSE)
+          covr::codecov(
+            quiet = FALSE,
+            clean = FALSE,
+            install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
+          )
         shell: Rscript {0}
+
+      - name: Show testthat output
+        if: always()
+        run: |
+          ## --------------------------------------------------------------------
+          find ${{ runner.temp }}/package -name 'testthat.Rout*' -exec cat '{}' \; || true
+        shell: bash
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-test-failures
+          path: ${{ runner.temp }}/package
