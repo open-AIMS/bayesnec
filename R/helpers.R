@@ -680,3 +680,15 @@ newdata_eval_fitted <- function(object, resolution, x_range, make_newdata,
   list(newdata = newdata, x_vec = x_vec, resolution = resolution,
        re_formula = re_formula)
 }
+
+#' step
+#' @param x A \code{\link[base]{numeric}} vector.
+#' the new range of values in x.
+#' @return A \code{\link[base]{numeric}} vector.
+#' @details This function is currently exported to allow for non-linear
+#' formula evaluation in brms.
+#'
+#' @export
+step <- function(x) {
+  as.numeric(x > 0)
+}
