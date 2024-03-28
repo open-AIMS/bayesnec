@@ -1,3 +1,7 @@
+# bayesnec 2.1.2.0
+
+- Added `step` function to toolkit to allow for `brms` non-linear formula evaluation ([89edef72](https://github.com/open-AIMS/bayesnec/commit/89edef72)).
+
 # bayesnec 2.1.1.0
 
 - Fixed issues with `summary` and `print` methods ([bf058f36](https://github.com/open-AIMS/bayesnec/commit/bf058f36)).
