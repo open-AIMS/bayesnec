@@ -8,7 +8,7 @@
 #' (Fisher et al. 2023). Please see ?bnec
 #' for more details.
 #'
-#' @docType _PACKAGE
+#' @docType package
 #' @name bayesnec-package
 #' @aliases bayesnec
 #' @importFrom ggplot2 autoplot
