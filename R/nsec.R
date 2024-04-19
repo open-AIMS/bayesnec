@@ -217,9 +217,18 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 1000,
   }
 }
 
+#' @importFrom modelbased zero_crossings
+#' 
 #' @noRd
 nsec_fct <- function(y, reference, x_vec) {
-  x_vec[min_abs(y - reference)]
+  val <- min(zero_crossings(y - reference))
+  if(is.na(val)) {
+    return(max(x_vec))} else {
+      floor_x <-  x_vec[floor(val)] 
+      ceiling_x <- x_vec[ceiling(val)]
+      prop_x <- (val-floor(val))*(ceiling_x-floor_x)
+      return(floor_x + prop_x)
+    }
 }
 
 #' @inheritParams nsec

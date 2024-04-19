@@ -260,6 +260,8 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
   }
 }
 
+#' @importFrom modelbased zero_crossings
+#' 
 #' @noRd
 ecx_x_relative <- function(y, ecx_val, x_vec) {
   if (length(which(!is.na(y))) == 0) {
@@ -281,6 +283,8 @@ ecx_x_relative <- function(y, ecx_val, x_vec) {
   outval
 }
 
+#' @importFrom modelbased zero_crossings
+#' 
 #' @noRd
 ecx_x_absolute <- function(y, ecx_val, x_vec) {
   if (length(which(!is.na(y))) == 0) {
@@ -302,6 +306,8 @@ ecx_x_absolute <- function(y, ecx_val, x_vec) {
   outval
 }
 
+#' @importFrom modelbased zero_crossings
+#' 
 #' @noRd
 ecx_x_direct <- function(y, ecx_val, x_vec) {
   if (length(which(!is.na(y))) == 0) {
