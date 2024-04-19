@@ -267,7 +267,16 @@ ecx_x_relative <- function(y, ecx_val, x_vec) {
   } else {
     range_y <- range(y, na.rm = TRUE)
     ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
-    outval <- x_vec[min_abs(y - ecx_y)]
+    
+    val <- min(zero_crossings(y - ecx_y))
+    if(is.na(val)) {
+      outval <- max(x_vec)
+    } else {
+      floor_x <-  x_vec[floor(val)] 
+      ceiling_x <- x_vec[ceiling(val)]
+      prop_x <- (val-floor(val))*(ceiling_x-floor_x)
+      outval <- floor_x + prop_x
+    }
   }
   outval
 }
@@ -279,7 +288,16 @@ ecx_x_absolute <- function(y, ecx_val, x_vec) {
   } else {
     range_y <- c(0, max(y, na.rm = TRUE))
     ecx_y <- max(range_y) - diff(range_y) * (ecx_val / 100)
-    outval <- x_vec[min_abs(y - ecx_y)]
+    
+    val <- min(zero_crossings(y - ecx_y))
+    if(is.na(val)) {
+      outval <- max(x_vec)
+    } else {
+      floor_x <-  x_vec[floor(val)] 
+      ceiling_x <- x_vec[ceiling(val)]
+      prop_x <- (val-floor(val))*(ceiling_x-floor_x)
+      outval <- floor_x + prop_x
+    }
   }
   outval
 }
@@ -290,7 +308,17 @@ ecx_x_direct <- function(y, ecx_val, x_vec) {
     outval <- max(x_vec)
   } else {
     ecx_y <- ecx_val
-    outval <- x_vec[min_abs(y - ecx_y)]
+    
+    val <- min(zero_crossings(y - ecx_y))
+    if(is.na(val)) {
+      outval <- max(x_vec)
+    } else {
+      floor_x <-  x_vec[floor(val)] 
+      ceiling_x <- x_vec[ceiling(val)]
+      prop_x <- (val-floor(val))*(ceiling_x-floor_x)
+      outval <- floor_x + prop_x
+    }
   }
   outval
 }
+
