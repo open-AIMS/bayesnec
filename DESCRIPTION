@@ -21,6 +21,7 @@ Imports:
     tibble,
     tidyselect,
     evaluate,
+    modelbased,
     rlang,
     chk (>= 0.7.0)
 Suggests:

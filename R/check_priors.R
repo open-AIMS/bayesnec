@@ -43,7 +43,7 @@ check_priors <- function(object, filename = NA, ask = ask) {
 #' @noRd
 #'
 #' @export
-check_priors.bayesnecfit <- function(object, filename = NA) {
+check_priors.bayesnecfit <- function(object, filename = NA, ask = ask) {
   if (!is.na(filename)) {
     chk_character(filename)
   }
