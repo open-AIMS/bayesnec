@@ -9,14 +9,19 @@
 A No-Effect toxicity estimation package that uses brms (Bürkner
 (2018), https://github.com/paul-buerkner/brms) to fit concentration
 (dose)-response data using Bayesian methods for the purpose of estimating
-both Effect Concentration (ECx) values, but more particularly NEC, but more
-particularly 'NEC' (Fox 2010), 'NSEC' (Fisher and Fox 2023), and 'N(S)EC
-(Fisher et al. 2023). Please see ?bnec
-for more details.
+both Effect Concentration (ECx) values, but more particularly 'NEC'
+(Fox 2010), 'NSEC' (Fisher and Fox 2023), and 'N(S)EC (Fisher et al. 2023).
+A full description of bayesnec can be found in Fisher et al. (2024).
+Please see ?bnec for more details. This package expands and supersedes an
+original version implemented in R2jags (Su and Yajima 2020), see Fisher et
 }
 \references{
 Bürkner P-C (2018) Advanced Bayesian Multilevel Modeling with the R Package
 brms. The R Journal, 10: 395-411. doi:10.32614/RJ-2018-017.
+
+Fisher R, Barneche DR, Ricardo GF, Fox, DR (2024) An {R} Package for
+Concentration-Response Modeling and Estimation of Toxicity Metrics
+doi:10.18637/jss.v110.i05.
 
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
 (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
@@ -25,6 +30,12 @@ doi: 10.1002/etc.5610.
 Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
 estimating no-effect toxicity concentrations in ecotoxicology. Integrated
 Environmental Assessment and Management. doi:10.1002/ieam.4809.
+
+Fisher R, Ricardo GF, Fox, DR (2020) jagsNEC: A Bayesian No Effect
+Concentration (NEC) package. doi:10.5281/ZENODO.3966864.
+
+Su Y, Yajima M (2020). R2jags: Using R to Run 'JAGS'. R package version
+0.6-1, \url{https://CRAN.R-project.org/package=R2jags}.
 
 Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
