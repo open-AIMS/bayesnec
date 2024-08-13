@@ -22,7 +22,7 @@ author:
     affiliation: 'Australian Institute of Marine Science'
     affiliation2:
       - Australian Institute of Marine Science, Crawley, WA, Australia
-    orcid: 0000-0002-4568-2362
+    orcid: 0000-0002-2220-3971
   - name: Gerard Ricardo
     address:
       - "Australian Institute of Marine Science, Townsville, Qld, Australia"
