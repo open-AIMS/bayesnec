@@ -1,7 +1,7 @@
 Package: bayesnec
 Title: A Bayesian No-Effect- Concentration (NEC) Algorithm
 Version: 2.1.3.0
-Authors@R: c(person("Rebecca", "Fisher", email = "r.fisher@aims.gov.au", role = c("aut", "cre"),comment = c(ORCID = "0000-0001-5148-6731")), person("Diego R.","Barneche",role="aut",comment = c(ORCID = "0000-0002-2220-3971")), person("Gerard F.","Ricardo",role="aut",comment = c(ORCID = "0000-0002-7761-0806")), person("David R.","Fox",role="aut",comment = c(ORCID = "0000-0002-3178-7243")))
+Authors@R: c(person("Rebecca", "Fisher", email = "r.fisher@aims.gov.au", role = c("aut", "cre"),comment = c(ORCID = "0000-0001-5148-6731")), person("Diego R.","Barneche",role="aut",comment = c(ORCID = "0000-0002-4568-2362")), person("Gerard F.","Ricardo",role="aut",comment = c(ORCID = "0000-0002-2220-3971")), person("David R.","Fox",role="aut",comment = c(ORCID = "0000-0002-3178-7243")))
 Description: Implementation of No-Effect-Concentration estimation that uses 'brms' (see Burkner (2017)<doi:10.18637/jss.v080.i01>; Burkner (2018)<doi:10.32614/RJ-2018-017>; Carpenter 'et al.' (2017)<doi:10.18637/jss.v076.i01> to fit concentration(dose)-response data using Bayesian methods for the purpose of estimating 'ECx' values, but more particularly 'NEC' (see Fox (2010)<doi:10.1016/j.ecoenv.2009.09.012>), 'NSEC' (see Fisher and Fox (2023)<doi:10.1002/etc.5610>), and 'N(S)EC (see Fisher et al. 2023<doi:10.1002/ieam.4809>). A full description of this package can be found in Fisher 'et al.' (2024)<doi:10.18637/jss.v110.i05>. This package expands and supersedes an original version implemented in R2jags (see Su and Yajima (2020)<https://CRAN.R-project.org/package=R2jags>; Fisher et al. (2020)<doi:10.5281/ZENODO.3966864>).
 Depends:
     R (>= 4.1),

@@ -22,13 +22,13 @@ author:
     affiliation: 'Australian Institute of Marine Science'
     affiliation2:
       - Australian Institute of Marine Science, Crawley, WA, Australia
-    orcid: 0000-0002-2220-3971
+    orcid: 0000-0002-4568-2362
   - name: Gerard Ricardo
     address:
       - "Australian Institute of Marine Science, Townsville, Qld, Australia"
     affiliation: 'The University of Queensland'
     affiliation2: 'The University of Queensland, St Lucia, Qld, Australia'
-    orcid: 0000-0002-7761-0806
+    orcid: 0000-0002-2220-3971
   - name: David Fox
     address:
       - "Environmetrics Australia, Beaumaris, Victoria, Australia"
