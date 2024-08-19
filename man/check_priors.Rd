@@ -5,7 +5,7 @@
 \title{Plots the prior and posterior parameter probability densities from an
 object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 \usage{
-check_priors(object, filename = NA, ask = ask)
+check_priors(object, filename = NA, ask = TRUE)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
@@ -15,8 +15,9 @@ check_priors(object, filename = NA, ask = ask)
 as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non
 empty character string will indicate the user wants to save the plots.}
 
-\item{ask}{Should the user be asked to hit enter for next page for a
-\code{\link{bayesmanecfit}} object?}
+\item{ask}{Should the user be asked to hit enter for next page? Defaults to
+\code{TRUE}. Only relevant if \code{object} is of class
+\code{\link{bayesmanecfit}}.}
 }
 \value{
 A plot of the prior and posterior parameter probability densities.

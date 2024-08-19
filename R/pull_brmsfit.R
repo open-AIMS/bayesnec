@@ -1,4 +1,4 @@
-#' Extract and object of class \code{\link{brmsfit}} from
+#' Extract and object of class \code{\link[brms]{brmsfit}} from
 #' \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 #'
 #' @param object An object of class \code{\link{bayesnecfit}} or
@@ -7,7 +7,7 @@
 #'
 #' @seealso \code{\link{bnec}}
 #'
-#' @return A plot of the prior and posterior parameter probability densities.
+#' @return An object of class \code{\link[brms]{brmsfit}}.
 #'
 #' @examples
 #' library(bayesnec)

@@ -4,7 +4,7 @@
 \alias{pull_brmsfit.bayesnecfit}
 \alias{pull_brmsfit.bayesmanecfit}
 \alias{pull_brmsfit}
-\title{Extract and object of class \code{\link{brmsfit}} from
+\title{Extract and object of class \code{\link[brms]{brmsfit}} from
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 \usage{
 \method{pull_brmsfit}{bayesnecfit}(object, ...)
@@ -23,10 +23,10 @@ pull_brmsfit(object, ...)
 the model to extract.}
 }
 \value{
-A plot of the prior and posterior parameter probability densities.
+An object of class \code{\link[brms]{brmsfit}}.
 }
 \description{
-Extract and object of class \code{\link{brmsfit}} from
+Extract and object of class \code{\link[brms]{brmsfit}} from
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
 \examples{

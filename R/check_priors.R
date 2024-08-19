@@ -6,8 +6,9 @@
 #' @param filename An optional \code{\link[base]{character}} vector to be used
 #' as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non
 #' empty character string will indicate the user wants to save the plots.
-#' @param ask Should the user be asked to hit enter for next page for a 
-#' \code{\link{bayesmanecfit}} object?
+#' @param ask Should the user be asked to hit enter for next page? Defaults to
+#' \code{TRUE}. Only relevant if \code{object} is of class
+#' \code{\link{bayesmanecfit}}.
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -21,10 +22,9 @@
 #' }
 #'
 #' @export
-check_priors <- function(object, filename = NA, ask = ask) {
+check_priors <- function(object, filename = NA, ask = TRUE) {
   UseMethod("check_priors")
 }
-
 
 #' Plots the prior and posterior parameter probability densities from an
 #' object of class \code{\link{bayesnecfit}}.
@@ -43,7 +43,7 @@ check_priors <- function(object, filename = NA, ask = ask) {
 #' @noRd
 #'
 #' @export
-check_priors.bayesnecfit <- function(object, filename = NA) {
+check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE) {
   if (!is.na(filename)) {
     chk_character(filename)
   }
