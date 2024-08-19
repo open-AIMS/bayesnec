@@ -1,204 +1,70 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>/404.html</loc>
-  </url>
-  <url>
-    <loc>/LICENSE-text.html</loc>
-  </url>
-  <url>
-    <loc>/LICENSE.html</loc>
-  </url>
-  <url>
-    <loc>/articles/example1.html</loc>
-  </url>
-  <url>
-    <loc>/articles/example2.html</loc>
-  </url>
-  <url>
-    <loc>/articles/example2b.html</loc>
-  </url>
-  <url>
-    <loc>/articles/example3.html</loc>
-  </url>
-  <url>
-    <loc>/articles/example4.html</loc>
-  </url>
-  <url>
-    <loc>/articles/example5.html</loc>
-  </url>
-  <url>
-    <loc>/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>/authors.html</loc>
-  </url>
-  <url>
-    <loc>/index.html</loc>
-  </url>
-  <url>
-    <loc>/news/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/amend.html</loc>
-  </url>
-  <url>
-    <loc>/reference/autoplot.html</loc>
-  </url>
-  <url>
-    <loc>/reference/average_estimates.html</loc>
-  </url>
-  <url>
-    <loc>/reference/bayesmanecfit-class.html</loc>
-  </url>
-  <url>
-    <loc>/reference/bayesnec-package.html</loc>
-  </url>
-  <url>
-    <loc>/reference/bayesnecfit-class.html</loc>
-  </url>
-  <url>
-    <loc>/reference/bayesnecformula.html</loc>
-  </url>
-  <url>
-    <loc>/reference/bnec.html</loc>
-  </url>
-  <url>
-    <loc>/reference/bnec_newdata.html</loc>
-  </url>
-  <url>
-    <loc>/reference/bnecfit-class.html</loc>
-  </url>
-  <url>
-    <loc>/reference/c.bnecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/check_chains.html</loc>
-  </url>
-  <url>
-    <loc>/reference/check_formula.html</loc>
-  </url>
-  <url>
-    <loc>/reference/check_priors.html</loc>
-  </url>
-  <url>
-    <loc>/reference/compare_estimates.html</loc>
-  </url>
-  <url>
-    <loc>/reference/compare_fitted.html</loc>
-  </url>
-  <url>
-    <loc>/reference/compare_posterior.html</loc>
-  </url>
-  <url>
-    <loc>/reference/dispersion.html</loc>
-  </url>
-  <url>
-    <loc>/reference/ecx.html</loc>
-  </url>
-  <url>
-    <loc>/reference/expand_manec.html</loc>
-  </url>
-  <url>
-    <loc>/reference/expand_nec.html</loc>
-  </url>
-  <url>
-    <loc>/reference/fitted.html</loc>
-  </url>
-  <url>
-    <loc>/reference/formula.html</loc>
-  </url>
-  <url>
-    <loc>/reference/ggbnec_data.html</loc>
-  </url>
-  <url>
-    <loc>/reference/herbicide.html</loc>
-  </url>
-  <url>
-    <loc>/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/is_manecsummary.html</loc>
-  </url>
-  <url>
-    <loc>/reference/is_necsummary.html</loc>
-  </url>
-  <url>
-    <loc>/reference/make_brmsformula.html</loc>
-  </url>
-  <url>
-    <loc>/reference/manec_example.html</loc>
-  </url>
-  <url>
-    <loc>/reference/manecsummary-class.html</loc>
-  </url>
-  <url>
-    <loc>/reference/model.frame.html</loc>
-  </url>
-  <url>
-    <loc>/reference/models.html</loc>
-  </url>
-  <url>
-    <loc>/reference/nec.html</loc>
-  </url>
-  <url>
-    <loc>/reference/nec_data.html</loc>
-  </url>
-  <url>
-    <loc>/reference/necsummary-class.html</loc>
-  </url>
-  <url>
-    <loc>/reference/nsec.html</loc>
-  </url>
-  <url>
-    <loc>/reference/plot.html</loc>
-  </url>
-  <url>
-    <loc>/reference/plus-.bnecfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/posterior_epred.html</loc>
-  </url>
-  <url>
-    <loc>/reference/posterior_predict.html</loc>
-  </url>
-  <url>
-    <loc>/reference/prebayesnecfit-class.html</loc>
-  </url>
-  <url>
-    <loc>/reference/predict.html</loc>
-  </url>
-  <url>
-    <loc>/reference/print.html</loc>
-  </url>
-  <url>
-    <loc>/reference/pull_brmsfit.html</loc>
-  </url>
-  <url>
-    <loc>/reference/pull_out.html</loc>
-  </url>
-  <url>
-    <loc>/reference/pull_prior.html</loc>
-  </url>
-  <url>
-    <loc>/reference/quote-beta_binomial-quote.html</loc>
-  </url>
-  <url>
-    <loc>/reference/rhat.html</loc>
-  </url>
-  <url>
-    <loc>/reference/sample_priors.html</loc>
-  </url>
-  <url>
-    <loc>/reference/show_params.html</loc>
-  </url>
-  <url>
-    <loc>/reference/step.html</loc>
-  </url>
-  <url>
-    <loc>/reference/summary.html</loc>
-  </url>
-  <url>
-    <loc>/reference/update.bnecfit.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/LICENSE-text.html</loc></url>
+<url><loc>/LICENSE.html</loc></url>
+<url><loc>/articles/example1.html</loc></url>
+<url><loc>/articles/example2.html</loc></url>
+<url><loc>/articles/example2b.html</loc></url>
+<url><loc>/articles/example3.html</loc></url>
+<url><loc>/articles/example4.html</loc></url>
+<url><loc>/articles/example5.html</loc></url>
+<url><loc>/articles/index.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/news/index.html</loc></url>
+<url><loc>/reference/amend.html</loc></url>
+<url><loc>/reference/autoplot.html</loc></url>
+<url><loc>/reference/average_estimates.html</loc></url>
+<url><loc>/reference/bayesmanecfit-class.html</loc></url>
+<url><loc>/reference/bayesnec-package.html</loc></url>
+<url><loc>/reference/bayesnecfit-class.html</loc></url>
+<url><loc>/reference/bayesnecformula.html</loc></url>
+<url><loc>/reference/bnec.html</loc></url>
+<url><loc>/reference/bnec_newdata.html</loc></url>
+<url><loc>/reference/bnecfit-class.html</loc></url>
+<url><loc>/reference/c.bnecfit.html</loc></url>
+<url><loc>/reference/check_chains.html</loc></url>
+<url><loc>/reference/check_formula.html</loc></url>
+<url><loc>/reference/check_priors.html</loc></url>
+<url><loc>/reference/compare_estimates.html</loc></url>
+<url><loc>/reference/compare_fitted.html</loc></url>
+<url><loc>/reference/compare_posterior.html</loc></url>
+<url><loc>/reference/dispersion.html</loc></url>
+<url><loc>/reference/ecx.html</loc></url>
+<url><loc>/reference/expand_manec.html</loc></url>
+<url><loc>/reference/expand_nec.html</loc></url>
+<url><loc>/reference/fitted.html</loc></url>
+<url><loc>/reference/formula.html</loc></url>
+<url><loc>/reference/ggbnec_data.html</loc></url>
+<url><loc>/reference/herbicide.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/is_manecsummary.html</loc></url>
+<url><loc>/reference/is_necsummary.html</loc></url>
+<url><loc>/reference/make_brmsformula.html</loc></url>
+<url><loc>/reference/manec_example.html</loc></url>
+<url><loc>/reference/manecsummary-class.html</loc></url>
+<url><loc>/reference/model.frame.html</loc></url>
+<url><loc>/reference/models.html</loc></url>
+<url><loc>/reference/nec.html</loc></url>
+<url><loc>/reference/nec_data.html</loc></url>
+<url><loc>/reference/necsummary-class.html</loc></url>
+<url><loc>/reference/nsec.html</loc></url>
+<url><loc>/reference/plot.html</loc></url>
+<url><loc>/reference/plus-.bnecfit.html</loc></url>
+<url><loc>/reference/posterior_epred.html</loc></url>
+<url><loc>/reference/posterior_predict.html</loc></url>
+<url><loc>/reference/prebayesnecfit-class.html</loc></url>
+<url><loc>/reference/predict.html</loc></url>
+<url><loc>/reference/print.html</loc></url>
+<url><loc>/reference/pull_brmsfit.html</loc></url>
+<url><loc>/reference/pull_out.html</loc></url>
+<url><loc>/reference/pull_prior.html</loc></url>
+<url><loc>/reference/quote-beta_binomial-quote.html</loc></url>
+<url><loc>/reference/rhat.html</loc></url>
+<url><loc>/reference/sample_priors.html</loc></url>
+<url><loc>/reference/show_params.html</loc></url>
+<url><loc>/reference/step.html</loc></url>
+<url><loc>/reference/summary.html</loc></url>
+<url><loc>/reference/update.bnecfit.html</loc></url>
 </urlset>
+
