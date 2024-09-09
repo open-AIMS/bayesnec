@@ -57,8 +57,11 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   if (mod_class == "ecx") {
     reference <- quantile(pred_posterior[, 1], sig_val)
-    grab <- apply(pred_posterior - reference, 1, min_abs)
-    ne_posterior <- pred_data$x[grab]
+    # grab <- apply(pred_posterior - reference, 1, min_abs)
+    # ne_posterior <- pred_data$x[grab]
+    ne_posterior <- apply(pred_posterior, 1, nsec_fct, 
+                          reference = reference, x_vec = pred_data$x)
+                       
     x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
     x_call <- str2lang(eval(parse(text = x_str)))
     if (inherits(x_call, "call")) {
