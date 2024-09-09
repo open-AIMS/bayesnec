@@ -117,9 +117,9 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 1000,
   })
   ecnsec <- quantile(ecnsecP, probs = prob_vals)
   if (grepl("horme", object$model)) {
-    n <- seq_len(nrow(p_samples))
-    p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
-                            p_samples, hormesis_def, fct = "rbind")
+    # n <- seq_len(nrow(p_samples))
+    # p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
+    #                         p_samples, hormesis_def, fct = "rbind")
     nec_posterior <- as_draws_df(object$fit)[["b_nec_Intercept"]]
     if (hormesis_def == "max") {
       reference <- quantile(apply(p_samples, 2, max), probs = sig_val)
@@ -218,8 +218,16 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 1000,
 }
 
 #' @noRd
+#' @importFrom modelbased zero_crossings
 nsec_fct <- function(y, reference, x_vec) {
-  x_vec[min_abs(y - reference)]
+  val <- min(zero_crossings(y - reference))
+  if(is.na(val)) {
+    return(max(x_vec))} else {
+      floor_x <-  x_vec[floor(val)] 
+      ceiling_x <- x_vec[ceiling(val)]
+      prop_x <- (val-floor(val))*(ceiling_x-floor_x)
+      return(floor_x + prop_x)
+    }
 }
 
 #' @inheritParams nsec
@@ -307,9 +315,9 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 1000,
     ecnsec <- quantile(ecnsecP, probs = prob_vals)
     
     if (horme) {
-      n <- seq_len(nrow(p_samples))
-      p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
-                                         p_samples, hormesis_def, fct = "rbind")
+      # n <- seq_len(nrow(p_samples))
+      # p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
+      #                                    p_samples, hormesis_def, fct = "rbind")
       nec_posterior <- as_draws_df(object$fit)[["b_nec_Intercept"]]
       if (hormesis_def == "max") {
         reference <- quantile(apply(p_samples, 2, max), probs = sig_val)
@@ -333,9 +341,9 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 1000,
       })
       ecnsec <- quantile(ecnsecP, probs = prob_vals)      
       if (horme) {
-        n <- seq_len(nrow(p_samples))
-        p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
-                                           p_samples, hormesis_def, fct = "rbind")
+        # n <- seq_len(nrow(p_samples))
+        # p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
+        #                                    p_samples, hormesis_def, fct = "rbind")
         nec_posterior <- as_draws_df(object$fit)[["b_nec_Intercept"]]
         if (hormesis_def == "max") {
           reference <- quantile(apply(p_samples, 2, max), probs = sig_val)
