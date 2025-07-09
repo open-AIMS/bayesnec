@@ -31,18 +31,18 @@ define_prior <- function(model, family, predictor, response) {
   x_type <- set_distribution(predictor, silence_y_msgs = TRUE,
                              silence_x_msgs = FALSE)
   u_t_g <- paste0("gamma(2, ",
-                  1 / (quantile(response, probs = 0.75) / 2),
+                  1 / (quantile(response, probs = 1) / 2),
                   ")")
   u_b_g <- paste0("gamma(2, ",
-                  1 / ((quantile(response, probs = 0.25) +
+                  1 / ((quantile(response, probs = 0) +
                     min(response[response > 0]) / 100) / 2),
                   ")")
   y_t_prs <- c(Gamma = u_t_g,
                poisson = u_t_g,
                negbinomial = u_t_g,
                gaussian = paste0("normal(",
-                                 quantile(response, probs = 0.9),
-                                 ", ", sd(response) * 2.5, ")"),
+                                 quantile(response, probs = 1),
+                                 ", ", sd(response) * 2, ")"),
                bernoulli = "beta(5, 2)",
                binomial = "beta(5, 2)",
                "beta_binomial" = "beta(5, 2)",
@@ -51,8 +51,8 @@ define_prior <- function(model, family, predictor, response) {
                poisson = u_b_g,
                negbinomial = u_b_g,
                gaussian = paste0("normal(",
-                                 quantile(response, probs = 0.1),
-                                 ", ", sd(response) * 2.5, ")"),
+                                 quantile(response, probs = 0),
+                                 ", ", sd(response) * 2, ")"),
                bernoulli = "beta(2, 5)",
                binomial = "beta(2, 5)",
                "beta_binomial" = "beta(2, 5)",
