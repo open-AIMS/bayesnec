@@ -101,13 +101,16 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 10, x_range = NA,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
+  x_name <- colnames(newdata_list$newdata)
   p_samples <- posterior_epred(object, 
                                newdata = newdata_list$newdata,
                                re_formula = NA)
   x_vec <- newdata_list$x_vec
-  
+
+  newdat_nsec <- data.frame(x=c(max(x_vec), nsec[1]))
+  colnames(newdat_nsec) <- x_name
   pred_val_nsec <- posterior_epred(object, 
-                                   newdata = data.frame(x=c(max(x_vec), nsec[["Estimate"]])),
+                                   newdata = newdat_nsec,
                                    re_formula = NA)
   reference <- median(pred_val_nsec[, 2])
 
