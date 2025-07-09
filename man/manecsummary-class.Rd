@@ -55,6 +55,10 @@ model exhibited convergence issues based on the Rhat evaluation.}
 }}
 
 \references{
+Fisher R, Barneche DR, Ricardo GF, Fox, DR (2024) An {R} Package for
+Concentration-Response Modeling and Estimation of Toxicity Metrics
+doi:10.18637/jss.v110.i05.
+
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
 (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
 doi: 10.1002/etc.5610.

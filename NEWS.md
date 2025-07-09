@@ -1,3 +1,7 @@
+# bayesnec 2.1.3.0
+
+- Added citation for JSS manuscript describing `bayesnec`.
+
 # bayesnec 2.1.2.0
 
 - Added `step` function to toolkit to allow for `brms` non-linear formula evaluation ([89edef72](https://github.com/open-AIMS/bayesnec/commit/89edef72)).

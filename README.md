@@ -66,5 +66,5 @@ Further Information
 -------------------
 
 `bayesnec` is provided by the [Australian Institute of Marine
-Science](https://www.aims.gov.au) under the GPL-2 License
+Science](https://www.aims.gov.au/) under the GPL-2 License
 ([GPL-2](https://opensource.org/license/gpl-2-0)).

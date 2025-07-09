@@ -28,7 +28,7 @@ author:
       - "Australian Institute of Marine Science, Townsville, Qld, Australia"
     affiliation: 'The University of Queensland'
     affiliation2: 'The University of Queensland, St Lucia, Qld, Australia'
-    orcid: 0000-0002-7761-0806
+    orcid: 0000-0002-2220-3971
   - name: David Fox
     address:
       - "Environmetrics Australia, Beaumaris, Victoria, Australia"

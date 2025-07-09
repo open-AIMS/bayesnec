@@ -141,11 +141,11 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
   p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
                                re_formula = NA)
   x_vec <- newdata_list$x_vec
-  if (grepl("horme", object$model)) {
-    n <- seq_len(nrow(p_samples))
-    p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
-                            p_samples, hormesis_def, fct = "rbind")
-  }
+  # if (grepl("horme", object$model)) {
+  #   n <- seq_len(nrow(p_samples))
+  #   p_samples <- do_wrapper(n, modify_posterior, object, x_vec,
+  #                           p_samples, hormesis_def, fct = "rbind")
+  # }
   ecx_fct <- get(paste0("ecx_x_", type))
   ecx_out <- apply(p_samples, 1, ecx_fct, ecx_val, x_vec)
   formula <- object$bayesnecformula

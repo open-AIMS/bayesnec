@@ -6,6 +6,9 @@
 #' @param filename An optional \code{\link[base]{character}} vector to be used
 #' as a pdf filename in the case of a \code{\link{bayesmanecfit}}. Any non
 #' empty character string will indicate the user wants to save the plots.
+#' @param ask Should the user be asked to hit enter for next page? Defaults to
+#' \code{TRUE}. Only relevant if \code{object} is of class
+#' \code{\link{bayesmanecfit}}.
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -19,10 +22,9 @@
 #' }
 #'
 #' @export
-check_priors <- function(object, filename = NA) {
+check_priors <- function(object, filename = NA, ask = TRUE) {
   UseMethod("check_priors")
 }
-
 
 #' Plots the prior and posterior parameter probability densities from an
 #' object of class \code{\link{bayesnecfit}}.
@@ -41,7 +43,7 @@ check_priors <- function(object, filename = NA) {
 #' @noRd
 #'
 #' @export
-check_priors.bayesnecfit <- function(object, filename = NA) {
+check_priors.bayesnecfit <- function(object, filename = NA, ask = TRUE) {
   if (!is.na(filename)) {
     chk_character(filename)
   }
@@ -80,7 +82,7 @@ check_priors.bayesnecfit <- function(object, filename = NA) {
 #' @noRd
 #'
 #' @export
-check_priors.bayesmanecfit <- function(object, filename = NA) {
+check_priors.bayesmanecfit <- function(object, filename = NA, ask = TRUE) {
   if (!is.na(filename)) {
     chk_character(filename)
   }
@@ -88,7 +90,7 @@ check_priors.bayesmanecfit <- function(object, filename = NA) {
     pdf(file = paste(filename, ".pdf", sep = ""), onefile = TRUE,
         width = 12, height = 4)
   } else {
-    devAskNewPage(ask = TRUE)
+    devAskNewPage(ask = ask)
   }
   for (m in seq_len(length(object$mod_fits))) {
     out_plot <- check_priors(object = pull_out(object, model = names(object$mod_fits)[m])) +
