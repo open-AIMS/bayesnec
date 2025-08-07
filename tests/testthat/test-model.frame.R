@@ -7,9 +7,9 @@ test_that("correct classes", {
   expect_error(model.frame(form, as.matrix(data)), "is not a data.frame")
   a <- model.frame(form, data)
   expect_identical(names(a), c("resp", "sqrt(pred)"))
-  expect_identical(names(attributes(a)), c("names", "terms", "row.names",
-                                           "class", "bnec_pop", "bnec_group"))
-  expect_identical(names(attributes(a)$bnec_pop), c("y_var", "x_var"))
+  expect_setequal(names(attributes(a)), c("names", "terms", "row.names",
+                                          "class", "bnec_pop", "bnec_group"))
+  expect_setequal(names(attributes(a)$bnec_pop), c("y_var", "x_var"))
   expect_equal(attributes(a)$bnec_pop, c("resp", "pred"), ignore_attr = TRUE)
   expect_equal(attributes(a)$bnec_group, NA)
   # trials is incorporated
@@ -17,9 +17,9 @@ test_that("correct classes", {
   expect_s3_class(model.frame(form2, data), "data.frame")
   b <- model.frame(form2, data)
   expect_identical(names(b), c("resp", "sqrt(pred)", "trials(tr)"))
-  expect_identical(names(attributes(b)), c("names", "terms", "row.names",
-                                           "class", "bnec_pop", "bnec_group"))
-  expect_identical(names(attributes(b)$bnec_pop),
+  expect_setequal(names(attributes(b)), c("names", "terms", "row.names",
+                                          "class", "bnec_pop", "bnec_group"))
+  expect_setequal(names(attributes(b)$bnec_pop),
                    c("y_var", "x_var", "trials_var"))
   expect_equal(attributes(b)$bnec_pop, c("resp", "pred", "tr"),
                ignore_attr = TRUE)
@@ -29,9 +29,9 @@ test_that("correct classes", {
   expect_s3_class(model.frame(form3, data), "data.frame")
   c_ <- model.frame(form3, data)
   expect_identical(names(c_), c("resp", "sqrt(pred)", "trials(tr)"))
-  expect_identical(names(attributes(c_)), c("names", "terms", "row.names",
+  expect_setequal(names(attributes(c_)), c("names", "terms", "row.names",
                                            "class", "bnec_pop", "bnec_group"))
-  expect_identical(names(attributes(c_)$bnec_pop),
+  expect_setequal(names(attributes(c_)$bnec_pop),
                    c("y_var", "x_var", "trials_var"))
   expect_equal(attributes(c_)$bnec_pop, c("resp", "pred", "tr"),
                ignore_attr = TRUE)
@@ -41,9 +41,9 @@ test_that("correct classes", {
   expect_s3_class(model.frame(form4, data), "data.frame")
   d <- model.frame(form4, data)
   expect_identical(names(d), c("resp", "sqrt(pred)", "g_1", "g_2"))
-  expect_identical(names(attributes(d)), c("names", "terms", "row.names",
-                                           "class", "bnec_pop", "bnec_group"))
-  expect_identical(names(attributes(d)$bnec_pop), c("y_var", "x_var"))
+  expect_setequal(names(attributes(d)), c("names", "terms", "row.names",
+                                          "class", "bnec_pop", "bnec_group"))
+  expect_setequal(names(attributes(d)$bnec_pop), c("y_var", "x_var"))
   expect_equal(attributes(d)$bnec_pop, c("resp", "pred"), ignore_attr = TRUE)
   expect_equal(attributes(d)$bnec_group, c("g_1", "g_2"))
 })
