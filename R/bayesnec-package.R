@@ -9,7 +9,6 @@
 #' Please see ?bnec for more details. This package expands and supersedes an
 #' original version implemented in R2jags (Su and Yajima 2020), see Fisher et
 #  al. (2020).
-#' @docType package
 #' @name bayesnec-package
 #' @aliases bayesnec
 #' @importFrom ggplot2 autoplot
@@ -40,4 +39,4 @@
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
 #' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
-NULL
+"_PACKAGE"

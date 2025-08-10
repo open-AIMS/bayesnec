@@ -41,3 +41,22 @@ Fox DR (2010). A Bayesian Approach for Determining the No Effect
 Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
 and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://open-aims.github.io/bayesnec/}
+  \item Report bugs at \url{https://github.com/open-aims/bayesnec/issues}
+}
+
+}
+\author{
+\strong{Maintainer}: Rebecca Fisher \email{r.fisher@aims.gov.au} (\href{https://orcid.org/0000-0001-5148-6731}{ORCID})
+
+Authors:
+\itemize{
+  \item Diego R. Barneche (\href{https://orcid.org/0000-0002-4568-2362}{ORCID})
+  \item Gerard F. Ricardo (\href{https://orcid.org/0000-0002-2220-3971}{ORCID})
+  \item David R. Fox (\href{https://orcid.org/0000-0002-3178-7243}{ORCID})
+}
+
+}
