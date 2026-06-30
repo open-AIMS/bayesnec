@@ -22,7 +22,8 @@ Imports:
     tidyselect,
     evaluate,
     rlang,
-    chk (>= 0.7.0)
+    chk (>= 0.7.0),
+    modelbased
 Suggests:
     rstan,
     knitr,
