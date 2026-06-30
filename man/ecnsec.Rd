@@ -78,7 +78,7 @@ model is estimated at a percent decline from the control.
 library(bayesnec)
 
 data(manec_example)
-ecnsec(manec_example)
+ecnsec(manec_example, nsec = 2)
 }
 
 }

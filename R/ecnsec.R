@@ -49,7 +49,7 @@
 #' library(bayesnec)
 #'
 #' data(manec_example)
-#' ecnsec(manec_example)
+#' ecnsec(manec_example, nsec = 2)
 #' }
 #'
 #' @export
