@@ -423,6 +423,7 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
                 colour = "dodgerblue4")
   }
   out +
+    scale_x_continuous(labels = function(x) signif(x, 2)) +
     theme_classic() +
     facet_wrap(~.data$model, scales = "free", ncol = 2) +
     theme(strip.text = element_text(hjust = 0),
@@ -432,4 +433,5 @@ ggbnec <- function(x, nec = TRUE, ecx = FALSE) {
           panel.border = element_rect(colour = NA, fill = NA)) +
     labs(x = "Predictor",
          y = "Response")
+  
 }
