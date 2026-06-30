@@ -5,7 +5,10 @@ test_that("returns ggplot for bayesnecfit objects", {
   p <- check_priors(nec4param)
   expect_error(print(p), NA)
   expect_silent(check_priors(nec4param))
-  expect_equal(class(p), c("gg", "ggplot"))
+  # Check inheritance rather than the exact class vector: ggplot2 >= 4.0 builds
+  # plots as S7 objects, so class(p) gained extra entries ("ggplot2::ggplot",
+  # "S7_object", ...) and an exact-equality test breaks across versions.
+  expect_s3_class(p, "ggplot")
 })
 
 test_that("returns pdf for bayesmanecfit objects", {
