@@ -6,6 +6,9 @@
   `"regularizing"` option builds narrower priors, with the no-effect (`top`)
   parameter centred on the control mean (the upper end of the response range
   for these monotonically decreasing models).
+- `bnec()` now takes `prior` as an explicit argument (previously passed through
+  `...`). This ensures a user-supplied `prior =` is matched exactly rather than
+  being partial-matched to the new `prior_type` argument.
 
 # bayesnec 2.1.3.0
 

@@ -45,14 +45,19 @@
 #' \code{\link[base]{character}} vector containing the
 #' names of the columns containing the variables used in the random model
 #' formula.
+#' @param prior An optional \code{\link[brms]{brmsprior}} object (or, when
+#' multiple models are fitted, a named \code{\link[base]{list}} of such objects)
+#' specifying the priors to use, passed to \code{\link[brms]{brm}}. When omitted,
+#' \code{\link{bnec}} builds default priors according to \code{prior_type}. This
+#' is an explicit argument (rather than being passed through \code{...}) so that
+#' it is matched exactly and not confused with \code{prior_type}.
 #' @param prior_type A \code{\link[base]{character}} string selecting the set of
 #' default priors to build when the user does not supply their own. Either
 #' \code{"uninformative"} (the default; the weakly-informative priors described
 #' in Fisher et al. 2024) or \code{"regularizing"} (narrower priors, with the
 #' no-effect \code{top} parameter centred on the control mean, which sits at the
 #' upper end of the response range for these monotonically decreasing models).
-#' Ignored when priors are supplied directly via the \code{prior} argument to
-#' \code{\link[brms]{brm}}.
+#' Ignored when priors are supplied directly via the \code{prior} argument.
 #' @param ... Further arguments to \code{\link[brms]{brm}}.
 #'
 #' @details
@@ -220,7 +225,7 @@
 bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  loo_controls, x_var = NULL, y_var = NULL, trials_var = NULL,
                  model = NULL, random = NULL, random_vars = NULL,
-                 prior_type = "uninformative", ...) {
+                 prior = NULL, prior_type = "uninformative", ...) {
   chk_number(resolution)
   chk_number(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
@@ -237,6 +242,13 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   model <- get_model_from_formula(formula)
   brm_args <- list(...)
+  # `prior` is an explicit argument (rather than relying on `...`) so that a
+  # user-supplied `prior =` is matched exactly and cannot be captured by partial
+  # matching against `prior_type`. Only fold it into brm_args when supplied, so
+  # that the default-prior machinery still runs when it is not.
+  if (!is.null(prior)) {
+    brm_args$prior <- prior
+  }
   brm_args$family <- retrieve_valid_family(brm_args, bdat)
   model <- check_models(model, brm_args$family, bdat)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
