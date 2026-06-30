@@ -468,7 +468,8 @@ retrieve_var <- function(data, var, error = FALSE) {
 
 #' @noRd
 add_brm_defaults <- function(brm_args, model, family, predictor, response,
-                             skip_check, custom_name) {
+                             skip_check, custom_name,
+                             prior_type = "uninformative") {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
   }
@@ -483,7 +484,8 @@ add_brm_defaults <- function(brm_args, model, family, predictor, response,
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
   if (inherits(priors, "try-error")) {
-    brm_args$prior <- define_prior(model, family, predictor, response)
+    brm_args$prior <- define_prior(model, family, predictor, response,
+                                   prior_type = prior_type)
   } else {
     brm_args$prior <- priors
   }

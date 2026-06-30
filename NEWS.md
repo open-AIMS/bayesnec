@@ -1,3 +1,12 @@
+# bayesnec 2.1.3.2
+
+- Added a `prior_type` argument to `bnec()` and `amend()` for selecting the set
+  of default priors. The default, `"uninformative"`, reproduces the
+  weakly-informative priors described in Fisher et al. (2024, JSS). The new
+  `"regularizing"` option builds narrower priors, with the no-effect (`top`)
+  parameter centred on the control mean (the upper end of the response range
+  for these monotonically decreasing models).
+
 # bayesnec 2.1.3.0
 
 - Added citation for JSS manuscript describing `bayesnec`.

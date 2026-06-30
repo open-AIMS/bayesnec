@@ -45,6 +45,14 @@
 #' \code{\link[base]{character}} vector containing the
 #' names of the columns containing the variables used in the random model
 #' formula.
+#' @param prior_type A \code{\link[base]{character}} string selecting the set of
+#' default priors to build when the user does not supply their own. Either
+#' \code{"uninformative"} (the default; the weakly-informative priors described
+#' in Fisher et al. 2024) or \code{"regularizing"} (narrower priors, with the
+#' no-effect \code{top} parameter centred on the control mean, which sits at the
+#' upper end of the response range for these monotonically decreasing models).
+#' Ignored when priors are supplied directly via the \code{prior} argument to
+#' \code{\link[brms]{brm}}.
 #' @param ... Further arguments to \code{\link[brms]{brm}}.
 #'
 #' @details
@@ -211,9 +219,11 @@
 #' @export
 bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  loo_controls, x_var = NULL, y_var = NULL, trials_var = NULL,
-                 model = NULL, random = NULL, random_vars = NULL, ...) {
+                 model = NULL, random = NULL, random_vars = NULL,
+                 prior_type = "uninformative", ...) {
   chk_number(resolution)
   chk_number(sig_val)
+  prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
 
   mf <- match.call(expand.dots = FALSE)
   m <- sapply(c("x_var", "y_var", "trials_var", "model", "random",
@@ -239,7 +249,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
       model_m <- model[m]
       fit_m <- try(
         fit_bayesnec(formula = formula, data = data, model = model_m,
-                     brm_args = brm_args),
+                     brm_args = brm_args, prior_type = prior_type),
         silent = FALSE
       )
       if (!inherits(fit_m, "try-error")) {
@@ -263,7 +273,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     }
   } else {
     mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
-                            brm_args = brm_args)
+                            brm_args = brm_args, prior_type = prior_type)
     mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
                           resolution = resolution, sig_val = sig_val,
                           loo_controls = loo_controls, model = model)
