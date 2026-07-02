@@ -374,6 +374,7 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
 #' @importFrom ggplot2 ggplot geom_polygon aes geom_line geom_point
 #' @importFrom ggplot2 geom_vline geom_text theme_classic facet_wrap theme
 #' @importFrom ggplot2 element_text element_blank element_rect labs
+#' @importFrom ggplot2 scale_x_continuous
 #' @importFrom dplyr filter
 #' @importFrom rlang .data
 #'
