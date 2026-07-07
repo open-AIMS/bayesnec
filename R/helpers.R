@@ -82,8 +82,10 @@ extract_waic_estimate <- function(x) {
 
 #' @noRd
 w_nec_calc <- function(index, mod_fits, sample_size, mod_stats) {
-  sample(mod_fits[[index]]$ne_posterior,
-         as.integer(round(sample_size * mod_stats[index, "wi"])))
+  sample(
+    mod_fits[[index]]$ne_posterior,
+    as.integer(round(sample_size * mod_stats[index, "wi"]))
+  )
 }
 
 #' @noRd
@@ -137,14 +139,18 @@ handle_set <- function(x, add, drop) {
     }
     tmp <- setdiff(tmp, y)
     if (length(tmp) == 0) {
-      stop("All models removed, nothing to return;\n",
-           "Perhaps try calling function bnec with another ",
-           "model set.")
+      stop(
+        "All models removed, nothing to return;\n",
+        "Perhaps try calling function bnec with another ",
+        "model set."
+      )
     }
   }
   if (identical(sort(x), sort(tmp))) {
-    message("Nothing to amend, please specify a model to ",
-            "either add or drop that differs from the original set.")
+    message(
+      "Nothing to amend, please specify a model to ",
+      "either add or drop that differs from the original set."
+    )
     "wrong_model_output"
   } else {
     tmp
@@ -199,13 +205,13 @@ get_init_predictions <- function(y, x, fct, .args) {
 
 #' @noRd
 check_init_predictions <- function(x, limits) {
-    min(x) > min(limits) & 
+  min(x) > min(limits) &
     max(x) < max(limits) &
     !any(is.na(x)) &
-    !any(is.infinite(x)) & 
-    !any(is.nan(x)) & 
-    x[1]>x[length(x)] &
-    length(unique(x))>3 
+    !any(is.infinite(x)) &
+    !any(is.nan(x)) &
+    x[1] > x[length(x)] &
+    length(unique(x)) > 3
 }
 
 #' @noRd
@@ -266,7 +272,7 @@ print_mat <- function(x, digits = 2) {
 
 #' @noRd
 clean_mod_weights <- function(x) {
-  a <- x$mod_stats[, !sapply(x$mod_stats, function(z)all(is.na(z)))]
+  a <- x$mod_stats[, !sapply(x$mod_stats, function(z) all(is.na(z)))]
   as.matrix(a[, -1])
 }
 
@@ -318,7 +324,7 @@ contains_negative <- function(x) {
 response_link_scale <- function(response, family) {
   link_tag <- family$link
   min_z_val <- min(response[which(response > 0)]) / 100
-  if (link_tag == "logit") {  
+  if (link_tag == "logit") {
     max_o_val <- max(response[which(response < 1)]) +
       (1 - max(response[which(response < 1)])) * 0.99
   }
@@ -338,6 +344,21 @@ response_link_scale <- function(response, family) {
         response <- lr(response, r_out = c(min_z_val, max(response)))
       }
       response <- family$linkfun(response)
+    }
+  } else if (
+    link_tag == "identity" &&
+      family$family %in% c("bernoulli", "binomial", "beta_binomial", "beta")
+  ) {
+    # For identity-link bounded families, mu must be strictly in (0, 1).
+    # Clamp response away from the boundaries so that initial values
+    # derived from it stay within the valid support.
+    if (contains_zero(response)) {
+      response <- lr(response, r_out = c(min_z_val, max(response)))
+    }
+    if (contains_one(response)) {
+      max_o_val <- max(response[which(response < 1)]) +
+        (1 - max(response[which(response < 1)])) * 0.99
+      response <- lr(response, r_out = c(min(response), max_o_val))
     }
   }
   response
@@ -400,7 +421,9 @@ summarise_posterior <- function(mat, x_vec) {
 
 #' @noRd
 is_character <- function(x) {
-  if (is.na(x)) x <- as.character(x)
+  if (is.na(x)) {
+    x <- as.character(x)
+  }
   is.character(x)
 }
 
@@ -448,28 +471,40 @@ retrieve_var <- function(data, var, error = FALSE) {
   out <- try(data[[v_pos]], silent = TRUE)
   if (inherits(out, "try-error")) {
     if (error) {
-      stop("The input variable \"", bnec_vars[[var]],
-           "\" was not properly specified in formula. See ?bayesnecformula")
+      stop(
+        "The input variable \"",
+        bnec_vars[[var]],
+        "\" was not properly specified in formula. See ?bayesnecformula"
+      )
     }
     NULL
   } else if (is.numeric(out)) {
     if (!is.vector(out)) {
-      message("You most likely provided a function to transform your \"",
-              bnec_vars[[var]], "\" that does not return a vector. This is",
-              " likely to cause issues with sampling in Stan. ",
-              " Forcing it to be a vector...")
+      message(
+        "You most likely provided a function to transform your \"",
+        bnec_vars[[var]],
+        "\" that does not return a vector. This is",
+        " likely to cause issues with sampling in Stan. ",
+        " Forcing it to be a vector..."
+      )
     }
     as.vector(out)
   } else {
-    stop("The input variable \"", bnec_vars[[var]],
-         "\" is not numeric.")
+    stop("The input variable \"", bnec_vars[[var]], "\" is not numeric.")
   }
 }
 
 #' @noRd
-add_brm_defaults <- function(brm_args, model, family, predictor, response,
-                             skip_check, custom_name,
-                             prior_type = "uninformative") {
+add_brm_defaults <- function(
+  brm_args,
+  model,
+  family,
+  predictor,
+  response,
+  skip_check,
+  custom_name,
+  prior_type = "uninformative"
+) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
   }
@@ -484,24 +519,39 @@ add_brm_defaults <- function(brm_args, model, family, predictor, response,
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
   if (inherits(priors, "try-error")) {
-    brm_args$prior <- define_prior(model, family, predictor, response,
-                                   prior_type = prior_type)
+    brm_args$prior <- define_prior(
+      model,
+      family,
+      predictor,
+      response,
+      prior_type = prior_type
+    )
   } else {
     brm_args$prior <- priors
   }
   if (!("init" %in% names(brm_args)) || skip_check) {
     msg_tag <- family$family
-    message(paste0("Finding initial values which allow the response to be",
-                   " fitted using a ", model, " model and a ", msg_tag,
-                   " distribution."))
+    message(paste0(
+      "Finding initial values which allow the response to be",
+      " fitted using a ",
+      model,
+      " model and a ",
+      msg_tag,
+      " distribution."
+    ))
     response_link <- response_link_scale(response, family)
     init_seed <- NULL
     if ("seed" %in% names(brm_args)) {
       init_seed <- brm_args$seed
     }
-    inits <- make_good_inits(model, predictor, response_link,
-                             priors = brm_args$prior, chains = brm_args$chains,
-                             seed = init_seed)
+    inits <- make_good_inits(
+      model,
+      predictor,
+      response_link,
+      priors = brm_args$prior,
+      chains = brm_args$chains,
+      seed = init_seed
+    )
     if (length(inits) == 1 && "random" %in% names(inits)) {
       inits <- inits$random
     }
@@ -532,8 +582,12 @@ has_family_changed <- function(x, data, ...) {
     model <- check_models(model, family, bdat)
     checked_df <- check_data(data = bdat, family = family, model = model)
   }
-  out <- all.equal(checked_df$family, x[[1]]$fit$family,
-                   check.attributes = FALSE, check.environment = FALSE)
+  out <- all.equal(
+    checked_df$family,
+    x[[1]]$fit$family,
+    check.attributes = FALSE,
+    check.environment = FALSE
+  )
   if (is.logical(out)) {
     FALSE
   } else {
@@ -568,7 +622,9 @@ find_transformations <- function(data) {
 cleaned_brms_summary <- function(brmsfit) {
   brmssummary <- summary(brmsfit, robust = TRUE)
   rownames(brmssummary$fixed) <- gsub(
-    "\\_Intercept$", "", rownames(brmssummary$fixed)
+    "\\_Intercept$",
+    "",
+    rownames(brmssummary$fixed)
   )
   brmssummary
 }
@@ -589,8 +645,10 @@ check_data_equality <- function(mod_fits) {
     Reduce(f = identical_value) |>
     is.matrix()
   if (!data_are_equal) {
-    stop("Dataset values differ across fits. Datasets need to be identical ",
-         "across the multiple fits.")
+    stop(
+      "Dataset values differ across fits. Datasets need to be identical ",
+      "across the multiple fits."
+    )
   }
   # this second check is needed for cases where a function is passed onto
   # one of the model variables via the formula, e.g. crf(log(x), ...)
@@ -604,8 +662,10 @@ check_data_equality <- function(mod_fits) {
     Reduce(f = identical_value) |>
     is.character()
   if (!cols_are_equal) {
-    stop("Dataset column names differ across fits. Datasets need to be ",
-         "identical across the multiple fits.")
+    stop(
+      "Dataset column names differ across fits. Datasets need to be ",
+      "identical across the multiple fits."
+    )
   }
 }
 
@@ -615,7 +675,7 @@ check_args_newdata <- function(resolution, x_range) {
   chk_numeric(resolution)
   if (!is.na(x_range[1])) {
     chk_numeric(x_range)
-  }  
+  }
 }
 
 #' @noRd
@@ -634,8 +694,14 @@ newdata_eval <- function(object, resolution, x_range) {
 }
 
 #' @noRd
-newdata_eval_fitted <- function(object, resolution, x_range, make_newdata,
-                                fct_eval, ...) {
+newdata_eval_fitted <- function(
+  object,
+  resolution,
+  x_range,
+  make_newdata,
+  fct_eval,
+  ...
+) {
   # Just need one model to extract and generate data
   # since all models are considered to have the exact same raw data.
   if (inherits(object, "bayesmanecfit")) {
@@ -646,17 +712,26 @@ newdata_eval_fitted <- function(object, resolution, x_range, make_newdata,
   bnec_pop_vars <- attr(data, "bnec_pop")
   dot_list <- list(...)
   if ("newdata" %in% names(dot_list) && make_newdata) {
-    stop("You cannot provide a \"newdata\" argument and set",
-         " make_newdata = TRUE at the same time. Please use one or another.",
-         " See details in help file ?", fct_eval)
+    stop(
+      "You cannot provide a \"newdata\" argument and set",
+      " make_newdata = TRUE at the same time. Please use one or another.",
+      " See details in help file ?",
+      fct_eval
+    )
   }
   if (!("newdata" %in% names(dot_list))) {
     if (make_newdata) {
-      newdata <- bnec_newdata(object, resolution = resolution, x_range = x_range)
+      newdata <- bnec_newdata(
+        object,
+        resolution = resolution,
+        x_range = x_range
+      )
       x_vec <- newdata[[bnec_pop_vars[["x_var"]]]]
       if ("re_formula" %in% names(dot_list)) {
-        message("Argument \"re_formula\" ignored and set to NA because",
-                " function bnec_newdata cannot guess random effect structure.")
+        message(
+          "Argument \"re_formula\" ignored and set to NA because",
+          " function bnec_newdata cannot guess random effect structure."
+        )
       }
       re_formula <- NA
     } else {
@@ -679,8 +754,12 @@ newdata_eval_fitted <- function(object, resolution, x_range, make_newdata,
       re_formula <- dot_list$re_formula
     }
   }
-  list(newdata = newdata, x_vec = x_vec, resolution = resolution,
-       re_formula = re_formula)
+  list(
+    newdata = newdata,
+    x_vec = x_vec,
+    resolution = resolution,
+    re_formula = re_formula
+  )
 }
 
 #' step
