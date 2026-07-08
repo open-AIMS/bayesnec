@@ -84,3 +84,37 @@ test_that("check proper output structure", {
   expect_true(grepl("beta", p_c$prior[p_c$nlpar == "top"]))
   expect_true(grepl("beta", p_c$prior[p_c$nlpar == "bot"]))
 })
+
+test_that("prior_type selects between default prior sets", {
+  resp <- 1:100
+  unin <- define_prior(model = "nec4param", family = gaussian(),
+                       predictor = pred_a, response = resp,
+                       prior_type = "uninformative")
+  regu <- define_prior(model = "nec4param", family = gaussian(),
+                       predictor = pred_a, response = resp,
+                       prior_type = "regularizing")
+  deflt <- define_prior(model = "nec4param", family = gaussian(),
+                        predictor = pred_a, response = resp)
+  # default is the JSS "uninformative" set
+  expect_identical(deflt$prior, unin$prior)
+  # uninformative top/bot match JSS spec: 90th/10th pct, sd * 2.5
+  expect_identical(unin$prior[unin$nlpar == "top"],
+                   paste0("normal(", quantile(resp, 0.9), ", ", sd(resp) * 2.5, ")"))
+  expect_identical(unin$prior[unin$nlpar == "bot"],
+                   paste0("normal(", quantile(resp, 0.1), ", ", sd(resp) * 2.5, ")"))
+  # regularizing differs and uses the narrower scaling (extreme pct, sd * 1)
+  expect_false(identical(unin$prior, regu$prior))
+  expect_identical(regu$prior[regu$nlpar == "top"],
+                   paste0("normal(", quantile(resp, 1), ", ", sd(resp), ")"))
+  # beta-family asymmetry differs between sets (identity link keeps beta priors)
+  rb <- rbeta(100, 1, 5)
+  unin_b <- define_prior("nec4param", Beta(link = "identity"), pred_a, rb,
+                         prior_type = "uninformative")
+  regu_b <- define_prior("nec4param", Beta(link = "identity"), pred_a, rb,
+                         prior_type = "regularizing")
+  expect_identical(unin_b$prior[unin_b$nlpar == "top"], "beta(5, 2)")
+  expect_identical(regu_b$prior[regu_b$nlpar == "top"], "beta(5, 1)")
+  # invalid value errors via match.arg
+  expect_error(define_prior("nec4param", gaussian(), pred_a, resp,
+                            prior_type = "nonsense"))
+})

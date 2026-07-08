@@ -25,3 +25,6 @@ README.Rmd
 ^article$
 ^article*
 ^vignette/*.orig$
+^\.claude$
+^prompts$
+^PR_.*\.md$

@@ -12,7 +12,8 @@ amend(
   x_range = NA,
   resolution = 1000,
   sig_val = 0.01,
-  priors
+  priors,
+  prior_type = "uninformative"
 )
 }
 \arguments{
@@ -52,6 +53,13 @@ If missing, \code{\link{amend}} will figure out a baseline prior for each
 parameter. It can also be specified as a named \code{\link[base]{list}}
 where each name needs to correspond to the same string as \code{model}. See
 Details.}
+
+\item{prior_type}{A \code{\link[base]{character}} string selecting the set of
+default priors to build for any newly added models when \code{priors} is not
+supplied. Either \code{"uninformative"} (the default) or
+\code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
+inherited from the original fit; pass it explicitly to match the priors used
+when the object was first fitted.}
 }
 \value{
 All successfully fitted \code{\link{bayesmanecfit}} model fits.

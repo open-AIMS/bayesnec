@@ -49,7 +49,8 @@
 #' library(bayesnec)
 #'
 #' data(manec_example)
-#' ecnsec(manec_example)
+#' nsec_vals <- nsec(manec_example)
+#' ecnsec(manec_example, nsec = nsec_vals)
 #' }
 #'
 #' @export
