@@ -13,7 +13,8 @@ amend(
   resolution = 1000,
   sig_val = 0.01,
   priors,
-  prior_type = "uninformative"
+  prior_type = "uninformative",
+  timeout = Inf
 )
 }
 \arguments{
@@ -60,6 +61,16 @@ supplied. Either \code{"uninformative"} (the default) or
 \code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
 inherited from the original fit; pass it explicitly to match the priors used
 when the object was first fitted.}
+
+\item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
+number of seconds allowed for fitting any single model, passed to
+\code{\link[R.utils]{withTimeout}}. This is useful when fitting multiple
+models, as it allows a model that is taking excessively long (for example
+because of highly divergent chains) to be abandoned so that the remaining
+models can still be fitted. A model that exceeds \code{timeout} is treated
+as a failed fit and dropped from the returned set. The default \code{Inf}
+imposes no limit. Requires the \pkg{R.utils} package to be installed when a
+finite value is supplied.}
 }
 \value{
 All successfully fitted \code{\link{bayesmanecfit}} model fits.

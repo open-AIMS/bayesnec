@@ -34,7 +34,7 @@
 #' @export
 amend <- function(object, drop, add, loo_controls, x_range = NA,
                   resolution = 1000, sig_val = 0.01, priors,
-                  prior_type = "uninformative") {
+                  prior_type = "uninformative", timeout = Inf) {
   UseMethod("amend")
 }
 
@@ -47,15 +47,19 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #'
 #' @inherit amend return examples
 #' 
-#' @importFrom chk chk_character chk_numeric
+#' @importFrom chk chk_character chk_numeric chk_number
 #'
 #' @noRd
 #'
 #' @export
 amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
                                 resolution = 1000, sig_val = 0.01, priors,
-                                prior_type = "uninformative") {
+                                prior_type = "uninformative", timeout = Inf) {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  chk_number(timeout)
+  if (timeout <= 0) {
+    stop("Argument `timeout` must be a positive number (or Inf).")
+  }
   general_error <- paste(
     "Nothing to amend, please specify a proper model to either add or drop, or",
     "changes to loo_controls;\n Returning original model set."
@@ -146,7 +150,8 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
       fit_m <- try(
         fit_bayesnec(
           formula = formula, data = data, model = model,
-          brm_args = brm_args, skip_check = TRUE, prior_type = prior_type
+          brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
+          timeout = timeout
         ),
         silent = FALSE
       )
