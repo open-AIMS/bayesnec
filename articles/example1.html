@@ -37,7 +37,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.3.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.3.2</span>
       </span>
     </div>
 
@@ -117,13 +117,13 @@
 <span class="citation">(Fisher and Fox 2023)</span>), and
 Effect-Concentration (of specified percentage “x”, <em>ECx</em>)
 thresholds from non-linear models fitted using Bayesian Hamiltonian
-Monte Carlo (HMC) via <code>brms</code> <span class="citation">(Paul
-Christian Bürkner 2017; Paul-Christian Bürkner 2018)</span> and
-<code>stan</code>. The package is an adaptation and extension of an
-initial package <code>jagsNEC</code> <span class="citation">(Fisher,
-Ricardo, and Fox 2020)</span> which was based on the <code>R2jags</code>
-package <span class="citation">(Su and Yajima 2015)</span> and
-<code>jags</code> <span class="citation">(Plummer 2003)</span>.</p>
+Monte Carlo (HMC) via <code>brms</code> <span class="citation">(Bürkner
+2017; Bürkner 2018)</span> and <code>stan</code>. The package is an
+adaptation and extension of an initial package <code>jagsNEC</code>
+<span class="citation">(Fisher et al. 2020)</span> which was based on
+the <code>R2jags</code> package <span class="citation">(Su and Yajima
+2015)</span> and <code>jags</code> <span class="citation">(Plummer
+2003)</span>.</p>
 </div>
 <div class="section level2">
 <h2 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
@@ -148,9 +148,9 @@ the predictor and response variables can be specified directly,
 distribution to use based on the characteristics of the provided
 data.</p>
 <p>This project started with an implementation of the <em>NEC</em> model
-based on that described in (Pires et al. 2002) and <span class="citation">(Fox 2010)</span> using R2jags <span class="citation">(Fisher, Ricardo, and Fox 2020)</span>. The package has
-been further generalised to allow a large range of response variables to
-be modelled using the appropriate statistical distribution. While the
+based on that described in (Pires et al. 2002) and <span class="citation">(Fox 2010)</span> using R2jags <span class="citation">(Fisher et al. 2020)</span>. The package has been
+further generalised to allow a large range of response variables to be
+modelled using the appropriate statistical distribution. While the
 original <code>jagsNEC</code> implementation supported Gaussian-,
 Poisson-, Binomial-, Gamma-, Negative Binomial- and Beta-distributed
 response data, <code>bayesnec</code> additionally supports the
@@ -665,7 +665,7 @@ plot of chunk exmp1-gammabase
 <div class="section level2">
 <h2 class="unnumbered" id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
-<div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
+<div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-Burkner2017" class="csl-entry">
 Bürkner, Paul Christian. 2017. <span>“<span class="nocase">brms: An R
 package for Bayesian multilevel models using Stan</span>.”</span>
@@ -683,8 +683,8 @@ Article. <em>Environmental Toxicology and Chemistry</em> 42 (9):
 2019–28. https://doi.org/<a href="https://doi.org/10.1002/etc.5610" class="external-link">https://doi.org/10.1002/etc.5610</a>.
 </div>
 <div id="ref-Fisher2020" class="csl-entry">
-Fisher, Rebecca, Gerard Ricardo, and David Fox. 2020. <span>“<span class="nocase">Bayesian concentration-response modelling using
-jagsNEC</span>.”</span> <a href="https://doi.org/10.5281/ZENODO.3966864" class="external-link">https://doi.org/10.5281/ZENODO.3966864</a>.
+Fisher, Rebecca, Gerard Ricardo, and David Fox. 2020. <em><span class="nocase">Bayesian concentration-response modelling using
+jagsNEC</span></em>. <a href="https://doi.org/10.5281/ZENODO.3966864" class="external-link">https://doi.org/10.5281/ZENODO.3966864</a>.
 </div>
 <div id="ref-Fox2010" class="csl-entry">
 Fox, David R. 2010. <span>“<span class="nocase">A Bayesian approach for
@@ -695,10 +695,9 @@ Safety</em> 73 (2): 123–31.
 <div id="ref-Plummer2003" class="csl-entry">
 Plummer, Martyn. 2003. <span>“<span class="nocase">JAGS: A program for
 analysis of Bayesian graphical models using Gibbs
-sampling</span>.”</span> In <em><span class="nocase">Proceedings of the
-3rd International Workshop on Distributed Statistical Computing (DSC
-2003)</span></em>, 1–10. Technische Universität Wien, Vienna, Austria:
-Achim Zeileis.
+sampling</span>.”</span> <em><span class="nocase">Proceedings of the 3rd
+International Workshop on Distributed Statistical Computing (DSC
+2003)</span></em> (Technische Universität Wien, Vienna, Austria), 1–10.
 </div>
 <div id="ref-Ritz2016" class="csl-entry">
 Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard.
@@ -728,7 +727,7 @@ Using R to Run ’JAGS’</span></em>. <a href="https://CRAN.R-project.org/packa
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
       </footer>

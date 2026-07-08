@@ -18,7 +18,7 @@ adding or removing fitted models."><meta property="og:image" content="/logo.png"
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.3.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.3.2</span>
       </span>
     </div>
 
@@ -88,7 +88,8 @@ adding or removing fitted models.</p>
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  resolution <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>  sig_val <span class="op">=</span> <span class="fl">0.01</span>,</span>
-<span>  <span class="va">priors</span></span>
+<span>  <span class="va">priors</span>,</span>
+<span>  timeout <span class="op">=</span> <span class="cn">Inf</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -148,6 +149,18 @@ parameter. It can also be specified as a named <code><a href="https://rdrr.io/r/
 where each name needs to correspond to the same string as <code>model</code>. See
 Details.</p></dd>
 
+
+<dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
+<dd><p>A positive <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> giving the maximum
+number of seconds allowed for fitting any single model, passed to
+<code><a href="https://henrikbengtsson.github.io/R.utils/reference/withTimeout.html" class="external-link">withTimeout</a></code>. This is useful when fitting multiple
+models, as it allows a model that is taking excessively long (for example
+because of highly divergent chains) to be abandoned so that the remaining
+models can still be fitted. A model that exceeds <code>timeout</code> is treated
+as a failed fit and dropped from the returned set. The default <code>Inf</code>
+imposes no limit. Requires the <span class="pkg">R.utils</span> package to be installed when a
+finite value is supplied.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -179,7 +192,7 @@ Details.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
       </footer></div>

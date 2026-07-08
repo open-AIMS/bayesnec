@@ -37,7 +37,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.3.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.3.2</span>
       </span>
     </div>
 
@@ -126,10 +126,9 @@ predictions for the supplied models, providing they were successfully
 fitted.</p>
 <p>Model averaging is achieved through a weighted sample of each fitted
 models’ posterior predictions, with weights derived using the
-<code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020; Vehtari, Gelman, and Gabry
-2017)</span>. Individual <code>brms</code> model fits can be extracted
-from the <code>mod_fits</code> element and can be examined
-individually.</p>
+<code>loo_model_weights</code> function from <code>loo</code> <span class="citation">(Vehtari et al. 2020, 2017)</span>. Individual
+<code>brms</code> model fits can be extracted from the
+<code>mod_fits</code> element and can be examined individually.</p>
 <p>The <code>model</code> may also be one of <code>"all"</code>, meaning
 all of the available models will be fit; <code>"ecx"</code> meaning only
 models excluding the
@@ -227,7 +226,7 @@ A scaling exponent exclusive to model <strong>ecxll5</strong>.</p>
 <p>In addition to the model parameters, all
 <strong>nec</strong>-containing models have a step function used to
 define the breakpoint in the regression, which can be defined as</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><mn>0</mn><mo>,</mo></mtd><mtd columnalign="left" style="text-align: left"><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo>&lt;</mo><mn>0</mn></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><mn>1</mn><mo>,</mo></mtd><mtd columnalign="left" style="text-align: left"><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo>≥</mo><mn>0</mn></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><mn>0</mn><mo>,</mo></mtd><mtd columnalign="left" style="text-align: left"><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo>&lt;</mo><mn>0</mn></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><mn>1</mn><mo>,</mo></mtd><mtd columnalign="left" style="text-align: left"><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo>≥</mo><mn>0</mn></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">
 f(x_i, \eta) = \begin{cases} 
       0, &amp; x_i - \eta &lt; 0 \\
       1, &amp; x_i - \eta \geq 0 \\
@@ -360,7 +359,7 @@ decline with concentration, it is also not suitable for 0,
 </h5>
 <p>The <strong>ecxexp</strong> model is a basic exponential decay model,
 given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><msub><mi>x</mi><mi>i</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} x_i}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><msub><mi>x</mi><mi>i</mi></msub></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} x_i}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * x) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -374,7 +373,7 @@ function.</p>
 </h5>
 <p>The <strong>ecxsigm</strong> model is a simple sigmoidal decay model,
 given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><msubsup><mi>x</mi><mi>i</mi><msup><mi>e</mi><mi>ϵ</mi></msup></msubsup></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} x_i^{e^\epsilon}}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><msubsup><mi>x</mi><mi>i</mi><msup><mi>e</mi><mi>ϵ</mi></msup></msubsup></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} x_i^{e^\epsilon}}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * x^exp(d)) </span></span>
 <span><span class="co">#&gt; d ~ 1</span></span>
@@ -389,7 +388,7 @@ function.</p>
 </h5>
 <p>The <strong>ecx4param</strong> model is a 4-parameter sigmoidal decay
 model, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>δ</mi><mo>−</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>ω</mi><mo>−</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = \tau + (\delta - \tau)/(1 + e^{e^{\beta} (\omega - x_i)})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>δ</mi><mo>−</mo><mi>τ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><mi>ω</mi><mo>−</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \tau + (\delta - \tau)/(1 + e^{e^{\beta} (\omega - x_i)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top + (bot - top)/(1 + exp((ec50 - x) * exp(beta))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -402,7 +401,7 @@ with the respective <code>brmsformula</code> being</p>
 </h5>
 <p>The <strong>ecxwb1</strong> model is a 4-parameter sigmoidal decay
 model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \omega)}}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) e^{-e^{e^{\beta} (x_i - \omega)}}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * exp(-exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -415,7 +414,7 @@ with the respective <code>brmsformula</code> being</p>
 </h5>
 <p>The <strong>ecxwb1p3</strong> model is a 3-parameter sigmoidal decay
 model which is a slight reformulation of the Weibull1 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \omega)}}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = {0} + (\tau - {0}) e^{-e^{e^{\beta} (x_i - \omega)}}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0) * exp(-exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
@@ -430,7 +429,7 @@ function.</p>
 </h5>
 <p>The <strong>ecxwb2</strong> model is a 4-parameter sigmoidal decay
 model which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -446,7 +445,7 @@ slightly.</p>
 </h5>
 <p>The <strong>ecxwb2p3</strong> model is a 3-parameter sigmoidal decay
 model, which is a slight reformulation of the Weibull2 model of <span class="citation">Ritz et al. (2016)</span>, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = {0} + (\tau -{0}) (1 - e^{-e^{e^{\beta} (x_i - \omega)}})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0) * (1 - exp(-exp(-exp(beta) * (x - ec50)))) </span></span>
 <span><span class="co">#&gt; ec50 ~ 1</span></span>
@@ -464,7 +463,7 @@ response data or the use of a logit or log link function.</p>
 log-logistic decay model, which is a slight reformulation of the LL.5
 model of <span class="citation">Ritz et al. (2016)</span>, given by the
 equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mi>ϕ</mi></msup></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) / (1 + e^{-e^{\beta} (x_i - \omega)})^{e^\phi}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><msup><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mi>ϕ</mi></msup></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) / (1 + e^{-e^{\beta} (x_i - \omega)})^{e^\phi}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50)))^exp(f) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -480,7 +479,7 @@ with the respective <code>brmsformula</code> being</p>
 log-logistic decay model which is a slight reformulation of the LL.4
 model of <span class="citation">Ritz et al. (2016)</span>, given by the
 equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -495,7 +494,7 @@ with the respective <code>brmsformula</code> being</p>
 log-logistic decay model, which is a slight reformulation of the LL.3
 model of <span class="citation">Ritz et al. (2016)</span>, given by the
 equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = 0 + (\tau - 0)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = 0 + (\tau - 0)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -513,7 +512,7 @@ model modified to accommodate a non-linear hormesis at low
 concentrations. It has been modified from to the “Brain-Cousens” (BC.5)
 model of <span class="citation">Ritz et al. (2016)</span>, given by the
 equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -528,7 +527,7 @@ with the respective <code>brmsformula</code> being</p>
 <p>The <strong>ecxhormebc4</strong> model is a 5-parameter log-logistic
 model similar to the <strong>exchormebc5</strong> model but with a lower
 bound of 0, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mn>0</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mn>0</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mrow><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = 0 + (\tau - 0 + e^{\alpha} x)/ (1 + e^{e^{\beta} (x_i - \omega)})</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ 0 + (top - 0 + exp(slope) * x)/(1 + exp(exp(beta) * (x - ec50))) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -551,7 +550,7 @@ function.</p>
 <p>The <strong>neclin</strong> model is a basic linear decay model
 equivalent to <strong>ecxlin</strong> with the addition of the
 <em>NEC</em> step function, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><mo>−</mo><msup><mi>e</mi><mi>α</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><mo>−</mo><msup><mi>e</mi><mi>α</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = \tau - e^{\alpha} \left(x_i - \eta \right) f(x_i, \eta)</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top - exp(slope) * (x - nec) * step(x - nec) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -570,7 +569,7 @@ bounded data (Gamma, Poisson, Negative Binomial with
 <p>The <strong>nec3param</strong> model is a basic exponential decay
 model equivalent to <strong>ecxexp</strong> with the addition of the
 <em>NEC</em> step function, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -587,7 +586,7 @@ or <code>"log"</code> link function.</p>
 <p>The <strong>nec4param</strong> model is a 3-parameter decay model
 with the addition of the <em>NEC</em> step function, given by the
 equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + (\tau - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -604,7 +603,7 @@ model with an <em>NEC</em> step function equivalent to
 to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = (\tau + e^{\alpha} x_i) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = (\tau + e^{\alpha} x_i) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ (top + exp(slope) * x) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -629,7 +628,7 @@ model with an <em>NEC</em> step function equivalent to
 to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msubsup><mi>x</mi><mi>i</mi><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = (\tau + x_i^{1/(1+e^{\alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msubsup><mi>x</mi><mi>i</mi><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = (\tau + x_i^{1/(1+e^{\alpha})}) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ (top + x^(1/(1 + exp(slope)))) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -655,7 +654,7 @@ with an <em>NEC</em> step function equivalent to
 <strong>neclin</strong>, with the addition of a linear increase prior to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">y_i = (\tau + e^{\alpha} x_i) - e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">y_i = (\tau + e^{\alpha} x_i) - e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)</annotation></semantics></math>
 with the respective <code>brmsformula</code> being.</p>
 <pre><code><span><span class="co">#&gt; y ~ (top + exp(slope) * x) - exp(beta) * (x - nec) * step(x - nec) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -681,7 +680,7 @@ an <em>NEC</em> step function equivalent to <strong>nec4param</strong>
 with the addition of a linear increase prior to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta ) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + ((\tau + e^{\alpha} x_i) - \delta ) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + ((top + exp(slope) * x) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -703,7 +702,7 @@ with an <em>NEC</em> step function equivalent to
 to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msubsup><mi>x</mi><mi>i</mi><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mi>δ</mi><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + ((\tau + x_i^{1/(1+e^{\alpha})}) - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>δ</mi><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo>+</mo><msubsup><mi>x</mi><mi>i</mi><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><msup><mi>e</mi><mi>α</mi></msup><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mi>δ</mi><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \delta + ((\tau + x_i^{1/(1+e^{\alpha})}) - \delta) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ bot + ((top + x^(1/(1 + exp(slope)))) - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; bot ~ 1</span></span>
@@ -729,7 +728,7 @@ model with an <em>NEC</em> step function equivalent to
 to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>η</mi><annotation encoding="application/x-tex">\eta</annotation></semantics></math>,
 given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mn>1</mn><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub></mrow></msup></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mn>1</mn><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mi>/</mi><mi>τ</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>α</mi></msup><msub><mi>x</mi><mi>i</mi></msub></mrow></msup></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \left(\frac{1}{(1 + ((1/\tau)-1)  e^{-e^{\alpha}x_i}}\right) e^{-e^{\beta} \left(x_i - \eta \right) f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ (1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))) * exp(-exp(beta) * (x - nec) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -751,7 +750,7 @@ used.</p>
 <p>The <strong>necsigm</strong> model is a basic exponential decay model
 equivalent to <strong>ecxlin</strong> with the addition of the
 <em>NEC</em> step function, given by the equation:
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mo>−</mo><msup><mi>e</mi><mi>β</mi></msup><msup><mrow><mo stretchy="true" form="prefix">(</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>e</mi><mi>ϵ</mi></msup></msup><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon}f(x_i, \eta)}</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>=</mo><mi>τ</mi><msup><mi>e</mi><mrow><mi>−</mi><msup><mi>e</mi><mi>β</mi></msup><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>−</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo><msup><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mi>ϵ</mi></msup></msup><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><mi>η</mi><mo stretchy="false" form="postfix">)</mo></mrow></msup></mrow><annotation encoding="application/x-tex">y_i = \tau e^{-e^{\beta} ((x_i - \eta) f(x_i, \eta))^{e^\epsilon}f(x_i, \eta)}</annotation></semantics></math>
 with the respective <code>brmsformula</code> being</p>
 <pre><code><span><span class="co">#&gt; y ~ top * exp(-exp(beta) * (step(x - nec) * (x - nec))^exp(d) * step(x - nec)) </span></span>
 <span><span class="co">#&gt; top ~ 1</span></span>
@@ -772,7 +771,7 @@ model are not currently recommended without further testing.</p>
 <div class="section level2">
 <h2 class="unnumbered" id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
-<div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
+<div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-fisherfox2023" class="csl-entry">
 Fisher, Rebecca, and David R Fox. 2023. <span>“Introducing the No
 Significant Effect Concentration <span>(NSEC)</span>.”</span> Journal
@@ -802,9 +801,9 @@ Ritz, Christian, Florent Baty, Jens C Streibig, and Daniel Gerhard.
 <em>PLoS ONE</em> 10 (12): e0146021. <a href="https://doi.org/10.1371/journal.pone.0146021" class="external-link">https://doi.org/10.1371/journal.pone.0146021</a>.
 </div>
 <div id="ref-vehtari2020" class="csl-entry">
-Vehtari, Aki, Jonah Gabry, Mans Magnusson, Yuling Yao, Paul-Christian
-Bürkner, Topi Paananen, and Andrew Gelman. 2020. <em>Loo: Efficient
-Leave-One-Out Cross-Validation and WAIC for Bayesian Models</em>. <a href="https://mc-stan.org/loo/" class="external-link">https://mc-stan.org/loo/</a>.
+Vehtari, Aki, Jonah Gabry, Mans Magnusson, et al. 2020. <em>Loo:
+Efficient Leave-One-Out Cross-Validation and WAIC for Bayesian
+Models</em>. <a href="https://mc-stan.org/loo/" class="external-link">https://mc-stan.org/loo/</a>.
 </div>
 <div id="ref-vehtari2017" class="csl-entry">
 Vehtari, Aki, Andrew Gelman, and Jonah Gabry. 2017. <span>“Practical
@@ -830,7 +829,7 @@ WAIC.”</span> <em>Statistics and Computing</em> 27: 1413–32. <a href="https:
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.3.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
       </footer>
