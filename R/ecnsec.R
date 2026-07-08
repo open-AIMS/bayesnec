@@ -49,8 +49,7 @@
 #' library(bayesnec)
 #'
 #' data(manec_example)
-#' nsec_vals <- nsec(manec_example)
-#' ecnsec(manec_example, nsec = nsec_vals)
+#' ecnsec(manec_example, nsec = 2)
 #' }
 #'
 #' @export
@@ -102,16 +101,16 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 10, x_range = NA,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  x_name <- colnames(newdata_list$newdata)
+
   p_samples <- posterior_epred(object, 
                                newdata = newdata_list$newdata,
                                re_formula = NA)
-  x_vec <- newdata_list$x_vec
+  newdat_nsec <- newdata_eval(
+    object, resolution = 2, x_range = c(nsec_use, nsec_use)
+  )
 
-  newdat_nsec <- data.frame(x=c(max(x_vec), nsec[1]))
-  colnames(newdat_nsec) <- x_name
   pred_val_nsec <- posterior_epred(object, 
-                                   newdata = newdat_nsec,
+                                   newdata = newdat_nsec$newdata,
                                    re_formula = NA)
   reference <- median(pred_val_nsec[, 2])
 
