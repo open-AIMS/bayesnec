@@ -108,12 +108,14 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
     return(init)
   }
   # refine_inits nudges a finite-but-out-of-range curve back into range by
-  # re-drawing slope/d/beta. Non-finite predictions signal a structural
-  # problem instead -- e.g. models that raise the predictor to a fractional
-  # power (nechormepwr, nechorme4pwr, ecxsigm) return NaN wherever x < 0, for
-  # every parameter draw. No re-draw fixes that, so bail early rather than
-  # burn the full n_sub search on a hopeless case.
-  if (!all(is.finite(preds))) {
+  # re-drawing slope/d/beta. NaN predictions signal a structural problem
+  # instead -- e.g. models that raise the predictor to a fractional power
+  # (nechormepwr, nechorme4pwr, ecxsigm) return NaN wherever x < 0, for every
+  # parameter draw. No re-draw fixes that, so bail early rather than burn the
+  # full n_sub search on a hopeless case. We test NaN specifically rather than
+  # all non-finite values: Inf from numerical overflow can sometimes be cured
+  # by re-drawing a parameter smaller, so those are left for the search below.
+  if (any(is.nan(preds))) {
     return(init)
   }
   # Identify tunable parameters (slope, d, beta -- those most likely

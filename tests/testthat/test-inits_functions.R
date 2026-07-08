@@ -157,16 +157,16 @@ bb_models_expected_pass <- c(
   "ecxhormebc4", "ecxhormebc5"
 )
 
-# Models that cannot find valid inits for this dataset and fall back to Stan's
-# default random initialisation. This is a structural incompatibility, not a
-# regression from the identity-link fix, and refine_inits() cannot rescue it:
-# these models raise the predictor x to a fractional power (nechormepwr and
-# nechorme4pwr use x^(1/(1+exp(b_slope))); ecxsigm uses x^exp(b_d)). The
-# predictor here is log(mgL + 0.1), which is negative for low concentrations,
-# and a negative base with a non-integer exponent is NaN in R for every
-# parameter draw. No init re-draw changes the predictor, so these always fall
-# back to random.
-bb_models_may_fail <- c(
+# Models that are structurally invalid for this dataset: they raise the
+# predictor x to a fractional power (nechormepwr and nechorme4pwr use
+# x^(1/(1+exp(b_slope))); ecxsigm uses x^exp(b_d)). The predictor here is
+# log(mgL + 0.1), which is negative for low concentrations, and a negative
+# base with a non-integer exponent is NaN in R for every parameter draw --- no
+# init could fix this because the same term is evaluated in Stan. bnec() never
+# reaches init-finding for them: check_models() drops them upstream whenever
+# the predictor contains negative values. The test below asserts that
+# behaviour rather than exercising make_good_inits() on a path bnec() prevents.
+bb_models_negative_x <- c(
   "nechormepwr", "nechorme4pwr", "ecxsigm"
 )
 
@@ -204,34 +204,22 @@ for (mod in bb_models_expected_pass) {
   }
 }
 
-# Models that may fall back to random: just verify they don't error and
-# that when inits ARE found, predictions stay in (0, 1)
-for (mod in bb_models_may_fail) {
-  for (pt in c("uninformative", "regularizing")) {
-    test_that(
-      paste0("make_good_inits does not error for ", mod,
-             " with ", pt, " priors (issue #162 data)"), {
-      inits <- run_init_test(mod, prior_type = pt)
+# The fractional-power models never reach init-finding for this dataset:
+# check_models() drops them upstream because the predictor contains negative
+# values. Assert that upstream guard directly (this is the behaviour that
+# protects make_good_inits() from ever seeing them via bnec()).
+test_that("check_models drops fractional-power models for negative predictors", {
+  form <- bnf(y | trials(trials) ~ crf(log.x, "nec3param"))
+  bdat <- model.frame(form, dat_real)
 
-      # May be random or valid inits --- either is acceptable
-      expect_type(inits, "list")
+  requested <- c(bb_models_negative_x, "nec3param", "ecxexp")
+  kept <- suppressMessages(
+    bayesnec:::check_models(requested, bb_family, bdat)
+  )
 
-      # If inits were found, predictions must be in (0, 1)
-      if (!identical(inits, list(random = "random"))) {
-        pred_fct <- get(paste0("pred_", mod),
-                        envir = asNamespace("bayesnec"))
-        fct_args <- get_pred_fct_args(mod)
-        for (i in seq_along(inits)) {
-          preds <- bayesnec:::get_init_predictions(
-            inits[[i]], sort(bb_predictor), pred_fct, fct_args
-          )
-          expect_true(
-            all(preds > 0 & preds < 1),
-            info = paste("Chain", i, "predictions out of (0,1) for",
-                         mod, pt)
-          )
-        }
-      }
-    })
-  }
-}
+  # The three fractional-power models are dropped ...
+  expect_false(any(bb_models_negative_x %in% kept),
+               info = "fractional-power models must be dropped for negative x")
+  # ... while models valid for negative predictors are retained.
+  expect_true(all(c("nec3param", "ecxexp") %in% kept))
+})
