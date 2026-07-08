@@ -54,6 +54,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Rebecca Fisher \email{r.fisher@aims.gov.au} (\href{https://orcid.org/0000-0001-5148-6731}{ORCID})
   \item Diego R. Barneche (\href{https://orcid.org/0000-0002-4568-2362}{ORCID})
   \item Gerard F. Ricardo (\href{https://orcid.org/0000-0002-2220-3971}{ORCID})
   \item David R. Fox (\href{https://orcid.org/0000-0002-3178-7243}{ORCID})

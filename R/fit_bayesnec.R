@@ -18,7 +18,7 @@
 #'
 #' @noRd
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
-                         skip_check = FALSE) {
+                         skip_check = FALSE, prior_type = "uninformative") {
   formula <- single_model_formula(formula, model)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
@@ -56,7 +56,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   }
   brms_bf <- wrangle_model_formula(model, formula, bdat)
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
-                               skip_check, custom_name)
+                               skip_check, custom_name,
+                               prior_type = prior_type)
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
   fit <- do.call(brm, all_args)
   pass <- are_chains_correct(fit, all_args$chains)

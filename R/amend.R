@@ -17,6 +17,12 @@
 #' parameter. It can also be specified as a named \code{\link[base]{list}}
 #' where each name needs to correspond to the same string as \code{model}. See
 #' Details.
+#' @param prior_type A \code{\link[base]{character}} string selecting the set of
+#' default priors to build for any newly added models when \code{priors} is not
+#' supplied. Either \code{"uninformative"} (the default) or
+#' \code{"regularizing"}. See \code{\link{bnec}}. Note this is not automatically
+#' inherited from the original fit; pass it explicitly to match the priors used
+#' when the object was first fitted.
 #'
 #' @return All successfully fitted \code{\link{bayesmanecfit}} model fits.
 #'
@@ -27,7 +33,8 @@
 #'
 #' @export
 amend <- function(object, drop, add, loo_controls, x_range = NA,
-                  resolution = 1000, sig_val = 0.01, priors) {
+                  resolution = 1000, sig_val = 0.01, priors,
+                  prior_type = "uninformative") {
   UseMethod("amend")
 }
 
@@ -46,7 +53,9 @@ amend <- function(object, drop, add, loo_controls, x_range = NA,
 #'
 #' @export
 amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
-                                resolution = 1000, sig_val = 0.01, priors) {
+                                resolution = 1000, sig_val = 0.01, priors,
+                                prior_type = "uninformative") {
+  prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   general_error <- paste(
     "Nothing to amend, please specify a proper model to either add or drop, or",
     "changes to loo_controls;\n Returning original model set."
@@ -129,14 +138,15 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
           tr <- retrieve_var(bdat, "trials_var", error = TRUE)
           y <- y / tr
         }
-        brm_args$prior <- define_prior(model, family, x, y)
+        brm_args$prior <- define_prior(model, family, x, y,
+                                       prior_type = prior_type)
       } else {
         brm_args$prior <- priors
       }
       fit_m <- try(
         fit_bayesnec(
           formula = formula, data = data, model = model,
-          brm_args = brm_args, skip_check = TRUE
+          brm_args = brm_args, skip_check = TRUE, prior_type = prior_type
         ),
         silent = FALSE
       )

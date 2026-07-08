@@ -13,7 +13,9 @@
 #' @importFrom stats sd
 #'
 #' @noRd
-define_prior <- function(model, family, predictor, response) {
+define_prior <- function(model, family, predictor, response,
+                         prior_type = "uninformative") {
+  prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   link_tag <- family$link
   custom_name <- check_custom_name(family)
   if (link_tag %in% c("logit", "log")) {
@@ -30,33 +32,71 @@ define_prior <- function(model, family, predictor, response) {
   response <- response_link_scale(response, family)
   x_type <- set_distribution(predictor, silence_y_msgs = TRUE,
                              silence_x_msgs = FALSE)
-  u_t_g <- paste0("gamma(2, ",
-                  1 / (quantile(response, probs = 1) / 2),
-                  ")")
-  u_b_g <- paste0("gamma(2, ",
-                  1 / ((quantile(response, probs = 0) +
-                    min(response[response > 0]) / 100) / 2),
-                  ")")
-  y_t_prs <- c(Gamma = u_t_g,
-               poisson = u_t_g,
-               negbinomial = u_t_g,
-               gaussian = paste0("normal(",
-                                 quantile(response, probs = 1),
-                                 ", ", sd(response) * 2, ")"),
-               bernoulli = "beta(5, 2)",
-               binomial = "beta(5, 2)",
-               "beta_binomial" = "beta(5, 2)",
-               beta = "beta(5, 2)")
-  y_b_prs <- c(Gamma = u_b_g,
-               poisson = u_b_g,
-               negbinomial = u_b_g,
-               gaussian = paste0("normal(",
-                                 quantile(response, probs = 0),
-                                 ", ", sd(response) * 2, ")"),
-               bernoulli = "beta(2, 5)",
-               binomial = "beta(2, 5)",
-               "beta_binomial" = "beta(2, 5)",
-               beta = "beta(2, 5)")
+  # Two prior sets for the response-scaled parameters (top, bot):
+  #  - "uninformative": the weakly-informative defaults described in the JSS
+  #    article (Fisher et al. 2024); wider, closer to truly uninformative.
+  #  - "regularizing": narrower priors, with the no-effect (top) parameter
+  #    centred on the control mean -- which, for these monotonically decreasing
+  #    models, sits at the upper end of the response range.
+  # Only the response-scaled (top/bot) priors differ between the two sets; the
+  # predictor-scaled and fixed priors below are shared.
+  if (prior_type == "uninformative") {
+    u_t_g <- paste0("gamma(2, ",
+                    1 / (quantile(response, probs = 0.75) / 2),
+                    ")")
+    u_b_g <- paste0("gamma(2, ",
+                    1 / ((quantile(response, probs = 0.25) +
+                      min(response[response > 0]) / 100) / 2),
+                    ")")
+    y_t_prs <- c(Gamma = u_t_g,
+                 poisson = u_t_g,
+                 negbinomial = u_t_g,
+                 gaussian = paste0("normal(",
+                                   quantile(response, probs = 0.9),
+                                   ", ", sd(response) * 2.5, ")"),
+                 bernoulli = "beta(5, 2)",
+                 binomial = "beta(5, 2)",
+                 "beta_binomial" = "beta(5, 2)",
+                 beta = "beta(5, 2)")
+    y_b_prs <- c(Gamma = u_b_g,
+                 poisson = u_b_g,
+                 negbinomial = u_b_g,
+                 gaussian = paste0("normal(",
+                                   quantile(response, probs = 0.1),
+                                   ", ", sd(response) * 2.5, ")"),
+                 bernoulli = "beta(2, 5)",
+                 binomial = "beta(2, 5)",
+                 "beta_binomial" = "beta(2, 5)",
+                 beta = "beta(2, 5)")
+  } else {
+    u_t_g <- paste0("gamma(5, ",
+                    5 / (quantile(response, probs = 1)),
+                    ")")
+    u_b_g <- paste0("gamma(5, ",
+                    5 / ((quantile(response, probs = 0) +
+                      min(response[response > 0]) / 10)),
+                    ")")
+    y_t_prs <- c(Gamma = u_t_g,
+                 poisson = u_t_g,
+                 negbinomial = u_t_g,
+                 gaussian = paste0("normal(",
+                                   quantile(response, probs = 1),
+                                   ", ", sd(response), ")"),
+                 bernoulli = "beta(5, 1)",
+                 binomial = "beta(5, 1)",
+                 "beta_binomial" = "beta(5, 1)",
+                 beta = "beta(5, 1)")
+    y_b_prs <- c(Gamma = u_b_g,
+                 poisson = u_b_g,
+                 negbinomial = u_b_g,
+                 gaussian = paste0("normal(",
+                                   quantile(response, probs = 0),
+                                   ", ", sd(response), ")"),
+                 bernoulli = "beta(1, 5)",
+                 binomial = "beta(1, 5)",
+                 "beta_binomial" = "beta(1, 5)",
+                 beta = "beta(1, 5)")
+  }
   x_prs <- c(Beta = "beta(2, 2)",
              Gamma = paste0("gamma(5, ",
                             1 / (quantile(predictor,

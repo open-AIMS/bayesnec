@@ -28,7 +28,7 @@ knitr::opts_chunk$set(
 
 ## Overview
 
-The main focus here is to explain the default priors used in `bayesnec` and to showcase how the user can interrogate the priors used in a `bayesec` model and alternatively specify their own priors, should they wish to. This might be needed depending on the model and the data because `bayesnec` tries to find reasonable and yet only weakly informative priors for the model parameters by default. First we describe the default priors used in `bayesnec` and then follow up with a demonstration of how the user can specify priors in multiple ways for objects of class `bayesnecfit` and `bayesmanecfit`.
+The main focus here is to explain the default priors used in `bayesnec` and to showcase how the user can interrogate the priors used in a `bayesec` model and alternatively specify their own priors, should they wish to. This might be needed depending on the model and the data because `bayesnec` tries to find reasonable and yet only weakly informative priors for the model parameters by default. First we describe the default priors used in `bayesnec`, including the two alternative default prior sets that can be selected through the `prior_type` argument, and then follow up with a demonstration of how the user can specify priors in multiple ways for objects of class `bayesnecfit` and `bayesmanecfit`.
 
 ## Default priors in `bayesnec`
 
@@ -36,7 +36,7 @@ The default priors used in `bayesnec` can generally be considered "weakly inform
 
 ### Priors for response-scaled parameters
 
-Only the parameters **top** and **bot** scale specifically with the response. For Gaussian-distributed response data (or any response data for which the link ensures valid values of the response can take from `+Inf` to `-Inf`, including `log` and `logit`) priors are `normal` with a standard deviation of `2.5` times the standard deivation of the response data, and a mean set at the 90^th^ and 10^th^ quantiles for **top** and **bot** respectively. For Poisson-, Negative Binomial- and Gamma-distributed data the response is bounded by `0` and thus priors are `Gamma`, with a mean scaled to correspond to the 75^th^ and 25^th^ quantiles for **top** and **bot** respectively. The mean is linked mathematically to the shape (*s*) and rate parameters (*r*) by the equation $mean = s \times (1/r)$ with the Gamma shape parameter set at 2. For the Binomial, Beta, and Beta Binomial families estimates for **top** and **bot** must necessarily be constrained between `0` and `1` when modelled on the `"identity"` link (the default in `bayesnec`). Because of this constraint there is no need to adjust scaling based on the response. `bayesnec` uses `beta(5, 2)` and `beta(2, 5)` priors to provide a broad density centred across the upper and lower `0` to `1` range for the **top** and **bot** parameters, respectively.
+Only the parameters **top** and **bot** scale specifically with the response. The priors described in this section are the default `"uninformative"` set (see **Selecting the default prior set** below for the alternative `"regularizing"` set, which differs only in these two response-scaled parameters). For Gaussian-distributed response data (or any response data for which the link ensures valid values of the response can take from `+Inf` to `-Inf`, including `log` and `logit`) priors are `normal` with a standard deviation of `2.5` times the standard deivation of the response data, and a mean set at the 90^th^ and 10^th^ quantiles for **top** and **bot** respectively. For Poisson-, Negative Binomial- and Gamma-distributed data the response is bounded by `0` and thus priors are `Gamma`, with a mean scaled to correspond to the 75^th^ and 25^th^ quantiles for **top** and **bot** respectively. The mean is linked mathematically to the shape (*s*) and rate parameters (*r*) by the equation $mean = s \times (1/r)$ with the Gamma shape parameter set at 2. For the Binomial, Beta, and Beta Binomial families estimates for **top** and **bot** must necessarily be constrained between `0` and `1` when modelled on the `"identity"` link (the default in `bayesnec`). Because of this constraint there is no need to adjust scaling based on the response. `bayesnec` uses `beta(5, 2)` and `beta(2, 5)` priors to provide a broad density centred across the upper and lower `0` to `1` range for the **top** and **bot** parameters, respectively.
 
 ### Priors for predictor-scaled parameters
 
@@ -44,7 +44,67 @@ The parameters **nec** and **ec50** scale with respect to the predictor because 
 
 ### Priors for other parameters
 
-For the parameters **beta**, **slope**, **d** and **f**, we first ensured any relevant transformations in the model formula such that theoretical values of `-Inf` to `+Inf` are allowable, and a `normal(0, 5)` prior is used. For example, in the **nec3param** model, **beta** is an exponential decay parameter which must by definition be bounded to `0` and `+Inf`. Calling `exp(beta)` in the model formula ensures the exponent meets these requirements. Note also that a mean of `0` and standard deviation of `5` represents a relatively broad prior on the exponential scaling. See the **Model details** vignette or `?model("all")` for more information on all the models available in `bayesnec` and their specific formulation. 
+For the parameters **beta**, **slope**, **d** and **f**, we first ensured any relevant transformations in the model formula such that theoretical values of `-Inf` to `+Inf` are allowable, and a `normal(0, 5)` prior is used. For example, in the **nec3param** model, **beta** is an exponential decay parameter which must by definition be bounded to `0` and `+Inf`. Calling `exp(beta)` in the model formula ensures the exponent meets these requirements. Note also that a mean of `0` and standard deviation of `5` represents a relatively broad prior on the exponential scaling. See the **Model details** vignette or `?model("all")` for more information on all the models available in `bayesnec` and their specific formulation.
+
+### Selecting the default prior set
+
+The priors described above are the default `"uninformative"` set, which is deliberately broad and close to truly uninformative. From version 2.1.3.2 `bayesnec` also offers a narrower, more `"regularizing"` set, selected through the `prior_type` argument of `bnec` (and `amend`). The two sets differ **only** in the response-scaled **top** and **bot** parameters; the predictor-scaled and fixed priors described above are identical for both.
+
+For the `"regularizing"` set the no-effect **top** parameter is centred on the *upper extreme* of the response data, which for the monotonically decreasing concentration—response data typically modelled in `bayesnec` corresponds to the control (no-exposure) mean, and **bot** is centred on the *lower extreme*. The priors are also given less dispersion than the `"uninformative"` set:
+
+* Gaussian families use a `normal` prior with a standard deviation of one (rather than `2.5` times) the standard deviation of the response, with means at the maximum and minimum of the response for **top** and **bot** respectively.
+* Poisson-, Negative Binomial- and Gamma-distributed families use a `Gamma` prior with a shape of `5` (rather than `2`) and a mean placed at the maximum and minimum of the response for **top** and **bot** respectively.
+* Binomial, Beta and Beta Binomial families use `beta(5, 1)` and `beta(1, 5)` priors (rather than `beta(5, 2)` and `beta(2, 5)`), pushing more density towards the upper and lower ends of the `0` to `1` range.
+
+These tighter priors can improve convergence and guard against implausible fits when the data are sparse or noisy, at the cost of exerting more influence on the posterior. The `"uninformative"` priors of Fisher et al. (2024) remain the default so that existing behaviour is preserved unless the regularizing set is explicitly requested.
+
+To see the difference we fit the same **nec3param** model to the `nec_data` example (a Beta-distributed response on the `"identity"` link) under each prior set. Note `prior_type` is ignored whenever the user supplies their own `prior` argument.
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results = "hide"}
+library(bayesnec)
+library(brms)
+options(mc.cores = parallel::detectCores())
+```
+
+```{r, results = "hide"}
+library(brms)
+library(bayesnec)
+data(nec_data)
+
+set.seed(333)
+exmp_uninformative <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
+                           family = Beta(link = "identity"),
+                           prior_type = "uninformative",
+                           iter = 1e4, control = list(adapt_delta = 0.99),
+                           open_progress = FALSE)
+
+set.seed(333)
+exmp_regularizing <- bnec(y ~ crf(x, model = "nec3param"), data = nec_data,
+                          family = Beta(link = "identity"),
+                          prior_type = "regularizing",
+                          iter = 1e4, control = list(adapt_delta = 0.99),
+                          open_progress = FALSE)
+```
+
+Comparing the priors that `bnec` built for each fit with `pull_prior` shows the change in the response-scaled **top** parameter: `beta(5, 2)` under the default `"uninformative"` set versus `beta(5, 1)` under `"regularizing"`. The predictor-scaled **nec** and fixed **beta** priors are unchanged.
+
+```{r}
+pull_prior(exmp_uninformative)
+```
+
+```{r}
+pull_prior(exmp_regularizing)
+```
+
+Plotting the prior and posterior densities with `check_priors` makes the difference in the **top** prior clear: the `"regularizing"` prior places more density at the upper end of the response range, closer to the observed control mean.
+
+```{r exmp3-checkpriors-uninformative, fig.width = 9, fig.asp = 0.35, out.width = "100%"}
+check_priors(exmp_uninformative)
+```
+
+```{r exmp3-checkpriors-regularizing, fig.width = 9, fig.asp = 0.35, out.width = "100%"}
+check_priors(exmp_regularizing)
+```
 
 ## User specified priors
 
@@ -167,6 +227,5 @@ necsigm_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
                     prior_string("gamma(2, 6.5)", nlpar = "beta"),
                     prior_string("normal(1.3, 2.7)", nlpar = "nec"),
                     prior_string("normal(0, 2)", nlpar = "d"))
-exmp_e <- amend(exmp_d, add = "necsigm", priors = necsigm_priors,
-                open_progress = FALSE)
+exmp_e <- amend(exmp_d, add = "necsigm", priors = necsigm_priors)
 ```
