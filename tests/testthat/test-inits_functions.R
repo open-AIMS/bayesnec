@@ -142,10 +142,13 @@ get_pred_fct_args <- function(model) {
 # We split models into those expected to succeed and those that may
 # fall back to Stan's random initialisation.
 
-# Models that reliably find good inits for both prior types
+# Models that reliably find good inits for both prior types. nechorme is
+# rescued by refine_inits() (its hormesis slope term exp(b_slope) * x has no
+# fractional power, so re-drawing b_slope/b_beta can bring predictions into
+# range).
 bb_models_expected_pass <- c(
   "nec3param", "nec4param",
-  "nechorme4", "necsigm",
+  "nechorme", "nechorme4", "necsigm",
   "nechormepwr01",
   "ecxexp",
   "ecx4param", "ecxwb1", "ecxwb2",
@@ -154,12 +157,17 @@ bb_models_expected_pass <- c(
   "ecxhormebc4", "ecxhormebc5"
 )
 
-# Models whose prediction curves regularly exceed (0, 1) for this dataset,
-# making it very hard or impossible to find valid inits within 10k trials.
-# These fall back to Stan's default random initialisation. This is
-# pre-existing behaviour, not a regression from the identity-link fix.
+# Models that cannot find valid inits for this dataset and fall back to Stan's
+# default random initialisation. This is a structural incompatibility, not a
+# regression from the identity-link fix, and refine_inits() cannot rescue it:
+# these models raise the predictor x to a fractional power (nechormepwr and
+# nechorme4pwr use x^(1/(1+exp(b_slope))); ecxsigm uses x^exp(b_d)). The
+# predictor here is log(mgL + 0.1), which is negative for low concentrations,
+# and a negative base with a non-integer exponent is NaN in R for every
+# parameter draw. No init re-draw changes the predictor, so these always fall
+# back to random.
 bb_models_may_fail <- c(
-  "nechorme", "nechormepwr", "nechorme4pwr", "ecxsigm"
+  "nechormepwr", "nechorme4pwr", "ecxsigm"
 )
 
 for (mod in bb_models_expected_pass) {
