@@ -27,6 +27,7 @@ Suggests:
     rstan,
     knitr,
     rmarkdown,
+    R.utils,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr
 URL: https://open-aims.github.io/bayesnec/

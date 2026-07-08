@@ -9,6 +9,9 @@
 #' @param skip_check Should data check via \code{\link{check_data}}
 #' be avoided? Only relevant to function \code{\link{amend}}.
 #' Defaults to FALSE.
+#' @param timeout A positive \code{\link[base]{numeric}} giving the maximum
+#' number of seconds allowed for the underlying \code{\link[brms]{brm}} call.
+#' The default \code{Inf} imposes no limit. See \code{\link{bnec}}.
 #'
 #' @importFrom brms brm
 #' @importFrom stats model.frame
@@ -18,7 +21,8 @@
 #'
 #' @noRd
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
-                         skip_check = FALSE, prior_type = "uninformative") {
+                         skip_check = FALSE, prior_type = "uninformative",
+                         timeout = Inf) {
   formula <- single_model_formula(formula, model)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
@@ -59,7 +63,23 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                skip_check, custom_name,
                                prior_type = prior_type)
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
-  fit <- do.call(brm, all_args)
+  if (is.finite(timeout)) {
+    # R.utils::withTimeout aborts the brm call once `timeout` seconds elapse
+    # (including chains running on parallel worker processes), raising a
+    # TimeoutException. This lets a caller's try() move on to the remaining
+    # models rather than hanging on a single, highly divergent fit. R.utils is
+    # only needed for this optional feature, so it is a Suggests dependency and
+    # accessed conditionally.
+    if (!requireNamespace("R.utils", quietly = TRUE)) {
+      stop("Package \"R.utils\" is required to use the `timeout` argument. ",
+           "Please install it.", call. = FALSE)
+    }
+    fit <- R.utils::withTimeout(
+      do.call(brm, all_args), timeout = timeout, onTimeout = "error"
+    )
+  } else {
+    fit <- do.call(brm, all_args)
+  }
   pass <- are_chains_correct(fit, all_args$chains)
   if (!pass) {
     stop("Failed to fit model ", model, ".", call. = FALSE)
