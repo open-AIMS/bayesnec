@@ -15,7 +15,43 @@ are never pooled.
 
 ---
 
-## 1. Recommendation
+## Recommendations at a glance
+
+**On the science**
+
+1. **Fit a hurdle-Gamma to the full exposed cohort**, dead snails coded `y = 0`,
+   with a declining bayesnec equation on *both* the growth of survivors (`mu`)
+   and survival (`1 - hu`). Report three endpoints: growth, survival, and the
+   combined `mu·(1-hu)`. §1.1
+2. **Do not describe the historical survivors-only Gamma as wrong.** The hurdle
+   likelihood factorises, so it gives the identical growth posterior — verified
+   to Monte Carlo error. The gain is the combined endpoint, one model object,
+   and somewhere to couple the two processes. Claiming a corrected growth
+   estimate would not survive review. §1.2
+3. **Do not switch to Tweedie, and do not call this zero-inflated.**
+   Zero-inflated Gamma *is* the hurdle. Tweedie welds mortality to the mean and
+   would predict ~31% dead controls on round 4. §1.5
+4. **Resolve the inferred dead rung before publishing any survival estimate** —
+   it is the one assumption that moves the mortality curve, and it is
+   unconfirmed for rounds 1–3. §1.4
+
+**On the package**
+
+5. **Ship phases 1–3; phase 4 is optional.** Phase 1 (two latent bug fixes) is
+   worth doing regardless of whether hurdle support ever lands. §2.5
+6. **The 23-equation concern is resolved** — the hu sub-model generates
+   mechanically from each existing `bf_` object, verified against all 23. Store
+   the generator, not 23 more objects. §2.2
+7. **Two existing bugs will silently corrupt hurdle results**: unanchored
+   matching in `extract_pars()` (which cascades into a `nec` model being
+   misclassified as `ecx`) and the `check_data()` zero-nudge. Fix and test these
+   first. §2.3
+8. **Make `hurdle_gamma` opt-in.** Auto-detecting it from zeros in the response
+   is a silent breaking change for existing users. §2.4
+
+---
+
+## 1. Statistical recommendation
 
 ### 1.1 The endpoint
 
@@ -253,12 +289,12 @@ brms (the density needs the Dunn–Smyth series approximation), so it would mean
 a hand-written `custom_family`, harder than the hurdle rather than cleaner.
 
 The only thing Tweedie offers is a `nec` parameter named directly in the model
-instead of a derived one. That is cosmetic, and §2.2 shows the derived version
+instead of a derived one. That is cosmetic, and §2.3 shows the derived version
 has a closed form anyway.
 
 ---
 
-## 2. Feasibility in bayesnec
+## 2. Implementation in bayesnec
 
 Verified: brms 2.22.0 accepts the construction, generates correct Stan code,
 and samples. The formula is
@@ -311,16 +347,57 @@ bnec(y ~ crf(log_x, "all") + hu(log_x, "nec3param"), data = dat,
 A full cross of 23 mu-equations by 23 hu-equations is not worth offering; the
 same-shape default plus a fixed-hu override covers the useful cases.
 
-### 2.2 Work items
+### 2.2 The hu sub-model generator — verified
+
+The concern with a second parameter block was having to hand-write and maintain
+23 more `bf_` objects. That is not necessary: the hu block can be derived
+mechanically from each existing equation. This generator was run against all 23
+and **brms accepted every resulting formula**:
+
+```r
+make_hu_block <- function(bf_obj) {
+  pars <- names(bf_obj$pforms)
+  rhs  <- deparse1(bf_obj$formula[[3]])
+  # Longest name first, so "top" inside an already-substituted "hutop" is
+  # never rewritten twice. Word boundaries alone are not enough here because
+  # bayesnec parameter names are substrings of one another (e.g. bot / top).
+  for (p in pars[order(nchar(pars), decreasing = TRUE)]) {
+    rhs <- gsub(paste0("(?<![[:alnum:]_])", p, "(?![[:alnum:]_])"),
+                paste0("hu", p), rhs, perl = TRUE)
+  }
+  list(nlf  = as.formula(paste0("hu ~ 1 - (", rhs, ")")),
+       lf   = as.formula(paste0(paste0("hu", pars, collapse = " + "), " ~ 1")),
+       pars = paste0("hu", pars))
+}
+```
+
+Spot checks across the equation families:
+
+| model | generated hu sub-model |
+|---|---|
+| `nec3param` | `hu ~ 1 - (hutop * exp(-exp(hubeta) * (x - hunec) * step(x - hunec)))` |
+| `ecx4param` | `hu ~ 1 - (hutop + (hubot - hutop)/(1 + exp((huec50 - x) * exp(hubeta))))` |
+| `ecxll5` | `hu ~ 1 - (hubot + (hutop - hubot)/(1 + exp(exp(hubeta) * (x - huec50)))^exp(huf))` |
+| `nechormepwr01` | `hu ~ 1 - ((1/(1 + ((1/hutop) - 1) * exp(-exp(huslope) * x))) * exp(...))` |
+
+Two consequences worth noting. First, `data-raw/sysdata.R` stays small — store
+the generator, not 23 more objects, and the hu blocks stay automatically in step
+if an equation is ever edited. Second, `show_params()` gains the `hu` parameters
+for free, since it reads the same `bf_` objects.
+
+Caveat: generating a formula is not the same as it being *sensible*. Several
+equations are poor choices for a probability-scale sub-model — anything with a
+`slope` term is unbounded above and will push `hu` outside [0, 1] under an
+identity link. §2.3 handles that through `check_models()`, not through the
+generator.
+
+### 2.3 Work items
 
 Ordered roughly by dependency. The two marked **critical** are correctness
 issues that will silently produce wrong answers if missed.
 
-**`data-raw/sysdata.R`** — add `hurdle_gamma = "hurdle_gamma"` to `mod_fams`.
-Rather than hand-writing 23 more `bf_` objects, generate the `nlf()`/`lf()` hu
-block programmatically from each existing `bf_<model>`: prefix the non-linear
-parameter names with `hu` and wrap the RHS as `1 - (...)`. Regenerate
-`R/sysdata.rda`.
+**`data-raw/sysdata.R`** — add `hurdle_gamma = "hurdle_gamma"` to `mod_fams`,
+and add `make_hu_block()` from §2.2. Regenerate `R/sysdata.rda`.
 
 **`R/validate_family.R`** — `get(family)(link = "identity")` needs to pass
 `link_hu = "identity"` for hurdle families. Currently hard-codes a single
@@ -336,11 +413,34 @@ the signal and must be left alone. This guard has to be skipped, or the hurdle
 component will see no zeros and the model becomes unidentifiable.
 
 **`R/helpers.R`, `extract_pars()` — critical.** Uses
-`grep(x, rownames(fixef(fit)))` unanchored, so `grep("top", ...)` will match
-both `top_Intercept` and `hutop_Intercept` and return a two-row matrix where a
-named vector is expected. Needs `^` anchoring plus a separate extraction pass
-for the `hu`-prefixed block. This is the single most likely source of a silent
-wrong answer.
+`grep(x, rownames(fixef(fit)))` unanchored. Traced through, the failure
+cascades into a wrong NEC rather than an error:
+
+1. `grep("top", ...)` matches both `top_Intercept` and `hutop_Intercept`, so
+   `fef[grep(x, rownames(fef)), cols]` returns a 2×3 matrix, not a named vector.
+2. `tt["Estimate"]` on a matrix returns `NA`, so `extract_pars()` hits its
+   `if (is.na(tt["Estimate"])) NA` branch and returns `NA` — for *every*
+   parameter (`top`, `beta`, `nec`, `bot`, `ec50`, `slope`, `d`, `f`).
+3. `expand_nec()` then does
+   `if (is.na(extracted_params$ne["Estimate"])) mod_class <- "ecx"`, so a
+   `nec3param` hurdle fit is **misclassified as an ecx model** and its NEC is
+   silently computed as an interpolated NSEC from the curve instead of read from
+   `b_nec_Intercept`.
+
+The fix is anchoring plus a second pass for the prefixed block:
+
+```r
+extract_pars <- function(x, model_fit, prefix = "") {
+  fef <- fixef(model_fit, robust = TRUE)
+  tt <- fef[grep(paste0("^", prefix, x, "_"), rownames(fef)),
+            c("Estimate", "Q2.5", "Q97.5")]
+  if (length(tt) == 0 || is.na(tt["Estimate"])) NA else tt
+}
+```
+
+Note `length(tt) == 0` guards the no-match case, which the current version does
+not handle either. Verified: anchoring resolves `top`/`hutop`, `beta`/`hubeta`
+and `nec`/`hunec` cleanly.
 
 **`R/check_models.R`** — hurdle_gamma must satisfy both sets of existing link
 restrictions simultaneously: the Gamma/identity rules for `mu` (drop `neclin`,
@@ -406,13 +506,107 @@ worthwhile enhancement.
 **No change needed**: `dispersion()` (returns `numeric()` for anything outside
 poisson/binomial), `bnec_newdata.R`, `model.frame.R`.
 
-**Docs and tests** — `bnec()` family documentation, `models()` restrictions
-text, a `test-hurdle.R` covering the zero-preservation guard in `check_data()`,
-the anchored `extract_pars()` behaviour, and prior generation on the positive
-subset. Plus a vignette section; the survivors-only-vs-joint comparison in
-§1.2 is a good worked example for it.
+**Docs** — `bnec()` family documentation, `models()` restrictions text, and a
+vignette section; the survivors-only-vs-joint comparison in §1.2 is a good
+worked example for it. Tests are specified separately in §2.6.
 
-### 2.3 Effort and risk
+### 2.4 Backwards compatibility
+
+Almost all of this is additive, but **one proposed change is a silent breaking
+change** and should not ship as written.
+
+The `set_distribution()` auto-detection item would make a numeric response with
+`max > 1` and exact zeros return `"hurdle_gamma"` where it currently returns
+`"Gamma"`. Any existing user who has been fitting zero-containing data —
+relying, knowingly or not, on `check_data()` nudging those zeros up to
+`min(y[y > 0])/10` — would silently get a structurally different model, a second
+parameter block, and different ECx values, with no error and no deprecation
+warning. Re-running an old script would not reproduce the published result.
+
+Recommended instead:
+
+- Leave `set_distribution()` returning `"Gamma"` for zero-containing data.
+- Emit a **message** when zeros are present and the family is Gamma, pointing at
+  `hurdle_gamma` and noting that the zeros are currently being nudged. That
+  makes the existing behaviour visible, which it currently is not.
+- Make `hurdle_gamma` strictly opt-in via `family = hurdle_gamma()` for at least
+  one release cycle, and revisit auto-detection once there is field experience.
+
+Everything else is additive: new family in `mod_fams`, new branches keyed on
+`fam_tag`, a new optional `dpar` argument defaulting to existing behaviour. The
+`extract_pars()` anchoring fix changes behaviour only where the current code
+would already be wrong, and adds a `length(tt) == 0` guard the current version
+lacks. No existing fitted objects are invalidated.
+
+One genuine limitation to document rather than fix: `loo` comparison and
+`bayesmanecfit` weighting across a hurdle model suite is comparing complete
+two-component models. That is coherent — same response, same observations — but
+weights are *not* comparable against a non-hurdle suite fitted to the
+survivors-only subset, because the two are fitted to different data. `amend()`
+already refuses to mix families via `has_family_changed()`; that guard should be
+confirmed to fire for hurdle-vs-Gamma.
+
+### 2.5 Phased plan
+
+Four increments, each independently testable and shippable.
+
+**Phase 1 — fix the latent bugs (no hurdle support yet).** The anchored
+`extract_pars()` with its `length(tt) == 0` guard, and the `check_data()` zero
+handling made explicit and messaged. Both are defensible on their own merits and
+carry no hurdle dependency, so they can go in first and de-risk everything after.
+*Small: a day, mostly tests.*
+
+**Phase 2 — single-model hurdle fit.** `mod_fams` entry, `validate_family()`
+link handling, `make_hu_block()` in `data-raw/sysdata.R`, `check_data()` hurdle
+branch, `check_models()` intersection, `define_prior()` two-block priors,
+`response_link_scale()` positive-subset branch, `make_good_inits()` run twice
+and merged. Target: `bnec(y ~ crf(x, "nec3param"), family = hurdle_gamma())`
+returns a valid `bayesnecfit`. *The bulk of the work — priors and inits are
+where the time goes, not the formula.*
+
+**Phase 3 — the estimates.** `expand_nec()` storing all three N(S)EC posteriors
+and both component curves; the `pmin(nec, hunec)` closed form; `dpar` argument
+on `ecx()`/`nsec()`. Target: all three endpoints reportable with correct
+intervals. *Moderate.*
+
+**Phase 4 — polish.** Model averaging across a hurdle suite, three-panel
+`plot()`/`autoplot()`, the `hu()` formula term for a differently-shaped survival
+sub-model, vignette. *Phase 4 is genuinely optional — phases 1–3 deliver the
+scientific capability.*
+
+Sequencing note: phase 2's initial-value work is the schedule risk, not the
+formula construction. Budget accordingly.
+
+### 2.6 Test plan
+
+The two critical items fail silently, so they need tests that would catch a
+regression rather than tests that merely exercise the path.
+
+`tests/testthat/test-hurdle.R`:
+
+- **Zeros survive `check_data()`** for `hurdle_gamma` and are still nudged for
+  `Gamma`. Assert on the returned `mod_dat$y`, not on the fit.
+- **`extract_pars()` anchoring.** Construct a `fixef`-shaped matrix with both
+  `top_Intercept` and `hutop_Intercept`; assert a length-3 named vector comes
+  back, not `NA`. This is the regression test for the cascade in §2.3 and does
+  not need a fitted model.
+- **`expand_nec()` classifies a hurdle `nec3param` as `"nec"`, not `"ecx"`** —
+  the downstream symptom of the same bug, and the one a user would actually
+  notice.
+- **Priors are built from the positive subset.** Assert the `top` prior's rate
+  parameter matches one computed from `y[y > 0]`, so re-including zeros fails.
+- **`make_hu_block()` round-trips all 23 equations** and brms accepts each
+  combined formula. Cheap — no sampling required, just `make_stancode()`.
+- **`pmin(nec, hunec)` matches the numerical breakpoint** of the combined
+  `posterior_epred` curve, on a small stored fit.
+- **`check_models()` drops slope-bearing equations** for the hu component.
+
+Sampling-dependent tests belong in `tests/local/`, following the existing split:
+one short hurdle fit asserting that all three endpoints are finite, ordered
+(`combined <= min(growth, survival)`), and that `posterior_epred(fit)` equals
+`mu * (1 - hu)`.
+
+### 2.7 Risks
 
 The formula construction and the downstream prediction machinery are the easy
 parts — brms does the work and `posterior_epred` already returns the right
@@ -433,7 +627,7 @@ Main risks:
   and was the case here. Worth a diagnostic warning when the number of distinct
   concentrations with any mortality is below, say, three.
 
-### 2.4 Related families worth folding in at the same time
+### 2.8 Related families worth folding in at the same time
 
 The same scaffolding generalises at low marginal cost:
 
