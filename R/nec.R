@@ -11,6 +11,7 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param ... Additional arguments passed to methods.
 #'
 #' @seealso \code{\link{bnec}}
 #' 
@@ -35,7 +36,7 @@
 #'
 #' @export
 nec <- function(object, posterior = FALSE, xform = identity,
-                prob_vals = c(0.5, 0.025, 0.975)) {
+                prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("nec")
 }
 
@@ -54,7 +55,7 @@ nec <- function(object, posterior = FALSE, xform = identity,
 #'
 #' @export
 nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
-                            prob_vals = c(0.5, 0.025, 0.975)) {
+                            prob_vals = c(0.5, 0.025, 0.975), ...) {
   chk_logical(posterior)
   if(!inherits(xform, "function")){ 
     stop("xform must be a function.")} 
@@ -100,7 +101,7 @@ nec.bayesnecfit <- function(object, posterior = FALSE, xform = identity,
 #'
 #' @export
 nec.bayesmanecfit <- function(object, posterior = FALSE, xform = identity,
-                              prob_vals = c(0.5, 0.025, 0.975)) {
+                              prob_vals = c(0.5, 0.025, 0.975), ...) {
   chk_logical(posterior)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
