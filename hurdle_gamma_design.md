@@ -37,17 +37,25 @@ are never pooled.
 
 **On the package**
 
-5. **Ship phases 1–3; phase 4 is optional.** Phase 1 (two latent bug fixes) is
-   worth doing regardless of whether hurdle support ever lands. §2.5
-6. **The 23-equation concern is resolved** — the hu sub-model generates
-   mechanically from each existing `bf_` object, verified against all 23. Store
-   the generator, not 23 more objects. §2.2
+5. **Build the factorised route first, not the joint family.** Because the
+   likelihood separates, fitting the two components as two ordinary `bnec()`
+   calls needs almost none of the two-parameter-block machinery — *and* it
+   delivers the full 23 × 23 crossed model comparison, which the joint route
+   cannot at any tractable cost. §2.1
+6. **The crossed model space is not intractable.** LOO decomposes additively
+   across the two components (verified: 0.027 discrepancy on an elpd of −1045),
+   so all 529 combinations come from 46 fits, and pseudo-BMA weights are the
+   exact outer product of the marginal weights. Reach for the joint fit only
+   when you need shared random effects — you can have the free crossed
+   comparison or the coupling, not both. §1.6
 7. **Two existing bugs will silently corrupt hurdle results**: unanchored
    matching in `extract_pars()` (which cascades into a `nec` model being
-   misclassified as `ecx`) and the `check_data()` zero-nudge. Fix and test these
-   first. §2.3
-8. **Make `hurdle_gamma` opt-in.** Auto-detecting it from zeros in the response
-   is a silent breaking change for existing users. §2.4
+   misclassified as `ecx`) and the `check_data()` zero-nudge. Also settle the
+   `check_models()` slope / 0-1 doc-code mismatch. Fix and test these first;
+   all three are worth doing regardless. §2.3
+8. **Make `hurdle_gamma` opt-in** if the joint family is ever built.
+   Auto-detecting it from zeros in the response is a silent breaking change for
+   existing users. §2.4
 
 ---
 
@@ -292,6 +300,98 @@ The only thing Tweedie offers is a `nec` parameter named directly in the model
 instead of a derived one. That is cosmetic, and §2.3 shows the derived version
 has a closed form anyway.
 
+### 1.6 Model selection over the crossed space
+
+Forcing both components onto the same equation, as §2.1 originally proposed, is
+a convenience: the honest model space is 23 mu-equations × 23 hu-equations = 529
+combinations, and 529 joint fits is not a serious proposal. It turns out the
+convenience is unnecessary — the full cross is available for the cost of 46
+fits.
+
+**The result.** Rearranged, the hurdle log-likelihood for observation *i* is
+
+```
+log p(y_i|θ) = 1[y_i=0]·log(hu_i) + 1[y_i>0]·[log(1-hu_i) + log Gamma(y_i|mu_i,shape)]
+             = log Bernoulli(dead_i | hu_i)            <- all N observations
+             + 1[y_i>0]·log Gamma(y_i|mu_i, shape)     <- positives only
+```
+
+The blocks share no parameters and have independent priors, so the posterior
+factorises and pointwise LOO decomposes additively:
+
+```
+elpd(a, b) = elpd_mu(a) + elpd_hu(b)
+```
+
+Verified on round 4 (`nec3param` throughout, same priors and inits in all three
+fits):
+
+| fit | elpd | n |
+|---|---|---|
+| joint hurdle-Gamma | −1044.811 (se 21.5) | 372 |
+| Gamma on survivors | −988.025 | 327 |
+| Bernoulli on the death indicator | −56.758 | 372 |
+| **sum of the two parts** | **−1044.784** | |
+
+A discrepancy of 0.027 on an elpd of −1045, against a standard error of 21.5.
+The identity holds.
+
+**Consequences.** Fit the 23 mu-models and the 23 hu-models separately — 46 fits
+— and every one of the 529 crossed elpds follows by addition. Under pseudo-BMA,
+bayesnec's default weighting, `exp(elpd_a + elpd_b) = exp(elpd_a)·exp(elpd_b)`,
+so the crossed weights are the **outer product** of the marginal weight vectors.
+Confirmed numerically to 7.8e-14 on a 372 × 529 pointwise matrix.
+
+Because those weights are rank-1, the model-averaged combined curve separates
+too:
+
+```
+Σ_ab w_ab · mu_a(x)(1-hu_b(x))  =  [Σ_a w_a mu_a(x)] · [Σ_b w_b (1-hu_b(x))]
+```
+
+Average each component over its own 23 models, then multiply. That *is* the
+full 529-model average, exactly — not an approximation to it.
+
+**Three caveats.**
+
+*PSIS, not exact LOO.* The identity above is exact for exact LOO. The PSIS
+approximation applies Pareto smoothing to the product when computed jointly and
+to each factor when computed separately, so the two routes differ slightly —
+0.027 here. If anything the separate route should behave better, since each
+factor has lighter importance-ratio tails than their product.
+
+*Bayesian bootstrap.* `loo_model_weights(method = "pseudobma")` defaults to
+`BB = TRUE`, which resamples observations and so couples the components; the
+outer product is then only approximate (max discrepancy 0.0032 in the same
+synthetic check). Pass `BB = FALSE` for the exact result.
+
+*Stacking does not factorise.* Its objective is over mixtures of joint
+predictive densities and the optimal simplex weights are not rank-1. You can
+still build the 529 × N pointwise matrix by outer-sum and hand it to
+`loo::stacking_weights()` — that works, but the 529-simplex optimisation took
+212 s on a 372 × 529 matrix, against effectively zero for the pseudo-BMA outer
+product. Tolerable as a one-off, worth flagging to users who change
+`loo_controls`. Note the fits themselves are still only 46 either way; this is
+post-processing cost, not sampling cost.
+
+**The whole thing collapses under coupling.** Add a shared tank-level random
+effect, or constrain a parameter across components, and the posterior no longer
+factorises. You can have the free crossed comparison *or* the coupling that
+§1.2 identified as the real statistical argument for joint fitting — not both.
+When you need the coupling, the factorised comparison is still the right way to
+*screen*: rank each margin, keep everything within Δelpd ≈ 4 of the best, and
+cross only those (4 × 4 = 16 joint fits, not 529). That approximation is good
+when coupling is weak, and it is checkable afterwards.
+
+**Prior art.** None of this is novel — it is the standard justification for
+estimating and selecting the two parts of a hurdle model independently. Duan et
+al. (1983) on demand for medical care and Mullahy (1998) establish it in health
+econometrics; Stata's `twopm` (Belotti et al. 2015) is built on it. The same
+pattern is routine in fisheries CPUE standardisation, where delta/hurdle models
+have their binomial and positive-catch components specified separately
+(Stefánsson 1996; Maunder & Punt 2004). The general principle is that
+information criteria decompose additively over separable likelihood blocks.
+
 ---
 
 ## 2. Implementation in bayesnec
@@ -325,27 +425,82 @@ Three pieces of existing machinery fall out for free:
 - Raw data plot correctly against the combined curve, because the zeros are on
   the same scale.
 
-### 2.1 Proposed user API
+### 2.1 Two routes, and which to build first
 
-Default: the `hu` component reuses whichever equation `crf()` names, so model
-averaging stays coherent (each candidate is a complete two-component model, and
-`loo` compares like with like).
+§1.6 changes the design. There are two ways to deliver this, and the lighter one
+is also the better one on model selection.
+
+**Route B — factorised (recommended first).** Call the existing `bnec()` twice
+and combine the results:
+
+```r
+fit <- bnec_hurdle(
+  growth   = y ~ crf(log_x, "all"),      # Gamma on survivors
+  survival = dead ~ crf(log_x, "all"),   # Bernoulli on the death indicator
+  data = dat
+)
+```
+
+Internally: two ordinary `bayesmanecfit` objects, plus a wrapper class holding
+both. Methods combine them — `nec()` returns `pmin()` of the two thresholds,
+`ecx()` reads off the product curve, `plot()` gains a third panel.
+
+What this buys:
+
+- **The full 529-model cross**, by §1.6, at the cost of 46 fits. The joint route
+  cannot offer this at any tractable cost.
+- **Almost none of the risky scaffolding.** No two-block priors, no doubled
+  initial-value search, no `extract_pars()` prefix problem, no `make_hu_block()`
+  generator, no `check_models()` intersection. Each component is an ordinary
+  bayesnec fit using machinery that already works and is already tested.
+- Model averaging, `loo`, `amend()`, `pull_out()` all work per component,
+  unchanged.
+
+What it costs:
+
+- No shared random effects across components — the coupling §1.2 identified as
+  the real argument for joint fitting.
+- Two objects to keep in step; the user could refit one and not the other. The
+  wrapper class should store both and refuse to combine mismatched data.
+- The death indicator has to be constructed, which is where the reconstruction
+  in §1.4 lives. That is a data-preparation helper, not a modelling problem.
+
+**Route A — joint `hurdle_gamma` family.** What the rest of §2 specifies. One
+brmsfit, both components estimated together, coupling possible. Needed
+eventually; heavier on every axis; and restricted to the same-shape diagonal or
+a screened subset because the full cross is out of reach.
 
 ```r
 bnec(y ~ crf(log_x, "nec3param"), data = dat, family = hurdle_gamma())
-bnec(y ~ crf(log_x, "nec"),       data = dat, family = hurdle_gamma())
-```
-
-Override, for when the survival response has a different shape from the growth
-response (likely — mortality is often more threshold-like):
-
-```r
 bnec(y ~ crf(log_x, "all") + hu(log_x, "nec3param"), data = dat,
      family = hurdle_gamma())
 ```
 
-A full cross of 23 mu-equations by 23 hu-equations is not worth offering; the
-same-shape default plus a fixed-hu override covers the useful cases.
+**Recommendation: build Route B first.** It delivers the scientific capability
+sooner, with far less risk, and strictly dominates Route A on the model-space
+question. Route A becomes the later increment, justified by shared random
+effects rather than by the endpoint itself — and when it is built, Route B is
+the natural way to screen which 16 of the 529 combinations are worth fitting
+jointly.
+
+The work items in §2.3 are written against Route A. **Route B needs almost none
+of them**, which is the point:
+
+| §2.3 item | Route B |
+|---|---|
+| `mod_fams`, `validate_family()`, `make_hu_block()` | not needed — uses `Gamma` and `bernoulli`, both already supported |
+| `check_data()` zero handling | not needed — the Gamma component is fitted to survivors, which contain no zeros |
+| `extract_pars()` anchoring | not needed — no `hu`-prefixed parameters exist; the `length(tt) == 0` guard is still worth fixing on its own merits |
+| `set_distribution()` auto-detection | not needed |
+| `define_prior()` two blocks | not needed — existing Gamma and bernoulli/identity defaults apply unchanged |
+| two-pass `make_good_inits()` | not needed |
+| `check_models()` slope / 0-1 mismatch | **needed** — the survival component is 0-1 bounded under an identity link |
+| closed-form combined NEC | **needed**, relocated from `expand_nec()` into the wrapper |
+| three-panel `plot()` | **needed**, in the wrapper |
+
+New code Route B does need: the wrapper class and its `nec()` / `ecx()` /
+`plot()` / `summary()` methods, a helper to build the death indicator from
+cohort sizes (§1.4), and the crossed-weight construction from §1.6.
 
 ### 2.2 The hu sub-model generator — verified
 
@@ -582,34 +737,40 @@ way.
 
 ### 2.5 Phased plan
 
-Four increments, each independently testable and shippable.
+Revised around Route B (§2.1). Each increment is independently testable and
+shippable, and **the scientific capability lands at phase 3** — well before any
+of the two-parameter-block machinery.
 
-**Phase 1 — fix the latent bugs (no hurdle support yet).** The anchored
-`extract_pars()` with its `length(tt) == 0` guard, and the `check_data()` zero
-handling made explicit and messaged. Both are defensible on their own merits and
-carry no hurdle dependency, so they can go in first and de-risk everything after.
-*Small: a day, mostly tests.*
+**Phase 1 — fix the latent bugs.** The `length(tt) == 0` guard in
+`extract_pars()`, and the `check_data()` zero handling made explicit and
+messaged. Settle the `check_models()` slope / 0-1 doc-code mismatch, since
+Route B's survival component depends on it. No hurdle dependency; defensible on
+their own merits. *Small: a day, mostly tests.*
 
-**Phase 2 — single-model hurdle fit.** `mod_fams` entry, `validate_family()`
-link handling, `make_hu_block()` in `data-raw/sysdata.R`, `check_data()` hurdle
-branch, `check_models()` intersection, `define_prior()` two-block priors,
-`response_link_scale()` positive-subset branch, `make_good_inits()` run twice
-and merged. Target: `bnec(y ~ crf(x, "nec3param"), family = hurdle_gamma())`
-returns a valid `bayesnecfit`. *The bulk of the work — priors and inits are
-where the time goes, not the formula.*
+**Phase 2 — the wrapper (Route B).** `bnec_hurdle()`, a class holding two
+`bayesmanecfit`s, and a helper building the death indicator from cohort sizes.
+Target: two ordinary bayesnec fits, stored together, with the data-consistency
+checks that stop them drifting apart. *Small-to-moderate; no new statistical
+machinery, and every component fit uses paths that already work.*
 
-**Phase 3 — the estimates.** `expand_nec()` storing all three N(S)EC posteriors
-and both component curves; the `pmin(nec, hunec)` closed form; `dpar` argument
-on `ecx()`/`nsec()`. Target: all three endpoints reportable with correct
-intervals. *Moderate.*
+**Phase 3 — combined estimates and crossed weights.** `nec()` via the
+`pmin()` closed form, `ecx()` off the product curve, the outer-product crossed
+weights from §1.6 (with `BB = FALSE`), three-panel `plot()`. Target: all three
+endpoints reportable, plus the full 529-model average. *Moderate. **This is the
+milestone that delivers the science.***
 
-**Phase 4 — polish.** Model averaging across a hurdle suite, three-panel
-`plot()`/`autoplot()`, the `hu()` formula term for a differently-shaped survival
-sub-model, vignette. *Phase 4 is genuinely optional — phases 1–3 deliver the
-scientific capability.*
+**Phase 4 — joint family (Route A), only if coupling is needed.** Everything in
+§2.3: `mod_fams`, `validate_family()`, `make_hu_block()`, the `check_data()`
+hurdle branch, two-block priors, two-pass initial values, `expand_nec()`
+restructuring, `dpar` arguments. Justified by shared tank-level random effects,
+not by the endpoint — phases 1–3 already deliver that. *The bulk of the original
+estimate, now deferred and contingent.*
 
-Sequencing note: phase 2's initial-value work is the schedule risk, not the
-formula construction. Budget accordingly.
+Two sequencing notes. Phase 4's initial-value work is the schedule risk, not the
+formula construction — but it is no longer on the critical path. And if phase 4
+does go ahead, use phase 3's factorised comparison to screen which ~16 of the
+529 combinations are worth fitting jointly, rather than defaulting to the
+same-shape diagonal.
 
 ### 2.6 Test plan
 
