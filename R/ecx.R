@@ -139,8 +139,26 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
-                               re_formula = NA)
+  # dpar lets a hurdle fit report its components separately. The default (NULL)
+  # gives what posterior_epred always gave: mu * (1 - hu) for a hurdle family,
+  # the single mean curve otherwise. "hu" is inverted to survival so that
+  # "decline from control" means the same thing as it does everywhere else.
+  dpar <- list(...)$dpar
+  if (is.null(dpar)) {
+    p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
+                                 re_formula = NA)
+  } else {
+    if (!is_hurdle_family(object$fit$family)) {
+      stop("The \"dpar\" argument is only valid for hurdle families.",
+           call. = FALSE)
+    }
+    dpar <- match.arg(dpar, c("mu", "hu"))
+    p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
+                                 re_formula = NA, dpar = dpar)
+    if (dpar == "hu") {
+      p_samples <- 1 - p_samples
+    }
+  }
   x_vec <- newdata_list$x_vec
   # if (grepl("horme", object$model)) {
   #   n <- seq_len(nrow(p_samples))

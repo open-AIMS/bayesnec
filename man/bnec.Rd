@@ -202,6 +202,42 @@ Other families can be considered as required, please raise an
 \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
 development site if your required family is not currently available.
 
+\bold{Hurdle families}
+
+The family "hurdle_gamma" fits data where exposure both kills individuals
+and suppresses the response of those that survive. Zeros in the response
+denote individuals that did not survive, and the fit gains a second
+parameter block, prefixed \code{hu}, giving the probability of that
+happening its own concentration-response curve. \code{\link{show_params}}
+lists the response-block parameters; the hurdle block carries the same names
+with an \code{hu} prefix (\code{hutop}, \code{hunec} and so on).
+
+Three toxicity estimates follow from one fit: the response of survivors
+(\code{mu}), survival itself (\code{1 - hu}), and the combined endpoint
+\code{mu * (1 - hu)}, the expected response per individual \emph{exposed}.
+\code{\link[brms]{posterior_epred}} returns the combined endpoint, so
+\code{\link{ecx}}, \code{\link{nsec}} and \code{\link{plot}} describe it by
+default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
+for a component. \code{\link{nec}} returns the combined threshold, which for
+threshold models on both blocks is the smaller of the two.
+
+This family must be specified as \code{family = "hurdle_gamma"}, or with
+both links set explicitly as
+\code{hurdle_gamma(link = "identity", link_hu = "identity")}. bayesnec keeps
+every parameter on the natural response scale, and the hurdle block is
+written as \code{1 - <survival curve>}, which is only meaningful under an
+identity \code{link_hu}. It is never selected automatically: a response
+containing zeros is still treated as Gamma, with a message, so that existing
+analyses do not silently change.
+
+The alternative is \code{\link{bnec_hurdle}}, which fits the same two
+components as two separate \code{\link{bnec}} calls. The hurdle likelihood
+factorises, so the two give equivalent inference where the components are
+independent, but they differ in what else they allow: the joint fit here can
+couple the blocks through shared group-level effects, while the factorised
+route makes the full crossed model comparison tractable (see
+\code{\link{crossed_weights}}).
+
 As a default, \code{\link{bnec}} sets the \code{\link[brms]{brm}} argument
 \code{sample_prior} to "yes" in order to sample draws from the priors in
 addition to the posterior distributions. Among others, these samples can be

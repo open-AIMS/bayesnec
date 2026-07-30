@@ -421,7 +421,7 @@ substitute_x_in_formula <- function(new_x, brms_rhs) {
 
 #' @noRd
 #' @importFrom formula.tools lhs
-wrangle_model_formula <- function(model, formula, data) {
+wrangle_model_formula <- function(model, formula, data, family = NULL) {
   brms_bf <- get(paste0("bf_", model))
   brms_bf[[1]][[2]] <- lhs(formula)
   bnec_pop_vars <- attr(data, "bnec_pop")
@@ -432,6 +432,14 @@ wrangle_model_formula <- function(model, formula, data) {
   bnec_group_vars <- attr(data, "bnec_group")
   if (any(!is.na(bnec_group_vars))) {
     brms_bf <- add_formula_glef(model, brms_bf, formula, data)
+  }
+  # Hurdle families get a second, mechanically derived parameter block for the
+  # hurdle probability. Added after any group-level terms so that those apply
+  # to the response block only -- coupling the two blocks through a shared
+  # group-level effect would break the likelihood factorisation that the
+  # factorised route (see bnec_hurdle) relies on, so it is not done implicitly.
+  if (!is.null(family) && is_hurdle_family(family)) {
+    brms_bf <- add_hu_block(brms_bf, model, new_x)
   }
   brms_bf
 }
@@ -586,9 +594,12 @@ trials <- function(...) {
 #' R formula or an actual \code{\link[stats]{formula}} object. See details.
 #' @param data A \code{\link[base]{data.frame}} containing the variables
 #' specified in \code{formula}.
+#' @param family Optionally a \code{\link[stats]{family}} object. Only used to
+#' detect hurdle families, which gain a second parameter block modelling the
+#' hurdle probability. Defaults to \code{NULL}.
 #'
 #' @importFrom stats model.frame
-#' 
+#'
 #' @return A named \code{\link[base]{list}}, with each element containing the
 #' final \code{\link[brms]{brmsformula}} to be passed to
 #' \code{\link[brms]{brm}}.
@@ -617,14 +628,14 @@ trials <- function(...) {
 #' make_brmsformula(f_2, data)
 #'
 #' @export
-make_brmsformula <- function(formula, data) {
+make_brmsformula <- function(formula, data, family = NULL) {
   formula <- bnf(formula)
   all_models <- get_model_from_formula(formula)
   out <- list()
   for (i in seq_along(all_models)) {
     formula_i <- single_model_formula(formula, all_models[i])
     bdat_i <- model.frame(formula_i, data = data, run_par_checks = FALSE)
-    out[[i]] <- wrangle_model_formula(all_models[i], formula_i, bdat_i)
+    out[[i]] <- wrangle_model_formula(all_models[i], formula_i, bdat_i, family)
   }
   names(out) <- all_models
   out

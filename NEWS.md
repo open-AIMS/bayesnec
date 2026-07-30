@@ -1,5 +1,44 @@
 # bayesnec 2.1.3.2
 
+- Added the `"hurdle_gamma"` family to `bnec()`, for concentration-response
+  data where exposure both kills individuals and suppresses the response of
+  those that survive. Zeros in the response denote individuals that did not
+  survive, and the fit gains a second parameter block (prefixed `hu`) giving
+  the probability of that its own concentration-response curve. All 23
+  equations are available for both blocks. `posterior_epred()` returns the
+  combined endpoint `mu * (1 - hu)`, so `ecx()`, `nsec()` and `plot()` describe
+  it by default; `ecx()` gains a `dpar` argument for the components, and
+  `nec()` returns the combined threshold. Must be requested explicitly as
+  `family = "hurdle_gamma"` — a response containing zeros is still treated as
+  Gamma so that existing analyses do not change.
+- `check_data()` now emits a message when it shifts zeros away from zero for a
+  Gamma fit, pointing at `hurdle_gamma` as the alternative. This behaviour was
+  previously silent.
+- Fixed `extract_pars()`, which matched parameter names without anchoring. For
+  a hurdle fit `"top"` also matched `"hutop_Intercept"`, which returned `NA`
+  for every parameter and caused `expand_nec()` to misclassify a `nec` model as
+  an `ecx` one, silently reporting an NSEC as the NEC. It also now returns `NA`
+  rather than erroring when a parameter is absent.
+- Added `bnec_hurdle()` for concentration-response data where exposure both
+  kills individuals and affects the response of those that survive. It fits the
+  two components as two ordinary `bnec()` calls — a zero-bounded model for the
+  survivors and a `bernoulli` model for survival — and returns them together as
+  a `bayesnechurdlefit`. Zeros in the response denote individuals that did not
+  survive. `nec()` and `ecx()` gain a `which` argument taking `"combined"` (the
+  default), `"growth"` or `"survival"`.
+- Added `crossed_weights()`, which returns pseudo-BMA weights over every
+  combination of the two model sets in a `bayesnechurdlefit`. Because the hurdle
+  likelihood factorises, these are the outer product of the two components'
+  weights, so the full crossed comparison is available without fitting every
+  pair.
+- The `nec()` and `ecx()` generics now take `...`, so methods can add arguments.
+  No change for existing methods.
+- Corrected the `?models` description of which equations are excluded for 0, 1
+  bounded families under an identity link. It stated that all models with a
+  `slope` parameter are excluded; `check_models()` excludes only the three
+  linear-decay models (`neclin`, `neclinhorme`, `ecxlin`). Whether the remaining
+  restriction is still needed is tracked in
+  [#170](https://github.com/open-AIMS/bayesnec/issues/170).
 - Added a `prior_type` argument to `bnec()` and `amend()` for selecting the set
   of default priors. The default, `"uninformative"`, reproduces the
   weakly-informative priors described in Fisher et al. (2024, JSS). The new

@@ -72,6 +72,37 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
   }
   pred_vals <- list(data = pred_data, posterior = pred_posterior)
+  # Hurdle fits carry a second block. Keep its threshold and both component
+  # curves alongside the combined ones, and make the *combined* threshold the
+  # headline value -- posterior_epred() already returns mu * (1 - hu), so
+  # pred_vals and everything downstream of it describe the combined endpoint,
+  # and the NEC should describe the same curve.
+  hurdle_parts <- NULL
+  if (is_hurdle_family(fit$family)) {
+    hu_params <- lapply(extract_params, extract_pars, fit, prefix = "hu")
+    names(hu_params) <- gsub("^nec$", "ne", extract_params)
+    mu_curve <- posterior_epred(fit, newdata = new_dat, re_formula = NA,
+                                dpar = "mu")
+    hu_curve <- posterior_epred(fit, newdata = new_dat, re_formula = NA,
+                                dpar = "hu")
+    hu_ne_posterior <- as_draws_df(fit)[["b_hunec_Intercept"]]
+    if (mod_class == "nec" && !is.null(hu_ne_posterior)) {
+      # Below both thresholds mu sits at top and (1 - hu) at its control value,
+      # so the product is flat; it leaves that plateau at whichever threshold
+      # binds first. Exact for threshold models on both blocks.
+      combined_ne <- pmin(ne_posterior, hu_ne_posterior)
+    } else {
+      # An ecx-type block has no threshold parameter, so fall back to the
+      # interpolated N(S)EC read off the combined curve.
+      combined_ne <- ne_posterior
+    }
+    hurdle_parts <- list(mu_pred = mu_curve, hu_pred = hu_curve,
+                         mu_ne_posterior = ne_posterior,
+                         hu_ne_posterior = hu_ne_posterior,
+                         hu_params = hu_params)
+    ne_posterior <- combined_ne
+    extracted_params$ne <- estimates_summary(ne_posterior)
+  }
   od <- dispersion(object, summary = TRUE)
   if (length(od) == 0) {
     od <- c(NA, NA, NA)
@@ -81,7 +112,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   c(object, list(pred_vals = pred_vals), extracted_params,
     list(dispersion = od, predicted_y = predicted_y, residuals = residuals,
          ne_posterior = ne_posterior,
-         ne_type = ifelse(mod_class == "nec", "NEC", "NSEC")))
+         ne_type = ifelse(mod_class == "nec", "NEC", "NSEC"),
+         hurdle = hurdle_parts))
 }
 
 #' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}

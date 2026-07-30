@@ -58,7 +58,7 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   } else {
     response <- y
   }
-  brms_bf <- wrangle_model_formula(model, formula, bdat)
+  brms_bf <- wrangle_model_formula(model, formula, bdat, family)
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
                                prior_type = prior_type)

@@ -4,7 +4,7 @@
 \alias{make_brmsformula}
 \title{Expose the final \code{\link[brms]{brmsformula}}}
 \usage{
-make_brmsformula(formula, data)
+make_brmsformula(formula, data, family = NULL)
 }
 \arguments{
 \item{formula}{Either a \code{\link[base]{character}} string defining an
@@ -12,6 +12,10 @@ R formula or an actual \code{\link[stats]{formula}} object. See details.}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the variables
 specified in \code{formula}.}
+
+\item{family}{Optionally a \code{\link[stats]{family}} object. Only used to
+detect hurdle families, which gain a second parameter block modelling the
+hurdle probability. Defaults to \code{NULL}.}
 }
 \value{
 A named \code{\link[base]{list}}, with each element containing the
