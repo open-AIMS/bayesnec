@@ -149,55 +149,75 @@ rather than implying the hurdle model has dealt with it.
 
 ### 1.3 Results
 
-> **INCOMPLETE — four-round refit interrupted.** Round 4 below is final. Round 1
-> is provisional (NEC only, recovered from the run log; ECx not computed). Rounds
-> 2 and 3 have not been fitted. See `ignore/HANDOVER_hurdle_gamma.md` for how to
-> resume, and note the unresolved question about where each round's inferred
-> dead rung sits, which will change rounds 1 and 2 if answered the other way.
+All four rounds fitted with `nec3param` on both components, cohorts
+reconstructed per §1.4, `adapt_delta = 0.995`, 3 chains × 6000 iterations.
+Estimates back-transformed to %PW. Script: `ignore/hurdle_gamma_rounds.R`.
 
-**Round 1** (provisional; `x = log(PercentPW + 0.001)`, 204 snails, 38 deaths):
+**The headline is the cross-round contrast**, which is what these four case
+studies were assembled to show — the separation between the growth threshold
+and the survival threshold varies by more than two orders of magnitude:
 
-| estimate | median | 95% CI |
-|---|---|---|
-| NEC, growth of survivors | 0.587 | 0.467 – 0.755 |
-| NEC, survival | 1.785 | 1.258 – 2.434 |
+| round | NEC growth | NEC survival | separation | mortality pattern |
+|---|---|---|---|---|
+| 1 | 0.584 | 1.81 | **3×** | growth and death almost together |
+| 2 | 0.045 | 0.099 | **2×** | growth and death almost together |
+| 3 | 0.026 | 15.0 | **580×** | growth collapses long before anything dies |
+| 4 | 0.142 | 14.2 | **100×** | growth collapses long before anything dies |
 
-`top` 19.8, `hutop` 0.96, `shape` 5.8; 11 divergences in 9000 draws, max Rhat
-1.002, min bulk-ESS 2578 — clean.
+Rounds 1 and 2 are cases where a survivors-only growth analysis would have been
+badly misleading — mortality arrives essentially alongside growth suppression,
+so the combined endpoint matters. Rounds 3 and 4 are cases where it would have
+made almost no practical difference, because growth is the binding constraint by
+a wide margin. Both patterns are real, and you cannot tell which you have
+without fitting the mortality component.
 
-Note how different this is from round 4: here growth and survival thresholds sit
-a factor of 3 apart, against a factor of ~100 in round 4. That is exactly the
-cross-round contrast in growth-suppression-versus-mortality the rounds were
-assembled to show, and it is the reason they are analysed separately.
+Full estimates (median [95% CI], %PW):
 
-**Round 4** (final). Prototype fit, `nec3param` on both components,
-`x = log(PercentPW + 1e-4)`, estimates back-transformed to %PW:
+| estimate | round 1 | round 2 | round 3 | round 4 |
+|---|---|---|---|---|
+| NEC growth | 0.584 [0.466, 0.755] | 0.045 [0.033, 0.094] | 0.026 [0.005, 0.107] | 0.142 [0.028, 0.422] |
+| NEC survival | 1.81 [1.26, 2.43] | 0.099 [0.047, 0.272] | 15.0 [14.6, 19.2] | 14.2 [11.2, 14.9] |
+| NEC combined | 0.584 [0.466, 0.755] | 0.045 [0.032, 0.092] | 0.026 [0.005, 0.107] | 0.142 [0.028, 0.422] |
+| EC10 growth | 0.638 [0.520, 0.806] | 0.049 [0.036, 0.094] | 0.057 [0.014, 0.201] | 0.277 [0.072, 0.692] |
+| EC10 survival | 1.84 [1.29, 2.41] | 0.093 [<LOD, 0.248] | 14.9 [<LOD, 17.8] | 14.2 [<LOD, 14.8] |
+| EC10 combined | 0.638 [0.520, 0.806] | 0.048 [0.036, 0.093] | 0.057 [0.014, 0.201] | 0.277 [0.072, 0.692] |
+| EC50 growth | 1.04 [0.909, 1.21] | 0.073 [0.061, 0.098] | 3.93 [1.30, 10.9] | 11.0 [6.66, 20.0] |
+| EC50 survival | 2.07 [1.56, 2.46] | 0.112 [<LOD, 0.272] | 15.6 [<LOD, 19.2] | 14.9 [13.3, 15.3] |
+| EC50 combined | 1.04 [0.909, 1.21] | 0.072 [0.059, 0.097] | 3.93 [1.30, 10.9] | 10.9 [6.66, 14.7] |
 
-| estimate | median | 95% CI |
-|---|---|---|
-| NEC, growth of survivors | 0.138 | 0.027 – 0.42 |
-| NEC, survival | 14.2 | 11.2 – 14.9 |
-| EC10, growth of survivors | 0.271 | 0.068 – 0.68 |
-| EC10, survival | 14.0 | ~0 – 14.9 |
-| EC10, combined | 0.271 | 0.068 – 0.68 |
+`<LOD` marks a lower bound that collapsed onto the offset — i.e. the interval
+runs below the lowest tested concentration and should be reported as censored,
+not as a number. It appears only on survival ECx, and always for the same
+reason: mortality is confined to the top of each ladder, so the lower tail of
+the survival curve is unconstrained.
 
-Growth is roughly two orders of magnitude more sensitive than survival, so the
-combined EC10 is driven entirely by the growth component and coincides with it.
-For *this* dataset the hurdle model and the historical survivors-only analysis
-would report near-identical protective concentrations. The endpoints only
-diverge in the upper part of the curve, where mortality takes over.
+The ordering property from §2.3 holds throughout — combined ≤ growth in every
+round, at every level. It only bites where mortality overlaps the growth
+response: rounds 2 and 4 show combined EC50 below growth EC50 (0.072 vs 0.073;
+10.9 vs 11.0), while in rounds 1 and 3 the two coincide to three figures.
 
-Caveats from the fit. Deaths occur only at 15% and 20% pore water, and the 20%
-treatment has no growth observations at all, so the survival curve is weakly
-identified — its shape rests on two concentrations. This shows up as sensitivity
-to sampler settings: at `adapt_delta = 0.95` the fit had 81/6000 divergent
-transitions and tail-ESS around 110 on `hubeta`/`hunec`; at `adapt_delta = 0.99`
-(the setting in the prototype script) that improves to 15 divergences and
-tail-ESS around 1200. The survival EC10 median moved from 11.5 to 14.0 between
-the two runs, which is the identifiability problem rather than a sampling
-artefact — the survival credible interval spans nearly the whole tested range
-and should be reported as such, or censored. Raising `adapt_delta` fixes the
-geometry, not the information content.
+**Diagnostics — two rounds are not reportable as they stand:**
+
+| round | divergences / 9000 | max Rhat | min bulk-ESS | verdict |
+|---|---|---|---|---|
+| 1 | 11 | 1.002 | 2578 | clean |
+| 2 | 305 | 1.007 | 770 | **poor** |
+| 3 | 134 | 1.026 | 128 | **poor** |
+| 4 | 14 | 1.002 | 2282 | clean |
+
+Round 3's Rhat of 1.026 and bulk-ESS of 128 are below any reasonable threshold;
+round 2's 305 divergences likewise. Both have the same cause, and it is not
+sampler tuning — `adapt_delta` is already at 0.995. Round 2 has five
+concentrations and 49 deaths in 112 snails, so the threshold parameters are
+barely identified; round 3 has a near-step survival function (zero deaths
+anywhere below 15 %PW, three at 15, then all 24 at the inferred 20 %PW rung),
+which is a genuinely difficult posterior geometry for a smooth threshold model.
+
+Before these two are used: try a non-threshold survival equation (`ecxexp`,
+`ecxll3`) where the step is less severe, or reparameterise. Rounds 1 and 4 are
+sound as reported. Note also that rounds 2 and 3 are the two whose inferred dead
+rung is least certain (§1.4), so the weak identification and the assumption risk
+land on the same two rounds.
 
 ### 1.4 Data reconstruction
 
