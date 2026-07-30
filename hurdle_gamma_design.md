@@ -445,7 +445,35 @@ and `nec`/`hunec` cleanly.
 **`R/check_models.R`** — hurdle_gamma must satisfy both sets of existing link
 restrictions simultaneously: the Gamma/identity rules for `mu` (drop `neclin`,
 `neclinhorme`, `ecxlin`, `nechormepwr01`) and the 0-1-bounded/identity rules for
-`hu` (drop `neclin`, `neclinhorme`, `ecxlin`). Take the intersection.
+`hu` (currently `neclin`, `neclinhorme`, `ecxlin`). Take the intersection.
+
+**Pre-existing mismatch to resolve first.** `?models` states that "all models
+with parameter `slope`" are unsuitable for 0-1 bounded families, but
+`check_models()` drops only three of the ten:
+
+| | |
+|---|---|
+| have a `slope` parameter | `ecxhormebc4`, `ecxhormebc5`, `ecxlin`, `nechorme`, `nechorme4`, `nechorme4pwr`, `nechormepwr`, `nechormepwr01`, `neclin`, `neclinhorme` |
+| dropped for 0-1 + identity | `neclin`, `neclinhorme`, `ecxlin` |
+| **left available** | `ecxhormebc4`, `ecxhormebc5`, `nechorme`, `nechorme4`, `nechorme4pwr`, `nechormepwr`, `nechormepwr01` |
+
+This matters here because the `hu` block *is* 0-1 bounded under an identity
+link, so whatever rule applies to `bernoulli`/`beta` applies to it. Below its
+threshold `nechorme` reduces to `top + exp(slope) * x`, which is unbounded
+above and will push `hu` out of [0, 1].
+
+The docs are not simply right, though — a blanket "drop everything with
+`slope`" would be wrong. `nechormepwr01` is explicitly the 0-1 variant
+(`1/(1 + ((1/top) - 1) * exp(-exp(slope) * x))`) and is bounded in (0, 1) by
+construction; that is what the `01` suffix means. Note also that it appears in
+the Gamma/identity drop list above, so for hurdle_gamma the intersection
+excludes it via the `mu` side regardless.
+
+In practice the unbounded cases surface as Stan initialisation and sampling
+failures rather than silently wrong answers, which is presumably why this has
+gone unnoticed. It should still be settled — either tighten `check_models()` to
+match the documentation (minus `nechormepwr01`) or correct the documentation to
+match the code — before the same rule is relied on for the `hu` component.
 
 **`R/define_prior.R`** — emit both parameter blocks. mu-block priors are the
 existing Gamma/identity defaults but **computed on `response[response > 0]`**;
@@ -542,9 +570,15 @@ One genuine limitation to document rather than fix: `loo` comparison and
 `bayesmanecfit` weighting across a hurdle model suite is comparing complete
 two-component models. That is coherent — same response, same observations — but
 weights are *not* comparable against a non-hurdle suite fitted to the
-survivors-only subset, because the two are fitted to different data. `amend()`
-already refuses to mix families via `has_family_changed()`; that guard should be
-confirmed to fire for hurdle-vs-Gamma.
+survivors-only subset, because the two are fitted to different data.
+
+The existing guard covers the obvious version of this mistake. `amend()` routes
+through `has_family_changed()` (`R/bnecfit-methods.R:148`), which compares the
+two family objects with `all.equal()` and, on a difference, stops with a message
+telling the user to refit via `bnec()` instead — unless they pass
+`force_fit = TRUE`. `hurdle_gamma` and `Gamma` differ in `$family`, `$dpars` and
+`$link_hu`, so the guard fires. No change needed; worth a test so it stays that
+way.
 
 ### 2.5 Phased plan
 
@@ -599,7 +633,11 @@ regression rather than tests that merely exercise the path.
   combined formula. Cheap — no sampling required, just `make_stancode()`.
 - **`pmin(nec, hunec)` matches the numerical breakpoint** of the combined
   `posterior_epred` curve, on a small stored fit.
-- **`check_models()` drops slope-bearing equations** for the hu component.
+- **`check_models()` drops slope-bearing equations** for the hu component, and
+  the doc/code mismatch in §2.3 is settled one way or the other with a test
+  pinning whichever answer is chosen.
+- **`amend()` refuses a Gamma → hurdle_gamma switch** without `force_fit = TRUE`.
+  The guard already works; the test stops a future refactor from removing it.
 
 Sampling-dependent tests belong in `tests/local/`, following the existing split:
 one short hurdle fit asserting that all three endpoints are finite, ordered
