@@ -2,8 +2,16 @@
 
 Scoping note for modelling growth-rate data where exposure both kills
 individuals and suppresses growth in the survivors. Written against
-`ignore/nd_exampledat.csv` (snail growth, 15 concentrations of percent
-pore water). Working prototype: `ignore/hurdle_gamma_prototype.R`.
+`ignore/collated_WET_data.csv` (snail growth, four independent WET rounds;
+round 4 is the original single-round example, also held as
+`ignore/nd_exampledat.csv`). Working prototype:
+`ignore/hurdle_gamma_prototype.R`; four-round analysis:
+`ignore/hurdle_gamma_rounds.R`.
+
+The four rounds are treated as **separate case studies, not replicates** — they
+use different concentration ladders, different cohort sizes, and show
+qualitatively different balances of growth suppression against mortality. They
+are never pooled.
 
 ---
 
@@ -58,8 +66,8 @@ L = prod_i  hu_i^{1[y=0]} * ((1 - hu_i) * Gamma(y_i | mu_i, shape))^{1[y>0]}
 
 The `hu` terms and the `mu`/`shape` terms share no parameters, so the posterior
 for the growth block is the same whether you fit the hurdle model or a Gamma to
-the survivors alone. Fitted both ways on the example data with identical
-sub-model, priors and inits:
+the survivors alone. Fitted both ways on round 4 with identical sub-model,
+priors and inits:
 
 | parameter | Gamma, survivors only | hurdle-Gamma, joint |
 |---|---|---|
@@ -95,10 +103,31 @@ individual's survival propensity to its growth potential, which is a much
 stronger modelling assumption and is not identified from these data. Say so
 rather than implying the hurdle model has dealt with it.
 
-### 1.3 Results on the example data
+### 1.3 Results
 
-Prototype fit, `nec3param` on both components, `x = log(PercentPW + 1e-4)`,
-estimates back-transformed to %PW:
+> **INCOMPLETE — four-round refit interrupted.** Round 4 below is final. Round 1
+> is provisional (NEC only, recovered from the run log; ECx not computed). Rounds
+> 2 and 3 have not been fitted. See `ignore/HANDOVER_hurdle_gamma.md` for how to
+> resume, and note the unresolved question about where each round's inferred
+> dead rung sits, which will change rounds 1 and 2 if answered the other way.
+
+**Round 1** (provisional; `x = log(PercentPW + 0.001)`, 204 snails, 38 deaths):
+
+| estimate | median | 95% CI |
+|---|---|---|
+| NEC, growth of survivors | 0.587 | 0.467 – 0.755 |
+| NEC, survival | 1.785 | 1.258 – 2.434 |
+
+`top` 19.8, `hutop` 0.96, `shape` 5.8; 11 divergences in 9000 draws, max Rhat
+1.002, min bulk-ESS 2578 — clean.
+
+Note how different this is from round 4: here growth and survival thresholds sit
+a factor of 3 apart, against a factor of ~100 in round 4. That is exactly the
+cross-round contrast in growth-suppression-versus-mortality the rounds were
+assembled to show, and it is the reason they are analysed separately.
+
+**Round 4** (final). Prototype fit, `nec3param` on both components,
+`x = log(PercentPW + 1e-4)`, estimates back-transformed to %PW:
 
 | estimate | median | 95% CI |
 |---|---|---|
@@ -126,26 +155,106 @@ artefact — the survival credible interval spans nearly the whole tested range
 and should be reported as such, or censored. Raising `adapt_delta` fixes the
 geometry, not the information content.
 
-### 1.4 Data reconstruction — needs confirmation
+### 1.4 Data reconstruction
 
-Two things in `nd_exampledat.csv` must be resolved before any of this is a real
-analysis:
+Deaths are never recorded as such. They have to be recovered from four
+different traces in the raw file, and getting this wrong silently changes the
+mortality curve — which is the entire novel component of the model.
 
-1. **The `ID` column mislabels the 15% treatment.** Rows at `PercentPW == 15`
-   carry IDs `M1`/`M2`, the same prefix used for 10%. Letters A–O map 1:1 onto
-   the 15 ordered concentrations, so the prototype re-derives treatment from
-   concentration and ignores `ID`. That resolves it cleanly, but it should be
-   fixed at source.
-2. **Cohort sizes are assumed, not given.** The prototype assumes 36 snails
-   started in the control and 24 in every other treatment, giving 45 deaths
-   across the experiment. Alive counts per treatment are
-   A 36, B 24, C 23, D 24, E 24, F 22, G 24, H 21, I 24, J 24, K 24, L 24,
-   M 22, N 11, O 0.
-3. **Tank allocation of the deaths at 15% and 20% is unknown.** The two
-   NA-response rows are placeholders meaning "the rest of this treatment died",
-   not identified tanks. Irrelevant for a treatment-level model; it matters as
-   soon as a tank-level random effect is added — which is exactly the extension
-   that would justify joint fitting.
+**Trace 1 — sentinel death codes.** Rounds 1–3 record dead snails in-line as a
+single large negative constant, one per round:
+
+| round | code | n |
+|---|---|---|
+| 1 | −46.35 | 8 |
+| 2 | −34.61 | 28 |
+| 3 | −38.40 | 4 |
+| 4 | none — deaths omitted instead | — |
+
+These are exact repeats, not biological variation, and they are cleanly
+separated from real data: the next value up the sorted scale is −7.29, a gap of
+27 units. The rule used is `y <= -30`.
+
+This matters more than it looks. Taken at face value the codes make round 2 look
+like a failed test — mean control growth 7.8 with a CV of 3.6, and mean growth
+of −14.8 at 0.1 %PW where rounds 3 and 4 see roughly +18. Once the codes are
+removed as deaths, all four rounds agree on control growth: **21.3, 24.8, 22.4,
+21.4**. Round 2 is not noisy; it is a round with 29% control mortality.
+
+**Trace 2 — blank reps within a present tank.** Round 4 only (9 snails).
+
+**Trace 3 — absent tanks within a present treatment.** Round 1 at 2.5 %PW has 1
+tank of 3; round 4 at 15 %PW has 2 tanks of 4. 30 and 12 snails respectively.
+
+**Trace 4 — the omitted top rung.** Each round's ladder stops where the next
+concentration killed everything, and that treatment is dropped from the file
+entirely. Per the client, one further rung is assumed fully dead in each round:
+
+| round | ladder ends at | inferred dead rung | cohort |
+|---|---|---|---|
+| 1 | 2.5 (clean 2× series) | 5.0 | 3 tanks × 6 |
+| 2 | 0.1 | 0.3 (next rung of the round-3 series) | 3 tanks × 7 |
+| 3 | 15 | 20 | 4 tanks × 6 |
+| 4 | 15 | 20 *(known, not inferred)* | 4 tanks × 6 |
+
+Only round 4's dead rung is confirmed. Rounds 1–3 are assumptions, and rounds 1
+and 2 are the shakier of them — round 1's series is a clean doubling so 5.0 is
+well motivated, but round 2's next rung is read across from round 3's ladder.
+
+**Reconstructed cohorts:**
+
+| round | cohort | alive | deaths | of which coded / blank rep / absent tank |
+|---|---|---|---|---|
+| 1 | 204 | 166 | 38 | 8 / 0 / 30 |
+| 2 | 112 | 63 | 49 | 28 / 0 / 21 |
+| 3 | 348 | 320 | 28 | 4 / 0 / 24 |
+| 4 | 372 | 327 | 45 | 0 / 9 / 36 |
+
+**Two remaining wrinkles.**
+
+*Treatment labelling.* Round 4's `ID` column reuses the `M` prefix for both 10%
+and 15% pore water. Treatment is therefore re-derived from the ordered
+concentration throughout rather than parsed from `ID`. Should be fixed at
+source.
+
+*Four live snails with small negative growth* (−7.29, −2.75, −1.42, −0.74), all
+at high concentrations. These sit far from the death codes and are read as
+measurement noise on small snails, i.e. genuinely alive with ~zero growth. Gamma
+needs `y > 0`, so they are nudged to half the smallest positive value in their
+round — the same device `check_data()` already applies to Gamma zeros. Four
+values in 916; immaterial to the result, but it should be stated in the methods
+rather than left implicit.
+
+### 1.5 Why not zero-inflated, and why not Tweedie
+
+**Zero-inflated Gamma is the same model.** Zero-inflation adds structural zeros
+on top of a base distribution that can *itself* produce zeros:
+`P(y=0) = π + (1-π)·f(0)`. Gamma has support (0, ∞), so `f(0) = 0` and the
+mixture collapses to the hurdle. brms reflects this — it ships `hurdle_gamma`
+and no `zero_inflated_gamma`, and offers zero-inflated forms only for poisson,
+negbinomial, binomial and beta_binomial. (Its `zero_inflated_beta` is a
+misnomer: Beta's support is open on (0,1), and the generated Stan is the hurdle
+form with no `log_sum_exp`.) The ecology and fisheries literature does use
+"zero-inflated gamma", and also "delta-gamma" or "two-part"; all mean the
+hurdle. Use the hurdle name in the methods and note the synonyms.
+
+**Tweedie is genuinely different, and wrong here.** Compound Poisson-Gamma also
+puts a point mass at zero, but ties it to the mean:
+`P(y=0) = exp(-mu^(2-p) / (phi·(2-p)))`. There is no free mortality curve. With
+`phi` calibrated to reproduce round 4's observed 59% mortality at 15 %PW, a
+Tweedie at `p = 1.5` is then forced to predict ~31% dead in the *controls* and
+30–43% dead at every concentration from 0.001 to 10 %PW, against an observed
+~3%. It structurally cannot represent "growth collapses two orders of magnitude
+before anything dies", which is precisely the pattern in rounds 3 and 4.
+
+Nor is it more conservative — it targets the same estimand, `E[y|x]`, so any
+difference is misspecification bias of unpredictable sign. And it is not in
+brms (the density needs the Dunn–Smyth series approximation), so it would mean
+a hand-written `custom_family`, harder than the hurdle rather than cleaner.
+
+The only thing Tweedie offers is a `nec` parameter named directly in the model
+instead of a derived one. That is cosmetic, and §2.2 shows the derived version
+has a closed form anyway.
 
 ---
 
@@ -259,11 +368,31 @@ names up automatically once the priors above exist.
 
 **`R/expand_classes.R`, `expand_nec()`** —
 `ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]` captures only the growth
-NEC. Store all three: growth NEC, survival NEC, and the combined-endpoint
-N(S)EC derived from the combined `posterior_epred` curve. Recommend the combined
-one as the default returned by `nec()`, with the components reachable
-explicitly. Also store the `dpar = "mu"` and `dpar = "hu"` prediction curves
-alongside the existing `pred_vals`.
+NEC. Store all three: growth NEC, survival NEC, and the combined-endpoint NEC.
+Recommend the combined one as the default returned by `nec()`, with the
+components reachable explicitly. Also store the `dpar = "mu"` and `dpar = "hu"`
+prediction curves alongside the existing `pred_vals`.
+
+For threshold (`nec`-type) equations on both components the combined NEC needs
+no numerical search — it has a closed form. Below both thresholds `mu = top` and
+`1 - hu = hutop`, so the product is flat and departs its plateau at whichever
+threshold binds first:
+
+```r
+ne_posterior <- pmin(draws$b_nec_Intercept, draws$b_hunec_Intercept)
+```
+
+Verified against the numerically-detected breakpoint of the combined
+`posterior_epred` curve — agreement to within the prediction grid resolution.
+This is exact only when both components are threshold models; for `ecx`-type
+equations on either component, fall back to the numerical N(S)EC from the
+combined curve, as `expand_nec()` already does for `ecx` models.
+
+A useful ordering property worth exposing in the docs: because both components
+decline, the combined ECx is always reached at or below either component's own
+ECx (confirmed in 6000/6000 posterior draws at both EC10 and EC50 on round 4).
+The combined endpoint is therefore conservative by construction relative to
+analysing growth or survival alone.
 
 **`R/ecx.R`, `R/nsec.R`** — add a `dpar` argument
 (`"combined"` default / `"mu"` / `"hu"`) passed through to `posterior_epred`.
