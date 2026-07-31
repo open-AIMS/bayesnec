@@ -1,5 +1,17 @@
 # bayesnec 2.1.3.2
 
+- `bayesnechurdlefit` objects returned by `bnec_hurdle()` now support the full
+  set of package methods. `summary()`, `plot()`, `autoplot()`, `ggbnec_data()`,
+  `predict()`, `fitted()`, `posterior_epred()`, `posterior_predict()`, `nsec()`
+  and `ecnsec()` all take a `which` argument — `"combined"` (the default),
+  `"growth"` or `"survival"` — and `plot()`/`autoplot()` additionally accept
+  `"all"` for a three-panel view. `rhat()`, `check_chains()`, `check_priors()`,
+  `pull_brmsfit()`, `pull_out()`, `dispersion()` and `model.frame()` describe a
+  single fit and so return one result per component. `amend()`, `update()`,
+  `c()` and `+` apply to both components, keeping the pair in step;
+  `update(newdata = )` re-splits the data so zeros continue to denote the
+  hurdle. `compare_posterior()`, `compare_fitted()` and `average_estimates()`
+  accept hurdle fits and compare their combined endpoints.
 - Added the `"zero_inflated_beta"` family to `bnec()` and `bnec_hurdle()`, for
   proportional responses on (0, 1) where exposure also produces exact zeros.
   Structurally identical to `"hurdle_gamma"` — zero-inflation differs from a

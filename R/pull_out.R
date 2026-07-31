@@ -31,6 +31,16 @@
 #'
 #' @export
 pull_out <- function(manec, model, loo_controls, ...) {
+  # Not an S3 generic, so a hurdle fit has to be handled here; registering a
+  # pull_out.bayesnechurdlefit method would be inert. Reduces both components
+  # to the requested model so the pair stays in step.
+  if (is_bayesnechurdlefit(manec)) {
+    args <- list(model = model, ...)
+    if (!missing(loo_controls)) args$loo_controls <- loo_controls
+    manec$growth <- do.call(pull_out, c(list(manec$growth), args))
+    manec$survival <- do.call(pull_out, c(list(manec$survival), args))
+    return(manec)
+  }
   if (length(model) > 1) {
     stop("Argument model can only take one value. See ?pull_out and ?models.")
   }

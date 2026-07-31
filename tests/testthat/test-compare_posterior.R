@@ -3,7 +3,8 @@ test_that("input errors work as intended", {
                "Argument x must be a named list.")
   expect_error(compare_posterior(ecx4param, nec4param),
                "Argument comparison must be a character vector.")
-  m_0 <- "Not all objects in x are of class bayesnecfit or bayesmanecfit."
+  # message now names all three accepted classes, hurdle fits included
+  m_0 <- "Not all objects in x are of class bayesnecfit, bayesmanecfit or"
   expect_error(compare_posterior(list(g = ecx4param, h = 12)), m_0)
 })
 

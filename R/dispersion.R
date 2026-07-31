@@ -37,6 +37,14 @@
 #' }
 #' @export
 dispersion <- function(model, summary = FALSE, seed = 10) {
+  # Not an S3 generic, so a hurdle fit has to be handled here. It has two
+  # underlying brmsfits and no combined analogue, so one result per component.
+  if (is_bayesnechurdlefit(model)) {
+    return(list(
+      growth = dispersion(model$growth, summary = summary, seed = seed),
+      survival = dispersion(model$survival, summary = summary, seed = seed)
+    ))
+  }
   chk_lgl(summary)
   chk_number(seed)
   formula <- model$bayesnecformula
