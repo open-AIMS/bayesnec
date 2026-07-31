@@ -135,6 +135,7 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 #'
 #' @return A \code{\link[base]{character}} string.
 #'
+#' @importFrom stats Gamma
 #' @importFrom formula.tools lhs
 #'
 #' @noRd

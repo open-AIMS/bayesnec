@@ -197,6 +197,7 @@ define_prior <- function(model, family, predictor, response,
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #'
+#' @importFrom stats Gamma
 #' @importFrom brms prior_string
 #'
 #' @noRd

@@ -109,11 +109,17 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
-  c(object, list(pred_vals = pred_vals), extracted_params,
-    list(dispersion = od, predicted_y = predicted_y, residuals = residuals,
-         ne_posterior = ne_posterior,
-         ne_type = ifelse(mod_class == "nec", "NEC", "NSEC"),
-         hurdle = hurdle_parts))
+  out <- c(object, list(pred_vals = pred_vals), extracted_params,
+           list(dispersion = od, predicted_y = predicted_y,
+                residuals = residuals, ne_posterior = ne_posterior,
+                ne_type = ifelse(mod_class == "nec", "NEC", "NSEC")))
+  # Only hurdle fits carry the extra element. Appending it unconditionally
+  # would change names() on every bayesnecfit, which is a gratuitous break for
+  # anything indexing the object positionally or checking its structure.
+  if (!is.null(hurdle_parts)) {
+    out <- c(out, list(hurdle = hurdle_parts))
+  }
+  out
 }
 
 #' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
