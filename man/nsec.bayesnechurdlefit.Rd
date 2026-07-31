@@ -9,11 +9,12 @@
   sig_val = 0.01,
   resolution = 1000,
   x_range = NA,
+  hormesis_def = "control",
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
+  ...,
   posterior = FALSE,
-  which = "combined",
-  ...
+  which = "combined"
 )
 }
 \arguments{
@@ -27,6 +28,9 @@ large values will make the NSEC estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
+\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
+of "max" or "control". See Details.}
+
 \item{xform}{A function to apply to the returned estimated concentration
 values.}
 
@@ -34,10 +38,12 @@ values.}
 return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
+\item{...}{Further arguments to pass to class specific methods.}
+
+\item{posterior}{Should the full posterior be returned instead of a summary?}
+
 \item{which}{Which curve to use: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
-
-\item{...}{Further arguments to pass to class specific methods.}
 }
 \value{
 A vector containing the estimated NSEC value and credible bounds.

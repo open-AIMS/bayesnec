@@ -44,6 +44,8 @@ return the estimated ECNSEC value. Defaults to 0.5 (median) and 0.025 and
 
 \item{...}{Further arguments to pass to class specific methods.}
 
+\item{posterior}{Should the full posterior be returned instead of a summary?}
+
 \item{which}{Which curve to use: \code{"combined"} (the default),
 \code{"growth"} or \code{"survival"}.}
 }

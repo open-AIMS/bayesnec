@@ -4,10 +4,10 @@
 \alias{check_chains.bayesnechurdlefit}
 \title{Chain plots for both components of a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{check_chains}{bayesnechurdlefit}(object, ...)
+\method{check_chains}{bayesnechurdlefit}(x, ...)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
+\item{x}{An object of class \code{\link{bayesnechurdlefit}}.}
 
 \item{...}{Passed to the component method.}
 }

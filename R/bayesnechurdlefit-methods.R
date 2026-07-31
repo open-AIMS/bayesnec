@@ -206,21 +206,22 @@ hurdle_newdata_pair <- function(object, resolution = 1000, x_range = NA) {
 
 #' Predictor grid for a \code{\link{bayesnechurdlefit}}
 #'
-#' @inheritParams hurdle_newdata_pair
-#' @param ... Unused.
+#' @param x An object of class \code{\link{bayesnechurdlefit}}.
+#' @param resolution The number of unique predictor values.
+#' @param x_range A range of predictor values.
 #'
 #' @return A \code{\link[base]{data.frame}}.
 #'
 #' @method bnec_newdata bayesnechurdlefit
 #'
 #' @export
-bnec_newdata.bayesnechurdlefit <- function(object, resolution = 1000,
-                                           x_range = NA, ...) {
+bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
+                                           x_range = NA) {
+  object <- x
   # Taken from the survival component, which sees every row and therefore the
   # full exposed predictor range; the growth component stops short of any
   # concentration where nothing survived.
-  bnec_newdata(object$survival, resolution = resolution, x_range = x_range,
-               ...)
+  bnec_newdata(object$survival, resolution = resolution, x_range = x_range)
 }
 
 #' Extracts the predicted NSEC value from a \code{\link{bayesnechurdlefit}}
@@ -230,6 +231,7 @@ bnec_newdata.bayesnechurdlefit <- function(object, resolution = 1000,
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param which Which curve to use: \code{"combined"} (the default),
 #' \code{"growth"} or \code{"survival"}.
+#' @param posterior Should the full posterior be returned instead of a summary?
 #'
 #' @return A vector containing the estimated NSEC value and credible bounds.
 #'
@@ -240,10 +242,10 @@ bnec_newdata.bayesnechurdlefit <- function(object, resolution = 1000,
 #'
 #' @export
 nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
-                                   x_range = NA, xform = identity,
-                                   prob_vals = c(0.5, 0.025, 0.975),
-                                   posterior = FALSE, which = "combined",
-                                   ...) {
+                                   x_range = NA, hormesis_def = "control",
+                                   xform = identity,
+                                   prob_vals = c(0.5, 0.025, 0.975), ...,
+                                   posterior = FALSE, which = "combined") {
   chk_logical(posterior)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
@@ -400,7 +402,8 @@ pull_brmsfit.bayesnechurdlefit <- function(object, ...) {
 
 #' Rhat values for both components of a \code{\link{bayesnechurdlefit}}
 #'
-#' @inheritParams pull_brmsfit.bayesnechurdlefit
+#' @param x An object of class \code{\link{bayesnechurdlefit}}.
+#' @param ... Passed to the component method.
 #' @param rhat_cutoff A \code{\link[base]{numeric}} cut-off.
 #'
 #' @return A named \code{\link[base]{list}} of two elements.
@@ -408,50 +411,42 @@ pull_brmsfit.bayesnechurdlefit <- function(object, ...) {
 #' @method rhat bayesnechurdlefit
 #'
 #' @export
-rhat.bayesnechurdlefit <- function(object, rhat_cutoff = 1.05, ...) {
-  hurdle_delegate(object, rhat, rhat_cutoff = rhat_cutoff, ...)
+rhat.bayesnechurdlefit <- function(x, ..., rhat_cutoff = 1.05) {
+  hurdle_delegate(x, rhat, rhat_cutoff = rhat_cutoff, ...)
 }
 
 #' Chain plots for both components of a \code{\link{bayesnechurdlefit}}
 #'
-#' @inheritParams pull_brmsfit.bayesnechurdlefit
+#' @param x An object of class \code{\link{bayesnechurdlefit}}.
+#' @param ... Passed to the component method.
 #'
 #' @return Invisibly, a named \code{\link[base]{list}}.
 #'
 #' @method check_chains bayesnechurdlefit
 #'
 #' @export
-check_chains.bayesnechurdlefit <- function(object, ...) {
+check_chains.bayesnechurdlefit <- function(x, ...) {
   message(hurdle_no_combined("check_chains"))
-  invisible(hurdle_delegate(object, check_chains, ...))
+  invisible(hurdle_delegate(x, check_chains, ...))
 }
 
 #' Prior checks for both components of a \code{\link{bayesnechurdlefit}}
 #'
-#' @inheritParams pull_brmsfit.bayesnechurdlefit
+#' @param object An object of class \code{\link{bayesnechurdlefit}}.
+#' @param filename Optional filename to save plots to.
+#' @param ask Should the user be prompted between plots?
 #'
 #' @return A named \code{\link[base]{list}}.
 #'
 #' @method check_priors bayesnechurdlefit
 #'
 #' @export
-check_priors.bayesnechurdlefit <- function(object, ...) {
+check_priors.bayesnechurdlefit <- function(object, filename = NA,
+                                           ask = TRUE) {
   message(hurdle_no_combined("check_priors"))
-  hurdle_delegate(object, check_priors, ...)
+  hurdle_delegate(object, check_priors, filename = filename, ask = ask)
 }
 
-#' Dispersion of both components of a \code{\link{bayesnechurdlefit}}
-#'
-#' @inheritParams pull_brmsfit.bayesnechurdlefit
-#'
-#' @return A named \code{\link[base]{list}}.
-#'
-#' @method dispersion bayesnechurdlefit
-#'
-#' @export
-dispersion.bayesnechurdlefit <- function(model, ...) {
-  hurdle_delegate(model, dispersion, ...)
-}
 
 #' Model frames of both components of a \code{\link{bayesnechurdlefit}}
 #'
@@ -507,9 +502,12 @@ hurdle_rewrap <- function(object, growth, survival) {
 #' @export
 amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
                                     x_range = NA, resolution = 1000,
-                                    sig_val = 0.01, ...) {
+                                    sig_val = 0.01, priors,
+                                    prior_type = "uninformative",
+                                    timeout = Inf) {
   args <- list(x_range = x_range, resolution = resolution, sig_val = sig_val,
-               ...)
+               prior_type = prior_type, timeout = timeout)
+  if (!missing(priors)) args$priors <- priors
   if (!missing(drop)) args$drop <- drop
   if (!missing(add)) args$add <- add
   if (!missing(loo_controls)) args$loo_controls <- loo_controls
@@ -753,11 +751,13 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' Data underlying a \code{\link{bayesnechurdlefit}} plot
 #'
 #' @param x An object of class \code{\link{bayesnechurdlefit}}.
+#' @param add_nec Unused; retained for consistency with the generic.
+#' @param add_ecx Unused; retained for consistency with the generic.
+#' @param xform A function to apply to the predictor.
+#' @param ... Unused.
 #' @param which Which curve(s) to return. See \code{\link{plot}}.
 #' @param resolution The number of unique predictor values.
 #' @param x_range A range of predictor values.
-#' @param xform A function to apply to the predictor.
-#' @param ... Unused.
 #'
 #' @return A \code{\link[base]{list}} of two \code{\link[base]{data.frame}}s,
 #' \code{curve} and \code{raw}, each carrying a \code{panel} column.
@@ -765,9 +765,10 @@ plot.bayesnechurdlefit <- function(x, ..., which = "combined", CI = TRUE,
 #' @method ggbnec_data bayesnechurdlefit
 #'
 #' @export
-ggbnec_data.bayesnechurdlefit <- function(x, which = "combined",
-                                          resolution = 1000, x_range = NA,
-                                          xform = identity, ...) {
+ggbnec_data.bayesnechurdlefit <- function(x, add_nec = TRUE, add_ecx = FALSE,
+                                          xform = identity, ...,
+                                          which = "combined",
+                                          resolution = 1000, x_range = NA) {
   which <- hurdle_check_plot_which(which)
   panels <- if (which == "all") {
     c("combined", "growth", "survival")
@@ -849,6 +850,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param which Which curve to use: \code{"combined"} (the default),
 #' \code{"growth"} or \code{"survival"}.
+#' @param posterior Should the full posterior be returned instead of a summary?
 #'
 #' @return A vector of estimates.
 #'

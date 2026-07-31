@@ -6,25 +6,31 @@
 \usage{
 \method{ggbnec_data}{bayesnechurdlefit}(
   x,
+  add_nec = TRUE,
+  add_ecx = FALSE,
+  xform = identity,
+  ...,
   which = "combined",
   resolution = 1000,
-  x_range = NA,
-  xform = identity,
-  ...
+  x_range = NA
 )
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnechurdlefit}}.}
+
+\item{add_nec}{Unused; retained for consistency with the generic.}
+
+\item{add_ecx}{Unused; retained for consistency with the generic.}
+
+\item{xform}{A function to apply to the predictor.}
+
+\item{...}{Unused.}
 
 \item{which}{Which curve(s) to return. See \code{\link{plot}}.}
 
 \item{resolution}{The number of unique predictor values.}
 
 \item{x_range}{A range of predictor values.}
-
-\item{xform}{A function to apply to the predictor.}
-
-\item{...}{Unused.}
 }
 \value{
 A \code{\link[base]{list}} of two \code{\link[base]{data.frame}}s,

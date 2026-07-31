@@ -4,14 +4,14 @@
 \alias{rhat.bayesnechurdlefit}
 \title{Rhat values for both components of a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{rhat}{bayesnechurdlefit}(object, rhat_cutoff = 1.05, ...)
+\method{rhat}{bayesnechurdlefit}(x, ..., rhat_cutoff = 1.05)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
-
-\item{rhat_cutoff}{A \code{\link[base]{numeric}} cut-off.}
+\item{x}{An object of class \code{\link{bayesnechurdlefit}}.}
 
 \item{...}{Passed to the component method.}
+
+\item{rhat_cutoff}{A \code{\link[base]{numeric}} cut-off.}
 }
 \value{
 A named \code{\link[base]{list}} of two elements.

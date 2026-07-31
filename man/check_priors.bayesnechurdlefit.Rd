@@ -4,12 +4,14 @@
 \alias{check_priors.bayesnechurdlefit}
 \title{Prior checks for both components of a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{check_priors}{bayesnechurdlefit}(object, ...)
+\method{check_priors}{bayesnechurdlefit}(object, filename = NA, ask = TRUE)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{...}{Passed to the component method.}
+\item{filename}{Optional filename to save plots to.}
+
+\item{ask}{Should the user be prompted between plots?}
 }
 \value{
 A named \code{\link[base]{list}}.
