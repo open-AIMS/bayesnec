@@ -18,7 +18,9 @@
 #' whatever \code{crf} specifies in \code{formula}, i.e. the same set as the
 #' response component.
 #' @param family_growth A \code{\link[stats]{family}} function for the response
-#' of survivors. Defaults to \code{Gamma(link = "identity")}.
+#' of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
+#' from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
+#' positive continuous response, \code{Beta} for one bounded on (0, 1).
 #' @param ... Further arguments passed to both \code{\link{bnec}} calls.
 #'
 #' @details
@@ -67,7 +69,7 @@
 #'
 #' @export
 bnec_hurdle <- function(formula, data, model_survival = NULL,
-                        family_growth = Gamma(link = "identity"), ...) {
+                        family_growth = NULL, ...) {
   formula <- bayesnecformula(formula)
   y_var <- hurdle_response_var(formula)
   if (!y_var %in% names(data)) {
@@ -111,8 +113,16 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     surv_formula <- swap_crf_model(surv_formula, model_survival)
   }
 
+  if (is.null(family_growth)) {
+    # Chosen from the non-zero subset, not the whole response: the zeros would
+    # otherwise be read as part of a continuous distribution rather than as the
+    # hurdle they are.
+    family_growth <- validate_family(
+      set_distribution(y[y > 0], silence_y_msgs = TRUE)
+    )
+  }
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
-          length(y), ").")
+          length(y), ") with a ", family_growth$family, " distribution.")
   growth_fit <- bnec(formula, data = data[y > 0, , drop = FALSE],
                      family = family_growth, ...)
   message("Fitting the survival component (", n_dead, " deaths of ",

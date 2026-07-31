@@ -1,5 +1,17 @@
 # bayesnec 2.1.3.2
 
+- Added the `"zero_inflated_beta"` family to `bnec()` and `bnec_hurdle()`, for
+  proportional responses on (0, 1) where exposure also produces exact zeros.
+  Structurally identical to `"hurdle_gamma"` — zero-inflation differs from a
+  hurdle only when the base distribution can itself emit zeros, which neither
+  the Gamma nor the Beta can — so the same two-block machinery serves both; the
+  only difference is that `brms` names the second block `zi` rather than `hu`,
+  giving parameters `zitop`, `zinec` and so on. `ecx()` accepts
+  `dpar = "zi"`.
+  Note that where such a response has been obtained by dividing through by a
+  maximum, that divisor must be a constant fixed in advance rather than one
+  computed from the data; see
+  [#173](https://github.com/open-AIMS/bayesnec/issues/173).
 - Added the `"hurdle_gamma"` family to `bnec()`, for concentration-response
   data where exposure both kills individuals and suppresses the response of
   those that survive. Zeros in the response denote individuals that did not

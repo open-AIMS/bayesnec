@@ -559,6 +559,7 @@ add_brm_defaults <- function(
         response,
         priors = brm_args$prior,
         chains = brm_args$chains,
+        dpar = hurdle_dpar(family),
         seed = init_seed
       )
     } else {

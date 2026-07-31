@@ -79,13 +79,15 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and the NEC should describe the same curve.
   hurdle_parts <- NULL
   if (is_hurdle_family(fit$family)) {
-    hu_params <- lapply(extract_params, extract_pars, fit, prefix = "hu")
+    hu_dpar <- hurdle_dpar(fit$family)
+    hu_params <- lapply(extract_params, extract_pars, fit, prefix = hu_dpar)
     names(hu_params) <- gsub("^nec$", "ne", extract_params)
     mu_curve <- posterior_epred(fit, newdata = new_dat, re_formula = NA,
                                 dpar = "mu")
     hu_curve <- posterior_epred(fit, newdata = new_dat, re_formula = NA,
-                                dpar = "hu")
-    hu_ne_posterior <- as_draws_df(fit)[["b_hunec_Intercept"]]
+                                dpar = hu_dpar)
+    hu_ne_posterior <- as_draws_df(fit)[[paste0("b_", hu_dpar,
+                                                "nec_Intercept")]]
     if (mod_class == "nec" && !is.null(hu_ne_posterior)) {
       # Below both thresholds mu sits at top and (1 - hu) at its control value,
       # so the product is flat; it leaves that plateau at whichever threshold

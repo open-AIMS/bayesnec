@@ -51,11 +51,18 @@ check_models <- function(model, family, data) {
     }
   }
   if (link_tag == "identity" & is_hurdle_family(fam_tag)) {
-    # A hurdle fit must satisfy both sets of restrictions at once: its mu block
-    # is zero-bounded (as Gamma/identity) and its hu block is 0-1 bounded (as
-    # bernoulli/identity). Take the union of what each would drop.
-    use_model <- model[!model %in% c("neclin", "neclinhorme", "ecxlin",
-                                     "nechormepwr01")]
+    # A two-block fit must satisfy both sets of restrictions at once. The
+    # zero-probability block is always 0-1 bounded (as bernoulli/identity), so
+    # the linear-decay models go in every case. The mu block depends on the
+    # family: zero-bounded for hurdle_gamma, which additionally rules out
+    # nechormepwr01; 0-1 bounded for zero_inflated_beta, which does not, since
+    # nechormepwr01 is the equation designed for that range.
+    drop_always <- c("neclin", "neclinhorme", "ecxlin")
+    mu_fam <- unname(hurdle_mu_fams[[fam_tag]])
+    if (mu_fam %in% c("Gamma", "poisson", "negbinomial")) {
+      drop_always <- c(drop_always, "nechormepwr01")
+    }
+    use_model <- model[!model %in% drop_always]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
       message(paste("Dropping the model(s)",

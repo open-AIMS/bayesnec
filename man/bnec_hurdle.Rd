@@ -4,13 +4,7 @@
 \alias{bnec_hurdle}
 \title{Fit a factorised hurdle concentration-response model}
 \usage{
-bnec_hurdle(
-  formula,
-  data,
-  model_survival = NULL,
-  family_growth = Gamma(link = "identity"),
-  ...
-)
+bnec_hurdle(formula, data, model_survival = NULL, family_growth = NULL, ...)
 }
 \arguments{
 \item{formula}{Either a \code{\link[base]{character}} string defining an
@@ -28,7 +22,9 @@ whatever \code{crf} specifies in \code{formula}, i.e. the same set as the
 response component.}
 
 \item{family_growth}{A \code{\link[stats]{family}} function for the response
-of survivors. Defaults to \code{Gamma(link = "identity")}.}
+of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
+from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
+positive continuous response, \code{Beta} for one bounded on (0, 1).}
 
 \item{...}{Further arguments passed to both \code{\link{bnec}} calls.}
 }

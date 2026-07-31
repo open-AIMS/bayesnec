@@ -158,15 +158,35 @@
 #' \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
 #' development site if your required family is not currently available.
 #'
-#' \bold{Hurdle families}
+#' \bold{Two-block (hurdle and zero-inflated) families}
 #'
-#' The family "hurdle_gamma" fits data where exposure both kills individuals
-#' and suppresses the response of those that survive. Zeros in the response
-#' denote individuals that did not survive, and the fit gains a second
-#' parameter block, prefixed \code{hu}, giving the probability of that
-#' happening its own concentration-response curve. \code{\link{show_params}}
-#' lists the response-block parameters; the hurdle block carries the same names
-#' with an \code{hu} prefix (\code{hutop}, \code{hunec} and so on).
+#' The families "hurdle_gamma" and "zero_inflated_beta" fit data where exposure
+#' both produces zero responses -- individuals that died, colonies that failed
+#' -- and suppresses the response of those that did not. Zeros in the response
+#' denote the former, and the fit gains a second parameter block giving the
+#' probability of a zero its own concentration-response curve.
+#' \code{\link{show_params}} lists the response-block parameters; the second
+#' block carries the same names with a prefix (\code{hutop}, \code{hunec} for
+#' "hurdle_gamma"; \code{zitop}, \code{zinec} for "zero_inflated_beta" --
+#' \pkg{brms} names the block \code{hu} in one case and \code{zi} in the
+#' other).
+#'
+#' Use "hurdle_gamma" where the non-zero response is positive and unbounded
+#' above (growth increments, biomass) and "zero_inflated_beta" where it is a
+#' proportion on (0, 1). The distinction between "hurdle" and "zero-inflated"
+#' is nominal here: zero-inflation differs from a hurdle only when the base
+#' distribution can itself produce zeros, which neither the Gamma nor the Beta
+#' can, so the two are the same model and \pkg{bayesnec} treats them alike.
+#'
+#' Where a "zero_inflated_beta" response has been obtained by dividing through
+#' by some maximum, note that the divisor must be a constant fixed in advance
+#' -- a design ceiling or a historical value -- and not one computed from the
+#' dataset being analysed. Dividing by an estimated quantity such as the
+#' observed maximum or the control mean induces correlation between all
+#' observations, biases effective doses and understates their uncertainty; see
+#' Ritz et al. (2026). Where no such constant is available, prefer modelling
+#' the raw response with "hurdle_gamma" and reading effective concentrations
+#' off the fitted curve via \code{\link{ecx}}.
 #'
 #' Three toxicity estimates follow from one fit: the response of survivors
 #' (\code{mu}), survival itself (\code{1 - hu}), and the combined endpoint
@@ -177,12 +197,14 @@
 #' for a component. \code{\link{nec}} returns the combined threshold, which for
 #' threshold models on both blocks is the smaller of the two.
 #'
-#' This family must be specified as \code{family = "hurdle_gamma"}, or with
-#' both links set explicitly as
-#' \code{hurdle_gamma(link = "identity", link_hu = "identity")}. bayesnec keeps
+#' These families must be specified as \code{family = "hurdle_gamma"} or
+#' \code{family = "zero_inflated_beta"}, or with both links set explicitly as
+#' \code{hurdle_gamma(link = "identity", link_hu = "identity")} and
+#' \code{zero_inflated_beta(link = "identity", link_zi = "identity")}
+#' respectively. bayesnec keeps
 #' every parameter on the natural response scale, and the hurdle block is
-#' written as \code{1 - <survival curve>}, which is only meaningful under an
-#' identity \code{link_hu}. It is never selected automatically: a response
+#' written as \code{1 - <non-zero probability>}, which is only meaningful under
+#' an identity link there. Neither is ever selected automatically: a response
 #' containing zeros is still treated as Gamma, with a message, so that existing
 #' analyses do not silently change.
 #'
@@ -246,6 +268,11 @@
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
 #' estimating no-effect toxicity concentrations in ecotoxicology. Integrated 
 #' Environmental Assessment and Management. doi:10.1002/ieam.4809.
+#'
+#' Ritz C, Gerhard D, Streibig JC (2026). Better alternatives than normalizing
+#' to control: case studies with algae toxicity and dose-response analysis.
+#' Environmental and Ecological Statistics, 33, 35-55.
+#' doi:10.1007/s10651-025-00698-y.
 #' 
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology

@@ -203,21 +203,26 @@ define_prior <- function(model, family, predictor, response,
 #' @noRd
 define_hurdle_prior <- function(model, family, predictor, response,
                                 prior_type = "uninformative") {
+  dpar <- hurdle_dpar(family)
   parts <- split_hurdle_response(predictor, response)
-  # mu block: reuse the Gamma/identity defaults on the survivors.
-  mu_priors <- define_prior(model, Gamma(link = "identity"),
+  # mu block: reuse the defaults of whatever the non-zero response looks like
+  # (Gamma for hurdle_gamma, Beta for zero_inflated_beta), built from the
+  # non-zeros only -- including the zeros would drag the top and bot quantiles
+  # well below the real control level.
+  mu_priors <- define_prior(model, hurdle_mu_family(family),
                             parts$mu$x, parts$mu$y, prior_type = prior_type)
-  # hu block: reuse the bernoulli/identity defaults on the survival proportion,
-  # then rename every non-linear parameter into the hu namespace.
+  # second block: reuse the bernoulli/identity defaults on the proportion
+  # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model, bernoulli(link = "identity"),
                             parts$hu$x, parts$hu$y, prior_type = prior_type)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
-                            paste0("hu", hu_priors$nlpar), hu_priors$nlpar)
+                            paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
   # Both blocks are evaluated over the *whole* predictor range inside the joint
-  # fit, but each was primed from a subset of it: mu from survivors only (which
-  # stop short of the concentrations that killed everything) and hu from the
-  # deduplicated unique-x vector. Rebuild the predictor-scaled bounds from the
-  # full predictor so neither threshold is boxed out of the range it must cover.
+  # fit, but each was primed from a subset of it: mu from non-zeros only (which
+  # stop short of the concentrations where everything is zero) and the second
+  # block from the deduplicated unique-x vector. Rebuild the predictor-scaled
+  # bounds from the full predictor so neither threshold is boxed out of the
+  # range it must cover.
   rebound <- function(prs, pars) {
     is_pred <- prs$nlpar %in% pars
     if (any(is_pred)) {
@@ -227,6 +232,6 @@ define_hurdle_prior <- function(model, family, predictor, response,
     prs
   }
   mu_priors <- rebound(mu_priors, c("nec", "ec50"))
-  hu_priors <- rebound(hu_priors, c("hunec", "huec50"))
+  hu_priors <- rebound(hu_priors, paste0(dpar, c("nec", "ec50")))
   mu_priors + hu_priors
 }

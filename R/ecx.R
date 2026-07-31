@@ -139,10 +139,12 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  # dpar lets a hurdle fit report its components separately. The default (NULL)
-  # gives what posterior_epred always gave: mu * (1 - hu) for a hurdle family,
-  # the single mean curve otherwise. "hu" is inverted to survival so that
-  # "decline from control" means the same thing as it does everywhere else.
+  # dpar lets a two-block fit report its components separately. The default
+  # (NULL) gives what posterior_epred always gave: mu * (1 - hu) for such a
+  # family, the single mean curve otherwise. The zero-probability block is
+  # inverted so that "decline from control" means the same thing as it does
+  # everywhere else. Valid names are "mu" and whichever brms uses for the
+  # second block: "hu" for hurdle families, "zi" for zero-inflated ones.
   dpar <- list(...)$dpar
   if (is.null(dpar)) {
     p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
@@ -152,10 +154,10 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
       stop("The \"dpar\" argument is only valid for hurdle families.",
            call. = FALSE)
     }
-    dpar <- match.arg(dpar, c("mu", "hu"))
+    dpar <- match.arg(dpar, c("mu", hurdle_dpar(object$fit$family)))
     p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
                                  re_formula = NA, dpar = dpar)
-    if (dpar == "hu") {
+    if (dpar != "mu") {
       p_samples <- 1 - p_samples
     }
   }
