@@ -204,7 +204,19 @@
 #' respectively. bayesnec keeps
 #' every parameter on the natural response scale, and the hurdle block is
 #' written as \code{1 - <non-zero probability>}, which is only meaningful under
-#' an identity link there. Neither is ever selected automatically: a response
+#' an identity link there.
+#'
+#' That inversion is worth knowing about when reading output. \pkg{brms} defines
+#' \code{hu} (or \code{zi}) as the probability of a \emph{zero}, which rises
+#' with the predictor, whereas every bayesnec equation declines. Writing the
+#' block as \code{1 - <equation>} puts the declining curve on \emph{survival},
+#' so the equation set, its priors and the \code{\link{ecx}}/\code{\link{nsec}}
+#' definition of "decline from control" all carry over unchanged. The practical
+#' consequence is that \code{hutop} and \code{hunec} describe surviving rather
+#' than dying; \code{hunec} is the same concentration either way. See
+#' \code{vignette("example6")}.
+#'
+#' Neither family is ever selected automatically: a response
 #' containing zeros is still treated as Gamma, with a message, so that existing
 #' analyses do not silently change.
 #'

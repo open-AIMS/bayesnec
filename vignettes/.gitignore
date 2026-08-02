@@ -3,6 +3,7 @@
 *.pdf
 *.png
 !vignette-fig-*.pdf
+!vignette-fig-*.png
 !precompile.R
 !exmp2b_theoretical_curves.R
 /prompts/
