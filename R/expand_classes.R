@@ -55,18 +55,22 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   } else {
     mod_class <- "nec"
   }
-  if (mod_class == "ecx") {
-    reference <- quantile(pred_posterior[, 1], sig_val)
-    # grab <- apply(pred_posterior - reference, 1, min_abs)
-    # ne_posterior <- pred_data$x[grab]
-    ne_posterior <- apply(pred_posterior, 1, nsec_fct, 
-                          reference = reference, x_vec = pred_data$x)
+  # NSEC read off a fitted curve, on the predictor scale the user supplied it
+  # on. Used for smooth (ecx-type) models, which carry no threshold parameter,
+  # and for any two-block fit where at least one block is smooth.
+  nsec_off_curve <- function(post) {
+    reference <- quantile(post[, 1], sig_val)
+    out <- apply(post, 1, nsec_fct, reference = reference, x_vec = pred_data$x)
     x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
     x_call <- str2lang(eval(parse(text = x_str)))
     if (inherits(x_call, "call")) {
-      x_call[[2]] <- str2lang("ne_posterior")
-      ne_posterior <- eval(x_call)
+      x_call[[2]] <- str2lang("out")
+      out <- eval(x_call)
     }
+    out
+  }
+  if (mod_class == "ecx") {
+    ne_posterior <- nsec_off_curve(pred_posterior)
     extracted_params$ne <- estimates_summary(ne_posterior)
   } else {
     ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
@@ -88,20 +92,34 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
                                 dpar = hu_dpar)
     hu_ne_posterior <- as_draws_df(fit)[[paste0("b_", hu_dpar,
                                                 "nec_Intercept")]]
-    if (mod_class == "nec" && !is.null(hu_ne_posterior)) {
+    # The two blocks may carry different equations (see the model_survival
+    # argument of bnec), so each has its own class and the combined threshold
+    # is derived differently depending on the pair.
+    hu_class <- if (is.null(hu_ne_posterior)) "ecx" else "nec"
+    if (mod_class == "nec" && hu_class == "nec") {
       # Below both thresholds mu sits at top and (1 - hu) at its control value,
       # so the product is flat; it leaves that plateau at whichever threshold
       # binds first. Exact for threshold models on both blocks.
       combined_ne <- pmin(ne_posterior, hu_ne_posterior)
+      ne_lab <- "NEC"
     } else {
-      # An ecx-type block has no threshold parameter, so fall back to the
-      # interpolated N(S)EC read off the combined curve.
-      combined_ne <- ne_posterior
+      # With a smooth block on either side there is no threshold to take the
+      # minimum of, so the no-effect estimate is interpolated off the combined
+      # curve itself rather than combined from the parts. When only one block
+      # is smooth this is an N(S)EC in the sense of Fisher et al. (2023): a
+      # threshold on one process and a significant-effect point on the other.
+      combined_ne <- nsec_off_curve(pred_posterior)
+      ne_lab <- if (mod_class == "ecx" && hu_class == "ecx") {
+        "NSEC"
+      } else {
+        "N(S)EC"
+      }
     }
     hurdle_parts <- list(mu_pred = mu_curve, hu_pred = hu_curve,
                          mu_ne_posterior = ne_posterior,
                          hu_ne_posterior = hu_ne_posterior,
-                         hu_params = hu_params)
+                         hu_params = hu_params, hu_ne_type = hu_class,
+                         ne_type = ne_lab)
     ne_posterior <- combined_ne
     extracted_params$ne <- estimates_summary(ne_posterior)
   }
@@ -111,10 +129,16 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
+  ne_type <- ifelse(mod_class == "nec", "NEC", "NSEC")
+  if (!is.null(hurdle_parts)) {
+    # A two-block fit reports the combined endpoint, whose type depends on both
+    # blocks rather than on the response block alone.
+    ne_type <- hurdle_parts$ne_type
+  }
   out <- c(object, list(pred_vals = pred_vals), extracted_params,
            list(dispersion = od, predicted_y = predicted_y,
                 residuals = residuals, ne_posterior = ne_posterior,
-                ne_type = ifelse(mod_class == "nec", "NEC", "NSEC")))
+                ne_type = ne_type))
   # Only hurdle fits carry the extra element. Appending it unconditionally
   # would change names() on every bayesnecfit, which is a gratuitous break for
   # anything indexing the object positionally or checking its structure.

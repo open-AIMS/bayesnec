@@ -22,7 +22,7 @@
 #' @noRd
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE, prior_type = "uninformative",
-                         timeout = Inf) {
+                         timeout = Inf, model_survival = NULL) {
   formula <- single_model_formula(formula, model)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
@@ -58,10 +58,12 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   } else {
     response <- y
   }
-  brms_bf <- wrangle_model_formula(model, formula, bdat, family)
+  brms_bf <- wrangle_model_formula(model, formula, bdat, family,
+                                   model_survival = model_survival)
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
-                               prior_type = prior_type)
+                               prior_type = prior_type,
+                               model_survival = model_survival)
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
   if (is.finite(timeout)) {
     # R.utils::withTimeout aborts the brm call once `timeout` seconds elapse

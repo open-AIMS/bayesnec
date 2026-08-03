@@ -518,7 +518,8 @@ add_brm_defaults <- function(
   response,
   skip_check,
   custom_name,
-  prior_type = "uninformative"
+  prior_type = "uninformative",
+  model_survival = NULL
 ) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
@@ -539,17 +540,24 @@ add_brm_defaults <- function(
       family,
       predictor,
       response,
-      prior_type = prior_type
+      prior_type = prior_type,
+      model_survival = model_survival
     )
   } else {
     brm_args$prior <- priors
   }
   if (!("init" %in% names(brm_args)) || skip_check) {
     msg_tag <- family$family
+    model_tag <- if (is.null(model_survival) || identical(model_survival,
+                                                          model)) {
+      model
+    } else {
+      paste0(model, " (response) and ", model_survival, " (survival)")
+    }
     message(paste0(
       "Finding initial values which allow the response to be",
       " fitted using a ",
-      model,
+      model_tag,
       " model and a ",
       msg_tag,
       " distribution."
@@ -570,7 +578,8 @@ add_brm_defaults <- function(
         priors = brm_args$prior,
         chains = brm_args$chains,
         dpar = hurdle_dpar(family),
-        seed = init_seed
+        seed = init_seed,
+        model_survival = model_survival
       )
     } else {
       make_good_inits(

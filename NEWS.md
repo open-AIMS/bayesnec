@@ -7,6 +7,17 @@
   as a counter-example — how to tell a structural zero from a rounded or
   floored one before choosing a model. See
   [#175](https://github.com/open-AIMS/bayesnec/issues/175).
+- `bnec()` gains a `model_survival` argument, so a joint `"hurdle_gamma"` or
+  `"zero_inflated_beta"` fit can use a different equation on each of its two
+  blocks rather than the same one on both. The `crf` model in the formula names
+  the response block's equation and `model_survival` the survival block's.
+- New functions `best_crossed()` and `bnec_joint()`. `best_crossed()` reports
+  the model combination carrying the highest weight in `crossed_weights()`, and
+  `bnec_joint()` refits that combination as a single two-block model. Together
+  they connect the two implementations in the order they are meant to be used:
+  fit and average the model sets with `bnec_hurdle()`, where all
+  `n_response * n_survival` combinations follow from two fits, then refit the
+  selected combination jointly where structure spanning both blocks is needed.
 - New dataset `nassarius`: four chronic toxicity tests on the snail
   *Nassarius dorsatus*, one row per individual exposed, with mortality
   reconstructed from the four ways it was recorded other than as zeros. Used

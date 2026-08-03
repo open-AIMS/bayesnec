@@ -131,3 +131,48 @@ check_models <- function(model, family, data) {
   }
   model
 }
+
+#' check_model_survival
+#'
+#' Validates the equation requested for the second (zero-probability) block of
+#' a joint hurdle or zero-inflated fit.
+#'
+#' @inheritParams bnec
+#'
+#' @param family A \code{\link[stats]{family}} function.
+#' @param data A \code{\link[base]{data.frame}}.
+#'
+#' @details The block is a probability, so it is checked against the
+#' restrictions a \code{\link[brms]{bernoulli}} fit with an identity link would
+#' face rather than those of the response family. Unlike \code{model}, this is
+#' a single equation: model averaging in the joint route runs over the response
+#' block, with the second block held fixed. Averaging over both is what
+#' \code{\link{bnec_hurdle}} and \code{\link{crossed_weights}} are for.
+#'
+#' @return A \code{\link[base]{character}} string, or \code{NULL}.
+#'
+#' @importFrom brms bernoulli
+#'
+#' @noRd
+check_model_survival <- function(model_survival, family, data) {
+  if (is.null(model_survival)) {
+    return(NULL)
+  }
+  if (!is_hurdle_family(family)) {
+    stop("Argument `model_survival` only applies to the two-block families",
+         " \"hurdle_gamma\" and \"zero_inflated_beta\". For two separate fits",
+         " with a different model set on each component, see ?bnec_hurdle.",
+         call. = FALSE)
+  }
+  if (!is.character(model_survival) || length(model_survival) != 1) {
+    stop("Argument `model_survival` must be a single model name. Model",
+         " averaging over both blocks at once means fitting every pair; use",
+         " bnec_hurdle() and crossed_weights() for that.", call. = FALSE)
+  }
+  out <- check_models(model_survival, bernoulli(link = "identity"), data)
+  if (length(out) == 0) {
+    stop("Model \"", model_survival, "\" is not valid for the survival block,",
+         " which is 0-1 bounded.", call. = FALSE)
+  }
+  out
+}
