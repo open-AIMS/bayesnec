@@ -1,11 +1,11 @@
 # bayesnec 2.1.3.2
 
 - New vignette, *Hurdle and zero-inflated concentration-response models*
-  (`vignette("example6")`), covering the two routes to these models, what the
-  combined endpoint gives that a survivors-only analysis cannot, when a hurdle
-  Beta is and is not the right reach, and — using the shipped `herbicide` data
-  as a counter-example — how to tell a structural zero from a rounded or
-  floored one before choosing a model. See
+  (`vignette("example6")`), covering the two implementations of these models,
+  what the combined endpoint gives that a survivors-only analysis cannot, when
+  a hurdle Beta is appropriate, and — using the shipped `herbicide` data as a
+  counter-example — how to tell a structural zero from a rounded or floored one
+  before choosing a model. See
   [#175](https://github.com/open-AIMS/bayesnec/issues/175).
 - `bnec()` gains a `model_survival` argument, so a joint `"hurdle_gamma"` or
   `"zero_inflated_beta"` fit can use a different equation on each of its two
