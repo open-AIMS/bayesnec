@@ -296,11 +296,25 @@ hurdle_xform_x <- function(object, out) {
 #' Summary of a \code{\link{bayesnechurdlefit}}
 #'
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
-#' @param ... Passed to the component summaries.
+#' @param ... Passed to \code{\link{nec}} and \code{\link{ecx}} for each
+#' component, so that \code{xform} in particular applies to every estimate in
+#' the table.
 #' @param ecx Should ECx estimates be included? Defaults to \code{FALSE}.
 #' @param ecx_vals The ECx levels to report.
 #'
+#' @details The no-effect estimate is reported for all three endpoints and
+#' labelled by type: NEC where the component's model set is entirely threshold
+#' models, NSEC where it is entirely smooth ones, and N(S)EC where it is a
+#' mixture (Fisher et al. 2023). The combined estimate is the smaller of the
+#' two component estimates per posterior draw, so it is a pure NEC only where
+#' both components are; see \code{\link{nec.bayesnechurdlefit}}.
+#'
 #' @return An object of class \code{hurdlesummary}.
+#'
+#' @references
+#' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
+#' estimating no-effect toxicity concentrations in ecotoxicology. Integrated
+#' Environmental Assessment and Management. doi: 10.1002/ieam.4809.
 #'
 #' @importFrom chk chk_lgl chk_numeric
 #'
@@ -322,19 +336,48 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     })
     names(ecs) <- c("combined", "growth", "survival")
   }
+  # nec() warns once per call that a mixed model set yields an N(S)EC rather
+  # than a NEC, which would be repeated up to six times here. The table labels
+  # every estimate by type, so the message is redundant and is suppressed.
   nes <- lapply(c("combined", "growth", "survival"), function(w) {
-    nec(object, which = w)
+    suppressMessages(nec(object, which = w, ...))
   })
   names(nes) <- c("combined", "growth", "survival")
   mods <- function(f) {
     if (inherits(f, "bayesmanecfit")) names(f$mod_fits) else f$model
   }
+  # ne_type is what distinguishes a NEC from a NSEC or a mixture of the two,
+  # and each component carries its own. The combined estimate is the smaller of
+  # the two per draw, so it is a pure NEC only when both components are.
+  ne_type_of <- function(f) {
+    if (is.null(f$ne_type)) NA_character_ else f$ne_type
+  }
+  ne_types <- c(growth = ne_type_of(object$growth),
+                survival = ne_type_of(object$survival))
+  combined_type <- if (anyNA(ne_types)) {
+    NA_character_
+  } else if (all(ne_types == "NEC")) {
+    "NEC"
+  } else if (all(ne_types == "NSEC")) {
+    "NSEC"
+  } else {
+    "N(S)EC"
+  }
+  ne_types <- c(combined = combined_type, ne_types)
+  # The growth component may be model-averaged, in which case pull_brmsfit()
+  # needs a model to pull; every model in the set shares the family, so the
+  # first will do.
+  growth_fit <- if (inherits(object$growth, "bayesmanecfit")) {
+    object$growth$mod_fits[[1]]$fit
+  } else {
+    pull_brmsfit(object$growth)
+  }
   out <- list(
     n_exposed = object$n_exposed, n_dead = object$n_dead,
-    growth_family = pull_brmsfit(object$growth)$family$family,
+    growth_family = growth_fit$family$family,
     growth_models = mods(object$growth),
     survival_models = mods(object$survival),
-    ne = nes, ecs = ecs,
+    ne = nes, ne_types = ne_types, ecs = ecs,
     growth_averaged = inherits(object$growth, "bayesmanecfit"),
     survival_averaged = inherits(object$survival, "bayesmanecfit")
   )
@@ -352,20 +395,26 @@ print.hurdlesummary <- function(x, ...) {
       paste0(x$growth_models, collapse = ", "), "\n")
   cat("  survival : bernoulli --",
       paste0(x$survival_models, collapse = ", "), "\n\n")
+  # One matrix rather than one line per component: a per-line cat() prefix puts
+  # the label above the column headings rather than beside the values.
   cat("No-effect toxicity estimates\n")
-  for (w in names(x$ne)) {
-    cat(sprintf("  %-9s ", w))
-    print_mat(t(as.matrix(x$ne[[w]])))
+  ne_mat <- do.call(rbind, x$ne)
+  tp <- x$ne_types[names(x$ne)]
+  rownames(ne_mat) <- ifelse(is.na(tp), names(x$ne),
+                             paste0(names(x$ne), " (", tp, ")"))
+  print_mat(ne_mat)
+  if (any(x$ne_types != "NEC", na.rm = TRUE)) {
+    cat("\nNSEC values appear where a model set contains smooth (ECx) models,",
+        "which\ncarry no threshold parameter; N(S)EC is a model-averaged",
+        "combination\nof the two (Fisher et al. 2023).\n")
   }
   if (!is.null(x$ecs)) {
     cat("\nECx estimates\n")
-    for (w in names(x$ecs)) {
-      cat(" ", w, "\n")
-      for (e in names(x$ecs[[w]])) {
-        cat(sprintf("    %-6s ", e))
-        print_mat(t(as.matrix(x$ecs[[w]][[e]])))
-      }
-    }
+    ec_mat <- do.call(rbind, lapply(x$ecs, function(z) do.call(rbind, z)))
+    rownames(ec_mat) <- unlist(lapply(names(x$ecs), function(w) {
+      paste0(w, " ", names(x$ecs[[w]]))
+    }))
+    print_mat(ec_mat)
   }
   cat("\nThe combined endpoint is the expected response per individual",
       "exposed,\ni.e. growth * survival. Use which = to select a component.\n")

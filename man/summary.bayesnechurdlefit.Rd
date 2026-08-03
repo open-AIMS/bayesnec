@@ -9,7 +9,9 @@
 \arguments{
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
-\item{...}{Passed to the component summaries.}
+\item{...}{Passed to \code{\link{nec}} and \code{\link{ecx}} for each
+component, so that \code{xform} in particular applies to every estimate in
+the table.}
 
 \item{ecx}{Should ECx estimates be included? Defaults to \code{FALSE}.}
 
@@ -20,4 +22,17 @@ An object of class \code{hurdlesummary}.
 }
 \description{
 Summary of a \code{\link{bayesnechurdlefit}}
+}
+\details{
+The no-effect estimate is reported for all three endpoints and
+labelled by type: NEC where the component's model set is entirely threshold
+models, NSEC where it is entirely smooth ones, and N(S)EC where it is a
+mixture (Fisher et al. 2023). The combined estimate is the smaller of the
+two component estimates per posterior draw, so it is a pure NEC only where
+both components are; see \code{\link{nec.bayesnechurdlefit}}.
+}
+\references{
+Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
+estimating no-effect toxicity concentrations in ecotoxicology. Integrated
+Environmental Assessment and Management. doi: 10.1002/ieam.4809.
 }

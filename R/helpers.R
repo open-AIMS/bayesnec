@@ -290,11 +290,19 @@ clean_nec_vals <- function(x, all_models, ecx_models) {
   } else {
     stop("Wrong input class.")
   }
-  neclab <- "NEC"
-  if (all(all_models %in% ecx_models)) {
-    neclab <- "NSEC"
-  } else if (!is.null(ecx_models)) {
-    neclab <- "N(S)EC"
+  # ne_type is recorded when the fit is expanded and is the authority: for a
+  # two-block (hurdle) fit the reported estimate describes the combined
+  # endpoint, whose type depends on the equations used for both blocks and so
+  # cannot be read off the model name alone.
+  if (!is.null(x$ne_type)) {
+    neclab <- x$ne_type
+  } else {
+    neclab <- "NEC"
+    if (all(all_models %in% ecx_models)) {
+      neclab <- "NSEC"
+    } else if (!is.null(ecx_models)) {
+      neclab <- "N(S)EC"
+    }
   }
   rownames(mat) <- neclab
   mat

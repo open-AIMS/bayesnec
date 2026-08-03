@@ -18,6 +18,12 @@
   fit and average the model sets with `bnec_hurdle()`, where all
   `n_response * n_survival` combinations follow from two fits, then refit the
   selected combination jointly where structure spanning both blocks is needed.
+- `summary()` on a `bayesnechurdlefit` now labels each no-effect estimate NEC,
+  NSEC or N(S)EC according to the models in that component's set, and passes
+  `...` (notably `xform`) through to both `nec()` and `ecx()`. It no longer
+  errors when a component is model-averaged. The `?nec` documentation now
+  states explicitly that a model-averaged estimate over a mixed model set is an
+  N(S)EC rather than a NEC.
 - New dataset `nassarius`: four chronic toxicity tests on the snail
   *Nassarius dorsatus*, one row per individual exposed, with mortality
   reconstructed from the four ways it was recorded other than as zeros. Used
