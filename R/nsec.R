@@ -15,6 +15,13 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"}
+#' or \code{"zero_inflated_beta"}), the parameter block to report:
+#' \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
+#' zero-inflated families) for survival. Defaults to \code{NULL}, which gives
+#' the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+#' inverted to survival before computing, so the NSEC is read off a declining
+#' curve. See Details.
 #' @param ... Further arguments to pass to class specific methods.
 #'
 #' @details NSEC is no-effect toxicity metric that estimates the concentration 
@@ -41,7 +48,18 @@
 #' simply return one of the treatment concentrations, making NOEC a better
 #' metric in that case.
 #'
-#' @seealso \code{\link{bnec}}
+#' \bold{Selecting a component of a hurdle model}
+#'
+#' The two implementations of a hurdle model name the component differently,
+#' and the two arguments are not interchangeable. A
+#' \code{\link{bayesnechurdlefit}} from \code{\link{bnec_hurdle}} holds two
+#' separate fits, so it takes \code{which = "growth"}, \code{"survival"} or
+#' \code{"combined"}. A joint fit from \code{bnec(family = "hurdle_gamma")}
+#' holds two parameter blocks inside one model, so it takes \code{dpar} naming
+#' the \pkg{brms} distributional parameter. Supplying one where the other is
+#' expected is an error rather than silently ignored.
+#'
+#' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
 #'
 #' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds.
@@ -84,9 +102,10 @@ nsec <- function(object, sig_val = 0.01, resolution = 1000,
 #'
 #' @export
 nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 1000,
-                             x_range = NA, hormesis_def = "control", 
-                             xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
-                             posterior = FALSE) {
+                             x_range = NA, hormesis_def = "control",
+                             xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                             posterior = FALSE, dpar = NULL) {
+  check_component_arg(list(...), object)
   chk_numeric(sig_val)
   chk_numeric(resolution)
   chk_logical(posterior)
@@ -107,8 +126,27 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 1000,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
-                               re_formula = NA)
+  # dpar selects one block of a two-block (hurdle / zero-inflated) fit, exactly
+  # as in ecx(). The default (NULL) leaves the behaviour posterior_epred always
+  # gave: mu * (1 - hu) for such a family, the single mean curve otherwise. The
+  # zero-probability block is inverted to survival first, so that the NSEC is
+  # read off a declining curve and "decline from control" keeps its usual
+  # meaning.
+  if (is.null(dpar)) {
+    p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
+                                 re_formula = NA)
+  } else {
+    if (!is_hurdle_family(object$fit$family)) {
+      stop("The \"dpar\" argument is only valid for hurdle families.",
+           call. = FALSE)
+    }
+    dpar <- match.arg(dpar, c("mu", hurdle_dpar(object$fit$family)))
+    p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
+                                 re_formula = NA, dpar = dpar)
+    if (dpar != "mu") {
+      p_samples <- 1 - p_samples
+    }
+  }
   x_vec <- newdata_list$x_vec
   reference <- quantile(p_samples[, 1], sig_val)
   ecnsecP <- apply(p_samples, MARGIN = 1, FUN = function(r){
@@ -169,33 +207,31 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 1000,
 #'
 #' @export
 nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 1000,
-                               x_range = NA, hormesis_def = "control", 
-                               xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
-                               posterior = FALSE) {
+                               x_range = NA, hormesis_def = "control",
+                               xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                               posterior = FALSE, dpar = NULL) {
+  check_component_arg(list(...), object)
   if (length(sig_val)>1) {
-    stop("You may only pass one sig_val")  
+    stop("You may only pass one sig_val")
   }
-  sample_nsec <- function(x, object, sig_val, resolution,
-                          hormesis_def,
-                          x_range, xform, prob_vals, 
-                          posterior,
-                          sample_size) {
+  sample_size <- object$sample_size
+  # A closure rather than positional dispatch through sapply(), for the reason
+  # given in ecx.bayesmanecfit: the previous form silently dropped any argument
+  # not named in the positional list, dpar included.
+  sample_nsec <- function(x) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
     out <- nsec(target, sig_val = sig_val, resolution = resolution,
                 hormesis_def = hormesis_def,
                 x_range = x_range, xform = xform, prob_vals = prob_vals,
-                posterior = posterior)
+                posterior = TRUE, dpar = dpar)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
     sample_out <- sample(out, n_s)
     attr(sample_out, "ecnsec_relativeP") <- sample(attributes(out)$ecnsec_relativeP, n_s)
     sample_out
   }
-  sample_size <- object$sample_size
   to_iter <- seq_len(length(object$success_models))
-  nsec_out <- sapply(to_iter, sample_nsec, object, sig_val, resolution,
-                     hormesis_def, x_range,
-                     xform, prob_vals, posterior = TRUE, sample_size)
+  nsec_out <- lapply(to_iter, sample_nsec)
   ecnsecP <- unlist(lapply(nsec_out, 
                     FUN = function(p){attributes(p)$ecnsec_relativeP}))
   ecnsec <- quantile(ecnsecP, probs = prob_vals)

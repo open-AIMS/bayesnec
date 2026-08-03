@@ -18,6 +18,22 @@
   fit and average the model sets with `bnec_hurdle()`, where all
   `n_response * n_survival` combinations follow from two fits, then refit the
   selected combination jointly where structure spanning both blocks is needed.
+- Fixed `ecx()` silently ignoring `dpar` on a model-averaged joint hurdle fit.
+  `ecx.bayesmanecfit()` passed a fixed, positionally-matched argument list to
+  its per-model calls, so `dpar` was dropped and the combined endpoint returned
+  in place of the requested parameter block — a wrong answer with no error or
+  warning. Only `bayesmanecfit` objects from the joint route were affected;
+  `bnec_hurdle()` fits and single-model joint fits were always correct.
+- `nsec()` gains a `dpar` argument, matching `ecx()`. It previously had no way
+  to select a parameter block, so on a joint two-block fit it could only ever
+  describe the combined curve.
+- `dpar` is now a documented, formal argument of `ecx()` and `nsec()` rather
+  than one read out of `...`, and supplying the wrong component argument is an
+  error instead of being silently discarded: `which` belongs to a
+  `bayesnechurdlefit` (two separate fits) and `dpar` to a joint two-block fit
+  (two parameter blocks in one model). `nec()`, which reports the combined
+  threshold and has no block selection, likewise rejects `dpar` rather than
+  ignoring it.
 - `summary()` on a `bayesnechurdlefit` now labels each no-effect estimate NEC,
   NSEC or N(S)EC according to the models in that component's set, and passes
   `...` (notably `xform`) through to both `nec()` and `ecx()`. It no longer

@@ -246,6 +246,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
                                    xform = identity,
                                    prob_vals = c(0.5, 0.025, 0.975), ...,
                                    posterior = FALSE, which = "combined") {
+  check_component_arg(list(...), object)
   chk_logical(posterior)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")

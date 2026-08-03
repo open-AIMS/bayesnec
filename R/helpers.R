@@ -404,6 +404,65 @@ return_x_range <- function(x) {
     range(na.rm = TRUE)
 }
 
+#' Guard against the two component-selection arguments being confused
+#'
+#' The two implementations of a hurdle model select a component differently: a
+#' \code{\link{bayesnechurdlefit}} holds two separate fits and takes
+#' \code{which}, while a joint two-block fit holds two parameter blocks inside
+#' one model and takes \code{dpar}. Each argument used to fall into \code{...}
+#' on the other's methods and be discarded, so the call returned the default
+#' endpoint -- a wrong answer with no error and no warning. Erroring is cheap
+#' and the alternative has already cost people time.
+#'
+#' @param dots The \code{...} of the calling method, as a list.
+#' @param object The object the method was called on.
+#'
+#' @return Invisibly \code{TRUE}, or an error.
+#'
+#' @noRd
+check_component_arg <- function(dots, object) {
+  if (is_bayesnechurdlefit(object)) {
+    if ("dpar" %in% names(dots)) {
+      stop("`dpar` names a parameter block of a joint two-block fit. This is",
+           " a bayesnechurdlefit, which holds two separate fits: use",
+           " `which = \"growth\"`, \"survival\" or \"combined\".",
+           call. = FALSE)
+    }
+  } else if ("which" %in% names(dots)) {
+    stop("`which` selects a component of a bayesnechurdlefit, as returned by",
+         " bnec_hurdle(). This object is a ", class(object)[1],
+         ". For a joint two-block fit, name the parameter block instead:",
+         " `dpar = \"mu\"` for the response block or `dpar = \"hu\"`",
+         " (\"zi\" for zero-inflated families) for the survival block.",
+         call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+#' Guard against `dpar` being passed to nec()
+#'
+#' Unlike \code{\link{ecx}} and \code{\link{nsec}}, \code{\link{nec}} has no
+#' block selection for a joint two-block fit: what it returns is the combined
+#' threshold, the per-draw minimum of the two blocks. The block-specific
+#' posteriors are stored on the fit but are not exposed by an argument, so a
+#' supplied \code{dpar} would otherwise be discarded and the combined value
+#' returned in its place.
+#'
+#' @param dots The \code{...} of the calling method, as a list.
+#'
+#' @return Invisibly \code{TRUE}, or an error.
+#'
+#' @noRd
+check_nec_no_dpar <- function(dots) {
+  if ("dpar" %in% names(dots)) {
+    stop("nec() has no block selection for a joint two-block fit; what it",
+         " returns is the combined threshold, the per-draw minimum of the",
+         " two blocks (see ?nec.bayesnechurdlefit). Use ecx() or nsec() with",
+         " `dpar` for a single block.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 #' @noRd
 return_nec_post <- function(m, xform) {
   if (is_bayesnecfit(m)) {

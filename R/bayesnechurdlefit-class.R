@@ -130,6 +130,7 @@ hurdle_check_which <- function(which) {
 nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   which = "combined", ...) {
+  check_component_arg(list(...), object)
   chk_logical(posterior)
   which <- hurdle_check_which(which)
   if (!inherits(xform, "function")) {
@@ -189,6 +190,7 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 1000,
                                   xform = identity,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   which = "combined", ...) {
+  check_component_arg(list(...), object)
   chk_numeric(ecx_val)
   chk_numeric(resolution)
   chk_logical(posterior)
