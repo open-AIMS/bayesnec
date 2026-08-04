@@ -44,13 +44,14 @@
   *Nassarius dorsatus*, one row per individual exposed, with mortality
   reconstructed from the four ways it was recorded other than as zeros. Used
   as the worked example in `vignette("example6")`.
-- New dataset `alga`: growth inhibition tests on two marine microalgae against
-  two contaminants, consolidated from four tests. Cell density is counted to a
-  resolution of 10, so a recorded density of zero is a censored count rather
-  than an absence, and the source substituted a growth rate of zero for those
-  cultures — placing total loss of the population mid-range, above every
-  genuinely negative value. Both features are retained rather than cleaned
-  away, for
+- New dataset `alga`: growth inhibition tests on *Cladocopium proliferum* and
+  *Rhodomonas salina* against two contaminants, consolidated from four tests.
+  Cell density is counted to a resolution of 10, so a recorded density of zero
+  is a censored count rather than an absence, and the source substituted a
+  growth rate of zero for those cultures — placing total loss of the population
+  mid-range, above every genuinely negative value, and turning a monotonic
+  concentration-response into a non-monotonic one. Both features are retained
+  rather than cleaned away, for
   [#173](https://github.com/open-AIMS/bayesnec/issues/173) and
   [#181](https://github.com/open-AIMS/bayesnec/issues/181).
 - `bayesnechurdlefit` objects returned by `bnec_hurdle()` now support the full

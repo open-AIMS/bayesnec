@@ -10,9 +10,11 @@ An object of class \code{data.frame} with 310 rows and 9 columns.
 \description{
 Final cell density and average specific growth rate for two marine
 microalgae exposed to each of two contaminants, consolidated from four
-growth inhibition tests. Each test ran a dilution series against an
-unexposed control with five replicate cultures per exposure level, and twice
-that at the control.
+growth inhibition tests. The species are the symbiotic dinoflagellate
+\emph{Cladocopium proliferum} (\code{"c_proliferum"}) and the cryptophyte
+\emph{Rhodomonas salina} (\code{"r_salina"}). Each test ran a dilution
+series against an unexposed control with five replicate cultures per
+exposure level, and twice that at the control.
 }
 \details{
 This dataset exists to demonstrate two data-preparation problems that arise
@@ -36,12 +38,19 @@ the same test --- so a culture that was lost entirely is recorded as
 the shipped data would remove the example, and substitution at a boundary is
 the practice \code{vignette("example6")} argues against.
 
-\bold{The two species grow on very different scales.} Control cultures
-multiplied about 2--3 fold over the exposure for \code{c_proliferum} and
-about 17--73 fold for \code{r_salina}, and control growth rates differ by
-roughly an order of magnitude between them. Only \code{r_salina} was driven
-below the counting resolution, in 16 of its 85 cultures under contaminant A
-and 4 of its 70 under contaminant B; \code{c_proliferum} never was.
+\bold{The two species grow on very different scales,} which is why they were
+run over different exposure durations --- seven days for
+\emph{C. proliferum} against three for \emph{R. salina}. Symbiodiniaceae
+divide slowly, and control cultures multiplied only about 2--3 fold over the
+whole exposure, against about 17--73 fold for \emph{R. salina}; control
+growth rates differ by roughly an order of magnitude between them. Only
+\emph{R. salina} was driven below the counting resolution, in 16 of its 85
+cultures under contaminant A and 4 of its 70 under contaminant B;
+\emph{C. proliferum} never was.
+
+The contrast is useful in itself: a slow grower gives a small dynamic range
+between control and complete inhibition, so the same absolute error in a
+count is a much larger error in growth rate.
 
 Wherever a density was measured, the growth rate satisfies
 \code{sgr = (log(density) - log(density_initial)) / days}. That holds
@@ -60,8 +69,9 @@ other.}
 The columns are as follows:
 
 \describe{
-\item{species}{Test species, \code{"c_proliferum"} or \code{"r_salina"}
-(fct).}
+\item{species}{Test species (fct), \code{"c_proliferum"}
+(\emph{Cladocopium proliferum}) or \code{"r_salina"}
+(\emph{Rhodomonas salina}).}
 \item{contaminant}{The contaminant, anonymised as A or B (fct).}
 \item{dose}{Nominal exposure concentration, undisclosed units; 14 levels
 including the control for contaminant A, 13 for contaminant B (dbl).}

@@ -1,6 +1,8 @@
 # Builds the `alga` dataset: growth inhibition tests on two marine microalgae
 # exposed to two contaminants, consolidated from four source files into one
-# frame.
+# frame. The species are Cladocopium proliferum (a symbiotic dinoflagellate,
+# slow-growing, run over seven days) and Rhodomonas salina (a cryptophyte, run
+# over three).
 #
 # The source files are not distributed with the package. They carry the real
 # contaminant identities and exposure units, so committing them anywhere in the
