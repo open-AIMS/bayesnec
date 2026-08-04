@@ -593,7 +593,18 @@ tested doses are removed from the analysis by the act of dropping the dead.
 
 ### Does the reconstruction change the answer?
 
-This can be checked directly. Refitting B's survival component on
+Only for the survival component — and that is exactly the point.
+
+The three variants below differ only in rows recording individuals that died.
+They contain 74, 95 and 284 snails respectively, but all three contain the same
+63 survivors. The growth component is fitted to the non-zero responses alone,
+so it is *identical* in all three by construction: a survivors-only analysis of
+B returns the same answer however much of the mortality is reconstructed. That
+is the factorisation demonstrated in the simulation above, seen from the other
+side — reinstated deaths are invisible to the response block.
+
+The survival component is a `bernoulli` model over every individual that
+entered the experiment, so it sees all of them. Refitting that block on
 progressively more of the reconstruction:
 
 ```{r nassarius-sensitivity, results = "hide"}
@@ -621,11 +632,13 @@ do.call(rbind, sens)
 
 Two conclusions follow, and they have different implications.
 
-**Reinstating the first all-dead dose changes the answer**, moving the
-threshold by about 25% and halving the credible interval. Analysing only the
-doses that appear in the file biases the threshold low, because the last dose
+**Reinstating the first all-dead dose changes the survival threshold**,
+moving it by about 25% and halving the credible interval. Analysing only the
+doses that appear in the file biases that threshold low, because the last dose
 those records contain is one at which half the snails were still alive, so the
-fit never sees the concentration at which survival collapses.
+fit never sees the concentration at which survival collapses. Nothing about the
+growth estimate moves, which is why this cost is invisible to an analysis that
+looks only at survivors.
 
 **The all-dead doses above it add little** — about 3%, well inside the
 interval. Once the fitted curve has reached zero, further doses at which every
