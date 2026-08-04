@@ -1082,32 +1082,34 @@ endpoints
 
 Three features of these results are notable.
 
-**The two components' estimates separate, and by widely varying amounts.** The
-growth and survival no-effect estimates are close together for some
-contaminants and orders of magnitude apart for others, with growth declining
-from the bottom of the tested range in the latter while survival holds until
-near the top. A single number from a survivors-only analysis cannot express
-this, and the four tests would appear far more alike than they are.
+**The combined and growth rows are all but identical.** The combined no-effect
+estimate matches the growth estimate exactly for A, C and D, and differs only
+in the third decimal for B, 0.049 against 0.050. This is the per-draw minimum
+at work: the combined estimate can depart from growth only where mortality
+begins close enough to the growth threshold to bind on at least some draws. B
+is the test where it comes closest — its survival estimate is 1.6 times its
+growth estimate, against ratios of 2.8 for A and several hundred for C and D —
+which is why B is the one that moves, and why it moves so little.
 
-**The combined endpoint separates from growth only at the higher effect
-level.** The combined no-effect estimate equals the growth estimate in every
-test, as the per-draw minimum requires, and the combined EC10 matches the
-growth EC10 to the precision reported. The two diverge at EC50, where the
-combined value is at or below the growth value in all four tests: by about 6%
-for C, 3% for B and D, and not at all for A, whose growth EC50 of 1.1 sits
-below the concentration at which its survival curve leaves the control. Note
-that C and D separate at EC50 even though their survival no-effect estimates
-sit two orders of magnitude higher: a model-averaged survival curve containing
-smooth models is never perfectly flat, so it contributes a little decline well
-below its nominal threshold. Differences in the final digit of the EC10 column
-are at the scale of the predictor grid rather than anything interpretable.
+**Growth and survival, in contrast, separate widely.** The two sit within a
+factor of two for B and a factor of three for A, but more than two orders of
+magnitude apart for C and D, whose growth declines from the low end of the
+tested range while survival holds until close to the top dose of 20. A single
+number from a survivors-only analysis cannot express that, and the four tests
+would look far more alike than they are. The survival curve is also the one
+thing such an analysis cannot produce at any level of effect.
 
-**The survival estimates are the clearest gain.** These are the numbers a
-survivors-only analysis cannot produce at any level of effect, and for
-contaminant B in particular they are the more consequential of the two
-endpoints. The combined endpoint contributes on the response scale, where it
-gives the expected growth per individual exposed rather than per individual
-that lived.
+**What the combined endpoint adds appears above the no-effect level.** The
+combined EC50 sits at or below the growth EC50 in all four tests: about 6%
+lower for C, 3% for B and D, and unchanged for A, whose growth EC50 of 1.1
+falls below the concentration at which its survival curve leaves the control.
+C and D separate at EC50 despite survival estimates two orders of magnitude
+higher, because a model-averaged survival curve containing smooth models is
+never perfectly flat and so contributes a little decline well below its nominal
+threshold. Differences in the last digit of the EC10 column are at the scale of
+the predictor grid rather than anything interpretable. The larger contribution
+is on the response scale, where the combined endpoint gives the expected growth
+per individual exposed rather than per individual that lived.
 
 
 ``` r
