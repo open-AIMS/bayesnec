@@ -1402,10 +1402,11 @@ modelled at all: `F(0; µ(x), σ)` rises toward 1 as `µ(x)` falls, so it satura
 rather than pulling. That property is useful enough to be worth a recommendation
 of its own, and it is taken up below.
 
-This does not require a hurdle to bite. Flooring biases the fitted mean upward
-in a plain regression too, because the likelihood goes on pulling `µ(x)` toward
-the substituted value. It is a separate failure from the three above, and it
-survives every attempt to work around them.
+The three failures listed earlier all follow from the way a hurdle model
+allocates observations between its two blocks. This one does not. It originates
+in the likelihood contribution of the substituted value itself, and is therefore
+present in an ordinary regression that has no zero-probability block at all.
+Fitting a simpler model does not avoid it.
 
 ## The provenance question
 
