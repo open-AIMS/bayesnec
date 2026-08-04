@@ -14,7 +14,8 @@ ecx(
   x_range = NA,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
-  ...
+  ...,
+  dpar = NULL
 )
 }
 \arguments{
