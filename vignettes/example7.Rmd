@@ -1,0 +1,452 @@
+---
+title: "Censored responses"
+output:
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{Censored responses}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+
+
+
+``` r
+library(bayesnec)
+library(brms)
+library(dplyr)
+library(ggplot2)
+```
+
+# When a recorded value is not a measurement
+
+A concentration-response dataset usually mixes two kinds of number. Most rows
+carry a measurement. Some carry a statement that the measurement fell outside
+the range the recording process could express — below a detection limit, below
+the rounding resolution, or below a boundary the analyst decided not to model.
+
+Those rows are **censored**: the true value is known to lie in an interval, not
+at a point. Writing a single number into them and proceeding treats a statement
+about an interval as if it were an observation, and the consequences are not
+confined to the affected rows.
+
+`vignette("example6")` deals with the neighbouring question of which zeros mean
+*nothing happened* and which mean *the unit failed*. This vignette deals with
+the zeros that mean neither: the ones that mark the edge of what was recorded.
+
+Three situations recur.
+
+| situation | what a recorded 0 means | bound |
+|---|---|---|
+| rounded to the recording resolution | true value below half a resolution unit | half the resolution |
+| below a limit of detection or quantification | true value below the limit | the reported limit |
+| deliberately coarsened at a boundary | true value at or below the boundary | the boundary |
+
+The first two are properties of the measurement process. The third is a
+modelling decision, and is discussed separately below, because it carries an
+obligation the first two do not.
+
+# Substitution versus censoring
+
+The case against substitution is general: it fabricates data, biases statistics
+and obscures real relationships [@helsel2006]. For concentration-response
+fitting the mechanism is worth stating exactly, because it explains why the
+damage is not local.
+
+Write `µ(x)` for the fitted mean at concentration `x`, `σ` for the residual
+scale, `f` for the density and `F` for the distribution function. For an
+observation whose true value lies below a bound `c`:
+
+| treatment | likelihood contribution | what it asserts |
+|---|---|---|
+| substitute `c` (or 0, or `c/2`) | `f(c; µ(x), σ)` | the true value **is** `c` |
+| censor at `c` | `F(c; µ(x), σ)` | the true value **is at most** `c` |
+
+Only the second is true.
+
+The practical difference is in how each behaves as the fitted curve descends.
+`F(c; µ(x), σ)` rises toward 1 as `µ(x)` falls, so it **saturates**: a curve
+that passes further below the bound is not rewarded, but neither is it
+penalised. `f(c; µ(x), σ)` instead falls away toward 0, so substitution
+**penalises the curve for descending** and goes on pulling `µ(x)` back up toward
+the substituted value.
+
+Because censored observations cluster at the high-concentration end, that
+upward pull is concentrated exactly where the response is changing fastest. The
+fit is biased in a dose-dependent direction, and the bias does not disappear by
+choosing a different model or a different family — it is a property of the
+likelihood the substituted values induce.
+
+# How censoring is expressed
+
+`brms` takes censoring through the `cens()` aterm on the response:
+
+```r
+y | cens(censored) ~ ...
+```
+
+where `censored` is a **variable in the data**, aligned to the response, taking
+the values `"none"`, `"left"`, `"right"` or `"interval"` (equivalently `0`,
+`-1`, `1`, `2`). It is not a constant: in a concentration-response dataset only
+some rows are censored, and a literal such as `cens("left")` would declare every
+row to be censored.
+
+**The response value carries the bound.** For a left-censored row, the number in
+the response column is the value the truth is known to be at or below — not
+zero, and not a substitute for the unknown truth. This is the detail that is
+easiest to get wrong, and it differs from what one would write when flooring.
+
+
+``` r
+# A response rounded to two decimal places: a recorded 0.00 means the true
+# value fell in [0, 0.005). The bound is 0.005, and that is what goes in the
+# response column for those rows.
+dat <- tibble(
+  x   = c(0.1, 0.3, 1.0, 3.0, 10.0),
+  raw = c(0.82, 0.55, 0.21, 0.00, 0.00)
+) |>
+  mutate(
+    censored = if_else(raw == 0, "left", "none"),
+    y        = if_else(raw == 0, 0.005, raw)
+  )
+
+dat
+```
+
+In `bayesnec` the aterm goes in the `bayesnecformula` exactly as it would in
+`brms`:
+
+
+``` r
+bnf(y | cens(censored) ~ crf(x, "nec3param"))
+```
+
+Two behaviours follow from a response being declared censored, and are worth
+knowing about because they differ from the uncensored path:
+
+* the zero-shift that `check_data()` applies to Gamma and Beta responses is not
+  applied — the censoring bound already states what the zeros mean, and moving
+  them would contradict it;
+* the censoring variable is carried into the fit alongside the response, so it
+  must be present in any `newdata` supplied to post-processing functions that
+  re-evaluate the likelihood. Functions that read the fitted mean curve —
+  `ecx()`, `nsec()`, `predict()` on the mean — do not need it.
+
+# Case A: rounded at the recording resolution
+
+The shipped `herbicide` dataset [@jones2003] is the worked example from
+`vignette("example6")`, where it serves as the counter-example for *not*
+reaching for a hurdle model. Its 23 zeros in `fvfm` are a recording artefact.
+
+
+``` r
+data(herbicide)
+
+nonzero <- herbicide$fvfm[herbicide$fvfm > 0]
+c(resolution       = min(diff(sort(unique(nonzero)))),
+  smallest_nonzero = min(nonzero),
+  n_zero           = sum(herbicide$fvfm == 0))
+```
+
+Every value is a multiple of the recording resolution and the smallest non-zero
+value is exactly one unit of it. The gap ratio is 1: zero is simply the next
+value down, not a distinct state. A recorded `0.00` therefore means the reading
+fell below half a resolution unit.
+
+
+``` r
+resolution <- min(diff(sort(unique(nonzero))))
+bound <- resolution / 2
+
+herb <- herbicide |>
+  filter(herbicide == "diuron") |>
+  mutate(
+    x        = concentration,
+    censored = if_else(fvfm == 0, "left", "none"),
+    y        = if_else(fvfm == 0, bound, fvfm)
+  )
+```
+
+`fvfm` is a proportion, so a Beta family is appropriate. Left-censoring at the
+bound then asserts that the truth lies in `(0, bound]` — the family supplies the
+lower limit and the censoring supplies the upper one, so no interval censoring
+is needed.
+
+
+``` r
+fit_cens <- bnec(y | cens(censored) ~ crf(x, "nec3param"),
+                 data = herb, family = Beta(link = "identity"),
+                 seed = 17)
+
+# The existing fallback: zeros shifted to min(y[y > 0]) / 10 by check_data().
+fit_nudge <- bnec(fvfm ~ crf(concentration, "nec3param"),
+                  data = filter(herbicide, herbicide == "diuron"),
+                  family = Beta(link = "identity"), seed = 17)
+```
+
+
+``` r
+bind_rows(
+  censored = summary(fit_cens)$ecx |> as_tibble(rownames = "quantity"),
+  nudged   = summary(fit_nudge)$ecx |> as_tibble(rownames = "quantity"),
+  .id = "treatment"
+)
+```
+
+<!-- FILL: on first precompile, describe the direction and size of the
+     difference actually observed. For these data the nudge lands inside the
+     true interval, so the two fits are expected to be close; that is a
+     property of this dataset, not of the rule. Say so explicitly, and do not
+     generalise from it. -->
+
+The point of this comparison is not that the fits differ dramatically. For
+`herbicide` the substituted value happens to fall inside the true interval, so
+they should not. The point is that this is a coincidence of
+`min(y[y > 0]) / 10` for these particular numbers, and nothing about the rule
+guarantees it. With a coarser resolution, or a different smallest non-zero
+value, the substitute can land outside the interval it is standing in for, and
+nothing in the output would say so.
+
+# Case B: coarsening at a substantive boundary
+
+The second use is different in kind. Here the values **were** measured; the
+analyst chooses not to model the region beyond a boundary.
+
+The motivating case is a growth endpoint that can go negative — a specific
+growth rate, a yield, a size increment. Once growth is negative the population
+is declining, and for many assessments the question is *where the transition
+occurs*, not how severe the decline becomes. Fitting the negative tail then
+spends the model's flexibility on a region nobody will report.
+
+## Why not simply floor the negatives
+
+Because of the mechanism in the previous section. To see the size of it, simulate
+from a `nec4param` curve whose lower asymptote is negative, and fit the same
+data three ways.
+
+
+``` r
+set.seed(2026)
+
+top  <- 1.10    # control specific growth rate, day^-1
+bot  <- -0.45   # asymptotic decline
+nec  <- 2.0
+beta <- log(0.35)
+
+x  <- rep(c(0, 0.5, 1, 2, 3, 4, 6, 9), each = 8)
+mu <- bot + (top - bot) * exp(-exp(beta) * (x - nec) * (x > nec))
+y  <- rnorm(length(mu), mu, 0.09)
+
+sim <- tibble(x = x, y_true = y) |>
+  mutate(
+    y_floored = pmax(y_true, 0),
+    censored  = if_else(y_true <= 0, "left", "none"),
+    y_censored = pmax(y_true, 0)   # the bound is 0, and that is the value
+  )
+
+# how much of the data is affected
+sim |> count(x, negative = y_true <= 0) |> filter(negative)
+```
+
+Note the highest concentration is well short of the lower asymptote — the curve
+is still descending at the end of the range. That is the usual situation, and it
+matters for what follows.
+
+
+``` r
+fit_true <- bnec(y_true ~ crf(x, "nec4param"), data = sim,
+                 family = gaussian(), seed = 17)
+
+fit_floored <- bnec(y_floored ~ crf(x, "nec4param"), data = sim,
+                    family = gaussian(), seed = 17)
+
+fit_censored <- bnec(y_censored | cens(censored) ~ crf(x, "nec4param"),
+                     data = sim, family = gaussian(), seed = 17)
+```
+
+
+``` r
+compare_nec <- function(fit, label) {
+  tibble(treatment = label,
+         nec = summary(fit)$nec[["Estimate"]],
+         ecx10 = ecx(fit, ecx_val = 10)[["Q50"]])
+}
+
+bind_rows(
+  compare_nec(fit_true, "measured (reference)"),
+  compare_nec(fit_floored, "floored at 0"),
+  compare_nec(fit_censored, "censored at 0")
+) |>
+  mutate(true_nec = nec)
+```
+
+<!-- FILL: on first precompile, report the actual estimates. The expected
+     pattern is that the floored fit's NEC sits above the true value and its
+     curve is pulled up at high x, while the censored fit tracks the
+     reference. If the observed pattern differs, describe what was observed
+     and revise the surrounding prose -- do not assert the expected pattern. -->
+
+
+``` r
+grid <- tibble(x = seq(0, 9, length.out = 200))
+
+curves <- bind_rows(
+  reference = as_tibble(predict(fit_true, newdata = grid)),
+  floored   = as_tibble(predict(fit_floored, newdata = grid)),
+  censored  = as_tibble(predict(fit_censored, newdata = grid)),
+  .id = "treatment"
+) |>
+  mutate(x = rep(grid$x, 3))
+
+ggplot(curves, aes(x = x, y = Estimate, colour = treatment)) +
+  geom_hline(yintercept = 0, linewidth = 0.3, colour = "grey60") +
+  geom_point(data = sim, aes(x = x, y = y_true), inherit.aes = FALSE,
+             alpha = 0.4, size = 1) +
+  geom_line(linewidth = 0.8) +
+  labs(x = "concentration", y = "specific growth rate") +
+  theme_classic()
+```
+
+## What censoring buys beyond honesty
+
+There is a second gain, and in practice it is often the larger one.
+
+`bot` is a single parameter shared across the whole curve. When the data provide
+no lower plateau — as in the simulation above, and as is usual — `bot` is
+identified by the prior and by its correlation with the other parameters rather
+than by observations. Whatever it settles on propagates into the shape of the
+curve **everywhere**, including the positive-growth region that will actually be
+reported.
+
+Censoring at zero removes the pressure. The likelihood saturates once the curve
+is below the bound, so `bot` becomes a weakly identified nuisance rather than a
+badly extrapolated estimate, and the model concentrates its flexibility on the
+region where the data discriminate.
+
+The corollary is that `bot` should be given a weakly informative prior under
+censoring. A saturating likelihood with a flat prior is an invitation to
+divergent transitions.
+
+
+``` r
+# inspect what the default gives, then constrain if it is flat
+pull_prior(bnf(y_censored | cens(censored) ~ crf(x, "nec4param")),
+           data = sim, family = gaussian())
+```
+
+# Interaction with hurdle models
+
+This is the trap, and it is the one that undoes the argument if it is missed.
+
+**A censored zero and a structural zero are indistinguishable once written to
+file.** They mean different things and belong in different parts of the model:
+
+| state | meaning | where it belongs |
+|---|---|---|
+| unit failed / individual died | no response is defined | the hurdle |
+| unit survived, response below the bound | a response exists, and is at most the bound | the response block, censored |
+
+So a fit that combines the two needs **two indicator columns**, derived from two
+different pieces of recorded information:
+
+
+``` r
+# schematic -- `died` comes from the recorded failure indicator, never from
+# y == 0, and `censored` comes from comparing the measured value to the bound
+example <- tibble(
+  id       = 1:5,
+  died     = c(FALSE, FALSE, TRUE,  FALSE, FALSE),
+  measured = c(0.42,  -0.10, NA,    0.00,  -0.35)
+) |>
+  mutate(
+    censored = case_when(died ~ "none",
+                         measured <= 0 ~ "left",
+                         TRUE ~ "none"),
+    y = case_when(died ~ 0,
+                  measured <= 0 ~ 0,
+                  TRUE ~ measured)
+  )
+
+example
+```
+
+Rows 3 and 4 both carry `y = 0`, and they are not the same observation. Row 3 is
+a death and drives the hurdle. Row 4 is a live individual whose growth was at or
+below zero and belongs in the censored response block. Deriving either indicator
+from `y == 0` collapses them, which reproduces precisely the failure
+`vignette("example6")` exists to warn about.
+
+# ECx and NSEC under censoring
+
+`ecx()` and `nsec()` read the fitted mean curve rather than the likelihood, so
+they need no modification and their interpretation is unchanged. Two cautions
+apply to how the answer should be read.
+
+First, the fitted curve **below the censoring bound is weakly identified by
+construction**. That is the point of censoring, but it means any quantity read
+off that region — an ECx large enough to fall below the bound, for instance —
+inherits the weakness. Check where the reported effect concentration sits
+relative to the bound.
+
+Second, and following from that, censoring suits assessments framed around the
+approach to a boundary rather than the severity of exceeding it.
+
+
+``` r
+# does the reported effect level fall above the censoring bound?
+ecx(fit_censored, ecx_val = 10, posterior = FALSE)
+```
+
+# Diagnostics
+
+Three checks are worth running on any censored fit.
+
+
+``` r
+# 1. How much of the data is censored, and where? A concentration at which
+#    every replicate is censored contributes almost no information about the
+#    location of the curve there.
+sim |> count(x, censored) |> filter(censored == "left")
+
+# 2. Does the censoring change the answer? If the censored and uncensored fits
+#    agree closely, the censored region was not doing much work and the choice
+#    is inconsequential. If they diverge, understand why before proceeding.
+bind_rows(
+  uncensored = as_tibble(summary(fit_true)$ecx, rownames = "q"),
+  censored   = as_tibble(summary(fit_censored)$ecx, rownames = "q"),
+  .id = "fit"
+)
+
+# 3. Posterior predictive checks need care: the censored rows are bounds, not
+#    draws from the response, so a raw pp_check() compares simulated values
+#    against numbers that were never observed. Restrict to uncensored rows.
+pp_check(fit_censored$fit, ndraws = 50)
+```
+
+# When not to censor
+
+Censoring at a measurement bound (Case A) is a description of what happened and
+needs no defence. Censoring at a substantive boundary (Case B) is a modelling
+decision, and there are two situations in which it is the wrong one.
+
+**When the severity of the decline is part of the question.** Censored
+observations retain only near-quantal information — the *proportion* falling
+below the bound at a given concentration is informative about the curve, but
+once nearly all replicates at a concentration lie below it, a small exceedance
+and a large one are close to indistinguishable. Distinguishing growth arrest
+from active loss of biomass is largely given up. If that distinction matters,
+fit the measured values on the real line and accept the cost of a weakly
+identified `bot`.
+
+**When the boundary is chosen for convenience.** The justification for Case B is
+that the region beyond the boundary is genuinely not of interest — for a growth
+rate, that zero separates increase from decline and the assessment concerns the
+transition. A boundary chosen because it makes the fit tidier has no such
+justification, and censoring there discards real information to no end.
+
+In both cases the obligation is the same: Case B coarsens values that were in
+fact measured, and it should be reported as a modelling choice rather than
+described as though the observation process had censored the data.
+
+# References
