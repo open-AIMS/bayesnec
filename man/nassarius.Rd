@@ -5,7 +5,7 @@
 \alias{nassarius}
 \title{Chronic snail toxicity data with mortality}
 \format{
-An object of class \code{data.frame} with 1208 rows and 5 columns.
+An object of class \code{data.frame} with 1208 rows and 6 columns.
 }
 \description{
 Growth and survival of the tropical marine snail \emph{Nassarius dorsatus}
