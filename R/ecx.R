@@ -85,10 +85,15 @@
 #' }
 #'
 #' @export
+# dpar sits after `...` to match the methods, which all declare their
+# class-specific arguments there. Naming it on the generic is what puts it in
+# the \usage section; documented-but-absent arguments are an R CMD check
+# WARNING, and methods are @noRd so the generic is the only place it can appear.
 ecx <- function(object, ecx_val = 10, resolution = 1000,
                 posterior = FALSE, type = "absolute",
                 hormesis_def = "control", x_range = NA,
-                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
+                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                dpar = NULL) {
   UseMethod("ecx")
 }
 
