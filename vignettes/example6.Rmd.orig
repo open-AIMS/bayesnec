@@ -1034,32 +1034,48 @@ The regulatory standard advises against it, and for the same reason. OECD TG 201
 [@oecd2026tg201] defines growth endpoints that admit negative values — average
 specific growth rate, `µ = (ln X_j − ln X_i)/(t_j − t_i)` (eq. 1, ¶49), and
 yield, the biomass at the end of the test minus the biomass at the start (¶53) —
-and Annex 5 is explicit about what not to do with values that fall outside the
-expected range:
+and Annex 5 is explicit about values that fall outside the expected range — both
+what to do with them and what not to:
 
-> It is not recommended to assign a zero or small positive value to such
-> negative values because this distorts the error distribution.
+> Negative inhibitions may be a problem with for instance the log-normal
+> distribution function likewise demanding an alternative regression function. It
+> is not recommended to assign a zero or small positive value to such negative
+> values because this distorts the error distribution.
 
-That sentence is written about negative *inhibition* — growth stimulation at low
-concentrations — rather than about negative growth rates, so it is not a ruling
-on this case. The reason it gives, however, is general, and it is the reason
-here.
+Those sentences are written about negative *inhibition* — growth stimulation at
+low concentrations — rather than about negative growth rates, so they are not a
+ruling on this case. The reason and the remedy are both general, however, and
+both apply here: change the function, not the values.
 
 ## What "distorts the error distribution" means
 
-The phrase is precise rather than rhetorical. Write `µ(x)` for the fitted mean
-at concentration `x`. For an observation whose true value is negative, the two
-treatments contribute different things to the likelihood:
+The phrase is precise rather than rhetorical. Write `µ(x)` for the fitted mean at
+concentration `x`, `σ` for the residual scale, `f` for the density and `F` for
+the distribution function. For a unit whose growth was measured as some negative
+value `y`, there are three things one can do, and they contribute differently to
+the likelihood:
 
 | treatment | contribution | what it asserts |
 |---|---|---|
+| keep `y`, on a real-line scale | `f(y; µ(x), σ)` | the true value **is** `y` — true |
 | floor to zero | `f(0; µ(x), σ)` | the true value **is** 0 — false |
-| censor at zero | `F(0; µ(x), σ)` | the true value **is ≤ 0** — true |
+| censor at zero | `F(0; µ(x), σ)` | the true value **is at most** 0 — true |
 
-As `µ(x)` falls, the censored contribution saturates at 1: a curve descending
-further below zero is un-rewarded, but not penalised. The floored contribution
-tends to 0 instead, so flooring exerts a **persistent upward force on the fitted
-curve at exactly the concentrations where decline is strongest**.
+The first row is the remedy the guideline points to: keep the value, and choose a
+regression function able to accommodate it. Its contribution is largest when
+`µ(x)` sits near `y`, so the fitted curve is free to follow the data down.
+
+Flooring replaces that with a contribution largest when `µ(x)` sits near **zero**.
+Every floored observation therefore pulls the curve up toward zero, and because
+floored values cluster at the top of the concentration range, that pull is
+concentrated exactly where the response is changing fastest. The result is a fit
+biased upward in a dose-dependent way, which is what distorting the error
+distribution amounts to in practice.
+
+The third row asserts something true without requiring the negative region to be
+modelled at all: `F(0; µ(x), σ)` rises toward 1 as `µ(x)` falls, so it saturates
+rather than pulling. That property is useful enough to be worth a recommendation
+of its own, and it is taken up below.
 
 This does not require a hurdle to bite. Flooring biases the fitted mean upward
 in a plain regression too, because the likelihood goes on pulling `µ(x)` toward
