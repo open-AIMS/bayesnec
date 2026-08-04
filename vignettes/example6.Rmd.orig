@@ -1030,12 +1030,41 @@ choosing a model is the standard advice [@blasco2019; @martin2005], as is the
 warning that many zeros does not by itself indicate zero inflation
 [@warton2005].
 
-The regulatory standard does not floor. OECD TG 201 defines the growth endpoint
-as average specific growth rate,
-`µ = (ln X_j − ln X_i)/(t_j − t_i)`, which lives on the real line, and percent
-inhibition `%I_r = (µ_C − µ_T)/µ_C × 100`, which **exceeds 100% when
-`µ_T < 0`**. Net decline is expressed as more than complete inhibition rather
-than truncated away.
+The regulatory standard advises against it, and for the same reason. OECD TG 201
+[@oecd2026tg201] defines growth endpoints that admit negative values — average
+specific growth rate, `µ = (ln X_j − ln X_i)/(t_j − t_i)` (eq. 1, ¶49), and
+yield, the biomass at the end of the test minus the biomass at the start (¶53) —
+and Annex 5 is explicit about what not to do with values that fall outside the
+expected range:
+
+> It is not recommended to assign a zero or small positive value to such
+> negative values because this distorts the error distribution.
+
+That sentence is written about negative *inhibition* — growth stimulation at low
+concentrations — rather than about negative growth rates, so it is not a ruling
+on this case. The reason it gives, however, is general, and it is the reason
+here.
+
+## What "distorts the error distribution" means
+
+The phrase is precise rather than rhetorical. Write `µ(x)` for the fitted mean
+at concentration `x`. For an observation whose true value is negative, the two
+treatments contribute different things to the likelihood:
+
+| treatment | contribution | what it asserts |
+|---|---|---|
+| floor to zero | `f(0; µ(x), σ)` | the true value **is** 0 — false |
+| censor at zero | `F(0; µ(x), σ)` | the true value **is ≤ 0** — true |
+
+As `µ(x)` falls, the censored contribution saturates at 1: a curve descending
+further below zero is un-rewarded, but not penalised. The floored contribution
+tends to 0 instead, so flooring exerts a **persistent upward force on the fitted
+curve at exactly the concentrations where decline is strongest**.
+
+This does not require a hurdle to bite. Flooring biases the fitted mean upward
+in a plain regression too, because the likelihood goes on pulling `µ(x)` toward
+the substituted value. It is a separate failure from the three above, and it
+survives every attempt to work around them.
 
 ## The provenance question
 
@@ -1052,17 +1081,52 @@ from each other.
 
 ## Recommended handling
 
-**1. Do not floor.** Model on a scale that admits the values actually measured
-— the TG 201 specific growth rate, or the raw increment — using a family on the
-real line with a model carrying a lower asymptote (`nec4param`, `ecx4param`) so
-the curve can cross zero. `bayesnec` already drops the zero-bounded models for
-Gaussian data. Drive the hurdle from the **recorded failure indicator**, not
-from `y == 0`.
+**1. Do not floor.** Model on a scale that admits the values actually measured —
+a specific growth rate, or the raw increment — using a family on the real line
+with a model carrying a lower asymptote (`nec4param`, `ecx4param`) so the curve
+can cross zero. `bayesnec` already drops the zero-bounded models for Gaussian
+data. Drive any hurdle from the **recorded failure indicator**, not from
+`y == 0`.
 
-**2. If the values are already floored and unrecoverable**, use a left-censored
-(Tobit) likelihood, asserting "true value ≤ 0" rather than "= 0".
+**2. If the shape of the curve below zero is not of interest, censor there.**
+This is the better answer whenever the assessment concerns the transition from
+growth to decline rather than the severity of the decline. A left-censored
+(Tobit) likelihood asserts "true value ≤ 0" instead of "= 0", so the fit is not
+dragged upward, and the region below zero stops competing for the model's
+attention.
 
-**3. If a strictly positive scale is required**, model the response relative to
+That second effect matters more than it first appears. Growth data often provide
+no lower plateau — the curve is still descending at the highest concentration
+tested — so `bot` is identified by the prior and by its correlation with the
+other parameters. Because `bot` is shared across the whole curve, that deforms
+the fit in the positive-growth region as well. Censoring turns `bot` from a badly
+extrapolated estimate into a weakly identified nuisance.
+
+The cost is that censored observations retain only near-quantal information: the
+proportion falling below zero at a given concentration is informative, but once
+nearly all replicates at a concentration lie below zero, a small negative growth
+rate and a large one become close to indistinguishable. **The distinction between
+growth arrest and active loss of biomass is largely given up.** Where that
+distinction matters to the assessment, keep the uncensored real-line fit of item
+1.
+
+Two points of discipline. This is a deliberate coarsening of values that were in
+fact measured, not a description of the recording process, and should be reported
+as such. And a censored zero and a structural zero are indistinguishable once
+written to file, so the censoring indicator and the failure indicator must be
+**separate columns**: a dead individual is a structural zero and belongs to the
+hurdle, a living one that shrank is a censored observation and belongs to the
+response block. Collapsing them is flooring by another route.
+
+`bayesnecformula` does not yet carry the `cens()` aterm through to the fit, so
+this route is not available in `bayesnec` today — see issue #181.
+
+**3. If the values are already floored and unrecoverable**, the same
+left-censored likelihood is the salvage: it replaces a false assertion with a
+true one, which is the most that can be recovered. This is a repair, whereas item
+2 is a design.
+
+**4. If a strictly positive scale is required**, model the response relative to
 each unit's own baseline, where the only zeros are genuine failures and
 `hurdle_gamma` is correct. Note that ECx must then be defined on the derived
 increment: a 50% reduction in a *ratio* and a 50% reduction in the *increment*
