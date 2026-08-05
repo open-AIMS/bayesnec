@@ -1186,6 +1186,212 @@ ordered-Beta treatment, neither of which is available in `bayesnec`. A response
 that is a ratio to a per-unit baseline is often better modelled with
 `hurdle_gamma` on the uncapped ratio.
 
+## A simulated example
+
+No dataset shipped with `bayesnec`, and none of the candidates considered while
+this vignette was written, satisfies all four conditions — the mass-at-1
+condition is the one that keeps failing, for the structural reasons just given.
+The demonstration below is therefore **simulated**, and deliberately constructed
+to meet every condition. It shows what the family does when it is the right
+reach; it is not evidence that any particular real dataset qualifies, and the
+checklist above remains the thing to work through before using it.
+
+The scenario is an algal growth-rate test. Growth is expressed as a proportion
+of a ceiling **fixed in advance by the test protocol** — not a control mean and
+not the observed maximum, which is what condition one requires. Cultures that
+crash contribute an exact zero; cultures that grow contribute a proportion drawn
+from a Beta, which can never itself return a zero. So every zero in the data is
+structural.
+
+
+``` r
+set.seed(101)
+
+# Growth declines from a control proportion of 0.70 with a threshold at 1.5;
+# cultures start crashing only from 3.0, so the two thresholds are distinct.
+conc <- rep(c(0, 0.5, 1, 2, 3, 5, 8, 12), each = 16)
+mu_true <- nec3(conc, top = 0.70, beta = log(0.32), nec = 1.5)
+p_alive <- nec3(conc, top = 0.98, beta = log(0.20), nec = 3.0)
+
+alive <- rbinom(length(conc), 1, p_alive)
+# phi is the Beta precision: higher values give tighter scatter about mu.
+prop <- rbeta(length(conc), mu_true * 30, (1 - mu_true) * 30)
+
+zib_dat <- data.frame(x = conc, y = ifelse(alive == 1, prop, 0))
+```
+
+Checking the two conditions that can be read directly off the data — no mass at
+1, and zeros confined to crashed cultures rather than merely small measurements:
+
+
+``` r
+c(n = nrow(zib_dat),
+  zeros = sum(zib_dat$y == 0),
+  max = round(max(zib_dat$y), 3),
+  at_or_above_1 = sum(zib_dat$y >= 1))
+#>             n         zeros           max at_or_above_1 
+#>       128.000        33.000         0.857         0.000
+
+table(dose = zib_dat$x, measured = zib_dat$y > 0)
+#>      measured
+#> dose  FALSE TRUE
+#>   0       0   16
+#>   0.5     0   16
+#>   1       0   16
+#>   2       1   15
+#>   3       0   16
+#>   5       8    8
+#>   8      12    4
+#>   12     12    4
+```
+
+The largest observed proportion is well short of 1 and nothing reaches it, so
+there is no boundary spike for the Beta to choke on. Mortality is graded across
+the top four doses rather than jumping straight to total loss, which leaves the
+response block with data at every dose and the survival threshold identifiable.
+
+Both routes take the data unchanged. The factorised route selects the response
+family from the non-zero rows, and so picks a Beta here rather than the Gamma
+appropriate to the snail example.
+
+
+``` r
+zib_f <- bnec_hurdle(y ~ crf(x, model = "nec3param"), data = zib_dat,
+                     seed = 101, refresh = 0)
+```
+
+
+``` r
+summary(zib_f, ecx = TRUE, ecx_vals = c(10, 50))
+#> Object of class bayesnechurdlefit
+#> 
+#>    128 individuals exposed; 33 recorded as zero ( 25.8% )
+#> 
+#>   growth   : beta -- nec3param 
+#>   survival : bernoulli -- nec3param 
+#> 
+#> No-effect toxicity estimates
+#>                 Q50 Q2.5 Q97.5
+#> combined (NEC) 1.69 1.42  1.92
+#> growth (NEC)   1.69 1.42  1.92
+#> survival (NEC) 3.16 2.11  4.10
+#> 
+#> ECx estimates
+#>                Q50 Q2.5 Q97.5
+#> combined ec10 2.00 1.76  2.20
+#> combined ec50 3.48 3.15  3.82
+#> growth ec10   2.00 1.76  2.20
+#> growth ec50   3.69 3.45  4.00
+#> survival ec10 3.65 2.74  4.52
+#> survival ec50 6.34 5.28  7.97
+#> 
+#> The combined endpoint is the expected response per individual exposed,
+#> i.e. growth * survival. Use which = to select a component.
+```
+
+The joint route asks for the family explicitly. Its second block is named `zi`
+rather than `hu`, so the survival parameters appear as `zitop`, `zibeta` and
+`zinec`; nothing else about the specification changes.
+
+
+``` r
+zib_j <- bnec(y ~ crf(x, model = "nec3param"), data = zib_dat,
+              family = "zero_inflated_beta", seed = 101, refresh = 0)
+```
+
+
+``` r
+summary(zib_j)
+#> Object of class bayesnecfit containing the nec3param model
+#> 
+#>  Family: zero_inflated_beta 
+#>   Links: mu = identity; phi = identity; zi = identity 
+#> Formula: y ~ top * exp(-exp(beta) * (x - nec) * step(x - nec)) 
+#>          top ~ 1
+#>          beta ~ 1
+#>          nec ~ 1
+#>          zi ~ 1 - (zitop * exp(-exp(zibeta) * (x - zinec) * step(x - zinec)))
+#>          zitop ~ 1
+#>          zibeta ~ 1
+#>          zinec ~ 1
+#>    Data: data (Number of observations: 128) 
+#>   Draws: 4 chains, each with iter = 10000; warmup = 8000; thin = 1;
+#>          total post-warmup draws = 8000
+#> 
+#> Regression Coefficients:
+#>        Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#> top        0.68      0.01     0.66     0.71 1.00     6850     5160
+#> beta      -1.06      0.09    -1.24    -0.90 1.00     6160     5064
+#> nec        1.69      0.12     1.42     1.92 1.00     5650     4663
+#> zitop      0.97      0.02     0.91     0.99 1.00     6760     5048
+#> zibeta    -1.50      0.24    -2.00    -1.05 1.00     5549     4957
+#> zinec      3.16      0.44     2.12     4.14 1.00     5657     3156
+#> 
+#> Further Distributional Parameters:
+#>     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+#> phi    28.53      4.18    21.11    37.72 1.00     7100     5692
+#> 
+#> Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+#> and Tail_ESS are effective sample size measures, and Rhat is the potential
+#> scale reduction factor on split chains (at convergence, Rhat = 1).
+#> 
+#> 
+#>     Estimate Q2.5 Q97.5
+#> NEC     1.69 1.41  1.92
+#> 
+#> 
+#> Bayesian R2 estimates:
+#>    Estimate Est.Error Q2.5 Q97.5
+#> R2     0.88      0.01 0.86  0.90
+```
+
+Set against the generating values:
+
+| parameter | generating value | joint estimate |
+|---|---|---|
+| growth `top` | 0.70 | 0.68 |
+| growth `nec` | 1.5 | 1.69 |
+| survival `zitop` | 0.98 | 0.97 |
+| survival `zinec` | 3.0 | 3.16 |
+| Beta precision `phi` | 30 | 28.5 |
+
+The two routes agree, as they must:
+
+
+``` r
+rbind(factorised = nec(zib_f),
+      joint      = nec(zib_j))
+#>                 Q50     Q2.5    Q97.5
+#> factorised 1.693801 1.417784 1.918231
+#> joint      1.689459 1.414871 1.919908
+```
+
+Every generating value falls inside its credible interval. The two thresholds
+are the least precisely recovered, and both point estimates sit above the truth
+— the growth threshold at 1.69 against a generating value of 1.5, with an
+interval of 1.42 to 1.92.
+
+That imprecision is a design property rather than a defect in the family. A
+threshold model can only locate a changepoint as sharply as the dose spacing
+around it allows, and here the generating threshold of 1.5 falls in the gap
+between the doses at 1 and 2. With nothing observed in between, the likelihood
+is nearly flat across that interval and the estimate drifts toward the first
+dose showing unambiguous decline. The survival threshold is looser still,
+because mortality is confined to the top four doses. The same lesson appears in
+the snail example below, where reinstating a single missing dose moves the
+survival threshold by 25%: where a threshold is the quantity of interest, dose
+placement around it does more good than extra replication elsewhere.
+
+
+``` r
+autoplot(zib_f, which = "all")
+```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp6-zib-plot-1.png" alt="The simulated hurdle Beta. Growth is the proportion achieved by cultures that grew, survival the probability of a culture growing at all, and the combined endpoint their product -- the expected proportion per culture started." width="100%" />
+<p class="caption">The simulated hurdle Beta. Growth is the proportion achieved by cultures that grew, survival the probability of a culture growing at all, and the combined endpoint their product -- the expected proportion per culture started.</p>
+</div>
+
 ## Normalisation caveat
 
 Where a proportional response has been obtained by dividing through by a
