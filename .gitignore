@@ -16,6 +16,8 @@ cache/
 
 tests/*.rds
 tests/*.rda
+# Written by plotting tests when a device is opened without one being requested.
+tests/testthat/Rplots.pdf
 
 # package development
 bayesnec.Rcheck/
