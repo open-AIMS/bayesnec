@@ -1,4 +1,4 @@
-# bayesnec 2.1.3.2
+# bayesnec 2.1.3.5
 
 - `bayesnechurdlefit` objects returned by `bnec_hurdle()` now support the full
   set of package methods. `summary()`, `plot()`, `autoplot()`, `ggbnec_data()`,
@@ -63,6 +63,33 @@
   linear-decay models (`neclin`, `neclinhorme`, `ecxlin`). Whether the remaining
   restriction is still needed is tracked in
   [#170](https://github.com/open-AIMS/bayesnec/issues/170).
+
+# bayesnec 2.1.3.4
+
+- Added a `timeout` argument to `bnec()` and `amend()` to cap the time allowed
+  for any single model fit, so that a model with highly divergent (slow) chains
+  can be abandoned while the remaining models still fit
+  ([#157](https://github.com/open-AIMS/bayesnec/issues/157)).
+
+# bayesnec 2.1.3.3
+
+- Fixed initialisation failure for 0, 1 bounded families under an identity
+  link. `response_link_scale()` handled only the `logit` and `log` links, so
+  under `link = "identity"` the response was returned unchanged — exact `0`s
+  and `1`s included. Those bounds propagated into the init-finder's range
+  check, which a decaying curve can essentially never satisfy, and into the
+  likelihood itself, where a `beta_binomial` mean of exactly `0` gives an
+  infinite log-probability. Every initialisation attempt was rejected. The
+  identity link now applies the same clamping the `logit` branch already did.
+  See [#162](https://github.com/open-AIMS/bayesnec/issues/162).
+- `make_good_inits()` gains a rescue step. When a full random draw falls
+  outside the valid response range, individual parameters are re-drawn from
+  their own priors while the rest are held fixed, rather than the whole trial
+  being counted as a loss. Models that previously fell back to Stan's random
+  initialisation — `nechorme` among them — are now reliably initialised.
+
+# bayesnec 2.1.3.2
+
 - Added a `prior_type` argument to `bnec()` and `amend()` for selecting the set
   of default priors. The default, `"uninformative"`, reproduces the
   weakly-informative priors described in Fisher et al. (2024, JSS). The new
@@ -72,7 +99,6 @@
 - `bnec()` now takes `prior` as an explicit argument (previously passed through
   `...`). This ensures a user-supplied `prior =` is matched exactly rather than
   being partial-matched to the new `prior_type` argument.
-- Added a `timeout` argument to `bnec()` and `amend()` to cap the time allowed for any single model fit, so that a model with highly divergent (slow) chains can be abandoned while the remaining models still fit ([#157](https://github.com/open-AIMS/bayesnec/issues/157)).
 
 # bayesnec 2.1.3.0
 
