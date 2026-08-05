@@ -1,3 +1,20 @@
+# bayesnec 2.1.3.3
+
+- Fixed initialisation failure for 0, 1 bounded families under an identity
+  link. `response_link_scale()` handled only the `logit` and `log` links, so
+  under `link = "identity"` the response was returned unchanged — exact `0`s
+  and `1`s included. Those bounds propagated into the init-finder's range
+  check, which a decaying curve can essentially never satisfy, and into the
+  likelihood itself, where a `beta_binomial` mean of exactly `0` gives an
+  infinite log-probability. Every initialisation attempt was rejected. The
+  identity link now applies the same clamping the `logit` branch already did.
+  See [#162](https://github.com/open-AIMS/bayesnec/issues/162).
+- `make_good_inits()` gains a rescue step. When a full random draw falls
+  outside the valid response range, individual parameters are re-drawn from
+  their own priors while the rest are held fixed, rather than the whole trial
+  being counted as a loss. Models that previously fell back to Stan's random
+  initialisation — `nechorme` among them — are now reliably initialised.
+
 # bayesnec 2.1.3.2
 
 - Added a `prior_type` argument to `bnec()` and `amend()` for selecting the set
