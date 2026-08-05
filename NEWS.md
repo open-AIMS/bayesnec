@@ -1,5 +1,38 @@
 # bayesnec 2.1.3.8
 
+- `bayesnecformula` now supports the `brms` `cens()` aterm, so a response that is
+  rounded at the recording resolution, reported below a limit of detection, or
+  deliberately coarsened at a boundary can be fitted as censored rather than
+  substituted. Both the `cens(indicator)` and the interval
+  `cens(indicator, upper_bound)` forms are carried through `check_formula()` into
+  `model.frame()` output and registered in the `bnec_pop` attribute as
+  `cens_var` and `cens_y2_var`, alongside `trials_var`. Previously the term was
+  accepted with a warning and then silently dropped, leaving an ordinary
+  uncensored fit. See
+  [#181](https://github.com/open-AIMS/bayesnec/issues/181).
+- A censored row is exempt from the boundary shifts `bnec()` applies to zeros in
+  Gamma and Beta responses and to ones in Beta responses. The recorded value on
+  a censored row is a declared bound, not a boundary artefact, so shifting it
+  would restate the bound the user chose. Uncensored rows are shifted exactly as
+  before. Where a row is censored at a value the family excludes — left-censored
+  at 0 under Gamma or Beta, right-censored at 1 under Beta — `bnec()` now stops
+  with an explanation instead, since the censored likelihood contribution there
+  is `F(0) = 0` and Stan would otherwise fail at initialisation with nothing to
+  point at.
+- Fixed `bayesnecformula` losing any two-argument aterm written on its own. The
+  aterm chain was split by treating every length-three call as an `a + b` pair,
+  which destructured the aterm call itself, so `y | cens(indicator, upper_bound)`
+  parsed as though no aterm had been given. Only formulas with a single
+  two-argument aterm were affected.
+- `check_formula()` no longer reports `cens()` as an unvalidated aterm, and now
+  warns when a `cens()` term contains no variable — as in `cens("left")`, which
+  `brms` recycles into a declaration that every row of the response is censored.
+- New vignette, *Censored responses* (`vignette("example7")`), covering when a
+  recorded value is a bound rather than a measurement, why substitution biases
+  the fit in a concentration-dependent direction rather than only locally, how to
+  encode censoring so that the response column carries the bound, and the
+  distinction between a censored zero and a structural one that
+  `vignette("example6")` deals with.
 - New dataset `alga`: growth inhibition tests on *Cladocopium proliferum* and
   *Rhodomonas salina* against two contaminants, consolidated from four tests.
   Cell density is counted to a resolution of 10, so a recorded density of zero

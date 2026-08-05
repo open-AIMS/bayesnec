@@ -112,6 +112,14 @@ dat <- tibble(
   )
 
 dat
+#> # A tibble: 5 × 4
+#>       x   raw censored     y
+#>   <dbl> <dbl> <chr>    <dbl>
+#> 1   0.1  0.82 none     0.82 
+#> 2   0.3  0.55 none     0.55 
+#> 3   1    0.21 none     0.21 
+#> 4   3    0    left     0.005
+#> 5  10    0    left     0.005
 ```
 
 In `bayesnec` the aterm goes in the `bayesnecformula` exactly as it would in
@@ -120,18 +128,23 @@ In `bayesnec` the aterm goes in the `bayesnecformula` exactly as it would in
 
 ``` r
 bnf(y | cens(censored) ~ crf(x, "nec3param"))
+#> y | cens(censored) ~ crf(x, "nec3param")
 ```
 
 Two behaviours follow from a response being declared censored, and are worth
 knowing about because they differ from the uncensored path:
 
-* the zero-shift that `check_data()` applies to Gamma and Beta responses is not
-  applied — the censoring bound already states what the zeros mean, and moving
-  them would contradict it;
+* the boundary shift that `bnec()` applies to zeros in Gamma and Beta responses,
+  and to ones in Beta responses, is not applied to a censored row — the bound
+  has already been declared and moving it would restate it. A row censored at a
+  value the family excludes altogether, such as left-censored at 0 under Beta,
+  is an error rather than a shift, because the censored likelihood contribution
+  there is `F(0) = 0`;
 * the censoring variable is carried into the fit alongside the response, so it
   must be present in any `newdata` supplied to post-processing functions that
-  re-evaluate the likelihood. Functions that read the fitted mean curve —
-  `ecx()`, `nsec()`, `predict()` on the mean — do not need it.
+  re-evaluate the likelihood, such as `pp_check()` and `log_lik()`. Functions
+  that read the fitted mean curve — `ecx()`, `nsec()`, `predict()` on the mean —
+  do not need it.
 
 # Case A: rounded at the recording resolution
 
@@ -147,6 +160,8 @@ nonzero <- herbicide$fvfm[herbicide$fvfm > 0]
 c(resolution       = min(diff(sort(unique(nonzero)))),
   smallest_nonzero = min(nonzero),
   n_zero           = sum(herbicide$fvfm == 0))
+#>       resolution smallest_nonzero           n_zero 
+#>             0.01             0.01            23.00
 ```
 
 Every value is a multiple of the recording resolution and the smallest non-zero
@@ -154,18 +169,50 @@ value is exactly one unit of it. The gap ratio is 1: zero is simply the next
 value down, not a distinct state. A recorded `0.00` therefore means the reading
 fell below half a resolution unit.
 
+The zeros are not spread evenly across the seven compounds. They occur only
+where the curve descends far enough to reach the rounding floor.
+
+
+``` r
+herbicide |>
+  group_by(herbicide) |>
+  summarise(n = n(), zeros = sum(fvfm == 0), .groups = "drop")
+#> # A tibble: 7 × 3
+#>   herbicide       n zeros
+#>   <chr>       <int> <int>
+#> 1 ametryn        96    12
+#> 2 atrazine       84     0
+#> 3 diuron         72     0
+#> 4 hexazinone     76     1
+#> 5 irgarol        72    10
+#> 6 simazine       72     0
+#> 7 tebuthiuron   108     0
+```
+
+`vignette("example6")` uses `diuron` to make the point that the same instrument
+and the same biology produce no zeros when the curve levels off above the floor.
+For the same reason `diuron` is of no use *here*: a censored fit needs censored
+rows. `ametryn` carries the most, so that is the subset used below.
+
 
 ``` r
 resolution <- min(diff(sort(unique(nonzero))))
 bound <- resolution / 2
 
 herb <- herbicide |>
-  filter(herbicide == "diuron") |>
+  filter(herbicide == "ametryn") |>
   mutate(
-    x        = concentration,
+    # the design is log-spaced over three and a half orders of magnitude, so
+    # the curve is fitted on log10 concentration
+    x        = log10(concentration),
     censored = if_else(fvfm == 0, "left", "none"),
     y        = if_else(fvfm == 0, bound, fvfm)
   )
+
+count(herb, censored)
+#>   censored  n
+#> 1     left 12
+#> 2     none 84
 ```
 
 `fvfm` is a proportion, so a Beta family is appropriate. Left-censoring at the
@@ -177,36 +224,48 @@ is needed.
 ``` r
 fit_cens <- bnec(y | cens(censored) ~ crf(x, "nec3param"),
                  data = herb, family = Beta(link = "identity"),
-                 seed = 17)
+                 seed = 17, refresh = 0)
 
 # The existing fallback: zeros shifted to min(y[y > 0]) / 10 by check_data().
-fit_nudge <- bnec(fvfm ~ crf(concentration, "nec3param"),
-                  data = filter(herbicide, herbicide == "diuron"),
-                  family = Beta(link = "identity"), seed = 17)
+fit_nudge <- bnec(fvfm ~ crf(x, "nec3param"), data = herb,
+                  family = Beta(link = "identity"), seed = 17, refresh = 0)
 ```
 
 
 ``` r
+compare_fits <- function(fit, label) {
+  # both fits are on log10 concentration, so the estimates are back-transformed
+  # to the scale the design was laid out on
+  tibble(treatment = label,
+         nec   = 10^nec(fit)[["Q50"]],
+         ec10  = 10^ecx(fit, ecx_val = 10)[["Q50"]],
+         ec50  = 10^ecx(fit, ecx_val = 50)[["Q50"]])
+}
+
 bind_rows(
-  censored = summary(fit_cens)$ecx |> as_tibble(rownames = "quantity"),
-  nudged   = summary(fit_nudge)$ecx |> as_tibble(rownames = "quantity"),
-  .id = "treatment"
+  compare_fits(fit_cens,  "censored at 0.005"),
+  compare_fits(fit_nudge, "nudged to 0.001")
 )
+#> # A tibble: 2 × 4
+#>   treatment           nec  ec10  ec50
+#>   <chr>             <dbl> <dbl> <dbl>
+#> 1 censored at 0.005 0.598 0.679  1.42
+#> 2 nudged to 0.001   0.600 0.684  1.42
 ```
 
-<!-- FILL: on first precompile, describe the direction and size of the
-     difference actually observed. For these data the nudge lands inside the
-     true interval, so the two fits are expected to be close; that is a
-     property of this dataset, not of the rule. Say so explicitly, and do not
-     generalise from it. -->
+The two agree to within a percent on every estimate, and that is the expected
+result for these data. The substituted value, `min(fvfm[fvfm > 0]) / 10` = 0.001, falls
+inside the interval `[0, 0.005)` that a recorded zero stands for, so it asserts
+nothing the censoring contradicts. The censored rows also sit at the three
+highest concentrations, well past both the NEC and the EC50, where the curve has
+already flattened and the fit has little left to learn from them.
 
-The point of this comparison is not that the fits differ dramatically. For
-`herbicide` the substituted value happens to fall inside the true interval, so
-they should not. The point is that this is a coincidence of
-`min(y[y > 0]) / 10` for these particular numbers, and nothing about the rule
-guarantees it. With a coarser resolution, or a different smallest non-zero
-value, the substitute can land outside the interval it is standing in for, and
-nothing in the output would say so.
+The point of the comparison is not the size of the difference. It is that the
+agreement is a coincidence of `min(y[y > 0]) / 10` for these particular numbers,
+and nothing about the rule guarantees it. With a coarser resolution, or a
+different smallest non-zero value, the substitute can land outside the interval
+it is standing in for, and nothing in the output would say so. The censored fit
+states the interval; the nudged one only happens to be consistent with it.
 
 # Case B: coarsening at a substantive boundary
 
@@ -229,13 +288,13 @@ data three ways.
 ``` r
 set.seed(2026)
 
-top  <- 1.10    # control specific growth rate, day^-1
-bot  <- -0.45   # asymptotic decline
-nec  <- 2.0
-beta <- log(0.35)
+top      <- 1.10    # control specific growth rate, day^-1
+bot      <- -0.45   # asymptotic decline
+nec_true <- 2.0
+beta     <- log(0.35)
 
 x  <- rep(c(0, 0.5, 1, 2, 3, 4, 6, 9), each = 8)
-mu <- bot + (top - bot) * exp(-exp(beta) * (x - nec) * (x > nec))
+mu <- bot + (top - bot) * exp(-exp(beta) * (x - nec_true) * (x > nec_true))
 y  <- rnorm(length(mu), mu, 0.09)
 
 sim <- tibble(x = x, y_true = y) |>
@@ -247,6 +306,11 @@ sim <- tibble(x = x, y_true = y) |>
 
 # how much of the data is affected
 sim |> count(x, negative = y_true <= 0) |> filter(negative)
+#> # A tibble: 2 × 3
+#>       x negative     n
+#>   <dbl> <lgl>    <int>
+#> 1     6 TRUE         7
+#> 2     9 TRUE         8
 ```
 
 Note the highest concentration is well short of the lower asymptote — the curve
@@ -256,21 +320,22 @@ matters for what follows.
 
 ``` r
 fit_true <- bnec(y_true ~ crf(x, "nec4param"), data = sim,
-                 family = gaussian(), seed = 17)
+                 family = gaussian(), seed = 17, refresh = 0)
 
 fit_floored <- bnec(y_floored ~ crf(x, "nec4param"), data = sim,
-                    family = gaussian(), seed = 17)
+                    family = gaussian(), seed = 17, refresh = 0)
 
 fit_censored <- bnec(y_censored | cens(censored) ~ crf(x, "nec4param"),
-                     data = sim, family = gaussian(), seed = 17)
+                     data = sim, family = gaussian(), seed = 17, refresh = 0)
 ```
 
 
 ``` r
 compare_nec <- function(fit, label) {
   tibble(treatment = label,
-         nec = summary(fit)$nec[["Estimate"]],
-         ecx10 = ecx(fit, ecx_val = 10)[["Q50"]])
+         nec_est = nec(fit)[["Q50"]],
+         ec10    = ecx(fit, ecx_val = 10)[["Q50"]],
+         bot_est = fixef(fit$fit)["bot_Intercept", "Estimate"])
 }
 
 bind_rows(
@@ -278,14 +343,31 @@ bind_rows(
   compare_nec(fit_floored, "floored at 0"),
   compare_nec(fit_censored, "censored at 0")
 ) |>
-  mutate(true_nec = nec)
+  mutate(true_nec = nec_true, true_bot = bot)
+#> # A tibble: 3 × 6
+#>   treatment            nec_est  ec10 bot_est true_nec true_bot
+#>   <chr>                  <dbl> <dbl>   <dbl>    <dbl>    <dbl>
+#> 1 measured (reference)    2.11  2.31 -0.488         2    -0.45
+#> 2 floored at 0            2.35  2.49 -0.0339        2    -0.45
+#> 3 censored at 0           2.13  2.33 -0.638         2    -0.45
 ```
 
-<!-- FILL: on first precompile, report the actual estimates. The expected
-     pattern is that the floored fit's NEC sits above the true value and its
-     curve is pulled up at high x, while the censored fit tracks the
-     reference. If the observed pattern differs, describe what was observed
-     and revise the surrounding prose -- do not assert the expected pattern. -->
+Three things to read off that table.
+
+The **floored** fit's NEC sits above the true value, and its EC10 with it: the
+substituted zeros hold the curve up at the top of the range, and the model
+compensates by starting its decline later. The **censored** fit recovers the NEC
+to about the same accuracy as the fit to the measured values it never saw.
+
+The `bot` estimates show why. Flooring does not merely lose the negative tail,
+it replaces it with a plateau at zero, and `bot` — a single parameter shared
+across the whole curve — is dragged from the true −0.45 to nearly zero. That
+mis-estimate is not confined to the region beyond the boundary, because `bot`
+enters the equation everywhere.
+
+Censoring makes no such claim. Its `bot` sits below the truth and is poorly
+determined, which is the honest answer: no observation locates the lower
+asymptote, because the design does not reach it.
 
 
 ``` r
@@ -307,6 +389,8 @@ ggplot(curves, aes(x = x, y = Estimate, colour = treatment)) +
   labs(x = "concentration", y = "specific growth rate") +
   theme_classic()
 ```
+
+![plot of chunk plot-three](vignette-fig-exmp7-plot-three-1.png)
 
 ## What censoring buys beyond honesty
 
@@ -330,10 +414,35 @@ divergent transitions.
 
 
 ``` r
-# inspect what the default gives, then constrain if it is flat
-pull_prior(bnf(y_censored | cens(censored) ~ crf(x, "nec4param")),
-           data = sim, family = gaussian())
+# inspect what the default gave, and tighten it if it is flat
+pull_prior(fit_censored)
+#> [[1]]
+#>                                       prior class      coef group resp dpar
+#>                                normal(0, 5)     b                          
+#>                                normal(0, 5)     b Intercept                
+#>                 normal(0, 1.19007255704615)     b                          
+#>                 normal(0, 1.19007255704615)     b Intercept                
+#>                               gamma(5, 0.8)     b                          
+#>                               gamma(5, 0.8)     b Intercept                
+#>  normal(1.15729869412978, 1.19007255704615)     b                          
+#>  normal(1.15729869412978, 1.19007255704615)     b Intercept                
+#>                        student_t(3, 0, 2.5) sigma                          
+#>  nlpar   lb ub       source
+#>   beta                 user
+#>   beta         (vectorized)
+#>    bot                 user
+#>    bot         (vectorized)
+#>    nec 0.05  9         user
+#>    nec 0.05  9 (vectorized)
+#>    top                 user
+#>    top         (vectorized)
+#>           0         default
 ```
+
+For these data `bayesnec`'s default is already weakly informative rather than
+flat, so nothing needs changing. It is worth checking rather than assuming,
+because the default is derived from the response and a different dataset can
+give a much wider one.
 
 # Interaction with hurdle models
 
@@ -369,12 +478,22 @@ example <- tibble(
   )
 
 example
+#> # A tibble: 5 × 5
+#>      id died  measured censored     y
+#>   <int> <lgl>    <dbl> <chr>    <dbl>
+#> 1     1 FALSE     0.42 none      0.42
+#> 2     2 FALSE    -0.1  left      0   
+#> 3     3 TRUE     NA    none      0   
+#> 4     4 FALSE     0    left      0   
+#> 5     5 FALSE    -0.35 left      0
 ```
 
-Rows 3 and 4 both carry `y = 0`, and they are not the same observation. Row 3 is
-a death and drives the hurdle. Row 4 is a live individual whose growth was at or
-below zero and belongs in the censored response block. Deriving either indicator
-from `y == 0` collapses them, which reproduces precisely the failure
+Four of the five rows carry `y = 0`, and they are not the same observation. Row
+3 is a death: no growth rate exists for it, and it belongs to the hurdle. Rows
+2, 4 and 5 are live individuals whose growth was at or below zero, and they
+belong in the response block, censored. Only `died` separates them, and it comes
+from the recorded failure indicator. Deriving either column from `y == 0` would
+collapse the two states into one, which reproduces precisely the failure
 `vignette("example6")` exists to warn about.
 
 # ECx and NSEC under censoring
@@ -396,6 +515,14 @@ approach to a boundary rather than the severity of exceeding it.
 ``` r
 # does the reported effect level fall above the censoring bound?
 ecx(fit_censored, ecx_val = 10, posterior = FALSE)
+#>      Q50     Q2.5    Q97.5 
+#> 2.325576 2.199926 2.549550 
+#> attr(,"resolution")
+#> [1] 1000
+#> attr(,"ecx_val")
+#> [1] 10
+#> attr(,"toxicity_estimate")
+#> [1] "ecx"
 ```
 
 # Diagnostics
@@ -408,21 +535,49 @@ Three checks are worth running on any censored fit.
 #    every replicate is censored contributes almost no information about the
 #    location of the curve there.
 sim |> count(x, censored) |> filter(censored == "left")
+#> # A tibble: 2 × 3
+#>       x censored     n
+#>   <dbl> <chr>    <int>
+#> 1     6 left         7
+#> 2     9 left         8
 
 # 2. Does the censoring change the answer? If the censored and uncensored fits
 #    agree closely, the censored region was not doing much work and the choice
 #    is inconsequential. If they diverge, understand why before proceeding.
-bind_rows(
-  uncensored = as_tibble(summary(fit_true)$ecx, rownames = "q"),
-  censored   = as_tibble(summary(fit_censored)$ecx, rownames = "q"),
-  .id = "fit"
-)
+ec10 <- function(fit) as.list(ecx(fit, ecx_val = 10)[1:3])
 
-# 3. Posterior predictive checks need care: the censored rows are bounds, not
-#    draws from the response, so a raw pp_check() compares simulated values
-#    against numbers that were never observed. Restrict to uncensored rows.
-pp_check(fit_censored$fit, ndraws = 50)
+bind_rows(uncensored = ec10(fit_true), censored = ec10(fit_censored),
+          .id = "fit")
+#> # A tibble: 2 × 4
+#>   fit          Q50  Q2.5 Q97.5
+#>   <chr>      <dbl> <dbl> <dbl>
+#> 1 uncensored  2.31  2.19  2.50
+#> 2 censored    2.33  2.20  2.55
 ```
+
+The third check is the posterior predictive one, and it needs care: the censored
+rows hold bounds rather than draws from the response, so a raw `pp_check()`
+compares simulated values against numbers that were never observed. Comparing
+the two side by side shows what that does — the censored rows pile up as a spike
+at the bound in `y`, which no draw from the model will reproduce.
+
+
+``` r
+uncensored_rows <- which(sim$censored == "none")
+
+pp_check(fit_censored$fit, ndraws = 50) +
+  ggtitle("all rows: the spike at the bound is not a feature of the response")
+```
+
+![plot of chunk ppcheck](vignette-fig-exmp7-ppcheck-1.png)
+
+``` r
+
+pp_check(fit_censored$fit, ndraws = 50, newdata = sim[uncensored_rows, ]) +
+  ggtitle("uncensored rows only")
+```
+
+![plot of chunk ppcheck](vignette-fig-exmp7-ppcheck-2.png)
 
 # When not to censor
 
