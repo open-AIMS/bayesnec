@@ -48,7 +48,7 @@ mod_fams <- c(gaussian = "gaussian",
 # Families with a second parameter block modelling the probability of a zero,
 # mapped to the name brms gives that block. brms calls it "hu" for the hurdle
 # families and "zi" for the zero-inflated ones; structurally they are the same
-# model (see hurdle_gamma_design.md 1.5), so bayesnec treats them alike and
+# model (see notes/hurdle_gamma_design.md 1.5), so bayesnec treats them alike and
 # simply carries the name through. Kept separate from mod_fams so that code can
 # ask "is this a two-block family?" without enumerating tags at each call site.
 hurdle_fams <- c(hurdle_gamma = "hu", zero_inflated_beta = "zi")

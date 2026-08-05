@@ -1,4 +1,17 @@
-# bayesnec 2.1.3.2
+# bayesnec 2.1.3.8
+
+- New dataset `alga`: growth inhibition tests on *Cladocopium proliferum* and
+  *Rhodomonas salina* against two contaminants, consolidated from four tests.
+  Cell density is counted to a resolution of 10, so a recorded density of zero
+  is a censored count rather than an absence, and the source substituted a
+  growth rate of zero for those cultures — placing total loss of the population
+  mid-range, above every genuinely negative value, and turning a monotonic
+  concentration-response into a non-monotonic one. Both features are retained
+  rather than cleaned away, for
+  [#173](https://github.com/open-AIMS/bayesnec/issues/173) and
+  [#181](https://github.com/open-AIMS/bayesnec/issues/181).
+
+# bayesnec 2.1.3.7
 
 - New vignette, *Hurdle and zero-inflated concentration-response models*
   (`vignette("example6")`), covering the two implementations of these models,
@@ -44,16 +57,8 @@
   *Nassarius dorsatus*, one row per individual exposed, with mortality
   reconstructed from the four ways it was recorded other than as zeros. Used
   as the worked example in `vignette("example6")`.
-- New dataset `alga`: growth inhibition tests on *Cladocopium proliferum* and
-  *Rhodomonas salina* against two contaminants, consolidated from four tests.
-  Cell density is counted to a resolution of 10, so a recorded density of zero
-  is a censored count rather than an absence, and the source substituted a
-  growth rate of zero for those cultures — placing total loss of the population
-  mid-range, above every genuinely negative value, and turning a monotonic
-  concentration-response into a non-monotonic one. Both features are retained
-  rather than cleaned away, for
-  [#173](https://github.com/open-AIMS/bayesnec/issues/173) and
-  [#181](https://github.com/open-AIMS/bayesnec/issues/181).
+# bayesnec 2.1.3.6
+
 - `bayesnechurdlefit` objects returned by `bnec_hurdle()` now support the full
   set of package methods. `summary()`, `plot()`, `autoplot()`, `ggbnec_data()`,
   `predict()`, `fitted()`, `posterior_epred()`, `posterior_predict()`, `nsec()`
@@ -78,6 +83,8 @@
   maximum, that divisor must be a constant fixed in advance rather than one
   computed from the data; see
   [#173](https://github.com/open-AIMS/bayesnec/issues/173).
+# bayesnec 2.1.3.5
+
 - Added the `"hurdle_gamma"` family to `bnec()`, for concentration-response
   data where exposure both kills individuals and suppresses the response of
   those that survive. Zeros in the response denote individuals that did not
@@ -117,6 +124,33 @@
   linear-decay models (`neclin`, `neclinhorme`, `ecxlin`). Whether the remaining
   restriction is still needed is tracked in
   [#170](https://github.com/open-AIMS/bayesnec/issues/170).
+
+# bayesnec 2.1.3.4
+
+- Added a `timeout` argument to `bnec()` and `amend()` to cap the time allowed
+  for any single model fit, so that a model with highly divergent (slow) chains
+  can be abandoned while the remaining models still fit
+  ([#157](https://github.com/open-AIMS/bayesnec/issues/157)).
+
+# bayesnec 2.1.3.3
+
+- Fixed initialisation failure for 0, 1 bounded families under an identity
+  link. `response_link_scale()` handled only the `logit` and `log` links, so
+  under `link = "identity"` the response was returned unchanged — exact `0`s
+  and `1`s included. Those bounds propagated into the init-finder's range
+  check, which a decaying curve can essentially never satisfy, and into the
+  likelihood itself, where a `beta_binomial` mean of exactly `0` gives an
+  infinite log-probability. Every initialisation attempt was rejected. The
+  identity link now applies the same clamping the `logit` branch already did.
+  See [#162](https://github.com/open-AIMS/bayesnec/issues/162).
+- `make_good_inits()` gains a rescue step. When a full random draw falls
+  outside the valid response range, individual parameters are re-drawn from
+  their own priors while the rest are held fixed, rather than the whole trial
+  being counted as a loss. Models that previously fell back to Stan's random
+  initialisation — `nechorme` among them — are now reliably initialised.
+
+# bayesnec 2.1.3.2
+
 - Added a `prior_type` argument to `bnec()` and `amend()` for selecting the set
   of default priors. The default, `"uninformative"`, reproduces the
   weakly-informative priors described in Fisher et al. (2024, JSS). The new
@@ -126,7 +160,6 @@
 - `bnec()` now takes `prior` as an explicit argument (previously passed through
   `...`). This ensures a user-supplied `prior =` is matched exactly rather than
   being partial-matched to the new `prior_type` argument.
-- Added a `timeout` argument to `bnec()` and `amend()` to cap the time allowed for any single model fit, so that a model with highly divergent (slow) chains can be abandoned while the remaining models still fit ([#157](https://github.com/open-AIMS/bayesnec/issues/157)).
 
 # bayesnec 2.1.3.0
 

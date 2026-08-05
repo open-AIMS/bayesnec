@@ -86,5 +86,5 @@ the meaning of zero*:
 * Related open issues: #173 normalisation, #175 the vignette itself, #39 and
   #166 on `ecx`/`nsec` resolution, #180 cached prediction matrix, #181 `cens()`
   support.
-* Companion notes in the repo root: `hurdle_gamma_design.md`,
-  `ecx_dpar_issue.md`, `ecx_resolution_findings.md`.
+* Companion notes in `notes/`: `hurdle_gamma_design.md`, `ecx_dpar_issue.md`,
+  `ecx_resolution_findings.md`.
