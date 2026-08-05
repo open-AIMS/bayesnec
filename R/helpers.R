@@ -576,6 +576,53 @@ retrieve_var <- function(data, var, error = FALSE) {
   }
 }
 
+#' Retrieve the censoring indicator from a model frame, as -1/0/1/2
+#'
+#' Returns \code{NULL} when the formula carried no \code{cens()} term. Unlike
+#' \code{\link{retrieve_var}} this cannot go through the numeric coercion there,
+#' because a censoring indicator is usually a character or factor.
+#'
+#' @noRd
+retrieve_cens <- function(data) {
+  bnec_vars <- attr(data, "bnec_pop")
+  v_pos <- which(names(bnec_vars) == "cens_var")
+  if (length(v_pos) != 1) {
+    return(NULL)
+  }
+  normalise_cens(data[[v_pos]])
+}
+
+#' Normalise a brms censoring indicator to the integer codes brms uses
+#'
+#' Mirrors the accepted encodings of \code{brms:::prepare_cens}: partially
+#' matched strings, logicals, or the integer codes themselves. Reimplemented
+#' rather than called via \code{:::} so that bayesnec does not depend on a brms
+#' internal; the mapping is fixed by brms' documented formula syntax, so it is
+#' not expected to drift. Anything unrecognised is returned as \code{NA} and
+#' left for brms to reject, which keeps the authoritative error message in one
+#' place.
+#'
+#' @noRd
+normalise_cens <- function(x) {
+  if (is.factor(x)) {
+    x <- as.character(x)
+  }
+  if (is.logical(x)) {
+    return(ifelse(is.na(x), NA_integer_, ifelse(x, 1L, 0L)))
+  }
+  if (is.numeric(x)) {
+    return(ifelse(x %in% c(-1, 0, 1, 2), as.integer(x), NA_integer_))
+  }
+  codes <- c(left = -1L, none = 0L, right = 1L, interval = 2L)
+  vapply(as.character(x), function(i) {
+    if (is.na(i) || !nzchar(i)) {
+      return(NA_integer_)
+    }
+    hit <- which(startsWith(names(codes), i))
+    if (length(hit) == 1) codes[[hit]] else NA_integer_
+  }, integer(1), USE.NAMES = FALSE)
+}
+
 #' @noRd
 add_brm_defaults <- function(
   brm_args,
