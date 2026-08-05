@@ -1,4 +1,4 @@
-# bayesnec 2.1.3.5
+# bayesnec 2.1.3.6
 
 - `bayesnechurdlefit` objects returned by `bnec_hurdle()` now support the full
   set of package methods. `summary()`, `plot()`, `autoplot()`, `ggbnec_data()`,
@@ -24,6 +24,8 @@
   maximum, that divisor must be a constant fixed in advance rather than one
   computed from the data; see
   [#173](https://github.com/open-AIMS/bayesnec/issues/173).
+# bayesnec 2.1.3.5
+
 - Added the `"hurdle_gamma"` family to `bnec()`, for concentration-response
   data where exposure both kills individuals and suppresses the response of
   those that survive. Zeros in the response denote individuals that did not
