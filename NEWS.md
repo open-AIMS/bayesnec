@@ -51,7 +51,11 @@
   what the combined endpoint gives that a survivors-only analysis cannot, when
   a hurdle Beta is appropriate, and — using the shipped `herbicide` data as a
   counter-example — how to tell a structural zero from a rounded or floored one
-  before choosing a model. See
+  before choosing a model. The hurdle Beta section carries a simulated worked
+  example, constructed to satisfy all four of the conditions the section sets
+  out; it is simulated because no real dataset meeting them could be found, and
+  the section retains the argument for why the mass-at-1 condition is the one
+  that keeps failing. See
   [#175](https://github.com/open-AIMS/bayesnec/issues/175).
 - `bnec()` gains a `model_survival` argument, so a joint `"hurdle_gamma"` or
   `"zero_inflated_beta"` fit can use a different equation on each of its two
