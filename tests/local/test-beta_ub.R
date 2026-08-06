@@ -78,3 +78,71 @@ test_that("a prior-driven ceiling is announced when U_loc is omitted", {
     "prior-driven"
   )
 })
+
+# ---- Phase 6: predictions, ECx, NSEC, plotting -----------------------------
+
+test_that("the toxicity estimates come back finite and correctly ordered", {
+  e10 <- ecx(bub_fit, ecx_val = 10)
+  e50 <- ecx(bub_fit, ecx_val = 50)
+  ns <- nsec(bub_fit)
+  ne <- nec(bub_fit)
+  for (z in list(e10, e50, ns, ne)) {
+    expect_length(z, 3)
+    expect_true(all(is.finite(z)))
+    expect_lt(z[2], z[1])
+    expect_gt(z[3], z[1])
+  }
+  # a larger effect must take a larger concentration, and the no-effect
+  # estimates must sit below the 10% effect concentration
+  expect_lt(e10[1], e50[1])
+  expect_lt(ne[1], e10[1])
+  expect_lt(ns[1], e10[1])
+  # nec3param has no bot, so relative and absolute coincide
+  expect_equal(unname(ecx(bub_fit, ecx_val = 10, type = "relative")[1]),
+               unname(e10[1]), tolerance = 1e-8)
+})
+
+test_that("predictions delegate to the custom-family methods", {
+  ep <- posterior_epred(bub_fit)
+  pp <- posterior_predict(bub_fit)
+  expect_equal(dim(ep), dim(pp))
+  expect_equal(ncol(ep), nrow(bub_fit$fit$data))
+  expect_true(all(is.finite(ep)))
+  expect_true(all(ep > 0))
+  # E[y] = mu exactly for this family, so epred and the predictive mean agree
+  expect_equal(colMeans(ep), colMeans(pp), tolerance = 0.05)
+  ft <- fitted(bub_fit)
+  pr <- predict(bub_fit)
+  expect_equal(colnames(ft), c("Estimate", "Est.Error", "Q2.5", "Q97.5"))
+  expect_equal(colnames(pr), c("Estimate", "Est.Error", "Q2.5", "Q97.5"))
+  # the predictive interval must be wider than the interval on the mean
+  expect_gt(mean(pr[, "Est.Error"]), mean(ft[, "Est.Error"]))
+})
+
+test_that("plot() and autoplot() render", {
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
+  expect_silent(plot(bub_fit))
+  g <- suppressMessages(autoplot(bub_fit))
+  expect_s3_class(g, "ggplot")
+  expect_gt(nrow(suppressMessages(ggbnec_data(bub_fit))), 0)
+})
+
+test_that("ECx is invariant to a divisor fixed in advance", {
+  # the claim made in ?ecx and in issue #173: dividing by a constant changes
+  # what `top` means, not the toxicity estimate. Only true for a constant --
+  # the whole problem with normalising is that the divisor is random.
+  k <- 2.5
+  d2 <- data.frame(x = bub_dat$x, y = bub_dat$y / k)
+  f2 <- muted_bnec(y ~ crf(x, model = "nec3param"), data = d2,
+                   family = beta_ub(), U_loc = 1 / k, U_scale = 0.1 / k,
+                   chains = 2, iter = 2000, warmup = 1000, seed = 173,
+                   control = list(adapt_delta = 0.95))
+  expect_equal(unname(ecx(f2, ecx_val = 10)[1]),
+               unname(ecx(bub_fit, ecx_val = 10)[1]), tolerance = 1e-6)
+  expect_equal(unname(nec(f2)[1]), unname(nec(bub_fit)[1]), tolerance = 0.01)
+  # `top`, by contrast, moves by exactly the divisor
+  t1 <- median(brms::as_draws_df(bub_fit$fit)$b_top_Intercept)
+  t2 <- median(brms::as_draws_df(f2$fit)$b_top_Intercept)
+  expect_equal(t1 / t2, k, tolerance = 0.02)
+})
