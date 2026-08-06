@@ -146,3 +146,47 @@ test_that("ECx is invariant to a divisor fixed in advance", {
   t2 <- median(brms::as_draws_df(f2$fit)$b_top_Intercept)
   expect_equal(t1 / t2, k, tolerance = 0.02)
 })
+
+# ---- Phase 7: model averaging and QC ---------------------------------------
+
+bub_manec <- muted_bnec(
+  y ~ crf(x, model = c("nec3param", "nec4param", "ecx4param")),
+  data = bub_dat, family = beta_ub(), U_loc = 1, U_scale = 0.1,
+  chains = 2, iter = 2000, warmup = 1000, seed = 173,
+  control = list(adapt_delta = 0.95)
+)
+
+test_that("a beta_ub model set averages", {
+  expect_s3_class(bub_manec, "bayesmanecfit")
+  expect_gte(length(bub_manec$success_models), 2)
+  expect_equal(sum(bub_manec$mod_stats$wi), 1, tolerance = 1e-6)
+  # the generating model should carry real weight
+  expect_gt(bub_manec$mod_stats["nec3param", "wi"], 0.1)
+})
+
+test_that("averaged toxicity estimates are finite and ordered", {
+  e10 <- ecx(bub_manec, ecx_val = 10)
+  e50 <- ecx(bub_manec, ecx_val = 50)
+  ne <- suppressMessages(nec(bub_manec))
+  for (z in list(e10, e50, ne)) {
+    expect_length(z, 3)
+    expect_true(all(is.finite(z)))
+  }
+  expect_lt(e10[1], e50[1])
+  expect_lt(ne[1], e10[1])
+  ae <- suppressMessages(average_estimates(list(a = bub_manec)))
+  expect_true(all(is.finite(ae)))
+})
+
+test_that("amend(drop) and the QC screens run on a beta_ub set", {
+  dropped <- suppressMessages(suppressWarnings(
+    amend(bub_manec, drop = "ecx4param")
+  ))
+  expect_false("ecx4param" %in% dropped$success_models)
+  expect_gte(length(dropped$success_models), 2)
+  r <- rhat(bub_manec)
+  expect_true(all(vapply(r, function(z) all(z$rhat_vals < 1.05), logical(1))))
+  out <- capture.output(print(summary(bub_manec)))
+  expect_true(any(grepl("beta_ub", out)))
+  expect_true(any(grepl("Model weights", out)))
+})
