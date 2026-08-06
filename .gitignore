@@ -40,3 +40,8 @@ doc/
 !vignettes/vignette-fig-*.pdf
 prompts/
 superceded/
+
+# compiled cmdstan executables from dev/validation
+dev/validation/beta_fixed_u
+dev/validation/beta_ub_sbc
+*.o
