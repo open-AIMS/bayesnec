@@ -163,3 +163,102 @@ test_that("check_models() errors when nothing valid is left", {
     check_models(c("neclin", "ecxlin"), beta_ub(), bub_bdat(d))
   ), "None of the model")
 })
+
+# ---- Phase 4: priors and inits ---------------------------------------------
+
+test_that("the delta prior is the ceiling prior, shifted", {
+  d <- bub_data()
+  ymax <- max(d$y)
+  p <- as.data.frame(define_prior("nec3param", beta_ub(), d$x, d$y,
+                                  ymax = ymax, u_loc = 1, u_scale = 0.1))
+  dp <- p[p$class == "delta", ]
+  expect_equal(nrow(dp), 1)
+  expect_equal(dp$lb, "0")
+  # normal(U_loc - ymax, U_scale): the pure location shift that makes a prior
+  # on delta identical to a truncated prior on U
+  expect_equal(dp$prior, paste0("normal(", 1 - ymax, ", 0.1)"))
+  # the mu block keeps the natural-scale Gamma defaults
+  expect_setequal(p$nlpar[nzchar(p$nlpar)], c("beta", "top", "nec"))
+})
+
+test_that("no U_loc gives a prior-driven ceiling, and says so", {
+  d <- bub_data()
+  expect_message(define_prior("nec3param", beta_ub(), d$x, d$y,
+                              ymax = max(d$y)),
+                 "prior-driven")
+  p <- suppressMessages(
+    as.data.frame(define_prior("nec3param", beta_ub(), d$x, d$y,
+                               ymax = max(d$y)))
+  )
+  dp <- p[p$class == "delta", ]
+  expect_equal(dp$prior, paste0("normal(0, ", max(d$y) / 4, ")"))
+  expect_equal(dp$lb, "0")
+})
+
+test_that("U_loc at or below ymax warns rather than passing silently", {
+  d <- bub_data()
+  ymax <- max(d$y)
+  expect_warning(define_prior("nec3param", beta_ub(), d$x, d$y, ymax = ymax,
+                              u_loc = ymax / 2, u_scale = 0.1),
+                 "lies entirely in the region the likelihood rejects")
+  # exactly equal is still degenerate
+  expect_warning(define_prior("nec3param", beta_ub(), d$x, d$y, ymax = ymax,
+                              u_loc = ymax, u_scale = 0.1))
+  expect_silent(define_prior("nec3param", beta_ub(), d$x, d$y, ymax = ymax,
+                             u_loc = ymax * 1.5, u_scale = 0.1))
+})
+
+test_that("U_loc and U_scale must be supplied together and be sane", {
+  d <- bub_data()
+  ymax <- max(d$y)
+  expect_error(define_prior("nec3param", beta_ub(), d$x, d$y, ymax = ymax,
+                            u_loc = 1), "Supply both")
+  expect_error(define_prior("nec3param", beta_ub(), d$x, d$y, ymax = ymax,
+                            u_scale = 0.1), "Supply both")
+  expect_error(define_prior("nec3param", beta_ub(), d$x, d$y, ymax = ymax,
+                            u_loc = 1, u_scale = -1), "single positive")
+  expect_error(define_prior("nec3param", beta_ub(), d$x, d$y, ymax = ymax,
+                            u_loc = c(1, 2), u_scale = 0.1), "single finite")
+})
+
+test_that("the delta prior does not reach the init machinery", {
+  # make_inits() checks its parameter names against the prediction function's
+  # arguments, so a prior with no nlpar would abort the whole model set
+  d <- bub_data()
+  pr <- suppressMessages(define_prior("nec3param", beta_ub(), d$x, d$y,
+                                      ymax = max(d$y), u_loc = 1,
+                                      u_scale = 0.1))
+  expect_true("delta" %in% as.data.frame(pr)$class)
+  i0 <- make_good_inits("nec3param", d$x, d$y, priors = pr, chains = 2,
+                        seed = 1)
+  expect_length(i0, 2)
+  expect_setequal(names(i0[[1]]), c("b_top", "b_beta", "b_nec"))
+})
+
+test_that("add_beta_ub_inits() primes phi and delta and respects mu < U", {
+  d <- bub_data()
+  ymax <- max(d$y)
+  pr <- suppressMessages(define_prior("nec3param", beta_ub(), d$x, d$y,
+                                      ymax = ymax, u_loc = 1, u_scale = 0.1))
+  i0 <- make_good_inits("nec3param", d$x, d$y, priors = pr, chains = 2,
+                        seed = 1)
+  i1 <- add_beta_ub_inits(i0, d$x, d$y, ymax = ymax, u_loc = 1, u_scale = 0.1,
+                          seed = 1)
+  expect_length(i1, 2)
+  for (z in i1) {
+    expect_true(all(c("phi", "delta") %in% names(z)))
+    expect_gt(z$delta, 0)
+    expect_gt(z$phi, 0)
+    # the curve must start below its own ceiling
+    expect_gt(ymax + z$delta, z$b_top)
+  }
+  # method of moments over all replicated predictor levels, not just controls
+  expect_gt(i1[[1]]$phi, 5)
+  expect_lt(i1[[1]]$phi, 200)
+})
+
+test_that("add_beta_ub_inits() passes Stan's random fallback through", {
+  d <- bub_data()
+  out <- add_beta_ub_inits(list(random = "random"), d$x, d$y, ymax = max(d$y))
+  expect_identical(out, list(random = "random"))
+})

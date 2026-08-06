@@ -22,19 +22,21 @@
 #' @noRd
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE, prior_type = "uninformative",
-                         timeout = Inf) {
+                         timeout = Inf, u_loc = NULL, u_scale = NULL) {
   formula <- single_model_formula(formula, model)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
   y <- retrieve_var(bdat, "y_var", error = TRUE)
   tr <- retrieve_var(bdat, "trials_var")
   family <- brm_args$family
+  ymax <- NULL
   if (!skip_check) {
     checked_df <- check_data(data = bdat, family = family, model = model)
     x <- checked_df$mod_dat$x
     y <- checked_df$mod_dat$y
     tr <- checked_df$mod_dat$trials
     family <- checked_df$family
+    ymax <- checked_df$ymax
     custom_name <- check_custom_name(family)
     brm_args$family <- family
     trans_vars <- find_transformations(bdat)
@@ -59,9 +61,20 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     response <- y
   }
   brms_bf <- wrangle_model_formula(model, formula, bdat, family)
+  if (is_beta_ub_family(family)) {
+    # amend() refits with skip_check = TRUE, so check_data() has not run and
+    # ymax has to be taken from the response. It is the same number either way
+    # -- the family applies no nudge -- but it must exist before the stanvars
+    # are built, because the ceiling reference is baked into the Stan data.
+    if (is.null(ymax)) {
+      ymax <- max(response, na.rm = TRUE)
+    }
+    brm_args$stanvars <- beta_ub_stanvars(ymax)
+  }
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
-                               prior_type = prior_type)
+                               prior_type = prior_type, ymax = ymax,
+                               u_loc = u_loc, u_scale = u_scale)
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
   if (is.finite(timeout)) {
     # R.utils::withTimeout aborts the brm call once `timeout` seconds elapse
@@ -84,7 +97,9 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   if (!pass) {
     stop("Failed to fit model ", model, ".", call. = FALSE)
   }
-  msg_tag <- family$family
+  # family_tag() rather than family$family, which is the literal string
+  # "custom" for every brms custom family.
+  msg_tag <- family_tag(family)
   message(paste0("Response variable modelled as a ", model, " model using a ",
                  msg_tag, " distribution."))
   out <- list(fit = fit, model = model, init = all_args$init,

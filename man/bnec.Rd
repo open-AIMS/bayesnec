@@ -20,6 +20,8 @@ bnec(
   prior = NULL,
   prior_type = "uninformative",
   timeout = Inf,
+  U_loc = NULL,
+  U_scale = NULL,
   ...
 )
 }
@@ -102,6 +104,16 @@ models can still be fitted. A model that exceeds \code{timeout} is treated
 as a failed fit and dropped from the returned set. The default \code{Inf}
 imposes no limit. Requires the \pkg{R.utils} package to be installed when a
 finite value is supplied.}
+
+\item{U_loc, U_scale}{Location and scale of the prior on the ceiling
+\code{U}, for \code{family = }\code{\link{beta_ub}}\code{()} only. Both must
+be supplied together, or neither. They should come from the biology --- a
+physiological or design ceiling --- or from accumulated historical controls,
+and never from the dataset being analysed. If neither is supplied the
+ceiling falls back to a weakly-informative half-normal centred just above
+the largest observed response, with a message: that is a softer form of the
+practice \code{\link{beta_ub}} exists to avoid, and intervals at the top of
+the curve should be read accordingly. Ignored for every other family.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }

@@ -548,7 +548,10 @@ add_brm_defaults <- function(
   response,
   skip_check,
   custom_name,
-  prior_type = "uninformative"
+  prior_type = "uninformative",
+  ymax = NULL,
+  u_loc = NULL,
+  u_scale = NULL
 ) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
@@ -569,7 +572,10 @@ add_brm_defaults <- function(
       family,
       predictor,
       response,
-      prior_type = prior_type
+      prior_type = prior_type,
+      ymax = ymax,
+      u_loc = u_loc,
+      u_scale = u_scale
     )
   } else {
     brm_args$prior <- priors
@@ -608,6 +614,20 @@ add_brm_defaults <- function(
         response_link,
         priors = brm_args$prior,
         chains = brm_args$chains,
+        seed = init_seed
+      )
+    }
+    if (is_beta_ub_family(family)) {
+      # phi and delta are scalars outside the non-linear curve, so the init
+      # machinery above never touches them. Phase 0 measured two to four
+      # initialisation failures per two-chain fit when they were left to Stan.
+      inits <- add_beta_ub_inits(
+        inits,
+        predictor,
+        response,
+        ymax = if (is.null(ymax)) max(response, na.rm = TRUE) else ymax,
+        u_loc = u_loc,
+        u_scale = u_scale,
         seed = init_seed
       )
     }

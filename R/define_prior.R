@@ -14,7 +14,8 @@
 #'
 #' @noRd
 define_prior <- function(model, family, predictor, response,
-                         prior_type = "uninformative") {
+                         prior_type = "uninformative",
+                         ymax = NULL, u_loc = NULL, u_scale = NULL) {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
     return(define_hurdle_prior(model, family, predictor, response,
@@ -24,9 +25,16 @@ define_prior <- function(model, family, predictor, response,
   custom_name <- check_custom_name(family)
   if (link_tag %in% c("logit", "log")) {
     fam_tag <- "gaussian"
-  } else { 
-    fam_tag <- family$family
+  } else {
+    fam_tag <- family_tag(family)
    }
+  # The mu block of a beta_ub fit is an ordinary positive, natural-scale
+  # response model, so it takes the existing Gamma/identity defaults. Only the
+  # ceiling needs a prior of its own, appended at the end.
+  beta_ub_fit <- is_beta_ub_family(family)
+  if (beta_ub_fit) {
+    fam_tag <- "Gamma"
+  }
   if (family$family == "beta_binomial" || family$family == "binomial") {
     if (is.integer(response) || max(response) > 1) {
       stop("Response vector must be passed as a proportion to define_prior",
@@ -175,7 +183,88 @@ define_prior <- function(model, family, predictor, response,
   if (model == "ecxhormebc5") {
     priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
   }
+  if (beta_ub_fit) {
+    priors <- priors + define_delta_prior(response, ymax, u_loc, u_scale)
+  }
   priors
+}
+
+#' define_delta_prior
+#'
+#' The prior on the beta_ub ceiling, expressed as a prior on \code{delta}.
+#'
+#' @param response The response variable for the model fit.
+#' @param ymax The largest observed response, as recorded by
+#' \code{\link{check_data}}.
+#' @param u_loc,u_scale Location and scale of the prior on the ceiling
+#' \code{U}, elicited from the biology or from historical controls.
+#'
+#' @details \code{U = ymax + delta} with \code{delta > 0}, and the map is a pure
+#' location shift with Jacobian 1, so a prior \code{normal(U_loc, U_scale)} on
+#' \code{U} truncated to \code{U > ymax} is exactly
+#' \code{normal(U_loc - ymax, U_scale)} on \code{delta} with \code{lb = 0}.
+#' Stating it on \code{U} is the point: a prior placed directly on \code{delta}
+#' centres the ceiling just above the sample maximum, so it moves with \code{n}
+#' and with the noise in a single extreme order statistic.
+#'
+#' When neither \code{u_loc} nor \code{u_scale} is given there is nothing to
+#' shift, and the fallback is exactly the half-normal-on-\code{delta} that the
+#' paragraph above argues against. That is why it messages rather than passing
+#' silently: the Phase 0 study found the posterior for \code{U} equal to its
+#' prior to three decimal places whenever the curve did not approach the
+#' ceiling, so on this path every statement about \code{U} is one the prior
+#' made.
+#'
+#' @return An object of class \code{\link[brms]{brmsprior}}.
+#'
+#' @importFrom brms prior_string
+#'
+#' @noRd
+define_delta_prior <- function(response, ymax = NULL, u_loc = NULL,
+                               u_scale = NULL) {
+  if (is.null(ymax)) {
+    ymax <- max(response, na.rm = TRUE)
+  }
+  if (is.null(u_loc) && is.null(u_scale)) {
+    # Scale chosen so that U sits mostly within (ymax, 1.5 * ymax): wide enough
+    # to be weakly informative, tight enough that top/U stays in the region
+    # where Phase 0 found the family behaves.
+    scale <- ymax / 4
+    message("No U_loc or U_scale supplied, so the beta_ub ceiling is",
+            " prior-driven: it falls back to a half-normal on delta with",
+            " scale ", signif(scale, 3), ", which centres U just above the",
+            " largest observed response. That is the very thing an elicited",
+            " ceiling avoids -- it makes U move with the sample size and with",
+            " the noise in a single extreme value. Read intervals at the top",
+            " of the curve accordingly, and prefer supplying U_loc and U_scale",
+            " from the biology or from historical controls. See ?beta_ub.")
+    return(prior_string(paste0("normal(0, ", scale, ")"), class = "delta",
+                        lb = 0))
+  }
+  if (is.null(u_loc) || is.null(u_scale)) {
+    stop("Supply both U_loc and U_scale, or neither. You gave ",
+         if (is.null(u_loc)) "U_scale" else "U_loc", " only.", call. = FALSE)
+  }
+  if (!is.numeric(u_loc) || length(u_loc) != 1 || !is.finite(u_loc) ||
+        !is.numeric(u_scale) || length(u_scale) != 1 || !is.finite(u_scale) ||
+        u_scale <= 0) {
+    stop("U_loc must be a single finite number and U_scale a single positive",
+         " number.", call. = FALSE)
+  }
+  if (u_loc <= ymax) {
+    # Not fatal -- the truncation still leaves a proper posterior -- but the
+    # whole prior sits in the rejected region, so U is pinned just above ymax
+    # and its posterior means nothing. Phase 0 reproduced this deliberately:
+    # coverage of U fell to 0.35 while NEC and ECx moved less than 2%.
+    warning("U_loc (", signif(u_loc, 4), ") is not greater than the largest",
+            " observed response (", signif(ymax, 4), "), so the prior on the",
+            " ceiling lies entirely in the region the likelihood rejects.",
+            " U will be pinned just above the data and its posterior should",
+            " not be interpreted. Either the elicited ceiling is wrong or the",
+            " data contain something unexpected.", call. = FALSE)
+  }
+  prior_string(paste0("normal(", u_loc - ymax, ", ", u_scale, ")"),
+               class = "delta", lb = 0)
 }
 
 #' define_hurdle_prior

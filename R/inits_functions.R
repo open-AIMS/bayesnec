@@ -22,7 +22,12 @@ make_inits <- function(model, fct_args, priors, chains) {
             beta = rbeta,
             uniform = runif)
   priors <- as.data.frame(priors)
-  priors <- priors[priors$prior != "", ]
+  # Restricted to the non-linear parameters, which are what this function
+  # initialises. Every built-in family's define_prior() output is entirely
+  # nlpar priors, so this is a no-op for them. beta_ub adds a `delta` prior
+  # carrying no nlpar, which would otherwise fail the fct_args check below and
+  # take the whole model set down with it.
+  priors <- priors[priors$prior != "" & nzchar(priors$nlpar), ]
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
     sep <- ifelse(priors$class[j] == "b", "_", "")
@@ -171,7 +176,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
   fct_args <- setdiff(fct_args, "x")
   dots <- list(...)
   priors_df <- as.data.frame(dots$priors)
-  priors_df <- priors_df[priors_df$prior != "", ]
+  priors_df <- priors_df[priors_df$prior != "" & nzchar(priors_df$nlpar), ]
   set.seed(seed)
   inits <- make_inits(model, fct_args, ...)
   init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
@@ -252,5 +257,82 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
     hu_i <- hu_inits[[i]]
     names(hu_i) <- sub("^b_", "b_hu", names(hu_i))
     c(mu_inits[[i]], hu_i)
+  })
+}
+
+#' add_beta_ub_inits
+#'
+#' Prime the two scalar parameters of a beta_ub fit that the non-linear init
+#' machinery knows nothing about.
+#'
+#' @param inits The per-chain initial values from \code{\link{make_good_inits}}.
+#' @param predictor A \code{\link[base]{numeric}} vector.
+#' @param response A \code{\link[base]{numeric}} vector.
+#' @param ymax The largest observed response.
+#' @param u_loc,u_scale Location and scale of the prior on the ceiling.
+#' @param seed Seed for reproducible draws. Defaults to \code{NULL}.
+#'
+#' @details \code{make_good_inits()} initialises the non-linear parameters of
+#' the mean curve and nothing else, leaving Stan to initialise \code{phi} and
+#' \code{delta} at random. Phase 0 measured what that costs: two to four
+#' "error evaluating the log probability at the initial value" failures per
+#' two-chain fit. Stan retries and recovers, but the failures are avoidable.
+#'
+#' \code{phi} is started from the method of moments on the control group. For
+#' this family \code{Var = mu(U - mu)/(1 + phi)}, so
+#' \code{phi = mu(U - mu)/Var - 1} with \code{mu} and \code{Var} taken from the
+#' observations at the lowest predictor value.
+#'
+#' \code{delta} is drawn from its own prior, then raised if necessary so that
+#' \code{U} exceeds the initial \code{top}. That guarantee is the reason this
+#' runs after the curve has been initialised rather than before: \code{mu < U}
+#' has to hold at the starting point, and for the hormesis equations the curve
+#' peaks above \code{top}, so the peak is what gets checked.
+#'
+#' @return A \code{\link[base]{list}} of per-chain initial values.
+#'
+#' @importFrom stats var rnorm median
+#'
+#' @noRd
+add_beta_ub_inits <- function(inits, predictor, response, ymax,
+                              u_loc = NULL, u_scale = NULL, seed = NULL) {
+  # make_good_inits() gave up and handed the fit to Stan; priming two of five
+  # parameters would not help and the merge below has nothing to attach to.
+  if (length(inits) == 1 && "random" %in% names(inits)) {
+    return(inits)
+  }
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  loc <- if (is.null(u_loc)) ymax * 1.1 else u_loc
+  scale <- if (is.null(u_scale)) ymax / 4 else u_scale
+  # Method of moments at every predictor level with enough replicates, then the
+  # median. Using the control group alone would work in principle but is far
+  # too noisy: with five replicates the variance estimate swings the implied
+  # phi over an order of magnitude, and phi is the parameter that sets how
+  # sharply peaked the initial likelihood is.
+  phi_start <- 10
+  mm <- vapply(unique(predictor), function(z) {
+    yz <- response[predictor == z]
+    if (length(yz) < 3 || var(yz) <= 0) {
+      return(NA_real_)
+    }
+    mean(yz) * (loc - mean(yz)) / var(yz) - 1
+  }, numeric(1))
+  mm <- mm[is.finite(mm) & mm > 0]
+  if (length(mm)) {
+    phi_start <- min(max(median(mm), 0.5), 1e3)
+  }
+  lapply(inits, function(z) {
+    delta <- abs(rnorm(1, max(loc - ymax, 0), scale))
+    # The curve must start below its own ceiling. top is the control-level
+    # parameter for every equation; the hormesis models peak above it, so an
+    # extra margin is taken rather than assuming top is the maximum.
+    top_start <- if ("b_top" %in% names(z)) z[["b_top"]] else ymax
+    needed <- max(top_start, ymax) * 1.05 - ymax
+    if (delta < needed) {
+      delta <- needed
+    }
+    c(z, list(phi = phi_start, delta = delta))
   })
 }

@@ -67,6 +67,15 @@
 #' as a failed fit and dropped from the returned set. The default \code{Inf}
 #' imposes no limit. Requires the \pkg{R.utils} package to be installed when a
 #' finite value is supplied.
+#' @param U_loc,U_scale Location and scale of the prior on the ceiling
+#' \code{U}, for \code{family = }\code{\link{beta_ub}}\code{()} only. Both must
+#' be supplied together, or neither. They should come from the biology --- a
+#' physiological or design ceiling --- or from accumulated historical controls,
+#' and never from the dataset being analysed. If neither is supplied the
+#' ceiling falls back to a weakly-informative half-normal centred just above
+#' the largest observed response, with a message: that is a softer form of the
+#' practice \code{\link{beta_ub}} exists to avoid, and intervals at the top of
+#' the curve should be read accordingly. Ignored for every other family.
 #' @param ... Further arguments to \code{\link[brms]{brm}}.
 #'
 #' @details
@@ -271,7 +280,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  loo_controls, x_var = NULL, y_var = NULL, trials_var = NULL,
                  model = NULL, random = NULL, random_vars = NULL,
                  prior = NULL, prior_type = "uninformative",
-                 timeout = Inf, ...) {
+                 timeout = Inf, U_loc = NULL, U_scale = NULL, ...) {
   chk_number(resolution)
   chk_number(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
@@ -312,6 +321,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
       fit_m <- try(
         fit_bayesnec(formula = formula, data = data, model = model_m,
                      brm_args = brm_args, prior_type = prior_type,
+                     u_loc = U_loc, u_scale = U_scale,
                      timeout = timeout),
         silent = FALSE
       )
@@ -337,6 +347,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   } else {
     mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
                             brm_args = brm_args, prior_type = prior_type,
+                            u_loc = U_loc, u_scale = U_scale,
                             timeout = timeout)
     mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
                           resolution = resolution, sig_val = sig_val,
