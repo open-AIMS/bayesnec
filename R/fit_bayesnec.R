@@ -22,7 +22,8 @@
 #' @noRd
 fit_bayesnec <- function(formula, data, model = NA, brm_args,
                          skip_check = FALSE, prior_type = "uninformative",
-                         timeout = Inf, u_loc = NULL, u_scale = NULL) {
+                         timeout = Inf, u_loc = NULL, u_scale = NULL,
+                         model_survival = NULL) {
   formula <- single_model_formula(formula, model)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   x <- retrieve_var(bdat, "x_var", error = TRUE)
@@ -60,7 +61,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   } else {
     response <- y
   }
-  brms_bf <- wrangle_model_formula(model, formula, bdat, family)
+  brms_bf <- wrangle_model_formula(model, formula, bdat, family,
+                                   model_survival = model_survival)
   if (is_beta_ub_family(family)) {
     # amend() refits with skip_check = TRUE, so check_data() has not run and
     # ymax has to be taken from the response. It is the same number either way
@@ -74,7 +76,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
                                prior_type = prior_type, ymax = ymax,
-                               u_loc = u_loc, u_scale = u_scale)
+                               u_loc = u_loc, u_scale = u_scale,
+                               model_survival = model_survival)
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
   if (is.finite(timeout)) {
     # R.utils::withTimeout aborts the brm call once `timeout` seconds elapse

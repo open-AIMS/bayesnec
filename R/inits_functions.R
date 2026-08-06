@@ -219,6 +219,9 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
 #' non-survivor.
 #' @param priors An object of class \code{\link[brms]{brmsprior}} covering both
 #' blocks, i.e. containing both \code{top} and \code{hutop} and so on.
+#' @param model_survival The equation used for the second block, which need not
+#' be the one used for the response block. Defaults to \code{NULL}, i.e. the
+#' same as \code{model}.
 #'
 #' @details Each block is primed from the view of the data it actually models,
 #' then the two are merged chain-wise. The mu block sees survivors only; the hu
@@ -236,17 +239,22 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
 #'
 #' @noRd
 make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
-                                   seed = NULL, ...) {
+                                   dpar = "hu", seed = NULL,
+                                   model_survival = NULL, ...) {
+  if (is.null(model_survival)) {
+    model_survival <- model
+  }
   parts <- split_hurdle_response(predictor, response)
   pr <- as.data.frame(priors)
-  is_hu <- nzchar(pr$nlpar) & grepl("^hu", pr$nlpar)
+  is_hu <- nzchar(pr$nlpar) & grepl(paste0("^", dpar), pr$nlpar)
   mu_pr <- pr[!is_hu, , drop = FALSE]
   hu_pr <- pr[is_hu, , drop = FALSE]
-  hu_pr$nlpar <- sub("^hu", "", hu_pr$nlpar)
+  hu_pr$nlpar <- sub(paste0("^", dpar), "", hu_pr$nlpar)
   mu_inits <- make_good_inits(model, parts$mu$x, parts$mu$y, priors = mu_pr,
                               chains = chains, seed = seed, ...)
-  hu_inits <- make_good_inits(model, parts$hu$x, parts$hu$y, priors = hu_pr,
-                              chains = chains, seed = seed, ...)
+  hu_inits <- make_good_inits(model_survival, parts$hu$x, parts$hu$y,
+                              priors = hu_pr, chains = chains, seed = seed,
+                              ...)
   # If either block fell back to Stan's random initialisation there is nothing
   # coherent to merge -- hand the whole fit to Stan rather than half-priming it.
   fell_back <- function(x) length(x) == 1 && "random" %in% names(x)
@@ -255,7 +263,7 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
   }
   lapply(seq_len(chains), function(i) {
     hu_i <- hu_inits[[i]]
-    names(hu_i) <- sub("^b_", "b_hu", names(hu_i))
+    names(hu_i) <- sub("^b_", paste0("b_", dpar), names(hu_i))
     c(mu_inits[[i]], hu_i)
   })
 }

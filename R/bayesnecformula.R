@@ -70,10 +70,11 @@
 #' been tested yet. If this is extremely important to your work, please
 #' raise an issue on bayesnec GitHub, and we will consider further testing and 
 #' development.
-#' Currently, the only two \code{aterms} that have validated behaviour are:
+#' Currently, the only three \code{aterms} that have validated behaviour are:
 #' 1) \code{trials()}, which is essential in binomially-distributed data, e.g.
-#' \code{y | trials(trials_variable)}, and 2) weights, e.g.
-#' \code{y | weights(weights_variable)}, following \pkg{brms} formula syntax.
+#' \code{y | trials(trials_variable)}, 2) weights, e.g.
+#' \code{y | weights(weights_variable)}, and 3) \code{cens()} (see below),
+#' following \pkg{brms} formula syntax.
 #' Please note that \pkg{brms} does not implement design weights as in other
 #' standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 #' weights literally, which means that an observation with weight 2 receives 2
@@ -83,12 +84,37 @@
 #' cannot attest to their functionality within
 #' \code{\link[bayesnec:bayesnec-package]{bayesnec}}, i.e. checks will
 #' be done outside via \code{\link[brms]{brm}}.
-#' 
-#' **NB:** \code{aterms} other than \code{trials()} and \code{weights()} are
-#' currently omitted from \code{\link{model.frame}} output. If you need other
-#' \code{aterms} as part of that output please raise an issue on our GitHub
-#' page.
-#' 
+#'
+#' \bold{Censored responses: \code{cens}}
+#'
+#' A response that is rounded at the recording resolution, reported below a
+#' limit of detection, or deliberately coarsened at a boundary is censored: the
+#' true value is known to lie in an interval rather than at a point. The
+#' \code{cens()} \code{aterm} states this, e.g.
+#' \code{y | cens(censoring_variable)}, or
+#' \code{y | cens(censoring_variable, upper_bound)} for interval censoring.
+#' \code{censoring_variable} is a variable in the data taking the values
+#' \code{"none"}, \code{"left"}, \code{"right"} or \code{"interval"}
+#' (equivalently \code{0}, \code{-1}, \code{1}, \code{2}); it is not a constant,
+#' because in a concentration-response dataset only some rows are censored.
+#'
+#' \bold{The response value carries the bound.} For a left-censored row the
+#' number in the response column is the value the truth is known to be at or
+#' below --- not zero, and not a substitute for the unknown truth. Because of
+#' this, a censored row is exempt from the boundary shifts that
+#' \code{\link{bnec}} otherwise applies to zeros in Gamma and Beta responses:
+#' the bound has already been declared and moving it would restate it. A row
+#' declared censored at a value the family excludes --- left-censored at 0 under
+#' Gamma or Beta, right-censored at 1 under Beta --- is an error rather than a
+#' shift, because the censored likelihood is degenerate there.
+#'
+#' See \code{vignette("example7")} for worked examples.
+#'
+#' **NB:** \code{aterms} other than \code{trials()}, \code{weights()} and
+#' \code{cens()} are currently omitted from \code{\link{model.frame}} output. If
+#' you need other \code{aterms} as part of that output please raise an issue on
+#' our GitHub page.
+#'
 #' \bold{Validation of formula}
 #' Please note that the function only checks for the input nature of the
 #' \code{formula} argument and adds a new class. This function **does not**
@@ -168,10 +194,10 @@ bnf <- function(formula, ...) {
 #' specific (e.g. \code{(par | group_variable)} rather than \code{pgl/ogl(group_variable)}); and 3) The user is keen to learn if the specified parameter
 #' is found in the specified model (via argument \code{model} in the \code{crf} term -- see details in ?bayesnecformula).
 #'
-#' **NB:** \code{aterms} other than \code{trials()} and \code{weights()} are
-#' currently omitted from \code{\link{model.frame}} output. If you need other
-#' \code{aterms} as part of that output please raise an issue on our GitHub
-#' page. See details about \code{aterms} in ?bayesnecformula.
+#' **NB:** \code{aterms} other than \code{trials()}, \code{weights()} and
+#' \code{cens()} are currently omitted from \code{\link{model.frame}} output. If
+#' you need other \code{aterms} as part of that output please raise an issue on
+#' our GitHub page. See details about \code{aterms} in ?bayesnecformula.
 #'
 #' @seealso
 #'   \code{\link{bnec}},
@@ -345,10 +371,23 @@ check_formula.bayesnecformula <- function(formula, data,
   split_lhs_calls <- strsplit(lhs_calls, " \\| | impossiblestr ")[[1]]
   no_resp <- split_lhs_calls[-1]
   if (length(no_resp) > 0) {
-    if (sum(grepl("trials\\(|weights\\(", no_resp)) < length(no_resp)) {
-      message("You have specified brms special aterms other than trials and",
-              " weights. bnec may yield unexpected model fits, proceed at",
-              " your own risk. See ?bayesnecformula.")
+    if (sum(grepl("trials\\(|weights\\(|cens\\(", no_resp)) < length(no_resp)) {
+      message("You have specified brms special aterms other than trials,",
+              " weights and cens. bnec may yield unexpected model fits,",
+              " proceed at your own risk. See ?bayesnecformula.")
+    }
+    cens_calls <- grep("cens\\(", no_resp, value = TRUE)
+    if (length(cens_calls) > 0 &&
+          length(all.vars(str2lang(cens_calls[1]))) == 0) {
+      # e.g. cens("left"), which brms recycles over every row. That is legal but
+      # is almost never what is meant in a concentration-response dataset, where
+      # only some rows are censored, so flag it rather than silently declaring
+      # the whole response censored.
+      warning("The cens() term in your formula, ", cens_calls[1], ", contains",
+              " no variable, so every row of your response will be treated as",
+              " censored. Censoring is normally indicated by a variable in",
+              " your data taking the values \"none\", \"left\", \"right\" or",
+              " \"interval\". See ?bayesnecformula.", call. = FALSE)
     }
   }
   formula
@@ -374,7 +413,6 @@ model.frame.bayesnecformula <- function(formula, data, ...) {
   pre_list <- simplify_formula(formula, data, ...)
   data <- model.frame(pre_list$formula, data = data)
   bnec_pop <- na.omit(pre_list$pop_vars)
-  names(bnec_pop) <- c("y_var", "x_var", "trials_var")[seq_along(bnec_pop)]
   attr(data, "bnec_pop") <- bnec_pop
   bnec_group <- pre_list$group_vars
   attr(data, "bnec_group") <- bnec_group
@@ -391,11 +429,15 @@ simplify_formula <- function(formula, data, ...) {
     y_call <- formula_lhs
     t_call <- 1
     t_var <- NA
+    c_call <- 1
+    c_vars <- character(0)
   } else if (length(formula_lhs) == 3) {
     y_call <- formula_lhs[[2]]
     split_terms <- split_calls(formula_lhs[[3]])
     t_call <- split_terms$t_call
     t_var <- split_terms$t_var
+    c_call <- split_terms$c_call
+    c_vars <- split_terms$c_vars
   }
   y_var <- all.vars(y_call)
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
@@ -408,8 +450,20 @@ simplify_formula <- function(formula, data, ...) {
   } else {
     r_call <- str2lang(paste0(r_vars, collapse = " + "))
   }
-  short_form <- substitute(a ~ b + c + d, list(a = y_call, b = x_call, c = t_call, d = r_call))
-  list(formula = as.formula(short_form), pop_vars = c(y_var, x_var, t_var),
+  short_form <- substitute(a ~ b + c + d + e, list(a = y_call, b = x_call,
+                                                   c = t_call, d = c_call,
+                                                   e = r_call))
+  # Names are attached here rather than assigned positionally downstream: the
+  # trials slot may be absent while the censoring slot is present, so
+  # "the third element is trials_var" no longer holds. The order of the terms in
+  # short_form must stay in step with this vector, because retrieve_var() finds
+  # a variable by its position in bnec_pop and indexes the model frame with it.
+  pop_vars <- c(y_var, x_var, t_var, c_vars)
+  names(pop_vars) <- c(rep("y_var", length(y_var)),
+                       rep("x_var", length(x_var)),
+                       rep("trials_var", length(t_var)),
+                       names(c_vars))
+  list(formula = as.formula(short_form), pop_vars = pop_vars,
        group_vars = r_vars)
 }
 
@@ -421,7 +475,8 @@ substitute_x_in_formula <- function(new_x, brms_rhs) {
 
 #' @noRd
 #' @importFrom formula.tools lhs
-wrangle_model_formula <- function(model, formula, data, family = NULL) {
+wrangle_model_formula <- function(model, formula, data, family = NULL,
+                                  model_survival = NULL) {
   brms_bf <- get(paste0("bf_", model))
   brms_bf[[1]][[2]] <- lhs(formula)
   bnec_pop_vars <- attr(data, "bnec_pop")
@@ -438,8 +493,14 @@ wrangle_model_formula <- function(model, formula, data, family = NULL) {
   # to the response block only -- coupling the two blocks through a shared
   # group-level effect would break the likelihood factorisation that the
   # factorised route (see bnec_hurdle) relies on, so it is not done implicitly.
+  #
+  # The second block need not use the same equation as the response block: the
+  # two describe different processes and are selected on separately by the
+  # crossed comparison (see crossed_weights). model_survival names its equation
+  # and defaults to the response block's.
   if (!is.null(family) && is_hurdle_family(family)) {
-    brms_bf <- add_hu_block(brms_bf, model, new_x)
+    hu_model <- if (is.null(model_survival)) model else model_survival
+    brms_bf <- add_hu_block(brms_bf, hu_model, new_x, hurdle_dpar(family))
   }
   brms_bf
 }
@@ -547,10 +608,17 @@ get_model_from_formula <- function(formula) {
 split_calls <- function(formula_part) {
   t_call <- 1
   t_var <- NA
+  c_call <- 1
+  c_vars <- character(0)
   if (length(formula_part) >= 2) {
     tmp_ <- list()
     n <- 0
-    while (length(formula_part) == 3) {
+    # aterms are joined by "+", so peel the chain apart from the right. The
+    # `+` test matters: without it any two-argument aterm call is itself length
+    # 3 and gets destructured as though it were a chain, which silently loses
+    # cens(indicator, upper_bound) -- the interval-censoring form.
+    while (length(formula_part) == 3 &&
+             identical(formula_part[[1]], quote(`+`))) {
       n <- n + 1
       tmp_[[n]] <- formula_part[[3]]
       formula_part <- formula_part[[2]]
@@ -560,8 +628,32 @@ split_calls <- function(formula_part) {
       t_call <- tmp_[[grep("trials(", tmp_, fixed = TRUE)]]
       t_var <- all.vars(t_call)
     }
+    if (any(grepl("cens(", tmp_, fixed = TRUE))) {
+      # Taken argument by argument rather than with a single all.vars() call, so
+      # that the indicator and the interval upper bound stay distinguishable.
+      # Either may be a literal -- cens(indicator, 0.005) is a variable
+      # indicator with a constant bound -- and a literal must drop out without
+      # shifting the one after it into its slot.
+      cens_args <- as.list(tmp_[[grep("cens(", tmp_, fixed = TRUE)[1]]])[-1]
+      cens_args <- cens_args[seq_len(min(2, length(cens_args)))]
+      c_vars <- vapply(cens_args, function(arg) {
+        vars <- all.vars(arg)
+        if (length(vars) > 0) vars[1] else NA_character_
+      }, character(1))
+      names(c_vars) <- c("cens_var", "cens_y2_var")[seq_along(c_vars)]
+      c_vars <- c_vars[!is.na(c_vars)]
+      # The censoring variables are carried as plain columns rather than as the
+      # cens() call itself, which is how trials() is handled. Two reasons:
+      # model.frame would have to evaluate cens(), and unlike trials() it takes
+      # two arguments, so there is no single value to return; and keeping the
+      # column name equal to the variable name avoids another clean_aterms()
+      # special case and lets find_transformations() match it without help.
+      if (length(c_vars) > 0) {
+        c_call <- str2lang(paste0(c_vars, collapse = " + "))
+      }
+    }
   }
-  list(t_call = t_call, t_var = t_var)
+  list(t_call = t_call, t_var = t_var, c_call = c_call, c_vars = c_vars)
 }
 
 #' @noRd

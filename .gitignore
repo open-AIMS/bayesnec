@@ -39,6 +39,8 @@ Check_priors_plots.pdf
 doc/
 !vignettes/vignette-fig-*.pdf
 prompts/
+
+# Safety-net backups of untracked files before editing; never committed.
 superceded/
 
 # compiled cmdstan executables from dev/validation

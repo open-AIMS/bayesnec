@@ -176,7 +176,7 @@ autoplot(exp_1, xform = exp)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-binom-1.pdf" title="plot of chunk exmp1-binom" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%" />
 <p class="caption">plot of chunk exmp1-binom</p>
 </div>
 
@@ -212,7 +212,7 @@ autoplot(exp_1b, xform = exp)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-bbinom-1.pdf" title="plot of chunk exmp1-bbinom" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-bbinom-1.png" alt="plot of chunk exmp1-bbinom" width="60%" />
 <p class="caption">plot of chunk exmp1-bbinom</p>
 </div>
 
@@ -311,7 +311,7 @@ autoplot(exp_2, xform = function(x)exp(x) - 1)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-beta-1.pdf" title="plot of chunk exmp1-beta" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-beta-1.png" alt="plot of chunk exmp1-beta" width="60%" />
 <p class="caption">plot of chunk exmp1-beta</p>
 </div>
 
@@ -357,7 +357,7 @@ autoplot(exp_3)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-poisson-1.pdf" title="plot of chunk exmp1-poisson" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-poisson-1.png" alt="plot of chunk exmp1-poisson" width="60%" />
 <p class="caption">plot of chunk exmp1-poisson</p>
 </div>
 
@@ -388,7 +388,7 @@ autoplot(exp_3b)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-negbinbase-1.pdf" title="plot of chunk exmp1-negbinbase" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%" />
 <p class="caption">plot of chunk exmp1-negbinbase</p>
 </div>
 
@@ -416,7 +416,7 @@ autoplot(exp_4)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-gammabase-1.pdf" title="plot of chunk exmp1-gammabase" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-gammabase-1.png" alt="plot of chunk exmp1-gammabase" width="60%" />
 <p class="caption">plot of chunk exmp1-gammabase</p>
 </div>
 
@@ -461,5 +461,33 @@ summary(exp_4)
 ```
 
 In this case our model has converged really well.
+
+# Preparing the response
+
+Supply the response as measured. Do not convert it to percent inhibition, percent of control, or percent of the observed maximum before calling `bnec`.
+
+Normalising to the control is conventional in ecotoxicology, usually as $y^0_i = 1 - y_i / \bar{y}_{con}$ where $\bar{y}_{con}$ is the mean of three to six control replicates. @Ritz2026 show what it costs. Every observation is divided by the *same random quantity*, so the normalised values are correlated and the sampling variability of the divisor is discarded. Applying Jensen's inequality to $y \rightarrow 1/y$ gives $E(1 - y_i/\bar{y}_{con}) \leq 1 - E(y_i)/E(\bar{y}_{con})$, so the inhibition trend is biased downwards and the effective doses read off it are biased upwards. In their simulation of an ED10 with six controls, normalising gave a bias of 6.8% and a coefficient of variation of 26.4%, against 2.1% and 12.7% for the same quantity estimated from the raw response; nominal 95% intervals covered at 88–91%. Roughly half the reported variability was an artefact of the normalisation itself.
+
+Nothing is lost by not normalising. The concentration at which inhibition rises by $x$ percent is the same concentration at which the response falls by $x$ percent, so the two analyses answer the same question. The second is what `ecx(type = "absolute")` — the default — already returns:
+
+$$f(EC_x, \beta) = (1 - x/100) \cdot f(0, \beta)$$
+
+a decline relative to the *fitted* control value rather than to an observed control mean. Because it is evaluated separately within every posterior draw, uncertainty about the control level propagates into the credible interval instead of being thrown away. This is exactly the estimand @Ritz2026 recommend, and it is why no change to `bayesnec` is needed to follow their advice — only a change to what you feed it.
+
+Dividing by the maximum observed response instead of the control mean is worse, on three counts. An extreme order statistic is more variable and more biased than a mean of three to six values. The divisor then depends on every treatment rather than on the controls alone, so treated groups partly determine their own denominator. And it forces exactly one observation to be exactly `1`, which is outside the open $(0, 1)$ support of the Beta distribution, so `bnec` must nudge it off the boundary — a third distortion on top of the other two.
+
+`bnec` looks for both practices and says so. Dividing by the observed maximum leaves a maximum of exactly `1` attained by exactly one observation; dividing by the control mean leaves the control observations averaging to exactly `1`. Either produces a message pointing back to this section. The first check is suppressed when the response lies on a rational grid, because genuine count-derived proportions such as 19/20 surviving routinely produce a single observation at `1` and are not evidence of anything.
+
+## When a divisor is unavoidable
+
+The problem is dividing by something *random*, not dividing as such. @Ritz2026 are explicit on this point:
+
+> If the average growth rate in the control group was known beyond uncertainty, perhaps from historical data, there would be no problem.
+
+This matters for the `Beta` and `zero_inflated_beta` families, which need a response on the open interval $(0, 1)$ and therefore sometimes need a divisor. Where one is required it must be a constant fixed in advance of the analysis — a physiological or design ceiling, or a value from accumulated historical controls — and never a quantity computed from the dataset being analysed.
+
+Note also that ECx is invariant to the choice of constant divisor, because it is a relative decline from the fitted `top`. Changing the divisor changes what `top` means; it does not change the toxicity estimate.
+
+Many proportional responses need no divisor at all. The maximum quantum yield used in the Beta example above is a genuine physical proportion on $(0, 1)$, as is a survival fraction or a bleached-area fraction. These are already on the right scale and should be modelled as they stand.
 
 # References

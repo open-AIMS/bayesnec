@@ -53,11 +53,18 @@ check_models <- function(model, family, data) {
     }
   }
   if (link_tag == "identity" & is_hurdle_family(fam_tag)) {
-    # A hurdle fit must satisfy both sets of restrictions at once: its mu block
-    # is zero-bounded (as Gamma/identity) and its hu block is 0-1 bounded (as
-    # bernoulli/identity). Take the union of what each would drop.
-    use_model <- model[!model %in% c("neclin", "neclinhorme", "ecxlin",
-                                     "nechormepwr01")]
+    # A two-block fit must satisfy both sets of restrictions at once. The
+    # zero-probability block is always 0-1 bounded (as bernoulli/identity), so
+    # the linear-decay models go in every case. The mu block depends on the
+    # family: zero-bounded for hurdle_gamma, which additionally rules out
+    # nechormepwr01; 0-1 bounded for zero_inflated_beta, which does not, since
+    # nechormepwr01 is the equation designed for that range.
+    drop_always <- c("neclin", "neclinhorme", "ecxlin")
+    mu_fam <- unname(hurdle_mu_fams[[fam_tag]])
+    if (mu_fam %in% c("Gamma", "poisson", "negbinomial")) {
+      drop_always <- c(drop_always, "nechormepwr01")
+    }
+    use_model <- model[!model %in% drop_always]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
       message(paste("Dropping the model(s)",
@@ -131,4 +138,49 @@ check_models <- function(model, family, data) {
          " model entry. Please check ?bnec for valid model calls.")
   }
   model
+}
+
+#' check_model_survival
+#'
+#' Validates the equation requested for the second (zero-probability) block of
+#' a joint hurdle or zero-inflated fit.
+#'
+#' @inheritParams bnec
+#'
+#' @param family A \code{\link[stats]{family}} function.
+#' @param data A \code{\link[base]{data.frame}}.
+#'
+#' @details The block is a probability, so it is checked against the
+#' restrictions a \code{\link[brms]{bernoulli}} fit with an identity link would
+#' face rather than those of the response family. Unlike \code{model}, this is
+#' a single equation: model averaging in the joint route runs over the response
+#' block, with the second block held fixed. Averaging over both is what
+#' \code{\link{bnec_hurdle}} and \code{\link{crossed_weights}} are for.
+#'
+#' @return A \code{\link[base]{character}} string, or \code{NULL}.
+#'
+#' @importFrom brms bernoulli
+#'
+#' @noRd
+check_model_survival <- function(model_survival, family, data) {
+  if (is.null(model_survival)) {
+    return(NULL)
+  }
+  if (!is_hurdle_family(family)) {
+    stop("Argument `model_survival` only applies to the two-block families",
+         " \"hurdle_gamma\" and \"zero_inflated_beta\". For two separate fits",
+         " with a different model set on each component, see ?bnec_hurdle.",
+         call. = FALSE)
+  }
+  if (!is.character(model_survival) || length(model_survival) != 1) {
+    stop("Argument `model_survival` must be a single model name. Model",
+         " averaging over both blocks at once means fitting every pair; use",
+         " bnec_hurdle() and crossed_weights() for that.", call. = FALSE)
+  }
+  out <- check_models(model_survival, bernoulli(link = "identity"), data)
+  if (length(out) == 0) {
+    stop("Model \"", model_survival, "\" is not valid for the survival block,",
+         " which is 0-1 bounded.", call. = FALSE)
+  }
+  out
 }

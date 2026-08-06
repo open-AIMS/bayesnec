@@ -13,7 +13,8 @@ nsec(
   hormesis_def = "control",
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
-  ...
+  ...,
+  dpar = NULL
 )
 }
 \arguments{
@@ -39,6 +40,14 @@ return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
 \item{...}{Further arguments to pass to class specific methods.}
+
+\item{dpar}{For a joint two-block fit only (\code{family = "hurdle_gamma"}
+or \code{"zero_inflated_beta"}), the parameter block to report:
+\code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
+zero-inflated families) for survival. Defaults to \code{NULL}, which gives
+the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+inverted to survival before computing, so the NSEC is read off a declining
+curve. See Details.}
 }
 \value{
 A vector containing the estimated NSEC value, including upper and
@@ -72,6 +81,36 @@ small number of cases. There is also no reasonable case where estimating
 these from the raw data would be of value, because both functions would
 simply return one of the treatment concentrations, making NOEC a better
 metric in that case.
+
+\bold{Selecting a component of a hurdle model}
+
+The two implementations of a hurdle model name the component differently,
+and the two arguments are not interchangeable. A
+\code{\link{bayesnechurdlefit}} from \code{\link{bnec_hurdle}} holds two
+separate fits, so it takes \code{which = "growth"}, \code{"survival"} or
+\code{"combined"}. A joint fit from \code{bnec(family = "hurdle_gamma")}
+holds two parameter blocks inside one model, so it takes \code{dpar} naming
+the \pkg{brms} distributional parameter. Supplying one where the other is
+expected is an error rather than silently ignored.
+
+\bold{Do not normalise the response to the control first}
+
+Fit the raw, unnormalised response. Converting it to percent inhibition or
+percent of control before calling \code{\link{bnec}} divides every
+observation by the same random quantity, which discards the uncertainty in
+the control level and biases effective doses; see \code{\link{ecx}} for the
+full argument and Ritz et al. (2026) for the simulation evidence.
+
+NSEC is affected in a specific way. The reference value is the
+\code{sig_val} quantile of the posterior of the fitted response at the
+lowest predictor value, so NSEC depends directly on how \emph{wide} that
+control posterior is. Normalising makes the sample mean of the control
+observations exactly 1 by construction, so the sampling variability of the
+divisor never enters the fit. The fitted control posterior is then narrower
+than the data warrant, the reference quantile sits closer to the control
+median, the declining curve crosses it sooner, and the returned NSEC is
+both smaller -- apparently more protective -- and more precise than it
+should be.
 }
 \examples{
 \donttest{
@@ -86,7 +125,12 @@ nsec(manec_example)
 Fisher R, Fox DR (2023). Introducing the no significant effect concentration
 (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
 doi: 10.1002/etc.5610.
+
+Ritz C, Gerhard D, Streibig JC (2026). Better alternatives than normalizing
+to control: case studies with algae toxicity and dose-response analysis.
+Environmental and Ecological Statistics, 33, 35-55.
+doi:10.1007/s10651-025-00698-y.
 }
 \seealso{
-\code{\link{bnec}}
+\code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
 }

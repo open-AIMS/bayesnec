@@ -40,10 +40,10 @@ specified a group-level effect; 2) the group-level effects is parameter
 specific (e.g. \code{(par | group_variable)} rather than \code{pgl/ogl(group_variable)}); and 3) The user is keen to learn if the specified parameter
 is found in the specified model (via argument \code{model} in the \code{crf} term -- see details in ?bayesnecformula).
 
-\strong{NB:} \code{aterms} other than \code{trials()} and \code{weights()} are
-currently omitted from \code{\link{model.frame}} output. If you need other
-\code{aterms} as part of that output please raise an issue on our GitHub
-page. See details about \code{aterms} in ?bayesnecformula.
+\strong{NB:} \code{aterms} other than \code{trials()}, \code{weights()} and
+\code{cens()} are currently omitted from \code{\link{model.frame}} output. If
+you need other \code{aterms} as part of that output please raise an issue on
+our GitHub page. See details about \code{aterms} in ?bayesnecformula.
 }
 \examples{
 library(bayesnec)

@@ -22,6 +22,7 @@ bnec(
   timeout = Inf,
   U_loc = NULL,
   U_scale = NULL,
+  model_survival = NULL,
   ...
 )
 }
@@ -114,6 +115,16 @@ ceiling falls back to a weakly-informative half-normal centred just above
 the largest observed response, with a message: that is a softer form of the
 practice \code{\link{beta_ub}} exists to avoid, and intervals at the top of
 the curve should be read accordingly. Ignored for every other family.}
+
+\item{model_survival}{An optional \code{\link[base]{character}} string naming
+the equation to use for the second (zero-probability) parameter block of a
+\code{"hurdle_gamma"} or \code{"zero_inflated_beta"} fit. Defaults to
+\code{NULL}, meaning the same equation as the response block. It must be a
+single model: model averaging in the joint route runs over the response
+block, with the second block held fixed. Averaging over both at once means
+fitting every pair of equations, which is what \code{\link{bnec_hurdle}} and
+\code{\link{crossed_weights}} do from two fits instead. Ignored, with an
+error, for any other family.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }
@@ -247,15 +258,55 @@ automatically: a positive continuous response is still treated as Gamma
 unless \code{beta_ub()} is asked for by name, because the ceiling prior is
 something only the user can supply.
 
-\bold{Hurdle families}
+\bold{Supply the raw response, not one normalised to the control}
 
-The family "hurdle_gamma" fits data where exposure both kills individuals
-and suppresses the response of those that survive. Zeros in the response
-denote individuals that did not survive, and the fit gains a second
-parameter block, prefixed \code{hu}, giving the probability of that
-happening its own concentration-response curve. \code{\link{show_params}}
-lists the response-block parameters; the hurdle block carries the same names
-with an \code{hu} prefix (\code{hutop}, \code{hunec} and so on).
+\code{\link{bnec}} expects the response as measured. Do not convert it to
+percent inhibition, percent of control, or percent of the observed maximum
+beforehand. Dividing every observation by the same estimated quantity
+correlates them, discards the uncertainty in the divisor and biases
+effective doses upwards (Ritz et al. 2026). Nothing is gained by doing so,
+because \code{ecx(type = "absolute")} -- the default -- already measures the
+decline relative to the fitted control value, one posterior draw at a time,
+which is the estimand that paper recommends. See \code{\link{ecx}} for the
+full argument, including why dividing by the observed maximum is worse than
+dividing by the control mean.
+
+The "Beta" and "zero_inflated_beta" families are the case where a divisor
+may genuinely be needed, since both require a response on the open interval
+(0, 1). Where one is needed it must be a constant fixed in advance of the
+analysis -- a physiological or design ceiling, or a value from accumulated
+historical controls -- and never a quantity computed from the dataset being
+analysed. Dividing by a constant is harmless; dividing by a random quantity
+is the problem. Responses that are already proportions on their own terms,
+such as the maximum quantum yield in \code{\link{herbicide}} or a survival
+fraction, need no divisor at all.
+
+\bold{Two-block (hurdle and zero-inflated) families}
+
+The families "hurdle_gamma" and "zero_inflated_beta" fit data where exposure
+both produces zero responses -- individuals that died, colonies that failed
+-- and suppresses the response of those that did not. Zeros in the response
+denote the former, and the fit gains a second parameter block giving the
+probability of a zero its own concentration-response curve.
+\code{\link{show_params}} lists the response-block parameters; the second
+block carries the same names with a prefix (\code{hutop}, \code{hunec} for
+"hurdle_gamma"; \code{zitop}, \code{zinec} for "zero_inflated_beta" --
+\pkg{brms} names the block \code{hu} in one case and \code{zi} in the
+other).
+
+Use "hurdle_gamma" where the non-zero response is positive and unbounded
+above (growth increments, biomass) and "zero_inflated_beta" where it is a
+proportion on (0, 1). The distinction between "hurdle" and "zero-inflated"
+is nominal here: zero-inflation differs from a hurdle only when the base
+distribution can itself produce zeros, which neither the Gamma nor the Beta
+can, so the two are the same model and \pkg{bayesnec} treats them alike.
+
+Where a "zero_inflated_beta" response has been obtained by dividing through
+by some maximum, the divisor rule above applies: it must be a constant fixed
+in advance, not one computed from the dataset being analysed. Where no such
+constant is available, prefer modelling the raw response with
+"hurdle_gamma" and reading effective concentrations off the fitted curve via
+\code{\link{ecx}}.
 
 Three toxicity estimates follow from one fit: the response of survivors
 (\code{mu}), survival itself (\code{1 - hu}), and the combined endpoint
@@ -266,22 +317,45 @@ default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
 for a component. \code{\link{nec}} returns the combined threshold, which for
 threshold models on both blocks is the smaller of the two.
 
-This family must be specified as \code{family = "hurdle_gamma"}, or with
-both links set explicitly as
-\code{hurdle_gamma(link = "identity", link_hu = "identity")}. bayesnec keeps
+These families must be specified as \code{family = "hurdle_gamma"} or
+\code{family = "zero_inflated_beta"}, or with both links set explicitly as
+\code{hurdle_gamma(link = "identity", link_hu = "identity")} and
+\code{zero_inflated_beta(link = "identity", link_zi = "identity")}
+respectively. bayesnec keeps
 every parameter on the natural response scale, and the hurdle block is
-written as \code{1 - <survival curve>}, which is only meaningful under an
-identity \code{link_hu}. It is never selected automatically: a response
+written as \code{1 - <non-zero probability>}, which is only meaningful under
+an identity link there.
+
+That inversion is worth knowing about when reading output. \pkg{brms} defines
+\code{hu} (or \code{zi}) as the probability of a \emph{zero}, which rises
+with the predictor, whereas every bayesnec equation declines. Writing the
+block as \code{1 - <equation>} puts the declining curve on \emph{survival},
+so the equation set, its priors and the \code{\link{ecx}}/\code{\link{nsec}}
+definition of "decline from control" all carry over unchanged. The practical
+consequence is that \code{hutop} and \code{hunec} describe surviving rather
+than dying; \code{hunec} is the same concentration either way. See
+\code{vignette("example6")}.
+
+Neither family is ever selected automatically: a response
 containing zeros is still treated as Gamma, with a message, so that existing
 analyses do not silently change.
+
+The two blocks need not use the same equation. \code{crf} in the formula
+names the response block's, and \code{model_survival} the survival block's,
+so a threshold response can be paired with a smooth survival curve or the
+reverse. Where \code{crf} names a model set, that set is averaged over with
+the survival block held fixed.
 
 The alternative is \code{\link{bnec_hurdle}}, which fits the same two
 components as two separate \code{\link{bnec}} calls. The hurdle likelihood
 factorises, so the two give equivalent inference where the components are
 independent, but they differ in what else they allow: the joint fit here can
 couple the blocks through shared group-level effects, while the factorised
-route makes the full crossed model comparison tractable (see
-\code{\link{crossed_weights}}).
+route makes the full crossed model comparison tractable, since all
+\code{n_response * n_survival} combinations follow from two fits (see
+\code{\link{crossed_weights}}). The two are meant to be used in sequence:
+select a combination with \code{\link{bnec_hurdle}}, then refit it here with
+\code{\link{bnec_joint}} when structure spanning both blocks is needed.
 
 As a default, \code{\link{bnec}} sets the \code{\link[brms]{brm}} argument
 \code{sample_prior} to "yes" in order to sample draws from the priors in

@@ -1,24 +1,47 @@
-#' Fit a factorised hurdle concentration-response model
+#' Fit a factorised hurdle (or zero-inflated) concentration-response model
 #'
-#' Fits a two-part ("hurdle") concentration-response model as a pair of ordinary
-#' \code{\link{bnec}} fits: a zero-bounded model for the response of individuals
-#' that survived, and a \code{\link[brms]{bernoulli}} model for the probability
-#' of survival. The two are returned together so that the combined endpoint --
-#' expected response per individual *exposed* -- can be derived from them.
+#' Fits a two-part concentration-response model as a pair of ordinary
+#' \code{\link{bnec}} fits: one for the response of the units that gave a
+#' non-zero value, and a \code{\link[brms]{bernoulli}} model for the probability
+#' of being non-zero. The two are returned together so that the combined
+#' endpoint -- the expected response per unit *exposed* -- can be derived from
+#' them.
+#'
+#' \bold{This covers the zero-inflated case too.} \pkg{brms} names the
+#' equivalent joint families \code{hurdle_gamma} and
+#' \code{zero_inflated_beta}, but the distinction is nominal: zero-inflation
+#' differs from a hurdle only when the base distribution can itself produce
+#' zeros, which neither the Gamma nor the Beta can. The Stan density
+#' \pkg{brms} generates for \code{zero_inflated_beta} is the hurdle form, with
+#' no mixture at zero. One function therefore serves both, and the appropriate
+#' family is chosen from the data -- \code{Gamma} for a positive continuous
+#' response, \code{Beta} for a proportion on (0, 1).
+#'
+#' Throughout the documentation the two parts are called "growth" and
+#' "survival", after the case they were written for -- individuals that die
+#' contribute a zero and the survivors contribute a measurement. Nothing in the
+#' implementation is specific to that reading: any process producing exact
+#' zeros alongside a continuous response fits the same structure. Algal growth
+#' rate expressed as a proportion of a ceiling, with replicates that failed
+#' entirely, is the same model.
 #'
 #' @param formula Either a \code{\link[base]{character}} string defining an
 #' R formula or an actual \code{\link[stats]{formula}} object. See
 #' \code{\link{bayesnecformula}}. The response must be untransformed, and zero
 #' values in it are taken to mean the individual did not survive.
 #' @param data A \code{\link[base]{data.frame}} containing the data to use with
-#' the \code{formula}. Every individual that entered the experiment must be
-#' present, with \code{0} recorded for those that died.
+#' the \code{formula}. Every unit that entered the experiment must be present,
+#' with \code{0} recorded for those that gave no response. Rows omitted rather
+#' than zeroed cannot be distinguished from ones never run, and would be read
+#' as a smaller experiment rather than as zeros.
 #' @param model_survival An optional \code{\link[base]{character}} vector naming
 #' the model or model group to use for the survival component. Defaults to
 #' whatever \code{crf} specifies in \code{formula}, i.e. the same set as the
 #' response component.
 #' @param family_growth A \code{\link[stats]{family}} function for the response
-#' of survivors. Defaults to \code{Gamma(link = "identity")}.
+#' of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
+#' from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
+#' positive continuous response, \code{Beta} for one bounded on (0, 1).
 #' @param ... Further arguments passed to both \code{\link{bnec}} calls.
 #'
 #' @details
@@ -52,7 +75,9 @@
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
-#' @seealso \code{\link{bnec}}, \code{\link{bayesnechurdlefit}}
+#' @seealso \code{\link{bnec}} for the equivalent joint fit via
+#' \code{family = "hurdle_gamma"} or \code{family = "zero_inflated_beta"},
+#' \code{\link{bayesnechurdlefit}}, \code{\link{crossed_weights}}
 #'
 #' @examples
 #' \dontrun{
@@ -67,7 +92,7 @@
 #'
 #' @export
 bnec_hurdle <- function(formula, data, model_survival = NULL,
-                        family_growth = Gamma(link = "identity"), ...) {
+                        family_growth = NULL, ...) {
   formula <- bayesnecformula(formula)
   y_var <- hurdle_response_var(formula)
   if (!y_var %in% names(data)) {
@@ -111,8 +136,16 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     surv_formula <- swap_crf_model(surv_formula, model_survival)
   }
 
+  if (is.null(family_growth)) {
+    # Chosen from the non-zero subset, not the whole response: the zeros would
+    # otherwise be read as part of a continuous distribution rather than as the
+    # hurdle they are.
+    family_growth <- validate_family(
+      set_distribution(y[y > 0], silence_y_msgs = TRUE)
+    )
+  }
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
-          length(y), ").")
+          length(y), ") with a ", family_growth$family, " distribution.")
   growth_fit <- bnec(formula, data = data[y > 0, , drop = FALSE],
                      family = family_growth, ...)
   message("Fitting the survival component (", n_dead, " deaths of ",

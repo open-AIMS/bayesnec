@@ -330,11 +330,19 @@ clean_nec_vals <- function(x, all_models, ecx_models) {
   } else {
     stop("Wrong input class.")
   }
-  neclab <- "NEC"
-  if (all(all_models %in% ecx_models)) {
-    neclab <- "NSEC"
-  } else if (!is.null(ecx_models)) {
-    neclab <- "N(S)EC"
+  # ne_type is recorded when the fit is expanded and is the authority: for a
+  # two-block (hurdle) fit the reported estimate describes the combined
+  # endpoint, whose type depends on the equations used for both blocks and so
+  # cannot be read off the model name alone.
+  if (!is.null(x$ne_type)) {
+    neclab <- x$ne_type
+  } else {
+    neclab <- "NEC"
+    if (all(all_models %in% ecx_models)) {
+      neclab <- "NSEC"
+    } else if (!is.null(ecx_models)) {
+      neclab <- "N(S)EC"
+    }
   }
   rownames(mat) <- neclab
   mat
@@ -421,13 +429,78 @@ return_x_range <- function(x) {
       object$w_pred_vals$data$x
     } else if (is_bayesnecfit(object)) {
       object$pred_vals$data$x
+    } else if (is_bayesnechurdlefit(object)) {
+      # The survival component sees every row, so it carries the full exposed
+      # predictor range; the growth component stops short of any concentration
+      # where nothing survived.
+      return_x_range(list(object$survival))
     } else {
-      stop("Not all objects in x are of class bayesnecfit or bayesmanecfit.")
+      stop("Not all objects in x are of class bayesnecfit, bayesmanecfit or",
+           " bayesnechurdlefit.")
     }
   }
   lapply(x, return_x) |>
     unlist() |>
     range(na.rm = TRUE)
+}
+
+#' Guard against the two component-selection arguments being confused
+#'
+#' The two implementations of a hurdle model select a component differently: a
+#' \code{\link{bayesnechurdlefit}} holds two separate fits and takes
+#' \code{which}, while a joint two-block fit holds two parameter blocks inside
+#' one model and takes \code{dpar}. Each argument used to fall into \code{...}
+#' on the other's methods and be discarded, so the call returned the default
+#' endpoint -- a wrong answer with no error and no warning. Erroring is cheap
+#' and the alternative has already cost people time.
+#'
+#' @param dots The \code{...} of the calling method, as a list.
+#' @param object The object the method was called on.
+#'
+#' @return Invisibly \code{TRUE}, or an error.
+#'
+#' @noRd
+check_component_arg <- function(dots, object) {
+  if (is_bayesnechurdlefit(object)) {
+    if ("dpar" %in% names(dots)) {
+      stop("`dpar` names a parameter block of a joint two-block fit. This is",
+           " a bayesnechurdlefit, which holds two separate fits: use",
+           " `which = \"growth\"`, \"survival\" or \"combined\".",
+           call. = FALSE)
+    }
+  } else if ("which" %in% names(dots)) {
+    stop("`which` selects a component of a bayesnechurdlefit, as returned by",
+         " bnec_hurdle(). This object is a ", class(object)[1],
+         ". For a joint two-block fit, name the parameter block instead:",
+         " `dpar = \"mu\"` for the response block or `dpar = \"hu\"`",
+         " (\"zi\" for zero-inflated families) for the survival block.",
+         call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+#' Guard against `dpar` being passed to nec()
+#'
+#' Unlike \code{\link{ecx}} and \code{\link{nsec}}, \code{\link{nec}} has no
+#' block selection for a joint two-block fit: what it returns is the combined
+#' threshold, the per-draw minimum of the two blocks. The block-specific
+#' posteriors are stored on the fit but are not exposed by an argument, so a
+#' supplied \code{dpar} would otherwise be discarded and the combined value
+#' returned in its place.
+#'
+#' @param dots The \code{...} of the calling method, as a list.
+#'
+#' @return Invisibly \code{TRUE}, or an error.
+#'
+#' @noRd
+check_nec_no_dpar <- function(dots) {
+  if ("dpar" %in% names(dots)) {
+    stop("nec() has no block selection for a joint two-block fit; what it",
+         " returns is the combined threshold, the per-draw minimum of the",
+         " two blocks (see ?nec.bayesnechurdlefit). Use ecx() or nsec() with",
+         " `dpar` for a single block.", call. = FALSE)
+  }
+  invisible(TRUE)
 }
 
 #' @noRd
@@ -437,6 +510,10 @@ return_nec_post <- function(m, xform) {
   }
   if (is_bayesmanecfit(m)) {
     out <- unname(m$w_ne_posterior)
+  }
+  if (is_bayesnechurdlefit(m)) {
+    # Defaults to the combined threshold, matching nec() on the same object.
+    out <- unname(nec(m, posterior = TRUE))
   }
   if (inherits(xform, "function")) {
     out <- xform(out)
@@ -539,6 +616,53 @@ retrieve_var <- function(data, var, error = FALSE) {
   }
 }
 
+#' Retrieve the censoring indicator from a model frame, as -1/0/1/2
+#'
+#' Returns \code{NULL} when the formula carried no \code{cens()} term. Unlike
+#' \code{\link{retrieve_var}} this cannot go through the numeric coercion there,
+#' because a censoring indicator is usually a character or factor.
+#'
+#' @noRd
+retrieve_cens <- function(data) {
+  bnec_vars <- attr(data, "bnec_pop")
+  v_pos <- which(names(bnec_vars) == "cens_var")
+  if (length(v_pos) != 1) {
+    return(NULL)
+  }
+  normalise_cens(data[[v_pos]])
+}
+
+#' Normalise a brms censoring indicator to the integer codes brms uses
+#'
+#' Mirrors the accepted encodings of \code{brms:::prepare_cens}: partially
+#' matched strings, logicals, or the integer codes themselves. Reimplemented
+#' rather than called via \code{:::} so that bayesnec does not depend on a brms
+#' internal; the mapping is fixed by brms' documented formula syntax, so it is
+#' not expected to drift. Anything unrecognised is returned as \code{NA} and
+#' left for brms to reject, which keeps the authoritative error message in one
+#' place.
+#'
+#' @noRd
+normalise_cens <- function(x) {
+  if (is.factor(x)) {
+    x <- as.character(x)
+  }
+  if (is.logical(x)) {
+    return(ifelse(is.na(x), NA_integer_, ifelse(x, 1L, 0L)))
+  }
+  if (is.numeric(x)) {
+    return(ifelse(x %in% c(-1, 0, 1, 2), as.integer(x), NA_integer_))
+  }
+  codes <- c(left = -1L, none = 0L, right = 1L, interval = 2L)
+  vapply(as.character(x), function(i) {
+    if (is.na(i) || !nzchar(i)) {
+      return(NA_integer_)
+    }
+    hit <- which(startsWith(names(codes), i))
+    if (length(hit) == 1) codes[[hit]] else NA_integer_
+  }, integer(1), USE.NAMES = FALSE)
+}
+
 #' @noRd
 add_brm_defaults <- function(
   brm_args,
@@ -551,7 +675,8 @@ add_brm_defaults <- function(
   prior_type = "uninformative",
   ymax = NULL,
   u_loc = NULL,
-  u_scale = NULL
+  u_scale = NULL,
+  model_survival = NULL
 ) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
@@ -575,17 +700,24 @@ add_brm_defaults <- function(
       prior_type = prior_type,
       ymax = ymax,
       u_loc = u_loc,
-      u_scale = u_scale
+      u_scale = u_scale,
+      model_survival = model_survival
     )
   } else {
     brm_args$prior <- priors
   }
   if (!("init" %in% names(brm_args)) || skip_check) {
     msg_tag <- family$family
+    model_tag <- if (is.null(model_survival) || identical(model_survival,
+                                                          model)) {
+      model
+    } else {
+      paste0(model, " (response) and ", model_survival, " (survival)")
+    }
     message(paste0(
       "Finding initial values which allow the response to be",
       " fitted using a ",
-      model,
+      model_tag,
       " model and a ",
       msg_tag,
       " distribution."
@@ -605,7 +737,9 @@ add_brm_defaults <- function(
         response,
         priors = brm_args$prior,
         chains = brm_args$chains,
-        seed = init_seed
+        dpar = hurdle_dpar(family),
+        seed = init_seed,
+        model_survival = model_survival
       )
     } else {
       make_good_inits(
@@ -761,6 +895,14 @@ check_args_newdata <- function(resolution, x_range) {
 newdata_eval <- function(object, resolution, x_range) {
   # Just need one model to extract and generate data
   # since all models are considered to have the exact same raw data.
+  # A hurdle fit has no single underlying brmsfit, so the grid is taken from
+  # its survival component -- that one sees every row, and therefore the full
+  # exposed predictor range, whereas the growth component stops short of any
+  # concentration where nothing survived. posterior_epred() is still called on
+  # the hurdle object itself, so the prediction remains the combined endpoint.
+  if (is_bayesnechurdlefit(object)) {
+    object <- object$survival
+  }
   if (inherits(object, "bayesmanecfit")) {
     model_set <- names(object$mod_fits)
     object <- suppressMessages(pull_out(object, model = model_set[1]))
@@ -783,6 +925,13 @@ newdata_eval_fitted <- function(
 ) {
   # Just need one model to extract and generate data
   # since all models are considered to have the exact same raw data.
+  # A hurdle fit has no single underlying brmsfit, so the grid comes from its
+  # survival component -- that one sees every row and therefore the full
+  # exposed predictor range. posterior_epred() is still called on the hurdle
+  # object itself downstream, so predictions remain the combined endpoint.
+  if (is_bayesnechurdlefit(object)) {
+    object <- object$survival
+  }
   if (inherits(object, "bayesmanecfit")) {
     model_set <- names(object$mod_fits)
     object <- suppressMessages(pull_out(object, model = model_set[1]))

@@ -22,6 +22,13 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"}
+#' or \code{"zero_inflated_beta"}), the parameter block to report:
+#' \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
+#' zero-inflated families) for survival. Defaults to \code{NULL}, which gives
+#' the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+#' inverted to survival before computing, so ECx keeps its usual meaning of a
+#' percentage decline from the fitted control value. See Details.
 #' @param ... Additional arguments passed to methods.
 #'
 #' @details \code{type} "relative" is calculated as the percentage decrease
@@ -52,10 +59,73 @@
 #' simply return one of the treatment concentrations, making NOEC a better
 #' metric in that case.
 #'
-#' @seealso \code{\link{bnec}}
+#' \bold{Selecting a component of a hurdle model}
+#'
+#' The two implementations of a hurdle model name the component differently,
+#' and the two arguments are not interchangeable. A
+#' \code{\link{bayesnechurdlefit}} from \code{\link{bnec_hurdle}} holds two
+#' separate fits, so it takes \code{which = "growth"}, \code{"survival"} or
+#' \code{"combined"}. A joint fit from \code{bnec(family = "hurdle_gamma")}
+#' holds two parameter blocks inside one model, so it takes \code{dpar} naming
+#' the \pkg{brms} distributional parameter. Supplying one where the other is
+#' expected is an error rather than silently ignored.
+#'
+#' \bold{Do not normalise the response to the control first}
+#'
+#' Fit the raw, unnormalised response and take \code{type = "absolute"}. Do not
+#' convert the response to percent inhibition, percent of control, or
+#' percent of the observed maximum before calling \code{\link{bnec}}.
+#'
+#' The conventional pre-processing step \code{y0 = 1 - y / mean(y_control)}
+#' divides every observation by the same random quantity, so the normalised
+#' values are correlated and the uncertainty in the divisor is discarded.
+#' By Jensen's inequality applied to \code{y -> 1/y} the inhibition trend is
+#' biased downwards, and the resulting effective doses are biased upwards.
+#' Ritz et al. (2026) report, for an ED10 with six control replicates, a bias
+#' of 6.8% and a coefficient of variation of 26.4% under normalisation
+#' against 2.1% and 12.7% for the same quantity estimated from the raw
+#' response, with nominal 95% intervals covering at 90%. Roughly half the
+#' reported variability is an artefact of the normalisation itself.
+#'
+#' Nothing is lost by not normalising. The concentration at which inhibition
+#' increases by \code{x} percent is the same concentration at which the
+#' response declines by \code{x} percent, and the latter is what
+#' \code{type = "absolute"} returns: it is the decline relative to the
+#' \emph{fitted} control value, Ritz et al.'s recommended estimand
+#' \code{f(EDx) = (1 - x/100) * f(0)}. Because it is evaluated separately
+#' within each posterior draw, uncertainty in the control level propagates
+#' into the credible interval rather than being thrown away. The reference
+#' within a draw is the maximum of the fitted curve, which is the fitted
+#' control value for the monotonically declining models; for hormesis models
+#' the curve peaks above the control, and \code{hormesis_def} selects which of
+#' the two is meant.
+#'
+#' Dividing instead by the maximum observed response is worse on three counts:
+#' an extreme order statistic is more variable than a mean of three to six
+#' control values; the divisor then depends on every treatment rather than on
+#' the controls alone; and it forces one observation to exactly 1, outside the
+#' open support of the Beta family, so a boundary nudge is applied on top of
+#' the other two distortions.
+#'
+#' Where a divisor is unavoidable -- the "Beta" and "zero_inflated_beta"
+#' families need a response on (0, 1) -- it must be a constant fixed in
+#' advance, such as a design ceiling or a value from accumulated historical
+#' controls, and not a quantity computed from the dataset under analysis. The
+#' problem is dividing by something random, not dividing as such. Note that
+#' ECx is invariant to the choice of constant divisor, because it is a
+#' relative decline from the fitted \code{top}: the divisor changes what
+#' \code{top} means, not the toxicity estimate.
+#'
+#' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}
 #'
 #' @return A vector containing the estimated ECx value, including upper and
 #' lower 95% credible interval bounds.
+#'
+#' @references
+#' Ritz C, Gerhard D, Streibig JC (2026). Better alternatives than normalizing
+#' to control: case studies with algae toxicity and dose-response analysis.
+#' Environmental and Ecological Statistics, 33, 35-55.
+#' doi:10.1007/s10651-025-00698-y.
 #'
 #' @examples
 #' \donttest{
@@ -67,10 +137,15 @@
 #' }
 #'
 #' @export
+# dpar sits after `...` to match the methods, which all declare their
+# class-specific arguments there. Naming it on the generic is what puts it in
+# the \usage section; documented-but-absent arguments are an R CMD check
+# WARNING, and methods are @noRd so the generic is the only place it can appear.
 ecx <- function(object, ecx_val = 10, resolution = 1000,
                 posterior = FALSE, type = "absolute",
                 hormesis_def = "control", x_range = NA,
-                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
+                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                dpar = NULL) {
   UseMethod("ecx")
 }
 
@@ -92,7 +167,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
                             posterior = FALSE, type = "absolute",
                             hormesis_def = "control", x_range = NA,
                             xform = identity,
-                            prob_vals = c(0.5, 0.025, 0.975), ...) {
+                            prob_vals = c(0.5, 0.025, 0.975), ...,
+                            dpar = NULL) {
+  check_component_arg(list(...), object)
   chk_numeric(ecx_val)
   if (length(ecx_val)>1) {
     stop("You may only pass one ecx_val")  
@@ -139,11 +216,12 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  # dpar lets a hurdle fit report its components separately. The default (NULL)
-  # gives what posterior_epred always gave: mu * (1 - hu) for a hurdle family,
-  # the single mean curve otherwise. "hu" is inverted to survival so that
-  # "decline from control" means the same thing as it does everywhere else.
-  dpar <- list(...)$dpar
+  # dpar lets a two-block fit report its components separately. The default
+  # (NULL) gives what posterior_epred always gave: mu * (1 - hu) for such a
+  # family, the single mean curve otherwise. The zero-probability block is
+  # inverted so that "decline from control" means the same thing as it does
+  # everywhere else. Valid names are "mu" and whichever brms uses for the
+  # second block: "hu" for hurdle families, "zi" for zero-inflated ones.
   if (is.null(dpar)) {
     p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
                                  re_formula = NA)
@@ -152,10 +230,10 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
       stop("The \"dpar\" argument is only valid for hurdle families.",
            call. = FALSE)
     }
-    dpar <- match.arg(dpar, c("mu", "hu"))
+    dpar <- match.arg(dpar, c("mu", hurdle_dpar(object$fit$family)))
     p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
                                  re_formula = NA, dpar = dpar)
-    if (dpar == "hu") {
+    if (dpar != "mu") {
       p_samples <- 1 - p_samples
     }
   }
@@ -225,7 +303,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", x_range = NA,
                               xform = identity,
-                              prob_vals = c(0.5, 0.025, 0.975), ...) {
+                              prob_vals = c(0.5, 0.025, 0.975), ...,
+                              dpar = NULL) {
+  check_component_arg(list(...), object)
   chk_numeric(ecx_val)
   chk_numeric(resolution)  
   chk_logical(posterior)
@@ -247,23 +327,26 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
-  sample_ecx <- function(x, object, ecx_val, resolution,
-                         posterior, type, hormesis_def,
-                         x_range, xform, prob_vals, sample_size) {
+  sample_size <- object$sample_size
+  # Written as a closure over the arguments rather than a function taking them
+  # all positionally: the previous form dispatched through
+  # sapply(to_iter, sample_ecx, object, ecx_val, ...), which matched by
+  # position, and any argument not named in that list -- dpar among them -- was
+  # dropped before reaching the per-model call. That returned the combined
+  # endpoint for a two-block fit with no error, which is a wrong answer rather
+  # than a missing feature.
+  sample_ecx <- function(x) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
     out <- ecx(target, ecx_val = ecx_val, resolution = resolution,
-               posterior = posterior, type = type, hormesis_def = hormesis_def,
-               x_range = x_range, xform = xform, prob_vals = prob_vals)
+               posterior = TRUE, type = type, hormesis_def = hormesis_def,
+               x_range = x_range, xform = xform, prob_vals = prob_vals,
+               dpar = dpar)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
     sample(out, n_s)
   }
-  sample_size <- object$sample_size
   to_iter <- seq_len(length(object$success_models))
-  ecx_out <- sapply(to_iter, sample_ecx, object, ecx_val, resolution,
-                    posterior = TRUE, type, hormesis_def, x_range,
-                    xform, prob_vals, sample_size)
-  ecx_out <- unlist(ecx_out)
+  ecx_out <- unlist(lapply(to_iter, sample_ecx))
   ecx_estimate <- quantile(ecx_out, probs = prob_vals)
   names(ecx_estimate) <- clean_names(ecx_estimate)
   attr(ecx_estimate, "resolution") <- resolution

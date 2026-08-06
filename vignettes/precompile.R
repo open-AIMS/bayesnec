@@ -21,8 +21,10 @@ orig_files <- dir(path = "vignettes/", pattern = "*\\.Rmd\\.orig",
 # need to set system variable locally first -------------------------------
 Sys.setenv("NOT_CRAN" = "true")
 purrr::walk(orig_files, ~knitr::knit(.x, file_path_sans_ext(.x)))
-# Move .pdf files into correct directory so they render -------------------
-images <- dir(".", pattern = "vignette-fig.*\\.pdf$")
+# Move figures into correct directory so they render ----------------------
+# Every vignette is an html_vignette and so uses the png device: an embedded
+# pdf is rendered by the browser's pdf plugin rather than as an image.
+images <- dir(".", pattern = "vignette-fig.*\\.png$")
 success <- file.copy(from = images, to = file.path("vignettes", images),
                      overwrite = TRUE)
 # Clean up if successful --------------------------------------------------

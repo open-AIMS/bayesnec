@@ -24,9 +24,10 @@ README.Rmd
 ^tests/local$
 ^article$
 ^article*
-^vignette/*.orig$
+^vignettes/.*\.orig$
 ^\.claude$
 ^prompts$
 ^PR_.*\.md$
+^superceded$
 ^notes$
 ^dev$

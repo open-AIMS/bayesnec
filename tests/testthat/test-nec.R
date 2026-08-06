@@ -14,10 +14,10 @@ test_that("works for bayesnecfit", {
 })
 
 test_that("works for bayesmanecfit", {
-  mes <- paste0("bayesmanecfit contains ecx model types and therefore nec",
-                " estimate includes nsec values.")
+  # A mixed model set returns the model-averaged N(S)EC rather than a NEC, and
+  # says so; see ?nec.
   nec1 <- suppressMessages(nec(manec_example))
-  expect_message(nec(manec_example), mes)
+  expect_message(nec(manec_example), "model-averaged N\\(S\\)EC")
   expect_equal(length(nec1), 3)
   expect_equal(names(nec1), c("Q50", "Q2.5", "Q97.5"))
 })

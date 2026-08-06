@@ -445,12 +445,12 @@ Three pieces of existing machinery fall out for free:
 - Raw data plot correctly against the combined curve, because the zeros are on
   the same scale.
 
-### 2.1 Two routes, and which to build first
+### 2.1 Two routes — factorised and joint — and which to build first
 
 §1.6 changes the design. There are two ways to deliver this, and the lighter one
 is also the better one on model selection.
 
-**Route B — factorised (recommended first).** Call the existing `bnec()` twice
+**The factorised route (recommended first).** Call the existing `bnec()` twice
 and combine the results:
 
 ```r
@@ -485,7 +485,7 @@ What it costs:
 - The death indicator has to be constructed, which is where the reconstruction
   in §1.4 lives. That is a data-preparation helper, not a modelling problem.
 
-**Route A — joint `hurdle_gamma` family.** What the rest of §2 specifies. One
+**The joint route — a `hurdle_gamma` family.** What the rest of §2 specifies. One
 brmsfit, both components estimated together, coupling possible. Needed
 eventually; heavier on every axis; and restricted to the same-shape diagonal or
 a screened subset because the full cross is out of reach.
@@ -496,17 +496,17 @@ bnec(y ~ crf(log_x, "all") + hu(log_x, "nec3param"), data = dat,
      family = hurdle_gamma())
 ```
 
-**Recommendation: build Route B first.** It delivers the scientific capability
-sooner, with far less risk, and strictly dominates Route A on the model-space
-question. Route A becomes the later increment, justified by shared random
-effects rather than by the endpoint itself — and when it is built, Route B is
-the natural way to screen which 16 of the 529 combinations are worth fitting
-jointly.
+**Recommendation: build the factorised route first.** It delivers the
+scientific capability sooner, with far less risk, and strictly dominates the
+joint route on the model-space question. The joint route becomes the later
+increment, justified by shared random effects rather than by the endpoint
+itself — and when it is built, the factorised comparison is the natural way to
+screen which 16 of the 529 combinations are worth fitting jointly.
 
-The work items in §2.3 are written against Route A. **Route B needs almost none
-of them**, which is the point:
+The work items in §2.3 are written against the joint route. **The factorised
+route needs almost none of them**, which is the point:
 
-| §2.3 item | Route B |
+| §2.3 item | factorised route |
 |---|---|
 | `mod_fams`, `validate_family()`, `make_hu_block()` | not needed — uses `Gamma` and `bernoulli`, both already supported |
 | `check_data()` zero handling | not needed — the Gamma component is fitted to survivors, which contain no zeros |
@@ -518,9 +518,9 @@ of them**, which is the point:
 | closed-form combined NEC | **needed**, relocated from `expand_nec()` into the wrapper |
 | three-panel `plot()` | **needed**, in the wrapper |
 
-New code Route B does need: the wrapper class and its `nec()` / `ecx()` /
-`plot()` / `summary()` methods, a helper to build the death indicator from
-cohort sizes (§1.4), and the crossed-weight construction from §1.6.
+New code the factorised route does need: the wrapper class and its `nec()` /
+`ecx()` / `plot()` / `summary()` methods, a helper to build the death indicator
+from cohort sizes (§1.4), and the crossed-weight construction from §1.6.
 
 ### 2.2 The hu sub-model generator — verified
 
@@ -757,17 +757,17 @@ way.
 
 ### 2.5 Phased plan
 
-Revised around Route B (§2.1). Each increment is independently testable and
-shippable, and **the scientific capability lands at phase 3** — well before any
-of the two-parameter-block machinery.
+Revised around the factorised route (§2.1). Each increment is independently
+testable and shippable, and **the scientific capability lands at phase 3** —
+well before any of the two-parameter-block machinery.
 
 **Phase 1 — fix the latent bugs.** The `length(tt) == 0` guard in
 `extract_pars()`, and the `check_data()` zero handling made explicit and
 messaged. Settle the `check_models()` slope / 0-1 doc-code mismatch, since
-Route B's survival component depends on it. No hurdle dependency; defensible on
+the factorised route's survival component depends on it. No hurdle dependency; defensible on
 their own merits. *Small: a day, mostly tests.*
 
-**Phase 2 — the wrapper (Route B).** `bnec_hurdle()`, a class holding two
+**Phase 2 — the factorised wrapper.** `bnec_hurdle()`, a class holding two
 `bayesmanecfit`s, and a helper building the death indicator from cohort sizes.
 Target: two ordinary bayesnec fits, stored together, with the data-consistency
 checks that stop them drifting apart. *Small-to-moderate; no new statistical
@@ -779,7 +779,7 @@ weights from §1.6 (with `BB = FALSE`), three-panel `plot()`. Target: all three
 endpoints reportable, plus the full 529-model average. *Moderate. **This is the
 milestone that delivers the science.***
 
-**Phase 4 — joint family (Route A), only if coupling is needed.** Everything in
+**Phase 4 — the joint family, only if coupling is needed.** Everything in
 §2.3: `mod_fams`, `validate_family()`, `make_hu_block()`, the `check_data()`
 hurdle branch, two-block priors, two-pass initial values, `expand_nec()`
 restructuring, `dpar` arguments. Justified by shared tank-level random effects,

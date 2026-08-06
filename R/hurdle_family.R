@@ -1,11 +1,15 @@
-# Internals supporting the joint hurdle families, where the response and the
-# hurdle probability are two parameter blocks inside a single brms fit.
+# Internals supporting the joint two-block families, where the response and the
+# probability of a zero are two parameter blocks inside a single brms fit.
 #
-# The blocks are distinguished by a "hu" prefix on every non-linear parameter
-# name: `top` belongs to mu, `hutop` to hu. Everything in this file exists to
-# build, prime or take apart that second block.
+# brms names that second block "hu" for the hurdle families and "zi" for the
+# zero-inflated ones. Structurally they are the same model -- zero-inflation
+# only differs from a hurdle when the base distribution can itself emit zeros,
+# which neither Gamma nor Beta can -- so bayesnec treats them identically and
+# carries the name through rather than branching on it. The block is
+# distinguished in a fit by that name used as a prefix on every non-linear
+# parameter: `top` belongs to mu, `hutop` or `zitop` to the second block.
 
-#' Is this family one of the joint hurdle families?
+#' Is this family one of the joint two-block (hurdle / zero-inflated) families?
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
@@ -14,39 +18,75 @@
 #' @noRd
 is_hurdle_family <- function(family) {
   fam_tag <- if (inherits(family, "family")) family$family else family
-  isTRUE(fam_tag %in% hurdle_fams)
+  isTRUE(fam_tag %in% names(hurdle_fams))
 }
 
-#' Non-linear parameter names of the hu block for a given model
+#' Name brms gives the second parameter block for this family
+#'
+#' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#'
+#' @return A \code{\link[base]{character}} string, "hu" or "zi".
+#'
+#' @noRd
+hurdle_dpar <- function(family) {
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  unname(hurdle_fams[[fam_tag]])
+}
+
+#' Family whose defaults the mu block should reuse
+#'
+#' The mu block describes the response with the zeros set aside, so its priors
+#' and initial values should come from whatever family that subset looks like:
+#' Gamma for hurdle_gamma, Beta for zero_inflated_beta.
+#'
+#' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#'
+#' @return An object of class \code{\link[stats]{family}}.
+#'
+#' @importFrom stats Gamma
+#' @importFrom brms Beta
+#'
+#' @noRd
+hurdle_mu_family <- function(family) {
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  switch(unname(hurdle_mu_fams[[fam_tag]]),
+         Gamma = Gamma(link = "identity"),
+         beta = Beta(link = "identity"),
+         stop("No mu family defined for ", fam_tag, ".", call. = FALSE))
+}
+
+#' Non-linear parameter names of the second block for a given model
 #'
 #' @param model A \code{\link[base]{character}} string naming a bayesnec model.
+#' @param dpar The second block's name, "hu" or "zi".
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
 #' @noRd
-hu_pars <- function(model) {
-  paste0("hu", names(get(paste0("bf_", model))$pforms))
+hu_pars <- function(model, dpar) {
+  paste0(dpar, names(get(paste0("bf_", model))$pforms))
 }
 
-#' Build the hu sub-model for a bayesnec equation
+#' Build the zero-probability sub-model for a bayesnec equation
 #'
-#' Derives the hurdle-probability sub-model mechanically from an existing
-#' bayesnec equation rather than requiring a hand-written counterpart for each
-#' of the 23. Every non-linear parameter is given a \code{hu} prefix and the
-#' right-hand side is wrapped as \code{1 - (...)}, so that the *survival* curve
-#' declines with the predictor -- matching the sign convention of every
-#' bayesnec equation -- while \code{hu} itself, the probability of a zero,
-#' increases.
+#' Derives the second block mechanically from an existing bayesnec equation
+#' rather than requiring a hand-written counterpart for each of the 23. Every
+#' non-linear parameter is given the block's prefix and the right-hand side is
+#' wrapped as \code{1 - (...)}, so that the curve being modelled is the
+#' probability of a *non*-zero -- declining with the predictor, matching the
+#' sign convention of every bayesnec equation -- while the block itself, the
+#' probability of a zero, increases.
 #'
 #' @param model A \code{\link[base]{character}} string naming a bayesnec model.
+#' @param dpar The second block's name, "hu" or "zi".
 #'
-#' @return A \code{\link[base]{list}} with elements \code{nlf} (the \code{hu}
+#' @return A \code{\link[base]{list}} with elements \code{nlf} (the block's
 #' formula), \code{lf} (the parameter formula) and \code{pars}.
 #'
 #' @importFrom stats as.formula
 #'
 #' @noRd
-make_hu_block <- function(model) {
+make_hu_block <- function(model, dpar) {
   bf_obj <- get(paste0("bf_", model))
   pars <- names(bf_obj$pforms)
   rhs <- deparse1(bf_obj$formula[[3]])
@@ -55,18 +95,19 @@ make_hu_block <- function(model) {
   # because bayesnec parameter names are substrings of one another (bot/top).
   for (p in pars[order(nchar(pars), decreasing = TRUE)]) {
     rhs <- gsub(paste0("(?<![[:alnum:]_])", p, "(?![[:alnum:]_])"),
-                paste0("hu", p), rhs, perl = TRUE)
+                paste0(dpar, p), rhs, perl = TRUE)
   }
-  list(nlf = as.formula(paste0("hu ~ 1 - (", rhs, ")")),
-       lf = as.formula(paste0(paste0("hu", pars, collapse = " + "), " ~ 1")),
-       pars = paste0("hu", pars))
+  list(nlf = as.formula(paste0(dpar, " ~ 1 - (", rhs, ")")),
+       lf = as.formula(paste0(paste0(dpar, pars, collapse = " + "), " ~ 1")),
+       pars = paste0(dpar, pars))
 }
 
-#' Append the hu block to a brms formula
+#' Append the zero-probability block to a brms formula
 #'
 #' @param brms_bf An object of class \code{\link[brms]{brmsformula}}.
 #' @param model A \code{\link[base]{character}} string naming a bayesnec model.
 #' @param x_var The predictor column name, substituted for the generic "x".
+#' @param dpar The second block's name, "hu" or "zi".
 #'
 #' @return An object of class \code{\link[brms]{brmsformula}}.
 #'
@@ -74,20 +115,21 @@ make_hu_block <- function(model) {
 #' @importFrom stats as.formula
 #'
 #' @noRd
-add_hu_block <- function(brms_bf, model, x_var) {
-  hb <- make_hu_block(model)
+add_hu_block <- function(brms_bf, model, x_var, dpar) {
+  hb <- make_hu_block(model, dpar)
   rhs <- substitute_x_in_formula(x_var, deparse1(hb$nlf[[3]]))
-  brms_bf + nlf(as.formula(paste0("hu ~ ", rhs))) + lf(hb$lf)
+  brms_bf + nlf(as.formula(paste0(dpar, " ~ ", rhs))) + lf(hb$lf)
 }
 
-#' Survival proportion at each unique predictor value
+#' Proportion of non-zero responses at each unique predictor value
 #'
-#' Used to prime the hu block's initial-value search: the hu sub-model is
-#' written as \code{1 - survival}, so the curve being initialised is survival.
+#' Used to prime the second block's initial-value search: the sub-model is
+#' written as \code{1 - <non-zero probability>}, so the curve being initialised
+#' is that probability.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector.
-#' @param response A \code{\link[base]{numeric}} vector; zero denotes a
-#' non-survivor.
+#' @param response A \code{\link[base]{numeric}} vector; zero denotes the
+#' hurdle, e.g. an individual that did not survive.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{x} and \code{y}.
 #'
@@ -102,14 +144,14 @@ survival_by_x <- function(predictor, response) {
   list(x = ux, y = pmin(pmax(p, eps), 1 - eps))
 }
 
-#' Split a hurdle response into its two component views
+#' Split a two-block response into its two component views
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector.
 #' @param response A \code{\link[base]{numeric}} vector.
 #'
 #' @return A \code{\link[base]{list}} with a \code{mu} element (predictor and
-#' response restricted to survivors) and a \code{hu} element (unique predictor
-#' values and the survival proportion at each).
+#' response restricted to non-zeros) and a \code{hu} element (unique predictor
+#' values and the proportion non-zero at each).
 #'
 #' @noRd
 split_hurdle_response <- function(predictor, response) {
