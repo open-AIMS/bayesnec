@@ -1,3 +1,37 @@
+# bayesnec 2.1.3.6
+
+- New family `beta_ub()`, for a continuous positive response with an upper
+  bound that is estimated rather than taken from the data. Growth-rate and
+  cell-yield endpoints are compressed against an experimental ceiling near the
+  control, so an unbounded family misstates the control variance; the
+  conventional fix is to divide by `max(y)` and fit a Beta, which buys a
+  bounded variance function at the cost of dividing every observation by an
+  extreme order statistic (Ritz et al. 2026). This family gives the ceiling its
+  own parameter instead: `y ~ U * Beta(mu/U * phi, (1 - mu/U) * phi)`, so the
+  variance vanishes at both ends while `top` stays the natural-scale control
+  response rather than doubling as the support bound. The response is passed to
+  `brms` exactly as supplied.
+- `bnec()` gains `U_loc` and `U_scale`, the prior on that ceiling. They should
+  come from the biology or from historical controls, never from the dataset
+  under analysis. Supplying one without the other is an error; supplying
+  neither falls back to a half-normal centred just above the largest observed
+  response, with a message saying so, because that is a softer form of the
+  practice the family exists to avoid. `U_loc` at or below the observed maximum
+  warns: the prior then sits entirely in the region the likelihood rejects.
+- Validated before release. Simulation-based calibration over 256 replicates
+  gives uniform ranks on all five parameters with no divergent transitions. A
+  coverage study against the `max(y)` practice found that arm covering the
+  control-level `top` at 0.88 against a nominal 0.95 with three control
+  replicates, with the narrowest interval of those compared, while ECx and NEC
+  coverage was near nominal everywhere. So the gain is an honest interval at
+  the top of the curve, not a different toxicity estimate -- which follows from
+  ECx being a relative decline from the fitted `top`. Two limits are documented
+  rather than papered over: the data only inform `U` once the control response
+  reaches about 70% of it, and a response that decays past the floating-point
+  floor over the observed predictor range cannot be fitted. See
+  `notes/beta_ub_phase0.md` and `notes/beta_ub_phase8.md`.
+  See [#173](https://github.com/open-AIMS/bayesnec/issues/173).
+
 # bayesnec 2.1.3.5
 
 - Added the `"hurdle_gamma"` family to `bnec()`, for concentration-response

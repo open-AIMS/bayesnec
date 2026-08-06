@@ -167,6 +167,39 @@
 #' \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
 #' development site if your required family is not currently available.
 #'
+#' \bold{Responses with a ceiling: \code{beta_ub}}
+#'
+#' Growth-rate and cell-yield endpoints are compressed against an experimental
+#' ceiling near the control, so an unbounded family such as Gamma misstates the
+#' control variance. The conventional workaround is to divide the response by
+#' its observed maximum and fit a Beta, which buys a bounded, mean-dependent
+#' variance function at the cost of dividing every observation by an extreme
+#' order statistic --- correlating them, discarding the uncertainty in the
+#' divisor and distorting the control-level estimate (Ritz et al. 2026).
+#'
+#' \code{family = }\code{\link{beta_ub}}\code{()} gives the ceiling its own
+#' parameter instead. The response is modelled as a beta variate scaled to
+#' \code{(0, U)}, so the variance vanishes at both ends while \code{top}
+#' remains the natural-scale control response rather than doubling as the
+#' support bound. The response is passed to \pkg{brms} exactly as supplied ---
+#' no divisor anywhere.
+#'
+#' The ceiling needs a prior, supplied through \code{U_loc} and \code{U_scale},
+#' and it should come from the biology or from historical controls rather than
+#' from the dataset being analysed. This matters more than it might appear:
+#' the data only inform \code{U} once the control response reaches roughly 70%
+#' of it, and below that the posterior for \code{U} is its prior. Toxicity
+#' estimates are far more robust --- a two-fold error in \code{U_loc} moved
+#' NEC, EC10 and EC50 by under 2% in simulation --- because \code{ecx(type =
+#' "absolute")} is a relative decline from the fitted \code{top}. What the
+#' ceiling changes is the interval at the top of the curve. See
+#' \code{\link{beta_ub}} for the design conditions and the validation evidence.
+#'
+#' The family requires a strictly positive response and is never selected
+#' automatically: a positive continuous response is still treated as Gamma
+#' unless \code{beta_ub()} is asked for by name, because the ceiling prior is
+#' something only the user can supply.
+#'
 #' \bold{Hurdle families}
 #'
 #' The family "hurdle_gamma" fits data where exposure both kills individuals
@@ -253,9 +286,14 @@
 #' doi: 10.1002/etc.5610.
 #'
 #' Fisher R, Fox DR, Negri AP, van Dam J, Flores F, Koppel D (2023). Methods for
-#' estimating no-effect toxicity concentrations in ecotoxicology. Integrated 
+#' estimating no-effect toxicity concentrations in ecotoxicology. Integrated
 #' Environmental Assessment and Management. doi:10.1002/ieam.4809.
-#' 
+#'
+#' Ritz C, Gerhard D, Streibig JC (2026). Better alternatives than normalizing
+#' to control: case studies with algae toxicity and dose-response analysis.
+#' Environmental and Ecological Statistics, 33, 35-55.
+#' doi:10.1007/s10651-025-00698-y.
+#'
 #' Fox DR (2010). A Bayesian Approach for Determining the No Effect
 #' Concentration and Hazardous Concentration in Ecotoxicology. Ecotoxicology
 #' and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.

@@ -49,13 +49,13 @@ the \code{U_loc} and \code{U_scale} arguments.
 
 \bold{When the data can identify \code{U}.} The simulation study in
 \code{notes/beta_ub_phase0.md} varied how much of the \code{0..U} range the
-fitted curve spans. The control response must reach roughly 70\\% of the
+fitted curve spans. The control response must reach roughly 70\% of the
 ceiling before the data say anything about where the ceiling is, and only
-near 90\\% do they say much: at \code{top/U = 0.2} the posterior for \code{U}
+near 90\% do they say much: at \code{top/U = 0.2} the posterior for \code{U}
 equals its prior to three decimal places. How finely the predictor is sampled
 barely matters. Toxicity estimates are far more robust than \code{U} itself
 --- a two-fold misspecification of \code{U_loc} moved NEC, EC10 and EC50 by
-under 2\\% --- because \code{ecx(type = "absolute")} is a relative decline
+under 2\% --- because \code{ecx(type = "absolute")} is a relative decline
 from the fitted \code{top}, and \code{top} is identified by the control data
 whatever \code{U} does.
 
@@ -64,6 +64,29 @@ here but a different model: see \code{\link{bnec}} on the hurdle families,
 and note that a response which can reach or pass zero (a specific growth
 rate, an increment) wants a family on the real line rather than a bounded
 one.
+
+\bold{The response must also stay numerically representable.} The fitted
+mean enters the likelihood as a beta shape parameter \code{mu/U * phi}, so a
+curve that decays past the floating-point floor over the observed predictor
+range takes that shape to zero with it and the density becomes degenerate.
+In practice this bites when the response falls by more than roughly ten
+orders of magnitude between the control and the highest concentration. It
+presents unhelpfully --- as a failure to find initial values rather than as a
+clear message --- so it is worth recognising: if the fitted curve is
+effectively zero well before the last concentration, restrict the predictor
+range or use an unbounded family. The evidence is in
+\code{notes/beta_ub_phase8.md}.
+
+\bold{Calibration.} Simulation-based calibration over 256 replicates gives
+uniform rank statistics for all five parameters, with no divergent
+transitions. A coverage study against the practice this family replaces ---
+dividing by \code{max(y)} and fitting a Beta --- found that arm covering the
+control-level \code{top} at 0.88 against a nominal 0.95 with three control
+replicates, with the narrowest interval of those compared, while its point
+estimates barely moved. Coverage of ECx and NEC was near nominal for every
+approach tested. The gain from modelling the ceiling is therefore an honest
+interval at the top of the curve rather than a different toxicity estimate,
+which follows from ECx being a relative decline from the fitted \code{top}.
 }
 \examples{
 beta_ub()
