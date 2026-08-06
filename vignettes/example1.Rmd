@@ -176,7 +176,7 @@ autoplot(exp_1, xform = exp)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-binom-1.pdf" title="plot of chunk exmp1-binom" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-binom-1.png" alt="plot of chunk exmp1-binom" width="60%" />
 <p class="caption">plot of chunk exmp1-binom</p>
 </div>
 
@@ -212,7 +212,7 @@ autoplot(exp_1b, xform = exp)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-bbinom-1.pdf" title="plot of chunk exmp1-bbinom" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-bbinom-1.png" alt="plot of chunk exmp1-bbinom" width="60%" />
 <p class="caption">plot of chunk exmp1-bbinom</p>
 </div>
 
@@ -311,7 +311,7 @@ autoplot(exp_2, xform = function(x)exp(x) - 1)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-beta-1.pdf" title="plot of chunk exmp1-beta" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-beta-1.png" alt="plot of chunk exmp1-beta" width="60%" />
 <p class="caption">plot of chunk exmp1-beta</p>
 </div>
 
@@ -357,7 +357,7 @@ autoplot(exp_3)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-poisson-1.pdf" title="plot of chunk exmp1-poisson" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-poisson-1.png" alt="plot of chunk exmp1-poisson" width="60%" />
 <p class="caption">plot of chunk exmp1-poisson</p>
 </div>
 
@@ -388,7 +388,7 @@ autoplot(exp_3b)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-negbinbase-1.pdf" title="plot of chunk exmp1-negbinbase" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%" />
 <p class="caption">plot of chunk exmp1-negbinbase</p>
 </div>
 
@@ -416,7 +416,7 @@ autoplot(exp_4)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp1-gammabase-1.pdf" title="plot of chunk exmp1-gammabase" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp1-gammabase-1.png" alt="plot of chunk exmp1-gammabase" width="60%" />
 <p class="caption">plot of chunk exmp1-gammabase</p>
 </div>
 

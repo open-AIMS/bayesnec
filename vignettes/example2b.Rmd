@@ -111,7 +111,7 @@ Strictly speaking, models with a linear hormesis increase are not suitable for m
 
 ## *EC~x~* models
 
-<img src="vignette-fig-exmp2b-theoretical_ecx_curves.pdf" title="" alt="" width="100%"/>
+<img src="vignette-fig-exmp2b-theoretical_ecx_curves.png" alt="Representative shapes of the currently implemented ECx models." width="100%"/>
 
 #### ecxlin
 
@@ -320,7 +320,7 @@ The model is 0-bounded, thus not suitable for Gaussian response data or the use 
 
 ## *NEC* models
 
-<img src="vignette-fig-exmp2b-theoretical_nec_curves.pdf" title="" alt="" width="100%"/>
+<img src="vignette-fig-exmp2b-theoretical_nec_curves.png" alt="Representative shapes of the currently implemented NEC models." width="100%"/>
 
 #### neclin
 

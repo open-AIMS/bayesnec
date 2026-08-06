@@ -1,3 +1,7 @@
+# These two figures are embedded directly in example2b, an html_vignette, so
+# they are written as png rather than pdf: a browser renders an <img> pointing
+# at a pdf as nothing at all. The LaTeX article keeps its own pdf copies, which
+# article/render_tex_pdf.R generates separately.
 library(tidyverse)
 rm(list = ls())
 source("R/pred_equations.R")
@@ -58,8 +62,8 @@ ecx_plots <- ggplot(data = ecx_data, mapping = aes(x, y)) +
   theme_classic() +
   theme(axis.ticks = element_blank(),
         axis.text = element_blank())
-ggsave("vignettes/vignette-fig-exmp2b-theoretical_ecx_curves.pdf",
-       ecx_plots, width = 7.8, height = 6.4)
+ggsave("vignettes/vignette-fig-exmp2b-theoretical_ecx_curves.png",
+       ecx_plots, width = 7.8, height = 6.4, dpi = 150)
 
 nec_levels <- c(
   "neclin", "nec3param", "nec4param", "nechorme", "nechormepwr", "neclinhorme",
@@ -82,5 +86,5 @@ nec_plots <- ggplot(data = nec_data, mapping = aes(x, y)) +
   theme_classic() +
   theme(axis.ticks = element_blank(),
         axis.text = element_blank())
-ggsave("vignettes/vignette-fig-exmp2b-theoretical_nec_curves.pdf",
-       nec_plots, width = 7.8, height = 4.88)
+ggsave("vignettes/vignette-fig-exmp2b-theoretical_nec_curves.png",
+       nec_plots, width = 7.8, height = 4.88, dpi = 150)

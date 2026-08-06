@@ -1,4 +1,4 @@
-# bayesnec 2.1.3.8
+# bayesnec 2.1.3.10
 
 - Guidance against normalising the response to the control before fitting.
   Ritz, Gerhard & Streibig (2026) show that the conventional
@@ -26,6 +26,67 @@
   1269 columns and column pairs from 33 real datasets, in which it did correctly
   flag four normalised datasets. See `notes/normalisation_detection.md`.
   See [#173](https://github.com/open-AIMS/bayesnec/issues/173).
+
+# bayesnec 2.1.3.9
+
+- `bayesnecformula` now supports the `brms` `cens()` aterm, so a response that is
+  rounded at the recording resolution, reported below a limit of detection, or
+  deliberately coarsened at a boundary can be fitted as censored rather than
+  substituted. Both the `cens(indicator)` and the interval
+  `cens(indicator, upper_bound)` forms are carried through `check_formula()` into
+  `model.frame()` output and registered in the `bnec_pop` attribute as
+  `cens_var` and `cens_y2_var`, alongside `trials_var`. Previously the term was
+  accepted with a warning and then silently dropped, leaving an ordinary
+  uncensored fit. See
+  [#181](https://github.com/open-AIMS/bayesnec/issues/181).
+- A censored row is exempt from the boundary shifts `bnec()` applies to zeros in
+  Gamma and Beta responses and to ones in Beta responses. The recorded value on
+  a censored row is a declared bound, not a boundary artefact, so shifting it
+  would restate the bound the user chose. Uncensored rows are shifted exactly as
+  before. Where a row is censored at a value the family excludes — left-censored
+  at 0 under Gamma or Beta, right-censored at 1 under Beta — `bnec()` now stops
+  with an explanation instead, since the censored likelihood contribution there
+  is `F(0) = 0` and Stan would otherwise fail at initialisation with nothing to
+  point at.
+- Fixed `bayesnecformula` losing any two-argument aterm written on its own. The
+  aterm chain was split by treating every length-three call as an `a + b` pair,
+  which destructured the aterm call itself, so `y | cens(indicator, upper_bound)`
+  parsed as though no aterm had been given. Only formulas with a single
+  two-argument aterm were affected.
+- `check_formula()` no longer reports `cens()` as an unvalidated aterm, and now
+  warns when a `cens()` term contains no variable — as in `cens("left")`, which
+  `brms` recycles into a declaration that every row of the response is censored.
+- New vignette, *Censored responses* (`vignette("example7")`), covering when a
+  recorded value is a bound rather than a measurement, why substitution biases
+  the fit in a concentration-dependent direction rather than only locally, how to
+  encode censoring so that the response column carries the bound, and the
+  distinction between a censored zero and a structural one that
+  `vignette("example6")` deals with.
+- New dataset `alga`: growth inhibition tests on *Cladocopium proliferum* and
+  *Rhodomonas salina* against two contaminants, consolidated from four tests.
+  Cell density is counted to a resolution of 10, so a recorded density of zero
+  is a censored count rather than an absence, and the source substituted a
+  growth rate of zero for those cultures — placing total loss of the population
+  mid-range, above every genuinely negative value, and turning a monotonic
+  concentration-response into a non-monotonic one. Both features are retained
+  rather than cleaned away, for
+  [#173](https://github.com/open-AIMS/bayesnec/issues/173) and
+  [#181](https://github.com/open-AIMS/bayesnec/issues/181).
+
+# bayesnec 2.1.3.8
+
+- Vignette figures are now written as png rather than pdf. Every vignette is an
+  `rmarkdown::html_vignette`, but the five older ones set `dev = "pdf"`, so
+  pandoc embedded each figure with `<embed type="application/pdf">` and browsers
+  rendered it through their built-in pdf viewer — inside a dark panel with its
+  own page-number box, zoom controls and toolbar, at whatever size the viewer
+  chose rather than the requested width. `example2b` was worse: it hand-writes
+  its two theoretical-curve figures as `<img src="....pdf">`, which browsers do
+  not render at all. This affected the published documentation, not just locally
+  built vignettes. `example6` already used the png device and is unchanged. The
+  LaTeX article keeps vector figures, now taken from the pdf copies
+  `article/render_tex_pdf.R` writes alongside it rather than from the vignettes.
+  See [#178](https://github.com/open-AIMS/bayesnec/issues/178).
 
 # bayesnec 2.1.3.7
 
