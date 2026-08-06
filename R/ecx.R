@@ -82,9 +82,9 @@
 #' By Jensen's inequality applied to \code{y -> 1/y} the inhibition trend is
 #' biased downwards, and the resulting effective doses are biased upwards.
 #' Ritz et al. (2026) report, for an ED10 with six control replicates, a bias
-#' of 6.8\% and a coefficient of variation of 26.4\% under normalisation
-#' against 2.1\% and 12.7\% for the same quantity estimated from the raw
-#' response, with nominal 95\% intervals covering at 90\%. Roughly half the
+#' of 6.8% and a coefficient of variation of 26.4% under normalisation
+#' against 2.1% and 12.7% for the same quantity estimated from the raw
+#' response, with nominal 95% intervals covering at 90%. Roughly half the
 #' reported variability is an artefact of the normalisation itself.
 #'
 #' Nothing is lost by not normalising. The concentration at which inhibition

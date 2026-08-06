@@ -5,7 +5,7 @@
 #' Genuine proportion data derived from counts (survival, fertilisation,
 #' bleaching scores) lies on such a grid; a continuous response divided by a
 #' continuous maximum does not. This is the discriminator that makes the
-#' divided-by-maximum check usable: without it the check fires on up to 38\% of
+#' divided-by-maximum check usable: without it the check fires on up to 38% of
 #' simulated genuine count proportions, purely because one replicate happened
 #' to record every individual as alive. With it the false positive rate is zero
 #' in both the simulation and the real-data sweep (see
