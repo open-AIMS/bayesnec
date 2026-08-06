@@ -213,6 +213,29 @@ Other families can be considered as required, please raise an
 \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
 development site if your required family is not currently available.
 
+\bold{Supply the raw response, not one normalised to the control}
+
+\code{\link{bnec}} expects the response as measured. Do not convert it to
+percent inhibition, percent of control, or percent of the observed maximum
+beforehand. Dividing every observation by the same estimated quantity
+correlates them, discards the uncertainty in the divisor and biases
+effective doses upwards (Ritz et al. 2026). Nothing is gained by doing so,
+because \code{ecx(type = "absolute")} -- the default -- already measures the
+decline relative to the fitted control value, one posterior draw at a time,
+which is the estimand that paper recommends. See \code{\link{ecx}} for the
+full argument, including why dividing by the observed maximum is worse than
+dividing by the control mean.
+
+The "Beta" and "zero_inflated_beta" families are the case where a divisor
+may genuinely be needed, since both require a response on the open interval
+(0, 1). Where one is needed it must be a constant fixed in advance of the
+analysis -- a physiological or design ceiling, or a value from accumulated
+historical controls -- and never a quantity computed from the dataset being
+analysed. Dividing by a constant is harmless; dividing by a random quantity
+is the problem. Responses that are already proportions on their own terms,
+such as the maximum quantum yield in \code{\link{herbicide}} or a survival
+fraction, need no divisor at all.
+
 \bold{Two-block (hurdle and zero-inflated) families}
 
 The families "hurdle_gamma" and "zero_inflated_beta" fit data where exposure
@@ -234,14 +257,11 @@ distribution can itself produce zeros, which neither the Gamma nor the Beta
 can, so the two are the same model and \pkg{bayesnec} treats them alike.
 
 Where a "zero_inflated_beta" response has been obtained by dividing through
-by some maximum, note that the divisor must be a constant fixed in advance
--- a design ceiling or a historical value -- and not one computed from the
-dataset being analysed. Dividing by an estimated quantity such as the
-observed maximum or the control mean induces correlation between all
-observations, biases effective doses and understates their uncertainty; see
-Ritz et al. (2026). Where no such constant is available, prefer modelling
-the raw response with "hurdle_gamma" and reading effective concentrations
-off the fitted curve via \code{\link{ecx}}.
+by some maximum, the divisor rule above applies: it must be a constant fixed
+in advance, not one computed from the dataset being analysed. Where no such
+constant is available, prefer modelling the raw response with
+"hurdle_gamma" and reading effective concentrations off the fitted curve via
+\code{\link{ecx}}.
 
 Three toxicity estimates follow from one fit: the response of survivors
 (\code{mu}), survival itself (\code{1 - hu}), and the combined endpoint
