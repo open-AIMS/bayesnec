@@ -20,7 +20,11 @@ knitr::opts_chunk$set(
   fig.asp = 0.8,
   out.width = "60%",
   fig.align = "center",
-  dev = "pdf",
+  # png rather than pdf: this is an html_vignette, and an embedded pdf is
+  # rendered by the browser's pdf plugin, complete with its own toolbar and
+  # scrollbars, instead of as an image.
+  dev = "png",
+  dpi = 150,
   eval = identical(Sys.getenv("NOT_CRAN"), "true")
 )
 ```

@@ -1,3 +1,18 @@
+# bayesnec 2.1.3.8
+
+- Vignette figures are now written as png rather than pdf. Every vignette is an
+  `rmarkdown::html_vignette`, but the five older ones set `dev = "pdf"`, so
+  pandoc embedded each figure with `<embed type="application/pdf">` and browsers
+  rendered it through their built-in pdf viewer — inside a dark panel with its
+  own page-number box, zoom controls and toolbar, at whatever size the viewer
+  chose rather than the requested width. `example2b` was worse: it hand-writes
+  its two theoretical-curve figures as `<img src="....pdf">`, which browsers do
+  not render at all. This affected the published documentation, not just locally
+  built vignettes. `example6` already used the png device and is unchanged. The
+  LaTeX article keeps vector figures, now taken from the pdf copies
+  `article/render_tex_pdf.R` writes alongside it rather than from the vignettes.
+  See [#178](https://github.com/open-AIMS/bayesnec/issues/178).
+
 # bayesnec 2.1.3.7
 
 - New vignette, *Hurdle and zero-inflated concentration-response models*
