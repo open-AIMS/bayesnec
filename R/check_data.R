@@ -42,8 +42,41 @@ check_data <- function(data, family, model) {
             "of the predictor column. bnec only allows for ",
             "response values to decline with increasing values of predictor.")
   }
-  fam_tag <- family$family
+  # brms reports every custom family as "custom", so the effective tag has to
+  # come from family$name for those. Everything below that switches on fam_tag
+  # is unchanged for the built-in families.
+  fam_tag <- family_tag(family)
   x_type <- set_distribution(x, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
+  ymax <- NULL
+  if (is_beta_ub_family(family)) {
+    # No proportion guard here, and no nudge of any kind. The response is not a
+    # proportion: its ceiling is a parameter, so a maximum at 1 is unremarkable
+    # and moving it would be the very thing this family exists to avoid.
+    if (any(y < 0)) {
+      stop("The beta_ub family requires a strictly positive response, but",
+           " yours contains negative values. A response that can genuinely go",
+           " negative -- a specific growth rate, an increment, a yield -- needs",
+           " a family on the real line; truncating or flooring it at zero to",
+           " fit a bounded family introduces a bias of its own. See",
+           " https://github.com/open-AIMS/bayesnec/issues/175.",
+           call. = FALSE)
+    }
+    if (any(y == 0)) {
+      stop("The beta_ub family requires a strictly positive response, but",
+           " yours contains zeros. If those zeros mean the response failed",
+           " entirely -- colonies that died, cultures that crashed -- they are",
+           " a hurdle, and family = \"hurdle_gamma\" models them explicitly.",
+           " If instead they are a rate that reached zero, or a measurement",
+           " floored at the recording limit, neither a hurdle nor a bounded",
+           " family is right. See",
+           " https://github.com/open-AIMS/bayesnec/issues/175.",
+           call. = FALSE)
+    }
+    # Stashed rather than recomputed downstream: check_data may have altered
+    # the predictor, and post-processing must see the same ceiling reference
+    # the likelihood used even if the data are later subset.
+    ymax <- max(y)
+  }
   if (min(x) == 0 & x_type == "Gamma") {
     min_val <- min(x[x > 0])
     data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)
@@ -91,5 +124,5 @@ check_data <- function(data, family, model) {
   if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
     mod_dat$trials <- retrieve_var(data, "trials_var", error = TRUE)
   }
-  list(mod_dat = mod_dat, family = family)
+  list(mod_dat = mod_dat, family = family, ymax = ymax)
 }

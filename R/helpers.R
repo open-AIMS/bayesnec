@@ -23,6 +23,46 @@ check_custom_name <- function(family) {
   custom_name
 }
 
+#' family_tag
+#'
+#' The tag a family should be recognised by.
+#'
+#' \pkg{brms} reports \code{family$family} as "custom" for every custom family,
+#' so code that switches on that tag cannot tell one custom family from
+#' another. This resolves to \code{family$name} in that case. For the built-in
+#' families it returns \code{family$family} unchanged, so existing call sites
+#' keep their behaviour exactly. A bare character tag passes through, which is
+#' what several callers already rely on.
+#'
+#' @param family An object of class \code{\link[stats]{family}} or a
+#' \code{\link[base]{character}} tag.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+family_tag <- function(family) {
+  if (!inherits(family, "family")) {
+    return(as.character(family))
+  }
+  if (inherits(family, "customfamily")) {
+    family$name
+  } else {
+    family$family
+  }
+}
+
+#' is_beta_ub_family
+#'
+#' @param family An object of class \code{\link[stats]{family}} or a
+#' \code{\link[base]{character}} tag.
+#'
+#' @return A \code{\link[base]{logical}}.
+#'
+#' @noRd
+is_beta_ub_family <- function(family) {
+  isTRUE(family_tag(family) == "beta_ub")
+}
+
 #' extract_pars
 #' @param x A \code{\link[base]{character}} vector.
 #' @param model_fit An object of class \code{\link[brms]{brmsfit}}.

@@ -42,7 +42,13 @@ mod_fams <- c(gaussian = "gaussian",
               binomial = "binomial",
               beta_binomial = "beta_binomial",
               beta = "Beta",
-              hurdle_gamma = "hurdle_gamma")
+              hurdle_gamma = "hurdle_gamma",
+              # A brms custom family, so brms reports family$family as "custom"
+              # and family_tag() resolves it back to this name. Never guessed by
+              # set_distribution(): a positive continuous response stays Gamma
+              # unless the user asks for beta_ub explicitly, since the family
+              # needs an elicited ceiling prior that only the user can supply.
+              beta_ub = "beta_ub")
 
 # Families with a second parameter block for the hurdle probability. Kept
 # separate from mod_fams so that code can ask "is this a hurdle family?"

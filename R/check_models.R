@@ -15,7 +15,9 @@
 #'
 #' @noRd
 check_models <- function(model, family, data) {
-  fam_tag <- family$family
+  # Custom families all report family$family as "custom", so the tag has to
+  # come from family$name for those. Unchanged for the built-in families.
+  fam_tag <- family_tag(family)
   link_tag <- family$link
   if (link_tag %in% c("logit", "log")) {
     use_model <-  model[!model %in% mod_groups$zero_bounded]
@@ -70,8 +72,14 @@ check_models <- function(model, family, data) {
       model <- use_model
     }
   }
+  # beta_ub sits with the zero-bounded families rather than with Beta. Its
+  # response is positive and continuous but not a proportion: the ceiling is a
+  # parameter, so nechormepwr01 -- the 0-1 bounded hormesis equation -- is as
+  # inappropriate here as it is for a Gamma, and the linear equations are
+  # dropped for the same reason as there, since they can take the fitted curve
+  # negative.
   if (link_tag == "identity" &
-        fam_tag %in% c("Gamma", "poisson", "negbinomial")) {
+        fam_tag %in% c("Gamma", "poisson", "negbinomial", "beta_ub")) {
     use_model <-  model[!model %in% c("neclin", "neclinhorme",
                                       "ecxlin", "nechormepwr01")]
     drop_model <- setdiff(model, use_model)

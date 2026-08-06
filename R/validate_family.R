@@ -25,7 +25,9 @@ validate_family <- function(family) {
     stop("Argument \"family\" either is not an actual family, ",
          "or is of incorrect class.")
   }
-  fam_tag <- family$family
+  # brms reports every custom family as "custom", so the tag has to come from
+  # family$name for those. Unchanged for the built-in families.
+  fam_tag <- family_tag(family)
   if (is_hurdle_family(fam_tag) && !identical(family$link_hu, "identity")) {
     # The hu sub-model is written as `1 - <survival curve>` on the link scale,
     # so anything other than an identity link_hu would pass that expression
