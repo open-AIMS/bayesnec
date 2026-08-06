@@ -106,7 +106,7 @@ check_priors(exmp_uninformative)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp3-checkpriors-uninformative-1.pdf" title="plot of chunk exmp3-checkpriors-uninformative" width="100%" type="application/pdf" />
+<img src="vignette-fig-exmp3-checkpriors-uninformative-1.png" alt="plot of chunk exmp3-checkpriors-uninformative" width="100%" />
 <p class="caption">plot of chunk exmp3-checkpriors-uninformative</p>
 </div>
 
@@ -116,7 +116,7 @@ check_priors(exmp_regularizing)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp3-checkpriors-regularizing-1.pdf" title="plot of chunk exmp3-checkpriors-regularizing" width="100%" type="application/pdf" />
+<img src="vignette-fig-exmp3-checkpriors-regularizing-1.png" alt="plot of chunk exmp3-checkpriors-regularizing" width="100%" />
 <p class="caption">plot of chunk exmp3-checkpriors-regularizing</p>
 </div>
 
@@ -160,7 +160,7 @@ check_priors(exmp_a)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp3-checkpriors-1.pdf" title="plot of chunk exmp3-checkpriors" width="100%" type="application/pdf" />
+<img src="vignette-fig-exmp3-checkpriors-1.png" alt="plot of chunk exmp3-checkpriors" width="100%" />
 <p class="caption">plot of chunk exmp3-checkpriors</p>
 </div>
 
