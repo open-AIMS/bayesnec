@@ -29,10 +29,15 @@ check_custom_name <- function(family) {
 #' @return A named \code{\link[base]{numeric}} vector or NA.
 #' @importFrom brms fixef
 #' @noRd
-extract_pars <- function(x, model_fit) {
+extract_pars <- function(x, model_fit, prefix = "") {
   fef <- fixef(model_fit, robust = TRUE)
-  tt <- fef[grep(x, rownames(fef)), c("Estimate", "Q2.5", "Q97.5")]
-  if (is.na(tt["Estimate"])) {
+  # Anchored. Unanchored matching breaks for hurdle fits, where "top" also
+  # matches "hutop_Intercept": the result becomes a 2-row matrix, tt["Estimate"]
+  # returns NA, every parameter comes back NA, and expand_nec() then
+  # misclassifies a nec model as an ecx one and reports an NSEC as the NEC.
+  tt <- fef[grep(paste0("^", prefix, x, "_"), rownames(fef)),
+            c("Estimate", "Q2.5", "Q97.5")]
+  if (length(tt) == 0 || is.na(tt["Estimate"])) {
     NA
   } else {
     tt
@@ -544,14 +549,28 @@ add_brm_defaults <- function(
     if ("seed" %in% names(brm_args)) {
       init_seed <- brm_args$seed
     }
-    inits <- make_good_inits(
-      model,
-      predictor,
-      response_link,
-      priors = brm_args$prior,
-      chains = brm_args$chains,
-      seed = init_seed
-    )
+    inits <- if (is_hurdle_family(family)) {
+      # Two blocks with differently-scaled responses, primed separately then
+      # merged. response_link_scale() is a no-op for hurdle_gamma under an
+      # identity link, so the raw response is what the split needs.
+      make_good_hurdle_inits(
+        model,
+        predictor,
+        response,
+        priors = brm_args$prior,
+        chains = brm_args$chains,
+        seed = init_seed
+      )
+    } else {
+      make_good_inits(
+        model,
+        predictor,
+        response_link,
+        priors = brm_args$prior,
+        chains = brm_args$chains,
+        seed = init_seed
+      )
+    }
     if (length(inits) == 1 && "random" %in% names(inits)) {
       inits <- inits$random
     }

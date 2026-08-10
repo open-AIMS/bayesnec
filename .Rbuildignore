@@ -28,3 +28,4 @@ README.Rmd
 ^\.claude$
 ^prompts$
 ^PR_.*\.md$
+^notes$

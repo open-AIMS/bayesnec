@@ -50,6 +50,26 @@ check_models <- function(model, family, data) {
       model <- use_model
     }
   }
+  if (link_tag == "identity" & is_hurdle_family(fam_tag)) {
+    # A hurdle fit must satisfy both sets of restrictions at once: its mu block
+    # is zero-bounded (as Gamma/identity) and its hu block is 0-1 bounded (as
+    # bernoulli/identity). Take the union of what each would drop.
+    use_model <- model[!model %in% c("neclin", "neclinhorme", "ecxlin",
+                                     "nechormepwr01")]
+    drop_model <- setdiff(model, use_model)
+    if (length(drop_model) > 0) {
+      message(paste("Dropping the model(s)",
+                    paste0(drop_model, collapse = ", "),
+                    "as they are not valid in the case of a",
+                    fam_tag, "with identity link."))
+    }
+    if (length(use_model) == 0) {
+      stop(paste("None of the model(s) specified are valid for a",
+                 fam_tag, "with identity link."))
+    } else {
+      model <- use_model
+    }
+  }
   if (link_tag == "identity" &
         fam_tag %in% c("Gamma", "poisson", "negbinomial")) {
     use_model <-  model[!model %in% c("neclin", "neclinhorme",

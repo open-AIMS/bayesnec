@@ -16,6 +16,10 @@
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative") {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  if (is_hurdle_family(family)) {
+    return(define_hurdle_prior(model, family, predictor, response,
+                               prior_type = prior_type))
+  }
   link_tag <- family$link
   custom_name <- check_custom_name(family)
   if (link_tag %in% c("logit", "log")) {
@@ -172,4 +176,57 @@ define_prior <- function(model, family, predictor, response,
     priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
   }
   priors
+}
+
+#' define_hurdle_prior
+#'
+#' Builds priors for both parameter blocks of a joint hurdle fit.
+#'
+#' @inheritParams define_prior
+#'
+#' @details The two blocks are primed from different views of the same data.
+#' The mu block is a zero-bounded response model and is given the existing
+#' Gamma/identity defaults, but computed from the **survivors only** --
+#' including the zeros would drag the \code{top} and \code{bot} quantiles well
+#' below the real control mean. The hu block is a probability and is given the
+#' existing bernoulli/identity defaults, which are already 0-1 bounded.
+#'
+#' The hu sub-model is written as \code{1 - survival}, so its \code{hutop} is
+#' control *survival* and takes the same \code{beta(5, 2)} style prior that a
+#' bernoulli fit would use.
+#'
+#' @return An object of class \code{\link[brms]{brmsprior}}.
+#'
+#' @importFrom stats Gamma
+#' @importFrom brms prior_string
+#'
+#' @noRd
+define_hurdle_prior <- function(model, family, predictor, response,
+                                prior_type = "uninformative") {
+  parts <- split_hurdle_response(predictor, response)
+  # mu block: reuse the Gamma/identity defaults on the survivors.
+  mu_priors <- define_prior(model, Gamma(link = "identity"),
+                            parts$mu$x, parts$mu$y, prior_type = prior_type)
+  # hu block: reuse the bernoulli/identity defaults on the survival proportion,
+  # then rename every non-linear parameter into the hu namespace.
+  hu_priors <- define_prior(model, bernoulli(link = "identity"),
+                            parts$hu$x, parts$hu$y, prior_type = prior_type)
+  hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
+                            paste0("hu", hu_priors$nlpar), hu_priors$nlpar)
+  # Both blocks are evaluated over the *whole* predictor range inside the joint
+  # fit, but each was primed from a subset of it: mu from survivors only (which
+  # stop short of the concentrations that killed everything) and hu from the
+  # deduplicated unique-x vector. Rebuild the predictor-scaled bounds from the
+  # full predictor so neither threshold is boxed out of the range it must cover.
+  rebound <- function(prs, pars) {
+    is_pred <- prs$nlpar %in% pars
+    if (any(is_pred)) {
+      prs$lb[is_pred] <- as.character(min(predictor))
+      prs$ub[is_pred] <- as.character(max(predictor))
+    }
+    prs
+  }
+  mu_priors <- rebound(mu_priors, c("nec", "ec50"))
+  hu_priors <- rebound(hu_priors, c("hunec", "huec50"))
+  mu_priors + hu_priors
 }

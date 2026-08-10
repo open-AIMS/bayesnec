@@ -41,7 +41,13 @@ mod_fams <- c(gaussian = "gaussian",
               bernoulli = "bernoulli",
               binomial = "binomial",
               beta_binomial = "beta_binomial",
-              beta = "Beta")
+              beta = "Beta",
+              hurdle_gamma = "hurdle_gamma")
+
+# Families with a second parameter block for the hurdle probability. Kept
+# separate from mod_fams so that code can ask "is this a hurdle family?"
+# without enumerating tags at each call site.
+hurdle_fams <- c(hurdle_gamma = "hurdle_gamma")
 
 ############
 # NEC MODELS
@@ -212,7 +218,7 @@ pred_functions <- list(nec3param = pred_nec3param,
 # SAVE INTERNAL DATA
 ####################
 usethis::use_data(
-  mod_groups, mod_fams,
+  mod_groups, mod_fams, hurdle_fams,
   # neclin
   bf_neclin,
   # nec3param

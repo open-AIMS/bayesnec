@@ -46,9 +46,14 @@ and are not suitable for the Gaussian family, or any family modelled using a
 logit or log link function. Models with a linear decay
 (containing the string "lin" in their name) are not suitable for modelling
 families that are zero bounded (Gamma, Poisson, Negative binomial) using an
-identity link. Models with a linear decay or hormesis linear increase
-(all models with parameter "slope") are not suitable for modelling families
-that are 0, 1 bounded (binomial, beta, beta_binomial). These restrictions do
+identity link, nor for families that are 0, 1 bounded (bernoulli, binomial,
+beta, beta_binomial) using an identity link. Note that the linear-decay
+restriction applies to the models containing "lin" only
+("neclin", "neclinhorme", "ecxlin"); the hormesis models that also carry a
+"slope" parameter are retained for 0, 1 bounded families. Additionally,
+models that raise the predictor to a fractional power ("ecxsigm",
+"necsigm", "nechormepwr", "nechorme4pwr") are not suitable where the
+predictor contains negative values. These restrictions do
 not need to be controlled by the user and a call to \code{\link{bnec}} with
 \code{models = "all"} will simply exclude inappropriate models.
 }

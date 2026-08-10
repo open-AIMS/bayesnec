@@ -39,3 +39,4 @@ Check_priors_plots.pdf
 doc/
 !vignettes/vignette-fig-*.pdf
 prompts/
+superceded/

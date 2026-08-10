@@ -9,7 +9,8 @@ nec(
   object,
   posterior = FALSE,
   xform = identity,
-  prob_vals = c(0.5, 0.025, 0.975)
+  prob_vals = c(0.5, 0.025, 0.975),
+  ...
 )
 }
 \arguments{
@@ -26,6 +27,8 @@ values.}
 \item{prob_vals}{A vector indicating the probability values over which to
 return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
+
+\item{...}{Additional arguments passed to methods.}
 }
 \value{
 A vector containing the estimated NEC value, including upper and

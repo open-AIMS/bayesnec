@@ -201,3 +201,56 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
     inits
   }
 }
+
+#' make_good_hurdle_inits
+#'
+#' Initial values for both parameter blocks of a joint hurdle fit.
+#'
+#' @inheritParams make_good_inits
+#'
+#' @param predictor A \code{\link[base]{numeric}} vector containing the full
+#' predictor, including the rows where the response is zero.
+#' @param response A \code{\link[base]{numeric}} vector; zero denotes a
+#' non-survivor.
+#' @param priors An object of class \code{\link[brms]{brmsprior}} covering both
+#' blocks, i.e. containing both \code{top} and \code{hutop} and so on.
+#'
+#' @details Each block is primed from the view of the data it actually models,
+#' then the two are merged chain-wise. The mu block sees survivors only; the hu
+#' block sees the proportion surviving at each unique predictor value, because
+#' the sub-model is written as \code{1 - survival} and so the curve being
+#' initialised is survival.
+#'
+#' Both passes reuse the same \code{pred_<model>()} prediction function, which
+#' expects unprefixed parameter names -- the \code{hu} prefix is stripped before
+#' the search and restored afterwards.
+#'
+#' @seealso \code{\link{make_good_inits}}
+#' @return A \code{\link[base]{list}} of initial values, or
+#' \code{list(random = "random")} if either block could not be initialised.
+#'
+#' @noRd
+make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
+                                   seed = NULL, ...) {
+  parts <- split_hurdle_response(predictor, response)
+  pr <- as.data.frame(priors)
+  is_hu <- nzchar(pr$nlpar) & grepl("^hu", pr$nlpar)
+  mu_pr <- pr[!is_hu, , drop = FALSE]
+  hu_pr <- pr[is_hu, , drop = FALSE]
+  hu_pr$nlpar <- sub("^hu", "", hu_pr$nlpar)
+  mu_inits <- make_good_inits(model, parts$mu$x, parts$mu$y, priors = mu_pr,
+                              chains = chains, seed = seed, ...)
+  hu_inits <- make_good_inits(model, parts$hu$x, parts$hu$y, priors = hu_pr,
+                              chains = chains, seed = seed, ...)
+  # If either block fell back to Stan's random initialisation there is nothing
+  # coherent to merge -- hand the whole fit to Stan rather than half-priming it.
+  fell_back <- function(x) length(x) == 1 && "random" %in% names(x)
+  if (fell_back(mu_inits) || fell_back(hu_inits)) {
+    return(list(random = "random"))
+  }
+  lapply(seq_len(chains), function(i) {
+    hu_i <- hu_inits[[i]]
+    names(hu_i) <- sub("^b_", "b_hu", names(hu_i))
+    c(mu_inits[[i]], hu_i)
+  })
+}

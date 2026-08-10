@@ -22,6 +22,7 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param ... Additional arguments passed to methods.
 #'
 #' @details \code{type} "relative" is calculated as the percentage decrease
 #' from the maximum predicted value of the response (top) to the minimum
@@ -69,7 +70,7 @@
 ecx <- function(object, ecx_val = 10, resolution = 1000,
                 posterior = FALSE, type = "absolute",
                 hormesis_def = "control", x_range = NA,
-                xform = identity, prob_vals = c(0.5, 0.025, 0.975)) {
+                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("ecx")
 }
 
@@ -91,7 +92,7 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
                             posterior = FALSE, type = "absolute",
                             hormesis_def = "control", x_range = NA,
                             xform = identity,
-                            prob_vals = c(0.5, 0.025, 0.975)) {
+                            prob_vals = c(0.5, 0.025, 0.975), ...) {
   chk_numeric(ecx_val)
   if (length(ecx_val)>1) {
     stop("You may only pass one ecx_val")  
@@ -138,8 +139,26 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
   newdata_list <- newdata_eval(
     object, resolution = resolution, x_range = x_range
   )
-  p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
-                               re_formula = NA)
+  # dpar lets a hurdle fit report its components separately. The default (NULL)
+  # gives what posterior_epred always gave: mu * (1 - hu) for a hurdle family,
+  # the single mean curve otherwise. "hu" is inverted to survival so that
+  # "decline from control" means the same thing as it does everywhere else.
+  dpar <- list(...)$dpar
+  if (is.null(dpar)) {
+    p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
+                                 re_formula = NA)
+  } else {
+    if (!is_hurdle_family(object$fit$family)) {
+      stop("The \"dpar\" argument is only valid for hurdle families.",
+           call. = FALSE)
+    }
+    dpar <- match.arg(dpar, c("mu", "hu"))
+    p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
+                                 re_formula = NA, dpar = dpar)
+    if (dpar == "hu") {
+      p_samples <- 1 - p_samples
+    }
+  }
   x_vec <- newdata_list$x_vec
   # if (grepl("horme", object$model)) {
   #   n <- seq_len(nrow(p_samples))
@@ -206,7 +225,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", x_range = NA,
                               xform = identity,
-                              prob_vals = c(0.5, 0.025, 0.975)) {
+                              prob_vals = c(0.5, 0.025, 0.975), ...) {
   chk_numeric(ecx_val)
   chk_numeric(resolution)  
   chk_logical(posterior)

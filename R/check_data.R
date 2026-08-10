@@ -48,9 +48,19 @@ check_data <- function(data, family, model) {
     min_val <- min(x[x > 0])
     data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)
   }
-  if (min(y) == 0 & fam_tag == "Gamma") {
+  # NB: this nudge must never apply to a hurdle family. There the zeros are the
+  # hurdle signal, not a boundary problem -- moving them off zero would leave
+  # the hu block with nothing to identify itself from. fam_tag is
+  # "hurdle_gamma" rather than "Gamma" in that case, so the condition below
+  # already excludes it; the guard is explicit so it survives refactoring.
+  if (min(y) == 0 & fam_tag == "Gamma" & !is_hurdle_family(fam_tag)) {
     min_val <- min(y[y > 0])
     data[y == 0, y_pos] <- y[y == 0] + (min_val / 10)
+    message("Your response contains zeros, which a Gamma distribution cannot",
+            " represent. They have been shifted to ", signif(min_val / 10, 3),
+            " (one tenth of the smallest non-zero value). If those zeros are",
+            " meaningful -- for example individuals that died -- consider",
+            " family = hurdle_gamma() instead, which models them explicitly.")
   }
   if (min(x) == 0 & x_type == "beta") {
     min_val <- min(x[x > 0])
