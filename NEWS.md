@@ -9,11 +9,10 @@
   raw response, with nominal 95% intervals covering at 88–91%. Nothing is gained
   by it, because `ecx(type = "absolute")` — already the default — measures the
   decline relative to the *fitted* control value one posterior draw at a time,
-  which is the estimand that paper recommends. Documented in `?ecx`, `?nsec` and
-  `?bnec`, and in a new *Preparing the response* section of
-  `vignette("example1")`, which also covers why dividing by the observed maximum
-  is worse than dividing by the control mean and what to do when the Beta
-  families make a divisor unavoidable.
+  which is the estimand that paper recommends. Documented in `?bnec` and in a new
+  *Preparing the response* section of `vignette("example1")`, which also covers
+  why dividing by the observed maximum is worse than dividing by the control
+  mean and what to do when the Beta families make a divisor unavoidable.
 - `bnec()` now detects both practices and says so. Dividing by the observed
   maximum leaves a maximum of exactly `1` attained by exactly one observation;
   dividing by the control mean leaves the control observations averaging to

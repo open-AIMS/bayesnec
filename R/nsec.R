@@ -59,25 +59,6 @@
 #' the \pkg{brms} distributional parameter. Supplying one where the other is
 #' expected is an error rather than silently ignored.
 #'
-#' \bold{Do not normalise the response to the control first}
-#'
-#' Fit the raw, unnormalised response. Converting it to percent inhibition or
-#' percent of control before calling \code{\link{bnec}} divides every
-#' observation by the same random quantity, which discards the uncertainty in
-#' the control level and biases effective doses; see \code{\link{ecx}} for the
-#' full argument and Ritz et al. (2026) for the simulation evidence.
-#'
-#' NSEC is affected in a specific way. The reference value is the
-#' \code{sig_val} quantile of the posterior of the fitted response at the
-#' lowest predictor value, so NSEC depends directly on how \emph{wide} that
-#' control posterior is. Normalising makes the sample mean of the control
-#' observations exactly 1 by construction, so the sampling variability of the
-#' divisor never enters the fit. The fitted control posterior is then narrower
-#' than the data warrant, the reference quantile sits closer to the control
-#' median, the declining curve crosses it sooner, and the returned NSEC is
-#' both smaller -- apparently more protective -- and more precise than it
-#' should be.
-#'
 #' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{ecx}}
 #'
 #' @return A vector containing the estimated NSEC value, including upper and
@@ -87,12 +68,7 @@
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
 #' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
 #' doi: 10.1002/etc.5610.
-#'
-#' Ritz C, Gerhard D, Streibig JC (2026). Better alternatives than normalizing
-#' to control: case studies with algae toxicity and dose-response analysis.
-#' Environmental and Ecological Statistics, 33, 35-55.
-#' doi:10.1007/s10651-025-00698-y.
-#'
+#'#'
 #' @examples
 #' \donttest{
 #' library(bayesnec)

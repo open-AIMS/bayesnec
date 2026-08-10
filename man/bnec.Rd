@@ -222,9 +222,11 @@ correlates them, discards the uncertainty in the divisor and biases
 effective doses upwards (Ritz et al. 2026). Nothing is gained by doing so,
 because \code{ecx(type = "absolute")} -- the default -- already measures the
 decline relative to the fitted control value, one posterior draw at a time,
-which is the estimand that paper recommends. See \code{\link{ecx}} for the
-full argument, including why dividing by the observed maximum is worse than
-dividing by the control mean.
+which is the estimand that paper recommends. Dividing by the maximum
+observed response is worse again than dividing by the control mean: an
+extreme order statistic is more variable, the divisor then depends on every
+treatment rather than on the controls alone, and it forces one observation
+to exactly 1, outside the open support of the Beta family.
 
 The "Beta" and "zero_inflated_beta" families are the case where a divisor
 may genuinely be needed, since both require a response on the open interval
