@@ -27,12 +27,6 @@
 - `check_formula()` no longer reports `cens()` as an unvalidated aterm, and now
   warns when a `cens()` term contains no variable — as in `cens("left")`, which
   `brms` recycles into a declaration that every row of the response is censored.
-- New vignette, *Censored responses* (`vignette("example7")`), covering when a
-  recorded value is a bound rather than a measurement, why substitution biases
-  the fit in a concentration-dependent direction rather than only locally, how to
-  encode censoring so that the response column carries the bound, and the
-  distinction between a censored zero and a structural one that
-  `vignette("example6")` deals with.
 - New dataset `alga`: growth inhibition tests on *Cladocopium proliferum* and
   *Rhodomonas salina* against two contaminants, consolidated from four tests.
   Cell density is counted to a resolution of 10, so a recorded density of zero
