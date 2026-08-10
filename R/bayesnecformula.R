@@ -439,7 +439,7 @@ wrangle_model_formula <- function(model, formula, data, family = NULL) {
   # group-level effect would break the likelihood factorisation that the
   # factorised route (see bnec_hurdle) relies on, so it is not done implicitly.
   if (!is.null(family) && is_hurdle_family(family)) {
-    brms_bf <- add_hu_block(brms_bf, model, new_x)
+    brms_bf <- add_hu_block(brms_bf, model, new_x, hurdle_dpar(family))
   }
   brms_bf
 }

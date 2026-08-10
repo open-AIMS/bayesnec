@@ -231,13 +231,13 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
 #'
 #' @noRd
 make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
-                                   seed = NULL, ...) {
+                                   dpar = "hu", seed = NULL, ...) {
   parts <- split_hurdle_response(predictor, response)
   pr <- as.data.frame(priors)
-  is_hu <- nzchar(pr$nlpar) & grepl("^hu", pr$nlpar)
+  is_hu <- nzchar(pr$nlpar) & grepl(paste0("^", dpar), pr$nlpar)
   mu_pr <- pr[!is_hu, , drop = FALSE]
   hu_pr <- pr[is_hu, , drop = FALSE]
-  hu_pr$nlpar <- sub("^hu", "", hu_pr$nlpar)
+  hu_pr$nlpar <- sub(paste0("^", dpar), "", hu_pr$nlpar)
   mu_inits <- make_good_inits(model, parts$mu$x, parts$mu$y, priors = mu_pr,
                               chains = chains, seed = seed, ...)
   hu_inits <- make_good_inits(model, parts$hu$x, parts$hu$y, priors = hu_pr,
@@ -250,7 +250,7 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
   }
   lapply(seq_len(chains), function(i) {
     hu_i <- hu_inits[[i]]
-    names(hu_i) <- sub("^b_", "b_hu", names(hu_i))
+    names(hu_i) <- sub("^b_", paste0("b_", dpar), names(hu_i))
     c(mu_inits[[i]], hu_i)
   })
 }

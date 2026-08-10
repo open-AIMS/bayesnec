@@ -381,8 +381,14 @@ return_x_range <- function(x) {
       object$w_pred_vals$data$x
     } else if (is_bayesnecfit(object)) {
       object$pred_vals$data$x
+    } else if (is_bayesnechurdlefit(object)) {
+      # The survival component sees every row, so it carries the full exposed
+      # predictor range; the growth component stops short of any concentration
+      # where nothing survived.
+      return_x_range(list(object$survival))
     } else {
-      stop("Not all objects in x are of class bayesnecfit or bayesmanecfit.")
+      stop("Not all objects in x are of class bayesnecfit, bayesmanecfit or",
+           " bayesnechurdlefit.")
     }
   }
   lapply(x, return_x) |>
@@ -397,6 +403,10 @@ return_nec_post <- function(m, xform) {
   }
   if (is_bayesmanecfit(m)) {
     out <- unname(m$w_ne_posterior)
+  }
+  if (is_bayesnechurdlefit(m)) {
+    # Defaults to the combined threshold, matching nec() on the same object.
+    out <- unname(nec(m, posterior = TRUE))
   }
   if (inherits(xform, "function")) {
     out <- xform(out)
@@ -559,6 +569,7 @@ add_brm_defaults <- function(
         response,
         priors = brm_args$prior,
         chains = brm_args$chains,
+        dpar = hurdle_dpar(family),
         seed = init_seed
       )
     } else {
@@ -701,6 +712,14 @@ check_args_newdata <- function(resolution, x_range) {
 newdata_eval <- function(object, resolution, x_range) {
   # Just need one model to extract and generate data
   # since all models are considered to have the exact same raw data.
+  # A hurdle fit has no single underlying brmsfit, so the grid is taken from
+  # its survival component -- that one sees every row, and therefore the full
+  # exposed predictor range, whereas the growth component stops short of any
+  # concentration where nothing survived. posterior_epred() is still called on
+  # the hurdle object itself, so the prediction remains the combined endpoint.
+  if (is_bayesnechurdlefit(object)) {
+    object <- object$survival
+  }
   if (inherits(object, "bayesmanecfit")) {
     model_set <- names(object$mod_fits)
     object <- suppressMessages(pull_out(object, model = model_set[1]))
@@ -723,6 +742,13 @@ newdata_eval_fitted <- function(
 ) {
   # Just need one model to extract and generate data
   # since all models are considered to have the exact same raw data.
+  # A hurdle fit has no single underlying brmsfit, so the grid comes from its
+  # survival component -- that one sees every row and therefore the full
+  # exposed predictor range. posterior_epred() is still called on the hurdle
+  # object itself downstream, so predictions remain the combined endpoint.
+  if (is_bayesnechurdlefit(object)) {
+    object <- object$survival
+  }
   if (inherits(object, "bayesmanecfit")) {
     model_set <- names(object$mod_fits)
     object <- suppressMessages(pull_out(object, model = model_set[1]))

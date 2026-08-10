@@ -73,7 +73,9 @@ check_data <- function(data, family, model) {
   if (max(x) == 1 & x_type == "beta") {
     data[x == 1, x_pos] <- x[x == 1] - 0.001
   }
-  if (max(y) == 1 & fam_tag == "beta") {
+  # A zero-inflated Beta keeps its zeros -- they are the signal -- but ones are
+  # still outside Beta's open (0, 1) support and must be nudged as usual.
+  if (max(y) == 1 & (fam_tag == "beta" || fam_tag == "zero_inflated_beta")) {
     data[y == 1, y_pos] <- y[y == 1] - 0.001
   }
   mod_dat <- data.frame(x = data[[x_pos]], y = data[[y_pos]],

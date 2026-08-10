@@ -42,12 +42,20 @@ mod_fams <- c(gaussian = "gaussian",
               binomial = "binomial",
               beta_binomial = "beta_binomial",
               beta = "Beta",
-              hurdle_gamma = "hurdle_gamma")
+              hurdle_gamma = "hurdle_gamma",
+              zero_inflated_beta = "zero_inflated_beta")
 
-# Families with a second parameter block for the hurdle probability. Kept
-# separate from mod_fams so that code can ask "is this a hurdle family?"
-# without enumerating tags at each call site.
-hurdle_fams <- c(hurdle_gamma = "hurdle_gamma")
+# Families with a second parameter block modelling the probability of a zero,
+# mapped to the name brms gives that block. brms calls it "hu" for the hurdle
+# families and "zi" for the zero-inflated ones; structurally they are the same
+# model (see hurdle_gamma_design.md 1.5), so bayesnec treats them alike and
+# simply carries the name through. Kept separate from mod_fams so that code can
+# ask "is this a two-block family?" without enumerating tags at each call site.
+hurdle_fams <- c(hurdle_gamma = "hu", zero_inflated_beta = "zi")
+
+# The family whose defaults the mu block should reuse for priors and initial
+# values, i.e. what the response looks like once the zeros are set aside.
+hurdle_mu_fams <- c(hurdle_gamma = "Gamma", zero_inflated_beta = "beta")
 
 ############
 # NEC MODELS
@@ -218,7 +226,7 @@ pred_functions <- list(nec3param = pred_nec3param,
 # SAVE INTERNAL DATA
 ####################
 usethis::use_data(
-  mod_groups, mod_fams, hurdle_fams,
+  mod_groups, mod_fams, hurdle_fams, hurdle_mu_fams,
   # neclin
   bf_neclin,
   # nec3param
