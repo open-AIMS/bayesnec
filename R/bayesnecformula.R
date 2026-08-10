@@ -108,8 +108,6 @@
 #' Gamma or Beta, right-censored at 1 under Beta --- is an error rather than a
 #' shift, because the censored likelihood is degenerate there.
 #'
-#' See \code{vignette("example7")} for worked examples.
-#'
 #' **NB:** \code{aterms} other than \code{trials()}, \code{weights()} and
 #' \code{cens()} are currently omitted from \code{\link{model.frame}} output. If
 #' you need other \code{aterms} as part of that output please raise an issue on
