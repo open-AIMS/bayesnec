@@ -1,5 +1,10 @@
 # bayesnec 2.1.3.10
 
+- New *Censoring* section in `vignette("example1")`, giving the `cens()` aterm
+  added in the previous version a user-facing home: the syntax, the values the
+  censoring indicator takes, that the response column carries the bound rather
+  than a substitute for it, and why a censored row saturates as the fitted curve
+  descends where a substituted value keeps pulling it back up.
 - Guidance against normalising the response to the control before fitting.
   Ritz, Gerhard & Streibig (2026) show that the conventional
   `1 - y / mean(y_control)` pre-processing step divides every observation by the

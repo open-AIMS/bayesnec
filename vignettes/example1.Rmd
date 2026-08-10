@@ -490,4 +490,24 @@ Note also that ECx is invariant to the choice of constant divisor, because it is
 
 Many proportional responses need no divisor at all. The maximum quantum yield used in the Beta example above is a genuine physical proportion on $(0, 1)$, as is a survival fraction or a bleached-area fraction. These are already on the right scale and should be modelled as they stand.
 
+# Censoring
+
+A recorded value is *censored* when the truth is known to lie in an interval rather than at a point: a concentration below a limit of detection, a cell count below the resolution of the method, a value rounded at the recording precision. The number written down is a **bound**, not a measurement.
+
+Substituting something for it — a zero, half the detection limit, or the bound itself treated as though it had been observed — states more than is known. `bayesnec` passes through the `cens()` aterm from `brms`, so the bound can be declared instead:
+
+```r
+y | cens(censoring) ~ crf(x, model = "nec4param")
+```
+
+`censoring` is a variable in the data rather than a constant, because in a concentration-response dataset only some rows are censored. It takes the values `"none"`, `"left"`, `"right"` or `"interval"` (equivalently `0`, `-1`, `1`, `2`). Interval censoring takes a second argument giving the upper bound, `cens(censoring, upper)`.
+
+**The response column carries the bound.** On a left-censored row, the number in the response column is the value the truth is known to be at or below — not zero, and not a guess at the unknown truth. The declaration supplies that upper end of the interval and the family's support supplies the lower one, so a left-censored row under a Beta asserts only that the truth lies in $(0, \text{bound}]$.
+
+Because the bound has been declared, a censored row is exempt from the boundary shifts `bnec` otherwise applies to zeros under the Gamma and Beta families; moving the bound would restate it. Declaring a row censored at a value the family excludes — left-censored at `0` under Gamma or Beta, right-censored at `1` under Beta — is an error rather than a shift, because the censored likelihood is degenerate there.
+
+The reason this changes the fit is worth stating. A censored row contributes $F(\text{bound})$, the probability of falling at or below the bound, rather than a density at a point. As the fitted curve descends past the bound, $F$ rises toward 1 and *saturates*: the curve is not rewarded for passing further below, but neither is it penalised. A substituted value instead contributes a density, which falls away as the curve descends, so substitution actively pulls the curve back up toward the value that was substituted.
+
+Whether a value is censored at all is a separate question from how to handle it once it is. A zero that marks a distinct event — an organism that died, rather than a measurement that fell below a limit — is structural, and belongs in a hurdle model rather than a censoring declaration; see `vignette("example6")`.
+
 # References
