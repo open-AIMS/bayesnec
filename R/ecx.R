@@ -22,6 +22,13 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
+#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"}
+#' or \code{"zero_inflated_beta"}), the parameter block to report:
+#' \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
+#' zero-inflated families) for survival. Defaults to \code{NULL}, which gives
+#' the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+#' inverted to survival before computing, so ECx keeps its usual meaning of a
+#' percentage decline from the fitted control value. See Details.
 #' @param ... Additional arguments passed to methods.
 #'
 #' @details \code{type} "relative" is calculated as the percentage decrease
@@ -52,7 +59,18 @@
 #' simply return one of the treatment concentrations, making NOEC a better
 #' metric in that case.
 #'
-#' @seealso \code{\link{bnec}}
+#' \bold{Selecting a component of a hurdle model}
+#'
+#' The two implementations of a hurdle model name the component differently,
+#' and the two arguments are not interchangeable. A
+#' \code{\link{bayesnechurdlefit}} from \code{\link{bnec_hurdle}} holds two
+#' separate fits, so it takes \code{which = "growth"}, \code{"survival"} or
+#' \code{"combined"}. A joint fit from \code{bnec(family = "hurdle_gamma")}
+#' holds two parameter blocks inside one model, so it takes \code{dpar} naming
+#' the \pkg{brms} distributional parameter. Supplying one where the other is
+#' expected is an error rather than silently ignored.
+#'
+#' @seealso \code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}
 #'
 #' @return A vector containing the estimated ECx value, including upper and
 #' lower 95% credible interval bounds.
@@ -67,10 +85,15 @@
 #' }
 #'
 #' @export
+# dpar sits after `...` to match the methods, which all declare their
+# class-specific arguments there. Naming it on the generic is what puts it in
+# the \usage section; documented-but-absent arguments are an R CMD check
+# WARNING, and methods are @noRd so the generic is the only place it can appear.
 ecx <- function(object, ecx_val = 10, resolution = 1000,
                 posterior = FALSE, type = "absolute",
                 hormesis_def = "control", x_range = NA,
-                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
+                xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...,
+                dpar = NULL) {
   UseMethod("ecx")
 }
 
@@ -92,7 +115,9 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
                             posterior = FALSE, type = "absolute",
                             hormesis_def = "control", x_range = NA,
                             xform = identity,
-                            prob_vals = c(0.5, 0.025, 0.975), ...) {
+                            prob_vals = c(0.5, 0.025, 0.975), ...,
+                            dpar = NULL) {
+  check_component_arg(list(...), object)
   chk_numeric(ecx_val)
   if (length(ecx_val)>1) {
     stop("You may only pass one ecx_val")  
@@ -145,7 +170,6 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
   # inverted so that "decline from control" means the same thing as it does
   # everywhere else. Valid names are "mu" and whichever brms uses for the
   # second block: "hu" for hurdle families, "zi" for zero-inflated ones.
-  dpar <- list(...)$dpar
   if (is.null(dpar)) {
     p_samples <- posterior_epred(object, newdata = newdata_list$newdata,
                                  re_formula = NA)
@@ -227,7 +251,9 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
                               posterior = FALSE, type = "absolute",
                               hormesis_def = "control", x_range = NA,
                               xform = identity,
-                              prob_vals = c(0.5, 0.025, 0.975), ...) {
+                              prob_vals = c(0.5, 0.025, 0.975), ...,
+                              dpar = NULL) {
+  check_component_arg(list(...), object)
   chk_numeric(ecx_val)
   chk_numeric(resolution)  
   chk_logical(posterior)
@@ -249,23 +275,26 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
-  sample_ecx <- function(x, object, ecx_val, resolution,
-                         posterior, type, hormesis_def,
-                         x_range, xform, prob_vals, sample_size) {
+  sample_size <- object$sample_size
+  # Written as a closure over the arguments rather than a function taking them
+  # all positionally: the previous form dispatched through
+  # sapply(to_iter, sample_ecx, object, ecx_val, ...), which matched by
+  # position, and any argument not named in that list -- dpar among them -- was
+  # dropped before reaching the per-model call. That returned the combined
+  # endpoint for a two-block fit with no error, which is a wrong answer rather
+  # than a missing feature.
+  sample_ecx <- function(x) {
     mod <- names(object$mod_fits)[x]
     target <- suppressMessages(pull_out(object, model = mod))
     out <- ecx(target, ecx_val = ecx_val, resolution = resolution,
-               posterior = posterior, type = type, hormesis_def = hormesis_def,
-               x_range = x_range, xform = xform, prob_vals = prob_vals)
+               posterior = TRUE, type = type, hormesis_def = hormesis_def,
+               x_range = x_range, xform = xform, prob_vals = prob_vals,
+               dpar = dpar)
     n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
     sample(out, n_s)
   }
-  sample_size <- object$sample_size
   to_iter <- seq_len(length(object$success_models))
-  ecx_out <- sapply(to_iter, sample_ecx, object, ecx_val, resolution,
-                    posterior = TRUE, type, hormesis_def, x_range,
-                    xform, prob_vals, sample_size)
-  ecx_out <- unlist(ecx_out)
+  ecx_out <- unlist(lapply(to_iter, sample_ecx))
   ecx_estimate <- quantile(ecx_out, probs = prob_vals)
   names(ecx_estimate) <- clean_names(ecx_estimate)
   attr(ecx_estimate, "resolution") <- resolution

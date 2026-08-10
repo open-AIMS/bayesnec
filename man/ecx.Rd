@@ -14,7 +14,8 @@ ecx(
   x_range = NA,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
-  ...
+  ...,
+  dpar = NULL
 )
 }
 \arguments{
@@ -47,6 +48,14 @@ return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).}
 
 \item{...}{Additional arguments passed to methods.}
+
+\item{dpar}{For a joint two-block fit only (\code{family = "hurdle_gamma"}
+or \code{"zero_inflated_beta"}), the parameter block to report:
+\code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
+zero-inflated families) for survival. Defaults to \code{NULL}, which gives
+the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is
+inverted to survival before computing, so ECx keeps its usual meaning of a
+percentage decline from the fitted control value. See Details.}
 }
 \value{
 A vector containing the estimated ECx value, including upper and
@@ -84,6 +93,17 @@ small number of cases. There is also no reasonable case where estimating
 these from the raw data would be of value, because both functions would
 simply return one of the treatment concentrations, making NOEC a better
 metric in that case.
+
+\bold{Selecting a component of a hurdle model}
+
+The two implementations of a hurdle model name the component differently,
+and the two arguments are not interchangeable. A
+\code{\link{bayesnechurdlefit}} from \code{\link{bnec_hurdle}} holds two
+separate fits, so it takes \code{which = "growth"}, \code{"survival"} or
+\code{"combined"}. A joint fit from \code{bnec(family = "hurdle_gamma")}
+holds two parameter blocks inside one model, so it takes \code{dpar} naming
+the \pkg{brms} distributional parameter. Supplying one where the other is
+expected is an error rather than silently ignored.
 }
 \examples{
 \donttest{
@@ -96,5 +116,5 @@ ecx(manec_example)
 
 }
 \seealso{
-\code{\link{bnec}}
+\code{\link{bnec}}, \code{\link{bnec_hurdle}}, \code{\link{nsec}}
 }

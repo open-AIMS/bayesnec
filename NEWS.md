@@ -1,3 +1,53 @@
+# bayesnec 2.1.3.7
+
+- New vignette, *Hurdle and zero-inflated concentration-response models*
+  (`vignette("example6")`), covering the two implementations of these models,
+  what the combined endpoint gives that a survivors-only analysis cannot, when
+  a hurdle Beta is appropriate, and — using the shipped `herbicide` data as a
+  counter-example — how to tell a structural zero from a rounded or floored one
+  before choosing a model. The hurdle Beta section carries a simulated worked
+  example, constructed to satisfy all four of the conditions the section sets
+  out; it is simulated because no real dataset meeting them could be found, and
+  the section retains the argument for why the mass-at-1 condition is the one
+  that keeps failing. See
+  [#175](https://github.com/open-AIMS/bayesnec/issues/175).
+- `bnec()` gains a `model_survival` argument, so a joint `"hurdle_gamma"` or
+  `"zero_inflated_beta"` fit can use a different equation on each of its two
+  blocks rather than the same one on both. The `crf` model in the formula names
+  the response block's equation and `model_survival` the survival block's.
+- New functions `best_crossed()` and `bnec_joint()`. `best_crossed()` reports
+  the model combination carrying the highest weight in `crossed_weights()`, and
+  `bnec_joint()` refits that combination as a single two-block model. Together
+  they connect the two implementations in the order they are meant to be used:
+  fit and average the model sets with `bnec_hurdle()`, where all
+  `n_response * n_survival` combinations follow from two fits, then refit the
+  selected combination jointly where structure spanning both blocks is needed.
+- Fixed `ecx()` silently ignoring `dpar` on a model-averaged joint hurdle fit.
+  `ecx.bayesmanecfit()` passed a fixed, positionally-matched argument list to
+  its per-model calls, so `dpar` was dropped and the combined endpoint returned
+  in place of the requested parameter block — a wrong answer with no error or
+  warning. Only `bayesmanecfit` objects from the joint route were affected;
+  `bnec_hurdle()` fits and single-model joint fits were always correct.
+- `nsec()` gains a `dpar` argument, matching `ecx()`. It previously had no way
+  to select a parameter block, so on a joint two-block fit it could only ever
+  describe the combined curve.
+- `dpar` is now a documented, formal argument of `ecx()` and `nsec()` rather
+  than one read out of `...`, and supplying the wrong component argument is an
+  error instead of being silently discarded: `which` belongs to a
+  `bayesnechurdlefit` (two separate fits) and `dpar` to a joint two-block fit
+  (two parameter blocks in one model). `nec()`, which reports the combined
+  threshold and has no block selection, likewise rejects `dpar` rather than
+  ignoring it.
+- `summary()` on a `bayesnechurdlefit` now labels each no-effect estimate NEC,
+  NSEC or N(S)EC according to the models in that component's set, and passes
+  `...` (notably `xform`) through to both `nec()` and `ecx()`. It no longer
+  errors when a component is model-averaged. The `?nec` documentation now
+  states explicitly that a model-averaged estimate over a mixed model set is an
+  N(S)EC rather than a NEC.
+- New dataset `nassarius`: four chronic toxicity tests on the snail
+  *Nassarius dorsatus*, one row per individual exposed, with mortality
+  reconstructed from the four ways it was recorded other than as zeros. Used
+  as the worked example in `vignette("example6")`.
 # bayesnec 2.1.3.6
 
 - `bayesnechurdlefit` objects returned by `bnec_hurdle()` now support the full

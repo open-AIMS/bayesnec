@@ -30,6 +30,10 @@ the fitted non-linear model.}
 \item{\code{is_ecx}}{A \code{\link[base]{logical}} indicating whether \code{model}
 is an ECx-type model.}
 
+\item{\code{ne_type}}{A \code{\link[base]{character}} string giving the type of the
+no-effect estimate: \code{"NEC"}, \code{"NSEC"}, or \code{"N(S)EC"} where
+the two blocks of a hurdle fit use different equation types.}
+
 \item{\code{nec_vals}}{The NEC values. Note that if model is an ECx-type model,
 this estimate will be a NSEC proxy.}
 

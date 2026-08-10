@@ -67,6 +67,15 @@
 #' as a failed fit and dropped from the returned set. The default \code{Inf}
 #' imposes no limit. Requires the \pkg{R.utils} package to be installed when a
 #' finite value is supplied.
+#' @param model_survival An optional \code{\link[base]{character}} string naming
+#' the equation to use for the second (zero-probability) parameter block of a
+#' \code{"hurdle_gamma"} or \code{"zero_inflated_beta"} fit. Defaults to
+#' \code{NULL}, meaning the same equation as the response block. It must be a
+#' single model: model averaging in the joint route runs over the response
+#' block, with the second block held fixed. Averaging over both at once means
+#' fitting every pair of equations, which is what \code{\link{bnec_hurdle}} and
+#' \code{\link{crossed_weights}} do from two fits instead. Ignored, with an
+#' error, for any other family.
 #' @param ... Further arguments to \code{\link[brms]{brm}}.
 #'
 #' @details
@@ -204,17 +213,38 @@
 #' respectively. bayesnec keeps
 #' every parameter on the natural response scale, and the hurdle block is
 #' written as \code{1 - <non-zero probability>}, which is only meaningful under
-#' an identity link there. Neither is ever selected automatically: a response
+#' an identity link there.
+#'
+#' That inversion is worth knowing about when reading output. \pkg{brms} defines
+#' \code{hu} (or \code{zi}) as the probability of a \emph{zero}, which rises
+#' with the predictor, whereas every bayesnec equation declines. Writing the
+#' block as \code{1 - <equation>} puts the declining curve on \emph{survival},
+#' so the equation set, its priors and the \code{\link{ecx}}/\code{\link{nsec}}
+#' definition of "decline from control" all carry over unchanged. The practical
+#' consequence is that \code{hutop} and \code{hunec} describe surviving rather
+#' than dying; \code{hunec} is the same concentration either way. See
+#' \code{vignette("example6")}.
+#'
+#' Neither family is ever selected automatically: a response
 #' containing zeros is still treated as Gamma, with a message, so that existing
 #' analyses do not silently change.
+#'
+#' The two blocks need not use the same equation. \code{crf} in the formula
+#' names the response block's, and \code{model_survival} the survival block's,
+#' so a threshold response can be paired with a smooth survival curve or the
+#' reverse. Where \code{crf} names a model set, that set is averaged over with
+#' the survival block held fixed.
 #'
 #' The alternative is \code{\link{bnec_hurdle}}, which fits the same two
 #' components as two separate \code{\link{bnec}} calls. The hurdle likelihood
 #' factorises, so the two give equivalent inference where the components are
 #' independent, but they differ in what else they allow: the joint fit here can
 #' couple the blocks through shared group-level effects, while the factorised
-#' route makes the full crossed model comparison tractable (see
-#' \code{\link{crossed_weights}}).
+#' route makes the full crossed model comparison tractable, since all
+#' \code{n_response * n_survival} combinations follow from two fits (see
+#' \code{\link{crossed_weights}}). The two are meant to be used in sequence:
+#' select a combination with \code{\link{bnec_hurdle}}, then refit it here with
+#' \code{\link{bnec_joint}} when structure spanning both blocks is needed.
 #'
 #' As a default, \code{\link{bnec}} sets the \code{\link[brms]{brm}} argument
 #' \code{sample_prior} to "yes" in order to sample draws from the priors in
@@ -298,7 +328,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  loo_controls, x_var = NULL, y_var = NULL, trials_var = NULL,
                  model = NULL, random = NULL, random_vars = NULL,
                  prior = NULL, prior_type = "uninformative",
-                 timeout = Inf, ...) {
+                 timeout = Inf, model_survival = NULL, ...) {
   chk_number(resolution)
   chk_number(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
@@ -328,6 +358,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   }
   brm_args$family <- retrieve_valid_family(brm_args, bdat)
   model <- check_models(model, brm_args$family, bdat)
+  model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
   if (length(model) == 0) {
     stop("No valid models have been supplied for this data type.")
@@ -339,7 +370,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
       fit_m <- try(
         fit_bayesnec(formula = formula, data = data, model = model_m,
                      brm_args = brm_args, prior_type = prior_type,
-                     timeout = timeout),
+                     timeout = timeout, model_survival = model_survival),
         silent = FALSE
       )
       if (!inherits(fit_m, "try-error")) {
@@ -364,7 +395,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   } else {
     mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
                             brm_args = brm_args, prior_type = prior_type,
-                            timeout = timeout)
+                            timeout = timeout,
+                            model_survival = model_survival)
     mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
                           resolution = resolution, sig_val = sig_val,
                           loo_controls = loo_controls, model = model)

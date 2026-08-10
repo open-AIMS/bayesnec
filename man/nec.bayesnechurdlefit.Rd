@@ -33,21 +33,36 @@ return the estimated NEC value. Defaults to 0.5 (median) and 0.025 and
 \item{...}{Additional arguments passed to methods.}
 }
 \value{
-A vector containing the estimated NEC value, including upper and
-lower credible interval bounds.
+A vector containing the estimated no-effect value, including upper
+and lower credible interval bounds.
 }
 \description{
 Extracts the predicted NEC value from a \code{\link{bayesnechurdlefit}}
 }
 \details{
 The combined no-effect concentration is
-\code{pmin(nec_growth, nec_survival)} evaluated per posterior draw. Below
-both thresholds the growth curve sits at \code{top} and the survival curve at
-its own control value, so their product is flat; it departs that plateau at
+\code{pmin(ne_growth, ne_survival)} evaluated per posterior draw. Below both
+thresholds the growth curve sits at \code{top} and the survival curve at its
+own control value, so their product is flat; it departs that plateau at
 whichever threshold binds first.
 
-This is exact when both components are threshold (\code{nec}-type) models.
-Where either component is an \code{ecx}-type model, or a model-averaged fit
-containing them, the corresponding value is an NSEC and the combination
-should be read as approximate -- a message is emitted in that case.
+\bold{The combined estimate is therefore the smaller of the two, and reduces
+to the growth estimate whenever growth is the more sensitive endpoint} --
+which it usually is, since a contaminant that kills has generally slowed
+growth at a lower concentration first. This is not a defect of the
+combination but a property of thresholds: a threshold marks where an effect
+\emph{begins}, and the combined effect begins as soon as either process
+does. Where the two components differ is in the \emph{magnitude} of effect
+above that point, which is what \code{\link{ecx}} measures. Use
+\code{ecx(which = "combined")} rather than this function where the question
+is what the hurdle model adds over a survivors-only analysis.
+
+As for \code{\link{nec}} on any fit, what is returned is a NEC only where
+the underlying model(s) are threshold models. A component whose model set
+contains smooth (\code{ecx}-type) models contributes NSEC draws instead, and
+the combination is then an N(S)EC; a message is emitted in that case and
+\code{summary} labels each component. \code{\link{nsec}} with
+\code{which = "combined"} is the alternative that reads a single value off
+the combined curve itself rather than taking the minimum of two component
+estimates, and it does not reduce to the growth value.
 }

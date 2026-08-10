@@ -421,7 +421,8 @@ substitute_x_in_formula <- function(new_x, brms_rhs) {
 
 #' @noRd
 #' @importFrom formula.tools lhs
-wrangle_model_formula <- function(model, formula, data, family = NULL) {
+wrangle_model_formula <- function(model, formula, data, family = NULL,
+                                  model_survival = NULL) {
   brms_bf <- get(paste0("bf_", model))
   brms_bf[[1]][[2]] <- lhs(formula)
   bnec_pop_vars <- attr(data, "bnec_pop")
@@ -438,8 +439,14 @@ wrangle_model_formula <- function(model, formula, data, family = NULL) {
   # to the response block only -- coupling the two blocks through a shared
   # group-level effect would break the likelihood factorisation that the
   # factorised route (see bnec_hurdle) relies on, so it is not done implicitly.
+  #
+  # The second block need not use the same equation as the response block: the
+  # two describe different processes and are selected on separately by the
+  # crossed comparison (see crossed_weights). model_survival names its equation
+  # and defaults to the response block's.
   if (!is.null(family) && is_hurdle_family(family)) {
-    brms_bf <- add_hu_block(brms_bf, model, new_x, hurdle_dpar(family))
+    hu_model <- if (is.null(model_survival)) model else model_survival
+    brms_bf <- add_hu_block(brms_bf, hu_model, new_x, hurdle_dpar(family))
   }
   brms_bf
 }

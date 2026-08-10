@@ -92,6 +92,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     brmssummary = cleaned_brms_summary(x$fit),
     model = x$model,
     is_ecx = is_ecx,
+    ne_type = x$ne_type,
     nec_vals = clean_nec_vals(x, x$model, ecx_mod),
     ecs = ecs,
     bayesr2 = bayes_R2(x$fit)

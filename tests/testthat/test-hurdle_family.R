@@ -354,3 +354,83 @@ test_that("make_good_hurdle_inits uses the zi prefix", {
   expect_setequal(names(inits[[1]]),
                   c("b_top", "b_beta", "b_nec", "b_zitop", "b_zibeta", "b_zinec"))
 })
+
+# ---------------------------------------------------------------------------
+# model_survival: a different equation on each of the two blocks
+# ---------------------------------------------------------------------------
+
+test_that("wrangle_model_formula uses model_survival for the hu block", {
+  dat <- data.frame(lx = as.numeric(1:10), y = c(rep(5, 8), 0, 0))
+  f <- bnf(y ~ crf(lx, "nec3param"))
+  bdat <- model.frame(f, data = dat)
+  mixed <- bayesnec:::wrangle_model_formula(
+    "nec3param", f, bdat, bayesnec:::validate_family("hurdle_gamma"),
+    model_survival = "ecx4param"
+  )
+  # response block keeps nec3param's parameters, hu block takes ecx4param's
+  expect_true(all(c("top", "beta", "nec") %in% names(mixed$pforms)))
+  expect_true(all(c("hutop", "hubot", "huec50", "hubeta") %in%
+                    names(mixed$pforms)))
+  expect_false("hunec" %in% names(mixed$pforms))
+  # and the block is still written as 1 - <declining equation>
+  expect_true(grepl("^1 - ", deparse1(mixed$pforms$hu[[3]])))
+})
+
+test_that("define_prior builds hu priors for the survival equation", {
+  x <- as.numeric(rep(1:5, each = 6))
+  y <- c(rep(c(3, 2.5, 2, 1), each = 6), rep(0, 6))
+  prs <- as.data.frame(
+    bayesnec:::define_prior("nec3param",
+                            bayesnec:::validate_family("hurdle_gamma"), x, y,
+                            model_survival = "ecx4param")
+  )
+  expect_true(all(c("top", "beta", "nec") %in% prs$nlpar))
+  expect_true(all(c("hutop", "hubot", "huec50", "hubeta") %in% prs$nlpar))
+  expect_false("hunec" %in% prs$nlpar)
+})
+
+test_that("make_good_hurdle_inits primes each block with its own equation", {
+  x <- as.numeric(rep(1:5, each = 6))
+  y <- c(rep(c(3, 2.5, 2, 1), each = 6), rep(0, 6))
+  pr <- bayesnec:::define_prior("nec3param",
+                                bayesnec:::validate_family("hurdle_gamma"),
+                                x, y, model_survival = "ecx4param")
+  inits <- bayesnec:::make_good_hurdle_inits("nec3param", x, y, priors = pr,
+                                             chains = 2,
+                                             model_survival = "ecx4param")
+  skip_if(length(inits) == 1 && "random" %in% names(inits),
+          "init search fell back to random")
+  expect_length(inits, 2)
+  expect_setequal(names(inits[[1]]),
+                  c("b_top", "b_beta", "b_nec", "b_hutop", "b_hubot",
+                    "b_huec50", "b_hubeta"))
+})
+
+test_that("check_model_survival validates against the survival block", {
+  dat <- data.frame(lx = as.numeric(1:10), y = c(rep(5, 8), 0, 0))
+  bdat <- model.frame(bnf(y ~ crf(lx, "nec3param")), data = dat)
+  hurdle_fam <- bayesnec:::validate_family("hurdle_gamma")
+  expect_null(bayesnec:::check_model_survival(NULL, hurdle_fam, bdat))
+  expect_equal(
+    bayesnec:::check_model_survival("ecx4param", hurdle_fam, bdat), "ecx4param"
+  )
+  # only meaningful for a two-block family
+  expect_error(
+    bayesnec:::check_model_survival("ecx4param", Gamma(link = "identity"),
+                                    bdat),
+    "only applies to the two-block families"
+  )
+  # a set is not accepted: averaging over both blocks means fitting every pair
+  expect_error(
+    bayesnec:::check_model_survival(c("nec3param", "ecx4param"), hurdle_fam,
+                                    bdat),
+    "must be a single model name"
+  )
+  # the survival block is 0-1 bounded, so the linear models are not valid
+  expect_error(
+    suppressMessages(
+      bayesnec:::check_model_survival("ecxlin", hurdle_fam, bdat)
+    ),
+    "valid for a bernoulli"
+  )
+})

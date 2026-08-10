@@ -14,11 +14,13 @@
 #'
 #' @noRd
 define_prior <- function(model, family, predictor, response,
-                         prior_type = "uninformative") {
+                         prior_type = "uninformative",
+                         model_survival = NULL) {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
     return(define_hurdle_prior(model, family, predictor, response,
-                               prior_type = prior_type))
+                               prior_type = prior_type,
+                               model_survival = model_survival))
   }
   link_tag <- family$link
   custom_name <- check_custom_name(family)
@@ -202,8 +204,14 @@ define_prior <- function(model, family, predictor, response,
 #'
 #' @noRd
 define_hurdle_prior <- function(model, family, predictor, response,
-                                prior_type = "uninformative") {
+                                prior_type = "uninformative",
+                                model_survival = NULL) {
   dpar <- hurdle_dpar(family)
+  # The second block may carry a different equation from the response block,
+  # in which case its priors must be built for that equation's parameters.
+  if (is.null(model_survival)) {
+    model_survival <- model
+  }
   parts <- split_hurdle_response(predictor, response)
   # mu block: reuse the defaults of whatever the non-zero response looks like
   # (Gamma for hurdle_gamma, Beta for zero_inflated_beta), built from the
@@ -213,7 +221,7 @@ define_hurdle_prior <- function(model, family, predictor, response,
                             parts$mu$x, parts$mu$y, prior_type = prior_type)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
-  hu_priors <- define_prior(model, bernoulli(link = "identity"),
+  hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
                             parts$hu$x, parts$hu$y, prior_type = prior_type)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
