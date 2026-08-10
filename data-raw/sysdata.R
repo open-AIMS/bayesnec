@@ -57,6 +57,52 @@ hurdle_fams <- c(hurdle_gamma = "hu", zero_inflated_beta = "zi")
 # values, i.e. what the response looks like once the zeros are set aside.
 hurdle_mu_fams <- c(hurdle_gamma = "Gamma", zero_inflated_beta = "beta")
 
+###############################
+# DISPERSION SUB-MODELS (disp)
+###############################
+# Families with a free dispersion parameter, mapped to the name brms gives it.
+# Only these can carry a dispersion sub-model: for poisson, bernoulli and
+# binomial the variance is a deterministic function of the mean, so there is no
+# parameter to model. Over-dispersion there is remedied by changing family
+# (poisson -> negbinomial, binomial -> beta_binomial), which is what the
+# existing dispersion() diagnostic is for -- the two apply to disjoint sets of
+# families and are complements rather than alternatives.
+disp_dpars <- c(gaussian = "sigma", Gamma = "shape", negbinomial = "shape",
+                beta = "phi", beta_binomial = "phi")
+
+# Named variance functions for the disp() term, in the same spirit as the named
+# models: each entry knows the expression it expands to, the non-linear
+# parameters it introduces, and which families it is valid for. Adding a form
+# later is an entry here plus a prior, not a change to the generator.
+#
+# The expression is written for the DISPERSION PARAMETER, which is what brms
+# actually fits, not for the implied standard deviation. Every eligible family
+# gives that parameter a log link (validate_family() forces identity on mu
+# only), so a linear sub-model here is a power law on the response scale:
+# log(dpar) = c0 + c1 * log(mu) is dpar = exp(c0) * mu^c1. Because each family
+# already imposes its own mean-variance link the same c1 means different things
+# per family -- documented in ?bayesnecformula rather than algebraically
+# normalised away, which would change what is fitted for no gain.
+#
+# "@MU@" is replaced by the model's own curve expression at formula-build time.
+# The curve has to be written out again because mu is not in scope for another
+# distributional parameter's formula in brms; only the source is duplicated,
+# not the fitted quantity.
+disp_functions <- list(
+  power = list(
+    expr = "c0 + c1 * log(@MU@)",
+    pars = c("c0", "c1"),
+    families = c("gaussian", "Gamma", "negbinomial", "beta", "beta_binomial"),
+    positive_mu = TRUE
+  ),
+  twosided = list(
+    expr = "c0 + c1 * log(@MU@) + c2 * log(1 - (@MU@))",
+    pars = c("c0", "c1", "c2"),
+    families = c("beta", "beta_binomial"),
+    positive_mu = TRUE
+  )
+)
+
 ############
 # NEC MODELS
 ############
@@ -227,6 +273,7 @@ pred_functions <- list(nec3param = pred_nec3param,
 ####################
 usethis::use_data(
   mod_groups, mod_fams, hurdle_fams, hurdle_mu_fams,
+  disp_dpars, disp_functions,
   # neclin
   bf_neclin,
   # nec3param

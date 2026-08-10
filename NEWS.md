@@ -1,3 +1,51 @@
+# bayesnec 2.1.3.7
+
+- New `disp()` term in `bayesnecformula`, allowing a family's dispersion
+  parameter to vary across the concentration-response curve instead of being
+  held constant. Two forms. `disp(~x)` models dispersion on the **predictor** —
+  an ordinary `brms` distributional formula, so `disp(~log(x))` and
+  `disp(~s(x))` also work — and says only that noise is larger at one end of the
+  dose axis. `disp("power")` models it on the **fitted mean**, a variance
+  function in the GLM sense, which is a statement about the measurement process
+  rather than about the dose axis and so transports to a design whose curve has
+  a different shape. The two coincide for a monotone curve, where `mu` is itself
+  a monotone function of `x`, and separate under hormesis or where a design
+  revisits the same `mu`.
+- Variance functions are named and registered in the same spirit as the models,
+  so adding one later is a registry entry and a prior rather than a change to
+  the generator. `"power"` gives `log(dpar) = c0 + c1 * log(mu)`, which is
+  `dpar = exp(c0) * mu^c1` because every eligible family puts a log link on its
+  dispersion parameter and `validate_family()` forces identity on `mu` only.
+  `"twosided"` adds a `c2 * log(1 - mu)` term for `Beta` and `beta_binomial`, so
+  that variance can shrink toward both boundaries of `(0, 1)` — the shape a
+  bounded family asserts, without asserting a ceiling with it. `c1 = 0` is the
+  constant-dispersion model in every case, and is where the prior on `c1` sits.
+- Route B needs the curve expression written out a second time inside the
+  dispersion formula, because `mu` is not in scope for another distributional
+  parameter's formula in `brms`. Only the source is duplicated, not the fitted
+  quantity: the curve parameters are shared, being declared once for the whole
+  formula. This is mechanical here because `bayesnec` already owns every curve
+  expression in `sysdata`.
+- What the exponent means depends on the family, since each already imposes its
+  own mean-variance link — `c1 = 1` is constant CV under `gaussian`, while under
+  `Gamma` a constant `shape` is already constant CV, so `c1 = 0` is. The form is
+  defined on the dispersion parameter, which is what `brms` fits, and the
+  implied variance per family is tabulated in `?bayesnecformula` rather than
+  algebraically normalised away.
+- `disp()` requires a family with a free dispersion parameter and is refused
+  with an explanation for `poisson`, `bernoulli` and `binomial`, whose variance
+  is a deterministic function of the mean. Those are exactly the families the
+  existing `dispersion()` diagnostic applies to, so the two cover disjoint sets
+  of families and are complements rather than alternatives. The two-block
+  families are also refused for now, since coupling a variance function to one
+  block of a joint fit needs a decision about the other.
+- A variance function is refused where the fitted mean crosses zero, rather than
+  failing at initialisation. Both implemented forms take `log(mu)`, so a
+  response on the real line — a specific growth rate, yield or increment can all
+  be negative — needs `disp(~x)` instead, or a fit on a strictly positive scale
+  with the rate derived afterwards.
+  See [#191](https://github.com/open-AIMS/bayesnec/issues/191).
+
 # bayesnec 2.1.3.6
 
 - New *Censoring* section in `vignette("example1")`, giving the `cens()` aterm

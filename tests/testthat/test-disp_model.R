@@ -1,0 +1,261 @@
+disp_dat <- data.frame(
+  x = rep(c(0.1, 0.3, 1, 3, 10), each = 6),
+  tank = rep(letters[1:3], 10)
+)
+set.seed(10)
+disp_dat$y <- 0.7 - 0.6 / (1 + exp(-(log(disp_dat$x) - log(1)))) +
+  rnorm(30, 0, 0.02)
+disp_dat$prop <- pmin(pmax(disp_dat$y, 0.01), 0.99)
+disp_dat$signed <- disp_dat$y - 0.4
+disp_dat$count <- as.integer(round(disp_dat$y * 30))
+
+test_that("has_disp_par and disp_dpar cover the right families", {
+  expect_true(bayesnec:::has_disp_par("gaussian"))
+  expect_true(bayesnec:::has_disp_par(Gamma(link = "identity")))
+  expect_true(bayesnec:::has_disp_par(brms::Beta(link = "identity")))
+  # the variance is a deterministic function of the mean for these
+  expect_false(bayesnec:::has_disp_par("poisson"))
+  expect_false(bayesnec:::has_disp_par("bernoulli"))
+  expect_false(bayesnec:::has_disp_par("binomial"))
+  expect_equal(bayesnec:::disp_dpar("gaussian"), "sigma")
+  expect_equal(bayesnec:::disp_dpar("Gamma"), "shape")
+  expect_equal(bayesnec:::disp_dpar("beta"), "phi")
+  expect_null(bayesnec:::disp_dpar("poisson"))
+})
+
+test_that("parse_disp_term tells the two routes apart", {
+  expect_null(bayesnec:::parse_disp_term(bnf(y ~ crf(x, "nec3param"))))
+  a <- bayesnec:::parse_disp_term(bnf(y ~ crf(x, "nec3param") + disp(~x)))
+  expect_equal(a$route, "A")
+  expect_equal(a$value, "x")
+  b <- bayesnec:::parse_disp_term(bnf(y ~ crf(x, "nec3param") + disp("power")))
+  expect_equal(b$route, "B")
+  expect_equal(b$value, "power")
+})
+
+test_that("parse_disp_term keeps a route A sub-model verbatim", {
+  # the right-hand side is handed to brms untouched, so terms it understands
+  # must survive parsing rather than being evaluated here
+  a <- bayesnec:::parse_disp_term(bnf(y ~ crf(x, "nec3param") + disp(~log(x))))
+  expect_equal(a$value, "log(x)")
+})
+
+test_that("only one disp term is allowed", {
+  expect_error(
+    bayesnec:::parse_disp_term(
+      bnf(y ~ crf(x, "nec3param") + disp("power") + disp(~x))
+    ),
+    "more than one disp"
+  )
+})
+
+test_that("an inline sub-model that the term splitter tears apart is reported", {
+  # the rhs is split on ") + ", so disp(~s(x) + group) arrives here in pieces;
+  # the failure should name the limitation rather than surface as a parse error
+  expect_error(
+    bayesnec:::parse_disp_term(
+      bnf(y ~ crf(x, "nec3param") + disp(~s(x) + tank))
+    ),
+    "cannot currently be written inline"
+  )
+})
+
+test_that("disp_pars reports the parameters each route introduces", {
+  expect_equal(bayesnec:::disp_pars(NULL), character(0))
+  # route A introduces ordinary population-level terms, not non-linear ones
+  expect_equal(bayesnec:::disp_pars(list(route = "A", value = "x")),
+               character(0))
+  expect_equal(bayesnec:::disp_pars(list(route = "B", value = "power")),
+               c("c0", "c1"))
+  expect_equal(bayesnec:::disp_pars(list(route = "B", value = "twosided")),
+               c("c0", "c1", "c2"))
+})
+
+test_that("make_disp_block duplicates the curve rather than the fitted value", {
+  spec <- list(route = "B", value = "power")
+  db <- bayesnec:::make_disp_block("ecx4param", spec, "sigma", "x")
+  rhs <- deparse1(db$nlf[[3]])
+  curve <- deparse1(bayesnec:::bf_ecx4param$formula[[3]])
+  expect_true(grepl(curve, rhs, fixed = TRUE))
+  # the curve parameters are shared with mu, so must NOT be renamed the way
+  # the hurdle block renames them
+  expect_true(grepl("top", rhs, fixed = TRUE))
+  expect_false(grepl("sigmatop", rhs, fixed = TRUE))
+  expect_equal(sort(all.vars(db$lf[[2]])), c("c0", "c1"))
+})
+
+test_that("make_disp_block wraps the curve so twosided binds correctly", {
+  # log(1 - (curve)) must bracket the whole curve; without the parentheses a
+  # curve that is a sum would rebind against the subtraction
+  spec <- list(route = "B", value = "twosided")
+  db <- bayesnec:::make_disp_block("ecx4param", spec, "phi", "x")
+  rhs <- deparse1(db$nlf[[3]])
+  curve <- deparse1(bayesnec:::bf_ecx4param$formula[[3]])
+  expect_true(grepl(paste0("log(1 - ((", curve, ")))"), rhs, fixed = TRUE))
+})
+
+test_that("make_disp_block substitutes the real predictor name", {
+  spec <- list(route = "B", value = "power")
+  db <- bayesnec:::make_disp_block("nec3param", spec, "sigma", "conc")
+  expect_true("conc" %in% all.vars(db$nlf))
+  expect_false("x" %in% all.vars(db$nlf))
+})
+
+test_that("route A produces a plain distributional formula", {
+  bf_a <- make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp(~x)),
+                           disp_dat, gaussian(link = "identity"))[[1]]
+  expect_true("sigma" %in% names(bf_a$pforms))
+  expect_equal(deparse1(bf_a$pforms$sigma[[3]]), "x")
+  # no new non-linear parameters
+  expect_false(any(c("c0", "c1") %in% names(bf_a$pforms)))
+})
+
+test_that("route B produces a variance function on the fitted mean", {
+  bf_b <- make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("power")),
+                           disp_dat, gaussian(link = "identity"))[[1]]
+  expect_true(all(c("sigma", "c0", "c1") %in% names(bf_b$pforms)))
+  expect_true(grepl("log(", deparse1(bf_b$pforms$sigma[[3]]), fixed = TRUE))
+})
+
+test_that("the dispersion parameter is named per family", {
+  bf_g <- make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("power")),
+                           disp_dat, Gamma(link = "identity"))[[1]]
+  expect_true("shape" %in% names(bf_g$pforms))
+  bf_b <- make_brmsformula(bnf(prop ~ crf(x, "ecx4param") + disp("power")),
+                           disp_dat, brms::Beta(link = "identity"))[[1]]
+  expect_true("phi" %in% names(bf_b$pforms))
+})
+
+test_that("disp variables are not mistaken for group-level variables", {
+  # without this they fall through to the group-level slot and silently
+  # acquire a random effect on every curve parameter
+  mf <- model.frame(bnf(y ~ crf(x, "ecx4param") + disp(~tank)), disp_dat)
+  expect_true(all(is.na(attr(mf, "bnec_group"))))
+  # a genuine group-level term still registers alongside a disp term
+  mf2 <- model.frame(bnf(y ~ crf(x, "ecx4param") + ogl(tank) + disp("power")),
+                     disp_dat)
+  expect_equal(unname(attr(mf2, "bnec_group")), "tank")
+})
+
+test_that("disp is rejected for families with no dispersion parameter", {
+  for (fam in list(poisson(link = "identity"), brms::bernoulli(link = "identity"))) {
+    expect_error(
+      make_brmsformula(bnf(count ~ crf(x, "ecx4param") + disp("power")),
+                       disp_dat, fam),
+      "no free dispersion parameter"
+    )
+  }
+})
+
+test_that("disp is rejected for the two-block families", {
+  expect_error(
+    make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("power")), disp_dat,
+                     brms::hurdle_gamma(link = "identity",
+                                        link_hu = "identity")),
+    "not currently supported for the two-block family"
+  )
+})
+
+test_that("a variance function is rejected outside the families it suits", {
+  expect_error(
+    make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("twosided")),
+                     disp_dat, gaussian(link = "identity")),
+    "not valid for the gaussian family"
+  )
+})
+
+test_that("an unknown variance function is rejected at parse time", {
+  expect_error(
+    make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("wibble")),
+                     disp_dat, gaussian(link = "identity")),
+    "one-sided formula"
+  )
+})
+
+test_that("a route A variable must exist in the data", {
+  expect_error(
+    model.frame(bnf(y ~ crf(x, "ecx4param") + disp(~nope)), disp_dat),
+    "not found in dataset"
+  )
+})
+
+test_that("a power law is refused where the fitted mean crosses zero", {
+  # the growth-rate case: specific growth rate, yield and increment can all be
+  # negative, and log(mu) is undefined there
+  expect_error(
+    make_brmsformula(bnf(signed ~ crf(x, "ecx4param") + disp("power")),
+                     disp_dat, gaussian(link = "identity")),
+    "crosses zero"
+  )
+  # route A is unaffected, being a function of the predictor
+  expect_silent(
+    make_brmsformula(bnf(signed ~ crf(x, "ecx4param") + disp(~x)),
+                     disp_dat, gaussian(link = "identity"))
+  )
+})
+
+test_that("make_brmsformula needs a family to resolve a disp term", {
+  expect_error(
+    make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("power")), disp_dat),
+    "needs the model family"
+  )
+})
+
+test_that("define_disp_prior covers every new parameter", {
+  spec <- list(route = "B", value = "power")
+  pr <- bayesnec:::define_prior("ecx4param", gaussian(link = "identity"),
+                                disp_dat$x, disp_dat$y, disp_spec = spec)
+  expect_true(all(c("c0", "c1") %in% pr$nlpar))
+  # c1 centred on zero, i.e. on constant dispersion
+  expect_equal(pr$prior[pr$nlpar == "c1"], "normal(0, 2)")
+  # c0 is the dispersion parameter on the log scale, so tracks the response
+  expect_true(grepl("^normal\\(", pr$prior[pr$nlpar == "c0"]))
+  spec2 <- list(route = "B", value = "twosided")
+  pr2 <- bayesnec:::define_prior("ecx4param", brms::Beta(link = "identity"),
+                                 disp_dat$x, disp_dat$prop, disp_spec = spec2)
+  expect_true(all(c("c0", "c1", "c2") %in% pr2$nlpar))
+})
+
+test_that("no disp priors are added without a route B term", {
+  pr <- bayesnec:::define_prior("ecx4param", gaussian(link = "identity"),
+                                disp_dat$x, disp_dat$y, disp_spec = NULL)
+  expect_false(any(c("c0", "c1") %in% pr$nlpar))
+  pr_a <- bayesnec:::define_prior("ecx4param", gaussian(link = "identity"),
+                                  disp_dat$x, disp_dat$y,
+                                  disp_spec = list(route = "A", value = "x"))
+  expect_false(any(c("c0", "c1") %in% pr_a$nlpar))
+})
+
+test_that("every model yields a formula brms will accept with disp", {
+  skip_on_cran()
+  for (m in models()$all) {
+    spec <- list(route = "B", value = "power")
+    db <- bayesnec:::make_disp_block(m, spec, "sigma", "x")
+    comb <- try(
+      get(paste0("bf_", m), envir = asNamespace("bayesnec")) +
+        brms::nlf(db$nlf) + brms::lf(db$lf),
+      silent = TRUE
+    )
+    expect_false(inherits(comb, "try-error"),
+                 label = paste("disp block for", m))
+  }
+})
+
+test_that("a variance function recovers a known exponent", {
+  skip_on_cran()
+  skip_on_ci()
+  # truth: sigma = exp(-3) * mu^0.8 on a declining ecx4param curve
+  set.seed(101)
+  x <- rep(c(0.1, 0.3, 1, 3, 10, 30), each = 20)
+  mu <- 0.1 + (1.2 - 0.1) / (1 + exp((log(3) - log(x)) * exp(0.3)))
+  mu <- rev(mu)
+  sim <- data.frame(x = x, y = rnorm(length(mu), mu, exp(-3) * mu^0.8))
+  fit <- bnec(y ~ crf(x, "ecx4param") + disp("power"), data = sim,
+              family = gaussian(link = "identity"), chains = 2, iter = 4000,
+              warmup = 2000, seed = 101, control = list(adapt_delta = 0.95))
+  drws <- as.data.frame(pull_brmsfit(fit))
+  c1 <- drws[[grep("c1", names(drws), value = TRUE)[1]]]
+  expect_true(quantile(c1, 0.025) < 0.8 && quantile(c1, 0.975) > 0.8)
+  # and it should be distinguishable from constant dispersion
+  expect_true(quantile(c1, 0.025) > 0)
+})

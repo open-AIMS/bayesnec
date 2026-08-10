@@ -58,6 +58,72 @@
 #' \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
 #' will be dropped in models where that parameter does not exist.
 #'
+#' \bold{Dispersion sub-models: \code{disp}}
+#'
+#' By default a fit holds the family's dispersion parameter constant across the
+#' whole concentration-response curve. Real data routinely violate that, and
+#' the misfit lands where toxicity estimates are read from. The special term
+#' \code{disp} lets that parameter vary, and takes one of two forms.
+#'
+#' 1) \code{disp(~x)} models dispersion as a function of the \bold{predictor} —
+#' an ordinary \pkg{brms} distributional formula, so anything \pkg{brms}
+#' understands is allowed, e.g. \code{disp(~log(x))} or \code{disp(~s(x))}. It
+#' is descriptive: it says noise is larger at one end of the dose axis.
+#'
+#' 2) \code{disp("power")} models dispersion as a function of the \bold{fitted
+#' mean} — a variance function in the GLM sense. This is a statement about the
+#' measurement process rather than about the dose axis, so unlike 1) it
+#' transports to a design whose curve has a different shape. Available
+#' functions, on the log link every eligible family gives its dispersion
+#' parameter:
+#'
+#' \tabular{lll}{
+#' \bold{name} \tab \bold{form} \tab \bold{families} \cr
+#' \code{"power"} \tab \code{log(dpar) = c0 + c1 * log(mu)} \tab all eligible \cr
+#' \code{"twosided"} \tab \code{log(phi) = c0 + c1 * log(mu) + c2 * log(1 - mu)}
+#' \tab \code{Beta}, \code{beta_binomial}
+#' }
+#'
+#' The two coincide for a monotone curve, where \code{mu} is itself a monotone
+#' function of \code{x}. They separate under hormesis, or where a design
+#' revisits the same \code{mu}.
+#'
+#' A dispersion sub-model requires a family with a free dispersion parameter.
+#' For \code{poisson}, \code{bernoulli} and \code{binomial} the variance is a
+#' deterministic function of the mean and there is nothing to model;
+#' over-dispersion there is remedied by changing family (\code{poisson} to
+#' \code{negbinomial}, \code{binomial} to \code{beta_binomial}) or by an
+#' observation-level group-level effect. Those are exactly the families the
+#' \code{\link{dispersion}} diagnostic applies to, so the two are complements
+#' rather than alternatives.
+#'
+#' \bold{What the exponent means depends on the family}, because each family
+#' already imposes its own mean-variance link. The form above is written for
+#' the dispersion parameter itself, which is what \pkg{brms} fits:
+#'
+#' \tabular{llll}{
+#' \bold{family} \tab \bold{parameter} \tab \bold{implied variance} \tab
+#' \bold{constant CV at} \cr
+#' \code{gaussian} \tab \code{sigma} \tab \code{(exp(c0) * mu^c1)^2} \tab
+#' \code{c1 = 1} \cr
+#' \code{Gamma} \tab \code{shape} \tab \code{mu^(2 - c1) / exp(c0)} \tab
+#' \code{c1 = 0} \cr
+#' \code{negbinomial} \tab \code{shape} \tab \code{mu + mu^(2 - c1) / exp(c0)}
+#' \tab \code{--} \cr
+#' \code{Beta}, \code{beta_binomial} \tab \code{phi} \tab
+#' \code{mu * (1 - mu) / (1 + exp(c0) * mu^c1)} \tab \code{--}
+#' }
+#'
+#' In every case \code{c1 = 0} returns the constant-dispersion model, which is
+#' where the prior on \code{c1} is centred.
+#'
+#' Both \code{"power"} and \code{"twosided"} take \code{log(mu)}, so a fitted
+#' mean that reaches zero is undefined. This rules them out for a response on
+#' the real line — a specific growth rate, yield or increment can be negative —
+#' and \code{\link{bnec}} refuses the combination rather than failing at
+#' initialisation. Use \code{disp(~x)} for those, or fit on a strictly positive
+#' scale and derive the rate afterwards.
+#'
 #' \bold{Further brms terms (largely untested)}
 #'
 #' Currently \code{\link{bayesnecformula}} is quite agnostic about additional
@@ -139,6 +205,10 @@
 #' bayesnecformula(y ~ crf(x, "nec3param")) == bnf(y ~ crf(x, "nec3param"))
 #' bnf(y | trials(tr) ~ crf(sqrt(x), "nec3param"))
 #' bnf(y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2))
+#' # dispersion as a function of the predictor
+#' bnf(y ~ crf(x, "nec3param") + disp(~x))
+#' # dispersion as a function of the fitted mean
+#' bnf(y ~ crf(x, "nec3param") + disp("power"))
 #' bnf(y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1))
 #'
 #' \donttest{
@@ -355,6 +425,31 @@ check_formula.bayesnecformula <- function(formula, data,
     }
     split_random_call <- setdiff(split_random_call, str_calls)
   }
+  if (any(grepl("disp(", split_random_call, fixed = TRUE))) {
+    str_calls <- grep("disp(", split_random_call, fixed = TRUE, value = TRUE)
+    # Structural checks only. Whether the term is valid for the family, and
+    # whether the response admits a log(mu) form, cannot be settled here
+    # because check_formula() is not given the family -- those run in
+    # wrangle_model_formula() via check_disp_spec().
+    disp_spec <- parse_disp_term(formula)
+    if (disp_spec$route == "A") {
+      vars <- all.vars(str2lang(disp_spec$value))
+      for (j in seq_along(vars)) {
+        if (!vars[j] %in% names(data)) {
+          stop("Dispersion sub-model variable(s) ",
+               paste0("\"", vars[j], "\"", collapse = "; "),
+               " not found in dataset.", call. = FALSE)
+        }
+      }
+    } else if (!is.character(disp_spec$value) ||
+                 !disp_spec$value %in% names(disp_functions)) {
+      stop("The disp() term must be given either a one-sided formula, e.g.",
+           " disp(~x), or the name of a variance function, one of: ",
+           paste0("\"", names(disp_functions), "\"", collapse = ", "),
+           ". See ?bayesnecformula", call. = FALSE)
+    }
+    split_random_call <- setdiff(split_random_call, str_calls)
+  }
   if (length(split_random_call) > 0) {
     stop("Term(s) ", paste0(split_random_call, collapse = "; "), "; are not",
          " allowed in a bayesnec formula. See ?bayesnecformula")
@@ -441,7 +536,19 @@ simplify_formula <- function(formula, data, ...) {
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
   x_call <- str2lang(eval(parse(text = x_str)))
   x_var <- all.vars(x_call)
-  r_vars <- intersect(names(data), setdiff(all.vars(rhs(formula)), x_var))
+  # Variables named in a disp(~...) term are predictors of the dispersion
+  # parameter, not grouping variables. Without this they would fall through to
+  # r_vars below and silently acquire a group-level effect on every curve
+  # parameter. They are not added to short_form either: brm() is handed the
+  # user's full data.frame, so brms resolves them itself.
+  disp_spec <- parse_disp_term(formula)
+  disp_vars <- if (!is.null(disp_spec) && disp_spec$route == "A") {
+    all.vars(str2lang(disp_spec$value))
+  } else {
+    character(0)
+  }
+  r_vars <- intersect(names(data),
+                      setdiff(all.vars(rhs(formula)), c(x_var, disp_vars)))
   if (length(r_vars) == 0) {
     r_call <- 1
     r_vars <- NA
@@ -499,6 +606,19 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
   if (!is.null(family) && is_hurdle_family(family)) {
     hu_model <- if (is.null(model_survival)) model else model_survival
     brms_bf <- add_hu_block(brms_bf, hu_model, new_x, hurdle_dpar(family))
+  }
+  # A disp() term adds a sub-model for the family's dispersion parameter. Added
+  # last so that the curve expression it duplicates (route B) is the one any
+  # group-level terms above have already been applied to.
+  disp_spec <- parse_disp_term(formula)
+  if (!is.null(disp_spec)) {
+    if (is.null(family)) {
+      stop("A disp() term needs the model family to know which dispersion",
+           " parameter it applies to. Pass `family` to make_brmsformula(), or",
+           " build the formula through bnec().", call. = FALSE)
+    }
+    check_disp_spec(disp_spec, family, response = retrieve_var(data, "y_var"))
+    brms_bf <- add_disp_block(brms_bf, model, disp_spec, family, new_x)
   }
   brms_bf
 }

@@ -63,7 +63,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
                                prior_type = prior_type,
-                               model_survival = model_survival)
+                               model_survival = model_survival,
+                               disp_spec = parse_disp_term(formula))
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
   if (is.finite(timeout)) {
     # R.utils::withTimeout aborts the brm call once `timeout` seconds elapse

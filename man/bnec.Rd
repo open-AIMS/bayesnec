@@ -303,6 +303,20 @@ so a threshold response can be paired with a smooth survival curve or the
 reverse. Where \code{crf} names a model set, that set is averaged over with
 the survival block held fixed.
 
+\bold{Non-constant dispersion}
+
+Every fit holds the family's dispersion parameter constant across the curve
+unless told otherwise. Where that is wrong, the misfit lands where the
+toxicity estimates are read from: one \code{sigma} split between a tight
+control plateau and a noisy collapse region is too wide at one end and too
+narrow at the other. The \code{disp} term in the formula relaxes it, either
+as a function of the predictor (\code{disp(~x)}) or as a variance function
+on the fitted mean (\code{disp("power")}). \code{\link{ecx}} and
+\code{\link{nsec}} are defined on \code{mu}, so their point estimates move
+little; the intervals are what change, which is the point. See
+\code{?\link{bayesnecformula}} for the forms available, which families can
+carry one, and what the exponent implies for each.
+
 The alternative is \code{\link{bnec_hurdle}}, which fits the same two
 components as two separate \code{\link{bnec}} calls. The hurdle likelihood
 factorises, so the two give equivalent inference where the components are
