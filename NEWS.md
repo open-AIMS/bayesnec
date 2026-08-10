@@ -1,4 +1,4 @@
-# bayesnec 2.1.3.10
+# bayesnec 2.1.3.6
 
 - New *Censoring* section in `vignette("example1")`, giving the `cens()` aterm
   added in the previous version a user-facing home: the syntax, the values the
@@ -30,8 +30,6 @@
   1269 columns and column pairs from 33 real datasets, in which it did correctly
   flag four normalised datasets. See `notes/normalisation_detection.md`.
   See [#173](https://github.com/open-AIMS/bayesnec/issues/173).
-
-# bayesnec 2.1.3.9
 
 - `bayesnecformula` now supports the `brms` `cens()` aterm, so a response that is
   rounded at the recording resolution, reported below a limit of detection, or
@@ -71,8 +69,6 @@
   [#173](https://github.com/open-AIMS/bayesnec/issues/173) and
   [#181](https://github.com/open-AIMS/bayesnec/issues/181).
 
-# bayesnec 2.1.3.8
-
 - Vignette figures are now written as png rather than pdf. Every vignette is an
   `rmarkdown::html_vignette`, but the five older ones set `dev = "pdf"`, so
   pandoc embedded each figure with `<embed type="application/pdf">` and browsers
@@ -86,7 +82,7 @@
   `article/render_tex_pdf.R` writes alongside it rather than from the vignettes.
   See [#178](https://github.com/open-AIMS/bayesnec/issues/178).
 
-# bayesnec 2.1.3.7
+# bayesnec 2.1.3.5
 
 - New vignette, *Hurdle and zero-inflated concentration-response models*
   (`vignette("example6")`), covering the two implementations of these models,
@@ -136,7 +132,6 @@
   *Nassarius dorsatus*, one row per individual exposed, with mortality
   reconstructed from the four ways it was recorded other than as zeros. Used
   as the worked example in `vignette("example6")`.
-# bayesnec 2.1.3.6
 
 - `bayesnechurdlefit` objects returned by `bnec_hurdle()` now support the full
   set of package methods. `summary()`, `plot()`, `autoplot()`, `ggbnec_data()`,
@@ -162,7 +157,6 @@
   maximum, that divisor must be a constant fixed in advance rather than one
   computed from the data; see
   [#173](https://github.com/open-AIMS/bayesnec/issues/173).
-# bayesnec 2.1.3.5
 
 - Added the `"hurdle_gamma"` family to `bnec()`, for concentration-response
   data where exposure both kills individuals and suppresses the response of
@@ -274,7 +268,6 @@
 
 - Reduced n_trials and deleted unnecessary set.seed in while call for `make_good_inits` ([3c5f084](https://github.com/open-AIMS/bayesnec/commit/3c5f084)).
 
-
 # bayesnec 2.1.0.2
 
 - Fixed bug introduced when implementing recycling the seed passed to `bnec`  ([01394a17](https://github.com/open-AIMS/bayesnec/commit/01394a17)).
@@ -374,3 +367,4 @@
 - There is a vignette detailing the models available in bayesnec. Note that not all models are suitable for all families, and also depending if link functions are used.
 
 - A new check_chains function has been added to allow chain plotting in base R and that works more smoothly with plotting chains for multiple fits for bayesmanec objects.
+
