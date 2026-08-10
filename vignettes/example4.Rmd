@@ -87,7 +87,7 @@ ggplot(data = post_comp$posterior_data, mapping = aes(x = value)) +
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp4-posterior-1.pdf" title="plot of chunk exmp4-posterior" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp4-posterior-1.png" alt="plot of chunk exmp4-posterior" width="60%" />
 <p class="caption">plot of chunk exmp4-posterior</p>
 </div>
 
@@ -104,7 +104,7 @@ ggplot(data = post_comp$diff_data, mapping = aes(x = diff)) +
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp4-differences-1.pdf" title="plot of chunk exmp4-differences" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp4-differences-1.png" alt="plot of chunk exmp4-differences" width="60%" />
 <p class="caption">plot of chunk exmp4-differences</p>
 </div>
 
@@ -170,7 +170,7 @@ ggplot(data = post_comp_fitted$posterior_data) +
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp4-fitted-1.pdf" title="plot of chunk exmp4-fitted" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp4-fitted-1.png" alt="plot of chunk exmp4-fitted" width="60%" />
 <p class="caption">plot of chunk exmp4-fitted</p>
 </div>
 
@@ -188,7 +188,7 @@ ggplot(data = post_comp_fitted$diff_data) +
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp4-fitteddiff-1.pdf" title="plot of chunk exmp4-fitteddiff" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp4-fitteddiff-1.png" alt="plot of chunk exmp4-fitteddiff" width="60%" />
 <p class="caption">plot of chunk exmp4-fitteddiff</p>
 </div>
 
@@ -204,7 +204,7 @@ ggplot(data = post_comp_fitted$prob_diff) +
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp4-probplot-1.pdf" title="plot of chunk exmp4-probplot" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp4-probplot-1.png" alt="plot of chunk exmp4-probplot" width="60%" />
 <p class="caption">plot of chunk exmp4-probplot</p>
 </div>
 

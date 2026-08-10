@@ -71,7 +71,7 @@ autoplot(exp_5)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp2-decline-1.pdf" title="plot of chunk exmp2-decline" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp2-decline-1.png" alt="plot of chunk exmp2-decline" width="60%" />
 <p class="caption">plot of chunk exmp2-decline</p>
 </div>
 
@@ -148,7 +148,7 @@ autoplot(exp_5_nec4param)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp2-ecx4param-1.pdf" title="plot of chunk exmp2-ecx4param" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp2-ecx4param-1.png" alt="plot of chunk exmp2-ecx4param" width="60%" />
 <p class="caption">plot of chunk exmp2-ecx4param</p>
 </div>
 
@@ -160,7 +160,7 @@ autoplot(exp_5, all_models = TRUE)
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp2-allmods-1.pdf" title="plot of chunk exmp2-allmods" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp2-allmods-1.png" alt="plot of chunk exmp2-allmods" width="60%" />
 <p class="caption">plot of chunk exmp2-allmods</p>
 </div>
 
@@ -174,7 +174,7 @@ plot(pull_brmsfit(exp_5, "ecxwb1"))
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp2-goodmod-1.pdf" title="plot of chunk exmp2-goodmod" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp2-goodmod-1.png" alt="plot of chunk exmp2-goodmod" width="60%" />
 <p class="caption">plot of chunk exmp2-goodmod</p>
 </div>
 
@@ -193,7 +193,7 @@ check_priors(pull_out(exp_5, "nec4param"))
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp2-checkpriors-1.pdf" title="plot of chunk exmp2-checkpriors" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp2-checkpriors-1.png" alt="plot of chunk exmp2-checkpriors" width="60%" />
 <p class="caption">plot of chunk exmp2-checkpriors</p>
 </div>
 
@@ -305,7 +305,7 @@ autoplot(exp_5, nec = FALSE, all = FALSE) +
 ```
 
 <div class="figure" style="text-align: center">
-<embed src="vignette-fig-exmp2-pretty-1.pdf" title="plot of chunk exmp2-pretty" width="60%" type="application/pdf" />
+<img src="vignette-fig-exmp2-pretty-1.png" alt="plot of chunk exmp2-pretty" width="60%" />
 <p class="caption">plot of chunk exmp2-pretty</p>
 </div>
 
