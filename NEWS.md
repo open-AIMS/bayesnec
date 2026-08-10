@@ -1,3 +1,36 @@
+# bayesnec 2.1.3.10
+
+- New *Censoring* section in `vignette("example1")`, giving the `cens()` aterm
+  added in the previous version a user-facing home: the syntax, the values the
+  censoring indicator takes, that the response column carries the bound rather
+  than a substitute for it, and why a censored row saturates as the fitted curve
+  descends where a substituted value keeps pulling it back up.
+- Guidance against normalising the response to the control before fitting.
+  Ritz, Gerhard & Streibig (2026) show that the conventional
+  `1 - y / mean(y_control)` pre-processing step divides every observation by the
+  same random quantity, which correlates them, discards the uncertainty in the
+  divisor and — by Jensen's inequality — biases effective doses upwards: for an
+  ED10 with six controls, 6.8% bias and 26.4% CV against 2.1% and 12.7% from the
+  raw response, with nominal 95% intervals covering at 88–91%. Nothing is gained
+  by it, because `ecx(type = "absolute")` — already the default — measures the
+  decline relative to the *fitted* control value one posterior draw at a time,
+  which is the estimand that paper recommends. Documented in `?bnec` and in a new
+  *Preparing the response* section of `vignette("example1")`, which also covers
+  why dividing by the observed maximum is worse than dividing by the control
+  mean and what to do when the Beta families make a divisor unavoidable.
+- `bnec()` now detects both practices and says so. Dividing by the observed
+  maximum leaves a maximum of exactly `1` attained by exactly one observation;
+  dividing by the control mean leaves the control observations averaging to
+  exactly `1`. Either emits a message pointing at the paper. The first check is
+  suppressed where the response lies on a rational grid, because genuine
+  count-derived proportions such as 19/20 surviving produce a single observation
+  at `1` often enough that the unguarded check fires on up to 38% of simulated
+  fertilisation assays. With the guard, neither check produced a false positive
+  in 2000-draw simulations across eight genuine-data scenarios or in a sweep of
+  1269 columns and column pairs from 33 real datasets, in which it did correctly
+  flag four normalised datasets. See `notes/normalisation_detection.md`.
+  See [#173](https://github.com/open-AIMS/bayesnec/issues/173).
+
 # bayesnec 2.1.3.9
 
 - `bayesnecformula` now supports the `brms` `cens()` aterm, so a response that is

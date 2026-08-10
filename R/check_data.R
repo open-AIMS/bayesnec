@@ -1,3 +1,93 @@
+#' on_rational_grid
+#'
+#' Are all values expressible as k / n for a single small integer n?
+#'
+#' Genuine proportion data derived from counts (survival, fertilisation,
+#' bleaching scores) lies on such a grid; a continuous response divided by a
+#' continuous maximum does not. This is the discriminator that makes the
+#' divided-by-maximum check usable: without it the check fires on up to 38% of
+#' simulated genuine count proportions, purely because one replicate happened
+#' to record every individual as alive. With it the false positive rate is zero
+#' in both the simulation and the real-data sweep (see
+#' notes/normalisation_detection.md).
+#'
+#' The cost is that a count proportion that really was divided by its own
+#' maximum stays on a rational grid and is therefore missed. That is the safe
+#' direction to fail for a diagnostic message.
+#'
+#' @noRd
+on_rational_grid <- function(y, max_n = 100, tol = 1e-8) {
+  y <- y[is.finite(y)]
+  if (!length(y)) {
+    return(FALSE)
+  }
+  for (n in seq_len(max_n)) {
+    if (all(abs(y * n - round(y * n)) < tol)) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
+#' check_normalisation
+#'
+#' Detect a response that has been normalised to a quantity estimated from the
+#' dataset being analysed, and say why that is a problem.
+#'
+#' Two practices leave an exact arithmetic trace:
+#'
+#' A. divided by the observed maximum -- the maximum is exactly 1 and exactly
+#'    one observation attains it, because \code{v / max(v)} is exactly 1 in
+#'    floating point at the maximum and nowhere else.
+#' B. divided by the control mean -- the mean of the observations at the lowest
+#'    predictor value is exactly 1.
+#'
+#' Messages rather than warnings: neither is fatal, both are recoverable by
+#' refitting the raw response, and the user may have a reason. They are emitted
+#' from \code{\link{bnec}} rather than \code{check_data} so that they fire once
+#' per call rather than once per model in a set.
+#'
+#' @noRd
+check_normalisation <- function(data) {
+  y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
+  x <- try(retrieve_var(data, "x_var", error = TRUE), silent = TRUE)
+  if (inherits(y, "try-error") || inherits(x, "try-error")) {
+    return(invisible(NULL))
+  }
+  ok <- is.finite(y) & is.finite(x)
+  y <- y[ok]
+  x <- x[ok]
+  if (length(y) < 5) {
+    return(invisible(NULL))
+  }
+  cite <- paste0("See Ritz et al. (2026) doi:10.1007/s10651-025-00698-y, and",
+                 " ?ecx for what to do instead.")
+  if (max(y) == 1 && sum(y == 1) == 1 && !on_rational_grid(y)) {
+    message("Your response has a maximum of exactly 1 attained by exactly one",
+            " observation, which is the signature of a response divided by its",
+            " own observed maximum. Dividing by an extreme order statistic",
+            " correlates every observation, discards the uncertainty in the",
+            " divisor and biases ECx estimates upwards; it also forces one",
+            " observation outside the open support of the Beta family. Prefer",
+            " fitting the raw response and reading effective concentrations",
+            " off the fitted curve with ecx(type = \"absolute\"), which is",
+            " already the default. ", cite)
+  }
+  ctl <- y[x == min(x)]
+  if (length(ctl) >= 3 && !all(ctl == ctl[1]) && abs(mean(ctl) - 1) < 1e-8) {
+    message("The observations at your lowest predictor value average to",
+            " exactly 1, which is the signature of a response divided by the",
+            " control mean. Dividing every observation by the same estimated",
+            " quantity discards the uncertainty in the control level, so ECx",
+            " is biased upwards and both ECx and NSEC intervals are narrower",
+            " than the data support. Nothing is lost by not normalising: the",
+            " concentration giving an x percent rise in inhibition is the",
+            " concentration giving an x percent decline in the raw response,",
+            " which ecx(type = \"absolute\") returns by default. ", cite)
+  }
+  invisible(NULL)
+}
+
 #' check_data
 #'
 #' Check data input for a Bayesian NEC model fit

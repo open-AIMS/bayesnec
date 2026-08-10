@@ -63,12 +63,12 @@
 #'
 #' @return A vector containing the estimated NSEC value, including upper and
 #' lower 95% credible interval bounds.
-#' 
-#' @references
-#' Fisher R, Fox DR (2023). Introducing the no significant effect concentration 
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028. 
-#' doi: 10.1002/etc.5610.
 #'
+#' @references
+#' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
+#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+#' doi: 10.1002/etc.5610.
+#'#'
 #' @examples
 #' \donttest{
 #' library(bayesnec)
