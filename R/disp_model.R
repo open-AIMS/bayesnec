@@ -158,9 +158,11 @@ check_disp_spec <- function(spec, family, response = NULL) {
            " response reaches ", signif(min(response, na.rm = TRUE), 3),
            " so the fitted mean crosses zero. This is the growth-rate case:",
            " a specific growth rate, yield or increment can be negative, and a",
-           " power law in mu is undefined there. Use disp(~x) to model",
-           " dispersion on the predictor instead, or fit on a strictly",
-           " positive scale and derive the rate afterwards.", call. = FALSE)
+           " power law in mu is undefined there. Use disp(\"loglinear\"),",
+           " which is linear in mu rather than in log(mu) and is what a",
+           " log-transformed endpoint inherits from a power law on its",
+           " original scale, or disp(~x) to model dispersion on the predictor",
+           " instead.", call. = FALSE)
     }
   }
   invisible(NULL)

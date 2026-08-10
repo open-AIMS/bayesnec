@@ -179,6 +179,45 @@ test_that("a route A variable must exist in the data", {
   )
 })
 
+test_that("loglinear is linear in mu rather than in log(mu)", {
+  spec <- list(route = "B", value = "loglinear")
+  db <- bayesnec:::make_disp_block("ecx4param", spec, "sigma", "x")
+  rhs <- deparse1(db$nlf[[3]])
+  curve <- deparse1(bayesnec:::bf_ecx4param$formula[[3]])
+  expect_true(grepl(paste0("c1 * ((", curve, "))"), rhs, fixed = TRUE))
+  expect_false(grepl("log(", rhs, fixed = TRUE))
+})
+
+test_that("loglinear is allowed where the response crosses zero", {
+  # the growth-rate case the log forms cannot reach
+  bf_l <- make_brmsformula(bnf(signed ~ crf(x, "ecx4param") + disp("loglinear")),
+                           disp_dat, gaussian(link = "identity"))[[1]]
+  expect_true(all(c("sigma", "c0", "c1") %in% names(bf_l$pforms)))
+})
+
+test_that("the loglinear slope prior is scaled to the response", {
+  # c1 multiplies mu, so it carries units of 1/response; a fixed scale would
+  # mean different things for differently-scaled responses
+  spec <- list(route = "B", value = "loglinear")
+  wide <- disp_dat$y * 1000
+  pr_n <- bayesnec:::define_prior("ecx4param", gaussian(link = "identity"),
+                                  disp_dat$x, disp_dat$y, disp_spec = spec)
+  pr_w <- bayesnec:::define_prior("ecx4param", gaussian(link = "identity"),
+                                  disp_dat$x, wide, disp_spec = spec)
+  expect_false(identical(pr_n$prior[pr_n$nlpar == "c1"],
+                         pr_w$prior[pr_w$nlpar == "c1"]))
+  get_sd <- function(p) as.numeric(sub(".*, *([0-9.e+-]+)\\)$", "\\1", p))
+  expect_equal(get_sd(pr_w$prior[pr_w$nlpar == "c1"]),
+               get_sd(pr_n$prior[pr_n$nlpar == "c1"]) / 1000,
+               tolerance = 1e-3)
+  # the log forms stay dimensionless and so stay fixed
+  pr_p <- bayesnec:::define_prior("ecx4param", gaussian(link = "identity"),
+                                  disp_dat$x, wide,
+                                  disp_spec = list(route = "B",
+                                                   value = "power"))
+  expect_equal(pr_p$prior[pr_p$nlpar == "c1"], "normal(0, 2)")
+})
+
 test_that("a power law is refused where the fitted mean crosses zero", {
   # the growth-rate case: specific growth rate, yield and increment can all be
   # negative, and log(mu) is undefined there
@@ -239,6 +278,32 @@ test_that("every model yields a formula brms will accept with disp", {
     expect_false(inherits(comb, "try-error"),
                  label = paste("disp block for", m))
   }
+})
+
+test_that("loglinear recovers a slope on a response that crosses zero", {
+  skip_on_cran()
+  skip_on_ci()
+  # the growth-rate case, scaled on c_proliferum x A: the curve runs from about
+  # 0.12 at the control to -0.5 where the population collapses, and sigma rises
+  # from 0.005 to 0.11 over that range, which is c1 = -5 and about a 20-fold
+  # spread -- the ratio those tests actually show
+  set.seed(202)
+  x <- rep(c(0.1, 0.3, 1, 2, 5, 10, 20, 40), each = 15)
+  mu <- -0.5 + (0.12 - -0.5) / (1 + exp((log(5) - log(x)) * exp(0.4)) ^ -1)
+  sim <- data.frame(x = x, y = rnorm(length(mu), mu, exp(-4.7 - 5 * mu)))
+  # the log forms are unusable here, which is the point of this form
+  expect_error(
+    bnec(y ~ crf(x, "ecx4param") + disp("power"), data = sim,
+         family = gaussian(link = "identity")),
+    "crosses zero"
+  )
+  fit <- bnec(y ~ crf(x, "ecx4param") + disp("loglinear"), data = sim,
+              family = gaussian(link = "identity"), chains = 2, iter = 4000,
+              warmup = 2000, seed = 202, control = list(adapt_delta = 0.95))
+  drws <- as.data.frame(pull_brmsfit(fit))
+  c1 <- drws[[grep("c1", names(drws), value = TRUE)[1]]]
+  # dispersion falls as the growth rate rises, and is resolved as doing so
+  expect_true(quantile(c1, 0.975) < 0)
 })
 
 test_that("a variance function recovers a known exponent", {

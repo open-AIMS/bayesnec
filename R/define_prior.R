@@ -224,9 +224,22 @@ define_disp_prior <- function(disp_spec, family, response) {
     beta = "normal(4, 3)",
     beta_binomial = "normal(4, 3)"
   )
+  vf <- disp_functions[[disp_spec$value]]
+  # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
+  # whatever the response is measured in. A slope on mu itself is not: it
+  # carries units of 1/response, and normal(0, 2) would be near-flat for a
+  # response spanning thousands and highly informative for one spanning a
+  # fraction. Scaling by the observed spread restores the intended meaning --
+  # that a one-standard-deviation change in the mean moves the dispersion
+  # parameter by about two units on the log scale at the edge of the prior.
+  slope_prior <- if (isTRUE(vf$scale_free)) {
+    "normal(0, 2)"
+  } else {
+    paste0("normal(0, ", signif(2 / sd(response), 4), ")")
+  }
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
-  for (p in setdiff(disp_functions[[disp_spec$value]]$pars, "c0")) {
-    out <- out + prior_string("normal(0, 2)", nlpar = p)
+  for (p in setdiff(vf$pars, "c0")) {
+    out <- out + prior_string(slope_prior, nlpar = p)
   }
   out
 }

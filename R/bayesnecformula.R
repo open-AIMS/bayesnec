@@ -81,8 +81,26 @@
 #' \bold{name} \tab \bold{form} \tab \bold{families} \cr
 #' \code{"power"} \tab \code{log(dpar) = c0 + c1 * log(mu)} \tab all eligible \cr
 #' \code{"twosided"} \tab \code{log(phi) = c0 + c1 * log(mu) + c2 * log(1 - mu)}
-#' \tab \code{Beta}, \code{beta_binomial}
+#' \tab \code{Beta}, \code{beta_binomial} \cr
+#' \code{"loglinear"} \tab \code{log(dpar) = c0 + c1 * mu} \tab all eligible
 #' }
+#'
+#' \code{"loglinear"} is linear in \code{mu} rather than in \code{log(mu)}, so
+#' unlike the other two it is defined where the fitted mean reaches or crosses
+#' zero. It is also what a log-transformed endpoint inherits from a power law
+#' on its original scale: if a density has \code{sd ~ mu^p}, the delta method
+#' gives \code{sd(log N) ~ mu^(p - 1)}, and substituting
+#' \code{mu_N = N0 * exp(days * mu_sgr)} for an average specific growth rate
+#' leaves \code{log sd(sgr) = const + days * (p - 1) * mu_sgr}. A growth rate is
+#' therefore not a case a variance function cannot reach, only one the power law
+#' cannot, and \code{p < 1} implies \code{c1 < 0} — dispersion falling as the
+#' growth rate rises.
+#'
+#' Note that \code{c1} is dimensionless for \code{"power"} and
+#' \code{"twosided"}, which multiply \code{log(mu)}, but carries units of
+#' \code{1/response} for \code{"loglinear"}. Its default prior is scaled to the
+#' observed spread of the response accordingly, so that it means the same thing
+#' whatever the response is measured in.
 #'
 #' The two coincide for a monotone curve, where \code{mu} is itself a monotone
 #' function of \code{x}. They separate under hormesis, or where a design
@@ -121,8 +139,7 @@
 #' mean that reaches zero is undefined. This rules them out for a response on
 #' the real line — a specific growth rate, yield or increment can be negative —
 #' and \code{\link{bnec}} refuses the combination rather than failing at
-#' initialisation. Use \code{disp(~x)} for those, or fit on a strictly positive
-#' scale and derive the rate afterwards.
+#' initialisation, pointing at \code{"loglinear"} or \code{disp(~x)} instead.
 #'
 #' \bold{Further brms terms (largely untested)}
 #'

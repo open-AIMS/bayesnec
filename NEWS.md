@@ -20,6 +20,21 @@
   that variance can shrink toward both boundaries of `(0, 1)` — the shape a
   bounded family asserts, without asserting a ceiling with it. `c1 = 0` is the
   constant-dispersion model in every case, and is where the prior on `c1` sits.
+- `"loglinear"` gives `log(dpar) = c0 + c1 * mu`, linear in the mean rather than
+  in its logarithm, and so is the one form defined where the fitted mean reaches
+  or crosses zero. It is also what a log-transformed endpoint inherits from a
+  power law on its original scale: if a density has `sd ~ mu^p` then
+  `sd(log N) ~ mu^(p - 1)` by the delta method, and substituting
+  `mu_N = N0 * exp(days * mu_sgr)` for an average specific growth rate leaves
+  `log sd(sgr) = const + days * (p - 1) * mu_sgr`. A growth rate is therefore
+  not a case a variance function cannot reach, only one the power law cannot,
+  and `p < 1` implies `c1 < 0` — dispersion falling as the growth rate rises,
+  which is the pattern the algal tests show.
+- `c1` is dimensionless where it multiplies `log(mu)` but carries units of
+  `1/response` where it multiplies `mu`, so the default prior for `"loglinear"`
+  is scaled by the observed spread of the response. A fixed `normal(0, 2)` would
+  be near-flat for a response spanning thousands and sharply informative for one
+  spanning a fraction.
 - Route B needs the curve expression written out a second time inside the
   dispersion formula, because `mu` is not in scope for another distributional
   parameter's formula in `brms`. Only the source is duplicated, not the fitted
@@ -39,11 +54,9 @@
   of families and are complements rather than alternatives. The two-block
   families are also refused for now, since coupling a variance function to one
   block of a joint fit needs a decision about the other.
-- A variance function is refused where the fitted mean crosses zero, rather than
-  failing at initialisation. Both implemented forms take `log(mu)`, so a
-  response on the real line — a specific growth rate, yield or increment can all
-  be negative — needs `disp(~x)` instead, or a fit on a strictly positive scale
-  with the rate derived afterwards.
+- A `log(mu)` variance function is refused where the fitted mean crosses zero,
+  rather than failing at initialisation, with the error pointing at
+  `disp("loglinear")` or `disp(~x)`.
   See [#191](https://github.com/open-AIMS/bayesnec/issues/191).
 
 # bayesnec 2.1.3.6

@@ -88,18 +88,40 @@ disp_dpars <- c(gaussian = "sigma", Gamma = "shape", negbinomial = "shape",
 # The curve has to be written out again because mu is not in scope for another
 # distributional parameter's formula in brms; only the source is duplicated,
 # not the fitted quantity.
+# "positive_mu" marks the forms that take log(mu) and so cannot be used where
+# the fitted mean reaches zero. "scale_free" marks those whose slope is
+# dimensionless -- a slope multiplying log(mu) is, one multiplying mu itself is
+# not, and its prior has to be scaled to the response (see define_disp_prior).
 disp_functions <- list(
   power = list(
     expr = "c0 + c1 * log(@MU@)",
     pars = c("c0", "c1"),
     families = c("gaussian", "Gamma", "negbinomial", "beta", "beta_binomial"),
-    positive_mu = TRUE
+    positive_mu = TRUE,
+    scale_free = TRUE
   ),
   twosided = list(
     expr = "c0 + c1 * log(@MU@) + c2 * log(1 - (@MU@))",
     pars = c("c0", "c1", "c2"),
     families = c("beta", "beta_binomial"),
-    positive_mu = TRUE
+    positive_mu = TRUE,
+    scale_free = TRUE
+  ),
+  # Linear in mu rather than in log(mu), so it is defined for a response on the
+  # real line, which the two above are not. This is the form a log-transformed
+  # endpoint inherits from a power law on its original scale. If density has
+  # sd ~ mu_N^p then sd(log N) ~ mu_N^(p - 1) by the delta method, and since
+  # mu_N = N0 * exp(days * mu_sgr) for a specific growth rate, that is
+  # log sd(sgr) = const + days * (p - 1) * mu_sgr -- log-linear in the mean.
+  # So a growth rate is not a case the variance function cannot reach, only one
+  # the power law cannot: p < 1 gives c1 < 0, dispersion falling as the growth
+  # rate rises. See notes/alga_dataset.md.
+  loglinear = list(
+    expr = "c0 + c1 * (@MU@)",
+    pars = c("c0", "c1"),
+    families = c("gaussian", "Gamma", "negbinomial", "beta", "beta_binomial"),
+    positive_mu = FALSE,
+    scale_free = FALSE
   )
 )
 
