@@ -58,6 +58,15 @@
 #' no-effect \code{top} parameter centred on the control mean, which sits at the
 #' upper end of the response range for these monotonically decreasing models).
 #' Ignored when priors are supplied directly via the \code{prior} argument.
+#' @param timeout A positive \code{\link[base]{numeric}} giving the maximum
+#' number of seconds allowed for fitting any single model, passed to
+#' \code{\link[R.utils]{withTimeout}}. This is useful when fitting multiple
+#' models, as it allows a model that is taking excessively long (for example
+#' because of highly divergent chains) to be abandoned so that the remaining
+#' models can still be fitted. A model that exceeds \code{timeout} is treated
+#' as a failed fit and dropped from the returned set. The default \code{Inf}
+#' imposes no limit. Requires the \pkg{R.utils} package to be installed when a
+#' finite value is supplied.
 #' @param ... Further arguments to \code{\link[brms]{brm}}.
 #'
 #' @details
@@ -225,10 +234,15 @@
 bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  loo_controls, x_var = NULL, y_var = NULL, trials_var = NULL,
                  model = NULL, random = NULL, random_vars = NULL,
-                 prior = NULL, prior_type = "uninformative", ...) {
+                 prior = NULL, prior_type = "uninformative",
+                 timeout = Inf, ...) {
   chk_number(resolution)
   chk_number(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
+  chk_number(timeout)
+  if (timeout <= 0) {
+    stop("Argument `timeout` must be a positive number (or Inf).")
+  }
 
   mf <- match.call(expand.dots = FALSE)
   m <- sapply(c("x_var", "y_var", "trials_var", "model", "random",
@@ -261,7 +275,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
       model_m <- model[m]
       fit_m <- try(
         fit_bayesnec(formula = formula, data = data, model = model_m,
-                     brm_args = brm_args, prior_type = prior_type),
+                     brm_args = brm_args, prior_type = prior_type,
+                     timeout = timeout),
         silent = FALSE
       )
       if (!inherits(fit_m, "try-error")) {
@@ -285,7 +300,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     }
   } else {
     mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
-                            brm_args = brm_args, prior_type = prior_type)
+                            brm_args = brm_args, prior_type = prior_type,
+                            timeout = timeout)
     mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
                           resolution = resolution, sig_val = sig_val,
                           loo_controls = loo_controls, model = model)

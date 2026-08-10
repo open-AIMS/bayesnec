@@ -1,3 +1,10 @@
+# bayesnec 2.1.3.4
+
+- Added a `timeout` argument to `bnec()` and `amend()` to cap the time allowed
+  for any single model fit, so that a model with highly divergent (slow) chains
+  can be abandoned while the remaining models still fit
+  ([#157](https://github.com/open-AIMS/bayesnec/issues/157)).
+
 # bayesnec 2.1.3.3
 
 - Fixed initialisation failure for 0, 1 bounded families under an identity

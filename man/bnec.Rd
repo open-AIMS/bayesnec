@@ -19,6 +19,7 @@ bnec(
   random_vars = NULL,
   prior = NULL,
   prior_type = "uninformative",
+  timeout = Inf,
   ...
 )
 }
@@ -91,6 +92,16 @@ in Fisher et al. 2024) or \code{"regularizing"} (narrower priors, with the
 no-effect \code{top} parameter centred on the control mean, which sits at the
 upper end of the response range for these monotonically decreasing models).
 Ignored when priors are supplied directly via the \code{prior} argument.}
+
+\item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
+number of seconds allowed for fitting any single model, passed to
+\code{\link[R.utils]{withTimeout}}. This is useful when fitting multiple
+models, as it allows a model that is taking excessively long (for example
+because of highly divergent chains) to be abandoned so that the remaining
+models can still be fitted. A model that exceeds \code{timeout} is treated
+as a failed fit and dropped from the returned set. The default \code{Inf}
+imposes no limit. Requires the \pkg{R.utils} package to be installed when a
+finite value is supplied.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }
