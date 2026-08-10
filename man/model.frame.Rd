@@ -36,8 +36,12 @@ the data used to fit the model.
 If, instead, \code{formula} is a \code{\link{bayesnecformula}},
 a \code{\link[base]{data.frame}} with additional attributes
 detailing the population-level variables (attribute \code{"bnec_pop"})
-(response y, predictor x, and, if binomial a formula, trials) and, if
+(response y, predictor x, if binomial a formula, trials, and, if the response
+is censored, the censoring indicator and any interval upper bound) and, if
 applicable, the group-level variables (attribute \code{"bnec_group"}).
+Elements of \code{"bnec_pop"} are named \code{"y_var"}, \code{"x_var"},
+\code{"trials_var"}, \code{"cens_var"} and \code{"cens_y2_var"}, and only the
+ones the formula supplies are present.
 }
 \description{
 Retrieve data.frame used to fit models via \code{\link{bnec}}, or directly

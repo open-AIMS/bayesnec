@@ -79,11 +79,12 @@ strongly discourage their use because those functionalities have not
 been tested yet. If this is extremely important to your work, please
 raise an issue on bayesnec GitHub, and we will consider further testing and
 development.
-Currently, the only two \code{aterms} that have validated behaviour are:
+Currently, the only three \code{aterms} that have validated behaviour are:
 \enumerate{
 \item \code{trials()}, which is essential in binomially-distributed data, e.g.
-\code{y | trials(trials_variable)}, and 2) weights, e.g.
-\code{y | weights(weights_variable)}, following \pkg{brms} formula syntax.
+\code{y | trials(trials_variable)}, 2) weights, e.g.
+\code{y | weights(weights_variable)}, and 3) \code{cens()} (see below),
+following \pkg{brms} formula syntax.
 Please note that \pkg{brms} does not implement design weights as in other
 standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 weights literally, which means that an observation with weight 2 receives 2
@@ -95,10 +96,33 @@ cannot attest to their functionality within
 be done outside via \code{\link[brms]{brm}}.
 }
 
-\strong{NB:} \code{aterms} other than \code{trials()} and \code{weights()} are
-currently omitted from \code{\link{model.frame}} output. If you need other
-\code{aterms} as part of that output please raise an issue on our GitHub
-page.
+\bold{Censored responses: \code{cens}}
+
+A response that is rounded at the recording resolution, reported below a
+limit of detection, or deliberately coarsened at a boundary is censored: the
+true value is known to lie in an interval rather than at a point. The
+\code{cens()} \code{aterm} states this, e.g.
+\code{y | cens(censoring_variable)}, or
+\code{y | cens(censoring_variable, upper_bound)} for interval censoring.
+\code{censoring_variable} is a variable in the data taking the values
+\code{"none"}, \code{"left"}, \code{"right"} or \code{"interval"}
+(equivalently \code{0}, \code{-1}, \code{1}, \code{2}); it is not a constant,
+because in a concentration-response dataset only some rows are censored.
+
+\bold{The response value carries the bound.} For a left-censored row the
+number in the response column is the value the truth is known to be at or
+below --- not zero, and not a substitute for the unknown truth. Because of
+this, a censored row is exempt from the boundary shifts that
+\code{\link{bnec}} otherwise applies to zeros in Gamma and Beta responses:
+the bound has already been declared and moving it would restate it. A row
+declared censored at a value the family excludes --- left-censored at 0 under
+Gamma or Beta, right-censored at 1 under Beta --- is an error rather than a
+shift, because the censored likelihood is degenerate there.
+
+\strong{NB:} \code{aterms} other than \code{trials()}, \code{weights()} and
+\code{cens()} are currently omitted from \code{\link{model.frame}} output. If
+you need other \code{aterms} as part of that output please raise an issue on
+our GitHub page.
 
 \bold{Validation of formula}
 Please note that the function only checks for the input nature of the
