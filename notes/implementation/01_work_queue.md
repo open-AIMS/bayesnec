@@ -1,14 +1,21 @@
 # Work queue
 
-Ordered. Work top to bottom. Each entry states the scope, what "done" means, and
-the hazard most likely to derail it. Read `00_protocol.md` first.
+Read `00_protocol.md` first, then `03_decisions.md`.
 
-Ordering rationale: independent, well-specified fixes first, so that PRs stack
-up early; the two entries that touch shared post-processing code (#93, #180) are
-adjacent so that any conflict between them is obvious; investigations last,
-because they may end in a report rather than a patch.
+**Tier 1 is the unattended run.** Work it top to bottom. Every entry has been
+checked against the files the toxval migration will move, and none of them
+touch those files.
+
+**Tier 2 is deferred** until after the toxval untangle has landed. Do not start
+it. It is recorded here so the reasoning is not lost.
+
+Ordering within Tier 1: small, self-contained fixes first so PRs stack up early;
+the two investigations in the middle, where a report is an acceptable outcome;
+the largest change last.
 
 ---
+
+# Tier 1 — run now
 
 ## 1. #176 — `amend()` cannot add models to a single-model `bayesnecfit`
 
@@ -44,51 +51,50 @@ simulated data where the answer is known.
 
 ---
 
-## 3. #160 — *NEC* mis-plotted when a function is called for `x`
+## 3. #170 — `check_models()` and `?models` disagree
 
-**Scope.** With `crf(log(x), ...)`, `autoplot()` and the base plot draw the
-*NEC* line in the wrong place. Reprex in the issue.
+**Scope.** The documentation is stricter than the code about which
+slope-bearing equations are excluded for 0,1-bounded identity families.
+**D3 applies:** make them agree, and report only.
 
-**Done when** the *NEC* line lands on the curve's break point for both a raw and
-a transformed predictor, with and without `xform`.
+**Done when** `?models` and `check_models()` state the same thing, with a test
+asserting agreement so they cannot drift again.
 
-**Hazard.** This is adjacent to #196 (`ecx`/`nsec` back-transformation), which
-is **out of scope** and heading to toxval. Fix the plotting only. If the cause
-turns out to be in a shared post-processing helper that `ecx`/`nsec` also use,
-stop and report — that affects the migration.
-
----
-
-## 4. #93 — correct estimates for shifts applied by `check_data()`
-
-**Scope.** `check_data()` shifts `x` or `y` away from 0/1 in some cases.
-Predictions and toxicity estimates should be returned on the user's original
-scale, not the shifted one.
-
-**Done when** a fit on data that triggers a shift returns predictions and *NEC*
-on the original scale, demonstrated by a test comparing against the same data
-pre-shifted by hand.
-
-**Hazard.** *NEC* is a parameter and `ecx`/`nsec` are derived — the correction
-does not apply identically to all three, and **`ecx`/`nsec` are out of scope**.
-Confine the fix to predictions and *NEC*. Record in the PR what the shift
-implies for the derived estimates so it can be carried into the toxval work.
+**Hazard.** Do not relax a modelling restriction on your own judgement. If
+investigation suggests the restriction is unnecessary, write that up in the PR
+body as a recommendation and leave the behaviour alone.
 
 ---
 
-## 5. #180 — `bnec()` caches a posterior matrix ~25x the fit
+## 4. #133 — report models that failed to fit
 
-**Scope.** `expand_nec()` stores `pred_vals$posterior`, sized
-`n_draws x resolution`, dominating object size (31.8 MB against a 1.2 MB
-`brmsfit`). **See decision D2 in `03_decisions.md` for which approach to take.**
+**Scope.** Return the models that failed, with the priors and initial values
+used, so a failure can be diagnosed without a re-run. Attach to the
+`bayesmanecfit` and surface in `summary()`.
 
-**Done when** a `nec3param` fit is materially smaller, every accessor that used
-the cache still works, and a test asserts the object stays under a sane size.
+**Done when** a deliberately failing model in a set appears in the returned
+object with its priors and inits, and a test asserts it.
 
-**Hazard.** The cache is load-bearing for other methods and for objects saved by
-users. Whatever changes, `predict()`, `autoplot()` and the `bayesmanecfit`
-model-averaging path must all still work — including on an object saved before
-the change if that is the chosen approach.
+**Hazard.** Keep it small — this is an accessor and a print method, not a
+diagnostics framework. #148 is the larger diagnostics issue and is deliberately
+not queued.
+
+---
+
+## 5. #141 — `get_priors()` round trip
+
+**Scope.** Two entry points on one function, per **D9**: given a fit, return the
+priors it used; given a formula and data, return the priors `bayesnec` would
+generate. Return a `brmsprior`, or a named list of them for a model set,
+directly usable as `prior =`.
+
+**Done when** `bnec(..., prior = get_priors(fit))` reproduces the same model,
+the formula-and-data form works without fitting, and a test covers both — and
+covers the case where a user-supplied prior makes the two disagree.
+
+**Hazard.** The round trip is the whole point. A returned object that looks
+right but is not accepted by `bnec(prior = )` fails the issue, so test the round
+trip rather than the shape of the return value.
 
 ---
 
@@ -110,75 +116,11 @@ and ESS, not just that it started.
 
 ---
 
-## 7. #170 — `check_models()` and `?models` disagree
-
-**Scope.** The documentation is stricter than the code about which
-slope-bearing equations are excluded for 0,1-bounded identity families.
-**See decision D3.** The default is the conservative one: make them agree, and
-report separately on whether the restriction is needed at all.
-
-**Done when** `?models` and `check_models()` state the same thing, with a test
-asserting agreement so they cannot drift again.
-
-**Hazard.** Do not relax a modelling restriction on your own judgement. If
-investigation suggests the restriction is unnecessary, write that up in the PR
-body as a recommendation and leave the behaviour alone.
-
----
-
-## 8. #161 — bug in post-processing of a case study dataset
-
-**Scope.** Investigation. The issue carries the dataset inline but not a crisp
-statement of the defect. Reproduce first, characterise what is wrong, and only
-then decide whether it is fixable here.
-
-**Done when** either a fix with a regression test, or — if the cause sits in
-`ecx`/`nsec` — a clear write-up posted as an issue comment and the entry closed
-out as out of scope. **Report either way.**
-
-**Hazard.** Good chance this is the same root cause as #195 or #196 and
-therefore belongs to toxval. Recognising that quickly is a success, not a
-failure.
-
----
-
-## 9. #133 — report models that failed to fit
-
-**Scope.** Return the models that failed, with the priors and initial values
-used, so a failure can be diagnosed without a re-run. Attach to the
-`bayesmanecfit` and surface in `summary()`.
-
-**Done when** a deliberately failing model in a set appears in the returned
-object with its priors and inits, and a test asserts it.
-
-**Hazard.** Keep it small — this is an accessor and a print method, not a
-diagnostics framework. #148 is the larger diagnostics issue and is **not** in
-this queue.
-
----
-
-## 10. #120 — replace the `all_models` argument
-
-**Scope.** On `predict`, `plot` and `autoplot` for `bayesmanecfit`, replace
-`all_models` with two orthogonal arguments: `model =` naming one or more models,
-and `average =` (logical) controlling the model-averaged outcome. **See D5** —
-the interface and the deprecation are both settled, implement as written.
-
-**Done when** the new arguments work across all three methods, `all_models`
-still works but warns once and maps onto them, and tests cover the old and new
-spellings plus the deprecation warning.
-
-**Hazard.** This is a user-visible interface change. The deprecation shim is the
-part most likely to be skipped under time pressure, and it is the part that
-stops existing scripts breaking. Do not remove `all_models`.
-
----
-
-## 11. #104 — zero-inflated Poisson and negative binomial
+## 7. #104 — zero-inflated Poisson and negative binomial
 
 **Scope.** Add `zero_inflated_poisson` and `zero_inflated_negbinomial` to the
 `bnec()` family path. **`bnec_hurdle()` must refuse them** with an error
-explaining why. **See D4** — the reasoning is settled and belongs in the
+explaining why. **D4 applies** — the reasoning is settled and belongs in the
 documentation.
 
 **Done when** both families fit through `bnec()`, `bnec_hurdle()` errors
@@ -192,30 +134,62 @@ does not. Reusing that path would silently give users a different model.
 
 ---
 
-## 12. #141 — `get_priors()` round trip
+## 8. #180 — `bnec()` caches a posterior matrix ~25x the fit
 
-**Scope.** Two entry points on one function: given a fit, return the priors it
-used; given a formula and data, return the priors `bayesnec` would generate.
-**See D9.** Return a `brmsprior`, or a named list of them for a model set,
-directly usable as `prior =`.
+**Scope.** `expand_nec()` stores `pred_vals$posterior`, sized
+`n_draws x resolution`, dominating object size (31.8 MB against a 1.2 MB
+`brmsfit`). **D2 applies: drop the cache and compute on demand.**
 
-**Done when** `bnec(..., prior = get_priors(fit))` reproduces the same model,
-the formula-and-data form works without fitting, and a test covers both — and
-covers the case where a user-supplied prior makes the two disagree.
+**The cache has exactly one reader in the package.** It is written at
+`R/expand_classes.R:78`
 
-**Hazard.** The round trip is the whole point. A returned object that looks
-right but is not accepted by `bnec(prior = )` fails the issue, so test the
-round trip rather than the shape of the return value.
+```r
+pred_vals <- list(data = pred_data, posterior = pred_posterior)
+```
+
+and read at `R/helpers.R:105`
+
+```r
+mod_fits[[index]]$pred_vals$posterior[sample(x, size), ]
+```
+
+which is the **model-averaging path** — drawing from each model's posterior in
+proportion to its weight. Nothing else reads it. `predict()` does not;
+`plot()`/`autoplot()` use `pred_vals$data`, the small summary, which **stays**.
+
+**Done when** a `nec3param` fit is materially smaller, model averaging still
+produces the same weighted draws, and a test asserts both the size and that an
+object saved *with* the cache still works.
+
+**Hazard, and the real design question.** Removing the cache means the
+model-averaging path must recompute `posterior_epred()` per model on demand —
+for a 23-model set that is 23 recomputations where there were none. Measure it.
+If model averaging becomes unacceptably slow, the right answer may be to compute
+once and hold the draws in memory for the duration of the call rather than
+storing them in the object. Either is consistent with D2; storing the matrix on
+the object again is not. **Say in the PR which you chose and what it cost.**
 
 ---
 
-## Not in this queue
+# Tier 2 — deferred until after the toxval untangle
 
-Everything else open is either out of scope or not specified well enough to
-implement unattended. See `02_deferred.md` for the reasoning, which is worth
-reading before adding anything here.
+Not to be started. Each of these edits code that the migration moves, so doing
+them now means conflicts or wasted work. Revisit once `ecx`/`nsec` have left
+bayesnec and the `predict` methods have settled.
 
-**#148 has been rescoped, not queued.** Its bayesnec half is diagnostics on
-whether a fit supports a stable control estimate; the *NSEC*-sensitivity half
-goes to toxval. See D6. It still needs a specific list of diagnostics before it
-can be worked.
+| | why it waits |
+|---|---|
+| #120 | changes `predict`/`plot`/`autoplot` for `bayesmanecfit`; toxval currently registers `predict.bayesnecfit` and `predict.bayesmanecfit` on the same classes. Changing their signatures mid-move invites a collision. Decisions D5 are settled and still stand. |
+| #93 | the `check_data()` shift correction logically applies to `ecx`/`nsec` as well as to predictions and *NEC*. Doing half now strands the other half in code that is moving. |
+| #160 | *NEC* mis-plotted when a function is called for `x`. Plotting itself is not moving, but the cause is likely shared post-processing of the transformed predictor — the same territory as #196. |
+| #161 | post-processing bug on a case study dataset. Good chance it *is* #195 or #196, in which case it belongs to toxval outright. Worth reproducing when the boundary is stable, not before. |
+
+---
+
+# Out of scope entirely
+
+`ecx()`, `nsec()`, `ecnsec()`, `zero_crossings()` — #39, #44, #166, #195, #196.
+See `02_deferred.md`. #193 belongs to another session.
+
+**#190 (full `precompile.R`) runs last**, after Tier 1 merges — #180 changes what
+every fit stores, so any rebuild before it lands is immediately stale.

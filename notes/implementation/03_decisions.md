@@ -76,8 +76,34 @@ unattended queue — it needs a specific list of diagnostics first.
 
 ## D7 — Sessions
 
-**One session, sequential**, working `01_work_queue.md` top to bottom in a
-single worktree.
+**One session, sequential**, working Tier 1 of `01_work_queue.md` top to bottom
+in a single worktree.
+
+## D10 — Sequencing against the toxval migration
+
+The queue is split so that **no Tier 1 item edits a file the migration moves.**
+That was checked, not assumed: the migration deletes `R/ecx.R` and `R/nsec.R`
+from `bayesnec` and relocates `predict.bayesnecfit` / `predict.bayesmanecfit`,
+and #120, #93, #160 and #161 all touch that territory. They are Tier 2.
+
+#180 was checked in the same pass and **is** clear: `pred_vals$posterior` is
+written at `R/expand_classes.R:78` and read at exactly one place,
+`R/helpers.R:105`, in the model-averaging path. `predict()` does not read it,
+plotting uses the `pred_vals$data` summary, and toxval does not touch it.
+
+The order overall:
+
+1. **Tier 1**, unattended, `bayesnec` only.
+2. **toxval Phase 1** — the dependency untangle. *Attended*: it spans two repos,
+   needs a `Remotes:` entry in the interim, and carries the ordering constraint
+   in D8.
+3. **toxval bug fixes** — #195, #196, #166, #39, #44.
+4. **Tier 2** in `bayesnec`, once the boundary is stable.
+5. **#190**, the full precompile, last.
+
+The bugs do not have to be fixed before `bayesnec` work proceeds. What has to
+come first is the *structural* move, because it relocates files. That is the
+whole reason for the split.
 
 ## D8 — Repository scope
 
