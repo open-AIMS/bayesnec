@@ -314,6 +314,28 @@ route makes the full crossed model comparison tractable, since all
 select a combination with \code{\link{bnec_hurdle}}, then refit it here with
 \code{\link{bnec_joint}} when structure spanning both blocks is needed.
 
+\bold{Non-constant dispersion}
+
+Every fit holds the family's dispersion parameter constant across the curve
+unless told otherwise. The \code{disp} term in the formula relaxes that,
+either as a function of the predictor (\code{disp(~x)}) or as a variance
+function of the fitted mean (\code{disp("power")}). See
+\code{?\link{bayesnecformula}} for the forms available, which families can
+carry one, and what the exponent implies for each.
+
+A variance function of the fitted mean requires the mean to be modelled on
+its natural scale. \code{\link{bnec}} uses an identity link whenever it
+selects the family itself; where a family is supplied explicitly its link
+should be too, as in \code{Gamma(link = "identity")}.
+
+Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
+dispersion sub-model changes the credible intervals of the toxicity
+estimates, and may also shift the point estimates, since the two models
+weight the observations differently. Guidance on establishing whether a
+dispersion sub-model is warranted is given in \code{vignette("example1")}.
+
+\bold{Prior sampling and model averaging}
+
 As a default, \code{\link{bnec}} sets the \code{\link[brms]{brm}} argument
 \code{sample_prior} to "yes" in order to sample draws from the priors in
 addition to the posterior distributions. Among others, these samples can be

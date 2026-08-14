@@ -15,7 +15,7 @@
 #' @noRd
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
-                         model_survival = NULL) {
+                         model_survival = NULL, disp_spec = NULL) {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
     return(define_hurdle_prior(model, family, predictor, response,
@@ -177,7 +177,75 @@ define_prior <- function(model, family, predictor, response,
   if (model == "ecxhormebc5") {
     priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
   }
+  disp_priors <- define_disp_prior(disp_spec, family, response)
+  if (!is.null(disp_priors)) {
+    priors <- priors + disp_priors
+  }
   priors
+}
+
+#' define_disp_prior
+#'
+#' Builds priors for the non-linear parameters a variance function introduces.
+#'
+#' @param disp_spec The output of \code{\link{parse_disp_term}}.
+#' @param family A \code{\link[stats]{family}} function.
+#' @param response The response variable, already on the link scale.
+#'
+#' @details Only route (B) is given priors here. Route (A) is an ordinary
+#' distributional formula and is left to the \pkg{brms} defaults, which already
+#' suit a linear predictor on a log link.
+#'
+#' \code{c1} and \code{c2} are centred on zero, which is the constant-dispersion
+#' case, so the prior asserts no mean-variance relationship and lets the data
+#' supply one. \code{c0} is the dispersion parameter on the log scale at the
+#' variance function's reference value (see \code{\link{disp_centre}}) -- that
+#' is, at a typical response rather than at \code{mu = 1}. That is what makes
+#' these priors mean anything at all: uncentred, \code{c0} and the slope are
+#' near-perfectly confounded and the induced prior on the dispersion parameter
+#' at the data spans many orders of magnitude whenever the response is far from
+#' one. The scale is still deliberately loose, because the reference locates the
+#' intercept but says nothing about how large the dispersion there should be.
+#'
+#' @return An object of class \code{\link[brms]{brmsprior}}, or \code{NULL}.
+#'
+#' @importFrom brms prior_string
+#' @importFrom stats sd
+#'
+#' @noRd
+define_disp_prior <- function(disp_spec, family, response) {
+  if (is.null(disp_spec) || disp_spec$route != "B") {
+    return(NULL)
+  }
+  fam_tag <- family$family
+  c0_prs <- c(
+    gaussian = paste0("normal(", round(log(sd(response)), 3), ", 2)"),
+    # shape is an inverse dispersion for both of these: a CV of 0.1 to 0.5 puts
+    # a Gamma shape between about 4 and 100, i.e. 1.4 to 4.6 on the log scale.
+    Gamma = "normal(2, 2)",
+    negbinomial = "normal(2, 2)",
+    # phi likewise, on the wider scale the PAM fits needed.
+    beta = "normal(4, 3)",
+    beta_binomial = "normal(4, 3)"
+  )
+  vf <- disp_functions[[disp_spec$value]]
+  # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
+  # whatever the response is measured in. A slope on mu itself is not: it
+  # carries units of 1/response, and normal(0, 2) would be near-flat for a
+  # response spanning thousands and highly informative for one spanning a
+  # fraction. Scaling by the observed spread restores the intended meaning --
+  # that a one-standard-deviation change in the mean moves the dispersion
+  # parameter by about two units on the log scale at the edge of the prior.
+  slope_prior <- if (isTRUE(vf$scale_free)) {
+    "normal(0, 2)"
+  } else {
+    paste0("normal(0, ", signif(2 / sd(response), 4), ")")
+  }
+  out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
+  for (p in setdiff(vf$pars, "c0")) {
+    out <- out + prior_string(slope_prior, nlpar = p)
+  }
+  out
 }
 
 #' define_hurdle_prior

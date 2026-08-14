@@ -633,7 +633,8 @@ add_brm_defaults <- function(
   skip_check,
   custom_name,
   prior_type = "uninformative",
-  model_survival = NULL
+  model_survival = NULL,
+  disp_spec = NULL
 ) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
@@ -655,7 +656,8 @@ add_brm_defaults <- function(
       predictor,
       response,
       prior_type = prior_type,
-      model_survival = model_survival
+      model_survival = model_survival,
+      disp_spec = disp_spec
     )
   } else {
     brm_args$prior <- priors
@@ -681,6 +683,18 @@ add_brm_defaults <- function(
     if ("seed" %in% names(brm_args)) {
       init_seed <- brm_args$seed
     }
+    # A variance function adds parameters that belong to no curve. The init
+    # search validates prior names against the model's own parameter set and
+    # only ever evaluates the mean curve, so those are filtered out here rather
+    # than taught to it: they play no part in getting the curve inside the
+    # response range. They are added back at the constant-dispersion null once
+    # the search has run -- see disp_inits(), and note that leaving them to
+    # Stan's own draw is NOT benign.
+    init_priors <- brm_args$prior
+    disp_par_names <- disp_pars(disp_spec)
+    if (length(disp_par_names) > 0) {
+      init_priors <- init_priors[!init_priors$nlpar %in% disp_par_names, ]
+    }
     inits <- if (is_hurdle_family(family)) {
       # Two blocks with differently-scaled responses, primed separately then
       # merged. response_link_scale() is a no-op for hurdle_gamma under an
@@ -689,7 +703,7 @@ add_brm_defaults <- function(
         model,
         predictor,
         response,
-        priors = brm_args$prior,
+        priors = init_priors,
         chains = brm_args$chains,
         dpar = hurdle_dpar(family),
         seed = init_seed,
@@ -700,13 +714,19 @@ add_brm_defaults <- function(
         model,
         predictor,
         response_link,
-        priors = brm_args$prior,
+        priors = init_priors,
         chains = brm_args$chains,
         seed = init_seed
       )
     }
     if (length(inits) == 1 && "random" %in% names(inits)) {
       inits <- inits$random
+    }
+    # Only when the search returned per-chain values; where it fell back to
+    # "random" there is no list to append to and Stan initialises everything.
+    if (length(disp_par_names) > 0 && !is.character(inits)) {
+      d_init <- disp_inits(disp_spec, family, response)
+      inits <- lapply(inits, function(chain) c(chain, d_init))
     }
     brm_args$init <- inits
   }
