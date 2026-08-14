@@ -687,8 +687,9 @@ add_brm_defaults <- function(
     # search validates prior names against the model's own parameter set and
     # only ever evaluates the mean curve, so those are filtered out here rather
     # than taught to it: they play no part in getting the curve inside the
-    # response range. Stan draws them from its default range, which is benign
-    # on a log link.
+    # response range. They are added back at the constant-dispersion null once
+    # the search has run -- see disp_inits(), and note that leaving them to
+    # Stan's own draw is NOT benign.
     init_priors <- brm_args$prior
     disp_par_names <- disp_pars(disp_spec)
     if (length(disp_par_names) > 0) {
@@ -720,6 +721,12 @@ add_brm_defaults <- function(
     }
     if (length(inits) == 1 && "random" %in% names(inits)) {
       inits <- inits$random
+    }
+    # Only when the search returned per-chain values; where it fell back to
+    # "random" there is no list to append to and Stan initialises everything.
+    if (length(disp_par_names) > 0 && !is.character(inits)) {
+      d_init <- disp_inits(disp_spec, family, response)
+      inits <- lapply(inits, function(chain) c(chain, d_init))
     }
     brm_args$init <- inits
   }

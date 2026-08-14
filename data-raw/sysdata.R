@@ -92,20 +92,36 @@ disp_dpars <- c(gaussian = "sigma", Gamma = "shape", negbinomial = "shape",
 # the fitted mean reaches zero. "scale_free" marks those whose slope is
 # dimensionless -- a slope multiplying log(mu) is, one multiplying mu itself is
 # not, and its prior has to be scaled to the response (see define_disp_prior).
+#
+# THE COVARIATE IS CENTRED, and this is not cosmetic. Uncentred, c0 is the
+# dispersion parameter at mu = 1 for the log forms and at mu = 0 for the linear
+# one -- points that are nowhere near the data unless the response happens to be
+# of order 1. Fitting algal cell density (mu ~ 1.8e4, so log(mu) ~ 9.8) with an
+# uncentred "power" gave a posterior correlation between c0 and c1 of 0.99, a c1
+# of the wrong sign, and an implied CV of 1e6 against an observed 0.03-0.6: the
+# prior normal(0, 2) on c1 spreads log(dpar) at the data over +/- 19.6, which is
+# no prior at all. Centring at a reference computed from the response makes c0
+# the dispersion parameter at a TYPICAL mu, so its prior means something and the
+# two parameters decorrelate. "@LOGREF@" / "@REF@" are replaced by that constant
+# at formula-build time; it is a fixed number, not an estimated quantity, so
+# nothing about the likelihood changes -- only the coordinates it is written in.
 disp_functions <- list(
   power = list(
-    expr = "c0 + c1 * log(@MU@)",
+    expr = "c0 + c1 * (log(@MU@) - @LOGREF@)",
     pars = c("c0", "c1"),
     families = c("gaussian", "Gamma", "negbinomial", "beta", "beta_binomial"),
     positive_mu = TRUE,
-    scale_free = TRUE
+    scale_free = TRUE,
+    centre = "log"
   ),
   twosided = list(
-    expr = "c0 + c1 * log(@MU@) + c2 * log(1 - (@MU@))",
+    expr = paste0("c0 + c1 * (log(@MU@) - @LOGREF@)",
+                  " + c2 * (log(1 - (@MU@)) - @LOG1MREF@)"),
     pars = c("c0", "c1", "c2"),
     families = c("beta", "beta_binomial"),
     positive_mu = TRUE,
-    scale_free = TRUE
+    scale_free = TRUE,
+    centre = "log"
   ),
   # Linear in mu rather than in log(mu), so it is defined for a response on the
   # real line, which the two above are not. This is the form a log-transformed
@@ -117,11 +133,12 @@ disp_functions <- list(
   # the power law cannot: p < 1 gives c1 < 0, dispersion falling as the growth
   # rate rises. See notes/alga_dataset.md.
   loglinear = list(
-    expr = "c0 + c1 * (@MU@)",
+    expr = "c0 + c1 * ((@MU@) - @REF@)",
     pars = c("c0", "c1"),
     families = c("gaussian", "Gamma", "negbinomial", "beta", "beta_binomial"),
     positive_mu = FALSE,
-    scale_free = FALSE
+    scale_free = FALSE,
+    centre = "identity"
   )
 )
 

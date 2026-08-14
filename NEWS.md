@@ -7,20 +7,36 @@
   `disp(~s(x))` also work — and says only that noise is larger at one end of the
   dose axis. `disp("power")` models it on the **fitted mean**, a variance
   function in the GLM sense, which is a statement about the measurement process
-  rather than about the dose axis and so transports to a design whose curve has
-  a different shape. The two coincide for a monotone curve, where `mu` is itself
-  a monotone function of `x`, and separate under hormesis or where a design
-  revisits the same `mu`.
+  rather than about the dose axis. The two coincide for a monotone curve, where
+  `mu` is itself a monotone function of `x`, and separate under hormesis or
+  where a design revisits the same `mu`.
 - Variance functions are named and registered in the same spirit as the models,
   so adding one later is a registry entry and a prior rather than a change to
-  the generator. `"power"` gives `log(dpar) = c0 + c1 * log(mu)`, which is
-  `dpar = exp(c0) * mu^c1` because every eligible family puts a log link on its
+  the generator. `"power"` gives `log(dpar) = c0 + c1 * (log(mu) - log(m))`,
+  which is `dpar = exp(c0) * (mu/m)^c1` because every eligible family puts a log
+  link on its
   dispersion parameter and `validate_family()` forces identity on `mu` only.
-  `"twosided"` adds a `c2 * log(1 - mu)` term for `Beta` and `beta_binomial`, so
+  `"twosided"` adds a `c2 * (log(1 - mu) - log(1 - m))` term for `Beta` and `beta_binomial`, so
   that variance can shrink toward both boundaries of `(0, 1)` — the shape a
   bounded family asserts, without asserting a ceiling with it. `c1 = 0` is the
   constant-dispersion model in every case, and is where the prior on `c1` sits.
-- `"loglinear"` gives `log(dpar) = c0 + c1 * mu`, linear in the mean rather than
+- The covariate in every variance function is **centred** on a reference `m`
+  computed from the response before fitting — its median, or its geometric
+  median for the forms taking `log(mu)`. `m` is a constant, not an estimated
+  quantity, so only the coordinates change and not the likelihood. Without it
+  `c0` would be the dispersion parameter at `mu = 1` (or `mu = 0` for
+  `"loglinear"`), which is nowhere near the data unless the response happens to
+  be of order one: fitting algal cell density (`mu ~ 1.8e4`) uncentred gave a
+  posterior correlation between `c0` and `c1` of 0.99, a `c1` of the wrong sign
+  and an implied CV of `1e6` against an observed 0.03–0.6. Centred, that fit
+  behaves and `c0` is interpretable as the dispersion at a typical response.
+- The parameters a variance function introduces are now initialised at the
+  constant-dispersion null (every slope at zero) rather than left to Stan's
+  default draw. The sign of a slope is tied to the direction of the mean curve,
+  so a chain started in the mirror-image basin converges to an inverted
+  solution; leaving these to chance produced an R-hat of 1.85 with one chain
+  reporting the wrong sign, where seeding from the null gives 1.001.
+- `"loglinear"` gives `log(dpar) = c0 + c1 * (mu - m)`, linear in the mean rather than
   in its logarithm, and so is the one form defined where the fitted mean reaches
   or crosses zero. It is also what a log-transformed endpoint inherits from a
   power law on its original scale: if a density has `sd ~ mu^p` then
@@ -58,6 +74,25 @@
   rather than failing at initialisation, with the error pointing at
   `disp("loglinear")` or `disp(~x)`.
   See [#191](https://github.com/open-AIMS/bayesnec/issues/191).
+- New *Non-constant dispersion* section in `vignette("example1")`, presenting
+  `disp()` as a diagnostic rather than a routine addition. It gives three
+  explanations to exclude before concluding that dispersion is genuinely
+  non-constant — substituted or censored values, a misspecified family, and
+  lack of fit in the mean — then works a simulated example through to the
+  consequences for the toxicity estimates. Across nineteen datasets screened
+  with adequate replication, no real dataset showed a dispersion relationship
+  that survived its own confound, which is why the example is simulated.
+- New *The scale of the predictor* section in `vignette("example1")`, placed
+  before any model is fitted. The scale on which the predictor enters the model
+  is the user's decision and `bnec` takes it as given, yet it typically matters
+  more than the choice of equation. The section covers how to judge it from the
+  spacing of the design rather than the response, the `crf(log(x))` syntax,
+  offsets for zero concentrations, and back-transforming the toxicity estimates.
+  See [#194](https://github.com/open-AIMS/bayesnec/issues/194).
+- Every `bnec()` call in `vignette("example1")` now passes `seed` explicitly.
+  `set.seed()` governs the initial values `bayesnec` generates but not the seed
+  Stan's sampler uses, so repeated builds of the vignette drifted; passing
+  `seed` makes them bit-identical.
 
 # bayesnec 2.1.3.6
 

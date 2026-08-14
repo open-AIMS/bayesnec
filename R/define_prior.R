@@ -198,10 +198,14 @@ define_prior <- function(model, family, predictor, response,
 #'
 #' \code{c1} and \code{c2} are centred on zero, which is the constant-dispersion
 #' case, so the prior asserts no mean-variance relationship and lets the data
-#' supply one. \code{c0} is the dispersion parameter on the log scale at
-#' \code{mu = 1} rather than at the middle of the data, so centring it on the
-#' observed spread is only right to within the scale of the response -- hence a
-#' deliberately loose scale rather than a tight one.
+#' supply one. \code{c0} is the dispersion parameter on the log scale at the
+#' variance function's reference value (see \code{\link{disp_centre}}) -- that
+#' is, at a typical response rather than at \code{mu = 1}. That is what makes
+#' these priors mean anything at all: uncentred, \code{c0} and the slope are
+#' near-perfectly confounded and the induced prior on the dispersion parameter
+#' at the data spans many orders of magnitude whenever the response is far from
+#' one. The scale is still deliberately loose, because the reference locates the
+#' intercept but says nothing about how large the dispersion there should be.
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}, or \code{NULL}.
 #'

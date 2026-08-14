@@ -94,6 +94,114 @@ test_that("make_disp_block wraps the curve so twosided binds correctly", {
   expect_true(grepl(paste0("log(1 - ((", curve, ")))"), rhs, fixed = TRUE))
 })
 
+test_that("disp_centre returns the reference the form asks for", {
+  y <- c(1, 10, 100, 1000)
+  pw <- bayesnec:::disp_centre(list(route = "B", value = "power"), y)
+  expect_named(pw, "LOGREF")
+  # geometric median: the median on the scale the covariate is measured on
+  expect_equal(unname(pw[["LOGREF"]]), signif(median(log(y)), 6))
+  ll <- bayesnec:::disp_centre(list(route = "B", value = "loglinear"), y)
+  expect_named(ll, "REF")
+  expect_equal(unname(ll[["REF"]]), signif(median(y), 6))
+  ts <- bayesnec:::disp_centre(list(route = "B", value = "twosided"),
+                               c(0.1, 0.2, 0.8))
+  expect_named(ts, c("LOGREF", "LOG1MREF"))
+  # route A introduces no parameters and so needs no reference
+  expect_length(bayesnec:::disp_centre(list(route = "A", value = "x"), y), 0)
+})
+
+test_that("the variance function covariate is centred on the response", {
+  # uncentred, c0 is the dispersion parameter at mu = 1 (power) or mu = 0
+  # (loglinear); both are far outside a response of order 1e4, which confounds
+  # c0 with the slope. The reference must appear in the built expression.
+  y <- c(15000, 18000, 20000, 400)
+  spec <- list(route = "B", value = "power")
+  db <- bayesnec:::make_disp_block("ecx4param", spec, "sigma", "x", y)
+  rhs <- deparse1(db$nlf[[3]])
+  expect_true(grepl(as.character(signif(median(log(y)), 6)), rhs, fixed = TRUE))
+  # and it must be a literal constant, not a parameter to be estimated
+  expect_equal(sort(all.vars(db$lf[[2]])), c("c0", "c1"))
+
+  spec_ll <- list(route = "B", value = "loglinear")
+  db_ll <- bayesnec:::make_disp_block("ecx4param", spec_ll, "sigma", "x", y)
+  expect_true(grepl(as.character(signif(median(y), 6)),
+                    deparse1(db_ll$nlf[[3]]), fixed = TRUE))
+
+  # a large reference must not be rendered in scientific notation, which would
+  # not parse back as part of a formula the way it is spliced in
+  big <- bayesnec:::make_disp_block("ecx4param", spec_ll, "sigma", "x",
+                                    c(1e6, 2e6))
+  expect_false(grepl("e+", deparse1(big$nlf[[3]]), fixed = TRUE))
+})
+
+test_that("centring makes the model frame reachable end to end", {
+  bf_b <- make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("power")),
+                           disp_dat, gaussian(link = "identity"))[[1]]
+  rhs <- deparse1(bf_b$pforms$sigma[[3]])
+  ref <- signif(median(log(disp_dat$y[disp_dat$y > 0])), 6)
+  expect_true(grepl(as.character(ref), rhs, fixed = TRUE))
+})
+
+test_that("route B refuses a non-identity link, route A does not", {
+  # the curve expression substituted into a variance function is the linear
+  # predictor on the link scale, so it is the mean only under identity. Under
+  # Gamma's inverse link the same fit runs, converges and returns the slope with
+  # the wrong sign, so this has to be refused rather than left to the user.
+  spec_b <- list(route = "B", value = "power")
+  expect_error(
+    bayesnec:::check_disp_spec(spec_b, Gamma(), response = c(1, 2, 3)),
+    "identity"
+  )
+  expect_error(
+    bayesnec:::check_disp_spec(spec_b, Beta(), response = c(0.2, 0.5, 0.8)),
+    "identity"
+  )
+  expect_silent(
+    bayesnec:::check_disp_spec(spec_b, Gamma(link = "identity"),
+                               response = c(1, 2, 3))
+  )
+  # gaussian has only the identity link, so it can never trip this
+  expect_silent(
+    bayesnec:::check_disp_spec(spec_b, gaussian(), response = c(1, 2, 3))
+  )
+  # route A is an ordinary distributional formula and never touches the curve
+  expect_silent(
+    bayesnec:::check_disp_spec(list(route = "A", value = "x"), Gamma(),
+                               response = c(1, 2, 3))
+  )
+})
+
+test_that("a non-identity link is refused end to end", {
+  expect_error(
+    make_brmsformula(bnf(y ~ crf(x, "ecx4param") + disp("power")),
+                     disp_dat, Gamma(link = "inverse")),
+    "identity"
+  )
+})
+
+test_that("disp_inits starts every slope at the constant-dispersion null", {
+  y <- c(0.5, 1, 2, 4)
+  ii <- bayesnec:::disp_inits(list(route = "B", value = "power"), gaussian(), y)
+  expect_named(ii, c("b_c0", "b_c1"))
+  # a slope of zero is the no-relationship model: the sign of a slope is tied
+  # to the direction of the mean curve, so chains must not each pick their own
+  expect_equal(as.numeric(ii$b_c1), 0)
+  expect_equal(as.numeric(ii$b_c0), log(sd(y)))
+  # brms wants one-dimensional arrays, not bare scalars
+  expect_true(all(vapply(ii, function(z) !is.null(dim(z)), TRUE)))
+
+  ts <- bayesnec:::disp_inits(list(route = "B", value = "twosided"),
+                              Beta(), c(0.2, 0.5, 0.8))
+  expect_named(ts, c("b_c0", "b_c1", "b_c2"))
+  expect_equal(as.numeric(ts$b_c1), 0)
+  expect_equal(as.numeric(ts$b_c2), 0)
+  expect_equal(as.numeric(ts$b_c0), 4)
+
+  # route A introduces no non-linear parameters, so there is nothing to seed
+  expect_length(bayesnec:::disp_inits(list(route = "A", value = "x"),
+                                      gaussian(), y), 0)
+})
+
 test_that("make_disp_block substitutes the real predictor name", {
   spec <- list(route = "B", value = "power")
   db <- bayesnec:::make_disp_block("nec3param", spec, "sigma", "conc")
@@ -181,10 +289,14 @@ test_that("a route A variable must exist in the data", {
 
 test_that("loglinear is linear in mu rather than in log(mu)", {
   spec <- list(route = "B", value = "loglinear")
-  db <- bayesnec:::make_disp_block("ecx4param", spec, "sigma", "x")
+  db <- bayesnec:::make_disp_block("ecx4param", spec, "sigma", "x", c(2, 4, 6))
   rhs <- deparse1(db$nlf[[3]])
   curve <- deparse1(bayesnec:::bf_ecx4param$formula[[3]])
-  expect_true(grepl(paste0("c1 * ((", curve, "))"), rhs, fixed = TRUE))
+  # the curve enters as (curve) - reference, never inside a log(). Asserted on
+  # the pieces rather than the exact bracketing, which is an artefact of
+  # substituting a parenthesised curve into a parenthesised slot.
+  expect_true(grepl(curve, rhs, fixed = TRUE))
+  expect_true(grepl(") - 4)", rhs, fixed = TRUE))
   expect_false(grepl("log(", rhs, fixed = TRUE))
 })
 
