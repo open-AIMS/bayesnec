@@ -564,12 +564,7 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
   amend_part <- function(part, label) {
     tryCatch(do.call(amend, c(list(part), args)), error = function(e) {
       stop("Could not amend the ", label, " component: ",
-           conditionMessage(e),
-           if (inherits(part, "bayesnecfit")) {
-             paste0("\n  Note amend() requires a model-averaged fit; this",
-                    " component holds a single model. Refit that component",
-                    " with more than one model in crf().")
-           } else "", call. = FALSE)
+           conditionMessage(e), call. = FALSE)
     })
   }
   hurdle_rewrap(object, amend_part(object$growth, "growth"),

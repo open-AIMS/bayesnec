@@ -3,6 +3,7 @@
 S3method("+",bayesnechurdlefit)
 S3method("+",bnecfit)
 S3method(amend,bayesmanecfit)
+S3method(amend,bayesnecfit)
 S3method(amend,bayesnechurdlefit)
 S3method(autoplot,bayesmanecfit)
 S3method(autoplot,bayesnecfit)
