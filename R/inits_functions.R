@@ -1,3 +1,28 @@
+#' Treat an empty-string prior bound as absent
+#'
+#' \pkg{brms} records an absent bound as \code{""} in the \code{prior} slot a
+#' fitted object carries, while \code{define_prior()} and \code{brms::prior()}
+#' use \code{NA}. All three mean unbounded, but the bound-respecting redraw in
+#' \code{make_inits()} tests with \code{is.na()}, so \code{""} was read as a
+#' bound, then coerced to \code{NA} by \code{as.numeric()}, leaving a
+#' \code{while (NA)} and the error "missing value where TRUE/FALSE needed".
+#' That is what stopped a fit's own priors from being usable as a \code{prior}
+#' argument. See #141.
+#'
+#' @param priors A \code{\link[base]{data.frame}} of priors.
+#'
+#' @return \code{priors}, with blank bounds set to \code{NA}.
+#'
+#' @noRd
+blank_bounds_to_na <- function(priors) {
+  for (bound in c("lb", "ub")) {
+    if (bound %in% names(priors)) {
+      priors[[bound]][!nzchar(as.character(priors[[bound]]))] <- NA
+    }
+  }
+  priors
+}
+
 #' make_inits
 #'
 #' Creates list of initialisation values
@@ -21,7 +46,7 @@ make_inits <- function(model, fct_args, priors, chains) {
             normal = rnorm,
             beta = rbeta,
             uniform = runif)
-  priors <- as.data.frame(priors)
+  priors <- blank_bounds_to_na(as.data.frame(priors))
   priors <- priors[priors$prior != "", ]
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
@@ -170,7 +195,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
   fct_args <- names(unlist(as.list(args(pred_fct))))
   fct_args <- setdiff(fct_args, "x")
   dots <- list(...)
-  priors_df <- as.data.frame(dots$priors)
+  priors_df <- blank_bounds_to_na(as.data.frame(dots$priors))
   priors_df <- priors_df[priors_df$prior != "", ]
   set.seed(seed)
   inits <- make_inits(model, fct_args, ...)

@@ -17,9 +17,18 @@ A \code{\link[base]{list}} containing the priors.
 Extracts the priors from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
+\details{
+Returns the whole \code{\link[brms]{brmsprior}} each fit carries,
+\pkg{brms} defaults and duplicated vectorized rows included, which is what to
+use for looking at a fit. It is not accepted by \code{bnec(prior = )} --
+\code{\link{get_priors}} is the function for feeding priors back in.
+}
 \examples{
 library(bayesnec)
 data(manec_example)
 pull_prior(manec_example)
 
+}
+\seealso{
+\code{\link{get_priors}}, \code{\link{check_priors}}
 }

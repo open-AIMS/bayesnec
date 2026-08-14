@@ -173,6 +173,31 @@
   others matters most. It is attached only where something did fail, so
   `names()` on a fitted object is otherwise unchanged, and objects saved before
   this release report no failures rather than erroring.
+- New `get_priors()`, returning priors in the form `bnec()` accepts them, from
+  either end of a fit. **Given a fit** it returns the priors that fit actually
+  used, user overrides included, so `bnec(formula, data = data, prior =
+  get_priors(fit))` reproduces the model. **Given a formula and data** it returns
+  the priors `bayesnec` would generate, without fitting anything, so they can be
+  inspected and edited before the first run — the family is chosen from the data
+  and invalid models dropped exactly as `bnec()` would, because the same
+  functions do it. A single model returns a `brmsprior`, a model set a named list
+  of them, both directly usable as `prior =`. The two entry points answer
+  different questions and can disagree once a prior has been overridden, which is
+  documented and tested. See
+  [#141](https://github.com/open-AIMS/bayesnec/issues/141).
+- `pull_prior()` is unchanged and still returns the whole `brmsprior` a fit
+  carries — `brms` defaults, duplicated vectorized rows and all. That object is
+  for looking at, and is not accepted by `bnec(prior = )`: the extra `sigma` row
+  fails the parameter-name check in `make_inits()`. `?pull_prior` now says so and
+  points at `get_priors()`.
+- Fixed: the prior a fitted object carries could not be fed back to `bnec()`
+  even once the extra rows were removed. `brms` records an absent bound as `""`
+  in a fit's own `prior` slot, where `define_prior()` and `brms::prior()` use
+  `NA`. All three mean unbounded, but the bound-respecting redraw in
+  `make_inits()` tested with `is.na()`, so `""` was read as a bound, coerced to
+  `NA` by `as.numeric()`, and then evaluated as `while (NA)` — "missing value
+  where TRUE/FALSE needed". Blank bounds are now normalised before use, which is
+  the second half of what `get_priors()` needed to round trip.
 
 # bayesnec 2.1.3.6
 
