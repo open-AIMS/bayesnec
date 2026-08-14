@@ -43,7 +43,9 @@ mod_fams <- c(gaussian = "gaussian",
               beta_binomial = "beta_binomial",
               beta = "Beta",
               hurdle_gamma = "hurdle_gamma",
-              zero_inflated_beta = "zero_inflated_beta")
+              zero_inflated_beta = "zero_inflated_beta",
+              zero_inflated_poisson = "zero_inflated_poisson",
+              zero_inflated_negbinomial = "zero_inflated_negbinomial")
 
 # Families with a second parameter block modelling the probability of a zero,
 # mapped to the name brms gives that block. brms calls it "hu" for the hurdle
@@ -51,6 +53,15 @@ mod_fams <- c(gaussian = "gaussian",
 # model (see notes/hurdle_gamma_design.md 1.5), so bayesnec treats them alike and
 # simply carries the name through. Kept separate from mod_fams so that code can
 # ask "is this a two-block family?" without enumerating tags at each call site.
+# NB the zero-inflated COUNT families are deliberately absent. zero_inflated_beta
+# belongs here because Beta cannot emit a zero, so zero-inflation collapses to a
+# hurdle and brms generates the hurdle density with no mixture. Poisson and
+# negbinomial can emit zeros, so the equivalence fails: a zero-inflated count
+# model is a genuine mixture, its likelihood does not factorise into two
+# independent blocks, and the two-block machinery here does not carry over.
+# Leaving them out of this registry is what routes them through the ordinary
+# family path in bnec(), where brms fits the mixture itself with a constant zi.
+# See #104.
 hurdle_fams <- c(hurdle_gamma = "hu", zero_inflated_beta = "zi")
 
 # The family whose defaults the mu block should reuse for priors and initial

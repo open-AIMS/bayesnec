@@ -29,6 +29,17 @@ define_prior <- function(model, family, predictor, response,
   } else { 
     fam_tag <- family$family
    }
+  # The mu block of a zero-inflated count family is an ordinary poisson or
+  # negbinomial mean -- the mixture changes how many zeros are observed, not the
+  # scale of mu -- so the base family's priors are the right ones rather than a
+  # duplicated set of entries in every table below. The quantiles are taken over
+  # the whole response, structural zeros included, which places `top` a little
+  # low; that is the honest choice, because under zero-inflation a zero can come
+  # from either component and conditioning on the non-zeros would bias the other
+  # way. These are weakly informative priors either way. See #104.
+  if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
+    fam_tag <- sub("^zero_inflated_", "", fam_tag)
+  }
   if (family$family == "beta_binomial" || family$family == "binomial") {
     if (is.integer(response) || max(response) > 1) {
       stop("Response vector must be passed as a proportion to define_prior",

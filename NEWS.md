@@ -216,6 +216,33 @@
   names the reason rather than sharing the generic one, and points at the
   hormesis models that do work on a bounded response. See
   [#177](https://github.com/open-AIMS/bayesnec/issues/177).
+- New families `"zero_inflated_poisson"` and `"zero_inflated_negbinomial"`, for
+  count data with more zeros than the count distribution alone can account for.
+  They take the ordinary single-block path: the concentration-response curve is
+  fitted to `mu` and `brms` estimates a single constant `zi` alongside it. See
+  [#104](https://github.com/open-AIMS/bayesnec/issues/104).
+- They are deliberately **not** two-block families, which is worth stating
+  because `zero_inflated_beta` is one and the names suggest they should match.
+  Zero-inflation differs from a hurdle only when the base distribution can
+  itself produce a zero. Neither Gamma nor Beta can, so for those the two
+  coincide — every zero came from the inflation component, the likelihood
+  separates exactly, and `brms` generates the hurdle density with no mixture at
+  zero. Poisson and negative binomial **can** produce a zero, so the equivalence
+  fails: an observed zero is evidence about both components at once, the
+  likelihood carries a `log_sum_exp` over them and does not factorise. Writing a
+  bayesnec equation for `zi` and treating it as an independent block would give
+  a different model from the one asked for, silently. `?bnec` sets this out.
+- Consequently `bnec_hurdle()` refuses them as `family_growth`, with an error
+  saying why and pointing at `bnec(family = )` for the mixture, or at leaving
+  `family_growth` unset for a true hurdle on counts. It also now refuses a
+  two-block `family_growth`, which was previously accepted and would have nested
+  one two-part model inside another. `model_survival` is refused for them as for
+  any other single-block family, and `disp()` is refused with the reason that
+  applies — the dispersion parameter describes the count component while the
+  response is the mixture — rather than the generic "no free dispersion
+  parameter", which would be wrong for `zero_inflated_negbinomial`.
+- Neither family is selected automatically. A count response is still read as
+  `poisson`; the zero-inflated forms have to be asked for.
 
 # bayesnec 2.1.3.6
 

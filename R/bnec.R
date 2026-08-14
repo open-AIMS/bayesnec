@@ -268,6 +268,42 @@
 #' select a combination with \code{\link{bnec_hurdle}}, then refit it here with
 #' \code{\link{bnec_joint}} when structure spanning both blocks is needed.
 #'
+#' \bold{Zero-inflated counts are not two-block families}
+#'
+#' \code{"zero_inflated_poisson"} and \code{"zero_inflated_negbinomial"} are
+#' also available, and they take the ordinary single-block path: the
+#' concentration-response curve is fitted to \code{mu}, and \pkg{brms} estimates
+#' a single constant \code{zi} alongside it. They get no second bayesnec
+#' equation, no \code{model_survival}, and no \code{zi} curve.
+#'
+#' That looks inconsistent with \code{"zero_inflated_beta"}, which is a
+#' two-block family here, and the reason is worth stating because the family
+#' names suggest otherwise. Zero-inflation differs from a hurdle only when the
+#' base distribution can itself produce a zero. Neither Gamma nor Beta can, so
+#' for those the two coincide: every zero must have come from the inflation
+#' component, the likelihood separates exactly into a Bernoulli term over all
+#' observations and a positive-response term over the rest, and the Stan density
+#' \pkg{brms} generates for \code{zero_inflated_beta} is the hurdle form with no
+#' mixture at zero. Two blocks are then an accurate description of the model.
+#'
+#' Poisson and negative binomial \emph{can} produce a zero, so the equivalence
+#' fails. An observed zero is evidence about both components at once, the
+#' likelihood carries a \code{log_sum_exp} over them and does not factorise, and
+#' the parameters of the two are not separately identified from the zeros alone.
+#' Writing a bayesnec equation for \code{zi} and treating it as an independent
+#' block would give a different model from the one asked for, and would do it
+#' silently. \code{\link{bnec_hurdle}}, which is exactly that factorisation
+#' performed as two separate fits, refuses these families for the same reason. A
+#' true hurdle on counts -- where every zero really is structural -- is available
+#' there by leaving \code{family_growth} unset.
+#'
+#' A consequence worth noting: \code{zi} is a nuisance parameter here, not part
+#' of the concentration-response description. Where the probability of a zero is
+#' itself expected to depend on concentration, this family is the wrong choice
+#' and \code{\link{bnec_hurdle}} or a two-block family is the right one.
+#' \code{disp()} is refused for both, because the dispersion parameter describes
+#' the count component while the response is the mixture.
+#'
 #' \bold{Non-constant dispersion}
 #'
 #' Every fit holds the family's dispersion parameter constant across the curve

@@ -151,7 +151,13 @@ check_models <- function(model, family, data) {
     }
   }
   if (link_tag == "identity" &
-        fam_tag %in% c("Gamma", "poisson", "negbinomial")) {
+        fam_tag %in% c("Gamma", "poisson", "negbinomial",
+                       "zero_inflated_poisson",
+                       "zero_inflated_negbinomial")) {
+    # The zero-inflated count families sit here rather than with the two-block
+    # families: their mu block is an ordinary count mean, unbounded above, and
+    # the mixture at zero is fitted by brms with a constant zi rather than by a
+    # second bayesnec equation. See ?bnec and #104.
     use_model <-  model[!model %in% c("neclin", "neclinhorme",
                                       "ecxlin", "nechormepwr01")]
     drop_model <- setdiff(model, use_model)
