@@ -1,5 +1,15 @@
 # bayesnec 2.1.3.7
 
+- `brms (>= 2.23.0)` is now required. Earlier versions generate the
+  `beta_binomial` likelihood by passing the whole `trials` array to
+  `beta_binomial_lpmf` instead of `trials[n]`, so each response is evaluated
+  against every trial count. With varying `trials` the density is `-Inf`
+  everywhere and the model cannot initialise; with constant `trials` it samples
+  on a likelihood inflated by a factor of `N`, which is silent and leaves
+  posteriors overconfident by roughly `sqrt(N)`. Fixed upstream in 2.23.0. See
+  `notes/beta_binomial_varying_trials.md`.
+- Fixed a doubled roxygen marker in the references section of `?nsec`, which
+  left a stray `#'` in the rendered help.
 - New `disp()` term in `bayesnecformula`, allowing a family's dispersion
   parameter to vary across the concentration-response curve instead of being
   held constant. Two forms. `disp(~x)` models dispersion on the **predictor** —
