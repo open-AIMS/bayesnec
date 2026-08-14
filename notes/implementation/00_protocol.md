@@ -5,22 +5,42 @@ supervision. Read this first, then the queue.
 
 ## Working rules
 
-**One issue, one branch, one PR.** Branch from `dev`, never from another issue
-branch. Name it `issue-<n>-<slug>`. PR targets `dev`. **Do not merge.** The
-author reviews and merges.
-
-**Separate worktrees.** If more than one session runs at once, each must use its
-own `git worktree`. The Windows path `C:/Rworking/...` and the WSL path
-`/home/rfisher/Rworking_wsl/...` are the *same checkout* — two sessions in the
-same directory will corrupt each other's work.
+**One worktree for the whole run.** Create it once, at the start, and do every
+issue in it. Do **not** create a worktree per issue, and do **not** work in
+`/mnt/c/Rworking/bayesnec` — that is the author's main checkout.
 
 ```bash
-git -C /mnt/c/Rworking/bayesnec worktree add ../bayesnec-issue-<n> -b issue-<n>-<slug> dev
+git -C /mnt/c/Rworking/bayesnec fetch origin dev
+git -C /mnt/c/Rworking/bayesnec worktree add /mnt/c/Rworking/bayesnec-tier1 dev
+cd /mnt/c/Rworking/bayesnec-tier1
 ```
 
-**Never touch these.** `master`. Any branch or worktree you did not create.
-`/mnt/c/Rworking/bayesnec-dispersion`, `-negsgr`, `-issue173`, `-betaub`,
-`-cens`, `-hurdlegamma` — all belong to other work.
+**One issue, one branch, one PR,** all inside that worktree. For each issue:
+
+```bash
+git checkout dev && git pull --ff-only origin dev
+git checkout -b issue-<n>-<slug>
+# ... work, commit ...
+git push -u origin issue-<n>-<slug>
+gh pr create --repo open-AIMS/bayesnec --base dev
+git checkout dev          # ready for the next issue
+```
+
+Branch from `dev` every time, never from the previous issue's branch. **Do not
+merge** — the author reviews and merges.
+
+**Other sessions are live.** The Windows path `C:/Rworking/...` and the WSL path
+`/home/rfisher/Rworking_wsl/...` are the *same checkout*, so two sessions in one
+directory corrupt each other.
+
+**Never touch these** — `master`, and any worktree you did not create:
+`/mnt/c/Rworking/bayesnec-negsgr` (**live, another session**),
+`-issue173` (a frozen read-only pin that session relies on), `-dispersion`,
+`-betaub`, `-cens`, `-hurdlegamma`.
+
+That session holds `R/nsec.R` and the `example1`/`example6` vignettes on a
+parked branch. Tier 1 does not touch vignettes at all, and touches `R/nsec.R`
+only if an issue leads there — if one does, stop and report rather than edit it.
 
 ## Definition of done, per issue
 
