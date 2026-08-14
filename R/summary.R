@@ -95,7 +95,8 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
     ne_type = x$ne_type,
     nec_vals = clean_nec_vals(x, x$model, ecx_mod),
     ecs = ecs,
-    bayesr2 = bayes_R2(x$fit)
+    bayesr2 = bayes_R2(x$fit),
+    failed_models = failed_models(x)
   )
   allot_class(out, "necsummary")
 }
@@ -143,7 +144,8 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
       lapply(function(y)bayes_R2(y$fit)) |>
       do.call(what = "rbind.data.frame"),
     rhat_issues = map(x$mod_fits, "fit") |>
-      map(has_r_hat_warnings)
+      map(has_r_hat_warnings),
+    failed_models = failed_models(x)
   )
   allot_class(out, "manecsummary")
 }

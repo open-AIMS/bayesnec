@@ -413,6 +413,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   } else if (length(model) > 1) {
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
+    failed <- list()
     for (m in seq_along(model)) {
       model_m <- model[m]
       fit_m <- try(
@@ -425,6 +426,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
         mod_fits[[m]] <- fit_m
       } else {
         mod_fits[[m]] <- NA
+        failed[[model_m]] <- failure_record(model_m,
+                                            attr(fit_m, "condition"))
       }
     }
     formulas <- lapply(mod_fits, extract_formula)
@@ -432,14 +435,18 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                              resolution = resolution, sig_val = sig_val,
                              loo_controls = loo_controls)
     if (length(mod_fits) > 1) {
-      allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
+      out <- allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
     } else {
       mod_fits <- expand_nec(mod_fits[[1]], formula = formula,
                              x_range = x_range, resolution = resolution,
                              sig_val = sig_val, loo_controls = loo_controls,
                              model = names(mod_fits))
-      allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
+      out <- allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
     }
+    # Attached in both branches: where all but one model failed the return is a
+    # bayesnecfit, and that is exactly the case where knowing what happened to
+    # the other twenty-two matters most.
+    attach_failed_models(out, failed)
   } else {
     mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
                             brm_args = brm_args, prior_type = prior_type,

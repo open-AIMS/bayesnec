@@ -86,6 +86,7 @@ print.necsummary <- function(x, ...) {
   cat("\n\nBayesian R2 estimates:\n")
   print_mat(x$bayesr2)
   cat("\n\n")
+  print_failed_models(x$failed_models)
   invisible(x)
 }
 
@@ -129,6 +130,7 @@ print.manecsummary <- function(x, ...) {
   cat("Bayesian R2 estimates:\n")
   print_mat(x$bayesr2)
   cat("\n\n")
+  print_failed_models(x$failed_models)
   with_issues <- names(x$rhat_issues[unlist(x$rhat_issues)])
   if (length(with_issues) > 0) {
       warning("The following model had Rhats > 1.05 (no convergence):\n",
@@ -136,4 +138,27 @@ print.manecsummary <- function(x, ...) {
               "Consider dropping them (see ?amend)\n", sep = "")
   }
   invisible(x)
+}
+
+#' One line in a summary naming the models that did not fit
+#'
+#' Kept short deliberately: the summary says how many failed and which, and
+#' \code{\link{failed_models}} holds the priors and initial values for anyone who
+#' wants to diagnose one.
+#'
+#' @param failed An object of class \code{bnecfailures}, possibly \code{NULL}
+#' for a summary of an object fitted before this was recorded.
+#'
+#' @return \code{invisible(NULL)}, called for its side effect.
+#'
+#' @noRd
+print_failed_models <- function(failed) {
+  if (is.null(failed) || length(failed) == 0) {
+    return(invisible(NULL))
+  }
+  cat(length(failed), " model(s) failed to fit: ",
+      paste0(names(failed), collapse = ", "),
+      "\nSee ?failed_models for the priors and initial values used.\n\n",
+      sep = "")
+  invisible(NULL)
 }

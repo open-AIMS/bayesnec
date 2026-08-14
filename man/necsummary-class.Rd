@@ -43,6 +43,10 @@ should the user decide to calculate them (see the non-exported
 
 \item{\code{bayesr2}}{The model Bayesian R2 as calculated by
 \code{\link[brms]{bayes_R2}}.}
+
+\item{\code{failed_models}}{Any models from the original set that could not be
+fitted, with the priors and initial values used. See
+\code{\link{failed_models}}.}
 }}
 
 \references{
