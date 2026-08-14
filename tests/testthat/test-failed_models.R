@@ -136,7 +136,8 @@ test_that("a model that fails in a set is reported with its priors and inits", {
   failed <- failed_models(out)
   expect_named(failed, "ecxwb1")
   expect_equal(failed$ecxwb1$model, "ecxwb1")
-  expect_match(failed$ecxwb1$message, "elapsed time limit")
+  # Windows reports "CPU time limit" where Linux and macOS report "elapsed".
+  expect_match(failed$ecxwb1$message, "time limit")
   # The whole point: the priors and initial values used are recoverable without
   # re-running the set, and the prior is usable as a `prior =` argument.
   expect_s3_class(failed$ecxwb1$prior, "brmsprior")
