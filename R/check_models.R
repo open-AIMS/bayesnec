@@ -1,3 +1,59 @@
+#' Models excluded from 0-1 bounded identity families because they can go
+#' negative
+#'
+#' \code{neclin}, \code{neclinhorme} and \code{ecxlin} decay by subtraction
+#' rather than by an exponential factor, so their fitted mean is unbounded
+#' below. Named in one place because both the single-block and the two-block
+#' branch need the same list.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+bounded_linear_drops <- function() {
+  c("neclin", "neclinhorme", "ecxlin")
+}
+
+#' Models excluded from 0-1 bounded identity families because they can exceed 1
+#'
+#' \code{nechormepwr} and \code{nechorme4pwr} carry the hormesis term
+#' \code{x^(1 / (1 + exp(slope)))}, which has no coefficient. The exponent lies
+#' in (0, 1), so at \code{x = 1} the term contributes exactly 1 whatever
+#' \code{slope} is, and below the threshold -- where the decay factor is exactly
+#' 1 -- the fitted mean is at least \code{top + 1}. No parameter value keeps that
+#' inside (0, 1) for a predictor that reaches 1, which is why the initial-value
+#' search cannot be fixed for this combination: there is nothing to find. See
+#' #177.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+bounded_power_drops <- function() {
+  c("nechormepwr", "nechorme4pwr")
+}
+
+#' The message explaining an unscaled-power exclusion
+#'
+#' Separate from the generic drop message because the reason is different, and
+#' because the previous behaviour -- roughly eight minutes of failed
+#' initialisation followed by "Initialization failed" buried in a long run --
+#' is exactly what makes an explicit reason worth the extra line.
+#'
+#' @param drop_model The models being dropped.
+#' @param fam_tag The family tag.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+unscaled_power_message <- function(drop_model, fam_tag) {
+  paste0("Dropping the model(s) ", paste0(drop_model, collapse = ", "),
+         " as they are not valid in the case of a ", fam_tag,
+         " with identity link: their hormesis term",
+         " x^(1 / (1 + exp(slope))) has no scale parameter, so the fitted mean",
+         " is at least top + 1 wherever the predictor reaches 1 and cannot be",
+         " held inside (0, 1). Use nechorme, nechorme4 or nechormepwr01 for a",
+         " hormesis model on a bounded response. See ?models.")
+}
+
 #' check_models
 #'
 #' Check model input for a Bayesian model fit
@@ -35,13 +91,19 @@ check_models <- function(model, family, data) {
   }
   if (link_tag == "identity" & fam_tag %in%
         c("bernoulli", "beta", "binomial", "beta_binomial")) {
-    use_model <-  model[!model %in% c("neclin", "neclinhorme", "ecxlin")]
+    use_model <- model[!model %in% bounded_linear_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
       message(paste("Dropping the model(s)",
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
                     fam_tag, "with identity link."))
+    }
+    model <- use_model
+    use_model <- model[!model %in% bounded_power_drops()]
+    drop_model <- setdiff(model, use_model)
+    if (length(drop_model) > 0) {
+      message(unscaled_power_message(drop_model, fam_tag))
     }
     if (length(use_model) == 0) {
       stop(paste("None of the model(s) specified are valid for a",
@@ -57,7 +119,7 @@ check_models <- function(model, family, data) {
     # family: zero-bounded for hurdle_gamma, which additionally rules out
     # nechormepwr01; 0-1 bounded for zero_inflated_beta, which does not, since
     # nechormepwr01 is the equation designed for that range.
-    drop_always <- c("neclin", "neclinhorme", "ecxlin")
+    drop_always <- bounded_linear_drops()
     mu_fam <- unname(hurdle_mu_fams[[fam_tag]])
     if (mu_fam %in% c("Gamma", "poisson", "negbinomial")) {
       drop_always <- c(drop_always, "nechormepwr01")
@@ -69,6 +131,17 @@ check_models <- function(model, family, data) {
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
                     fam_tag, "with identity link."))
+    }
+    model <- use_model
+    # The zero-probability block is 0-1 bounded whatever the response family
+    # is, so the unscaled-power hormesis models cannot be used for it either.
+    # Without this a `model = "zero_bounded"` call under hurdle_gamma silently
+    # averaged over 9 equations rather than 11 -- one dropped by design and one
+    # lost to an eight-minute initialisation failure. See #177.
+    use_model <- model[!model %in% bounded_power_drops()]
+    drop_model <- setdiff(model, use_model)
+    if (length(drop_model) > 0) {
+      message(unscaled_power_message(drop_model, fam_tag))
     }
     if (length(use_model) == 0) {
       stop(paste("None of the model(s) specified are valid for a",
