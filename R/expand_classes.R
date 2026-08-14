@@ -44,7 +44,20 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     trials_col_name <- attr(mod_dat, "bnec_pop")[["trials_var"]]
     new_dat[[trials_col_name]] <- 1
   }
-  pred_posterior <- posterior_epred(fit, newdata = new_dat, re_formula = NA)
+  # Computed only where it is used, and never stored. The full n_draws x
+  # resolution matrix dominated the size of a fitted object -- 30.5 MB against a
+  # 1.2 MB brmsfit at the defaults -- and had exactly one reader, the
+  # model-averaging path in expand_manec(), which now builds its own. A
+  # threshold model with a single block needs it for nothing at all, so this is
+  # a saving rather than a trade. See #180.
+  pred_posterior <- NULL
+  get_pred_posterior <- function() {
+    if (is.null(pred_posterior)) {
+      pred_posterior <<- posterior_epred(fit, newdata = new_dat,
+                                         re_formula = NA)
+    }
+    pred_posterior
+  }
   y_pred_m <- fitted(fit, newdata = new_dat, robust = TRUE, re_formula = NA,
                      scale = "response")
   pred_data <- data.frame(x = x_seq, Estimate = y_pred_m[, "Estimate"],
@@ -70,12 +83,12 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     out
   }
   if (mod_class == "ecx") {
-    ne_posterior <- nsec_off_curve(pred_posterior)
+    ne_posterior <- nsec_off_curve(get_pred_posterior())
     extracted_params$ne <- estimates_summary(ne_posterior)
   } else {
     ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
   }
-  pred_vals <- list(data = pred_data, posterior = pred_posterior)
+  pred_vals <- list(data = pred_data)
   # Hurdle fits carry a second block. Keep its threshold and both component
   # curves alongside the combined ones, and make the *combined* threshold the
   # headline value -- posterior_epred() already returns mu * (1 - hu), so
@@ -108,7 +121,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       # curve itself rather than combined from the parts. When only one block
       # is smooth this is an N(S)EC in the sense of Fisher et al. (2023): a
       # threshold on one process and a significant-effect point on the other.
-      combined_ne <- nsec_off_curve(pred_posterior)
+      combined_ne <- nsec_off_curve(get_pred_posterior())
       ne_lab <- if (mod_class == "ecx" && hu_class == "ecx") {
         "NSEC"
       } else {
@@ -146,6 +159,42 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     out <- c(out, list(hurdle = hurdle_parts))
   }
   out
+}
+
+#' Posterior expectation over the prediction grid
+#'
+#' The grid \code{\link{expand_nec}} predicts over, and the posterior on it.
+#' Factored out because \code{\link{expand_manec}} needs the same matrix for
+#' the model-averaged draws and no longer finds it stored on the object.
+#'
+#' @param fit An object of class \code{\link[brms]{brmsfit}}.
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#'
+#' @inheritParams bnec
+#'
+#' @return A \code{\link[base]{matrix}} with draws as rows and grid points as
+#' columns.
+#'
+#' @importFrom brms posterior_epred
+#' @importFrom stats model.frame
+#'
+#' @noRd
+posterior_on_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
+  mod_dat <- model.frame(formula, data = fit$data)
+  x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  x <- fit$data[[x_var]]
+  if (any(is.na(x_range[1]))) {
+    x_seq <- seq(min(x), max(x), length = resolution)
+  } else {
+    x_seq <- seq(min(x_range), max(x_range), length = resolution)
+  }
+  new_dat <- data.frame(x_seq)
+  names(new_dat) <- x_var
+  fam_tag <- fit$family$family
+  if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
+    new_dat[[attr(mod_dat, "bnec_pop")[["trials_var"]]]] <- 1
+  }
+  posterior_epred(fit, newdata = new_dat, re_formula = NA)
 }
 
 #' Extracts a range of statistics from a list of \code{\link{prebayesnecfit}}
@@ -210,11 +259,20 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
     loo_controls <- validate_loo_controls(loo_controls, fam_tag)
   }
   loo_w_controls <- loo_controls$weights
+  # The weighted draws below need each model's posterior over the prediction
+  # grid. It used to be read back off the objects, where expand_nec() had stored
+  # it; it is now held here for the duration of this call and discarded with the
+  # frame. Same computation, same result, nothing retained. See #180.
+  pred_list <- vector(mode = "list", length = length(object))
+  names(pred_list) <- success_models
   for (i in seq_along(object)) {
     object[[i]] <- expand_nec(object[[i]], formula = formula[[i]],
                               x_range = x_range, resolution = resolution,
                               sig_val = sig_val, loo_controls = loo_controls,
                               model = success_models[i])
+    pred_list[[i]] <- posterior_on_grid(object[[i]]$fit, formula[[i]],
+                                        x_range = x_range,
+                                        resolution = resolution)
   }
   mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
@@ -232,8 +290,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
                                  object, sample_size, mod_stats))
   y_pred <- rowSums(do_wrapper(success_models, w_pred_calc,
                                object, mod_stats))
-  post_pred <- do_wrapper(success_models, w_post_pred_calc,
-                          object, sample_size, mod_stats,
+  post_pred <- do_wrapper(success_models, w_pred_list_calc,
+                          pred_list, sample_size, mod_stats,
                           fct = "rbind")
   x <- object[[success_models[1]]]$pred_vals$data$x
   pred_data <- cbind(x = x,

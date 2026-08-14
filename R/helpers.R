@@ -99,13 +99,6 @@ w_pred_calc <- function(index, mod_fits, mod_stats) {
 }
 
 #' @noRd
-w_post_pred_calc <- function(index, mod_fits, sample_size, mod_stats) {
-  x <- seq_len(sample_size)
-  size <- round(sample_size * mod_stats[index, "wi"])
-  mod_fits[[index]]$pred_vals$posterior[sample(x, size), ]
-}
-
-#' @noRd
 w_pred_list_calc <- function(index, pred_list, sample_size, mod_stats) {
   x <- seq_len(sample_size)
   size <- round(sample_size * mod_stats[index, "wi"])

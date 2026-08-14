@@ -243,6 +243,30 @@
   parameter", which would be wrong for `zero_inflated_negbinomial`.
 - Neither family is selected automatically. A count response is still read as
   `poisson`; the zero-inflated forms have to be asked for.
+- A fitted object no longer stores `pred_vals$posterior`, the
+  `n_draws x resolution` matrix of posterior predictions over the plotting grid.
+  It dominated the size of every fit — **31.8 MB against a 1.2 MB `brmsfit`** at
+  the package defaults, 96% of the object — and the cost multiplied with the
+  model set and with `iter`: `model = "all"` retained roughly 1.5 GB in a single
+  `bnec()` call. The measured reproducer from the issue now returns **1.28 MB**.
+  `pred_vals$data`, the small summary that `plot()` and `autoplot()` use, is
+  unchanged. See [#180](https://github.com/open-AIMS/bayesnec/issues/180).
+- The matrix had exactly one reader in the package, the model-averaging path in
+  `expand_manec()`, which now builds its own for the duration of that call and
+  discards it. The weighted draws are the same. Nothing else read it:
+  `predict()` did not, and the plot methods use the summary.
+- This is a net saving in computation, not a trade. `expand_nec()` used to
+  compute the matrix for every model whether or not anything needed it; it now
+  computes it only where it does — for smooth (`ecx`-type) models, whose NSEC is
+  read off the curve, and for the two-block families. A threshold model fitted
+  on its own no longer computes it at all. The one place it is computed twice is
+  a model set containing smooth models, at about 0.2 s per model against fitting
+  times measured in minutes.
+- Objects saved before this change still carry the matrix and are unaffected;
+  every accessor works on both, which is tested. Two things that were not
+  touched and remain: a `bayesmanecfit` still stores `w_pred_vals$posterior`,
+  the single weighted matrix, and a two-block fit still stores its two component
+  curves in `hurdle$mu_pred` and `hurdle$hu_pred`.
 
 # bayesnec 2.1.3.6
 
