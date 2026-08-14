@@ -52,3 +52,45 @@ test_that("properly drops zero bounded models for Gaussian family", {
   expect_equal(check_models(c("nec3param", "nec4param", "ecxexp"),
                             gaussian_family_default), "nec4param")
 })
+
+test_that("models() and check_models() agree for every response range", {
+  # The drift-proof assertion for #170: whatever ?models advertises as available
+  # for a response range must be exactly what bnec() will fit for a family with
+  # that range. Every family sharing a range is listed, because the equivalence
+  # is the reason one representative per range is enough in range_to_family().
+  all_mod <- models()$all
+  ranges <- list(
+    "c(-Inf, Inf)" = list(range = c(-Inf, Inf),
+                          families = list(validate_family("gaussian"))),
+    "c(0, 1)" = list(
+      range = c(0, 1),
+      families = list(validate_family(Beta(link = "identity")),
+                      validate_family(binomial(link = "identity")),
+                      validate_family(beta_binomial(link = "identity")),
+                      validate_family(bernoulli(link = "identity")))
+    ),
+    "c(0, Inf)" = list(
+      range = c(0, Inf),
+      families = list(validate_family(Gamma(link = "identity")),
+                      validate_family(poisson(link = "identity")),
+                      validate_family(negbinomial(link = "identity")))
+    )
+  )
+  for (lab in names(ranges)) {
+    advertised <- names(models(ranges[[lab]]$range))
+    for (fam in ranges[[lab]]$families) {
+      fitted_set <- suppressMessages(check_models(all_mod, fam))
+      expect_setequal(advertised, fitted_set)
+    }
+  }
+})
+
+test_that("models() rejects ranges and names it cannot map", {
+  # These used to fail with "object 'use_mods' not found".
+  expect_error(models(c(0, 100)), "one of the response ranges")
+  expect_error(models("nonsense"), "must be a bayesnecfit")
+  # Every model group bnec(model = ) accepts is listable.
+  for (grp in names(models())) {
+    expect_setequal(names(models(grp)), models()[[grp]])
+  }
+})
