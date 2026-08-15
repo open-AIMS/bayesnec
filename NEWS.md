@@ -103,6 +103,16 @@
   `set.seed()` governs the initial values `bayesnec` generates but not the seed
   Stan's sampler uses, so repeated builds of the vignette drifted; passing
   `seed` makes them bit-identical.
+- `amend()` now has a method for `bayesnecfit`, so models can be added to a
+  single-model fit. `?bnec` recommends testing a fit with one likely model
+  before committing to a set, and `amend(fit, add = )` is the natural next step;
+  previously it errored and the fit already paid for had to be discarded, or
+  combined by hand with `+`. Adding models promotes the object to a
+  `bayesmanecfit`, as `+` and `c()` already do. `drop` is an error for a
+  single-model fit rather than a silent no-op, since honouring it would leave
+  nothing to return. Both methods now share one implementation, so the single-
+  and multi-model paths cannot drift apart. See
+  [#176](https://github.com/open-AIMS/bayesnec/issues/176).
 
 # bayesnec 2.1.3.6
 

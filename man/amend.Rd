@@ -2,7 +2,8 @@
 % Please edit documentation in R/amend.R
 \name{amend}
 \alias{amend}
-\title{Amends an existing \code{\link{bayesmanecfit}} object}
+\title{Amends an existing \code{\link{bayesmanecfit}} or \code{\link{bayesnecfit}}
+object}
 \usage{
 amend(
   object,
@@ -18,14 +19,17 @@ amend(
 )
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmanecfit}}, as returned
-by \code{\link{bnec}}.}
+\item{object}{An object of class \code{\link{bayesmanecfit}} or
+\code{\link{bayesnecfit}}, as returned by \code{\link{bnec}}.}
 
 \item{drop}{A \code{\link[base]{character}} vector containing the names of
-model types you which to exclude for the modified fit.}
+model types you which to exclude for the modified fit. A
+\code{\link{bayesnecfit}} contains a single model, so there is nothing that
+can be dropped from it and \code{drop} is an error in that case.}
 
 \item{add}{A \code{\link[base]{character}} vector containing the names of
-model types you which to include to the modified fit.}
+model types you which to include to the modified fit. Adding models to a
+\code{\link{bayesnecfit}} promotes it to a \code{\link{bayesmanecfit}}.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} of two elements
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
@@ -73,11 +77,12 @@ imposes no limit. Requires the \pkg{R.utils} package to be installed when a
 finite value is supplied.}
 }
 \value{
-All successfully fitted \code{\link{bayesmanecfit}} model fits.
+All successfully fitted model fits. A \code{\link{bayesmanecfit}} if
+more than one model remains, otherwise a \code{\link{bayesnecfit}}.
 }
 \description{
-Amends an existing \code{\link{bayesmanecfit}} object, for example, by
-adding or removing fitted models.
+Amends an existing \code{\link{bayesmanecfit}} or \code{\link{bayesnecfit}}
+object, for example, by adding or removing fitted models.
 }
 \examples{
 library(bayesnec)
