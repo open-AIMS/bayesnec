@@ -30,9 +30,17 @@
 #' data.
 #' @slot w_residuals Model-weighted residual values
 #' (i.e. observed - w_predicted_y).
-#' @slot w_pred_vals A \code{\link[base]{list}} containing model-weighted
-#' posterior predicted values based on the supplied \code{resolution} and
-#' \code{x_range}.
+#' @slot w_pred_vals A \code{\link[base]{list}} with a single element
+#' \code{data}, a \code{\link[base]{data.frame}} of summary model-weighted
+#' posterior predicted values over a grid set by \code{resolution} and
+#' \code{x_range}. Up to and including version 2.1.3.6 it also held
+#' \code{posterior}, the full \code{sample_size x resolution} matrix of
+#' weighted draws those summaries came from. Once the per-model matrices were
+#' dropped that one matrix dominated what remained, so it is no longer stored.
+#' To obtain it directly, use \code{posterior_epred(x, newdata =
+#' bnec_newdata(x, resolution = 1000), re_formula = NA)}, which draws from the
+#' component models in the same weighted proportions. Objects saved before the
+#' change still carry it and are unaffected.
 #' @slot w_ne The summary stats (median and 95% credibility intervals) of
 #' w_ne_posterior.
 #' @slot ne_type A \code{\link[base]{character}} vector indicating the type of

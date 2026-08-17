@@ -280,9 +280,10 @@
   `pred_vals$data`, the small summary that `plot()` and `autoplot()` use, is
   unchanged. See [#180](https://github.com/open-AIMS/bayesnec/issues/180).
 - The matrix had exactly one reader in the package, the model-averaging path in
-  `expand_manec()`, which now builds its own for the duration of that call and
-  discards it. The weighted draws are the same. Nothing else read it:
-  `predict()` did not, and the plot methods use the summary.
+  `expand_manec()`, which now builds each model's posterior itself and thins it
+  to the weighted draws one model at a time. The weighted draws are the same.
+  Nothing else read it: `predict()` did not, and the plot methods use the
+  summary.
 - This is a net saving in computation, not a trade. `expand_nec()` used to
   compute the matrix for every model whether or not anything needed it; it now
   computes it only where it does — for smooth (`ecx`-type) models, whose NSEC is
@@ -290,11 +291,32 @@
   on its own no longer computes it at all. The one place it is computed twice is
   a model set containing smooth models, at about 0.2 s per model against fitting
   times measured in minutes.
-- Objects saved before this change still carry the matrix and are unaffected;
-  every accessor works on both, which is tested. Two things that were not
-  touched and remain: a `bayesmanecfit` still stores `w_pred_vals$posterior`,
-  the single weighted matrix, and a two-block fit still stores its two component
-  curves in `hurdle$mu_pred` and `hurdle$hu_pred`.
+- **This is a breaking change for code that read the matrix off a fitted
+  object.** `x$pred_vals$posterior` now returns `NULL` rather than erroring, so
+  downstream code will fail a step later. Replace it with
+  `posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000), re_formula = NA)`,
+  which returns the same thing computed on demand. Objects saved before this
+  change still carry the matrix and are unaffected; every accessor works on
+  both, which is tested.
+- A `bayesmanecfit` no longer stores `w_pred_vals$posterior` either, the single
+  `sample_size x resolution` matrix of model-weighted draws. Once the per-model
+  matrices were gone this was 77% of what remained — 7.65 MB of a 9.90 MB
+  five-model set, and roughly 64 MB on its own at the package defaults. Nothing
+  in the package read it. `w_pred_vals$data` is unchanged, and the same
+  `posterior_epred()` call above reproduces the draws, sampling the component
+  models in the same weighted proportions. See
+  [#213](https://github.com/open-AIMS/bayesnec/issues/213).
+- A two-block fit no longer stores `hurdle$mu_pred` and `hurdle$hu_pred`, the
+  two component curves. They were written on every hurdle fit and never read
+  anywhere, so they are no longer computed at all — removing two
+  `posterior_epred()` calls per two-block fit, and four per `bnec_hurdle()`
+  pair. See [#214](https://github.com/open-AIMS/bayesnec/issues/214).
+- The prediction grid is now built in exactly one place. `bnec_newdata()`,
+  `expand_nec()` and the internal `posterior_on_grid()` had three separate
+  copies of the same code, which disagreed on a partially specified `x_range`:
+  `bnec_newdata()` silently ignored it, the other two produced `seq(NA, NA)`.
+  A partially specified `x_range` is now rejected with a clear error. See
+  [#211](https://github.com/open-AIMS/bayesnec/issues/211).
 
 # bayesnec 2.1.3.6
 
