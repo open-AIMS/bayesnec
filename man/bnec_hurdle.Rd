@@ -28,7 +28,15 @@ response component.}
 \item{family_growth}{A \code{\link[stats]{family}} function for the response
 of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
 from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
-positive continuous response, \code{Beta} for one bounded on (0, 1).}
+positive continuous response, \code{Beta} for one bounded on (0, 1). A
+two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
+because \code{bnec_hurdle} is itself the two-part model, and so are the
+zero-inflated count families, which are mixtures rather than hurdles -- see
+\code{\link{bnec}}. Note that a count family is accepted here but fitted
+\emph{untruncated} to the non-zero subset, whereas the positive part of a
+hurdle on counts is zero-truncated. That overestimates the mean where the
+mean is small, which is the upper end of the concentration range; a
+zero-truncated count family is not yet available.}
 
 \item{...}{Further arguments passed to both \code{\link{bnec}} calls.}
 }

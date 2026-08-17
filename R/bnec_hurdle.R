@@ -43,7 +43,15 @@
 #' @param family_growth A \code{\link[stats]{family}} function for the response
 #' of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
 #' from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
-#' positive continuous response, \code{Beta} for one bounded on (0, 1).
+#' positive continuous response, \code{Beta} for one bounded on (0, 1). A
+#' two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
+#' because \code{bnec_hurdle} is itself the two-part model, and so are the
+#' zero-inflated count families, which are mixtures rather than hurdles -- see
+#' \code{\link{bnec}}. Note that a count family is accepted here but fitted
+#' \emph{untruncated} to the non-zero subset, whereas the positive part of a
+#' hurdle on counts is zero-truncated. That overestimates the mean where the
+#' mean is small, which is the upper end of the concentration range; a
+#' zero-truncated count family is not yet available.
 #' @param ... Further arguments passed to both \code{\link{bnec}} calls.
 #'
 #' @details
@@ -188,6 +196,9 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     family_growth <- validate_family(
       set_distribution(y[y > 0], silence_y_msgs = TRUE)
     )
+  } else {
+    family_growth <- validate_family(family_growth)
+    check_hurdle_growth_family(family_growth)
   }
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")
@@ -206,6 +217,67 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
               data = data, formula = formula, y_var = y_var,
               n_exposed = length(y), n_dead = n_dead)
   allot_class(out, c("bayesnechurdlefit", "bnecfit"))
+}
+
+#' Refuse a growth family that is itself a two-part or mixture family
+#'
+#' @param family An object of class \code{\link[stats]{family}}.
+#'
+#' @details \code{bnec_hurdle} \emph{is} the two-part model, so a growth
+#' component that is itself two-part would be a second hurdle inside the first.
+#'
+#' The zero-inflated count families are refused for a further reason, and it is
+#' the substantive one. A hurdle says every zero is structural: the response
+#' component never emits one, so the likelihood separates exactly into a
+#' Bernoulli term over all individuals and a positive-response term over the
+#' survivors, and the two can be fitted separately. \code{poisson} and
+#' \code{negbinomial} can emit a zero of their own, so a zero-inflated count
+#' model is a genuine mixture -- a zero is evidence about both components at
+#' once, the likelihood carries a \code{log_sum_exp} over them, and it does not
+#' factorise. Fitting it as two independent pieces would give a different model
+#' from the one asked for, and would do it silently.
+#'
+#' Note what this refusal does \emph{not} claim. It rules out the factorised
+#' two-fit procedure only; a joint fit carrying a curve on \code{zi} is a
+#' well-defined model that \pkg{brms} can express. bayesnec declines to offer
+#' that for reasons of identifiability and interpretation rather than of
+#' likelihood algebra, set out under \code{\link{bnec}}.
+#'
+#' Nor does the message send the user to a count hurdle, because there is not
+#' yet one to send them to: the positive part of a hurdle on counts is
+#' zero-truncated, and fitting an untruncated \code{poisson} to the non-zero
+#' subset -- which is what this function would do -- estimates
+#' \code{mu / (1 - exp(-mu))} rather than \code{mu}.
+#'
+#' @return \code{invisible(NULL)}, called for its side effect.
+#'
+#' @noRd
+check_hurdle_growth_family <- function(family) {
+  fam_tag <- family$family
+  if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
+    stop("bnec_hurdle cannot use ", fam_tag, " as the growth family. A hurdle",
+         " treats every zero as structural, which is what lets the two",
+         " components be fitted separately. A zero-inflated count model is a",
+         " genuine mixture, because poisson and negbinomial can emit a zero of",
+         " their own: a zero is evidence about both components at once and the",
+         " likelihood does not factorise, so two separate fits would give you a",
+         " different model. Use bnec(family = \"", fam_tag, "\") for the",
+         " mixture. If every zero really is structural you want a hurdle on",
+         " counts, whose positive part is zero-truncated; bayesnec has no",
+         " zero-truncated count family yet, and leaving family_growth unset",
+         " here would fit an untruncated one to the non-zero counts, which",
+         " overestimates the mean where it is small. See ?bnec.",
+         call. = FALSE)
+  }
+  if (is_hurdle_family(fam_tag)) {
+    stop("bnec_hurdle cannot use ", fam_tag, " as the growth family: it is",
+         " already a two-block family, and bnec_hurdle is the two-part model.",
+         " Pass the family of the non-zero responses -- Gamma or Beta -- or",
+         " leave family_growth unset and it will be chosen from them. Use",
+         " bnec(family = \"", fam_tag, "\") for the equivalent joint fit.",
+         call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' Extract the response variable name from a hurdle formula

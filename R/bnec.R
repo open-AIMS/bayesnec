@@ -268,6 +268,77 @@
 #' select a combination with \code{\link{bnec_hurdle}}, then refit it here with
 #' \code{\link{bnec_joint}} when structure spanning both blocks is needed.
 #'
+#' \bold{Zero-inflated counts are not two-block families}
+#'
+#' \code{"zero_inflated_poisson"} and \code{"zero_inflated_negbinomial"} are
+#' also available, and they take the ordinary single-block path: the
+#' concentration-response curve is fitted to \code{mu}, and \pkg{brms} estimates
+#' a single constant \code{zi} alongside it. They get no second bayesnec
+#' equation, no \code{model_survival}, and no \code{zi} curve.
+#'
+#' That looks inconsistent with \code{"zero_inflated_beta"}, which is a
+#' two-block family here, and the reason is worth stating because the family
+#' names suggest otherwise. Zero-inflation differs from a hurdle only when the
+#' base distribution can itself produce a zero. Neither Gamma nor Beta can, so
+#' for those the two coincide: every zero must have come from the inflation
+#' component, the likelihood separates exactly into a Bernoulli term over all
+#' observations and a positive-response term over the rest, and the Stan density
+#' \pkg{brms} generates for \code{zero_inflated_beta} is the hurdle form with no
+#' mixture at zero. Two blocks are then an accurate description of the model.
+#'
+#' Poisson and negative binomial \emph{can} produce a zero, so the equivalence
+#' fails. An observed zero is evidence about both components at once: the
+#' likelihood carries a \code{log_sum_exp} over them and does not factorise into
+#' a term for each block. That rules out \code{\link{bnec_hurdle}}, which is
+#' precisely that factorisation performed as two separate fits, and it refuses
+#' these families accordingly.
+#'
+#' It does not, on its own, rule out a \emph{joint} fit carrying a second curve.
+#' \pkg{brms} treats \code{zi} as a distributional parameter like any other and
+#' will model it on a predictor; the \code{log_sum_exp} is internal to the
+#' density and is indifferent to what drives \code{zi}. bayesnec nonetheless
+#' holds \code{zi} constant, for two reasons that outlast the factorisation
+#' argument:
+#'
+#' \itemize{
+#'   \item \code{zi} and \code{mu} trade off against one another -- a low count
+#'   rate is either a small \code{mu} or a large \code{zi} -- and the data
+#'   separate them only through the shape of the positive counts. In a
+#'   concentration-response design \code{mu} runs from large at the control to
+#'   near zero at the top concentration, so a \code{zi} curve would be well
+#'   informed at the low concentrations and almost unidentified at the high ones
+#'   that set the threshold. A hurdle has no such problem: every zero belongs to
+#'   the second block by construction, so that block is informed at every
+#'   concentration.
+#'   \item \code{zi} is a latent class rather than an observable. Nothing in the
+#'   data records which zeros are structural, so a threshold estimated from a
+#'   \code{zi} curve would describe something that was never measured. In the
+#'   survival case the deaths were observed, and that is what makes the second
+#'   block interpretable.
+#' }
+#'
+#' Which gives the rule for choosing between the two. If you can tell which
+#' zeros are structural -- the individual died, the replicate failed -- you have
+#' a hurdle, and a two-block family or \code{\link{bnec_hurdle}} is the right
+#' model. Zero-inflation is for when you cannot. Note that a genuine hurdle on a
+#' \emph{count} response needs a zero-truncated count family, which bayesnec
+#' does not yet provide; see the note under \code{family_growth} in
+#' \code{\link{bnec_hurdle}}.
+#'
+#' Two consequences are worth noting. \code{zi} is a nuisance parameter here,
+#' not part of the concentration-response description, and \code{disp()} is
+#' refused for both families because the dispersion parameter describes the
+#' count component while the response is the mixture. Second, predictions are on
+#' the scale of the mixture rather than of \code{mu}:
+#' \code{\link[brms]{posterior_epred}} returns \code{mu * (1 - zi)}, so
+#' \code{predict}, \code{fitted}, \code{autoplot} and the stored
+#' \code{pred_vals} all sit a factor \code{1 - zi} below the \code{top} and
+#' \code{bot} that \code{summary} reports, which are on the \code{mu} scale.
+#' \code{\link{ecx}} is unaffected, because its \code{"relative"} and
+#' \code{"absolute"} types are ratios in which that constant factor cancels, and
+#' so is the no-effect threshold, because a constant \code{zi} does not move the
+#' concentration at which the curve leaves its plateau.
+#'
 #' \bold{Non-constant dispersion}
 #'
 #' Every fit holds the family's dispersion parameter constant across the curve

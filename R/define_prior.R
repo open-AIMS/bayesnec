@@ -29,6 +29,28 @@ define_prior <- function(model, family, predictor, response,
   } else { 
     fam_tag <- family$family
    }
+  # The mu block of a zero-inflated count family is an ordinary poisson or
+  # negbinomial mean -- the mixture changes how many zeros are observed, not the
+  # scale of mu -- so the base family's priors are the right ones rather than a
+  # duplicated set of entries in every table below.
+  #
+  # The quantiles below are taken over the whole response, structural zeros
+  # included, and that is a known defect here rather than a harmless
+  # approximation. Once a quarter of the response is zero -- i.e. zi >= 0.25,
+  # the regime these families exist for -- quantile(response, 0.25) is exactly
+  # 0 and the `bot` prior collapses onto the min(positive)/100 fudge term,
+  # giving a prior mean near zero whatever the real lower asymptote is. Under
+  # prior_type = "regularizing" the denominator is quantile(response, 0), so
+  # that happens for any zero-inflated response at all. Past three quarters
+  # zero, the `top` rate divides by zero and the prior string becomes
+  # "gamma(2, Inf)". Conditioning on the non-zeros instead -- which is what
+  # define_hurdle_prior() does, exactly, for hurdle_gamma -- is not available
+  # as a fix here: under zero-inflation the non-zero subset is drawn from a
+  # truncated count distribution and biases mu upward. The guard belongs in the
+  # prior tables themselves. See #104 and #210.
+  if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
+    fam_tag <- sub("^zero_inflated_", "", fam_tag)
+  }
   if (family$family == "beta_binomial" || family$family == "binomial") {
     if (is.integer(response) || max(response) > 1) {
       stop("Response vector must be passed as a proportion to define_prior",

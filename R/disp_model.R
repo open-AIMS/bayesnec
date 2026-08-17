@@ -116,6 +116,21 @@ check_disp_spec <- function(spec, family, response = NULL) {
          " response block on its own with bnec_hurdle() if you need this.",
          call. = FALSE)
   }
+  if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
+    # Refused before the has_disp_par() check below, whose message ("no free
+    # dispersion parameter") would be wrong for zero_inflated_negbinomial, which
+    # does have a shape. The reason is different: the parameter belongs to the
+    # count component of a mixture, and what a variance function on it means for
+    # the observed response -- which is a mixture, not that component -- has not
+    # been worked out. See #104.
+    stop("A disp() term is not currently supported for the zero-inflated count",
+         " family ", fam_tag, ". Its dispersion parameter describes the count",
+         " component alone, while the response is a mixture of that component",
+         " and a point mass at zero, so a variance function on it does not",
+         " describe the dispersion of the response. See ?dispersion for the",
+         " diagnostic, and ?bnec for the zero-inflated families.",
+         call. = FALSE)
+  }
   if (!has_disp_par(fam_tag)) {
     stop("Family ", fam_tag, " has no free dispersion parameter, so there is",
          " nothing for disp() to model: its variance is a deterministic",
