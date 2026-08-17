@@ -139,6 +139,23 @@
   applies to the growth component, the survival component or both is a modelling
   decision `bnec_hurdle()` will not make on the user's behalf. See
   [#188](https://github.com/open-AIMS/bayesnec/issues/188).
+- `models()` and `check_models()` no longer disagree about which equations are
+  available for a given response range. `models(c(0, 1))` was dropping
+  `nechorme` and `nechorme4`, which `bnec()` fits happily for a 0-1 bounded
+  identity family, and `models(c(0, Inf))` was keeping `nechormepwr01`, which
+  `bnec()` drops for a zero-bounded one. The numeric branch of `models()` now
+  asks `check_models()` — the function the fitting path itself uses — rather
+  than restating the rules, so the advertised set is the set that will be
+  fitted. A test asserts the two agree for every response range and every family
+  sharing it. **No restriction has been relaxed:** the behaviour of `bnec()` is
+  unchanged, and `models()` has been corrected to describe it. See
+  [#170](https://github.com/open-AIMS/bayesnec/issues/170).
+- `models()` now errors informatively on input it cannot map. A numeric range
+  that is neither unbounded, 0-1 bounded nor zero-bounded — `models(c(0, 100))`
+  — and an unrecognised character argument both used to fail with "object
+  'use_mods' not found". `models()` also accepts every model group `bnec()`
+  does: `"decline"` and `"hormesis"` are valid in `bnec(model = )` through
+  `handle_set()` but were missing from the list `models()` recognised.
 
 # bayesnec 2.1.3.6
 
