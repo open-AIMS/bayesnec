@@ -40,7 +40,13 @@ the function \code{\link{models}} specifying the fitted object.
 
 To see what models are available for a given type of data use the function
 \code{\link{models}} passing a \code{\link[base]{numeric}} vector indicating
-the range of possible data types. Models that have an exponential decay
+the range of possible data types: \code{c(-Inf, Inf)} for a response that can
+take any value, \code{c(0, 1)} for one bounded on the unit interval, and
+\code{c(0, Inf)} for one bounded below at zero only. The list returned is
+produced by the same internal check \code{\link{bnec}} applies at fit time, so
+the two cannot disagree.
+
+Models that have an exponential decay
 (most models with parameter "beta") with no "bot" parameter are zero-bounded
 and are not suitable for the Gaussian family, or any family modelled using a
 logit or log link function. Models with a linear decay
@@ -50,7 +56,10 @@ identity link, nor for families that are 0, 1 bounded (bernoulli, binomial,
 beta, beta_binomial) using an identity link. Note that the linear-decay
 restriction applies to the models containing "lin" only
 ("neclin", "neclinhorme", "ecxlin"); the hormesis models that also carry a
-"slope" parameter are retained for 0, 1 bounded families. Additionally,
+"slope" parameter are retained for 0, 1 bounded families. Conversely
+"nechormepwr01" is excluded for the zero-bounded identity families, being
+bounded on (0, 1) by construction and so unable to represent a response with
+no upper bound. Additionally,
 models that raise the predictor to a fractional power ("ecxsigm",
 "necsigm", "nechormepwr", "nechorme4pwr") are not suitable where the
 predictor contains negative values. These restrictions do
