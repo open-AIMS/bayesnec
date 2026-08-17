@@ -95,6 +95,59 @@ test_that("failed_models splits the two components of a hurdle fit", {
   expect_length(out$survival, 0)
 })
 
+test_that("the hurdle summary names the component a model failed on", {
+  # Built from the pieces print.hurdlesummary reads, as in
+  # test-bayesnechurdlefit-methods.R: the summary itself needs two real fits.
+  ne_row <- c(Estimate = 1, Q2.5 = 0.5, Q97.5 = 1.5)
+  hs <- structure(
+    list(n_exposed = 10L, n_dead = 4L, growth_family = "beta",
+         growth_models = c("nec4param", "ecx4param"),
+         survival_models = "nec4param",
+         ne = list(combined = ne_row, growth = ne_row, survival = ne_row),
+         ne_types = c(combined = "NEC", growth = "NEC", survival = "NEC"),
+         ecs = NULL, growth_averaged = TRUE, survival_averaged = FALSE,
+         failed_models = list(
+           growth = failed_models(bayesnec:::attach_failed_models(
+             manec_example,
+             list(ecxwb1 = bayesnec:::failure_record("ecxwb1", NULL)))),
+           survival = failed_models(manec_example))),
+    class = "hurdlesummary"
+  )
+  out <- capture.output(print(hs))
+  # Labelled by component, because the two are independent fits and a model can
+  # fail on one and not the other.
+  expect_true(any(grepl("growth: 1 model\\(s\\) failed to fit: ecxwb1", out)))
+  expect_false(any(grepl("survival: ", out, fixed = TRUE)))
+  # One pointer line however many components failed.
+  expect_equal(sum(grepl("\\?failed_models", out)), 1)
+  # A hurdle fit where nothing failed says nothing at all.
+  hs$failed_models <- list(growth = failed_models(manec_example),
+                           survival = failed_models(manec_example))
+  expect_false(any(grepl("failed to fit", capture.output(print(hs)))))
+  # As does one summarised from an object fitted before the record existed.
+  hs$failed_models <- NULL
+  expect_false(any(grepl("failed to fit", capture.output(print(hs)))))
+})
+
+test_that("pull_out carries the record across", {
+  fake <- bayesnec:::attach_failed_models(
+    manec_example, list(ecxlin = bayesnec:::failure_record("ecxlin", NULL))
+  )
+  # Nothing is refitted here, only subset, so what bnec() attempted is still
+  # an accurate description of the object being returned.
+  single <- suppressMessages(suppressWarnings(
+    pull_out(fake, model = "nec4param")
+  ))
+  expect_s3_class(single, "bayesnecfit")
+  expect_named(failed_models(single), "ecxlin")
+  # An object with no record is returned without one rather than erroring.
+  clean <- suppressMessages(suppressWarnings(
+    pull_out(manec_example, model = "nec4param")
+  ))
+  expect_length(failed_models(clean), 0)
+  expect_null(clean[["failed_models"]])
+})
+
 test_that("a failed fit carries the priors and inits it was given", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()

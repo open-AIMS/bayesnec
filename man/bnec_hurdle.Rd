@@ -91,8 +91,12 @@ rows must be reinstated as zeros before calling this function.
 
 \bold{Censoring, and which aterms are allowed}
 
-\code{cens()} is the one \pkg{brms} aterm accepted on the response, because
-it is the one a hurdle model needs. A growth endpoint can be both
+\code{cens()} is the one aterm accepted on the response. \code{\link{bnec}}
+itself carries three -- \code{trials()}, \code{weights()} and
+\code{cens()} -- and of those \code{cens()} is the only one whose meaning
+stays unambiguous once the response is split across two models. It is also
+the one with a use here that nothing else covers. A growth endpoint can be
+both
 zero-bounded with structural zeros and left-censored at the recording
 resolution, and only a two-part model with a censored response component can
 tell the two apart: a death is a structural zero belonging to the Bernoulli
@@ -111,12 +115,14 @@ contribution there is \code{F(0) = 0}. The bound has to be the resolution
 limit, so the encoding is "at most the smallest resolvable value" rather than
 "at most zero".
 
-Other aterms are refused by name, with the reason. \code{trials()} has no
+The other two are refused by name, with the reason. \code{trials()} has no
 meaning for either component, and \code{weights()} is a modelling decision --
 whether a weight applies to the growth component, the survival component or
-both -- that this function will not make on the user's behalf. Making the two
-\code{\link{bnec}} calls directly remains available for anything outside this
-set.
+both -- that this function will not make on the user's behalf. Aterms beyond
+those three are refused here as well, though they would not reach \pkg{brms}
+in any case: \code{\link{model.frame}} drops them for an ordinary
+\code{\link{bnec}} fit too. Making the two \code{\link{bnec}} calls directly
+remains available for anything outside this set.
 }
 \examples{
 \dontrun{

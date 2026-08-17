@@ -173,6 +173,13 @@
   others matters most. It is attached only where something did fail, so
   `names()` on a fitted object is otherwise unchanged, and objects saved before
   this release report no failures rather than erroring.
+- `summary()` of a `bayesnechurdlefit` reports failures per component, labelled
+  `growth` or `survival`. A hurdle fit runs two independent model sets through
+  `bnec()`, so a model can fail on one and fit on the other, and the summary
+  otherwise printed a short model list with no explanation for it.
+- `pull_out()` carries the record across. Unlike `amend()` it refits nothing,
+  only subsets a set already fitted, so what `bnec()` attempted is still an
+  accurate description of the object returned.
 - New `get_priors()`, returning priors in the form `bnec()` accepts them, from
   either end of a fit. **Given a fit** it returns the priors that fit actually
   used, user overrides included, so `bnec(formula, data = data, prior =
@@ -183,7 +190,12 @@
   functions do it. A single model returns a `brmsprior`, a model set a named list
   of them, both directly usable as `prior =`. The two entry points answer
   different questions and can disagree once a prior has been overridden, which is
-  documented and tested. See
+  documented and tested. Where a `disp()` variance function is in the formula its
+  parameters come back with the curve's, from both entry points: `bnec()` takes a
+  supplied prior whole, so a set returned without them would leave `brms` to put
+  a flat prior on each. What is left to `brms` is the family's own dispersion
+  parameter where dispersion is constant, and the linear predictor of a
+  `disp(~x)` sub-model — neither is accepted by `bnec(prior = )` today. See
   [#141](https://github.com/open-AIMS/bayesnec/issues/141).
 - `pull_prior()` is unchanged and still returns the whole `brmsprior` a fit
   carries — `brms` defaults, duplicated vectorized rows and all. That object is
