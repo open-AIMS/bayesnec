@@ -173,6 +173,13 @@
   others matters most. It is attached only where something did fail, so
   `names()` on a fitted object is otherwise unchanged, and objects saved before
   this release report no failures rather than erroring.
+- `summary()` of a `bayesnechurdlefit` reports failures per component, labelled
+  `growth` or `survival`. A hurdle fit runs two independent model sets through
+  `bnec()`, so a model can fail on one and fit on the other, and the summary
+  otherwise printed a short model list with no explanation for it.
+- `pull_out()` carries the record across. Unlike `amend()` it refits nothing,
+  only subsets a set already fitted, so what `bnec()` attempted is still an
+  accurate description of the object returned.
 - New `get_priors()`, returning priors in the form `bnec()` accepts them, from
   either end of a fit. **Given a fit** it returns the priors that fit actually
   used, user overrides included, so `bnec(formula, data = data, prior =

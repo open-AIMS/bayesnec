@@ -80,6 +80,21 @@ test_that("check_hurdle_aterms accepts cens and rejects everything else", {
     ),
     "\"weights\\(\\)\""
   )
+  # A namespace-qualified aterm is the same aterm. The rest of the package
+  # matches on the bare name, so accepting brms::cens() keeps bnec_hurdle in
+  # step with what bnec() already takes.
+  expect_named(
+    bayesnec:::check_hurdle_aterms(
+      bnf(y | brms::cens(cens) ~ crf(x, "nec3param"))
+    ),
+    "cens"
+  )
+  expect_error(
+    bayesnec:::check_hurdle_aterms(
+      bnf(y | brms::weights(w) ~ crf(x, "nec3param"))
+    ),
+    "\"weights\\(\\)\".*modelling decision"
+  )
 })
 
 test_that("check_hurdle_cens separates structural from censored zeros", {
@@ -113,6 +128,15 @@ test_that("check_hurdle_cens separates structural from censored zeros", {
   # No cens() term at all is a no-op.
   expect_null(
     bayesnec:::check_hurdle_cens(list(), dat, dat$y, "y")
+  )
+  # An empty cens() has no indicator to check against, and should say so
+  # rather than fall over indexing an empty argument list.
+  empty <- bayesnec:::check_hurdle_aterms(
+    bnf(y | cens() ~ crf(x, "nec3param"))
+  )
+  expect_error(
+    bayesnec:::check_hurdle_cens(empty, dat, dat$y, "y"),
+    "cens\\(\\) was supplied with no arguments"
   )
 })
 

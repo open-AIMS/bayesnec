@@ -380,7 +380,8 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     survival_models = mods(object$survival),
     ne = nes, ne_types = ne_types, ecs = ecs,
     growth_averaged = inherits(object$growth, "bayesmanecfit"),
-    survival_averaged = inherits(object$survival, "bayesmanecfit")
+    survival_averaged = inherits(object$survival, "bayesmanecfit"),
+    failed_models = failed_models(object)
   )
   allot_class(out, "hurdlesummary")
 }
@@ -396,6 +397,11 @@ print.hurdlesummary <- function(x, ...) {
       paste0(x$growth_models, collapse = ", "), "\n")
   cat("  survival : bernoulli --",
       paste0(x$survival_models, collapse = ", "), "\n\n")
+  # Directly under the model lists rather than at the foot of the summary as in
+  # the other two print methods: a hurdle fit runs two model sets, so this is
+  # the line that explains why either list above is shorter than it was asked
+  # for, and it is only useful next to them.
+  print_failed_models(x$failed_models)
   # One matrix rather than one line per component: a per-line cat() prefix puts
   # the label above the column headings rather than beside the values.
   cat("No-effect toxicity estimates\n")
@@ -578,7 +584,9 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param newdata Optional new data. Split into the two component datasets the
 #' same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
-#' hurdle rather than being modelled as small responses.
+#' hurdle rather than being modelled as small responses, and checked the same
+#' way: a row that is both zero and censored is refused here as it is at
+#' construction.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -597,6 +605,13 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
     stop("\"newdata\" must contain the response column \"", object$y_var,
          "\".", call. = FALSE)
   }
+  # The zero-vs-censored invariant belongs to the data, not to the fit, so it
+  # has to be re-checked against newdata. Without this a row that is both zero
+  # and censored is dropped from the growth refit and coded as a death in the
+  # survival refit, silently -- the confusion the construction-time check in
+  # bnec_hurdle() exists to prevent.
+  check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
+                    object$y_var)
   surv_data <- newdata
   surv_data[[".alive"]] <- as.integer(y > 0)
   out <- hurdle_rewrap(

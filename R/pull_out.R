@@ -100,13 +100,19 @@ pull_out <- function(manec, model, loo_controls, ...) {
     suppressWarnings()
   message("Pulling out model(s): ", paste0(to_go, collapse = ", "))
   if (length(mod_fits) > 1) {
-    allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
+    out <- allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
   } else {
     mod_fits <- expand_nec(mod_fits[[1]], model = to_go,
                            formula = mod_fits[[1]]$bayesnecformula,
                            loo_controls = loo_controls, ...) |>
     suppressMessages() |>
     suppressWarnings()
-    allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
+    out <- allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
   }
+  # Carried across, unlike in amend(): pull_out() refits nothing, it only
+  # subsets a set that has already been fitted, so the record of what bnec()
+  # attempted is still accurate for the object being returned. Read from the
+  # element rather than through failed_models() so that an object fitted before
+  # the record existed yields NULL and is left untouched.
+  attach_failed_models(out, manec[["failed_models"]])
 }
