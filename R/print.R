@@ -146,8 +146,10 @@ print.manecsummary <- function(x, ...) {
 #' \code{\link{failed_models}} holds the priors and initial values for anyone who
 #' wants to diagnose one.
 #'
-#' @param failed An object of class \code{bnecfailures}, possibly \code{NULL}
-#' for a summary of an object fitted before this was recorded.
+#' @param failed An object of class \code{bnecfailures}, or a named
+#' \code{\link[base]{list}} of them as \code{\link{failed_models}} returns for a
+#' \code{\link{bayesnechurdlefit}}. Possibly \code{NULL} for a summary of an
+#' object fitted before this was recorded.
 #'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
@@ -156,9 +158,20 @@ print_failed_models <- function(failed) {
   if (is.null(failed) || length(failed) == 0) {
     return(invisible(NULL))
   }
-  cat(length(failed), " model(s) failed to fit: ",
-      paste0(names(failed), collapse = ", "),
-      "\nSee ?failed_models for the priors and initial values used.\n\n",
-      sep = "")
+  # A hurdle fit is two independent model sets, so failed_models() returns one
+  # bnecfailures per component and a model can fail on one and not the other.
+  # Normalising to a list of sets here keeps all three summary print methods
+  # identical at the call site.
+  sets <- if (inherits(failed, "bnecfailures")) list(failed) else failed
+  sets <- sets[lengths(sets) > 0]
+  if (length(sets) == 0) {
+    return(invisible(NULL))
+  }
+  for (i in seq_along(sets)) {
+    label <- if (is.null(names(sets))) "" else paste0(names(sets)[i], ": ")
+    cat(label, length(sets[[i]]), " model(s) failed to fit: ",
+        paste0(names(sets[[i]]), collapse = ", "), "\n", sep = "")
+  }
+  cat("See ?failed_models for the priors and initial values used.\n\n")
   invisible(NULL)
 }
