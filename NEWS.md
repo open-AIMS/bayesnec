@@ -180,6 +180,36 @@
 - `pull_out()` carries the record across. Unlike `amend()` it refits nothing,
   only subsets a set already fitted, so what `bnec()` attempted is still an
   accurate description of the object returned.
+- New `get_priors()`, returning priors in the form `bnec()` accepts them, from
+  either end of a fit. **Given a fit** it returns the priors that fit actually
+  used, user overrides included, so `bnec(formula, data = data, prior =
+  get_priors(fit))` reproduces the model. **Given a formula and data** it returns
+  the priors `bayesnec` would generate, without fitting anything, so they can be
+  inspected and edited before the first run — the family is chosen from the data
+  and invalid models dropped exactly as `bnec()` would, because the same
+  functions do it. A single model returns a `brmsprior`, a model set a named list
+  of them, both directly usable as `prior =`. The two entry points answer
+  different questions and can disagree once a prior has been overridden, which is
+  documented and tested. Where a `disp()` variance function is in the formula its
+  parameters come back with the curve's, from both entry points: `bnec()` takes a
+  supplied prior whole, so a set returned without them would leave `brms` to put
+  a flat prior on each. What is left to `brms` is the family's own dispersion
+  parameter where dispersion is constant, and the linear predictor of a
+  `disp(~x)` sub-model — neither is accepted by `bnec(prior = )` today. See
+  [#141](https://github.com/open-AIMS/bayesnec/issues/141).
+- `pull_prior()` is unchanged and still returns the whole `brmsprior` a fit
+  carries — `brms` defaults, duplicated vectorized rows and all. That object is
+  for looking at, and is not accepted by `bnec(prior = )`: the extra `sigma` row
+  fails the parameter-name check in `make_inits()`. `?pull_prior` now says so and
+  points at `get_priors()`.
+- Fixed: the prior a fitted object carries could not be fed back to `bnec()`
+  even once the extra rows were removed. `brms` records an absent bound as `""`
+  in a fit's own `prior` slot, where `define_prior()` and `brms::prior()` use
+  `NA`. All three mean unbounded, but the bound-respecting redraw in
+  `make_inits()` tested with `is.na()`, so `""` was read as a bound, coerced to
+  `NA` by `as.numeric()`, and then evaluated as `while (NA)` — "missing value
+  where TRUE/FALSE needed". Blank bounds are now normalised before use, which is
+  the second half of what `get_priors()` needed to round trip.
 
 # bayesnec 2.1.3.6
 

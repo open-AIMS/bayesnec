@@ -5,7 +5,15 @@
 #'
 #' @param object An object of class \code{\link{bayesnecfit}}
 #' or \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
+#'
+#' @details Returns the whole \code{\link[brms]{brmsprior}} each fit carries,
+#' \pkg{brms} defaults and duplicated vectorized rows included, which is what to
+#' use for looking at a fit. It is not accepted by \code{bnec(prior = )} --
+#' \code{\link{get_priors}} is the function for feeding priors back in.
+#'
 #' @return A \code{\link[base]{list}} containing the priors.
+#'
+#' @seealso \code{\link{get_priors}}, \code{\link{check_priors}}
 #'
 #' @examples
 #' library(bayesnec)
