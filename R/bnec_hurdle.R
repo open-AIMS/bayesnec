@@ -77,8 +77,12 @@
 #'
 #' \bold{Censoring, and which aterms are allowed}
 #'
-#' \code{cens()} is the one \pkg{brms} aterm accepted on the response, because
-#' it is the one a hurdle model needs. A growth endpoint can be both
+#' \code{cens()} is the one aterm accepted on the response. \code{\link{bnec}}
+#' itself carries three -- \code{trials()}, \code{weights()} and
+#' \code{cens()} -- and of those \code{cens()} is the only one whose meaning
+#' stays unambiguous once the response is split across two models. It is also
+#' the one with a use here that nothing else covers. A growth endpoint can be
+#' both
 #' zero-bounded with structural zeros and left-censored at the recording
 #' resolution, and only a two-part model with a censored response component can
 #' tell the two apart: a death is a structural zero belonging to the Bernoulli
@@ -97,12 +101,14 @@
 #' limit, so the encoding is "at most the smallest resolvable value" rather than
 #' "at most zero".
 #'
-#' Other aterms are refused by name, with the reason. \code{trials()} has no
+#' The other two are refused by name, with the reason. \code{trials()} has no
 #' meaning for either component, and \code{weights()} is a modelling decision --
 #' whether a weight applies to the growth component, the survival component or
-#' both -- that this function will not make on the user's behalf. Making the two
-#' \code{\link{bnec}} calls directly remains available for anything outside this
-#' set.
+#' both -- that this function will not make on the user's behalf. Aterms beyond
+#' those three are refused here as well, though they would not reach \pkg{brms}
+#' in any case: \code{\link{model.frame}} drops them for an ordinary
+#' \code{\link{bnec}} fit too. Making the two \code{\link{bnec}} calls directly
+#' remains available for anything outside this set.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -254,7 +260,12 @@ hurdle_lhs_parts <- function(lhs_call) {
   }
   out[[length(out) + 1]] <- aterm_call
   names(out) <- vapply(out, function(tt) {
-    if (is.call(tt)) deparse1(tt[[1]]) else deparse1(tt)
+    nm <- if (is.call(tt)) deparse1(tt[[1]]) else deparse1(tt)
+    # brms::cens() and cens() are the same aterm. Everything else in the
+    # package matches aterms on the bare name (split_calls() greps for
+    # "cens("), so strip any namespace qualifier here too rather than let
+    # check_hurdle_aterms() refuse the qualified form as unrecognised.
+    sub("^.*:::?", "", nm)
   }, character(1))
   list(response = lhs_call[[2]], aterms = rev(out))
 }
@@ -263,8 +274,12 @@ hurdle_lhs_parts <- function(lhs_call) {
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #'
-#' @details Only \code{cens()} is accepted. A censored response is the case
-#' \code{bnec_hurdle} needs it for: a growth endpoint can be both zero-bounded
+#' @details Only \code{cens()} is accepted. The candidate set is the three
+#' aterms \code{bnec} supports at all -- \code{trials()}, \code{weights()} and
+#' \code{cens()} -- since \code{model.frame} drops the rest before they reach
+#' brms; \code{cens()} is the one of the three that survives the split. A
+#' censored response is also the case \code{bnec_hurdle} needs it for: a growth
+#' endpoint can be both zero-bounded
 #' with structural zeros and left-censored at the recording resolution, and only
 #' a two-part model with a censored response component can tell a death from a
 #' survivor measured below the limit.
@@ -339,7 +354,18 @@ check_hurdle_cens <- function(aterms, data, y, y_var) {
   if (!"cens" %in% names(aterms)) {
     return(invisible(NULL))
   }
-  cens_arg <- as.list(aterms[["cens"]])[-1][[1]]
+  cens_args <- as.list(aterms[["cens"]])[-1]
+  if (length(cens_args) == 0) {
+    stop("cens() was supplied with no arguments, so there is no censoring",
+         " indicator to check the zeros against. Pass the column holding the",
+         " censoring codes, e.g. \"", y_var, " | cens(censored) ~ ...\".",
+         call. = FALSE)
+  }
+  # The first argument positionally, matching how split_calls() reads the same
+  # term downstream. Resolving named arguments properly here would be more
+  # correct in isolation but would make this check disagree with the term brms
+  # is actually given, which is worse than agreeing and being wrong together.
+  cens_arg <- cens_args[[1]]
   cens_vals <- if (length(all.vars(cens_arg)) == 0) {
     # A literal, e.g. cens("left"), which brms recycles over every row.
     # check_formula() already warns about this; here it still has to be checked
