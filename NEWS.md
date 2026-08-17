@@ -183,7 +183,12 @@
   functions do it. A single model returns a `brmsprior`, a model set a named list
   of them, both directly usable as `prior =`. The two entry points answer
   different questions and can disagree once a prior has been overridden, which is
-  documented and tested. See
+  documented and tested. Where a `disp()` variance function is in the formula its
+  parameters come back with the curve's, from both entry points: `bnec()` takes a
+  supplied prior whole, so a set returned without them would leave `brms` to put
+  a flat prior on each. What is left to `brms` is the family's own dispersion
+  parameter where dispersion is constant, and the linear predictor of a
+  `disp(~x)` sub-model — neither is accepted by `bnec(prior = )` today. See
   [#141](https://github.com/open-AIMS/bayesnec/issues/141).
 - `pull_prior()` is unchanged and still returns the whole `brmsprior` a fit
   carries — `brms` defaults, duplicated vectorized rows and all. That object is

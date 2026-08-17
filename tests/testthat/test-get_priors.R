@@ -62,6 +62,46 @@ test_that("get_priors rejects what it cannot build priors from", {
   )
 })
 
+test_that("a disp variance function's priors come back with the curve's", {
+  # bnec() takes a supplied prior whole, so a set returned without the
+  # parameters a route B disp term adds would leave brms to put a flat prior on
+  # each -- which define_disp_prior() exists to avoid, c0 and the slope being
+  # near-confounded without it. They are part of the model's own non-linear
+  # formula and must round trip with the rest.
+  out <- get_priors(y ~ crf(x, "nec4param") + disp("power"), data = nec_data,
+                    family = gaussian())
+  expect_setequal(out$nlpar, c("top", "bot", "beta", "nec", "c0", "c1"))
+  # Route A is an ordinary distributional formula, left to the brms defaults,
+  # so it adds nothing to the set.
+  route_a <- get_priors(y ~ crf(x, "nec4param") + disp(~x), data = nec_data,
+                        family = gaussian())
+  expect_setequal(route_a$nlpar, c("top", "bot", "beta", "nec"))
+})
+
+test_that("the fit entry point keeps disp parameters and drops brms defaults", {
+  # The stored form of a fitted route B model: bayesnec's own rows, the
+  # vectorized duplicates brms adds, and a default brms would have chosen.
+  # Asserted on the stored object rather than on a fit so that the filter is
+  # covered without paying for a disp model to be compiled and sampled.
+  stored <- data.frame(
+    prior = c("normal(0, 5)", "normal(0, 5)", "normal(-1.515, 2)",
+              "normal(-1.515, 2)", "normal(0, 2)", "normal(0, 2)",
+              "student_t(3, 0, 2.5)"),
+    class = c(rep("b", 6), "sigma"),
+    coef = c("", "Intercept", "", "Intercept", "", "Intercept", ""),
+    group = "", resp = "", dpar = "",
+    nlpar = c("top", "top", "c0", "c0", "c1", "c1", ""),
+    lb = "", ub = "",
+    source = c("user", "(vectorized)", "user", "(vectorized)", "user",
+               "(vectorized)", "default"),
+    stringsAsFactors = FALSE
+  )
+  out <- bayesnec:::usable_prior(stored)
+  expect_setequal(out$nlpar, c("top", "c0", "c1"))
+  expect_false("sigma" %in% out$class)
+  expect_false(any(out$coef == "Intercept"))
+})
+
 test_that("get_priors splits the two components of a hurdle fit", {
   obj <- structure(list(growth = nec4param, survival = manec_example),
                    class = c("bayesnechurdlefit", "bnecfit"))
@@ -105,9 +145,7 @@ test_that("a blank prior bound is read as absent", {
 })
 
 test_that("get_priors round trips through bnec", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
+  skip_on_cran()
   fit <- bnec(y ~ crf(x, "nec4param"), data = nec_data, family = gaussian(),
               iter = 400, warmup = 200, chains = 2, seed = 141,
               refresh = 0, open_progress = FALSE) |>
@@ -142,9 +180,7 @@ test_that("get_priors round trips through bnec", {
 })
 
 test_that("a user prior makes the two entry points disagree", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
+  skip_on_cran()
   own <- get_priors(y ~ crf(x, "nec4param"), data = nec_data,
                     family = gaussian())
   own$prior[own$nlpar == "top"] <- "normal(0.8, 0.2)"
