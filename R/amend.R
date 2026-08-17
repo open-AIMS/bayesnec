@@ -232,6 +232,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   old_fits <- mod_fits
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
+  failed <- list()
   for (m in seq_along(model_set)) {
     model <- model_set[m]
     mod_m <- try(old_fits[[model]], silent = TRUE)
@@ -269,6 +270,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         mod_fits[[model]] <- fit_m
       } else {
         mod_fits[[model]] <- NA
+        failed[[model]] <- failure_record(model, attr(fit_m, "condition"))
       }
     } else {
       mod_fits[[m]] <- mod_m
@@ -279,12 +281,15 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
                            resolution = resolution, sig_val = sig_val,
                            loo_controls = loo_controls)
   if (length(mod_fits) > 1) {
-    allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
+    out <- allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
   } else {
     mod_fits <- expand_nec(mod_fits[[1]], formula = formula, x_range = x_range,
                            resolution = resolution, sig_val = sig_val,
                            loo_controls = loo_controls, model = names(mod_fits))
-    allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
+    out <- allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
   }
-
+  # Only the models this call attempted. Failures recorded on the object being
+  # amended are not carried forward: a model that failed then may have been
+  # dropped now, or is being retried here with different priors.
+  attach_failed_models(out, failed)
 }

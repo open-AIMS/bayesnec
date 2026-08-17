@@ -23,7 +23,8 @@ test_that("summary behaves as expected", {
   summary_p <- suppressWarnings(summary(nec4param))
   expect_equal(class(summary_p), "necsummary")
   expect_equal(names(summary_p), c("brmssummary", "model", "is_ecx", "ne_type",
-                                   "nec_vals", "ecs", "bayesr2"))
+                                   "nec_vals", "ecs", "bayesr2",
+                                   "failed_models"))
   expect_equal(summary_p$ne_type, "NEC")
 })
 

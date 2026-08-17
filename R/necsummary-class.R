@@ -32,6 +32,9 @@
 #' \code{bayesnec:::summary.bayesnecfit} help file for details).
 #' @slot bayesr2 The model Bayesian R2 as calculated by
 #' \code{\link[brms]{bayes_R2}}.
+#' @slot failed_models Any models from the original set that could not be
+#' fitted, with the priors and initial values used. See
+#' \code{\link{failed_models}}.
 #'
 #' @seealso
 #'   \code{\link{bayesnec}},

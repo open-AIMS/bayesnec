@@ -45,7 +45,7 @@ test_that("summary behaves as expected", {
   expect_equal(names(summary.p), c("models", "family", "sample_size",
                                    "mod_weights", "mod_weights_method",
                                    "ecx_mods", "nec_vals", "ecs", "bayesr2",
-                                   "rhat_issues"))
+                                   "rhat_issues", "failed_models"))
 })
 
 test_that("formula behaves as expected", {

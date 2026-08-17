@@ -86,6 +86,7 @@ print.necsummary <- function(x, ...) {
   cat("\n\nBayesian R2 estimates:\n")
   print_mat(x$bayesr2)
   cat("\n\n")
+  print_failed_models(x$failed_models)
   invisible(x)
 }
 
@@ -129,6 +130,7 @@ print.manecsummary <- function(x, ...) {
   cat("Bayesian R2 estimates:\n")
   print_mat(x$bayesr2)
   cat("\n\n")
+  print_failed_models(x$failed_models)
   with_issues <- names(x$rhat_issues[unlist(x$rhat_issues)])
   if (length(with_issues) > 0) {
       warning("The following model had Rhats > 1.05 (no convergence):\n",
@@ -136,4 +138,40 @@ print.manecsummary <- function(x, ...) {
               "Consider dropping them (see ?amend)\n", sep = "")
   }
   invisible(x)
+}
+
+#' One line in a summary naming the models that did not fit
+#'
+#' Kept short deliberately: the summary says how many failed and which, and
+#' \code{\link{failed_models}} holds the priors and initial values for anyone who
+#' wants to diagnose one.
+#'
+#' @param failed An object of class \code{bnecfailures}, or a named
+#' \code{\link[base]{list}} of them as \code{\link{failed_models}} returns for a
+#' \code{\link{bayesnechurdlefit}}. Possibly \code{NULL} for a summary of an
+#' object fitted before this was recorded.
+#'
+#' @return \code{invisible(NULL)}, called for its side effect.
+#'
+#' @noRd
+print_failed_models <- function(failed) {
+  if (is.null(failed) || length(failed) == 0) {
+    return(invisible(NULL))
+  }
+  # A hurdle fit is two independent model sets, so failed_models() returns one
+  # bnecfailures per component and a model can fail on one and not the other.
+  # Normalising to a list of sets here keeps all three summary print methods
+  # identical at the call site.
+  sets <- if (inherits(failed, "bnecfailures")) list(failed) else failed
+  sets <- sets[lengths(sets) > 0]
+  if (length(sets) == 0) {
+    return(invisible(NULL))
+  }
+  for (i in seq_along(sets)) {
+    label <- if (is.null(names(sets))) "" else paste0(names(sets)[i], ": ")
+    cat(label, length(sets[[i]]), " model(s) failed to fit: ",
+        paste0(names(sets[[i]]), collapse = ", "), "\n", sep = "")
+  }
+  cat("See ?failed_models for the priors and initial values used.\n\n")
+  invisible(NULL)
 }

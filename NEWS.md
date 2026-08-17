@@ -156,6 +156,30 @@
   'use_mods' not found". `models()` also accepts every model group `bnec()`
   does: `"decline"` and `"hormesis"` are valid in `bnec(model = )` through
   `handle_set()` but were missing from the list `models()` recognised.
+- New `failed_models()`, returning the models `bnec()` or `amend()` attempted
+  and could not fit, each with the error, the priors and the initial values used
+  in the attempt. A set fitted with `model = "all"` regularly loses a model or
+  two and the error scrolls past mid-run; what is needed to diagnose one is the
+  prior and the starting values it was given, and both are constructed inside
+  `bnec()` rather than supplied by the user, so re-running the whole set was
+  previously the only way to see them. The returned prior is a `brmsprior` and
+  is directly usable, so the natural next step —
+  `bnec(..., model = "nechormepwr", prior = failed_models(fit)$nechormepwr$prior)`
+  — needs no reconstruction. `summary()` reports how many models failed and
+  which. See [#133](https://github.com/open-AIMS/bayesnec/issues/133).
+- The record is attached to a single-model `bayesnecfit` as well as to a
+  `bayesmanecfit`: where all but one model of a set failed, `bnec()` returns the
+  one that worked, and that is the case where knowing what happened to the
+  others matters most. It is attached only where something did fail, so
+  `names()` on a fitted object is otherwise unchanged, and objects saved before
+  this release report no failures rather than erroring.
+- `summary()` of a `bayesnechurdlefit` reports failures per component, labelled
+  `growth` or `survival`. A hurdle fit runs two independent model sets through
+  `bnec()`, so a model can fail on one and fit on the other, and the summary
+  otherwise printed a short model list with no explanation for it.
+- `pull_out()` carries the record across. Unlike `amend()` it refits nothing,
+  only subsets a set already fitted, so what `bnec()` attempted is still an
+  accurate description of the object returned.
 
 # bayesnec 2.1.3.6
 

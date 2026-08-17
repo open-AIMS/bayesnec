@@ -380,7 +380,8 @@ summary.bayesnechurdlefit <- function(object, ..., ecx = FALSE,
     survival_models = mods(object$survival),
     ne = nes, ne_types = ne_types, ecs = ecs,
     growth_averaged = inherits(object$growth, "bayesmanecfit"),
-    survival_averaged = inherits(object$survival, "bayesmanecfit")
+    survival_averaged = inherits(object$survival, "bayesmanecfit"),
+    failed_models = failed_models(object)
   )
   allot_class(out, "hurdlesummary")
 }
@@ -396,6 +397,11 @@ print.hurdlesummary <- function(x, ...) {
       paste0(x$growth_models, collapse = ", "), "\n")
   cat("  survival : bernoulli --",
       paste0(x$survival_models, collapse = ", "), "\n\n")
+  # Directly under the model lists rather than at the foot of the summary as in
+  # the other two print methods: a hurdle fit runs two model sets, so this is
+  # the line that explains why either list above is shorter than it was asked
+  # for, and it is only useful next to them.
+  print_failed_models(x$failed_models)
   # One matrix rather than one line per component: a per-line cat() prefix puts
   # the label above the column headings rather than beside the values.
   cat("No-effect toxicity estimates\n")

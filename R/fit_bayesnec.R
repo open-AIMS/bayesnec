@@ -66,6 +66,15 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
                                model_survival = model_survival,
                                disp_spec = parse_disp_term(formula))
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
+  # Any failure from here on is re-raised carrying the priors and initial values
+  # this attempt was given. Both are constructed inside this function rather
+  # than supplied by the user, so a caller that catches the error and moves on
+  # to the next model -- which is what bnec() does for a model set -- has no
+  # other way to recover them. See ?failed_models.
+  fit_failed <- function(e) {
+    stop(fit_failure_condition(model, conditionMessage(e),
+                               all_args$prior, all_args$init))
+  }
   if (is.finite(timeout)) {
     # R.utils::withTimeout aborts the brm call once `timeout` seconds elapse
     # (including chains running on parallel worker processes), raising a
@@ -77,15 +86,20 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
       stop("Package \"R.utils\" is required to use the `timeout` argument. ",
            "Please install it.", call. = FALSE)
     }
-    fit <- R.utils::withTimeout(
-      do.call(brm, all_args), timeout = timeout, onTimeout = "error"
+    fit <- tryCatch(
+      R.utils::withTimeout(
+        do.call(brm, all_args), timeout = timeout, onTimeout = "error"
+      ),
+      error = fit_failed
     )
   } else {
-    fit <- do.call(brm, all_args)
+    fit <- tryCatch(do.call(brm, all_args), error = fit_failed)
   }
   pass <- are_chains_correct(fit, all_args$chains)
   if (!pass) {
-    stop("Failed to fit model ", model, ".", call. = FALSE)
+    stop(fit_failure_condition(model,
+                               paste0("Failed to fit model ", model, "."),
+                               all_args$prior, all_args$init))
   }
   msg_tag <- family$family
   message(paste0("Response variable modelled as a ", model, " model using a ",
