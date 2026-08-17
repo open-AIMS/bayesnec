@@ -26,6 +26,12 @@
 #' \code{prior} and \code{init} are \code{NULL} where the model failed before
 #' they were built -- a formula or data problem rather than a sampling one.
 #'
+#' \code{\link{pull_out}} carries the record across unchanged, since it subsets
+#' a set that has already been fitted rather than refitting it.
+#' \code{\link{amend}} instead records only the models that call attempted:
+#' a model that failed before may have been dropped now, or is being retried
+#' there with different priors.
+#'
 #' A returned prior is directly usable, so the usual next step is to fit the
 #' failed model on its own with an adjusted version of it:
 #'
@@ -41,7 +47,7 @@
 #' \code{\link{bayesnechurdlefit}}, a \code{\link[base]{list}} of two such
 #' objects, one per component.
 #'
-#' @seealso \code{\link{bnec}}, \code{\link{amend}}
+#' @seealso \code{\link{bnec}}, \code{\link{amend}}, \code{\link{pull_out}}
 #'
 #' @examples
 #' library(bayesnec)

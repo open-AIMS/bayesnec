@@ -72,12 +72,28 @@ been overridden, the fit's priors are no longer the ones the defaults would
 produce. Given the same formula, data and family, and no user prior, they
 agree.
 
-Only the population-level priors on the curve parameters are returned. These
-are the ones \code{\link{bnec}} accepts through \code{prior}; a prior on the
-dispersion parameter is left to \pkg{brms} and its default. This is why
-\code{get_priors} is not \code{\link{pull_prior}}, which returns the whole
-\code{brmsprior} a fit carries -- \pkg{brms} defaults, duplicated vectorized
-rows and all -- and is for looking at rather than for feeding back in.
+What is returned is the population-level priors on the parameters of the
+model's own non-linear formula, which are the ones \code{\link{bnec}} accepts
+through \code{prior}. Where a \code{disp} term adds a variance function on the
+fitted mean -- \code{disp("power")} and the other named forms -- its
+parameters (\code{c0}, \code{c1}, ...) belong to that formula and come back
+with the curve parameters. They are needed: \code{\link{bnec}} takes a
+supplied prior whole, so a set handed back without them leaves \pkg{brms} to
+put a flat prior on each, which is a different model. See
+\code{\link{bayesnecformula}}.
+
+What is left to \pkg{brms} and its defaults, and so is not returned, is the
+family's own dispersion parameter (\code{sigma}, \code{shape}, \code{phi})
+where dispersion is held constant, and the linear predictor of a
+\code{disp(~x)} sub-model. Neither can be supplied through
+\code{bnec(prior = )} in any case, because the initial-value search matches
+prior names against the model's own parameters and rejects any prior naming
+one outside that set.
+
+This is why \code{get_priors} is not \code{\link{pull_prior}}, which returns
+the whole \code{brmsprior} a fit carries -- \pkg{brms} defaults, duplicated
+vectorized rows and all -- and is for looking at rather than for feeding back
+in.
 }
 \examples{
 library(bayesnec)

@@ -43,7 +43,15 @@
 #' @param family_growth A \code{\link[stats]{family}} function for the response
 #' of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
 #' from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
-#' positive continuous response, \code{Beta} for one bounded on (0, 1).
+#' positive continuous response, \code{Beta} for one bounded on (0, 1). A
+#' two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
+#' because \code{bnec_hurdle} is itself the two-part model, and so are the
+#' zero-inflated count families, which are mixtures rather than hurdles -- see
+#' \code{\link{bnec}}. Note that a count family is accepted here but fitted
+#' \emph{untruncated} to the non-zero subset, whereas the positive part of a
+#' hurdle on counts is zero-truncated. That overestimates the mean where the
+#' mean is small, which is the upper end of the concentration range; a
+#' zero-truncated count family is not yet available.
 #' @param ... Further arguments passed to both \code{\link{bnec}} calls.
 #'
 #' @details
@@ -77,8 +85,12 @@
 #'
 #' \bold{Censoring, and which aterms are allowed}
 #'
-#' \code{cens()} is the one \pkg{brms} aterm accepted on the response, because
-#' it is the one a hurdle model needs. A growth endpoint can be both
+#' \code{cens()} is the one aterm accepted on the response. \code{\link{bnec}}
+#' itself carries three -- \code{trials()}, \code{weights()} and
+#' \code{cens()} -- and of those \code{cens()} is the only one whose meaning
+#' stays unambiguous once the response is split across two models. It is also
+#' the one with a use here that nothing else covers. A growth endpoint can be
+#' both
 #' zero-bounded with structural zeros and left-censored at the recording
 #' resolution, and only a two-part model with a censored response component can
 #' tell the two apart: a death is a structural zero belonging to the Bernoulli
@@ -97,12 +109,14 @@
 #' limit, so the encoding is "at most the smallest resolvable value" rather than
 #' "at most zero".
 #'
-#' Other aterms are refused by name, with the reason. \code{trials()} has no
+#' The other two are refused by name, with the reason. \code{trials()} has no
 #' meaning for either component, and \code{weights()} is a modelling decision --
 #' whether a weight applies to the growth component, the survival component or
-#' both -- that this function will not make on the user's behalf. Making the two
-#' \code{\link{bnec}} calls directly remains available for anything outside this
-#' set.
+#' both -- that this function will not make on the user's behalf. Aterms beyond
+#' those three are refused here as well, though they would not reach \pkg{brms}
+#' in any case: \code{\link{model.frame}} drops them for an ordinary
+#' \code{\link{bnec}} fit too. Making the two \code{\link{bnec}} calls directly
+#' remains available for anything outside this set.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -223,6 +237,18 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 #' factorise. Fitting it as two independent pieces would give a different model
 #' from the one asked for, and would do it silently.
 #'
+#' Note what this refusal does \emph{not} claim. It rules out the factorised
+#' two-fit procedure only; a joint fit carrying a curve on \code{zi} is a
+#' well-defined model that \pkg{brms} can express. bayesnec declines to offer
+#' that for reasons of identifiability and interpretation rather than of
+#' likelihood algebra, set out under \code{\link{bnec}}.
+#'
+#' Nor does the message send the user to a count hurdle, because there is not
+#' yet one to send them to: the positive part of a hurdle on counts is
+#' zero-truncated, and fitting an untruncated \code{poisson} to the non-zero
+#' subset -- which is what this function would do -- estimates
+#' \code{mu / (1 - exp(-mu))} rather than \code{mu}.
+#'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
 #' @noRd
@@ -236,9 +262,11 @@ check_hurdle_growth_family <- function(family) {
          " their own: a zero is evidence about both components at once and the",
          " likelihood does not factorise, so two separate fits would give you a",
          " different model. Use bnec(family = \"", fam_tag, "\") for the",
-         " mixture. If every zero really is structural, leave family_growth",
-         " unset -- bnec_hurdle will choose a poisson or negbinomial growth",
-         " component from the non-zero counts, which is the hurdle you want.",
+         " mixture. If every zero really is structural you want a hurdle on",
+         " counts, whose positive part is zero-truncated; bayesnec has no",
+         " zero-truncated count family yet, and leaving family_growth unset",
+         " here would fit an untruncated one to the non-zero counts, which",
+         " overestimates the mean where it is small. See ?bnec.",
          call. = FALSE)
   }
   if (is_hurdle_family(fam_tag)) {
@@ -304,7 +332,12 @@ hurdle_lhs_parts <- function(lhs_call) {
   }
   out[[length(out) + 1]] <- aterm_call
   names(out) <- vapply(out, function(tt) {
-    if (is.call(tt)) deparse1(tt[[1]]) else deparse1(tt)
+    nm <- if (is.call(tt)) deparse1(tt[[1]]) else deparse1(tt)
+    # brms::cens() and cens() are the same aterm. Everything else in the
+    # package matches aterms on the bare name (split_calls() greps for
+    # "cens("), so strip any namespace qualifier here too rather than let
+    # check_hurdle_aterms() refuse the qualified form as unrecognised.
+    sub("^.*:::?", "", nm)
   }, character(1))
   list(response = lhs_call[[2]], aterms = rev(out))
 }
@@ -313,8 +346,12 @@ hurdle_lhs_parts <- function(lhs_call) {
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #'
-#' @details Only \code{cens()} is accepted. A censored response is the case
-#' \code{bnec_hurdle} needs it for: a growth endpoint can be both zero-bounded
+#' @details Only \code{cens()} is accepted. The candidate set is the three
+#' aterms \code{bnec} supports at all -- \code{trials()}, \code{weights()} and
+#' \code{cens()} -- since \code{model.frame} drops the rest before they reach
+#' brms; \code{cens()} is the one of the three that survives the split. A
+#' censored response is also the case \code{bnec_hurdle} needs it for: a growth
+#' endpoint can be both zero-bounded
 #' with structural zeros and left-censored at the recording resolution, and only
 #' a two-part model with a censored response component can tell a death from a
 #' survivor measured below the limit.
@@ -389,7 +426,18 @@ check_hurdle_cens <- function(aterms, data, y, y_var) {
   if (!"cens" %in% names(aterms)) {
     return(invisible(NULL))
   }
-  cens_arg <- as.list(aterms[["cens"]])[-1][[1]]
+  cens_args <- as.list(aterms[["cens"]])[-1]
+  if (length(cens_args) == 0) {
+    stop("cens() was supplied with no arguments, so there is no censoring",
+         " indicator to check the zeros against. Pass the column holding the",
+         " censoring codes, e.g. \"", y_var, " | cens(censored) ~ ...\".",
+         call. = FALSE)
+  }
+  # The first argument positionally, matching how split_calls() reads the same
+  # term downstream. Resolving named arguments properly here would be more
+  # correct in isolation but would make this check disagree with the term brms
+  # is actually given, which is worse than agreeing and being wrong together.
+  cens_arg <- cens_args[[1]]
   cens_vals <- if (length(all.vars(cens_arg)) == 0) {
     # A literal, e.g. cens("left"), which brms recycles over every row.
     # check_formula() already warns about this; here it still has to be checked

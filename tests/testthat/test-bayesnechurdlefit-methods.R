@@ -81,6 +81,25 @@ test_that("update() requires the response column in newdata", {
                "must contain the response column")
 })
 
+test_that("update() re-checks the zero-vs-censored invariant on newdata", {
+  # The invariant is a property of the data, so a refit has to re-check it.
+  # Otherwise a row that is both zero and censored is dropped from the growth
+  # refit and coded as a death in the survival refit, with no message.
+  o <- mock_hurdle()
+  o$formula <- bnf(y | cens(cens) ~ crf(x, "nec3param"))
+  bad <- data.frame(x = 1:6, y = c(5, 4, 3, 0, 0, 0),
+                    cens = c(rep("none", 5), "left"))
+  expect_error(update(o, newdata = bad),
+               "zero and also carry a censoring code")
+  # A censored survivor is a growth observation and must still get past the
+  # check. The mock has no real component fit, so update() fails regardless --
+  # the point is only that it does not fail on the invariant.
+  ok <- bad
+  ok$cens <- c("left", rep("none", 5))
+  msg <- tryCatch(update(o, newdata = ok), error = conditionMessage)
+  expect_false(grepl("zero and also carry", msg))
+})
+
 test_that("summary carries its own class and print method", {
   expect_true(!is.null(getS3method("print", "hurdlesummary", optional = TRUE)))
   expect_true(!is.null(getS3method("summary", "bayesnechurdlefit", optional = TRUE)))
