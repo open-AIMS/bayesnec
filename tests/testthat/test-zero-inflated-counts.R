@@ -38,6 +38,7 @@ test_that("model restrictions follow the count family, not the mixture", {
 })
 
 test_that("priors come from the base count family", {
+  set.seed(104)
   y <- as.numeric(c(rep(0, 20), rpois(80, 12)))
   x <- as.numeric(rep(1:10, each = 10))
   for (tag in c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
@@ -72,7 +73,11 @@ test_that("bnec_hurdle refuses the zero-inflated count families", {
   # The message has to say why, and point somewhere useful.
   expect_match(conditionMessage(err), "does not factorise")
   expect_match(conditionMessage(err), "bnec\\(family = \"zero_inflated_poisson\"\\)")
-  expect_match(conditionMessage(err), "leave family_growth unset")
+  # It must not send the user to the untruncated count fit, which is a
+  # different model from the hurdle on counts they would be asking for. See
+  # #209.
+  expect_match(conditionMessage(err), "zero-truncated")
+  expect_false(grepl("leave family_growth unset --", conditionMessage(err)))
   expect_error(
     bnec_hurdle(y ~ crf(x, "nec3param"), data = dat,
                 family_growth = zero_inflated_negbinomial()),

@@ -229,20 +229,36 @@
   separates exactly, and `brms` generates the hurdle density with no mixture at
   zero. Poisson and negative binomial **can** produce a zero, so the equivalence
   fails: an observed zero is evidence about both components at once, the
-  likelihood carries a `log_sum_exp` over them and does not factorise. Writing a
-  bayesnec equation for `zi` and treating it as an independent block would give
-  a different model from the one asked for, silently. `?bnec` sets this out.
+  likelihood carries a `log_sum_exp` over them and does not factorise. That
+  rules out `bnec_hurdle()`, which is that factorisation performed as two fits.
+  It does not by itself rule out a joint fit with a curve on `zi`, which `brms`
+  can express; `zi` is held constant for the separate reasons `?bnec` now sets
+  out — `zi` and `mu` are weakly separated exactly where `mu` is small, which is
+  the end of the range that sets the threshold, and `zi` is a latent class
+  rather than anything the experiment observed. The rule that follows: if you
+  can tell which zeros are structural, you have a hurdle, not zero-inflation.
 - Consequently `bnec_hurdle()` refuses them as `family_growth`, with an error
-  saying why and pointing at `bnec(family = )` for the mixture, or at leaving
-  `family_growth` unset for a true hurdle on counts. It also now refuses a
-  two-block `family_growth`, which was previously accepted and would have nested
-  one two-part model inside another. `model_survival` is refused for them as for
-  any other single-block family, and `disp()` is refused with the reason that
-  applies — the dispersion parameter describes the count component while the
-  response is the mixture — rather than the generic "no free dispersion
-  parameter", which would be wrong for `zero_inflated_negbinomial`.
+  saying why and pointing at `bnec(family = )` for the mixture. It also now
+  refuses a two-block `family_growth`, which was previously accepted and would
+  have nested one two-part model inside another. `model_survival` is refused for
+  them as for any other single-block family, and `disp()` is refused with the
+  reason that applies — the dispersion parameter describes the count component
+  while the response is the mixture — rather than the generic "no free
+  dispersion parameter", which would be wrong for `zero_inflated_negbinomial`.
+- Predictions for these families are on the scale of the mixture, not of `mu`:
+  `posterior_epred()` returns `mu * (1 - zi)`, so `predict()`, `fitted()`,
+  `autoplot()` and `pred_vals` sit a factor `1 - zi` below the `top` and `bot`
+  that `summary()` reports. `ecx()` and the no-effect threshold are unaffected,
+  since a constant factor cancels from both. Documented under `?bnec`.
 - Neither family is selected automatically. A count response is still read as
   `poisson`; the zero-inflated forms have to be asked for.
+- Known limitation: a genuine hurdle on a *count* response needs a
+  zero-truncated count family, which is not yet available
+  ([#209](https://github.com/open-AIMS/bayesnec/issues/209)). `bnec_hurdle()`
+  accepts a count `family_growth` but fits it untruncated to the non-zero
+  subset, which overestimates the mean where the mean is small. The prior
+  tables also degrade when a large share of the response is zero
+  ([#210](https://github.com/open-AIMS/bayesnec/issues/210)).
 
 # bayesnec 2.1.3.6
 

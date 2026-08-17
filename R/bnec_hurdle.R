@@ -43,7 +43,15 @@
 #' @param family_growth A \code{\link[stats]{family}} function for the response
 #' of the non-zero subset. Defaults to \code{NULL}, in which case it is chosen
 #' from that subset the same way \code{\link{bnec}} would: \code{Gamma} for a
-#' positive continuous response, \code{Beta} for one bounded on (0, 1).
+#' positive continuous response, \code{Beta} for one bounded on (0, 1). A
+#' two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
+#' because \code{bnec_hurdle} is itself the two-part model, and so are the
+#' zero-inflated count families, which are mixtures rather than hurdles -- see
+#' \code{\link{bnec}}. Note that a count family is accepted here but fitted
+#' \emph{untruncated} to the non-zero subset, whereas the positive part of a
+#' hurdle on counts is zero-truncated. That overestimates the mean where the
+#' mean is small, which is the upper end of the concentration range; a
+#' zero-truncated count family is not yet available.
 #' @param ... Further arguments passed to both \code{\link{bnec}} calls.
 #'
 #' @details
@@ -223,6 +231,18 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 #' factorise. Fitting it as two independent pieces would give a different model
 #' from the one asked for, and would do it silently.
 #'
+#' Note what this refusal does \emph{not} claim. It rules out the factorised
+#' two-fit procedure only; a joint fit carrying a curve on \code{zi} is a
+#' well-defined model that \pkg{brms} can express. bayesnec declines to offer
+#' that for reasons of identifiability and interpretation rather than of
+#' likelihood algebra, set out under \code{\link{bnec}}.
+#'
+#' Nor does the message send the user to a count hurdle, because there is not
+#' yet one to send them to: the positive part of a hurdle on counts is
+#' zero-truncated, and fitting an untruncated \code{poisson} to the non-zero
+#' subset -- which is what this function would do -- estimates
+#' \code{mu / (1 - exp(-mu))} rather than \code{mu}.
+#'
 #' @return \code{invisible(NULL)}, called for its side effect.
 #'
 #' @noRd
@@ -236,9 +256,11 @@ check_hurdle_growth_family <- function(family) {
          " their own: a zero is evidence about both components at once and the",
          " likelihood does not factorise, so two separate fits would give you a",
          " different model. Use bnec(family = \"", fam_tag, "\") for the",
-         " mixture. If every zero really is structural, leave family_growth",
-         " unset -- bnec_hurdle will choose a poisson or negbinomial growth",
-         " component from the non-zero counts, which is the hurdle you want.",
+         " mixture. If every zero really is structural you want a hurdle on",
+         " counts, whose positive part is zero-truncated; bayesnec has no",
+         " zero-truncated count family yet, and leaving family_growth unset",
+         " here would fit an untruncated one to the non-zero counts, which",
+         " overestimates the mean where it is small. See ?bnec.",
          call. = FALSE)
   }
   if (is_hurdle_family(fam_tag)) {
