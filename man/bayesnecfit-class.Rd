@@ -31,10 +31,16 @@ to fit the model.}
 \item{\code{bayesnecformula}}{An object of class \code{\link{bayesnecformula}} and
 \code{\link[stats]{formula}}.}
 
-\item{\code{pred_vals}}{A \code{\link[base]{list}} containing a
-\code{\link[base]{data.frame}} of summary posterior predicted values
-and a vector containing based on the supplied \code{resolution} and
-\code{x_range}.}
+\item{\code{pred_vals}}{A \code{\link[base]{list}} with a single element
+\code{data}, a \code{\link[base]{data.frame}} of summary posterior
+predicted values over a grid set by \code{resolution} and \code{x_range}.
+Up to and including version 2.1.3.6 it also held \code{posterior}, the full
+\code{n_draws x resolution} matrix those summaries came from. That matrix
+dominated the size of a fitted object and is no longer stored; it is
+recomputed from \code{fit} where it is needed. To obtain it directly, use
+\code{posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000),
+re_formula = NA)}. Objects saved before the change still carry it and are
+unaffected.}
 
 \item{\code{top}}{The estimate for parameter "top" in the fitted model.}
 

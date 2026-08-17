@@ -40,24 +40,12 @@ bnec_newdata <- function(x, resolution = 100, x_range = NA) {
 #' @export
 bnec_newdata.bayesnecfit <- function(x, resolution = 100, x_range = NA) {
   check_args_newdata(resolution, x_range)
-  data <- model.frame(x$bayesnecformula, data = x$fit$data)
-  x_var <- attr(data, "bnec_pop")[["x_var"]]
-  fit <- x$fit
-  x_vec <- fit$data[[x_var]]
-  if (any(is.na(x_range))) {
-    x_seq <- seq(min(x_vec), max(x_vec), length = resolution)
-  } else {
-    x_seq <- seq(min(x_range), max(x_range), length = resolution)
-  }
-  newdata <- data.frame(x_seq)
-  names(newdata) <- x_var
-  fam_tag <- fit$family$family
-  custom_name <- check_custom_name(fit$family)
-  if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
-    trials_var <- attr(data, "bnec_pop")[["trials_var"]]
-    newdata[[trials_var]] <- 1
-  }
-  newdata
+  # Delegates so this, expand_nec() and posterior_on_grid() cannot build
+  # different grids. This function used to test any(is.na(x_range)) while the
+  # other two tested is.na(x_range[1]); those disagreed for a partially
+  # specified range, which check_args_newdata() now rejects outright. See #211.
+  prediction_grid(x$fit, x$bayesnecformula, x_range = x_range,
+                  resolution = resolution)$newdata
 }
 
 #' bnec_newdata.bayesmanecfit

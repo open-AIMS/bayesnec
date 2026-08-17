@@ -99,17 +99,29 @@ w_pred_calc <- function(index, mod_fits, mod_stats) {
 }
 
 #' @noRd
-w_post_pred_calc <- function(index, mod_fits, sample_size, mod_stats) {
-  x <- seq_len(sample_size)
-  size <- round(sample_size * mod_stats[index, "wi"])
-  mod_fits[[index]]$pred_vals$posterior[sample(x, size), ]
-}
-
-#' @noRd
 w_pred_list_calc <- function(index, pred_list, sample_size, mod_stats) {
   x <- seq_len(sample_size)
   size <- round(sample_size * mod_stats[index, "wi"])
   pred_list[[index]][sample(x, size), ]
+}
+
+#' Compute one model's grid posterior and immediately thin it to its weight.
+#'
+#' Used by expand_manec(), where the posteriors are built rather than read off
+#' the objects. Computing and thinning in the same step means only one model's
+#' full matrix exists at a time; collecting them into a list first would hold
+#' every model's at once. Thins through w_pred_list_calc() rather than
+#' repeating the draw, so this and posterior_epred.bayesmanecfit() cannot
+#' sample differently. See #180.
+#'
+#' @noRd
+w_grid_pred_calc <- function(index, mod_fits, formulas, x_range, resolution,
+                             sample_size, mod_stats) {
+  pred_list <- list(posterior_on_grid(mod_fits[[index]]$fit, formulas[[index]],
+                                      x_range = x_range,
+                                      resolution = resolution))
+  names(pred_list) <- index
+  w_pred_list_calc(index, pred_list, sample_size, mod_stats)
 }
 
 #' @noRd
@@ -846,9 +858,21 @@ check_data_equality <- function(mod_fits) {
 #' @importFrom chk chk_numeric
 check_args_newdata <- function(resolution, x_range) {
   chk_numeric(resolution)
-  if (!is.na(x_range[1])) {
-    chk_numeric(x_range)
+  # The documented "not supplied" value, and the only NA accepted.
+  if (length(x_range) == 1 && is.na(x_range)) {
+    return(invisible(NULL))
   }
+  chk_numeric(x_range)
+  # A partially specified range used to be handled inconsistently, and
+  # differently depending on which end was missing -- bnec_newdata() ignored it
+  # silently, expand_nec() turned c(1, NA) into seq(NA, NA) but fell back to the
+  # observed range for c(NA, 4). It is not a meaningful request either way, so
+  # reject it rather than pick one. See #211.
+  if (any(is.na(x_range))) {
+    stop("x_range must be either NA or fully specified; ",
+         "it cannot contain NA alongside a value.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' @noRd
