@@ -11,7 +11,9 @@
 
 \item{newdata}{Optional new data. Split into the two component datasets the
 same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
-hurdle rather than being modelled as small responses.}
+hurdle rather than being modelled as small responses, and checked the same
+way: a row that is both zero and censored is refused here as it is at
+construction.}
 
 \item{...}{Further arguments to \code{\link[brms]{brm}}.}
 }

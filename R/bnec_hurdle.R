@@ -254,7 +254,12 @@ hurdle_lhs_parts <- function(lhs_call) {
   }
   out[[length(out) + 1]] <- aterm_call
   names(out) <- vapply(out, function(tt) {
-    if (is.call(tt)) deparse1(tt[[1]]) else deparse1(tt)
+    nm <- if (is.call(tt)) deparse1(tt[[1]]) else deparse1(tt)
+    # brms::cens() and cens() are the same aterm. Everything else in the
+    # package matches aterms on the bare name (split_calls() greps for
+    # "cens("), so strip any namespace qualifier here too rather than let
+    # check_hurdle_aterms() refuse the qualified form as unrecognised.
+    sub("^.*:::?", "", nm)
   }, character(1))
   list(response = lhs_call[[2]], aterms = rev(out))
 }
@@ -339,7 +344,18 @@ check_hurdle_cens <- function(aterms, data, y, y_var) {
   if (!"cens" %in% names(aterms)) {
     return(invisible(NULL))
   }
-  cens_arg <- as.list(aterms[["cens"]])[-1][[1]]
+  cens_args <- as.list(aterms[["cens"]])[-1]
+  if (length(cens_args) == 0) {
+    stop("cens() was supplied with no arguments, so there is no censoring",
+         " indicator to check the zeros against. Pass the column holding the",
+         " censoring codes, e.g. \"", y_var, " | cens(censored) ~ ...\".",
+         call. = FALSE)
+  }
+  # The first argument positionally, matching how split_calls() reads the same
+  # term downstream. Resolving named arguments properly here would be more
+  # correct in isolation but would make this check disagree with the term brms
+  # is actually given, which is worse than agreeing and being wrong together.
+  cens_arg <- cens_args[[1]]
   cens_vals <- if (length(all.vars(cens_arg)) == 0) {
     # A literal, e.g. cens("left"), which brms recycles over every row.
     # check_formula() already warns about this; here it still has to be checked

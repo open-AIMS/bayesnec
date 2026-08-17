@@ -578,7 +578,9 @@ amend.bayesnechurdlefit <- function(object, drop, add, loo_controls,
 #' @param object An object of class \code{\link{bayesnechurdlefit}}.
 #' @param newdata Optional new data. Split into the two component datasets the
 #' same way \code{\link{bnec_hurdle}} does, so zeros continue to denote the
-#' hurdle rather than being modelled as small responses.
+#' hurdle rather than being modelled as small responses, and checked the same
+#' way: a row that is both zero and censored is refused here as it is at
+#' construction.
 #'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
@@ -597,6 +599,13 @@ update.bayesnechurdlefit <- function(object, newdata = NULL, ...) {
     stop("\"newdata\" must contain the response column \"", object$y_var,
          "\".", call. = FALSE)
   }
+  # The zero-vs-censored invariant belongs to the data, not to the fit, so it
+  # has to be re-checked against newdata. Without this a row that is both zero
+  # and censored is dropped from the growth refit and coded as a death in the
+  # survival refit, silently -- the confusion the construction-time check in
+  # bnec_hurdle() exists to prevent.
+  check_hurdle_cens(check_hurdle_aterms(object$formula), newdata, y,
+                    object$y_var)
   surv_data <- newdata
   surv_data[[".alive"]] <- as.integer(y > 0)
   out <- hurdle_rewrap(
