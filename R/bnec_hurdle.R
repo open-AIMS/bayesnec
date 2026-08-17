@@ -28,7 +28,9 @@
 #' @param formula Either a \code{\link[base]{character}} string defining an
 #' R formula or an actual \code{\link[stats]{formula}} object. See
 #' \code{\link{bayesnecformula}}. The response must be untransformed, and zero
-#' values in it are taken to mean the individual did not survive.
+#' values in it are taken to mean the individual did not survive. A
+#' \code{cens()} aterm is allowed alongside it; other aterms are refused, see
+#' Details.
 #' @param data A \code{\link[base]{data.frame}} containing the data to use with
 #' the \code{formula}. Every unit that entered the experiment must be present,
 #' with \code{0} recorded for those that gave no response. Rows omitted rather
@@ -73,6 +75,41 @@
 #' a measurement. Where mortality is instead recorded by omitting rows, those
 #' rows must be reinstated as zeros before calling this function.
 #'
+#' \bold{Censoring, and which aterms are allowed}
+#'
+#' \code{cens()} is the one aterm accepted on the response. \code{\link{bnec}}
+#' itself carries three -- \code{trials()}, \code{weights()} and
+#' \code{cens()} -- and of those \code{cens()} is the only one whose meaning
+#' stays unambiguous once the response is split across two models. It is also
+#' the one with a use here that nothing else covers. A growth endpoint can be
+#' both
+#' zero-bounded with structural zeros and left-censored at the recording
+#' resolution, and only a two-part model with a censored response component can
+#' tell the two apart: a death is a structural zero belonging to the Bernoulli
+#' component, while a survivor measured below the limit is a real observation of
+#' the growth component whose value is known only to lie at or below a bound.
+#'
+#' The declaration is routed accordingly. It is passed through to the growth
+#' component, where the censoring indicator travels as an ordinary data column
+#' and is subset along with everything else, and it is dropped from the survival
+#' component, whose alive/dead response is observed exactly. A row that is both
+#' zero and censored is refused rather than assigned to one of them.
+#'
+#' Under a Gamma growth component the censoring bound cannot be \code{0} --
+#' \code{\link{bnec}} rejects that, correctly, because the censored likelihood
+#' contribution there is \code{F(0) = 0}. The bound has to be the resolution
+#' limit, so the encoding is "at most the smallest resolvable value" rather than
+#' "at most zero".
+#'
+#' The other two are refused by name, with the reason. \code{trials()} has no
+#' meaning for either component, and \code{weights()} is a modelling decision --
+#' whether a weight applies to the growth component, the survival component or
+#' both -- that this function will not make on the user's behalf. Aterms beyond
+#' those three are refused here as well, though they would not reach \pkg{brms}
+#' in any case: \code{\link{model.frame}} drops them for an ordinary
+#' \code{\link{bnec}} fit too. Making the two \code{\link{bnec}} calls directly
+#' remains available for anything outside this set.
+#'
 #' @return An object of class \code{\link{bayesnechurdlefit}}.
 #'
 #' @seealso \code{\link{bnec}} for the equivalent joint fit via
@@ -95,6 +132,7 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
                         family_growth = NULL, ...) {
   formula <- bayesnecformula(formula)
   y_var <- hurdle_response_var(formula)
+  aterms <- check_hurdle_aterms(formula)
   if (!y_var %in% names(data)) {
     stop("The response variable \"", y_var, "\" is not a column in \"data\".",
          call. = FALSE)
@@ -125,10 +163,17 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   if (n_dead == length(y)) {
     stop("Every value of \"", y_var, "\" is zero.", call. = FALSE)
   }
+  check_hurdle_cens(aterms, data, y, y_var)
 
   # Survival component: one Bernoulli trial per individual, 1 = survived. The
   # curve therefore declines with concentration, matching the sign convention
   # of every bayesnec equation, and hu = 1 - fitted survival.
+  #
+  # swap_response() rebuilds the formula from rhs() alone, so any aterm on the
+  # response is dropped here rather than carried over. That is deliberate for
+  # cens(): the Bernoulli response is alive/dead, which is observed exactly, so
+  # there is nothing for a censoring declaration to bound. The censoring
+  # indicator stays in surv_data as an ordinary unused column.
   surv_data <- data
   surv_data[[".alive"]] <- as.integer(y > 0)
   surv_formula <- swap_response(formula, ".alive")
@@ -146,6 +191,10 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
   }
   message("Fitting the growth component (", sum(y > 0), " survivors of ",
           length(y), ") with a ", family_growth$family, " distribution.")
+  # The formula is passed through unchanged, aterms included: a censoring
+  # indicator is an ordinary data column, so the subset carries it along and the
+  # declaration reaches the block it belongs to. A survivor measured below the
+  # recording limit is an observation of *this* component, not a structural zero.
   growth_fit <- bnec(formula, data = data[y > 0, , drop = FALSE],
                      family = family_growth, ...)
   message("Fitting the survival component (", n_dead, " deaths of ",
@@ -161,8 +210,11 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 
 #' Extract the response variable name from a hurdle formula
 #'
-#' Errors informatively if the response is transformed or carries aterms, both
-#' of which make the zero-as-death convention ambiguous.
+#' Errors informatively if the response itself is transformed, which makes the
+#' zero-as-death convention ambiguous. Aterms alongside the response are left
+#' alone here and validated by \code{\link{check_hurdle_aterms}}: what
+#' \code{bnec_hurdle} needs is a bare response variable, not a bare left-hand
+#' side.
 #'
 #' @param formula An object of class \code{\link{bayesnecformula}}.
 #'
@@ -173,15 +225,170 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
 #'
 #' @noRd
 hurdle_response_var <- function(formula) {
-  lhs_call <- lhs(formula)
-  y_var <- all.vars(lhs_call)
-  if (length(y_var) != 1 || !identical(deparse1(lhs_call), y_var)) {
+  resp_call <- hurdle_lhs_parts(lhs(formula))$response
+  y_var <- all.vars(resp_call)
+  if (length(y_var) != 1 || !identical(deparse1(resp_call), y_var)) {
     stop("bnec_hurdle requires a plain, untransformed response on the left",
          " of the formula, because zero values in it are used to identify",
-         " deaths. You supplied \"", deparse1(lhs_call), "\".",
+         " deaths. You supplied \"", deparse1(resp_call), "\".",
          call. = FALSE)
   }
   y_var
+}
+
+#' Split a formula's left-hand side into the response and its aterms
+#'
+#' @param lhs_call The left-hand side of a formula, as a call.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{response} (a call) and
+#' \code{aterms} (a possibly empty \code{\link[base]{list}} of calls).
+#'
+#' @noRd
+hurdle_lhs_parts <- function(lhs_call) {
+  if (!(length(lhs_call) == 3 && identical(lhs_call[[1]], quote(`|`)))) {
+    return(list(response = lhs_call, aterms = list()))
+  }
+  # aterms are joined by "+", so peel the chain apart from the right. The `+`
+  # test matters for the same reason it does in split_calls(): without it a
+  # two-argument aterm such as cens(indicator, upper_bound) is itself length 3
+  # and would be destructured as though it were a chain.
+  aterm_call <- lhs_call[[3]]
+  out <- list()
+  while (length(aterm_call) == 3 && identical(aterm_call[[1]], quote(`+`))) {
+    out[[length(out) + 1]] <- aterm_call[[3]]
+    aterm_call <- aterm_call[[2]]
+  }
+  out[[length(out) + 1]] <- aterm_call
+  names(out) <- vapply(out, function(tt) {
+    nm <- if (is.call(tt)) deparse1(tt[[1]]) else deparse1(tt)
+    # brms::cens() and cens() are the same aterm. Everything else in the
+    # package matches aterms on the bare name (split_calls() greps for
+    # "cens("), so strip any namespace qualifier here too rather than let
+    # check_hurdle_aterms() refuse the qualified form as unrecognised.
+    sub("^.*:::?", "", nm)
+  }, character(1))
+  list(response = lhs_call[[2]], aterms = rev(out))
+}
+
+#' Validate the aterms on a hurdle formula's response
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#'
+#' @details Only \code{cens()} is accepted. The candidate set is the three
+#' aterms \code{bnec} supports at all -- \code{trials()}, \code{weights()} and
+#' \code{cens()} -- since \code{model.frame} drops the rest before they reach
+#' brms; \code{cens()} is the one of the three that survives the split. A
+#' censored response is also the case \code{bnec_hurdle} needs it for: a growth
+#' endpoint can be both zero-bounded
+#' with structural zeros and left-censored at the recording resolution, and only
+#' a two-part model with a censored response component can tell a death from a
+#' survivor measured below the limit.
+#'
+#' Every other aterm is refused by name. \code{trials()} has no meaning for
+#' either component -- the growth component is continuous and the survival
+#' component is one Bernoulli trial per individual -- and an aggregated count
+#' could not be split into survivors and deaths row by row anyway.
+#' \code{weights()} is refused because whether a weight belongs to the growth
+#' component, the survival component or both is a modelling decision, and
+#' guessing it would silently change the model; a user who knows which they want
+#' can make the two \code{\link{bnec}} calls directly.
+#'
+#' @return A \code{\link[base]{list}} of the accepted aterm calls, named by
+#' function.
+#'
+#' @importFrom formula.tools lhs
+#'
+#' @noRd
+check_hurdle_aterms <- function(formula) {
+  aterms <- hurdle_lhs_parts(lhs(formula))$aterms
+  if (length(aterms) == 0) {
+    return(aterms)
+  }
+  reasons <- c(
+    trials = paste("neither component takes a trial count: the growth",
+                   "component is continuous, and the survival component is one",
+                   "Bernoulli trial per individual. An aggregated count cannot",
+                   "be split into survivors and deaths row by row"),
+    weights = paste("whether a weight applies to the growth component, the",
+                    "survival component or both is a modelling decision that",
+                    "bnec_hurdle will not make for you. Make the two bnec()",
+                    "calls directly if you need it")
+  )
+  bad <- setdiff(names(aterms), "cens")
+  if (length(bad) > 0) {
+    detail <- vapply(bad, function(nm) {
+      why <- if (nm %in% names(reasons)) {
+        reasons[[nm]]
+      } else {
+        paste("it has no validated behaviour in a two-block fit, where the",
+              "response is split across two models")
+      }
+      paste0("\"", nm, "()\": ", why)
+    }, character(1))
+    stop("bnec_hurdle accepts only the cens() aterm on the response.",
+         " Rejected: ", paste0(detail, collapse = "; "), ".", call. = FALSE)
+  }
+  aterms
+}
+
+#' Check that no structural zero is also declared censored
+#'
+#' @param aterms The accepted aterms, as returned by
+#' \code{\link{check_hurdle_aterms}}.
+#' @param data The user's \code{\link[base]{data.frame}}.
+#' @param y The response vector.
+#' @param y_var The response variable name.
+#'
+#' @details The two kinds of zero a hurdle model exists to separate must stay
+#' separate in the input. A \code{0} response is a structural zero belonging to
+#' the Bernoulli component; a left-censored row is an observation of the growth
+#' component whose value is known only to be at or below a bound. A row claiming
+#' to be both is not a model this function can fit, and accepting it silently
+#' would reproduce exactly the confusion \code{vignette("example6")} warns
+#' about.
+#'
+#' @return \code{invisible(NULL)}, called for its side effect.
+#'
+#' @noRd
+check_hurdle_cens <- function(aterms, data, y, y_var) {
+  if (!"cens" %in% names(aterms)) {
+    return(invisible(NULL))
+  }
+  cens_args <- as.list(aterms[["cens"]])[-1]
+  if (length(cens_args) == 0) {
+    stop("cens() was supplied with no arguments, so there is no censoring",
+         " indicator to check the zeros against. Pass the column holding the",
+         " censoring codes, e.g. \"", y_var, " | cens(censored) ~ ...\".",
+         call. = FALSE)
+  }
+  # The first argument positionally, matching how split_calls() reads the same
+  # term downstream. Resolving named arguments properly here would be more
+  # correct in isolation but would make this check disagree with the term brms
+  # is actually given, which is worse than agreeing and being wrong together.
+  cens_arg <- cens_args[[1]]
+  cens_vals <- if (length(all.vars(cens_arg)) == 0) {
+    # A literal, e.g. cens("left"), which brms recycles over every row.
+    # check_formula() already warns about this; here it still has to be checked
+    # against the zeros, because recycled over a response containing zeros it
+    # declares those zeros censored.
+    eval(cens_arg)
+  } else {
+    data[[all.vars(cens_arg)[1]]]
+  }
+  cens <- normalise_cens(cens_vals)
+  bad <- which(y == 0 & is_censored(cens))
+  if (length(bad) > 0) {
+    stop("Row(s) ",
+         paste0(bad[seq_len(min(10, length(bad)))], collapse = ", "),
+         if (length(bad) > 10) ", ..." else "",
+         " of \"", y_var, "\" are zero and also carry a censoring code other",
+         " than \"none\". A structural zero and a censored observation are the",
+         " two things a hurdle model exists to separate: a zero means the",
+         " individual gave no response at all, while a censored row is a real",
+         " observation known only to lie at or below a bound. Recode each row",
+         " as one or the other.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' Replace the response of a bayesnecformula, keeping the right-hand side

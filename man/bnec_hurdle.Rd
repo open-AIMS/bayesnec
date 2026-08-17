@@ -10,7 +10,9 @@ bnec_hurdle(formula, data, model_survival = NULL, family_growth = NULL, ...)
 \item{formula}{Either a \code{\link[base]{character}} string defining an
 R formula or an actual \code{\link[stats]{formula}} object. See
 \code{\link{bayesnecformula}}. The response must be untransformed, and zero
-values in it are taken to mean the individual did not survive.}
+values in it are taken to mean the individual did not survive. A
+\code{cens()} aterm is allowed alongside it; other aterms are refused, see
+Details.}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use with
 the \code{formula}. Every unit that entered the experiment must be present,
@@ -86,6 +88,41 @@ within each component independently.
 A \code{0} response means the individual did not survive; it is a label, not
 a measurement. Where mortality is instead recorded by omitting rows, those
 rows must be reinstated as zeros before calling this function.
+
+\bold{Censoring, and which aterms are allowed}
+
+\code{cens()} is the one aterm accepted on the response. \code{\link{bnec}}
+itself carries three -- \code{trials()}, \code{weights()} and
+\code{cens()} -- and of those \code{cens()} is the only one whose meaning
+stays unambiguous once the response is split across two models. It is also
+the one with a use here that nothing else covers. A growth endpoint can be
+both
+zero-bounded with structural zeros and left-censored at the recording
+resolution, and only a two-part model with a censored response component can
+tell the two apart: a death is a structural zero belonging to the Bernoulli
+component, while a survivor measured below the limit is a real observation of
+the growth component whose value is known only to lie at or below a bound.
+
+The declaration is routed accordingly. It is passed through to the growth
+component, where the censoring indicator travels as an ordinary data column
+and is subset along with everything else, and it is dropped from the survival
+component, whose alive/dead response is observed exactly. A row that is both
+zero and censored is refused rather than assigned to one of them.
+
+Under a Gamma growth component the censoring bound cannot be \code{0} --
+\code{\link{bnec}} rejects that, correctly, because the censored likelihood
+contribution there is \code{F(0) = 0}. The bound has to be the resolution
+limit, so the encoding is "at most the smallest resolvable value" rather than
+"at most zero".
+
+The other two are refused by name, with the reason. \code{trials()} has no
+meaning for either component, and \code{weights()} is a modelling decision --
+whether a weight applies to the growth component, the survival component or
+both -- that this function will not make on the user's behalf. Aterms beyond
+those three are refused here as well, though they would not reach \pkg{brms}
+in any case: \code{\link{model.frame}} drops them for an ordinary
+\code{\link{bnec}} fit too. Making the two \code{\link{bnec}} calls directly
+remains available for anything outside this set.
 }
 \examples{
 \dontrun{

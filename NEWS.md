@@ -113,6 +113,32 @@
   nothing to return. Both methods now share one implementation, so the single-
   and multi-model paths cannot drift apart. See
   [#176](https://github.com/open-AIMS/bayesnec/issues/176).
+- `bnec_hurdle()` now accepts a `cens()` aterm on the response, which unblocks
+  the combination the censoring work was raised for: a growth endpoint that is
+  both zero-bounded with structural zeros (deaths) and left-censored at the
+  recording resolution (survivors measured below the limit). Only a two-part
+  model with a censored response component can tell those two zeros apart. The
+  guard was stricter than the constraint it protected — `hurdle_response_var()`
+  required the whole left-hand side to deparse to a bare name, when what the
+  zero-as-death convention needs is a bare *response*; an aterm alongside it
+  does not threaten that.
+- The declaration is routed rather than merely allowed. It is passed to the
+  growth component, where the censoring indicator travels as an ordinary data
+  column and is subset with everything else, and dropped from the survival
+  component, whose alive/dead response is observed exactly. That was already the
+  behaviour of `swap_response()`, incidentally; it is now deliberate and tested.
+- A row that is both zero and censored is refused. A structural zero and a
+  censored observation are the two things a hurdle model exists to separate, and
+  accepting a row claiming to be both would reproduce the confusion
+  `vignette("example6")` warns about. Under a Gamma growth component the
+  censoring bound cannot be `0` — `bnec()` already rejects that — so the
+  encoding is "at most the smallest resolvable value", which `?bnec_hurdle` now
+  says.
+- Other aterms keep erroring, but by name and with the reason. `trials()` has no
+  meaning for either component; `weights()` is refused because whether a weight
+  applies to the growth component, the survival component or both is a modelling
+  decision `bnec_hurdle()` will not make on the user's behalf. See
+  [#188](https://github.com/open-AIMS/bayesnec/issues/188).
 
 # bayesnec 2.1.3.6
 

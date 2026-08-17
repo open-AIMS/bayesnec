@@ -17,6 +17,185 @@ test_that("hurdle_response_var rejects a transformed response", {
   )
 })
 
+test_that("hurdle_response_var reads the response past an aterm", {
+  # What bnec_hurdle needs is a bare *response*, not a bare left-hand side: an
+  # aterm alongside it does not make the zero-as-death convention ambiguous.
+  expect_equal(
+    bayesnec:::hurdle_response_var(bnf(y | cens(cens) ~ crf(x, "nec3param"))),
+    "y"
+  )
+  expect_equal(
+    bayesnec:::hurdle_response_var(
+      bnf(y | cens(cens, ub) ~ crf(x, "nec3param"))
+    ),
+    "y"
+  )
+  expect_equal(
+    bayesnec:::hurdle_response_var(
+      bnf(y | trials(n) + cens(cens) ~ crf(x, "nec3param"))
+    ),
+    "y"
+  )
+  # A transformed response is still rejected, and the message names the
+  # response rather than the whole left-hand side.
+  expect_error(
+    bayesnec:::hurdle_response_var(bnf(log(y) | cens(cens) ~ crf(x, "n"))),
+    "You supplied \"log\\(y\\)\""
+  )
+})
+
+test_that("check_hurdle_aterms accepts cens and rejects everything else", {
+  expect_length(
+    bayesnec:::check_hurdle_aterms(bnf(y ~ crf(x, "nec3param"))), 0
+  )
+  expect_named(
+    bayesnec:::check_hurdle_aterms(bnf(y | cens(cens) ~ crf(x, "nec3param"))),
+    "cens"
+  )
+  expect_named(
+    bayesnec:::check_hurdle_aterms(
+      bnf(y | cens(cens, ub) ~ crf(x, "nec3param"))
+    ),
+    "cens"
+  )
+  # Each rejected aterm is named, with the reason it cannot apply.
+  expect_error(
+    bayesnec:::check_hurdle_aterms(bnf(y | weights(w) ~ crf(x, "nec3param"))),
+    "\"weights\\(\\)\".*modelling decision"
+  )
+  expect_error(
+    bayesnec:::check_hurdle_aterms(bnf(y | trials(n) ~ crf(x, "nec3param"))),
+    "\"trials\\(\\)\".*Bernoulli trial per individual"
+  )
+  # An unrecognised aterm still gets named rather than falling through.
+  expect_error(
+    bayesnec:::check_hurdle_aterms(bnf(y | se(sigma) ~ crf(x, "nec3param"))),
+    "\"se\\(\\)\""
+  ) |>
+    suppressMessages()
+  # Rejected alongside an accepted one.
+  expect_error(
+    bayesnec:::check_hurdle_aterms(
+      bnf(y | cens(cens) + weights(w) ~ crf(x, "nec3param"))
+    ),
+    "\"weights\\(\\)\""
+  )
+  # A namespace-qualified aterm is the same aterm. The rest of the package
+  # matches on the bare name, so accepting brms::cens() keeps bnec_hurdle in
+  # step with what bnec() already takes.
+  expect_named(
+    bayesnec:::check_hurdle_aterms(
+      bnf(y | brms::cens(cens) ~ crf(x, "nec3param"))
+    ),
+    "cens"
+  )
+  expect_error(
+    bayesnec:::check_hurdle_aterms(
+      bnf(y | brms::weights(w) ~ crf(x, "nec3param"))
+    ),
+    "\"weights\\(\\)\".*modelling decision"
+  )
+})
+
+test_that("check_hurdle_cens separates structural from censored zeros", {
+  dat <- data.frame(x = rep(1:4, each = 5), y = c(rep(2, 15), rep(0, 5)))
+  dat$cens <- "none"
+  aterms <- bayesnec:::check_hurdle_aterms(
+    bnf(y | cens(cens) ~ crf(x, "nec3param"))
+  )
+  # A left-censored survivor is fine: it is an observation of the growth
+  # component, known only to lie at or below a bound.
+  ok <- dat
+  ok$y[1:2] <- 0.05
+  ok$cens[1:2] <- "left"
+  expect_null(bayesnec:::check_hurdle_cens(aterms, ok, ok$y, "y"))
+  # A row that is both zero and censored is refused: it claims to be both kinds
+  # of zero at once, which is what the hurdle exists to tell apart.
+  bad <- dat
+  bad$cens[bad$y == 0][1:2] <- "left"
+  expect_error(
+    bayesnec:::check_hurdle_cens(aterms, bad, bad$y, "y"),
+    "zero and also carry a censoring code"
+  )
+  # A recycled literal declares every row censored, zeros included.
+  lit <- bayesnec:::check_hurdle_aterms(
+    bnf(y | cens("left") ~ crf(x, "nec3param"))
+  )
+  expect_error(
+    bayesnec:::check_hurdle_cens(lit, dat, dat$y, "y"),
+    "zero and also carry a censoring code"
+  )
+  # No cens() term at all is a no-op.
+  expect_null(
+    bayesnec:::check_hurdle_cens(list(), dat, dat$y, "y")
+  )
+  # An empty cens() has no indicator to check against, and should say so
+  # rather than fall over indexing an empty argument list.
+  empty <- bayesnec:::check_hurdle_aterms(
+    bnf(y | cens() ~ crf(x, "nec3param"))
+  )
+  expect_error(
+    bayesnec:::check_hurdle_cens(empty, dat, dat$y, "y"),
+    "cens\\(\\) was supplied with no arguments"
+  )
+})
+
+test_that("bnec_hurdle rejects a censored structural zero", {
+  dat <- data.frame(x = rep(1:4, each = 5), y = c(rep(2, 15), rep(0, 5)),
+                    cens = "none")
+  dat$cens[dat$y == 0][1] <- "left"
+  expect_error(
+    bnec_hurdle(y | cens(cens) ~ crf(x, "nec3param"), data = dat),
+    "zero and also carry a censoring code"
+  )
+  expect_error(
+    bnec_hurdle(y | weights(x) ~ crf(x, "nec3param"), data = dat),
+    "only the cens\\(\\) aterm"
+  )
+})
+
+test_that("bnec_hurdle fits a censored response and routes it correctly", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  set.seed(17)
+  dat <- nec_data
+  dat$y[dat$x > 2.5] <- 0
+  dat$cens <- "none"
+  # Left-censored *survivors*: real observations of the growth component, known
+  # only to lie at or below the recording limit. They must not be routed to the
+  # hurdle block.
+  lod <- unname(quantile(dat$y[dat$y > 0], 0.15))
+  is_lo <- dat$y > 0 & dat$y < lod
+  dat$y[is_lo] <- lod
+  dat$cens[is_lo] <- "left"
+  expect_gt(sum(is_lo), 0)
+  fit <- bnec_hurdle(y | cens(cens) ~ crf(x, "nec3param"), data = dat,
+                     iter = 400, warmup = 200, chains = 2, seed = 17,
+                     refresh = 0, open_progress = FALSE) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_s3_class(fit, "bayesnechurdlefit")
+  # Every survivor, censored or not, is in the growth component.
+  expect_equal(nrow(fit$growth$fit$data), sum(dat$y > 0))
+  expect_equal(sum(fit$survival$fit$data$.alive), sum(dat$y > 0))
+  # The declaration reached the growth block and only the growth block.
+  expect_true("cens" %in% names(fit$growth$fit$data))
+  expect_false(is.null(standata(fit$growth$fit)$cens))
+  expect_true(is.null(standata(fit$survival$fit)$cens))
+})
+
+test_that("swap_response drops an aterm from the survival component", {
+  # The Bernoulli response is alive/dead, observed exactly, so there is nothing
+  # for a censoring declaration to bound. Incidental in the original
+  # implementation; asserted here so it stays deliberate.
+  out <- bayesnec:::swap_response(
+    bnf(y | cens(cens) ~ crf(x, "nec3param")), ".alive"
+  )
+  expect_false(grepl("cens(", deparse1(out), fixed = TRUE))
+  expect_equal(bayesnec:::hurdle_response_var(out), ".alive")
+})
+
 test_that("swap_response replaces the lhs and keeps the rhs", {
   out <- bayesnec:::swap_response(bnf(y ~ crf(x, "nec3param")), ".alive")
   expect_s3_class(out, "bayesnecformula")
