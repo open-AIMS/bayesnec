@@ -210,6 +210,24 @@
   `NA` by `as.numeric()`, and then evaluated as `while (NA)` — "missing value
   where TRUE/FALSE needed". Blank bounds are now normalised before use, which is
   the second half of what `get_priors()` needed to round trip.
+- `nechormepwr` and `nechorme4pwr` are now excluded up front for 0-1 bounded
+  families under an identity link, and for the zero-probability block of the
+  two-block families, instead of failing after minutes of fruitless
+  initialisation. Their hormesis term is `x^(1 / (1 + exp(slope)))`, which
+  carries no coefficient: the exponent lies in (0, 1), so at `x = 1` the term
+  contributes exactly 1 whatever `slope` is, and below the threshold — where the
+  decay factor is exactly 1 — the fitted mean is at least `top + 1`. No
+  parameter value keeps that inside (0, 1) for a predictor that reaches 1, so
+  there is nothing for a better initial-value search to find. `nechormepwr01` is
+  the bounded hormesis form and is unaffected, as are `nechorme` and
+  `nechorme4`, whose increment is scaled by `exp(slope)`.
+- The consequence in practice: `model = "zero_bounded"` under `hurdle_gamma`
+  reported 11 models and averaged over 9 — one dropped by design and one lost
+  silently to an initialisation failure that cost roughly eight minutes per run.
+  It now reports 9, and says why each was dropped. The message for these two
+  names the reason rather than sharing the generic one, and points at the
+  hormesis models that do work on a bounded response. See
+  [#177](https://github.com/open-AIMS/bayesnec/issues/177).
 
 # bayesnec 2.1.3.6
 

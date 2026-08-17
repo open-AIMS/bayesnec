@@ -56,8 +56,17 @@ identity link, nor for families that are 0, 1 bounded (bernoulli, binomial,
 beta, beta_binomial) using an identity link. Note that the linear-decay
 restriction applies to the models containing "lin" only
 ("neclin", "neclinhorme", "ecxlin"); the hormesis models that also carry a
-"slope" parameter are retained for 0, 1 bounded families. Conversely
-"nechormepwr01" is excluded for the zero-bounded identity families, being
+"slope" parameter are retained for 0, 1 bounded families, with two
+exceptions. Models whose hormesis term raises the predictor to a power with
+no coefficient ("nechormepwr", "nechorme4pwr") are excluded for 0, 1 bounded
+families under an identity link. The term
+\code{x^(1 / (1 + exp(slope)))} contributes exactly 1 at \code{x = 1}
+whatever "slope" is, and below the threshold the decay factor is 1, so the
+fitted mean is at least \code{top + 1} wherever the predictor reaches 1.
+There is no parameter value that keeps it inside (0, 1), which is why this is
+an exclusion rather than a harder search for initial values.
+"nechormepwr01" is the bounded hormesis form and is retained there;
+conversely it is excluded for the zero-bounded identity families, being
 bounded on (0, 1) by construction and so unable to represent a response with
 no upper bound. Additionally,
 models that raise the predictor to a fractional power ("ecxsigm",
