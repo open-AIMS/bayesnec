@@ -258,19 +258,24 @@ and stay directly interpretable. If you are writing raw `brms` code to compare
 against a `bnec()` fit, pass the link explicitly, because several `brms`
 families default to something else.
 
-## The six approaches
+## The eight approaches
 
-Six approaches are compared. Three retain the measured values; three impose the
-zero boundary. They are labelled A to D below for compactness, and the labels
-are used consistently in the results.
+Eight approaches are compared, falling into three groups. Three retain the
+measured values. Three impose the zero boundary explicitly, by substituting the
+data or by constraining the fitted curve. Two impose it implicitly, by choosing
+a response distribution that cannot represent a negative value. They are
+labelled A to F below for compactness, and the labels are used consistently in
+the results.
 
-Every approach uses the same model, the same family and — importantly — the
-*same prior*. `bnec()` derives its default Gaussian priors from the response
+The first six approaches use the same model, the same family and — importantly
+— the *same prior*. `bnec()` derives its default Gaussian priors from the response
 vector, so allowing each approach to take its own default would confound the
 change in likelihood with a change in prior. On one of the real datasets the
 default `bot` prior is centred at exactly zero *because of* the substituted
 zeros, so the convention under test would leak into the prior. The prior is
 therefore built once, from the intact data, and passed to all six.
+Approaches E and F stand outside that scheme deliberately, for the reason
+given in their own section below.
 
 The simplest way to do this with the exported interface is to fit the intact
 analysis with `bnec()`'s defaults, recover the prior it constructed with
@@ -360,6 +365,59 @@ wants a model that cannot go below zero.
 fit_B3 <- bnec(y ~ crf(x, "nec4param"), data = dat_B1,
                family = gaussian(link = "identity"), prior = prior_fixed_bot)
 ```
+
+### Approaches that let the family impose the boundary
+
+The three approaches above all impose the zero boundary deliberately, through a
+choice an analyst makes and could defend. There is a fourth route, and it is the
+one most often taken with these data in practice: choose a response distribution
+whose support excludes negative values. A Beta is defined on (0, 1) and a Gamma
+on (0, infinity), so neither can represent a negative growth rate at all.
+Selecting one floors the data by construction, and the flooring is a side effect
+of a distributional choice rather than a decision about the negative values as
+such.
+
+Both approaches below use `nec3param` rather than `nec4param`. As set out above
+that is the same model as `nec4param` with `bot` set to zero, so E and F are the
+family-enforced counterpart of B2 and B3, and the four flooring mechanisms are
+directly comparable. Unlike the Gaussian arms, both take `bnec()`'s own default
+priors, because taking the defaults is the practice under examination.
+
+**E — scale to a proportion and fit a Beta.** The response is divided by its
+maximum so that it lies in (0, 1], which is the usual preparation for a Beta.
+Negative values must be dealt with first, since the family rejects them; they are
+set to zero.
+
+```{r, eval = FALSE}
+dat_E <- dat |>
+  mutate(y = pmax(y, 0)) |>
+  mutate(y = y / max(y))
+fit_E <- bnec(y ~ crf(x, "nec3param"), data = dat_E,
+              family = Beta(link = "identity"))
+```
+
+**F — leave the scale alone and fit a Gamma.** No scaling is applied; the Gamma
+accommodates the positive response directly. Negatives are again set to zero.
+
+```{r, eval = FALSE}
+dat_F <- mutate(dat, y = pmax(y, 0))
+fit_F <- bnec(y ~ crf(x, "nec3param"), data = dat_F,
+              family = Gamma(link = "identity"))
+```
+
+In both cases the zeros that flooring creates are then adjusted by `bnec()`
+itself: `check_data()` shifts an exact zero to one tenth of the smallest positive
+value, and an exact one to `1 - 0.001`, because neither is inside the open
+support of the family. That adjustment is left in place here rather than
+pre-empted, since it is part of the convention being examined. `bnec()` reports
+the shift with a message.
+
+Dividing by the maximum does not affect the reported toxicity estimates.
+`ecx(type = "absolute")` solves `f(x) = max(f) * (1 - x/100)`, so both sides
+carry any positive scaling of the response and the concentration at which the
+curve meets the target is unchanged; the same argument applies to the NSEC, whose
+control-posterior reference scales with the curve. What the family changes is the
+fitted curve, not the definition of the estimate.
 
 The distinction between B1 and B2 matters because they act on the residual scale
 in opposite directions. Flooring the data removes the most extreme low values
