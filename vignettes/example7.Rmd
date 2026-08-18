@@ -1,9 +1,9 @@
 ---
-title: "Negative response values"
+title: "Modelling growth data and other potentially negative response values"
 output:
   rmarkdown::html_vignette:
 vignette: >
-  %\VignetteIndexEntry{Negative response values}
+  %\VignetteIndexEntry{Modelling growth data and other potentially negative response values}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: bayesnec.bib
@@ -58,23 +58,29 @@ library(dplyr)
 library(tidyr)
 ```
 
-# Defining the endpoints
+# Background
 
 Because the whole question concerns a boundary at zero on the response scale, it
-is necessary to be precise about where the reported endpoints sit relative to
-that boundary. Two endpoints are used throughout: an ECx and the NSEC.
+is necessary to be precise about where the reported toxicity estimates sit relative to
+that boundary. Two toxicity estimates are used throughout: an ECx and the NSEC.
 
-## The ErCx notation
+## Toxicity estimates and the ErCx notation
 
 The subscript `r` in ErC50 is not a `bayesnec` convention; it comes from OECD
-Test Guideline 201 [@oecd2026tg201]. An algal growth inhibition test yields two
-distinct response variables from the same cell counts, and the guideline
-distinguishes the endpoints derived from them by subscript:
+Test Guideline 201 [@oecd2026tg201]. In OECD terminology the *endpoint* is the measured biological response, and TG
+201 defines two of them from the same cell counts and requires both to be
+reported. The toxicity estimates derived from each are distinguished by a
+subscript naming the endpoint they came from:
 
-* **ErC50** is based on the average specific **growth rate** — the rate constant
-  of population increase, with units of reciprocal time.
-* **EyC50** is based on **yield** — the biomass increase over the test, that is,
-  final density minus initial density.
+* **ErC50** is the EC50 for the average specific **growth rate** endpoint — the
+  rate constant of population increase, with units of reciprocal time.
+* **EyC50** is the EC50 for the **yield** endpoint — the biomass increase over
+  the test, that is, final density minus initial density.
+
+An ECx or an NSEC is therefore a *toxicity estimate*, not an endpoint; the
+endpoint is the response it was estimated from. That distinction matters here
+because it is the growth rate endpoint, not the toxicity estimate, that can take
+negative values.
 
 The two are not interchangeable and, for the same data, EyC50 is systematically
 lower than ErC50. The guideline requires the growth rate endpoint to be reported
@@ -120,11 +126,14 @@ curve can only affect them indirectly, by changing the shape of the fitted curve
 through the high-concentration observations. That indirect route is what this
 vignette quantifies.
 
-Note that `ecx(type = "absolute")` requires a model with a `bot` parameter when
-the family is Gaussian; `bayesnec` will stop with an informative error otherwise,
-because without a lower asymptote there is nothing to anchor the absolute scale.
+The three `type` definitions are currently implemented in ways that do not all
+match their documentation, and this is being tracked in `bayesnec` issue #195.
+The behaviour relied on here is the one described above and used throughout:
+`type = "absolute"` referenced from the predicted control response down to zero.
+Rather than describe the surrounding guards, which are expected to change, this
+vignette records the model set that was actually fitted.
 
-## NSEC
+## The NSEC
 
 The NSEC is the no-significant-effect-concentration of @fisherfox2023: the
 concentration at which the modelled mean response first becomes statistically
@@ -147,10 +156,12 @@ wider control posterior, hence a lower reference value, hence a crossing further
 to the right. As the residual error tends to zero the reference converges on the
 control mean, and for a `nec` model the NSEC converges on `nec` itself. The true
 `nec` is therefore the NSEC's limiting value, not its expected value at any
-finite level of noise. Section \@ref(nsec-results) returns to this, because it
+finite level of noise. The Results section returns to this, because it
 determines how the NSEC results have to be read.
 
-# The model, and why only one
+# Methods
+
+## Model and family
 
 All fits in this vignette use the four-parameter NEC model `nec4param` with a
 Gaussian family and an identity link:
@@ -167,10 +178,19 @@ recommendation is to fit a set of candidate models and average them
 (see the [Multi model usage][e2] vignette). That is the right default for
 estimating a toxicity value, but it is the wrong tool for the present question.
 Here the object of study is the effect of a *data-handling choice*, and if the
-model set were free to change at the same time, a shift in the endpoint could
-come from either. Holding the functional form fixed makes the comparison
-attributable. `nec4param` is the natural choice because it has an explicit lower
-asymptote `bot`, which is the parameter the conventions act on.
+model set were free to change at the same time, a shift in the toxicity estimate
+could come from either. Holding the functional form fixed makes the comparison
+attributable, and for the simulation it also removes model misspecification
+entirely, because `nec4param` is the model the data are generated from.
+
+`nec4param` carries an explicit lower asymptote `bot`, which is the parameter two
+of the three conventions act on directly. Note that `bot` plays no part in the
+*definition* of the toxicity estimate: `type = "absolute"` is referenced from the
+predicted control response down to zero and does not involve `bot` at all. `bot`
+matters because constraining it changes the shape of the fitted curve — `nec` and
+`beta` move to accommodate the constraint — and the ECx is read off that curve.
+The effect on the reported value is entirely indirect, which is what makes it
+easy to overlook.
 
 **Why the family already does the right thing.** Under a Gaussian family
 `bayesnec` automatically drops the models whose lower asymptote is pinned at
@@ -202,12 +222,34 @@ show_params("nec4param")
 #> nec ~ 1
 ```
 
-`nec3param` is the three-parameter NEC model, which is `nec4param` with `bot`
-fixed at zero. It is precisely the model an analyst reaches for when they want
-the curve to stop at zero — and it is dropped here, and would in any case block
-`ecx(type = "absolute")` because it has no `bot` parameter. This is why the
-zero-constrained approaches below are built from a *prior* on `bot` rather than
-by switching model.
+`nec3param` is the three-parameter NEC model, which is exactly `nec4param` with
+`bot` set to zero:
+
+    nec4param:  bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec))
+    nec3param:        top         * exp(-exp(beta) * (x - nec) * step(x - nec))
+
+It is precisely the model an analyst reaches for when they want the curve to stop
+at zero. Setting `bot` to zero through a `constant(0)` prior on `nec4param`, as
+approaches B2 and B3 below do, therefore fits **the same model**, not an
+approximation to it. The two routes are algebraically identical and differ only
+in bookkeeping: the prior route keeps the Stan program, the parameter names and
+the `ecx()` call path common to all six approaches, so that nothing but the
+constraint changes between them.
+
+The same fit could equally be specified directly in `brms` with a non-linear
+formula, bypassing `bayesnec`'s model checking. It would give the same posterior.
+What would be lost is `bayesnec`'s initial-value search and its `ecx()`/`nsec()`
+machinery, both of which would then have to be reimplemented; there is no
+statistical difference.
+
+**The model set actually fitted.** Every fit reported in this vignette — all
+six approaches, all twelve simulation scenarios and all four case studies — used
+the single model `nec4param` with `family = gaussian(link = "identity")`. No
+model averaging was performed and no model was selected from a set. This is
+recorded explicitly because `bayesnec`'s default behaviour is to fit and average
+over a candidate set, and because the rules governing which models are valid for
+a given family are expected to change (issue #195). A reader reproducing this
+work should fix the model rather than rely on the default set of the day.
 
 **Why the link is identity.** `bnec()` sets `link = "identity"` for every family
 it accepts, so that `top`, `bot` and `nec` remain on the natural response scale
@@ -215,7 +257,7 @@ and stay directly interpretable. If you are writing raw `brms` code to compare
 against a `bnec()` fit, pass the link explicitly, because several `brms`
 families default to something else.
 
-# Six ways of handling the negative values
+## The six approaches
 
 Six approaches are compared. Three retain the measured values; three impose the
 zero boundary. They are labelled A to D below for compactness, and the labels
@@ -233,7 +275,7 @@ The simplest way to do this with the exported interface is to fit the intact
 analysis with `bnec()`'s defaults, recover the prior it constructed with
 `pull_prior()`, and pass that object to every subsequent fit.
 
-## Approaches that retain the measurement
+### Approaches that retain the measurement
 
 **A — analyse as measured.** The negative growth rates are used exactly as
 recorded, and `bot` is estimated freely. This is the reference, and it is also
@@ -284,7 +326,7 @@ fit_D <- bnec(y ~ crf(x, "nec4param"), data = filter(dat, x < crossing),
               family = gaussian(link = "identity"), prior = shared_prior)
 ```
 
-## Approaches that impose the zero boundary
+### Approaches that impose the zero boundary
 
 **B1 — floor the data.** Every negative growth rate is replaced by zero. The
 model is unchanged and `bot` is still free.
@@ -332,14 +374,14 @@ fitted curve, and therefore *inflates* the residual variance. B3 combines both
 and its net effect is not predictable in advance, which is the reason for
 running the full set rather than comparing A against B3 alone.
 
-# The simulation study
+## Simulation design
 
 Real datasets can show that the six approaches disagree, but not which of them
 is right, because the true toxicity of a real substance is unknown. The
 comparison is therefore made on simulated data, where the true ErC10, ErC50 and
 `nec` are known by construction and each approach can be scored against them.
 
-## The generating model
+### The generating model
 
 Data are generated from the same `nec4param` curve that is fitted, so that the
 only misspecification under study is the one deliberately introduced by each
@@ -437,7 +479,7 @@ control fold-change as such.
 sigma_0 <- 0.096 * log(2.3) / 7   # absolute control SD, anchored at R = 2.3
 ```
 
-## The twelve scenarios
+### The twelve scenarios
 
 The design is nine scenarios crossing `delta` with `top_factor` at fixed
 `R` = 2.3, plus three further scenarios that hold `delta` = 4 and
@@ -527,17 +569,21 @@ lab <- setNames(
           scenarios$R, 100 * scenarios$cv_control),
   scenarios$scenario)
 
-ggplot(point_data, aes(x = x, y = y)) +
+# controls sit at x = 0 and have no position on a log axis, so they are dropped
+# from this figure; every fit uses them
+ggplot(subset(point_data, x > 0), aes(x = x, y = y)) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey40") +
   geom_vline(data = scenarios, aes(xintercept = ErC10),
              linetype = "dotted", colour = "steelblue") +
   geom_vline(data = scenarios, aes(xintercept = ErC50),
              linetype = "dashed", colour = "steelblue") +
   geom_point(alpha = 0.45, size = 0.8) +
-  geom_line(data = curve_data, aes(y = mu), linewidth = 0.7) +
+  geom_line(data = subset(curve_data, x > 0), aes(y = mu), linewidth = 0.7) +
   facet_wrap(~ scenario, scales = "free", ncol = 3,
              labeller = labeller(scenario = lab)) +
-  labs(x = "Concentration", y = expression("Specific growth rate ("*d^-1*")")) +
+  scale_x_log10() +
+  labs(x = "Concentration (log scale)",
+       y = expression("Specific growth rate ("*d^-1*")")) +
   theme_classic(base_size = 8) +
   theme(strip.background = element_blank(), strip.text = element_text(hjust = 0))
 ```
@@ -555,7 +601,7 @@ far below zero the curve eventually settles. The last three panels show the
 precision sweep, where the design and the estimands are identical and only the
 scatter changes.
 
-## What each approach does to the fitted curve
+### Fitted curves from each approach
 
 
 ``` r
@@ -689,17 +735,19 @@ ex_dat <- read.csv(text = "x,y
 18.4982,-0.09347
 ")
 
-ggplot(ex_curves, aes(x = x, y = y)) +
+ggplot(subset(ex_curves, x > 0), aes(x = x, y = y)) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
   geom_vline(xintercept = example_truth$ErC50, linetype = "dotted",
              colour = "grey40") +
-  geom_point(data = ex_dat, aes(shape = y < 0), alpha = 0.5, size = 1) +
-  geom_line(data = true_curve, linewidth = 1.1, colour = "grey15") +
+  geom_point(data = subset(ex_dat, x > 0), aes(shape = y < 0),
+             alpha = 0.5, size = 1) +
+  geom_line(data = subset(true_curve, x > 0), linewidth = 1.1, colour = "grey15") +
   geom_line(aes(colour = arm), linewidth = 0.8) +
   scale_shape_manual(values = c("FALSE" = 16, "TRUE" = 1), guide = "none") +
   scale_colour_manual(values = arm_cols, guide = "none") +
   facet_wrap(~ arm, ncol = 3) +
-  labs(x = "Concentration",
+  scale_x_log10() +
+  labs(x = "Concentration (log scale)",
        y = expression("Specific growth rate ("*d^-1*")")) +
   theme_classic(base_size = 9) +
   theme(strip.background = element_blank())
@@ -725,11 +773,11 @@ where ErC10 and ErC50 are read, which is above zero.
 
 The three boundary-imposing approaches flatten at exactly zero, and to do so they
 must make the descent shallower and push `nec` to the right, which deforms the
-curve in the region the endpoints *are* read from. `nec` moves from 1.93 under
+curve in the region the toxicity estimates *are* read from. `nec` moves from 1.93 under
 the intact analysis to 2.18, 2.24 and 2.94 under B1, B3 and B2 respectively,
 against a true value of 1.3. This is the indirect route described in the
-endpoint section: the constraint applies below zero, but its consequences are
-felt above it.
+Background: the constraint applies below zero, but its consequences are felt
+above it.
 
 The fitted residual standard deviation shows the two opposing mechanisms
 directly, and this is the clearest available evidence for them:
@@ -756,15 +804,22 @@ but puts them out of the curve's reach, and roughly doubles it. These are the
 two mechanisms described in the previous section, and they are why B1 and B2
 distort the NSEC in opposite directions.
 
-One caution about this figure: it is one dataset, and the individual endpoint
-differences are within Monte Carlo noise. It is included to show the *shapes*
+One caution about this figure: it is one dataset, and the individual differences between estimates are within Monte Carlo noise. It is included to show the *shapes*
 and the mechanism. The aggregate results below, each averaging 240 simulated
 datasets, are what the conclusions rest on.
 
-## Fitting
+### Model fitting and summaries
 
 Each scenario was simulated 240 times and every simulated dataset fitted by all
-six approaches, giving 12 x 240 x 6 = 17,280 model fits. Sampling used four
+six approaches, giving 12 x 240 x 6 = 17,280 model fits. The iteration count was
+set from the Monte Carlo standard error on coverage, which is the least precise
+of the reported quantities: coverage is a proportion, so 240 iterations give a
+standard error of about 1.4 percentage points at a true coverage of 0.95, and
+about 2 points near 0.5. That is comfortably smaller than the differences the
+study reports, which run from several percentage points to the difference
+between 0.95 and 0.00, but it is coarser than the 500 iterations often used for
+work of this kind, and the coverage figures below should be read with it in
+mind. Sampling used four
 chains of 2,000 iterations with 1,000 warmup and `adapt_delta = 0.95`. Every fit
 is retained in the summaries below: filtering on convergence would have been
 actively misleading here, because the approaches do not diverge at the same rate
@@ -773,9 +828,18 @@ excluding poorly-behaved fits would preferentially remove the worst fits of the
 worst approach. In the scenarios that reach past the crossing the mean number of
 divergent transitions per fit is 0.00 for A, 0.03 for B3, 0.06 for B1, 0.07 for
 C, 1.21 for D and **5.67 for B2**; mean maximum R-hat is between 1.004 and 1.012
-throughout. B2's sampling difficulty is a symptom of the same problem as its
-inflated intervals: it is being asked to fit a curve that cannot reach its own
-observations.
+throughout.
+
+The pattern is worth reading carefully, because it is not the one intuition
+suggests. Flooring the data does *not* cause sampling problems: B1 and B3, the
+two approaches that replace negative values with zero, are among the best behaved
+in the set. It is B2 — which leaves the data untouched and constrains the curve —
+that struggles, by two orders of magnitude. The reason is that B2 is asked to fit
+a curve that cannot reach its own observations, so the sampler must trade the
+residual scale against the curve shape with no good compromise available. A
+floored dataset is certainly no longer Gaussian, but under B1 and B3 the model
+accommodates it comfortably and reports nothing amiss, which is precisely what
+makes those two approaches dangerous: the failure is silent.
 
 The results are summarised below from stored output rather than refitted, since
 the full study takes several days of computation.
@@ -783,7 +847,7 @@ the full study takes several days of computation.
 
 ``` r
 sim_results <- read.csv(text = "
-arm,endpoint,regime,rel_bias,coverage,rmse
+arm,estimate,regime,rel_bias,coverage,rmse
 A,ErC10,reaches,0.2413,0.8264,0.6376
 B1,ErC10,reaches,0.2017,0.7486,0.6135
 B2,ErC10,reaches,0.5700,0.8319,1.3304
@@ -813,7 +877,7 @@ D,ErC50,stops short,-0.0353,0.8007,0.5102
 
 # Results
 
-## The result depends on the design
+## Effect of the concentration design
 
 Before any approach can be compared with another, the scenarios have to be
 separated into two groups, because the answer is qualitatively different in each.
@@ -850,7 +914,7 @@ together would combine a real effect with an artefact.
 If your own design does not reach it — if essentially none of your observations
 are at or below zero growth — none of this applies to your data.
 
-## ErC50 and ErC10
+## ErC10 and ErC50
 
 Within the reaching regime the ordering is consistent. Relative to a true value,
 the intact analysis (A) and left-censoring (C) are unbiased to within one per
@@ -872,7 +936,7 @@ the control to be resolved against the residual scatter, and at a 9.6% control
 coefficient of variation that is a demanding thing to ask. The next section
 resolves it.
 
-## Measurement precision separates bias from estimation error
+## Effect of measurement precision
 
 Scenarios 8 and 10 to 12 hold the design and the true values fixed and vary only
 the control coefficient of variation, from 9.6% down to 1.9%. This is the most
@@ -883,7 +947,7 @@ more precise. Model misspecification does not.
 
 ``` r
 precision <- read.csv(text = "
-arm,endpoint,R,cv,rel_bias,coverage
+arm,estimate,R,cv,rel_bias,coverage
 A,ErC10,2.3,9.6,0.1903,0.875
 A,ErC10,3.3,6.7,0.1196,0.917
 A,ErC10,17,2.8,0.0339,0.954
@@ -948,7 +1012,7 @@ ggplot(precision, aes(x = cv_f, y = 100 * rel_bias, colour = arm, group = arm)) 
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey40") +
   geom_line(linewidth = 0.7) +
   geom_point(size = 1.8) +
-  facet_grid(endpoint ~ handling, scales = "free_y") +
+  facet_grid(estimate ~ handling, scales = "free_y") +
   labs(x = "Control coefficient of variation (%)  —  more precise →",
        y = "Relative bias in the estimated ErCx (%)",
        colour = "Approach") +
@@ -975,7 +1039,7 @@ ordering, and the intact analysis is no longer fifth of six. The apparent
 reversal at `R` = 2.3 is an artefact of reading a single, noisy scenario in
 isolation.
 
-## Interval coverage
+## Credible interval coverage
 
 Bias understates the problem, because the intervals narrow as precision improves
 while their centre stays displaced.
@@ -987,7 +1051,7 @@ ggplot(precision, aes(x = cv_f, y = coverage, colour = arm, group = arm)) +
   geom_line(linewidth = 0.7) +
   geom_point(size = 1.8) +
   scale_y_continuous(limits = c(0, 1)) +
-  facet_grid(endpoint ~ handling) +
+  facet_grid(estimate ~ handling) +
   labs(x = "Control coefficient of variation (%)  —  more precise →",
        y = "Proportion of 95% intervals containing the truth",
        colour = "Approach") +
@@ -1014,13 +1078,16 @@ enough to contain almost anything. **Coverage should never be reported without a
 measure of interval width**, or the two worst-performing approaches here would be
 scored as the two best.
 
-## NSEC {#nsec-results}
+## NSEC
 
-The NSEC needs separate treatment, and it turns out to be the endpoint most
-strongly affected. Because the NSEC is often the value actually reported, this
-matters.
+The NSEC needs separate treatment, and it turns out to be the toxicity estimate
+most strongly affected. This matters because the NSEC is one of the estimates
+recommended for guideline derivation under the current Australian and New Zealand
+technical guidance [@warne2025], alongside the ECx; see @fisherfox2023 for its
+derivation and @fisher2023ieam for its relationship to the NEC and to other
+no-effect estimates.
 
-### Why the NSEC cannot be scored at a single noise level
+### Scoring the NSEC against the true nec
 
 As set out above, the NSEC is defined against a lower quantile of the control
 posterior, so its expected value at any finite level of noise is larger than the
@@ -1096,7 +1163,7 @@ ggplot(nsec_precision, aes(x = cv_f, y = nsec, colour = arm, group = arm)) +
 <p class="caption">Mean estimated NSEC against the control coefficient of variation, for scenarios 8 and 10 to 12, in which the design and the true values are identical and only the measurement precision changes. The horizontal line is the true nec of 1.3, which is the value the NSEC must converge on as the residual error goes to zero.</p>
 </div>
 
-### What the sweep shows
+### Results of the precision sweep
 
 The three approaches that retain the measurement converge cleanly: A, C and D
 fall from 2.18, 1.92 and 2.00 to 1.43, 1.42 and 1.42 as the control coefficient
@@ -1122,7 +1189,7 @@ errs against protection. Reporting an NSEC three times the true no-effect
 concentration, from a fit whose diagnostics are unremarkable, is the worst
 outcome in this study.
 
-### A sign change worth understanding
+### Direction of the B1 contrast
 
 The contrast between B1 and the intact analysis changes sign across the sweep:
 B1 sits 3% *below* A in the noisiest scenario and 34% *above* it in the most
@@ -1145,7 +1212,7 @@ contrast with A is close to neutral at high noise (a ratio of 1.03), and a study
 that compared only those two at a single realistic noise level could easily have
 concluded that nothing was wrong.
 
-# The same comparison on real data
+## Case studies: four algal growth tests
 
 The simulation establishes which approach is right. Real data establish whether
 the choice makes a practical difference, and the answer is that it does — by up
@@ -1194,7 +1261,7 @@ express "at or below the limit" without inventing a value.
 
 ``` r
 real_ratios <- read.csv(text = "
-dataset,arm,endpoint,r,rlo,rhi,usable
+dataset,arm,estimate,r,rlo,rhi,usable
 c_proliferum,A,ErC50,1.000,0.786,1.309,TRUE
 c_proliferum,B1,ErC50,1.887,1.714,2.083,TRUE
 c_proliferum,B2,ErC50,0.744,0.173,1.667,TRUE
@@ -1262,7 +1329,7 @@ ggplot(real_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
   geom_point(size = 2.2, fill = "white") +
   scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 21), guide = "none") +
   scale_x_log10(breaks = c(0.25, 0.5, 1, 2, 4)) +
-  facet_grid(endpoint ~ dataset) +
+  facet_grid(estimate ~ dataset) +
   labs(x = "Estimate as a ratio to the intact analysis (log scale)",
        y = "Approach") +
   scale_colour_manual(values = arm_cols) +
@@ -1309,7 +1376,95 @@ of the four (30%), and there all three boundary-imposing approaches return an
 NSEC between 1.8 and 2.5 times the intact one — the same upward direction, and a
 similar magnitude, to the 47–134% overestimates measured in the simulation.
 
-# Recommendations
+## Sensitivity to the `bot` prior
+
+Under a Gaussian likelihood with no lower plateau in the data, `bot` is
+substantially prior-informed, and `bnec()` derives its default `bot` prior from
+the response vector. It is reasonable to ask whether the differences reported
+above are really differences in the prior rather than in the likelihood. This was
+checked on `c_proliferum` by refitting each approach with a `bot` prior that was
+four times wider and four times tighter than the default — a sixteen-fold range
+of prior scale — and comparing how far the plateau and the reported toxicity estimates
+moved.
+
+Approaches B2 and B3 are excluded from this check because their `bot` is
+`constant(0)`. There is no prior to vary, which is itself the point: they do not
+depend on the prior because they do not estimate the parameter at all.
+
+
+``` r
+prior_sens <- read.csv(text = "
+arm,estimate,tighter,default,wider,estimate_span_pct,bot_tighter,bot_default,bot_wider,bot_span_x
+A,ErC10,1.64,1.62,1.56,4.94,-0.5035,-1.0218,-2.3929,4.75
+B1,ErC10,2.72,2.78,2.76,2.16,-0.0298,-0.0243,-0.0244,1.22
+C,ErC10,2.66,2.60,2.56,3.85,-0.3159,-0.6082,-1.6192,5.13
+D,ErC10,2.53,2.53,2.55,0.59,-0.2700,-0.4040,-1.2484,4.62
+A,ErC50,3.16,3.32,3.42,7.83,-0.5035,-1.0218,-2.3929,4.75
+B1,ErC50,6.41,6.35,6.37,0.95,-0.0298,-0.0243,-0.0244,1.22
+C,ErC50,6.49,6.55,6.59,1.53,-0.3159,-0.6082,-1.6192,5.13
+D,ErC50,5.00,5.00,5.00,0.00,-0.2700,-0.4040,-1.2484,4.62
+A,NSEC,2.00,1.96,1.94,2.99,-0.5035,-1.0218,-2.3929,4.75
+B1,NSEC,2.24,2.33,2.30,3.86,-0.0298,-0.0243,-0.0244,1.22
+C,NSEC,2.08,2.00,1.93,7.75,-0.3159,-0.6082,-1.6192,5.13
+D,NSEC,1.50,1.50,1.51,0.82,-0.2700,-0.4040,-1.2484,4.62
+")
+```
+
+
+
+Table: Posterior mean lower asymptote on c_proliferum under three bot priors spanning a sixteen-fold range of scale.
+
+|Approach | bot (tighter prior)| bot (default)| bot (wider prior)| range, as a multiple|
+|:--------|-------------------:|-------------:|-----------------:|--------------------:|
+|A        |              -0.503|        -1.022|            -2.393|                 4.75|
+|B1       |              -0.030|        -0.024|            -0.024|                 1.22|
+|C        |              -0.316|        -0.608|            -1.619|                 5.13|
+|D        |              -0.270|        -0.404|            -1.248|                 4.62|
+
+
+
+
+
+Table: How far each reported toxicity estimate moves across the same sixteen-fold change in the bot prior, as a percentage of its value under the default prior.
+
+|Approach | ErC10| ErC50| NSEC|
+|:--------|-----:|-----:|----:|
+|A        |  4.94|  7.83| 2.99|
+|B1       |  2.16|  0.95| 3.86|
+|C        |  3.85|  1.53| 7.75|
+|D        |  0.59|  0.00| 0.82|
+
+
+
+Two things follow, and the second is not what one would guess.
+
+**The plateau is strongly prior-dependent in every approach that actually
+estimates it.** Across a sixteen-fold change in prior scale, `bot` moves by a
+factor of 4.8 under the intact analysis, 4.6 under truncation and 5.1 under
+left-censoring — censoring being the most sensitive of the three, which is
+consistent with it deliberately withdrawing the information that would locate the
+asymptote. Where the data do not reach the plateau, its posterior is largely the
+prior's, and it should not be reported as an estimate.
+
+**Flooring is the one approach whose plateau is insensitive to the prior, and
+that is a symptom rather than a virtue.** Under B1 the plateau moves by a factor
+of only 1.2 across the same range, because it is not being determined by the
+prior *or* by the measurements — it is being determined by the substituted
+zeros. A parameter that is robust to its prior is normally reassuring; here it
+indicates that the data have been replaced by a constant. B2 and B3 are the
+limiting case of the same thing, with the parameter fixed outright.
+
+**The reported toxicity estimates, however, are robust in every approach.** The largest
+movement anywhere in the table is 7.8%, for the intact analysis's ErC50, across a
+sixteen-fold change of prior scale — against a gap of about 33% between the
+intact analysis and B2 on the same dataset. The differences this vignette reports
+are therefore differences in the likelihood, not artefacts of a prior that nobody
+chose deliberately. This is the useful form of the result: **the toxicity estimates can be
+reported even where the parameter that generates them cannot.**
+
+# Discussion
+
+## Recommendations
 
 **Analyse the growth rates as measured, and let the model estimate the lower
 asymptote.** Nothing in a Gaussian concentration-response fit requires the
@@ -1353,93 +1508,7 @@ to Stan's defaults with a message. If you find initialisation unexpectedly slow
 on a dataset where you have replaced negative values with zero, that is the
 mechanism, and it is a symptom of the data preparation rather than of the model.
 
-# How much of this is the prior?
-
-Under a Gaussian likelihood with no lower plateau in the data, `bot` is
-substantially prior-informed, and `bnec()` derives its default `bot` prior from
-the response vector. It is reasonable to ask whether the differences reported
-above are really differences in the prior rather than in the likelihood. This was
-checked on `c_proliferum` by refitting each approach with a `bot` prior that was
-four times wider and four times tighter than the default — a sixteen-fold range
-of prior scale — and comparing how far the plateau and the reported endpoints
-moved.
-
-Approaches B2 and B3 are excluded from this check because their `bot` is
-`constant(0)`. There is no prior to vary, which is itself the point: they do not
-depend on the prior because they do not estimate the parameter at all.
-
-
-``` r
-prior_sens <- read.csv(text = "
-arm,endpoint,tighter,default,wider,endpoint_span_pct,bot_tighter,bot_default,bot_wider,bot_span_x
-A,ErC10,1.64,1.62,1.56,4.94,-0.5035,-1.0218,-2.3929,4.75
-B1,ErC10,2.72,2.78,2.76,2.16,-0.0298,-0.0243,-0.0244,1.22
-C,ErC10,2.66,2.60,2.56,3.85,-0.3159,-0.6082,-1.6192,5.13
-D,ErC10,2.53,2.53,2.55,0.59,-0.2700,-0.4040,-1.2484,4.62
-A,ErC50,3.16,3.32,3.42,7.83,-0.5035,-1.0218,-2.3929,4.75
-B1,ErC50,6.41,6.35,6.37,0.95,-0.0298,-0.0243,-0.0244,1.22
-C,ErC50,6.49,6.55,6.59,1.53,-0.3159,-0.6082,-1.6192,5.13
-D,ErC50,5.00,5.00,5.00,0.00,-0.2700,-0.4040,-1.2484,4.62
-A,NSEC,2.00,1.96,1.94,2.99,-0.5035,-1.0218,-2.3929,4.75
-B1,NSEC,2.24,2.33,2.30,3.86,-0.0298,-0.0243,-0.0244,1.22
-C,NSEC,2.08,2.00,1.93,7.75,-0.3159,-0.6082,-1.6192,5.13
-D,NSEC,1.50,1.50,1.51,0.82,-0.2700,-0.4040,-1.2484,4.62
-")
-```
-
-
-
-Table: Posterior mean lower asymptote on c_proliferum under three bot priors spanning a sixteen-fold range of scale.
-
-|Approach | bot (tighter prior)| bot (default)| bot (wider prior)| range, as a multiple|
-|:--------|-------------------:|-------------:|-----------------:|--------------------:|
-|A        |              -0.503|        -1.022|            -2.393|                 4.75|
-|B1       |              -0.030|        -0.024|            -0.024|                 1.22|
-|C        |              -0.316|        -0.608|            -1.619|                 5.13|
-|D        |              -0.270|        -0.404|            -1.248|                 4.62|
-
-
-
-
-
-Table: How far each reported endpoint moves across the same sixteen-fold change in the bot prior, as a percentage of its value under the default prior.
-
-|Approach | ErC10| ErC50| NSEC|
-|:--------|-----:|-----:|----:|
-|A        |  4.94|  7.83| 2.99|
-|B1       |  2.16|  0.95| 3.86|
-|C        |  3.85|  1.53| 7.75|
-|D        |  0.59|  0.00| 0.82|
-
-
-
-Two things follow, and the second is not what one would guess.
-
-**The plateau is strongly prior-dependent in every approach that actually
-estimates it.** Across a sixteen-fold change in prior scale, `bot` moves by a
-factor of 4.8 under the intact analysis, 4.6 under truncation and 5.1 under
-left-censoring — censoring being the most sensitive of the three, which is
-consistent with it deliberately withdrawing the information that would locate the
-asymptote. Where the data do not reach the plateau, its posterior is largely the
-prior's, and it should not be reported as an estimate.
-
-**Flooring is the one approach whose plateau is insensitive to the prior, and
-that is a symptom rather than a virtue.** Under B1 the plateau moves by a factor
-of only 1.2 across the same range, because it is not being determined by the
-prior *or* by the measurements — it is being determined by the substituted
-zeros. A parameter that is robust to its prior is normally reassuring; here it
-indicates that the data have been replaced by a constant. B2 and B3 are the
-limiting case of the same thing, with the parameter fixed outright.
-
-**The reported endpoints, however, are robust in every approach.** The largest
-movement anywhere in the table is 7.8%, for the intact analysis's ErC50, across a
-sixteen-fold change of prior scale — against a gap of about 33% between the
-intact analysis and B2 on the same dataset. The differences this vignette reports
-are therefore differences in the likelihood, not artefacts of a prior that nobody
-chose deliberately. This is the useful form of the result: **the endpoints can be
-reported even where the parameter that generates them cannot.**
-
-# Caveats
+## Limitations
 
 **Neither recommended approach reaches nominal coverage on ErC50.** In the
 reaching regime the intact analysis holds 0.87–0.94 and left-censoring 0.78–0.83
@@ -1456,12 +1525,19 @@ distributional `sigma` would be expected to improve coverage for all approaches;
 there is no reason to expect it to change the ordering, since the approaches
 differ in how they handle the mean structure.
 
-**Only one model form was fitted.** Holding the model at `nec4param` is what
-makes the comparison attributable to the data-handling choice, but it means the
-results do not directly describe what happens under `bayesnec`'s usual
-model-averaged workflow. The zero boundary acts on the lower asymptote, so the
-qualitative conclusion should carry to any model with a free lower asymptote;
-the magnitudes may not.
+**Only one model form was fitted, and for the case studies that is a
+limitation rather than a design choice.** In the simulation, fixing the model at
+`nec4param` is unambiguously right: it is the model the data are generated from,
+so there is no model misspecification to confound the comparison of data-handling
+choices. For the four real datasets the justification is weaker. `nec4param` was
+fixed there for comparability across approaches, but nothing about those datasets
+recommends it, and it is not what an analyst using `bayesnec` would do — the
+package's default is to fit a candidate set and average over it, and on real data
+the functional form is not known. The case-study numbers should therefore be read
+as showing that the choice of convention changes the answer, not as
+recommendations for how to analyse those particular tests. Re-running the case
+studies under `bnec()`'s model-averaged workflow is the obvious next step and is
+not done here.
 
 **The precision sweep was run at one combination of the other two factors**
 (`delta` = 4, `top_factor` = 2.0). The convergence behaviour is expected to be
