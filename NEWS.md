@@ -1,3 +1,33 @@
+# bayesnec 2.1.3.6.9216 (negative-sgr study pin)
+
+**Not a release.** This branch is `374e511c` with the model-averaging
+determinism fix from #216 cherry-picked onto it, and nothing else. It exists so
+that Phase 10 of the negative-sgr study can score model-averaged coverage
+without measuring bayesnec's own resampling noise, while leaving every
+single-model fit already produced by that study bit-identical.
+
+- Model-averaged output from a `bayesmanecfit` is now reproducible. Averaging
+  keeps `round(sample_size * wi)` of each component model's draws, and which
+  draws those were used to be settled by an unseeded `sample()` at every call
+  site independently, so `posterior_epred()`, `posterior_predict()`, `ecx()`
+  and `nsec()` each returned a different answer on every call and none agreed
+  with the summaries stored on the object. The draw is now realised once, when
+  the object is built, and the seed that produced it is kept on the object as
+  the new `w_draw_seed` slot; every later call rebuilds the same index.
+  Realisation *i* now means "component *m*[*i*], iteration *j*[*i*]" for every
+  quantity taken from one object. The averaging method itself is unchanged --
+  only where the randomness is drawn. Model-averaged numbers therefore differ
+  from those produced by `374e511c` (the old ones were not reproducible, so
+  there is no "before" to match). The **single-model** path is untouched, which
+  is the property the study depends on. See #216.
+
+- Also applied from the same commits: `ecx.bayesmanecfit()` and
+  `nsec.bayesmanecfit()` reuse that one index instead of drawing fresh unseeded
+  samples, which additionally pairs `nsec` with its `ecnsec` -- they previously
+  came from two independent `sample()` calls. Upstream these two files are
+  migrating to `toxval` and the fix there is provisional; here it is required,
+  because `ecx()` and `nsec()` are the study's reported estimates.
+
 # bayesnec 2.1.3.6
 
 - New *Censoring* section in `vignette("example1")`, giving the `cens()` aterm
