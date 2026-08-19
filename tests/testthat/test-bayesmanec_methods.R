@@ -102,3 +102,33 @@ test_that("model-averaged output does not change between identical calls", {
   set.seed(216)
   expect_identical(p1, predict(manec_example, newdata = nd))
 })
+
+test_that("model-averaged ecx and nsec are reproducible and internally paired", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # These are the numbers that go into a report, and the instability landed on
+  # the lower bound -- the end a protective concentration is read off. See #216.
+  expect_identical(suppressMessages(ecx(manec_example)),
+                   suppressMessages(ecx(manec_example)))
+  post <- suppressMessages(nsec(manec_example, posterior = TRUE))
+  expect_identical(post, suppressMessages(nsec(manec_example,
+                                               posterior = TRUE)))
+  # The NSEC and its ecnsec used to be drawn by two independent sample() calls,
+  # so a pair was two unrelated draws of possibly different models. One index
+  # now covers both: element i of each is draw idx[i] of the same component.
+  idx <- bayesnec:::pull_draw_index(manec_example,
+                                    manec_example$success_models,
+                                    manec_example$sample_size)
+  parts <- lapply(manec_example$success_models, function(mod) {
+    single <- pull_out(manec_example, model = mod) |>
+      suppressMessages() |>
+      suppressWarnings()
+    one <- suppressMessages(nsec(single, posterior = TRUE))
+    cbind(one[idx[[mod]]], attributes(one)$ecnsec_relativeP[idx[[mod]]])
+  })
+  parts <- do.call("rbind", parts)
+  expect_equal(as.numeric(post), unname(parts[, 1]))
+  expect_equal(as.numeric(attributes(post)$ecnsec_relativeP),
+               unname(parts[, 2]))
+})

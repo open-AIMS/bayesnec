@@ -34,16 +34,20 @@ name of the successfully fitted models.}
 \item{\code{sample_size}}{The size of the posterior sample.
 Information on the priors used in the model.}
 
-\item{\code{w_draw_seed}}{The seed that realised the model-averaging draw. Model
-averaging keeps a weighted subset of each component model's draws; this seed
-fixes which ones, so every call on the object uses the same subset.
-\code{fitted} and \code{posterior_epred} are therefore reproducible, and
-agree with \code{w_ne_posterior} and \code{w_pred_vals}. \code{predict}
-and \code{posterior_predict} still vary between calls unless a seed is set,
-because they simulate new observations from the likelihood, as they do for a
-single \code{\link[brms]{brmsfit}}. Objects saved before version 2.1.3.7 do
-not carry a seed and fall back to a fixed value, which is equally
-reproducible.}
+\item{\code{w_draw_index}}{The realised model-averaging draw: a
+\code{\link[base]{list}} of the row indices kept for each component model.
+Model averaging keeps a weighted subset of each model's draws, and this
+records which ones, so every call on the object uses the same subset.
+\code{fitted}, \code{posterior_epred}, \code{ecx} and \code{nsec} are
+therefore reproducible, and agree with \code{w_ne_posterior} and
+\code{w_pred_vals}. \code{predict} and \code{posterior_predict} still vary
+between calls unless a seed is set, because they simulate new observations
+from the likelihood, as they do for a single \code{\link[brms]{brmsfit}}.}
+
+\item{\code{w_draw_seed}}{The seed that realised \code{w_draw_index}. Used only
+where the stored index cannot apply: when a caller thins to a different
+number of draws, and for objects saved before version 2.1.3.7, which carry
+neither field and fall back to a fixed seed.}
 
 \item{\code{w_ne_posterior}}{The model-weighted posterior estimate of the no-effect
 toxicity estimate.}

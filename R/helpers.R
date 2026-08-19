@@ -99,6 +99,15 @@ extract_waic_estimate <- function(x) {
 #' Restores the caller's RNG state rather than calling \code{set.seed()}
 #' outright: model averaging must not silently reset a user's simulation seed.
 #'
+#' \code{sample.kind} is pinned rather than left at whatever the session is
+#' using. A seed alone does not fix a draw: R 3.6.0 changed the algorithm behind
+#' \code{sample()}, and the same seed gives a different index either side of
+#' that change. Left unpinned, a saved \code{bayesmanecfit} reloaded under a
+#' different R would silently rebuild a different index and quietly stop
+#' matching its own stored summaries -- which is the bug this is meant to close,
+#' merely deferred. "Rejection" is the post-3.6.0 default, so pinning it changes
+#' nothing today and holds the draw fixed for objects that outlive this R.
+#'
 #' @param model_set A \code{\link[base]{character}} vector of model names.
 #' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
 #' number of draws available per component.
@@ -116,6 +125,7 @@ weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
     # erroring would break saved objects and re-drawing would restore the bug.
     seed <- 216
   }
+  old_kind <- RNGkind()
   has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
   old_seed <- if (has_seed) {
     get(".Random.seed", envir = globalenv(), inherits = FALSE)
@@ -123,19 +133,55 @@ weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
     NULL
   }
   on.exit({
+    # RNGkind() first, then the seed: the generator kind is encoded in
+    # .Random.seed[1], so restoring the seed last leaves both correct. Where
+    # there was no seed to restore, RNGkind() is what puts sample.kind back --
+    # removing .Random.seed on its own would not.
+    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
     if (is.null(old_seed)) {
-      rm(".Random.seed", envir = globalenv())
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
     } else {
       assign(".Random.seed", old_seed, envir = globalenv())
     }
   }, add = TRUE)
-  set.seed(seed)
+  set.seed(seed, sample.kind = "Rejection")
   out <- lapply(model_set, function(index) {
     size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
     sample(seq_len(sample_size), size)
   })
   names(out) <- model_set
   out
+}
+
+#' The model-averaging index to use for a given number of available draws.
+#'
+#' Prefers the index realised when the object was built and stored on it. That
+#' is exact and cannot drift: it survives being reloaded under a different R,
+#' where regenerating from the seed is only as stable as \code{sample()}'s
+#' algorithm. Rebuilding from the seed is the fallback, for two cases -- a
+#' caller thinning to a different number of draws (\code{ndraws},
+#' \code{draw_ids}), where the stored index does not apply, and objects saved
+#' before the index was stored. See #216.
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}}.
+#' @param model_set A \code{\link[base]{character}} vector of model names.
+#' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
+#' number of draws available per component.
+#'
+#' @return A named \code{\link[base]{list}} of integer vectors.
+#' @noRd
+pull_draw_index <- function(object, model_set, sample_size) {
+  idx <- object$w_draw_index
+  # `==` rather than identical(): sample_size is a double off the object and an
+  # integer off nrow(), and identical() would call those different and silently
+  # take the fallback every time.
+  same_n <- isTRUE(object$sample_size == sample_size)
+  if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
+    idx[model_set]
+  } else {
+    weighted_draw_index(model_set, sample_size, object$mod_stats,
+                        object$w_draw_seed)
+  }
 }
 
 #' @noRd

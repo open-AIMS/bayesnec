@@ -235,7 +235,12 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   # Previously each site drew its own unseeded sample(), so no two calls
   # returned the same answer. Drawing the seed rather than fixing one keeps the
   # realisation genuinely random per object, and responsive to a set.seed() in
-  # the caller's session. See #216.
+  # the caller's session. Both the index and the seed behind it are kept: the
+  # index is what later calls use, because a stored index cannot drift the way
+  # a regenerated one can if sample()'s algorithm changes again as it did in
+  # R 3.6.0, and these objects are archived and reopened years later. The seed
+  # is kept for the cases the stored index cannot cover -- a caller thinning to
+  # a different number of draws. See #216.
   draw_seed <- sample.int(.Machine$integer.max, 1)
   draw_index <- weighted_draw_index(success_models, sample_size, mod_stats,
                                     draw_seed)
@@ -253,7 +258,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   nec <- estimates_summary(ne_posterior)
   list(mod_fits = mod_fits, success_models = success_models,
        mod_stats = mod_stats, sample_size = sample_size,
-       w_draw_seed = draw_seed,
+       w_draw_seed = draw_seed, w_draw_index = draw_index,
        w_ne_posterior = ne_posterior, w_predicted_y = y_pred,
        w_residuals = mod_dat[[y_var]] - y_pred,
        w_pred_vals = list(data = pred_data, posterior = post_pred),

@@ -60,3 +60,50 @@ test_that("weighted_draw_index handles a model carrying no weight", {
   expect_length(idx$nec4param, 40)
   expect_setequal(idx$nec4param, seq_len(40))
 })
+
+test_that("weighted_draw_index ignores the session's sample.kind", {
+  # A seed alone does not fix a draw. R 3.6.0 changed sample()'s algorithm, so
+  # the same seed gives a different index either side of it; an object reloaded
+  # under a different R would otherwise rebuild a different index and stop
+  # matching its own stored summaries. Pinning is what makes the seed archival.
+  stats <- data.frame(wi = c(0.6, 0.4),
+                      row.names = c("nec4param", "ecx4param"))
+  models <- rownames(stats)
+  ref <- bayesnec:::weighted_draw_index(models, 100, stats, seed = 11)
+  old_kind <- RNGkind()
+  on.exit(suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3])),
+          add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
+  # Same seed under the pre-3.6.0 algorithm: this is what an unpinned draw
+  # would have returned, and it is not the same index.
+  set.seed(11)
+  expect_false(identical(sample(seq_len(100), 60L), ref$nec4param))
+  expect_identical(bayesnec:::weighted_draw_index(models, 100, stats, seed = 11),
+                   ref)
+  # The caller's choice of generator is left as it was found.
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("pull_draw_index prefers the stored index over rebuilding it", {
+  stats <- data.frame(wi = c(0.6, 0.4),
+                      row.names = c("nec4param", "ecx4param"))
+  models <- rownames(stats)
+  obj <- list(sample_size = 100, mod_stats = stats, w_draw_seed = 11,
+              w_draw_index = bayesnec:::weighted_draw_index(models, 100, stats,
+                                                            11))
+  expect_identical(bayesnec:::pull_draw_index(obj, models, 100),
+                   obj$w_draw_index)
+  # sample_size arrives as a double off the object and an integer off nrow().
+  # identical() would call those different and take the fallback every time.
+  expect_identical(bayesnec:::pull_draw_index(obj, models, 100L),
+                   obj$w_draw_index)
+  # Edge case: a caller thinning to fewer draws cannot use the stored index at
+  # all, so the fallback has to produce one that is actually in range.
+  small <- bayesnec:::pull_draw_index(obj, models, 40)
+  expect_equal(lengths(small), c(nec4param = 24L, ecx4param = 16L))
+  expect_true(all(unlist(small) <= 40))
+  # An object saved before either field existed.
+  legacy <- obj[c("sample_size", "mod_stats")]
+  expect_identical(bayesnec:::pull_draw_index(legacy, models, 100),
+                   bayesnec:::weighted_draw_index(models, 100, stats, NULL))
+})
