@@ -85,12 +85,62 @@ extract_waic_estimate <- function(x) {
   x$fit$criteria$waic$estimates["waic", "Estimate"]
 }
 
+#' Realise the model-averaging draw once, reproducibly.
+#'
+#' Model averaging keeps \code{round(sample_size * wi)} of each component's
+#' draws. Which draws those are used to be decided by an unseeded
+#' \code{sample()} at every call site, so \code{predict()},
+#' \code{posterior_epred()} and the summaries stored on the object were each a
+#' different realisation and no two calls agreed. Seeding the draw from a value
+#' carried on the \code{bayesmanecfit} makes realisation \emph{i} mean
+#' "component m[i], iteration j[i]" for every quantity computed from that
+#' object. See #216.
+#'
+#' Restores the caller's RNG state rather than calling \code{set.seed()}
+#' outright: model averaging must not silently reset a user's simulation seed.
+#'
+#' @param model_set A \code{\link[base]{character}} vector of model names.
+#' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
+#' number of draws available per component.
+#' @param mod_stats A \code{\link[base]{data.frame}} with a \code{wi} column
+#' and model names as row names.
+#' @param seed A \code{\link[base]{numeric}} vector of length 1, or NULL.
+#'
+#' @return A named \code{\link[base]{list}} of integer vectors, the draw
+#' indices kept for each model.
 #' @noRd
-w_nec_calc <- function(index, mod_fits, sample_size, mod_stats) {
-  sample(
-    mod_fits[[index]]$ne_posterior,
-    as.integer(round(sample_size * mod_stats[index, "wi"]))
-  )
+weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
+  if (is.null(seed)) {
+    # Objects built before #216 carry no seed. A fixed fallback still makes
+    # every call on such an object agree with every other, which is the point;
+    # erroring would break saved objects and re-drawing would restore the bug.
+    seed <- 216
+  }
+  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (has_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    if (is.null(old_seed)) {
+      rm(".Random.seed", envir = globalenv())
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  set.seed(seed)
+  out <- lapply(model_set, function(index) {
+    size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
+    sample(seq_len(sample_size), size)
+  })
+  names(out) <- model_set
+  out
+}
+
+#' @noRd
+w_nec_calc <- function(index, mod_fits, draw_index) {
+  mod_fits[[index]]$ne_posterior[draw_index[[index]]]
 }
 
 #' @noRd
@@ -99,10 +149,8 @@ w_pred_calc <- function(index, mod_fits, mod_stats) {
 }
 
 #' @noRd
-w_pred_list_calc <- function(index, pred_list, sample_size, mod_stats) {
-  x <- seq_len(sample_size)
-  size <- round(sample_size * mod_stats[index, "wi"])
-  pred_list[[index]][sample(x, size), ]
+w_pred_list_calc <- function(index, pred_list, draw_index) {
+  pred_list[[index]][draw_index[[index]], ]
 }
 
 #' Compute one model's grid posterior and immediately thin it to its weight.
@@ -116,12 +164,12 @@ w_pred_list_calc <- function(index, pred_list, sample_size, mod_stats) {
 #'
 #' @noRd
 w_grid_pred_calc <- function(index, mod_fits, formulas, x_range, resolution,
-                             sample_size, mod_stats) {
+                             draw_index) {
   pred_list <- list(posterior_on_grid(mod_fits[[index]]$fit, formulas[[index]],
                                       x_range = x_range,
                                       resolution = resolution))
   names(pred_list) <- index
-  w_pred_list_calc(index, pred_list, sample_size, mod_stats)
+  w_pred_list_calc(index, pred_list, draw_index)
 }
 
 #' @noRd

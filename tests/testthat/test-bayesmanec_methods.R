@@ -74,3 +74,31 @@ test_that("model.frame behaves as expected", {
                   "data.frame")
   expect_error(model.frame(manec_example, model = "ecxlin"))
 })
+
+test_that("model-averaged output does not change between identical calls", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # #216: every quantity taken through the averaged posterior used to redraw the
+  # component index with an unseeded sample(), so no two calls agreed. Asserted
+  # on the expectation and on the summaries built from it, not on stored
+  # constants -- the point is that repeated calls agree, whatever the values.
+  nd <- bnec_newdata(manec_example, resolution = 20)
+  expect_identical(posterior_epred(manec_example, newdata = nd),
+                   posterior_epred(manec_example, newdata = nd))
+  expect_identical(fitted(manec_example, newdata = nd),
+                   fitted(manec_example, newdata = nd))
+  # Edge case: a resolution of 1 is a single column, where a dropped dimension
+  # would show up as a length mismatch rather than a difference in values.
+  nd_1 <- bnec_newdata(manec_example, resolution = 1)
+  expect_identical(posterior_epred(manec_example, newdata = nd_1),
+                   posterior_epred(manec_example, newdata = nd_1))
+  # posterior_predict() stays stochastic on purpose: it simulates new
+  # observations, exactly as brms does for a single fit, so it varies for a
+  # bayesnecfit too. What #216 fixes is the weighting, which is now the same
+  # draw every time -- so seeding the likelihood is enough to pin it down.
+  set.seed(216)
+  p1 <- predict(manec_example, newdata = nd)
+  set.seed(216)
+  expect_identical(p1, predict(manec_example, newdata = nd))
+})

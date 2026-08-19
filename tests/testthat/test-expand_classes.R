@@ -184,8 +184,10 @@ test_that("each model is thinned to exactly its share of the weighted draws", {
     full <- bayesnec:::posterior_on_grid(tt5$mod_fits[[mod]]$fit,
                                          formulas_by_model[[mod]],
                                          resolution = 1000)
+    idx <- bayesnec:::weighted_draw_index(tt5$success_models, n,
+                                          tt5$mod_stats, tt5$w_draw_seed)
     drawn <- bayesnec:::w_grid_pred_calc(mod, tt5$mod_fits, formulas_by_model,
-                                         NA, 1000, n, tt5$mod_stats)
+                                         NA, 1000, idx)
     expect_equal(nrow(drawn), round(n * tt5$mod_stats[mod, "wi"]))
     expect_equal(ncol(drawn), 1000)
     # Row sums identify a row uniquely here because the values are copied, not
@@ -223,6 +225,28 @@ test_that("posterior_epred() reproduces the draws the cache used to hold", {
   )
   expect_true(is.matrix(post_manec))
   expect_equal(ncol(post_manec), 50)
+})
+
+test_that("posterior_epred() on the build grid reproduces w_pred_vals", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # Since #216 the weighted draw is realised once and the seed kept on the
+  # object, so the summaries stored at build time and a later posterior_epred()
+  # over the same grid are the same set of draws, not two independent ones.
+  # This is the property the migration note in the class docs promises; before
+  # #216 it held only in distribution.
+  tt6 <- expand_manec(tt1, formulas) |>
+    suppressMessages() |>
+    suppressWarnings() |>
+    (\(z) bayesnec:::allot_class(z, c("bayesmanecfit", "bnecfit")))()
+  expect_true(is.numeric(tt6$w_draw_seed))
+  post <- posterior_epred(tt6, newdata = bnec_newdata(tt6, resolution = 1000),
+                          re_formula = NA)
+  summ <- t(apply(post, 2, bayesnec:::estimates_summary))
+  expect_equal(unname(summ[, "Estimate"]), tt6$w_pred_vals$data$Estimate)
+  expect_equal(unname(summ[, "Q2.5"]), tt6$w_pred_vals$data$Q2.5)
+  expect_equal(unname(summ[, "Q97.5"]), tt6$w_pred_vals$data$Q97.5)
 })
 
 test_that("a partially specified x_range is rejected rather than guessed at", {

@@ -284,8 +284,19 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   attr(mod_stats$wi, "method") <- loo_w_controls$method
   mod_stats <- cbind(mod_stats, disp)
   sample_size <- extract_simdat(object[[1]])$n_samples
+  # The weighted draw is realised once, here, and the seed that produced it is
+  # kept on the object. Every later call -- posterior_epred(), fitted() and the
+  # weighting inside predict() -- rebuilds the same index from that seed, so
+  # repeated calls agree with each other and with the summaries below.
+  # Previously each site drew its own unseeded sample(), so no two calls
+  # returned the same answer. Drawing the seed rather than fixing one keeps the
+  # realisation genuinely random per object, and responsive to a set.seed() in
+  # the caller's session. See #216.
+  draw_seed <- sample.int(.Machine$integer.max, 1)
+  draw_index <- weighted_draw_index(success_models, sample_size, mod_stats,
+                                    draw_seed)
   ne_posterior <- unlist(lapply(success_models, w_nec_calc,
-                                 object, sample_size, mod_stats))
+                                 object, draw_index))
   y_pred <- rowSums(do_wrapper(success_models, w_pred_calc,
                                object, mod_stats))
   # Each model's posterior over the prediction grid is computed here and
@@ -295,7 +306,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   # about, merely not retained afterwards. The weights do not depend on the
   # posteriors, so nothing forces them to be built together. See #180.
   post_pred <- do_wrapper(success_models, w_grid_pred_calc, object, formula,
-                          x_range, resolution, sample_size, mod_stats,
+                          x_range, resolution, draw_index,
                           fct = "rbind")
   x <- object[[success_models[1]]]$pred_vals$data$x
   pred_data <- cbind(x = x,
@@ -308,6 +319,7 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   # here and is what survives. See #213.
   list(mod_fits = mod_fits, success_models = success_models,
        mod_stats = mod_stats, sample_size = sample_size,
+       w_draw_seed = draw_seed,
        w_ne_posterior = ne_posterior, w_predicted_y = y_pred,
        w_residuals = mod_dat[[y_var]] - y_pred,
        w_pred_vals = list(data = pred_data),
