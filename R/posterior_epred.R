@@ -64,14 +64,12 @@ posterior_epred.bayesnecfit <- function(object, ...) {
 posterior_epred.bayesmanecfit <- function(object, ...) {
   mod_fits <- object$mod_fits
   model_set <- names(mod_fits)
-  mod_stats <- object$mod_stats
   pred_list <- lapply(mod_fits, function(x, ...) {
     posterior_epred(x$fit, ...)
   }, ...)
   sample_size <- min(sapply(pred_list, nrow))
-  # Index drawn from the seed stored on the object, not afresh here, so
+  # The index realised when the object was built, not a fresh draw here, so
   # repeated calls return identical draws. See #216.
-  draw_index <- weighted_draw_index(model_set, sample_size, mod_stats,
-                                    object$w_draw_seed)
+  draw_index <- pull_draw_index(object, model_set, sample_size)
   do_wrapper(model_set, w_pred_list_calc, pred_list, draw_index, fct = "rbind")
 }
