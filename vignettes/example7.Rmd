@@ -883,7 +883,7 @@ nearly four times the true value and beyond even B2, and returns an ErC50 of 6.1
 against a true 5.05.
 
 That last figure is worth reading carefully, because it runs the *opposite* way
-to F's average. Across the 240 datasets of this scenario F's mean ErC50 bias is
+to F's average. Across the 500 datasets of this scenario F's mean ErC50 bias is
 -5.6%; on this particular one it is 21% high. Both are F: its RMSE is the largest
 of any approach, and a single dataset cannot be used to characterise it. What the
 single dataset does show, and what the aggregate confirms, is where the damage
@@ -925,30 +925,28 @@ to cover both real control scatter and a floor of identical near-zero values
 leaves it with no good value to take.
 
 One caution about this figure: it is one dataset, and the individual differences between estimates are within Monte Carlo noise. It is included to show the *shapes*
-and the mechanism. The aggregate results below, each averaging 240 simulated
+and the mechanism. The aggregate results below, each averaging 500 simulated
 datasets, are what the conclusions rest on.
 
 ### Model fitting and summaries
 
-Each scenario was simulated 240 times and every simulated dataset fitted by all
-eight approaches, giving 12 x 240 x 8 = 23,040 model fits. The iteration count was
-set from the Monte Carlo standard error on coverage, which is the least precise
-of the reported quantities: coverage is a proportion, so 240 iterations give a
-standard error of about 1.4 percentage points at a true coverage of 0.95, and
-about 2 points near 0.5. That is comfortably smaller than the differences the
-study reports, which run from several percentage points to the difference
-between 0.95 and 0.00, but it is coarser than the 500 iterations often used for
-work of this kind, and the coverage figures below should be read with it in
-mind. Sampling used four
+Each scenario was simulated 500 times and every simulated dataset fitted by all
+eight approaches, giving 12 x 500 x 8 = 48,000 model fits. The iteration count
+was set from the Monte Carlo standard error on coverage, which is the least
+precise of the reported quantities: coverage is a proportion, so 500 iterations
+give a standard error of about 1.0 percentage point at a true coverage of 0.95
+and about 2.2 points near 0.5. That is far smaller than the differences the study
+reports, which run from several percentage points to the difference between 0.95
+and 0.00. Sampling used four
 chains of 2,000 iterations with 1,000 warmup and `adapt_delta = 0.95`. Every fit
 is retained in the summaries below: filtering on convergence would have been
 actively misleading here, because the approaches do not diverge at the same rate
 — B2 averages several divergent transitions per fit while A averages none — so
 excluding poorly-behaved fits would preferentially remove the worst fits of the
 worst approach. In the scenarios that reach past the crossing the mean number of
-divergent transitions per fit is 0.00 for A and E, 0.03 for B3 and F, 0.06 for
-B1, 0.07 for C, 1.21 for D and **5.67 for B2**; mean maximum R-hat is between
-1.004 and 1.012 throughout.
+divergent transitions per fit is 0.00 for A and E, 0.01 for F, 0.03 for B3,
+0.04 for B1, 0.05 for C, 1.04 for D and **5.81 for B2**; mean maximum R-hat is
+between 1.004 and 1.012 throughout.
 
 The pattern is worth reading carefully, because it is not the one intuition
 suggests. Flooring the data does *not* cause sampling problems: B1 and B3, the
@@ -972,38 +970,38 @@ the full study takes several days of computation.
 ``` r
 sim_results <- read.csv(text = "
 arm,estimate,regime,rel_bias,coverage,rmse
-A,ErC10,reaches,0.2413,0.8264,0.6376
-C,ErC10,reaches,0.1508,0.8764,0.4777
-D,ErC10,reaches,0.1708,0.8750,0.5396
-B2,ErC10,reaches,0.5700,0.8319,1.3304
-B3,ErC10,reaches,0.2362,0.6847,0.6836
-B1,ErC10,reaches,0.2017,0.7486,0.6135
-E,ErC10,reaches,0.1352,0.8944,0.4412
-F,ErC10,reaches,0.5416,0.6903,1.6112
-A,ErC10,stops short,0.0828,0.9257,0.4219
-C,ErC10,stops short,0.0705,0.9276,0.3859
-D,ErC10,stops short,0.0726,0.9333,0.3938
-B2,ErC10,stops short,0.1331,0.8521,0.5421
-B3,ErC10,stops short,0.0975,0.8764,0.4421
-B1,ErC10,stops short,0.0616,0.9299,0.3574
-E,ErC10,stops short,0.1053,0.8903,0.5073
-F,ErC10,stops short,0.2824,0.8299,1.0291
-A,ErC50,reaches,0.0069,0.9153,0.3999
-C,ErC50,reaches,-0.0010,0.8292,0.4818
-D,ErC50,reaches,-0.0161,0.8528,0.4812
-B2,ErC50,reaches,-0.0933,0.9667,0.6249
-B3,ErC50,reaches,-0.0640,0.6083,0.5343
-B1,ErC50,reaches,-0.0480,0.7028,0.5300
-E,ErC50,reaches,-0.0843,0.6403,0.5991
-F,ErC50,reaches,-0.0200,0.7625,1.0671
-A,ErC50,stops short,-0.0416,0.7667,0.5041
-C,ErC50,stops short,-0.0334,0.7944,0.4918
-D,ErC50,stops short,-0.0353,0.8007,0.5102
-B2,ErC50,stops short,-0.0696,0.6444,0.6148
-B3,ErC50,stops short,-0.0498,0.7201,0.5405
-B1,ErC50,stops short,-0.0270,0.8201,0.4912
-E,ErC50,stops short,-0.0996,0.5826,0.7527
-F,ErC50,stops short,-0.0440,0.7507,0.6631
+A,ErC10,reaches,0.2409,0.8380,0.6399
+C,ErC10,reaches,0.1432,0.8873,0.4502
+D,ErC10,reaches,0.1620,0.8833,0.5063
+B2,ErC10,reaches,0.5634,0.8540,1.3115
+B3,ErC10,reaches,0.2260,0.6793,0.6472
+B1,ErC10,reaches,0.1939,0.7587,0.5836
+E,ErC10,reaches,0.1262,0.9193,0.4110
+F,ErC10,reaches,0.5459,0.6927,1.6560
+A,ErC10,stops short,0.0799,0.9370,0.3872
+C,ErC10,stops short,0.0679,0.9369,0.3635
+D,ErC10,stops short,0.0705,0.9430,0.3678
+B2,ErC10,stops short,0.1337,0.8617,0.5200
+B3,ErC10,stops short,0.0956,0.8853,0.4225
+B1,ErC10,stops short,0.0602,0.9377,0.3452
+E,ErC10,stops short,0.1029,0.9037,0.4769
+F,ErC10,stops short,0.2692,0.8430,0.9872
+A,ErC50,reaches,0.0057,0.9293,0.3814
+C,ErC50,reaches,-0.0025,0.8447,0.4601
+D,ErC50,reaches,-0.0172,0.8500,0.4757
+B2,ErC50,reaches,-0.0950,0.9700,0.6302
+B3,ErC50,reaches,-0.0652,0.6167,0.5261
+B1,ErC50,reaches,-0.0492,0.7053,0.5206
+E,ErC50,reaches,-0.0869,0.6407,0.5911
+F,ErC50,reaches,-0.0164,0.7700,1.1113
+A,ErC50,stops short,-0.0457,0.7500,0.5156
+C,ErC50,stops short,-0.0368,0.7853,0.4994
+D,ErC50,stops short,-0.0391,0.7910,0.5132
+B2,ErC50,stops short,-0.0745,0.6163,0.6355
+B3,ErC50,stops short,-0.0534,0.7033,0.5503
+B1,ErC50,stops short,-0.0303,0.8140,0.4951
+E,ErC50,stops short,-0.1040,0.5493,0.7744
+F,ErC50,stops short,-0.0488,0.7373,0.6874
 ")
 ```
 
@@ -1026,20 +1024,20 @@ Table: Relative bias and 95% interval coverage for ErC50, averaged over the thre
 
 |Approach | bias (reaches)| bias (stops short)| coverage (reaches)| coverage (stops short)|
 |:--------|--------------:|------------------:|------------------:|----------------------:|
-|A        |          0.007|             -0.042|              0.915|                  0.767|
-|C        |         -0.001|             -0.033|              0.829|                  0.794|
-|D        |         -0.016|             -0.035|              0.853|                  0.801|
-|B2       |         -0.093|             -0.070|              0.967|                  0.644|
-|B3       |         -0.064|             -0.050|              0.608|                  0.720|
-|B1       |         -0.048|             -0.027|              0.703|                  0.820|
-|E        |         -0.084|             -0.100|              0.640|                  0.583|
-|F        |         -0.020|             -0.044|              0.762|                  0.751|
+|A        |          0.006|             -0.046|              0.929|                  0.750|
+|C        |         -0.002|             -0.037|              0.845|                  0.785|
+|D        |         -0.017|             -0.039|              0.850|                  0.791|
+|B2       |         -0.095|             -0.074|              0.970|                  0.616|
+|B3       |         -0.065|             -0.053|              0.617|                  0.703|
+|B1       |         -0.049|             -0.030|              0.705|                  0.814|
+|E        |         -0.087|             -0.104|              0.641|                  0.549|
+|F        |         -0.016|             -0.049|              0.770|                  0.737|
 
 
 
 In the *stops short* column six of the eight approaches are within about four
 percentage points of each other and B1 has the smallest bias of any; only E, at
--10.0%, stands outside that band. It would be a mistake
+-10.4%, stands outside that band. It would be a mistake
 to read that as flooring helping. What it shows is that the intact analysis is
 itself carrying a bias, of about -4%, from an asymptote the design never
 measured, and that flooring happens to offset it. Averaging the two regimes
@@ -1054,27 +1052,27 @@ are at or below zero growth — none of this applies to your data.
 Within the reaching regime the ordering is consistent. Relative to a true value,
 the intact analysis (A) and left-censoring (C) are unbiased to within one per
 cent for ErC50; truncation (D) is close behind; and the approaches that impose
-the zero boundary deliberately are biased low by 5 to 9 per cent, in the
+the zero boundary deliberately are biased low by 5 to 10 per cent, in the
 direction of making the substance appear more toxic than it is. The two
-approaches where the *family* imposes the boundary are E at -8.4%, in among the
-worst of the deliberate ones, and F at -2.0%.
+approaches where the *family* imposes the boundary are E at -8.7%, worse than any
+of the deliberate ones bar B2, and F at -1.6%.
 
-**F's -2.0% must not be read as accuracy.** It is a mean over three `delta`
-levels of a quantity that changes sign across them, and its RMSE is 1.07 —
-two and a half times arm A's 0.40 and the largest of any approach. An estimate
-that is 13% high in one scenario and 13% low in another averages to something
+**F's -1.6% must not be read as accuracy.** It is a mean over three `delta`
+levels of a quantity that changes sign across them, and its RMSE is 1.11 —
+nearly three times arm A's 0.38 and the largest of any approach. An estimate
+that is 14% high in one scenario and 13% low in another averages to something
 respectable while being wrong in both.
 
 The bias also deepens as the true lower asymptote gets further below zero. Across
-`delta` = 2, 4 and 8, B1 moves from -2.5% to -5.5% to -6.3%, B3 from -4.1% to
--7.4% to -7.6%, B2 from -8.2% to -10.0% to -9.8%, and E from -5.2% to -10.3% to
--9.7%, while A and C stay inside ±3.6% with no trend. This is the mechanism
+`delta` = 2, 4 and 8, B1 moves from -2.8% to -5.6% to -6.3%, B3 from -4.3% to
+-7.6% to -7.6%, B2 from -8.5% to -10.2% to -9.9%, and E from -5.6% to -10.6% to
+-9.9%, while A and C stay inside ±3.4% with no trend. This is the mechanism
 working as expected: the further the data descend below the boundary, the more
 the boundary distorts. F has the steepest gradient of all and is the only
-approach that crosses zero on the way: **+13.0%, then -5.6%, then -13.4%**.
+approach that crosses zero on the way: **+14.0%, then -5.6%, then -13.4%**.
 
 ErC10 behaves differently and needs care. At `R` = 2.3 every approach is biased
-*high* on ErC10, by between 14% and 57%, and the intact analysis is sixth of
+*high* on ErC10, by between 13% and 56%, and the intact analysis is sixth of
 eight. That is not a reversal of the ordering; it is a shared estimation
 difficulty swamping the differences between approaches. ErC10 requires a 10%
 decline from the control to be resolved against the residual scatter, and at a
@@ -1093,70 +1091,70 @@ more precise. Model misspecification does not.
 ``` r
 precision <- read.csv(text = "
 arm,estimate,R,cv,rel_bias,coverage
-A,ErC10,2.3,9.6,0.1903,0.875
-A,ErC10,3.3,6.7,0.1196,0.917
-A,ErC10,17,2.8,0.0339,0.954
-A,ErC10,73,1.9,0.0140,0.979
-C,ErC10,2.3,9.6,0.1105,0.904
-C,ErC10,3.3,6.7,0.0707,0.904
-C,ErC10,17,2.8,0.0243,0.912
-C,ErC10,73,1.9,0.0104,0.950
-D,ErC10,2.3,9.6,0.1356,0.879
-D,ErC10,3.3,6.7,0.0805,0.900
-D,ErC10,17,2.8,0.0247,0.904
-D,ErC10,73,1.9,0.0100,0.933
-B2,ErC10,2.3,9.6,0.5467,0.863
-B2,ErC10,3.3,6.7,0.5204,0.875
-B2,ErC10,17,2.8,0.4995,0.971
-B2,ErC10,73,1.9,0.4962,0.996
-B3,ErC10,2.3,9.6,0.2255,0.692
-B3,ErC10,3.3,6.7,0.2077,0.537
-B3,ErC10,17,2.8,0.1625,0.042
-B3,ErC10,73,1.9,0.1503,0.000
-B1,ErC10,2.3,9.6,0.1787,0.767
-B1,ErC10,3.3,6.7,0.1586,0.704
-B1,ErC10,17,2.8,0.1328,0.179
-B1,ErC10,73,1.9,0.1319,0.029
-E,ErC10,2.3,9.6,0.1164,0.900
-E,ErC10,3.3,6.7,0.1299,0.854
-E,ErC10,17,2.8,0.1267,0.404
-E,ErC10,73,1.9,0.1248,0.133
-F,ErC10,2.3,9.6,0.4967,0.662
-F,ErC10,3.3,6.7,0.4062,0.633
-F,ErC10,17,2.8,0.2282,0.925
-F,ErC10,73,1.9,0.1581,0.983
-A,ErC50,2.3,9.6,-0.0028,0.938
-A,ErC50,3.3,6.7,-0.0078,0.925
-A,ErC50,17,2.8,-0.0055,0.883
-A,ErC50,73,1.9,-0.0036,0.871
-C,ErC50,2.3,9.6,-0.0059,0.833
-C,ErC50,3.3,6.7,-0.0136,0.825
-C,ErC50,17,2.8,-0.0129,0.787
-C,ErC50,73,1.9,-0.0095,0.775
-D,ErC50,2.3,9.6,-0.0200,0.842
-D,ErC50,3.3,6.7,-0.0199,0.825
-D,ErC50,17,2.8,-0.0131,0.796
-D,ErC50,73,1.9,-0.0095,0.800
-B2,ErC50,2.3,9.6,-0.1003,0.967
-B2,ErC50,3.3,6.7,-0.1061,0.992
-B2,ErC50,17,2.8,-0.1122,1.000
-B2,ErC50,73,1.9,-0.1133,1.000
-B3,ErC50,2.3,9.6,-0.0745,0.592
-B3,ErC50,3.3,6.7,-0.0878,0.333
-B3,ErC50,17,2.8,-0.1001,0.004
-B3,ErC50,73,1.9,-0.1018,0.000
-B1,ErC50,2.3,9.6,-0.0551,0.696
-B1,ErC50,3.3,6.7,-0.0697,0.492
-B1,ErC50,17,2.8,-0.0812,0.033
-B1,ErC50,73,1.9,-0.0818,0.000
-E,ErC50,2.3,9.6,-0.1034,0.596
-E,ErC50,3.3,6.7,-0.1317,0.225
-E,ErC50,17,2.8,-0.1497,0.000
+A,ErC10,2.3,9.6,0.1906,0.894
+A,ErC10,3.3,6.7,0.1207,0.918
+A,ErC10,17,2.8,0.0345,0.964
+A,ErC10,73,1.9,0.0145,0.982
+C,ErC10,2.3,9.6,0.1044,0.920
+C,ErC10,3.3,6.7,0.0675,0.926
+C,ErC10,17,2.8,0.0234,0.930
+C,ErC10,73,1.9,0.0096,0.958
+D,ErC10,2.3,9.6,0.1257,0.894
+D,ErC10,3.3,6.7,0.0758,0.916
+D,ErC10,17,2.8,0.0238,0.928
+D,ErC10,73,1.9,0.0096,0.950
+B2,ErC10,2.3,9.6,0.5396,0.896
+B2,ErC10,3.3,6.7,0.5154,0.906
+B2,ErC10,17,2.8,0.4979,0.980
+B2,ErC10,73,1.9,0.4954,0.996
+B3,ErC10,2.3,9.6,0.2137,0.698
+B3,ErC10,3.3,6.7,0.1990,0.546
+B3,ErC10,17,2.8,0.1567,0.034
+B3,ErC10,73,1.9,0.1491,0.000
+B1,ErC10,2.3,9.6,0.1683,0.782
+B1,ErC10,3.3,6.7,0.1502,0.718
+B1,ErC10,17,2.8,0.1310,0.180
+B1,ErC10,73,1.9,0.1310,0.018
+E,ErC10,2.3,9.6,0.1074,0.928
+E,ErC10,3.3,6.7,0.1246,0.874
+E,ErC10,17,2.8,0.1264,0.410
+E,ErC10,73,1.9,0.1242,0.126
+F,ErC10,2.3,9.6,0.4926,0.678
+F,ErC10,3.3,6.7,0.3946,0.668
+F,ErC10,17,2.8,0.2383,0.916
+F,ErC10,73,1.9,0.1574,0.988
+A,ErC50,2.3,9.6,-0.0040,0.948
+A,ErC50,3.3,6.7,-0.0087,0.938
+A,ErC50,17,2.8,-0.0060,0.900
+A,ErC50,73,1.9,-0.0038,0.888
+C,ErC50,2.3,9.6,-0.0066,0.850
+C,ErC50,3.3,6.7,-0.0145,0.824
+C,ErC50,17,2.8,-0.0130,0.790
+C,ErC50,73,1.9,-0.0095,0.768
+D,ErC50,2.3,9.6,-0.0205,0.840
+D,ErC50,3.3,6.7,-0.0202,0.818
+D,ErC50,17,2.8,-0.0132,0.794
+D,ErC50,73,1.9,-0.0095,0.794
+B2,ErC50,2.3,9.6,-0.1018,0.970
+B2,ErC50,3.3,6.7,-0.1075,0.994
+B2,ErC50,17,2.8,-0.1129,1.000
+B2,ErC50,73,1.9,-0.1135,1.000
+B3,ErC50,2.3,9.6,-0.0758,0.598
+B3,ErC50,3.3,6.7,-0.0888,0.338
+B3,ErC50,17,2.8,-0.1007,0.004
+B3,ErC50,73,1.9,-0.1019,0.000
+B1,ErC50,2.3,9.6,-0.0562,0.708
+B1,ErC50,3.3,6.7,-0.0704,0.512
+B1,ErC50,17,2.8,-0.0814,0.022
+B1,ErC50,73,1.9,-0.0817,0.002
+E,ErC50,2.3,9.6,-0.1059,0.584
+E,ErC50,3.3,6.7,-0.1321,0.236
+E,ErC50,17,2.8,-0.1504,0.000
 E,ErC50,73,1.9,-0.1482,0.000
-F,ErC50,2.3,9.6,-0.0557,0.887
-F,ErC50,3.3,6.7,-0.1045,0.796
-F,ErC50,17,2.8,-0.1495,0.358
-F,ErC50,73,1.9,-0.1564,0.129
+F,ErC50,2.3,9.6,-0.0556,0.892
+F,ErC50,3.3,6.7,-0.1059,0.800
+F,ErC50,17,2.8,-0.1475,0.374
+F,ErC50,73,1.9,-0.1562,0.116
 ")
 precision$handling <- factor(arm_handling[precision$arm],
                              levels = handling_levels)
@@ -1183,28 +1181,28 @@ ggplot(precision, aes(x = cv_f, y = 100 * rel_bias, colour = arm, group = arm)) 
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-precision-bias-1.png" alt="Relative bias in the estimated ErC10 and ErC50 against the control coefficient of variation, which decreases to the right as the experiment becomes more precise. Each point summarises 240 simulated datasets. Approaches that retain the measurement converge on zero bias; approaches that impose the zero boundary converge on a non-zero value." width="95%" />
-<p class="caption">Relative bias in the estimated ErC10 and ErC50 against the control coefficient of variation, which decreases to the right as the experiment becomes more precise. Each point summarises 240 simulated datasets. Approaches that retain the measurement converge on zero bias; approaches that impose the zero boundary converge on a non-zero value.</p>
+<img src="vignette-fig-precision-bias-1.png" alt="Relative bias in the estimated ErC10 and ErC50 against the control coefficient of variation, which decreases to the right as the experiment becomes more precise. Each point summarises 500 simulated datasets. Approaches that retain the measurement converge on zero bias; approaches that impose the zero boundary converge on a non-zero value." width="95%" />
+<p class="caption">Relative bias in the estimated ErC10 and ErC50 against the control coefficient of variation, which decreases to the right as the experiment becomes more precise. Each point summarises 500 simulated datasets. Approaches that retain the measurement converge on zero bias; approaches that impose the zero boundary converge on a non-zero value.</p>
 </div>
 
 The left-hand panels show every retained-measurement approach converging on the
-true value: arm A's ErC10 bias falls from +19.0% to +1.4% and arm C's from
-+11.1% to +1.0%, and both ErC50 biases sit within one per cent throughout. The
+true value: arm A's ErC10 bias falls from +19.1% to +1.5% and arm C's from
++10.4% to +1.0%, and both ErC50 biases sit within one per cent throughout. The
 middle panels show the three boundary-imposing approaches levelling off: B1 at
-+13.2% and B2 at +49.6% on ErC10, and at -8.2% and -11.3% on ErC50. A
++13.1% and B2 at +49.5% on ErC10, and at -8.2% and -11.4% on ErC50. A
 discrepancy that does not shrink as the noise shrinks is not estimation error.
 
 The right-hand panels are the same story told by the families, and they end
 worse than either group. E's ErC50 bias *grows* as the experiment improves, from
--10.3% to **-14.8%**, and F's from -5.6% to **-15.6%** — the two largest ErC50
-biases in the study at the highest precision tested, larger than B2's -11.3%.
+-10.6% to **-14.8%**, and F's from -5.6% to **-15.6%** — the two largest ErC50
+biases in the study at the highest precision tested, larger than B2's -11.4%.
 Nothing about the analysis looks wrong while this happens: E is the best-behaved
 approach in the set by sampler diagnostics.
 
 F's ErC10 is the one place where a family-floored approach improves with
-precision, falling from +49.7% to +15.8%, and it is worth being explicit that
+precision, falling from +49.3% to +15.7%, and it is worth being explicit that
 this is not convergence on the truth: it flattens out near +16%, an order of
-magnitude away from arm A's +1.4%.
+magnitude away from arm A's +1.5%.
 
 This also resolves the ErC10 puzzle. Once the measurement is precise enough for
 a 10% decline to be resolved, the ErC10 ordering is the same as the ErC50
@@ -1225,7 +1223,7 @@ zero. That a Beta on a proportion behaves like an explicitly floored Gaussian is
 not a surprise. That it is the *default* thing to do with these data, and that it
 performs worse than doing the same thing openly, is the point.
 
-F is the one that needs explaining, because its bias changes sign: +13.0% at
+F is the one that needs explaining, because its bias changes sign: +14.0% at
 `delta` = 2, -5.6% at `delta` = 4 and -13.4% at `delta` = 8. A sign change is not
 something a fixed misspecification produces, so it is worth knowing where in the
 model it comes from. F and B3 see *exactly* the same floored data and both hold
@@ -1287,8 +1285,8 @@ ggplot(precision, aes(x = cv_f, y = coverage, colour = arm, group = arm)) +
 </div>
 
 At the highest precision tested, B1, B3 and E contained the true ErC50 in
-**none** of the 240 simulated datasets, and B3 and E likewise miss almost every
-ErC10 interval (0.000 and 0.133). F is not far behind at 0.129 on ErC50. The
+**none** of the 500 simulated datasets, and B3 and E likewise miss almost every
+ErC10 interval (0.000 and 0.126). F is not far behind at 0.116 on ErC50. The
 practical reading is uncomfortable: a laboratory that improves its technique,
 adds replicates and reduces its control variability will, if it floors its
 negative values — whether by substitution or by choosing a distribution that
@@ -1296,8 +1294,8 @@ cannot represent them — produce an analysis that is more confident and no less
 wrong.
 
 B2 fails in the opposite direction and this is easy to misread. Its coverage
-reaches 1.000 — every interval contained the truth — but its RMSE is 0.62
-against arm A's 0.40 and its point estimate is 11% low. The intervals are wide
+reaches 1.000 — every interval contained the truth — but its RMSE is 0.63
+against arm A's 0.38 and its point estimate is 11% low. The intervals are wide
 enough to contain almost anything. **Coverage should never be reported without a
 measure of interval width**, or the two worst-performing approaches here would be
 scored as the two best.
@@ -1333,38 +1331,38 @@ definition.
 ``` r
 nsec_precision <- read.csv(text = "
 arm,cv,nsec,ratio_to_A
-A,9.6,2.177,1.000
-A,6.7,1.900,1.000
-A,2.8,1.528,1.000
-A,1.9,1.432,1.000
-C,9.6,1.923,0.889
-C,6.7,1.745,0.921
-C,2.8,1.503,0.984
-C,1.9,1.424,0.996
-D,9.6,1.998,0.924
-D,6.7,1.778,0.937
-D,2.8,1.505,0.985
-D,1.9,1.424,0.998
-B2,9.6,3.199,1.474
-B2,6.7,3.108,1.637
-B2,2.8,3.047,2.003
-B2,1.9,3.037,2.132
-B3,9.6,2.251,1.029
-B3,6.7,2.175,1.128
-B3,2.8,2.026,1.317
-B3,1.9,1.986,1.393
-B1,9.6,2.131,0.972
-B1,6.7,2.042,1.060
-B1,2.8,1.925,1.264
-B1,1.9,1.912,1.341
-E,9.6,2.066,0.950
-E,6.7,2.050,1.077
-E,2.8,1.978,1.297
-E,1.9,1.954,1.368
-F,9.6,3.275,1.450
-F,6.7,3.042,1.523
-F,2.8,2.600,1.681
-F,1.9,2.437,1.687
+A,9.6,2.182,1.000
+A,6.7,1.907,1.000
+A,2.8,1.532,1.000
+A,1.9,1.434,1.000
+C,9.6,1.909,0.882
+C,6.7,1.739,0.915
+C,2.8,1.501,0.982
+C,1.9,1.423,0.993
+D,9.6,1.975,0.911
+D,6.7,1.768,0.929
+D,2.8,1.502,0.983
+D,1.9,1.423,0.995
+B2,9.6,3.195,1.462
+B2,6.7,3.102,1.630
+B2,2.8,3.044,1.998
+B2,1.9,3.036,2.125
+B3,9.6,2.225,1.014
+B3,6.7,2.155,1.119
+B3,2.8,2.012,1.313
+B3,1.9,1.983,1.389
+B1,9.6,2.107,0.959
+B1,6.7,2.022,1.053
+B1,2.8,1.921,1.260
+B1,1.9,1.909,1.337
+E,9.6,2.047,0.945
+E,6.7,2.038,1.064
+E,2.8,1.977,1.295
+E,1.9,1.952,1.367
+F,9.6,3.270,1.426
+F,6.7,3.014,1.514
+F,2.8,2.622,1.682
+F,1.9,2.435,1.687
 ")
 nsec_precision$handling <- factor(arm_handling[nsec_precision$arm],
                                   levels = handling_levels)
@@ -1398,20 +1396,20 @@ ggplot(nsec_precision, aes(x = cv_f, y = nsec, colour = arm, group = arm)) +
 ### Results of the precision sweep
 
 The three approaches that retain the measurement converge cleanly: A, C and D
-fall from 2.18, 1.92 and 2.00 to 1.43, 1.42 and 1.42 as the control coefficient
+fall from 2.18, 1.91 and 1.98 to 1.43, 1.42 and 1.42 as the control coefficient
 of variation drops from 9.6% to 1.9%, all heading toward 1.3, with the residual
 gap accounted for by the remaining noise.
 
 The three that impose the zero boundary level off well above it — B1 at 1.91,
-B3 at 1.99 and B2 at 3.04 — corresponding to overestimates of the true `nec` by
+B3 at 1.98 and B2 at 3.04 — corresponding to overestimates of the true `nec` by
 **47%, 53% and 134%**. The two where the family imposes it do the same, E at 1.95
 and F at 2.44, overestimating by **50% and 87%**. These are not estimation error
 and they do not improve with a better experiment.
 
 F is the one approach whose NSEC is still falling steeply at the precise end of
-the sweep, from 3.28 to 2.44, and it is worth saying plainly that this is not
+the sweep, from 3.27 to 2.44, and it is worth saying plainly that this is not
 convergence: it is still 87% high at the finest precision tested, and its ratio
-to the intact analysis has *risen* throughout, from 1.45 to 1.69. What is falling
+to the intact analysis has *risen* throughout, from 1.43 to 1.69. What is falling
 is the part of the overestimate that belongs to the metric's definition and is
 shared with arm A; the part that belongs to the approach is growing.
 
@@ -1432,8 +1430,8 @@ outcome in this study.
 ### Direction of the B1 contrast
 
 The contrast between B1 and the intact analysis changes sign across the sweep:
-B1 sits 3% *below* A in the noisiest scenario and 34% *above* it in the most
-precise one. E does the same thing, 5% below and 37% above. Both directions are consequences of the two mechanisms described in
+B1 sits 4% *below* A in the noisiest scenario and 34% *above* it in the most
+precise one. E does the same thing, 6% below and 37% above. Both directions are consequences of the two mechanisms described in
 the previous section acting on different scales.
 
 At high noise the residual scale dominates the NSEC, because the reference
@@ -1450,7 +1448,7 @@ is above A at every level as well.
 
 This is why the full set was fitted rather than the intact analysis
 against B3 alone. B3 combines a compressing and an inflating mechanism, its
-contrast with A is close to neutral at high noise (a ratio of 1.03), and a study
+contrast with A is close to neutral at high noise (a ratio of 1.01), and a study
 that compared only those two at a single realistic noise level could easily have
 concluded that nothing was wrong.
 
@@ -1719,7 +1717,7 @@ one per cent on ErC50 and converges on the truth for every endpoint.
 
 **If the negative values were never recorded, declare them as censored rather
 than substituting a value.** Left-censoring recovers essentially all of what
-flooring loses — an ErC50 bias of -0.1% against the intact analysis's +0.7% —
+flooring loses — an ErC50 bias of -0.3% against the intact analysis's +0.6% —
 and it is the only option when the underlying measurements are gone. Be aware of
 its limitation: where the lower asymptote is *entirely* below the censoring
 bound, the likelihood is flat in `bot` and its posterior is the prior's. See the
@@ -1730,8 +1728,9 @@ This is the most common response to negative growth rates and it is the
 worst-performing option tested. A Beta on the scaled response (E) and a Gamma on
 the unscaled one (F) both floor the data by construction, and at the highest
 precision tested they carry the two largest ErC50 biases in the study, -14.8%
-and -15.6%, against -11.3% for the worst of the deliberate conventions. Neither
-gives any sign of trouble: E produced no divergent transitions in 2,880 fits.
+and -15.6%, against -11.4% for the worst of the deliberate conventions. Neither
+gives any sign of trouble: across all 6,000 of its fits, E produced not one
+divergent transition.
 The choice is usually made for a reason that has nothing to do with the negative
 values — the response looks like a proportion, or has already been scaled to one
 — which is exactly what makes it hard to catch.
@@ -1754,9 +1753,9 @@ or more they are the size reported above.
 perfect coverage with an 11%-low point estimate and enormous intervals; B1, B3
 and E achieve narrow intervals with zero coverage. Either statistic on its own
 identifies the wrong approach as the best one. The same caution applies to a mean
-bias taken across scenarios: F averages -2.0% on ErC50 in the reaching regime by
-combining +13.0% at `delta` = 2 with -13.4% at `delta` = 8, and its RMSE, 1.07
-against arm A's 0.40, is what gives that away.
+bias taken across scenarios: F averages -1.6% on ErC50 in the reaching regime by
+combining +14.0% at `delta` = 2 with -13.4% at `delta` = 8, and its RMSE, 1.11
+against arm A's 0.38, is what gives that away.
 
 **A practical note on initial values.** `bayesnec` draws initial values by
 sampling the priors and rejecting draws whose predicted curve falls outside the
@@ -1770,7 +1769,7 @@ mechanism, and it is a symptom of the data preparation rather than of the model.
 ## Limitations
 
 **Neither recommended approach reaches nominal coverage on ErC50.** In the
-reaching regime the intact analysis holds 0.87–0.94 and left-censoring 0.78–0.83
+reaching regime the intact analysis holds 0.89–0.95 and left-censoring 0.77–0.85
 against a nominal 0.95. Both are far better than the alternatives, but neither is
 perfectly calibrated, and the shortfall is at least partly attributable to the
 next point.
