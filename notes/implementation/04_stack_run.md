@@ -173,3 +173,14 @@ Wake on the long side and let CI and the test suite run between wakes.
 **Do not start an item you cannot finish** in the remaining budget — better to
 end a wake having logged the state cleanly than to leave a half-built branch
 load-bearing for the next one.
+
+## Operational note: do not nest background launches
+
+Launching a long job with `nohup ... &` from *inside* an already-backgrounded
+task does not work — when the outer task's shell exits, the inner job is reaped
+with it. This cost one wake cycle on #207: a chained "wait for the fit, then
+start the suite" command reported success, but the suite never ran and left no
+log.
+
+Launch long jobs **directly**, one per tool call, and use a separate
+`until`-loop task to wait on them. Waiting and launching are two calls, not one.
