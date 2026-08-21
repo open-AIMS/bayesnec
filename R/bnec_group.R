@@ -26,8 +26,7 @@
 #'
 #' \bold{The family is chosen once}
 #'
-#' \code{\link{set_distribution}} applied to each subset could select different
-#' families at different levels, which would make the levels incomparable ---
+#' The family chosen from each subset separately could differ between levels, which would make the levels incomparable ---
 #' their \code{elpd} contributions would not be on the same scale and the
 #' crossed weights would be meaningless. So it is chosen from the whole response
 #' and passed down.

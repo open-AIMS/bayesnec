@@ -209,3 +209,22 @@ running perfectly well.
 
 Cross-check with the log size before concluding anything: a complete run is
 ~34.7 KB. A log that is short *and* growing is a slow run, not a dead one.
+
+## Check Rd links before pushing roxygen changes
+
+`devtools::test()` never builds the Rd files, so a broken `\link{}` target is
+invisible locally and turns **every** CI platform red with
+`checking Rd cross-references ... WARNING`. It cost two round trips in this run:
+
+- `1.011 [0.71, 1.44]` became `\link{0.71, 1.44}` --- square brackets around a
+  numeric interval are markdown link syntax to roxygen. Spell intervals out.
+- `\link{set_distribution}` --- **not exported**, so the link does not resolve.
+  The same mistake was caught earlier with `check_normalisation` and then
+  repeated, which is why there is now a script rather than a note.
+
+Run `Rscript notes/scripts/check_rd_links.R` after `document()` and before
+pushing. It exits non-zero and names the file and target.
+
+Not every internal helper is exported; `\link{}` only works for exported
+functions, aliases in `man/`, and base packages. For anything else use
+`\code{}` without the link.
