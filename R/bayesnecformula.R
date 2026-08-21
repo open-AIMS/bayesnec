@@ -472,10 +472,18 @@ check_formula.bayesnecformula <- function(formula, data,
   split_lhs_calls <- strsplit(lhs_calls, " \\| | impossiblestr ")[[1]]
   no_resp <- split_lhs_calls[-1]
   if (length(no_resp) > 0) {
-    if (sum(grepl("trials\\(|weights\\(|cens\\(", no_resp)) < length(no_resp)) {
-      message("You have specified brms special aterms other than trials,",
-              " weights and cens. bnec may yield unexpected model fits,",
-              " proceed at your own risk. See ?bayesnecformula.")
+    # An error rather than a message, per RF on #136. A silent pass-through cost
+    # more than it saved: rate() was neither validated nor refused, so it fitted
+    # and then failed in post-processing with a brms error about a missing
+    # variable, tens of seconds after the message had scrolled past. An aterm
+    # bayesnec has not validated cannot be assumed harmless.
+    validated <- "trials\\(|weights\\(|cens\\(|rate\\("
+    unvalidated <- no_resp[!grepl(validated, no_resp)]
+    if (length(unvalidated) > 0) {
+      stop("You have specified brms special aterms bayesnec does not support: ",
+           paste0(unvalidated, collapse = ", "),
+           ". The supported aterms are trials, weights, cens and rate.",
+           " See ?bayesnecformula.", call. = FALSE)
     }
     cens_calls <- grep("cens\\(", no_resp, value = TRUE)
     if (length(cens_calls) > 0 &&
@@ -532,6 +540,8 @@ simplify_formula <- function(formula, data, ...) {
     t_var <- NA
     c_call <- 1
     c_vars <- character(0)
+    ra_call <- 1
+    ra_var <- character(0)
   } else if (length(formula_lhs) == 3) {
     y_call <- formula_lhs[[2]]
     split_terms <- split_calls(formula_lhs[[3]])
@@ -539,6 +549,8 @@ simplify_formula <- function(formula, data, ...) {
     t_var <- split_terms$t_var
     c_call <- split_terms$c_call
     c_vars <- split_terms$c_vars
+    ra_call <- split_terms$ra_call
+    ra_var <- split_terms$ra_var
   }
   y_var <- all.vars(y_call)
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
@@ -563,19 +575,25 @@ simplify_formula <- function(formula, data, ...) {
   } else {
     r_call <- str2lang(paste0(r_vars, collapse = " + "))
   }
-  short_form <- substitute(a ~ b + c + d + e, list(a = y_call, b = x_call,
-                                                   c = t_call, d = c_call,
-                                                   e = r_call))
+  # The rate slot goes between censoring and the grouping terms, because
+  # pop_vars below lists it there and retrieve_var() finds a variable by its
+  # POSITION in bnec_pop, then indexes the model frame with it. Term order here
+  # and name order there must stay in lockstep; the comment below says why.
+  short_form <- substitute(a ~ b + c + d + f + e, list(a = y_call, b = x_call,
+                                                       c = t_call, d = c_call,
+                                                       f = ra_call,
+                                                       e = r_call))
   # Names are attached here rather than assigned positionally downstream: the
   # trials slot may be absent while the censoring slot is present, so
   # "the third element is trials_var" no longer holds. The order of the terms in
   # short_form must stay in step with this vector, because retrieve_var() finds
   # a variable by its position in bnec_pop and indexes the model frame with it.
-  pop_vars <- c(y_var, x_var, t_var, c_vars)
+  pop_vars <- c(y_var, x_var, t_var, c_vars, ra_var)
   names(pop_vars) <- c(rep("y_var", length(y_var)),
                        rep("x_var", length(x_var)),
                        rep("trials_var", length(t_var)),
-                       names(c_vars))
+                       names(c_vars),
+                       rep("rate_var", length(ra_var)))
   list(formula = as.formula(short_form), pop_vars = pop_vars,
        group_vars = r_vars)
 }
@@ -737,6 +755,8 @@ split_calls <- function(formula_part) {
   t_var <- NA
   c_call <- 1
   c_vars <- character(0)
+  ra_call <- 1
+  ra_var <- character(0)
   if (length(formula_part) >= 2) {
     tmp_ <- list()
     n <- 0
@@ -779,8 +799,26 @@ split_calls <- function(formula_part) {
         c_call <- str2lang(paste0(c_vars, collapse = " + "))
       }
     }
+    if (any(grepl("rate(", tmp_, fixed = TRUE))) {
+      # Carried as a plain column, following the cens() precedent rather than
+      # the trials() one. trials() is kept as the call because brms wants
+      # `trials(n)` on the response and clean_aterms() strips it back out again;
+      # rate() needs neither, so keeping the bare column name avoids another
+      # clean_aterms() special case and lets find_transformations() match it
+      # unaided. See #136.
+      ra_call_raw <- tmp_[[grep("rate(", tmp_, fixed = TRUE)[1]]]
+      ra_var <- all.vars(ra_call_raw)
+      if (length(ra_var) > 0) {
+        ra_var <- ra_var[1]
+        names(ra_var) <- "rate_var"
+        ra_call <- str2lang(ra_var)
+      } else {
+        ra_var <- character(0)
+      }
+    }
   }
-  list(t_call = t_call, t_var = t_var, c_call = c_call, c_vars = c_vars)
+  list(t_call = t_call, t_var = t_var, c_call = c_call, c_vars = c_vars,
+       ra_call = ra_call, ra_var = ra_var)
 }
 
 #' @noRd
