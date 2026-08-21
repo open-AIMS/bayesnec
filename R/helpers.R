@@ -771,19 +771,20 @@ add_brm_defaults <- function(
   if (!("warmup" %in% names(brm_args))) {
     brm_args$warmup <- floor(brm_args$iter / 5) * 4
   }
+  default_priors <- define_prior(
+    model,
+    family,
+    predictor,
+    response,
+    prior_type = prior_type,
+    model_survival = model_survival,
+    disp_spec = disp_spec
+  )
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
   if (inherits(priors, "try-error")) {
-    brm_args$prior <- define_prior(
-      model,
-      family,
-      predictor,
-      response,
-      prior_type = prior_type,
-      model_survival = model_survival,
-      disp_spec = disp_spec
-    )
+    brm_args$prior <- default_priors
   } else {
-    brm_args$prior <- priors
+    brm_args$prior <- fill_missing_priors(priors, default_priors, model)
   }
   if (!("init" %in% names(brm_args)) || skip_check) {
     msg_tag <- family$family
@@ -1095,4 +1096,67 @@ newdata_eval_fitted <- function(
 #' @export
 step <- function(x) {
   as.numeric(x > 0)
+}
+
+#' Fill a user-supplied prior set from the bayesnec defaults
+#'
+#' \code{validate_priors()} checks that a supplied prior is a
+#' \code{brmsprior} for the right model, and nothing more, so a set that is
+#' merely *incomplete* was used as though it were complete. Every parameter the
+#' user did not mention then fell through to \pkg{brms}, which means a flat
+#' prior.
+#'
+#' That is the opposite of what bayesnec is for. The package generates weakly
+#' informative priors deliberately, because flat priors are rarely useful in
+#' non-linear modelling, and the case this bites hardest is the one
+#' \code{define_disp_prior()} exists to prevent: drop the \code{c0} and slope
+#' rows a route B \code{disp()} term adds and the fit runs on flat priors for
+#' parameters its own documentation describes as "near-perfectly confounded".
+#' Nothing warned.
+#'
+#' Editing a returned prior set and handing it back is exactly the workflow
+#' \code{\link{get_priors}} invites, so this is easy to hit rather than
+#' exotic.
+#'
+#' Filling rather than erroring is the deliberate choice: an error would refuse
+#' the user's partial set and produce no fit at all, where filling gives them
+#' the model they asked for with the priors bayesnec would have chosen anyway.
+#' The warning names every parameter filled, so the result is never silent.
+#' See #207.
+#'
+#' @param priors A \code{\link[brms]{brmsprior}} supplied by the user.
+#' @param defaults A \code{\link[brms]{brmsprior}} from
+#' \code{define_prior()}.
+#' @param model A \code{\link[base]{character}} string naming the model.
+#'
+#' @return An object of class \code{\link[brms]{brmsprior}}.
+#'
+#' @noRd
+fill_missing_priors <- function(priors, defaults, model) {
+  if (is.null(defaults) || nrow(defaults) == 0) {
+    return(priors)
+  }
+  # Identity is class + nlpar + dpar. coef is not part of it: bayesnec's
+  # generated priors never set it, and a user row that does is a
+  # coefficient-level prior sitting alongside the parameter-level one rather
+  # than replacing it.
+  key <- function(p) paste(p$class, p$nlpar, p$dpar, sep = "\r")
+  missing <- !key(defaults) %in% key(priors)
+  if (!any(missing)) {
+    return(priors)
+  }
+  add <- defaults[missing, , drop = FALSE]
+  named <- add$nlpar
+  named[!nzchar(named)] <- add$class[!nzchar(named)]
+  warning("The prior supplied for model ", model, " has no entry for ",
+          paste0(named, collapse = ", "),
+          ". Using the bayesnec default for ",
+          if (length(named) > 1) "those parameters" else "that parameter",
+          " rather than leaving ",
+          if (length(named) > 1) "them" else "it",
+          " on a flat prior; see ?get_priors to inspect the full set.",
+          call. = FALSE)
+  out <- rbind(priors, add)
+  rownames(out) <- NULL
+  out
 }

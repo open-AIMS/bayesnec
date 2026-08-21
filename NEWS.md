@@ -1,5 +1,29 @@
 # bayesnec 2.1.4
 
+- `bnec()` now accepts a prior on the family's own dispersion parameter —
+  `sigma`, `shape` or `phi`. Supplying one previously failed in the
+  initial-value search, because it compared the prior's parameter names against
+  the *curve's* arguments as an exact set, so any row naming something the mean
+  curve does not have killed the call. There is now no way to regularise
+  dispersion where the data are sparse and the `brms` default is too vague, and
+  `get_priors()` could not report it either, so a fit's prior set was a complete
+  record of everything except dispersion. No initial value is generated for it:
+  Stan random-initialises any parameter absent from an init list. See #207.
+
+- A prior set that is missing parameters the model needs is now filled from the
+  `bayesnec` defaults, with a warning naming each one, instead of being accepted
+  as though it were complete. Previously the unmentioned parameters fell through
+  to `brms`, which means a **flat** prior — the opposite of what `bayesnec` is
+  for, since it generates weakly informative priors precisely because flat ones
+  are rarely useful in non-linear modelling. The case this bit hardest is the
+  one `define_disp_prior()` exists to prevent: drop the `c0` and slope rows a
+  route B `disp()` term adds and the fit ran on flat priors for parameters its
+  own documentation calls "near-perfectly confounded", with nothing to say so.
+  Editing a returned prior set and handing it back is exactly the workflow
+  `get_priors()` invites, so this was easy to hit. **This changes results**: a
+  fit that previously ran on flat priors for the parameters it did not mention
+  will now run on `bayesnec` priors and give different numbers. See #207.
+
 - `define_prior()` no longer collapses the `top` and `bot` priors when a large
   share of the response is exactly zero. The gamma rates for those parameters
   are set from quantiles of the response, and those quantiles are zero once

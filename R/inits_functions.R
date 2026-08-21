@@ -48,6 +48,18 @@ make_inits <- function(model, fct_args, priors, chains) {
             uniform = runif)
   priors <- blank_bounds_to_na(as.data.frame(priors))
   priors <- priors[priors$prior != "", ]
+  # Only the curve's own coefficients are the business of the initial-value
+  # search. A prior on the family's dispersion parameter -- sigma, shape, phi --
+  # carries class "sigma"/"shape"/"phi" rather than "b", describes no part of
+  # the mean curve, and previously made the name check below fail outright, so a
+  # user simply could not supply one. Dropping it here is the same move
+  # add_brm_defaults() already makes for the parameters a disp() variance
+  # function introduces, and it has the second effect the fix needs: no initial
+  # value is generated for the dispersion parameter, which is correct. Stan
+  # random-initialises any parameter absent from an init list, and bayesnec has
+  # never given sigma an init, so nothing downstream needs teaching. The prior
+  # itself still reaches brm(); only the init search ignores it. See #207.
+  priors <- priors[priors$class == "b", ]
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
     sep <- ifelse(priors$class[j] == "b", "_", "")

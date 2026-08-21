@@ -107,3 +107,69 @@ test_that("pull_draw_index prefers the stored index over rebuilding it", {
   expect_identical(bayesnec:::pull_draw_index(legacy, models, 100),
                    bayesnec:::weighted_draw_index(models, 100, stats, NULL))
 })
+
+# #207 part 2: validate_priors() accepted any brmsprior wholesale, so a set
+# missing rows was used as though it were complete and the unmentioned
+# parameters fell through to brms flat priors. bayesnec generates weakly
+# informative priors on purpose, so the gaps are filled from its own defaults
+# and the user is told which.
+
+fake_prior <- function(nlpar, class = "b", prior = "normal(0, 1)") {
+  data.frame(prior = prior, class = class, coef = "", group = "", resp = "",
+             dpar = "", nlpar = nlpar, lb = NA_character_, ub = NA_character_,
+             stringsAsFactors = FALSE)
+}
+
+test_that("fill_missing_priors fills gaps and names them", {
+  defaults <- do.call(rbind, lapply(c("top", "beta", "bot", "nec", "c0", "c1"),
+                                    fake_prior))
+  supplied <- defaults[!defaults$nlpar %in% c("c0", "c1"), ]
+  expect_warning(
+    out <- bayesnec:::fill_missing_priors(supplied, defaults, "nec4param"),
+    "no entry for c0, c1"
+  )
+  expect_setequal(out$nlpar, defaults$nlpar)
+  # the user's own rows must survive untouched
+  expect_identical(out[out$nlpar == "top", "prior"],
+                   supplied[supplied$nlpar == "top", "prior"])
+})
+
+test_that("a complete prior is returned unchanged and without a warning", {
+  defaults <- do.call(rbind, lapply(c("top", "beta", "bot", "nec"), fake_prior))
+  supplied <- defaults
+  supplied$prior <- "normal(9, 9)"
+  expect_silent(out <- bayesnec:::fill_missing_priors(supplied, defaults,
+                                                      "nec4param"))
+  expect_identical(out, supplied)
+})
+
+test_that("a user value overrides the default rather than being duplicated", {
+  # The whole point of supplying a prior. Matching is on class + nlpar + dpar,
+  # so a row the user set must replace the default, not sit beside it.
+  defaults <- do.call(rbind, lapply(c("top", "beta"), fake_prior))
+  supplied <- fake_prior("top", prior = "normal(100, 1)")
+  expect_warning(out <- bayesnec:::fill_missing_priors(supplied, defaults,
+                                                       "nec4param"),
+                 "no entry for beta")
+  expect_equal(sum(out$nlpar == "top"), 1)
+  expect_identical(out$prior[out$nlpar == "top"], "normal(100, 1)")
+})
+
+test_that("a dispersion row is not confused with a curve parameter", {
+  # class is part of the key, so a sigma row and a curve row with an empty
+  # nlpar must not collide.
+  defaults <- rbind(fake_prior("top"), fake_prior("", class = "sigma"))
+  supplied <- fake_prior("top")
+  expect_warning(out <- bayesnec:::fill_missing_priors(supplied, defaults,
+                                                       "nec4param"),
+                 "no entry for sigma")
+  expect_equal(nrow(out), 2)
+})
+
+test_that("empty defaults are a no-op", {
+  supplied <- fake_prior("top")
+  expect_silent(out <- bayesnec:::fill_missing_priors(supplied,
+                                                      supplied[0, ],
+                                                      "nec4param"))
+  expect_identical(out, supplied)
+})
