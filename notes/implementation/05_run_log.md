@@ -49,3 +49,5 @@ build the site but not publish it. The first real test is the push to `dev` afte
 merge. The precompile workflow has not been run at all; it would take hours and
 the machine is busy. Both are flagged in the PR body.
 
+
+**PR: https://github.com/open-AIMS/bayesnec/pull/220** (base `dev`).
