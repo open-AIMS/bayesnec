@@ -1,3 +1,57 @@
+#' Quantile of a response, guarded against exact zeros
+#'
+#' The gamma priors for "top" and "bot" set their rate from a quantile of the
+#' response. Where a large share of the response is exactly zero those
+#' quantiles are zero, and the rate either collapses onto a fudge term or
+#' divides by zero outright -- \code{gamma(2, Inf)}. That is not a rare corner:
+#' the zero-inflated count families added under #104 exist precisely for
+#' responses where a quarter or more of the values are zero.
+#'
+#' The guard falls back to the same quantile of the \emph{positive} part of the
+#' response. That keeps the prior on the scale of the data actually carrying
+#' signal about the asymptotes, which is the quantity these priors are trying to
+#' locate, rather than on the scale of a structural-zero process that says
+#' nothing about them.
+#'
+#' Deliberately not the same trick as \code{define_hurdle_prior()}, which
+#' computes the whole mu-block prior from the non-zero subset. That is exact for
+#' \code{hurdle_gamma}, because a Gamma has no mass at zero, so the non-zero
+#' subset *is* the mu process. Under zero-inflation it is not: the base
+#' distribution emits zeros of its own, so conditioning on the positives draws
+#' from a truncated count distribution and biases the location upward. Here the
+#' positive part is used only to recover a *scale* when the raw quantile has
+#' collapsed, never as the estimate itself. See #210.
+#'
+#' @param response A \code{\link[base]{numeric}} vector.
+#' @param probs A \code{\link[base]{numeric}} vector of length 1.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1, strictly positive.
+#'
+#' @importFrom stats quantile
+#'
+#' @noRd
+positive_scale <- function(response, probs) {
+  q <- unname(quantile(response, probs = probs))
+  if (is.finite(q) && q > 0) {
+    return(q)
+  }
+  pos <- response[response > 0 & is.finite(response)]
+  if (!length(pos)) {
+    stop("Cannot build priors for \"top\" and \"bot\": the response contains no",
+         " positive values, so there is no scale to place them on. Check the",
+         " response variable, and see ?bnec for the families bayesnec supports.",
+         call. = FALSE)
+  }
+  q_pos <- unname(quantile(pos, probs = probs))
+  # quantile(pos, 0) is min(pos), which is positive by construction, so this
+  # cannot itself return zero. The guard is kept anyway because probs is
+  # supplied by the caller and a future table could pass something else.
+  if (!is.finite(q_pos) || q_pos <= 0) {
+    return(min(pos))
+  }
+  q_pos
+}
+
 #' define_prior
 #'
 #' Generates prior model objects to pass to \pkg{brms}
@@ -35,19 +89,12 @@ define_prior <- function(model, family, predictor, response,
   # duplicated set of entries in every table below.
   #
   # The quantiles below are taken over the whole response, structural zeros
-  # included, and that is a known defect here rather than a harmless
-  # approximation. Once a quarter of the response is zero -- i.e. zi >= 0.25,
-  # the regime these families exist for -- quantile(response, 0.25) is exactly
-  # 0 and the `bot` prior collapses onto the min(positive)/100 fudge term,
-  # giving a prior mean near zero whatever the real lower asymptote is. Under
-  # prior_type = "regularizing" the denominator is quantile(response, 0), so
-  # that happens for any zero-inflated response at all. Past three quarters
-  # zero, the `top` rate divides by zero and the prior string becomes
-  # "gamma(2, Inf)". Conditioning on the non-zeros instead -- which is what
-  # define_hurdle_prior() does, exactly, for hurdle_gamma -- is not available
-  # as a fix here: under zero-inflation the non-zero subset is drawn from a
-  # truncated count distribution and biases mu upward. The guard belongs in the
-  # prior tables themselves. See #104 and #210.
+  # included. That used to collapse the `top` and `bot` priors once a large
+  # share of the response was zero -- the regime these families exist for --
+  # and is now guarded by positive_scale(), which falls back to the same
+  # quantile of the positive part. See its documentation for why that is not
+  # the same trick define_hurdle_prior() uses, and #210 for what the three
+  # failure modes were.
   if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
     fam_tag <- sub("^zero_inflated_", "", fam_tag)
   }
@@ -70,10 +117,10 @@ define_prior <- function(model, family, predictor, response,
   # predictor-scaled and fixed priors below are shared.
   if (prior_type == "uninformative") {
     u_t_g <- paste0("gamma(2, ",
-                    1 / (quantile(response, probs = 0.75) / 2),
+                    1 / (positive_scale(response, probs = 0.75) / 2),
                     ")")
     u_b_g <- paste0("gamma(2, ",
-                    1 / ((quantile(response, probs = 0.25) +
+                    1 / ((positive_scale(response, probs = 0.25) +
                       min(response[response > 0]) / 100) / 2),
                     ")")
     y_t_prs <- c(Gamma = u_t_g,
@@ -98,10 +145,14 @@ define_prior <- function(model, family, predictor, response,
                  beta = "beta(2, 5)")
   } else {
     u_t_g <- paste0("gamma(5, ",
-                    5 / (quantile(response, probs = 1)),
+                    5 / (positive_scale(response, probs = 1)),
                     ")")
+    # probs = 0 is the minimum, which is zero for a response containing a single
+    # zero -- not merely for a mostly-zero one. So under "regularizing" the
+    # collapse was unconditional on the zero fraction, where under
+    # "uninformative" it needed a quarter of the response to be zero.
     u_b_g <- paste0("gamma(5, ",
-                    5 / ((quantile(response, probs = 0) +
+                    5 / ((positive_scale(response, probs = 0) +
                       min(response[response > 0]) / 10)),
                     ")")
     y_t_prs <- c(Gamma = u_t_g,

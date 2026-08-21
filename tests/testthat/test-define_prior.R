@@ -118,3 +118,109 @@ test_that("prior_type selects between default prior sets", {
   expect_error(define_prior("nec4param", gaussian(), pred_a, resp,
                             prior_type = "nonsense"))
 })
+
+# #210: the `top` and `bot` gamma rates are set from quantiles of the response.
+# Where a large share of the response is exactly zero those quantiles are zero
+# and the rate either collapses onto the fudge term or divides by zero. These
+# tests assert the priors stay finite and stay on the scale of the data, at the
+# zero fractions the issue names.
+
+# Helper: a nec4param-shaped count response with a true lower asymptote of 5,
+# zero-inflated at rate `1 - p`. Seeded inside so each call is reproducible
+# independently of test order.
+zi_response <- function(p, seed = 1) {
+  set.seed(seed)
+  x <- as.numeric(rep(1:10, each = 15))
+  mu <- 40 * exp(-0.35 * pmax(x - 2, 0)) + 5
+  list(x = x,
+       y = as.numeric(rpois(length(x), mu) * rbinom(length(x), 1, p)))
+}
+
+# Pull the numeric rate out of a "gamma(a, b)" prior string.
+gamma_rate <- function(prior_df, par) {
+  s <- prior_df$prior[prior_df$nlpar == par]
+  as.numeric(sub("^gamma\\([^,]+,\\s*([^)]+)\\)$", "\\1", s))
+}
+
+test_that("top and bot priors stay finite across zero fractions", {
+  fam <- validate_family("zero_inflated_poisson")
+  # 30%, 50% and 80% zeros: the issue's three regimes, spanning the 25%
+  # threshold where `bot` used to collapse and the 75% one where `top` became
+  # gamma(2, Inf).
+  for (p in c(0.7, 0.5, 0.2)) {
+    d <- zi_response(p)
+    for (type in c("uninformative", "regularizing")) {
+      pr <- define_prior("nec4param", fam, d$x, d$y, prior_type = type)
+      for (par in c("top", "bot")) {
+        rate <- gamma_rate(pr, par)
+        expect_true(is.finite(rate),
+                    info = paste(type, par, "at", mean(d$y == 0), "zeros"))
+        expect_gt(rate, 0)
+      }
+    }
+  }
+})
+
+test_that("bot is not pinned at zero once a quarter of the response is zero", {
+  # The specific failure in #210: at zi = 0.30 the prior mean for `bot` was
+  # 0.03 against a true lower asymptote of 5. Asserted as an order-of-magnitude
+  # sanity bound rather than a pinned constant -- the point is that the prior
+  # is on the scale of the data, not that it takes any particular value.
+  d <- zi_response(0.7)
+  expect_gt(mean(d$y == 0), 0.25)
+  pr <- define_prior("nec4param", validate_family("zero_inflated_poisson"),
+                     d$x, d$y)
+  # gamma(2, rate) has mean 2 / rate
+  expect_gt(2 / gamma_rate(pr, "bot"), 0.5)
+})
+
+test_that("regularizing collapses for any zero, not just many", {
+  # Under prior_type = "regularizing" the denominator was quantile(response, 0)
+  # -- the minimum -- so a single zero was enough. Test with one zero only,
+  # which the uninformative path would never have noticed.
+  set.seed(42)
+  x <- as.numeric(rep(1:10, each = 5))
+  y <- as.numeric(rpois(length(x), 20))
+  y[1] <- 0
+  expect_equal(sum(y == 0), 1)
+  pr <- define_prior("nec4param", validate_family("poisson"), x, y,
+                     prior_type = "regularizing")
+  expect_true(is.finite(gamma_rate(pr, "bot")))
+  expect_gt(gamma_rate(pr, "bot"), 0)
+})
+
+test_that("a response with no zeros is left alone", {
+  # The guard must not move priors for the ordinary case. Compared against the
+  # same response with the guard bypassed, i.e. the raw quantile, which for a
+  # strictly positive response is what positive_scale() returns anyway.
+  set.seed(7)
+  x <- as.numeric(rep(1:10, each = 5))
+  y <- as.numeric(rpois(length(x), 20)) + 1
+  expect_equal(sum(y == 0), 0)
+  expect_identical(bayesnec:::positive_scale(y, 0.25),
+                   unname(quantile(y, 0.25)))
+  expect_identical(bayesnec:::positive_scale(y, 0.75),
+                   unname(quantile(y, 0.75)))
+})
+
+test_that("an all-zero response errors rather than returning a broken prior", {
+  # Edge case: there is no scale to put top and bot on. Erroring names the
+  # problem; the previous behaviour was gamma(2, Inf), which brms would have
+  # rejected far downstream with a much less useful message.
+  x <- as.numeric(rep(1:10, each = 5))
+  expect_error(
+    define_prior("nec4param", validate_family("zero_inflated_poisson"),
+                 x, rep(0, length(x))),
+    "no positive values"
+  )
+})
+
+test_that("response_link_scale does not warn on an all-zero response", {
+  # response_link_scale() computed min(response[response > 0]) eagerly, so an
+  # all-zero response warned even though the value is never used for an
+  # identity-link count family. Surfaced by the test above.
+  expect_silent(
+    bayesnec:::response_link_scale(rep(0, 20),
+                                   validate_family("zero_inflated_poisson"))
+  )
+})
