@@ -296,3 +296,85 @@ by reasoning:**
 
 Seven PRs open: #220 #221 #222 #223 (2.1.4) and #224 #225 #226 (2.2.0).
 Remaining: items 8 and 9, the 2.3.0 tier -- #33 stage 1 and the #6/#33 vignette.
+
+## Item 9 — #6 + #33, the grouping vignette
+
+Branch `issue-6-33-grouping-vignette`, cut from `issue-33-factor-covariate`.
+Tier **2.3.0**. Version 2.1.3.15 -> 2.1.3.16.
+**PR: https://github.com/open-AIMS/bayesnec/pull/228**. Closes #6.
+
+`vignettes/example8.Rmd.orig`, 287 lines. Organised on the within- versus
+across-concentration distinction from the `cr_modelling_training` material RF
+pointed at, which is what decides between `ogl()`, `pgl()`/`(par | group)`, and
+separate fits.
+
+**No new dataset needed:** `nassarius` carries both structures -- `tank` within
+concentration (34-62 per contaminant, one dose each) and `contaminant` across it
+(4 levels spanning the full dose range). The vignette ends by composing the two
+routes, tanks inside each contaminant's own fit.
+
+**A bug caught by running the chunks.** Every example used `nec3param`; `growth`
+is Gaussian and the zero-bounded models are excluded for that family, so every
+fitting chunk would have failed at #190's precompile -- hours later. Switched to
+`nec4param` and documented why. Vignette chunks are not executed until
+precompile, so authoring-time validation is the only cheap signal.
+
+`precompile.R` deliberately not run.
+
+**Flagged, not fixed:** `example4`'s overview paragraph says per-level
+functional flexibility "can be readily obtained using models fitted
+independently", which `bnec_group()` now automates. Its claim about
+*interactions* is still accurate. Left alone to avoid colliding with #190 and
+the sessions holding vignettes.
+
+---
+
+# RUN COMPLETE
+
+All ten queue items done.
+
+**Closed with no PR:** #79 (not reproducible, with evidence), #212 (RF's call),
+#166 (duplicate of toxval#29).
+
+**Nine PRs, stacked bottom to top, all CI green:**
+
+| PR | issue | tier |
+|---|---|---|
+| 220 | #215 dev vignette CI | 2.1.4 |
+| 221 | #139 drc NEC equivalence | 2.1.4 |
+| 222 | #210 define_prior zeros | 2.1.4 |
+| 223 | #207 dispersion priors | 2.1.4 |
+| 224 | #136 rate() aterm | 2.2.0 |
+| 225 | #209 hurdle count families | 2.2.0 |
+| 226 | #148 check_fit + pp_check (also closes #56) | 2.2.0 |
+| 227 | #33 factor covariate, stage 1 | 2.3.0 |
+| 228 | #6 grouping vignette | 2.3.0 |
+
+Suite grew 1457 -> 1633 (+176), warnings unchanged at 11 throughout.
+
+**Also raised:** #218, the three unseeded permutations.
+
+## Decisions waiting for RF
+
+1. **#207 changes numbers** -- fits that ran on flat priors now run on bayesnec
+   priors.
+2. **#136 makes unrecognised aterms an error** -- breaking; two existing tests
+   updated.
+3. **#209 refuses count growth families in `bnec_hurdle()`** and reverses a #104
+   test that accepted them. The alternative was validating `trunc()` publicly.
+4. **#148 decision (d)**, the combined hurdle check, deliberately not attempted.
+5. **#190 may need to run twice** if 2.1.4 ships to CRAN before 2.2.0.
+6. **`example4`'s overview paragraph** is partly stale after #33.
+
+## Notes for whoever runs the next stack
+
+- Read issue **comments**, not just bodies. The first triage missed several
+  fully-scoped issues by reading `--json body` alone.
+- Run `notes/scripts/check_rd_links.R` after `document()`. `devtools::test()`
+  never builds Rd, so a broken `\link{}` turns all eight CI checks red and is
+  invisible locally. It happened twice.
+- Verify a launch actually happened -- log present, process alive -- before
+  reporting a job as running.
+- Four bugs this run were found by executing against real objects and none by
+  reading: `[[rate_var]]` on a named vector, `ndraws` exceeding a fit's draws,
+  a missing `bayesnecformula()` coercion, and the vignette's family restriction.
