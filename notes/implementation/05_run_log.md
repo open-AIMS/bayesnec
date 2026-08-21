@@ -217,3 +217,39 @@ article swept for non-validated aterms: none.
    are safe only because a family branch guards them. Use single-bracket lookup
    plus `is.na()` for any optional `bnec_pop` entry.
 2. An assertion compared an integer response against `as.numeric()`.
+
+## Item 6 — #209, hurdle_poisson and hurdle_negbinomial
+
+Branch `issue-209-hurdle-counts`, cut from `issue-136-rate-aterm`.
+Tier **2.2.0**. Version 2.1.3.12 -> 2.1.3.13.
+**PR: https://github.com/open-AIMS/bayesnec/pull/225**.
+
+Full suite **1570 pass / 0 fail / 11 warn**, +24 on the branch below. Verified
+on a real `hurdle_poisson` fit: NEC 3.049 [2.536, 3.607] against a true 3, both
+parameter blocks present, `ecx()` working on each via `dpar`.
+
+**The issue's two halves needed opposite treatments.** The joint families need
+no truncation work — brms writes the zero-truncated positive part itself. The
+`bnec_hurdle()` untruncated-likelihood defect cannot be fixed the same way: it
+would need a `trunc()` aterm, and #136 (directly below in the stack) had just
+made unvalidated aterms an error. Validating `trunc()` publicly is well beyond
+what #209 sanctions, so `bnec_hurdle()` refuses count growth families and points
+at the path that is correct by construction. **Flagged for RF as a judgement
+call.**
+
+**Two behaviour changes, both deliberate**, and one of them reverses a #104
+test that asserted a plain poisson growth family IS accepted. That was correct
+when written (no zero-truncated count family existed) and its own neighbouring
+comment names #209 as the fix. The test now asserts the refusal with the
+reasoning written into it.
+
+**A third registry the issue does not mention:** `mod_fams` in
+`data-raw/sysdata.R` is the allow-list `validate_family()` checks, separate from
+`hurdle_fams` and `hurdle_mu_fams`. Without it the families are rejected as "not
+currently implemented".
+
+---
+
+# 2.2.0 TIER: 2 of 3 done
+
+#136 (PR 224), #209 (PR 225). Remaining: #148, the largest item in the tier.
