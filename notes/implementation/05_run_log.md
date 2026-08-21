@@ -63,8 +63,12 @@ the machine is busy. Both are flagged in the PR body.
 ## Item 2 — #139, document the drc NEC equivalence
 
 Branch `issue-139-drc-nec-equivalence`, cut from `issue-215-dev-vignette-ci`.
-Tier **2.1.4**. Version 2.1.3.8 -> 2.1.3.9. Committed at 49ebce1f; push and PR
-pending the full suite.
+Tier **2.1.4**. Version 2.1.3.8 -> 2.1.3.9.
+**PR: https://github.com/open-AIMS/bayesnec/pull/221** (base
+`issue-215-dev-vignette-ci`).
+
+Full suite: **1470 pass, 0 fail, 11 warn**, against a `dev` baseline of 1457
+pass / 11 warn — exactly the 13 new assertions, warnings unchanged.
 
 Documentation only, per RF's choice of option A. Equivalence table added to
 `?models` and to `vignettes/example2b.Rmd.orig`, with the `NEC.2()` omission
