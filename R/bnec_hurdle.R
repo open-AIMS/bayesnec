@@ -268,8 +268,8 @@ check_hurdle_growth_family <- function(family) {
          " likelihood does not factorise, so two separate fits would give you a",
          " different model. Use bnec(family = \"", fam_tag, "\") for the",
          " mixture. If every zero really is structural you want a hurdle on",
-         " counts, which is bnec(family = \"hurdle_", sub("^zero_inflated_",
-                                                         "", fam_tag),
+         " counts, whose positive part is zero-truncated: that is",
+         " bnec(family = \"hurdle_", sub("^zero_inflated_", "", fam_tag),
          "\"). See ?bnec.",
          call. = FALSE)
   }
