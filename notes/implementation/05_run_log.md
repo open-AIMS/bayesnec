@@ -253,3 +253,46 @@ currently implemented".
 # 2.2.0 TIER: 2 of 3 done
 
 #136 (PR 224), #209 (PR 225). Remaining: #148, the largest item in the tier.
+
+## Item 7 — #148, check_fit() and pp_check()
+
+Branch `issue-148-check-fit`, cut from `issue-209-hurdle-counts`.
+Tier **2.2.0**. Version 2.1.3.13 -> 2.1.3.14.
+**PR: https://github.com/open-AIMS/bayesnec/pull/226**. Closes #148 and #56.
+
+Full suite **1608 pass / 0 fail / 11 warn**, +38 on the branch below.
+
+**Reproduces the finding the issue rests on**: on `manec_example` the control
+group's `sd_ratio` is 0.796 -- the model simulates ~26% more variability than
+the data show -- while the global `dispersion()` statistic reads 1.011
+[0.71, 1.44]. The scoping comment measured ~27% by hand. Pinned as a test,
+because it is the one assertion that would catch an implementation that looks
+right but is not actually local.
+
+All of RF's decisions implemented: part B in scope with control lack-of-fit;
+ggplot2 only, no bayesplot; replication preferred with warned binning fallback;
+#56 folded in via LOO-PIT, no DHARMa; both a numeric table and (via pp_check)
+plots; mixture families need nothing special.
+
+**Decision (d), the combined hurdle check, is deliberately NOT implemented** --
+the scoping comment left it open and said not to let it hold up the rest.
+Flagged in the PR.
+
+**Two implementation bugs found by running against manec_example rather than
+by reasoning:**
+
+1. New S3 generics need `devtools::document()` before `load_all()` can dispatch
+   them. This is the first stack item to add one, so the first where document()
+   is load-bearing for the code to run at all rather than just for man/.
+2. `ndraws` had to be clamped to what the fit holds. brms **errors** rather than
+   truncating, and manec_example carries 100 draws, so the default of 1000 would
+   have failed on the package's own example object.
+
+---
+
+# 2.2.0 TIER COMPLETE
+
+#136 (PR 224), #209 (PR 225), #148 (PR 226).
+
+Seven PRs open: #220 #221 #222 #223 (2.1.4) and #224 #225 #226 (2.2.0).
+Remaining: items 8 and 9, the 2.3.0 tier -- #33 stage 1 and the #6/#33 vignette.
