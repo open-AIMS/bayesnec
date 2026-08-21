@@ -194,9 +194,21 @@ w_pred_calc <- function(index, mod_fits, mod_stats) {
   mod_fits[[index]]$predicted_y * mod_stats[index, "wi"]
 }
 
+#' Take one model's weighted share of rows from its posterior matrix.
+#'
+#' \code{drop = FALSE} is load bearing. \code{pred_list[[index]]} is a
+#' draws-by-grid matrix and the results are stacked across models with
+#' \code{rbind}, so a single grid column -- a one-row \code{newdata}, i.e.
+#' "what does the curve predict at this one concentration?" -- would otherwise
+#' drop to a vector and be bound as a *row*. That returned a
+#' models-by-draws matrix instead of a draws-by-1 one, recycling the shorter
+#' model's draws, and the resulting summary was computed across draws rather
+#' than over them: the point estimate looked plausible while its interval came
+#' from as many values as there were models.
+#'
 #' @noRd
 w_pred_list_calc <- function(index, pred_list, draw_index) {
-  pred_list[[index]][draw_index[[index]], ]
+  pred_list[[index]][draw_index[[index]], , drop = FALSE]
 }
 
 #' Compute one model's grid posterior and immediately thin it to its weight.

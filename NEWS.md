@@ -27,6 +27,15 @@
   this version carry neither field and fall back to a fixed seed, which is
   equally reproducible. See #216.
 
+- Model-averaged predictions from a `bayesmanecfit` no longer collapse when
+  `newdata` has a single row. Asking what the averaged curve predicts at one
+  concentration — `fitted(fit, newdata = data.frame(x = 3))` — returned one row
+  per retained draw instead of one row per prediction, because the weighted row
+  selection dropped to a vector and the per-model results were then stacked as
+  rows rather than columns. The point estimate looked plausible, but its
+  `Est.Error` and quantiles were computed across models rather than over draws.
+  A `bayesnecfit` was unaffected, as was any `newdata` with more than one row.
+
 - `brms (>= 2.23.0)` is now required. Earlier versions generate the
   `beta_binomial` likelihood by passing the whole `trials` array to
   `beta_binomial_lpmf` instead of `trials[n]`, so each response is evaluated

@@ -88,11 +88,31 @@ test_that("model-averaged output does not change between identical calls", {
                    posterior_epred(manec_example, newdata = nd))
   expect_identical(fitted(manec_example, newdata = nd),
                    fitted(manec_example, newdata = nd))
-  # Edge case: a resolution of 1 is a single column, where a dropped dimension
-  # would show up as a length mismatch rather than a difference in values.
+  # Edge case: a single grid column. Asserted on the *shape* as well as on
+  # agreement between calls -- two equally malformed results compare identical,
+  # so reproducibility alone would not have caught the dropped dimension this
+  # originally hid (see w_pred_list_calc).
   nd_1 <- bnec_newdata(manec_example, resolution = 1)
   expect_identical(posterior_epred(manec_example, newdata = nd_1),
                    posterior_epred(manec_example, newdata = nd_1))
+  expect_equal(dim(posterior_epred(manec_example, newdata = nd_1)),
+               c(manec_example$sample_size, 1))
+  # The way a user actually meets that case: one row of newdata, asking what the
+  # averaged curve predicts at a single concentration. The answer must have the
+  # same shape as the single-model one, and must not warn.
+  nd_pt <- data.frame(x = 3)
+  expect_silent(ma_pt <- posterior_epred(manec_example, newdata = nd_pt))
+  expect_equal(dim(ma_pt), c(manec_example$sample_size, 1))
+  expect_identical(dim(fitted(manec_example, newdata = nd_pt)),
+                   dim(fitted(nec4param, newdata = nd_pt)))
+  # ... and the averaged estimate must sit between the components it averages.
+  ma_est <- fitted(manec_example, newdata = nd_pt)[1, "Estimate"]
+  cmp_est <- sapply(names(manec_example$mod_fits), function(m) {
+    fitted(suppressMessages(pull_out(manec_example, model = m)),
+           newdata = nd_pt)[1, "Estimate"]
+  })
+  expect_gte(ma_est, min(cmp_est))
+  expect_lte(ma_est, max(cmp_est))
   # posterior_predict() stays stochastic on purpose: it simulates new
   # observations, exactly as brms does for a single fit, so it varies for a
   # bayesnecfit too. What #216 fixes is the weighting, which is now the same
