@@ -1,5 +1,23 @@
 # bayesnec 2.3.0
 
+- New `vignette("example8")`, *Grouping and factor covariates*, covering both
+  routes `bayesnec` offers for structured designs and when each is right. It
+  turns on a distinction worth making explicitly: a **within-concentration**
+  grouping (a tank holds one dose, so the dependence does not span the response
+  curve) is what `ogl()` is for, while an **across-concentration** grouping
+  (each level spans the whole predictor range) can be given `pgl()`,
+  `(par | group)`, or its own separate fit. It uses `nassarius`, which carries
+  both — replicate tanks within four contaminants — and ends by composing them:
+  tanks as a nuisance term inside each contaminant's own fit.
+
+  It covers all three group-level term types, priors for the group-level
+  standard deviations via `check_formula(run_par_checks = TRUE)`, the
+  `bnec_group()` route and its crossed model weights, and — at some length —
+  the failure modes, since hierarchical structure on non-linear parameters is
+  easy to specify and hard to identify. This completes #6, whose capability
+  landed in v2.0 and which has been open since only for want of a worked
+  example. See #6 and #33.
+
 - New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
   independently within each level of a factor and model-averaging within each
   level. This is the first support for a factor covariate, and it answers the

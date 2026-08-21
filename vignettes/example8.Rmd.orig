@@ -1,0 +1,293 @@
+---
+title: "Grouping and factor covariates"
+output:
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{Grouping and factor covariates}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.path = "vignette-fig-",
+  fig.asp = 0.8,
+  out.width = "60%",
+  fig.align = "center",
+  dev = "png",
+  dpi = 150,
+  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+)
+```
+
+[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
+[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
+
+# Overview
+
+Concentration-response experiments are rarely a single clean series. Replicates
+sit together in tanks, vials or plates; the whole experiment may be repeated on
+different genotypes, in different seasons, or with different contaminants. Those
+structures are not usually of interest in themselves, but ignoring them means
+treating observations as independent when they are not.
+
+`bayesnec` offers two distinct routes, and choosing between them is the first
+decision to make:
+
+- **group-level (hierarchical) terms** --- `ogl()`, `pgl()` and
+  `(par | group)` --- which keep every observation in **one** fit and let the
+  grouping shift parts of the curve;
+- **fitting each level separately** --- `bnec_group()` --- which gives every
+  level its own complete model set, and lets the *functional form* differ
+  between levels.
+
+They answer different questions. This vignette works through both on the same
+dataset.
+
+```{r, warning = FALSE, message = FALSE}
+library(bayesnec)
+library(ggplot2)
+library(dplyr)
+```
+
+# Which kind of grouping is it?
+
+The distinction that matters is whether the grouping sits **within** a
+concentration or **across** the whole predictor range.
+
+**Within-concentration groupings** are tanks, vials and wells: a tank holds
+several organisms and has exactly one concentration. The non-independence is
+confined inside a concentration and does not span the response curve.
+
+It is common practice to average within such a group and model the group means.
+That discards the within-group variance --- which is information --- and, where
+group sizes differ, weights a mean of three observations the same as a mean of
+thirty. A group-level term keeps the observations and models the dependence
+instead.
+
+**Across-concentration groupings** are genotypes, plates, or repeat runs of the
+experiment: each level spans the whole predictor range, so there is no
+within-group mean to take. These are the ones that can, if the data support it,
+be given their own curve.
+
+# The data
+
+`nassarius` records survival and growth of snails exposed to four contaminants,
+with replicate tanks nested inside each contaminant.
+
+```{r}
+data(nassarius)
+str(nassarius)
+```
+
+Both structures are present, which is what makes it useful here:
+
+```{r}
+nassarius |>
+  group_by(contaminant) |>
+  summarise(tanks = n_distinct(tank), doses = n_distinct(dose), n = n())
+```
+
+`tank` is **within concentration** --- each tank has one dose --- while
+`contaminant` is **across concentration**: every contaminant spans the full
+dose range and is a fixed factor of direct interest.
+
+For the examples below we model growth of the survivors, so that the response is
+continuous and the fits are quick to read.
+
+```{r}
+surv <- nassarius |>
+  filter(alive == 1, record == "measured") |>
+  mutate(ldose = log(dose + 1))
+```
+
+# Group-level terms: one fit, shared information
+
+## `ogl()` --- an offset shared by a group
+
+`ogl(group)` adds a single group-level parameter that shifts the whole curve up
+or down for that group. It is the successor to the "random offset" of earlier
+`bayesnec` versions, and it is the right choice for a **within-concentration**
+grouping: a tank effect raises or lowers the response of everything in that
+tank, without changing the shape of the concentration-response relationship.
+
+```{r, eval = FALSE}
+fit_ogl <- bnec(growth ~ crf(ldose, "nec4param") + ogl(tank),
+                data = filter(surv, contaminant == "A"))
+```
+
+## `pgl()` --- the grouping affects every parameter
+
+`pgl(group)` puts a group-level effect on **all** the non-linear parameters at
+once, without the user needing to know each model's internal parameter names.
+Use it where the grouping plausibly affects the whole curve --- a genotype that
+is more tolerant will differ not just in its control response but in where and
+how steeply it declines.
+
+```{r, eval = FALSE}
+fit_pgl <- bnec(growth ~ crf(ldose, "nec4param") + pgl(tank),
+                data = filter(surv, contaminant == "A"))
+```
+
+## `(par | group)` --- a named parameter varies
+
+The `brms`-style form names the parameters explicitly. Use it where there is
+prior reason to expect one specific parameter to vary and the others not:
+
+```{r, eval = FALSE}
+fit_nec <- bnec(growth ~ crf(ldose, "nec4param") + (nec | tank),
+                data = filter(surv, contaminant == "A"))
+```
+
+Terms naming a parameter a given model does not have are silently dropped, so
+this composes across a model suite: `(bot | tank)` applies to `nec4param` and is
+ignored for `nec3param`, which has no `bot`.
+
+Note the model choice here. `growth` is Gaussian, and the zero-bounded models
+--- those with an exponential decay and no `bot`, `nec3param` among them --- are
+excluded for that family, so `nec4param` is used throughout this vignette. A
+call naming only `nec3param` with a Gaussian response is an error rather than a
+silent substitution.
+
+All three forms accept interactions and nesting --- `ogl(g1:g2)`, `pgl(g1/g2)`,
+`(nec | g1/g2)`.
+
+## Priors for the group-level standard deviations
+
+The default priors are built for the population-level parameters and are not
+tailored to group-level standard deviations. Check what a formula will actually
+use before fitting:
+
+```{r, eval = FALSE}
+check_formula(bnf(growth ~ crf(ldose, "nec4param") + (nec | tank)),
+              data = filter(surv, contaminant == "A"),
+              run_par_checks = TRUE)
+```
+
+`run_par_checks = TRUE` reports the priors for parameter-specific group-level
+terms, which is where a default is most likely to be inappropriate. A
+group-level standard deviation is bounded below at zero and is usually small
+relative to the parameter itself; a prior that allows it to be large invites the
+sampler to explain real concentration-response signal as between-group scatter.
+
+## Failure modes, and being honest about them
+
+Hierarchical structure on non-linear parameters is easy to write and hard to
+identify. A group-level term is **not** always supported by the data, and the
+symptoms are recognisable:
+
+- divergent transitions, or a group-level standard deviation whose posterior
+  piles up against zero --- the data do not distinguish the groups;
+- a group-level standard deviation with a posterior essentially equal to its
+  prior --- the data say nothing and the prior is doing the work;
+- a widened *NEC* or ECx interval with no change in the point estimate, which
+  means the term has added uncertainty without adding structure.
+
+Check these before reporting a hierarchical fit:
+
+```{r, eval = FALSE}
+check_chains(fit_nec)
+check_priors(fit_nec)
+check_fit(fit_nec)
+summary(fit_nec)
+```
+
+`check_fit()` is worth particular attention here: it reports observed against
+simulated variability per group of the predictor, and a group-level term that is
+absorbing variance it should not will show up as a fit that simulates more
+spread than the data contain.
+
+**Compare against the fit without the term.** If the *NEC* and its interval are
+materially unchanged, the grouping is not earning its place, and the simpler
+model is the one to report.
+
+# Fitting each level separately
+
+Group-level terms share information across levels, which is their strength ---
+and their constraint. Every level gets the *same equation*, differing only by
+the group-level parameters.
+
+Where the **functional form itself** may differ --- one contaminant producing a
+threshold response and another a smooth decline --- that constraint is wrong.
+`bnec_group()` fits the complete model set independently within each level:
+
+```{r, eval = FALSE}
+fit_grp <- bnec_group(growth ~ crf(ldose, "nec4param") + ogl(tank),
+                      data = surv, group_var = "contaminant")
+fit_grp
+```
+
+Each level is an ordinary `bayesnecfit` or `bayesmanecfit`, so everything that
+works on a single fit works per level:
+
+```{r, eval = FALSE}
+nec(fit_grp)
+ecx(fit_grp, ecx_val = 10)
+```
+
+Note that the tank term still applies **within** each level: the two routes
+compose, and here they should. Tanks are a nuisance structure inside every
+contaminant; contaminant is the factor of interest.
+
+## Crossed model weights
+
+Because levels partition the data and share no parameters, the expected log
+predictive density is additive across them, and under the default pseudo-BMA
+weighting the weight of a combination of per-level models is the product of its
+per-level weights.
+
+```{r, eval = FALSE}
+cw <- crossed_group_weights(fit_grp)
+cw$best_combination
+cw$diagonal
+```
+
+Two readings, answering different questions:
+
+- **`best_combination`** --- the unrestricted maximum, choosing each level's best
+  model independently. This will often assign *different* equations to different
+  levels, and is the direct answer to "does the functional form change?"
+- **`diagonal`** --- the weights over models common to every level, which asks
+  which *single* equation best describes them all. That is frequently the more
+  useful summary for a report, and it is a question `bayesnec` could not answer
+  before.
+
+This identity is specific to pseudo-BMA. Stacking optimises a different
+objective whose solution is not an outer product, so crossed weights are not
+available under it.
+
+# Choosing between the two routes
+
+| | group-level term | `bnec_group()` |
+|---|---|---|
+| levels share | the equation, and information | nothing |
+| the curve's *shape* may differ | no | yes |
+| levels with little data | borrow strength | fitted alone, and may fail |
+| natural for | tanks, vials, plates, genotypes | contaminants, seasons, sites |
+| answers | how much does the grouping shift the response? | is this a different relationship? |
+
+A grouping that is a nuisance belongs in a group-level term. A factor whose
+levels you would report separately in a results table belongs in
+`bnec_group()`. They compose: the example above uses both at once.
+
+One caution on the separate-fits route. Each level is fitted from a fraction of
+the data, so every level's estimate carries more uncertainty than a pooled fit
+would give. That is the honest price of not assuming the levels share a form ---
+but if the levels *do* share a form, a group-level term uses the data better.
+`crossed_group_weights()$diagonal` is a reasonable way to ask which case you are
+in before committing.
+
+# Further reading
+
+The caution in the `bayesnec` JSS paper applies throughout: implementing
+hierarchical effects in a non-linear setting is not routine, and the structure
+and priors deserve thought rather than a default. See also [example 1][e1] for
+model fitting generally and [example 4][e4] for comparing posteriors across
+independently fitted models, which remains the route where the levels come from
+genuinely different datasets.
