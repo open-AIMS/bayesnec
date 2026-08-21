@@ -143,3 +143,39 @@ instead of the incidental wording.
 timing-dependent test, and CI runners are slower and more variable than this
 machine. A red check on a test unrelated to the item in hand should be checked
 against the pass/fail arithmetic before it is assumed to be the item's fault.
+
+## Item 4 — #207, dispersion priors and incomplete prior sets
+
+Branch `issue-207-dispersion-priors`, cut from `issue-210-define-prior-zeros`.
+Tier **2.1.4**. Version 2.1.3.10 -> 2.1.3.11.
+**PR: https://github.com/open-AIMS/bayesnec/pull/223**.
+
+Both parts done. Full suite **1526 pass / 0 fail / 11 warn**, +22 on the branch
+below.
+
+**A correction to the issue's premise, recorded on the issue itself.** RF read
+part 2 as saying `disp()` loses automatic prior building. It does not — checked
+on `dev`, `get_priors()` on a `disp("power")` formula returns proper `c0` and
+`c1` priors. The loss happens only when the user supplies an *incomplete* set,
+which `validate_priors()` accepted wholesale. RF's stated principle then decides
+the open question directly: warn and fill from bayesnec defaults, not error.
+
+**Flagged for review: this changes results.** A fit that previously ran on flat
+priors for unmentioned parameters now runs on bayesnec priors. Own NEWS
+paragraph.
+
+**Process slip worth recording.** A `git add -A` swept the whole #207 change set
+into a commit whose message was about the run notes. Caught on push (`nothing to
+commit, working tree clean` with the wrong commit at HEAD), split with
+`reset --soft` and force-pushed with `--force-with-lease`. Stage deliberately
+when two unrelated changes are in the tree at once.
+
+---
+
+# 2.1.4 TIER COMPLETE
+
+#216 (merged), #215 (PR 220), #139 (PR 221), #210 (PR 222), #207 (PR 223).
+All green at the time of writing except 223, which is still in CI.
+
+Next: the 2.2.0 tier. The first PR of it opens the `# bayesnec 2.2.0` heading in
+NEWS.md.
