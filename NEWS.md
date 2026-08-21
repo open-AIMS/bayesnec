@@ -1,3 +1,29 @@
+# bayesnec 2.2.0
+
+- `bnec()` now supports the `rate()` aterm for the `poisson` and `negbinomial`
+  families, so a count observed over an exposure — animals per unit time,
+  larvae per unit area — can be modelled directly. Because `bnec()` forces
+  `link = "identity"`, `brms` writes the denominator multiplicatively on the
+  response scale rather than as a log offset, so the mean *is* the rate and
+  `top`, `bot` and `nec` stay interpretable as counts per unit exposure. The
+  prediction grid holds the denominator at 1, so the fitted curve, `ecx()` and
+  `nsec()` are all read on the rate scale, and plots divide the observations
+  through to match. `rate()` was previously neither supported nor refused: it
+  emitted a generic message, fitted, and then failed in post-processing with a
+  `brms` error about a variable it could not find, and the priors for `top` and
+  `bot` were built from raw counts rather than rates — a prior mean of ~61
+  against a true `top` of 20 on the reprex in the issue, silently. `offset` is
+  deliberately not offered as an alternative: under an identity link it would be
+  additive on the mean. See #136.
+
+- **Breaking:** an `aterm` `bayesnec` has not validated is now an **error**
+  rather than a message. The validated set is `trials()`, `weights()`, `cens()`
+  and `rate()`. Passing anything else previously printed a warning and carried
+  on, which is how `rate()` came to fit and then fail tens of seconds later,
+  long after the message had scrolled past. An aterm the package has not
+  validated cannot be assumed to behave sensibly through prior generation, the
+  initial-value search and post-processing. See #136.
+
 # bayesnec 2.1.4
 
 - `bnec()` now accepts a prior on the family's own dispersion parameter —

@@ -69,6 +69,19 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
         trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
         prd_var_y <- prd_var_y * model$data[[trials_var]]
       }
+      rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
+      if (fam == "poisson" && !is.na(rate_var)) {
+        # Exactly parallel to the binomial branch, and exact for Poisson:
+        # prd_mu is the rate, the observations are counts over an exposure, and
+        # Var(count) = mu * denom. Note this does NOT generalise to
+        # negbinomial, where brms scales the shape by the denominator too, so
+        # the count-scale variance is mu_c + mu_c^2 / (shape * denom) rather
+        # than a plain multiple. dispersion() does not accept negbinomial at
+        # all -- see allowed_fams above -- so there is nothing to get wrong
+        # today, but whoever widens that list must derive the negbinomial case
+        # rather than copying this line. See #136.
+        prd_var_y <- prd_var_y * model$data[[rate_var]]
+      }
       prd_res <- (obs_y - prd_y) / sqrt(prd_var_y)
       sim_y <- ppd_out[i, ]
       sim_res <- (sim_y - prd_y) / sqrt(prd_var_y)

@@ -164,6 +164,15 @@ get_priors.formula <- function(object, data, family = NULL,
     if (checked$family$family %in% c("binomial", "beta_binomial")) {
       y <- y / checked$mod_dat$trials
     }
+    # Same reason as the binomial branch above: the priors for top and bot are
+    # built from quantiles of the response, and for a rate model the parameters
+    # they describe live on the rate scale, not the count scale. Deriving them
+    # from raw counts gave a prior mean of ~61 against a true top of 20 on the
+    # #136 reprex -- silently, because nothing downstream checks a prior for
+    # plausibility.
+    if (!is.null(checked$mod_dat$denom)) {
+      y <- y / checked$mod_dat$denom
+    }
     define_prior(m, checked$family, checked$mod_dat$x, y,
                  prior_type = prior_type, model_survival = model_survival,
                  disp_spec = disp_spec)

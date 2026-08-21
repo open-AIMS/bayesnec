@@ -206,6 +206,13 @@ check_data <- function(data, family, model) {
   if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
     mod_dat$trials <- retrieve_var(data, "trials_var", error = TRUE)
   }
+  rate_var <- retrieve_var(data, "rate_var")
+  if (!is.null(rate_var)) {
+    # Named `denom` rather than `rate`: it is the denominator of the rate, not
+    # the rate itself, and the response divided by it is what the priors below
+    # are built from.
+    mod_dat$denom <- rate_var
+  }
   list(mod_dat = mod_dat, family = family)
 }
 

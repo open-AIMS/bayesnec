@@ -144,11 +144,34 @@
 #' been tested yet. If this is extremely important to your work, please
 #' raise an issue on bayesnec GitHub, and we will consider further testing and 
 #' development.
-#' Currently, the only three \code{aterms} that have validated behaviour are:
+#' Currently, the only four \code{aterms} that have validated behaviour are:
 #' 1) \code{trials()}, which is essential in binomially-distributed data, e.g.
 #' \code{y | trials(trials_variable)}, 2) weights, e.g.
-#' \code{y | weights(weights_variable)}, and 3) \code{cens()} (see below),
-#' following \pkg{brms} formula syntax.
+#' \code{y | weights(weights_variable)}, 3) \code{cens()} (see below), and
+#' 4) \code{rate()} (see below), following \pkg{brms} formula syntax.
+#' Any other \code{aterm} is an error rather than a warning: an aterm
+#' \code{bayesnec} has not validated cannot be assumed to behave sensibly
+#' through the prior generation, initial-value search and post-processing that
+#' follow.
+#'
+#' \bold{Rates and exposure}
+#'
+#' \code{rate(denominator)} declares that the response is a count observed over
+#' an exposure --- animals per unit time, larvae per unit area --- and is valid
+#' for the \code{poisson} and \code{negbinomial} families only. Any other
+#' family is an error, the zero-inflated count families included: \pkg{brms}
+#' cannot place a rate denominator on those, and under \code{\link{bnec}}'s
+#' identity link there is no offset that would do the same job.
+#'
+#' Because \code{\link{bnec}} forces \code{link = "identity"}, \pkg{brms}
+#' writes the denominator multiplicatively on the response scale rather than as
+#' a log offset on the linear predictor, so the mean \emph{is} the rate and
+#' "top", "bot" and "nec" stay directly interpretable as counts per unit
+#' exposure. The prediction grid holds the denominator at 1, so a fitted curve,
+#' an \code{\link{ecx}} and an \code{\link{nsec}} are all read on the rate
+#' scale; plots put the observations on that same scale by dividing through.
+#' \code{offset} is deliberately not offered as an alternative --- under an
+#' identity link it would be additive on the mean, which is not what is wanted.
 #' Please note that \pkg{brms} does not implement design weights as in other
 #' standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 #' weights literally, which means that an observation with weight 2 receives 2
@@ -637,6 +660,34 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
   # last so that the curve expression it duplicates (route B) is the one any
   # group-level terms above have already been applied to.
   disp_spec <- parse_disp_term(formula)
+  # rate() is accepted by brms for poisson and negbinomial only -- checked
+  # against brms 2.23.0, non-linear formula included. Everything else, the
+  # zero-inflated count families among them, rejects it outright. The check
+  # needs the family, so it belongs here rather than in check_formula(), which
+  # does not have it: without it a user got a brms stack trace tens of seconds
+  # into compilation instead of a bayesnec error naming what was wrong.
+  #
+  # The zero-inflated count families get their own message because they are
+  # exactly what someone reaches for next after a rate model, and there is no
+  # offset workaround for them under an identity link either (RF, #136).
+  rate_var <- retrieve_var(data, "rate_var")
+  if (!is.null(rate_var) && !is.null(family)) {
+    fam_tag <- if (inherits(family, "family")) family$family else family
+    if (!fam_tag %in% c("poisson", "negbinomial")) {
+      extra <- if (grepl("^zero_inflated_", fam_tag)) {
+        paste0(" brms cannot place a rate denominator on a zero-inflated",
+               " count family, and under bnec()'s identity link there is no",
+               " offset that would do the same job. Model the exposure as a",
+               " predictor, or use family = \"", sub("^zero_inflated_", "",
+                                                    fam_tag), "\".")
+      } else {
+        " Use family = \"poisson\" or family = \"negbinomial\"."
+      }
+      stop("A rate() term is only valid for the poisson and negbinomial",
+           " families; you supplied \"", fam_tag, "\".", extra,
+           call. = FALSE)
+    }
+  }
   if (!is.null(disp_spec)) {
     if (is.null(family)) {
       stop("A disp() term needs the model family to know which dispersion",
