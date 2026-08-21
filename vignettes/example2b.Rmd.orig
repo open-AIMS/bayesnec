@@ -368,4 +368,64 @@ show_params("necsigm")[[1]]
 
 The model is 0-bounded, thus not suitable for Gaussian response data or the use of a `"logit"` or `"log"` link function. In addition, there may be theoretical issues with combining a sigmoidal decay model with an *NEC* step function because where there is an upper plateau in the data the location of $\eta$ may become ambiguous. Estimation of No-Effect-Concentrations using this model are not currently recommended without further testing.
 
+# Relationship to the `drc` NEC models
+
+Users arriving from the `drc` package [@Ritz2016] often ask which `bayesnec`
+model corresponds to `drc`'s `NEC.2()`, `NEC.3()` and `NEC.4()`. Two of the
+three are already here, and they are not approximations of one another: given
+$b = e^{\beta}$ the two implementations agree to the last bit, over a grid
+spanning every parameter including thresholds outside the predictor range.
+
+`drc`'s three functions are wrappers around a single generator that differ only
+in which parameters they hold fixed:
+
+| `drc`      | fixes                     | `bayesnec`                          |
+|------------|---------------------------|-------------------------------------|
+| `NEC.4()`  | nothing                   | **nec4param**                       |
+| `NEC.3()`  | $c = 0$                   | **nec3param**                       |
+| `NEC.2()`  | $c = 0$, $d =$ `upper`    | none, by choice --- see below       |
+
+The parameters map as $c = \delta$ (`"bot"`), $d = \tau$ (`"top"`),
+$e = \eta$ (`"nec"`) and $b = e^{\beta}$ (`exp("beta")`).
+
+That last one is the only substantive difference between the two model
+families. `drc` estimates the decay rate $b$ directly; `bayesnec` estimates
+$\beta$ and uses $e^{\beta}$, so the decay rate is positive by construction.
+This is a reparameterisation of the same model over $b > 0$, which is the whole
+of the sensible parameter space for a decline. It does mean `drc` can return
+$b < 0$ --- a threshold followed by unbounded exponential growth --- which
+`bayesnec` cannot represent and deliberately does not. A threshold followed by
+an *increase* is available here as **nec4param** with $\delta > \tau$, which
+stays bounded.
+
+Note that the reparameterisation runs in that direction and not the other.
+Converting a `drc` estimate by setting $\beta = \log(b)$ does not recover $b$
+exactly, because $e^{\log(b)}$ is not the identity in floating point; the
+resulting curves differ by round-off, on the order of $10^{-15}$. That is a
+property of the round trip rather than of either model, but it is worth knowing
+before concluding that two fits disagree.
+
+One point of possible confusion in the `drc` documentation is worth flagging.
+The model given in `?drc::NEC` carries an additional log-logistic term,
+$d_2 / (1 + e^{b_2(\log(x) - \log(e_2))})$, reproducing the general model of
+@Pires2002. The function `drc` actually fits does not include that term, so the
+equivalences in the table above are with the *fitted* model rather than with the
+documented one.
+
+## Why there is no equivalent of `NEC.2()`
+
+`NEC.2()` holds the upper asymptote at a constant, by default 1. Fixing $\tau$
+in this way asserts that the control response is exactly that constant with no
+error, which is only defensible for data normalised to a control.
+
+Normalising to an *estimated* control is a practice `bayesnec` warns about: it
+discards the control's uncertainty and propagates none of it into the *NEC*, so
+the resulting interval is narrower than the data support. Where the upper bound
+is genuinely structural rather than estimated --- a proportion that cannot
+exceed one for reasons of construction rather than of measurement --- the same
+constraint is available without a new model, either as a `brms` `constant()`
+prior on `"top"` or as a tight informative prior. Both keep the assumption
+explicit in the prior, where it can be inspected, rather than burying it in the
+choice of equation.
+
 # References

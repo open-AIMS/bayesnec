@@ -1,5 +1,16 @@
 # bayesnec 2.1.4
 
+- `?models` and `vignette("example2b")` now document how the `drc` package's
+  `NEC.2()`, `NEC.3()` and `NEC.4()` map onto the `bayesnec` model set.
+  `NEC.4()` and `NEC.3()` are `nec4param` and `nec3param` — not approximations
+  of them: given `b = exp(beta)` the two implementations agree to the last bit.
+  The documentation also records the one substantive difference (`bayesnec`
+  estimates `beta` and uses `exp(beta)`, so the decay rate is positive by
+  construction, and `drc`'s `b < 0` region is deliberately unreachable here),
+  that the extra log-logistic term in `?drc::NEC` appears in that help page but
+  not in the code `drc` fits, and why `NEC.2()` has no equivalent here. See
+  #139.
+
 - The package website now publishes a **development preview** alongside the
   released documentation. `master` continues to publish to the site root;
   `dev` publishes to `/dev/`, carrying pkgdown's own development banner so the
