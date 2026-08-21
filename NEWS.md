@@ -1,5 +1,41 @@
 # bayesnec 2.1.3.7
 
+- Model-averaged output from a `bayesmanecfit` is now reproducible. Averaging
+  keeps `round(sample_size * wi)` of each component model's draws, and which
+  draws those were used to be settled by an unseeded `sample()` at every call
+  site independently. `posterior_epred()`, `posterior_predict()`, `ecx()`,
+  `nsec()` and everything built on them therefore returned a different answer on
+  every call, and none of them agreed with the summaries stored on the object.
+  For `nsec()` the instability landed almost entirely on the lower bound, which
+  is the end used to set a protective concentration: over six replicate calls it
+  spanned 0.735–0.844 while the median moved by less than 0.5%. The draw is now
+  realised once, when the object is built, and kept on the object as the new
+  `w_draw_index` slot, with the seed behind it in `w_draw_seed`; every later call
+  reuses it. Realisation *i* now means "component *m*[*i*], iteration *j*[*i*]"
+  for every quantity taken from one object. The averaging method is unchanged —
+  only where the randomness is drawn. Three consequences worth knowing.
+  Model-averaged numbers will differ from those produced by earlier versions;
+  the old ones were not reproducible, so there is no "before" to match.
+  `posterior_epred()` over the build grid now returns exactly the draws that
+  `w_pred_vals` summarises rather than an independent redraw of them. And an
+  `nsec()` and its `ecnsec` are now the same draw of the same component model,
+  where before they came from two independent `sample()` calls and a pair could
+  be two unrelated draws of two different models. `predict()` and
+  `posterior_predict()` still vary between calls unless a seed is set, because
+  they simulate new observations from the likelihood — the same behaviour `brms`
+  has for a single fit, and unrelated to model averaging. Objects saved before
+  this version carry neither field and fall back to a fixed seed, which is
+  equally reproducible. See #216.
+
+- Model-averaged predictions from a `bayesmanecfit` no longer collapse when
+  `newdata` has a single row. Asking what the averaged curve predicts at one
+  concentration — `fitted(fit, newdata = data.frame(x = 3))` — returned one row
+  per retained draw instead of one row per prediction, because the weighted row
+  selection dropped to a vector and the per-model results were then stacked as
+  rows rather than columns. The point estimate looked plausible, but its
+  `Est.Error` and quantiles were computed across models rather than over draws.
+  A `bayesnecfit` was unaffected, as was any `newdata` with more than one row.
+
 - `brms (>= 2.23.0)` is now required. Earlier versions generate the
   `beta_binomial` likelihood by passing the whole `trials` array to
   `beta_binomial_lpmf` instead of `trials[n]`, so each response is evaluated

@@ -24,6 +24,19 @@
 #' @slot mod_stats A \code{\link[base]{data.frame}} of model fit statistics.
 #' @slot sample_size The size of the posterior sample.
 #' Information on the priors used in the model.
+#' @slot w_draw_index The realised model-averaging draw: a
+#' \code{\link[base]{list}} of the row indices kept for each component model.
+#' Model averaging keeps a weighted subset of each model's draws, and this
+#' records which ones, so every call on the object uses the same subset.
+#' \code{fitted}, \code{posterior_epred}, \code{ecx} and \code{nsec} are
+#' therefore reproducible, and agree with \code{w_ne_posterior} and
+#' \code{w_pred_vals}. \code{predict} and \code{posterior_predict} still vary
+#' between calls unless a seed is set, because they simulate new observations
+#' from the likelihood, as they do for a single \code{\link[brms]{brmsfit}}.
+#' @slot w_draw_seed The seed that realised \code{w_draw_index}. Used only
+#' where the stored index cannot apply: when a caller thins to a different
+#' number of draws, and for objects saved before version 2.1.3.7, which carry
+#' neither field and fall back to a fixed seed.
 #' @slot w_ne_posterior The model-weighted posterior estimate of the no-effect
 #' toxicity estimate.
 #' @slot w_predicted_y The model-weighted predicted values for the observed

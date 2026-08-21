@@ -63,11 +63,14 @@ posterior_predict.bayesnecfit <- function(object, ...) {
 posterior_predict.bayesmanecfit <- function(object, ...) {
   mod_fits <- object$mod_fits
   model_set <- names(mod_fits)
-  mod_stats <- object$mod_stats
   pred_list <- lapply(mod_fits, function(x, ...) {
     posterior_predict(x$fit, ...)
   }, ...)
   sample_size <- min(sapply(pred_list, nrow))
-  do_wrapper(model_set, w_pred_list_calc, pred_list, sample_size,
-             mod_stats, fct = "rbind")
+  # The index realised when the object was built, not a fresh draw here, so the
+  # weighting is the same on every call. What each component contributes still
+  # varies, because posterior_predict() simulates new observations -- as it does
+  # for a single brmsfit. Only the averaging is fixed here. See #216.
+  draw_index <- pull_draw_index(object, model_set, sample_size)
+  do_wrapper(model_set, w_pred_list_calc, pred_list, draw_index, fct = "rbind")
 }

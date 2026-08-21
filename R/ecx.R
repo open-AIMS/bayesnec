@@ -276,6 +276,12 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
          " in that order")
   }
   sample_size <- object$sample_size
+  # The same weighted index every other quantity on this object uses, rather
+  # than a fresh unseeded sample() here. Without it a model-averaged ECx was a
+  # different number on every call -- and it is the lower bound, the end a
+  # protective concentration is read off, that moved most. Which draws are kept
+  # is unchanged in kind; only the redraw is gone. See #216.
+  draw_index <- pull_draw_index(object, names(object$mod_fits), sample_size)
   # Written as a closure over the arguments rather than a function taking them
   # all positionally: the previous form dispatched through
   # sapply(to_iter, sample_ecx, object, ecx_val, ...), which matched by
@@ -290,8 +296,7 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
                posterior = TRUE, type = type, hormesis_def = hormesis_def,
                x_range = x_range, xform = xform, prob_vals = prob_vals,
                dpar = dpar)
-    n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
-    sample(out, n_s)
+    out[draw_index[[mod]]]
   }
   to_iter <- seq_len(length(object$success_models))
   ecx_out <- unlist(lapply(to_iter, sample_ecx))
