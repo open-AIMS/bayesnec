@@ -11,7 +11,10 @@ The literal procedure for the unattended run. Read `00_protocol.md` and
 
 ```bash
 git -C /mnt/c/Rworking/bayesnec fetch origin dev
-git -C /mnt/c/Rworking/bayesnec worktree add /mnt/c/Rworking/bayesnec-stack dev
+# NOT `worktree add <path> dev` -- dev is checked out in RF's main checkout and
+# git refuses. Create the worktree on the stack's first branch directly.
+git -C /mnt/c/Rworking/bayesnec worktree add -b issue-<n1>-<slug> \
+    /mnt/c/Rworking/bayesnec-stack dev
 cd /mnt/c/Rworking/bayesnec-stack
 uptime; nproc          # confirm the machine budget still holds
 ```

@@ -9,10 +9,16 @@ supervision. Read this first, then the queue.
 issue in it. Do **not** create a worktree per issue, and do **not** work in
 `/mnt/c/Rworking/bayesnec` — that is the author's main checkout.
 
+`dev` is checked out in RF's main checkout, so `worktree add <path> dev` fails
+with *"'dev' is already used by worktree at ..."*. Create the worktree directly
+on the stack's **first branch** instead:
+
 ```bash
 git -C /mnt/c/Rworking/bayesnec fetch origin dev
-git -C /mnt/c/Rworking/bayesnec worktree add /mnt/c/Rworking/bayesnec-tier1 dev
-cd /mnt/c/Rworking/bayesnec-tier1
+git -C /mnt/c/Rworking/bayesnec worktree add -b issue-<n1>-<slug> \
+    /mnt/c/Rworking/bayesnec-stack dev
+cd /mnt/c/Rworking/bayesnec-stack
+uptime; nproc          # confirm the machine budget still holds
 ```
 
 **One issue, one branch, one PR, and the branches STACK.** This reverses the
