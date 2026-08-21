@@ -1,5 +1,38 @@
 # bayesnec 2.1.4
 
+- New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
+  independently within each level of a factor and model-averaging within each
+  level. This is the first support for a factor covariate, and it answers the
+  premise `vignette("example4")` has carried since the beginning: that the
+  *functional form* of the response may change between levels, not merely its
+  parameters.
+
+  Levels partition the data disjointly and share no parameters, so the expected
+  log predictive density is additive across them. Under pseudo-BMA — the package
+  default — the crossed model weights are therefore exactly the outer product of
+  the per-level weight vectors, the same identity `crossed_weights()` rests on
+  for the two blocks of a hurdle fit. New `crossed_group_weights()` reports both
+  readings of that table: the **unrestricted** maximum, which will typically
+  assign different equations to different levels, and the **diagonal**, which
+  asks which single equation best describes every level — a question `bayesnec`
+  could not previously answer. The table is computed on demand rather than
+  materialised, since with 23 models and *G* levels it has 23^*G* cells. As for
+  `crossed_weights()`, the identity is specific to pseudo-BMA: stacking
+  optimises a different objective whose solution is not an outer product.
+
+  The family is chosen **once** from the whole response and passed down.
+  Selecting it per subset could pick different families at different levels,
+  which would put their `elpd` contributions on different scales and make the
+  crossed weights meaningless. Dispersion stays per level, deliberately: a
+  shared dispersion parameter would break the factorisation the crossed weights
+  depend on.
+
+  Every level is an ordinary `bayesnecfit` or `bayesmanecfit`, so `nec()`,
+  `ecx()`, `nsec()`, `summary()` and `plot()` work per level and everything that
+  works on a single fit works on each. Refitting the favoured combination
+  *jointly* is not included: that needs level-aware post-processing inside the
+  toxicity estimators, which is the code the `toxval` migration moves. See #33.
+
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the
   `beta_binomial` density and CDF, so anything that computes a log-likelihood
   for that family — `loo()`, `waic()`, `summary()` — stopped with "Please
