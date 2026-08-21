@@ -57,7 +57,8 @@ the fit against the data.
 \code{\link{dispersion}} reports one global statistic, and for any family
 with a free dispersion parameter that parameter absorbs exactly the
 discrepancy the global statistic measures. On the packaged
-\code{manec_example} the global Pearson ratio is 1.011 \link{0.71, 1.44} --- a
+\code{manec_example} the global Pearson ratio is 1.011, with a 95\\% interval
+of 0.71 to 1.44 --- a
 clean bill of health --- while the same fit simulates about 27\\% more
 variability than the data show in the control region. A global summary is
 structurally incapable of showing that, which is why this check is
