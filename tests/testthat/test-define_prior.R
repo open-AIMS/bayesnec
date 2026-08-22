@@ -224,3 +224,79 @@ test_that("response_link_scale does not warn on an all-zero response", {
                                    validate_family("zero_inflated_poisson"))
   )
 })
+
+# #229: the #210 guard was evaluated for every family, not only the ones whose
+# priors use it, so a response with no positive values errored even where the
+# family's own top/bot priors are perfectly well defined on it.
+
+test_that("a gaussian response with no positive values still builds priors", {
+  # Ordinary gaussian input: log ratios, growth increments, anything expressed
+  # as a change. The gaussian entries in the prior tables come from quantile()
+  # and sd() and never read the gamma-scaled strings.
+  set.seed(1)
+  x <- as.numeric(rep(1:10, each = 5))
+  y <- -rexp(50, 1) - 0.5
+  expect_equal(sum(y > 0), 0)
+  pr <- define_prior("nec4param", validate_family("gaussian"), x, y)
+  expect_s3_class(pr, "brmsprior")
+  expect_setequal(pr$nlpar, c("beta", "top", "bot", "nec"))
+  expect_true(all(grepl("^normal\\(", pr$prior[pr$nlpar %in% c("top", "bot")])))
+})
+
+test_that("the bounded families are unaffected by zeros in the response", {
+  # Their top/bot priors are literals -- beta(5, 2), beta(2, 5) -- so nothing
+  # about the response can make them unbuildable. Asserted because the eager
+  # evaluation of the gamma-scaled strings reached them too, and a proportion
+  # containing zeros is the ordinary case these families are used for.
+  #
+  # Note "Beta", not "beta": validate_family() dispatches on the brms
+  # constructor name. Not tested on an all-zero response, which no bounded
+  # family would be handed and which trips an unrelated pre-existing warning in
+  # response_link_scale() -- see the comment at R/helpers.R on min_z_val.
+  set.seed(3)
+  x <- as.numeric(rep(1:10, each = 5))
+  y <- c(rep(0, 12), runif(38, 0.05, 0.95))
+  for (fam in c("Beta", "binomial", "bernoulli", "beta_binomial")) {
+    pr <- define_prior("nec4param", validate_family(fam), x, y)
+    expect_s3_class(pr, "brmsprior")
+    expect_true(all(grepl("^beta\\(", pr$prior[pr$nlpar %in% c("top", "bot")])),
+                info = fam)
+  }
+})
+
+test_that("the count families still error when there is no scale to use", {
+  # The #210 behaviour must survive: for these three the gamma rate genuinely
+  # cannot be placed, so the informative error is still the right answer.
+  x <- as.numeric(rep(1:10, each = 5))
+  for (fam in c("poisson", "negbinomial", "zero_inflated_poisson")) {
+    expect_error(
+      define_prior("nec4param", validate_family(fam), x, rep(0, length(x))),
+      "no positive values",
+      info = fam
+    )
+  }
+})
+
+test_that("a supplied prior is not blocked by an unbuildable default", {
+  # #207 made add_brm_defaults() build the defaults unconditionally, so a
+  # failure inside define_prior() became a hard stop even for a user who had
+  # supplied a complete set of their own. An all-zero poisson response is the
+  # case that reaches it.
+  x <- as.numeric(rep(1:10, each = 5))
+  y <- rep(0, length(x))
+  up <- brms::prior_string("normal(0, 5)", nlpar = "beta") +
+    brms::prior_string("gamma(2, 0.1)", nlpar = "top", lb = 0) +
+    brms::prior_string("gamma(2, 0.5)", nlpar = "bot", lb = 0) +
+    brms::prior_string("gamma(5, 0.36)", nlpar = "nec", lb = 1, ub = 10)
+  # `init` is supplied so the initial-value search is skipped. It is not being
+  # avoided for speed: on an all-zero response no draw can put the curve inside
+  # the response range, so make_good_inits() retries until it gives up, and this
+  # test is about prior construction, not about inits.
+  out <- suppressMessages(
+    bayesnec:::add_brm_defaults(list(prior = up, init = "random"), "nec4param",
+                               validate_family("poisson"), x, y,
+                               skip_check = FALSE, custom_name = NULL)
+  )
+  expect_s3_class(out$prior, "brmsprior")
+  expect_setequal(out$prior$nlpar, c("beta", "top", "bot", "nec"))
+})

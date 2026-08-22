@@ -115,14 +115,26 @@ define_prior <- function(model, family, predictor, response,
   #    models, sits at the upper end of the response range.
   # Only the response-scaled (top/bot) priors differ between the two sets; the
   # predictor-scaled and fixed priors below are shared.
+  # Only these three families read u_t_g / u_b_g out of the tables below; every
+  # other entry is a literal or is built from quantile()/sd() directly, and is
+  # well defined on a response that is entirely negative or entirely zero. So
+  # the gamma-scaled strings are built only when they will be used. Building
+  # them unconditionally made positive_scale()'s "no positive values" error --
+  # and the unguarded min(response[response > 0]) beside it -- reachable for
+  # gaussian, where an all-negative response (log ratios, growth increments,
+  # anything expressed as a change) is ordinary input. See #229.
+  gamma_scaled <- fam_tag %in% c("Gamma", "poisson", "negbinomial")
   if (prior_type == "uninformative") {
-    u_t_g <- paste0("gamma(2, ",
-                    1 / (positive_scale(response, probs = 0.75) / 2),
-                    ")")
-    u_b_g <- paste0("gamma(2, ",
-                    1 / ((positive_scale(response, probs = 0.25) +
-                      min(response[response > 0]) / 100) / 2),
-                    ")")
+    u_t_g <- u_b_g <- NA_character_
+    if (gamma_scaled) {
+      u_t_g <- paste0("gamma(2, ",
+                      1 / (positive_scale(response, probs = 0.75) / 2),
+                      ")")
+      u_b_g <- paste0("gamma(2, ",
+                      1 / ((positive_scale(response, probs = 0.25) +
+                        min(response[response > 0]) / 100) / 2),
+                      ")")
+    }
     y_t_prs <- c(Gamma = u_t_g,
                  poisson = u_t_g,
                  negbinomial = u_t_g,
@@ -144,17 +156,21 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = "beta(2, 5)",
                  beta = "beta(2, 5)")
   } else {
-    u_t_g <- paste0("gamma(5, ",
-                    5 / (positive_scale(response, probs = 1)),
-                    ")")
-    # probs = 0 is the minimum, which is zero for a response containing a single
-    # zero -- not merely for a mostly-zero one. So under "regularizing" the
-    # collapse was unconditional on the zero fraction, where under
-    # "uninformative" it needed a quarter of the response to be zero.
-    u_b_g <- paste0("gamma(5, ",
-                    5 / ((positive_scale(response, probs = 0) +
-                      min(response[response > 0]) / 10)),
-                    ")")
+    u_t_g <- u_b_g <- NA_character_
+    if (gamma_scaled) {
+      u_t_g <- paste0("gamma(5, ",
+                      5 / (positive_scale(response, probs = 1)),
+                      ")")
+      # probs = 0 is the minimum, which is zero for a response containing a
+      # single zero -- not merely for a mostly-zero one. So under
+      # "regularizing" the collapse was unconditional on the zero fraction,
+      # where under "uninformative" it needed a quarter of the response to be
+      # zero.
+      u_b_g <- paste0("gamma(5, ",
+                      5 / ((positive_scale(response, probs = 0) +
+                        min(response[response > 0]) / 10)),
+                      ")")
+    }
     y_t_prs <- c(Gamma = u_t_g,
                  poisson = u_t_g,
                  negbinomial = u_t_g,
