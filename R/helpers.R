@@ -454,7 +454,12 @@ contains_negative <- function(x) {
 #' @noRd
 response_link_scale <- function(response, family) {
   link_tag <- family$link
-  min_z_val <- min(response[which(response > 0)]) / 100
+  # Computed on demand rather than eagerly. An all-zero response is legitimate
+  # input for a zero-inflated family, and reaches none of the branches below --
+  # but min(response[response > 0]) on it is Inf and emits a warning the caller
+  # can do nothing about. Surfaced by the #210 tests; the value itself is
+  # unchanged wherever it is actually used.
+  min_z_val <- function() min(response[which(response > 0)]) / 100
   if (link_tag == "logit") {
     max_o_val <- max(response[which(response < 1)]) +
       (1 - max(response[which(response < 1)])) * 0.99
@@ -464,7 +469,7 @@ response_link_scale <- function(response, family) {
   if (link_tag %in% c("logit", "log")) {
     if (family$family %in% c("bernoulli", "binomial", "beta_binomial")) {
       if (contains_zero(response)) {
-        response <- lr(response, r_out = c(min_z_val, max(response)))
+        response <- lr(response, r_out = c(min_z_val(), max(response)))
       }
       if (contains_one(response)) {
         response <- lr(response, r_out = c(min(response), max_o_val))
@@ -472,7 +477,7 @@ response_link_scale <- function(response, family) {
       response <- family$linkfun(response)
     } else {
       if (contains_zero(response)) {
-        response <- lr(response, r_out = c(min_z_val, max(response)))
+        response <- lr(response, r_out = c(min_z_val(), max(response)))
       }
       response <- family$linkfun(response)
     }
@@ -484,7 +489,7 @@ response_link_scale <- function(response, family) {
     # Clamp response away from the boundaries so that initial values
     # derived from it stay within the valid support.
     if (contains_zero(response)) {
-      response <- lr(response, r_out = c(min_z_val, max(response)))
+      response <- lr(response, r_out = c(min_z_val(), max(response)))
     }
     if (contains_one(response)) {
       max_o_val <- max(response[which(response < 1)]) +

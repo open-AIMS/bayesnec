@@ -1,5 +1,20 @@
 # bayesnec 2.1.4
 
+- `define_prior()` no longer collapses the `top` and `bot` priors when a large
+  share of the response is exactly zero. The gamma rates for those parameters
+  are set from quantiles of the response, and those quantiles are zero once
+  enough of the response is — so `bot` was pinned near zero whatever the real
+  lower asymptote was (from 25% zeros under the default `prior_type`, and from a
+  *single* zero under `"regularizing"`, which uses the minimum), and past 75%
+  zeros the `top` rate divided by zero and produced the literal prior string
+  `gamma(2, Inf)`. Where a quantile has collapsed, the scale now falls back to
+  the same quantile of the positive part of the response. This is not new to the
+  zero-inflated count families added in 2.1.4 — a `poisson` or `Gamma` response
+  with many zeros always hit it — but those families exist precisely for that
+  regime, which made it the normal case rather than an accident. A response with
+  no positive values at all now raises an informative error instead. Priors for
+  a response containing no zeros are unchanged. See #210.
+
 - `?models` and `vignette("example2b")` now document how the `drc` package's
   `NEC.2()`, `NEC.3()` and `NEC.4()` map onto the `bayesnec` model set.
   `NEC.4()` and `NEC.3()` are `nec4param` and `nec3param` — not approximations
