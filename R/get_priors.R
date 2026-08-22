@@ -223,7 +223,15 @@ usable_prior <- function(prior) {
   if (is.null(prior) || nrow(prior) == 0) {
     return(prior)
   }
-  keep <- prior$source == "user" & prior$class == "b" & prior$coef == ""
+  # class "b" is the curve's own coefficients and the parameters a route B
+  # disp() term adds. The dispersion classes are kept too, so that a prior the
+  # user supplied on sigma/shape/phi round trips and get_priors() is a complete
+  # record of the fit rather than a record of everything except dispersion.
+  # `source == "user"` is what makes that safe: a dispersion prior brms chose
+  # for itself is still dropped, because reporting it would suggest bayesnec had
+  # made a choice it did not make. See #207.
+  keep <- prior$source == "user" & prior$coef == "" &
+    (prior$class == "b" | prior$class %in% dispersion_classes())
   out <- prior[keep, , drop = FALSE]
   for (bound in c("lb", "ub")) {
     if (bound %in% names(out)) {
@@ -232,4 +240,21 @@ usable_prior <- function(prior) {
   }
   rownames(out) <- NULL
   out
+}
+
+#' Classes brms uses for a family's own dispersion parameter
+#'
+#' The parameter that is not part of the mean curve but describes the spread
+#' around it: \code{sigma} for gaussian, \code{shape} for Gamma, negbinomial
+#' and their hurdle/zero-inflated forms, \code{phi} for Beta and beta_binomial.
+#' Poisson, binomial and bernoulli have none. \code{zi} and \code{hu} are
+#' deliberately absent: bayesnec models those as a second parameter block, so a
+#' prior on them carries class "b" with a prefixed \code{nlpar}, not a class of
+#' their own.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+dispersion_classes <- function() {
+  c("sigma", "shape", "phi")
 }

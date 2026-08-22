@@ -223,3 +223,50 @@ test_that("check_models drops fractional-power models for negative predictors", 
   # ... while models valid for negative predictors are retained.
   expect_true(all(c("nec3param", "ecxexp") %in% kept))
 })
+
+# #207 part 1: a prior on the family's own dispersion parameter -- sigma, shape,
+# phi -- used to kill make_inits() outright, because the name check compared the
+# prior's parameter names against the *curve's* arguments as an exact set. A
+# user therefore could not regularise dispersion at all.
+
+disp_prior_df <- function(class = "sigma") {
+  data.frame(prior = c("normal(1,1)", "normal(0,5)", "normal(0.5,1)",
+                       "gamma(5,2)", "student_t(3,0,2.5)"),
+             class = c(rep("b", 4), class), coef = "", group = "",
+             resp = "", dpar = "",
+             nlpar = c("top", "beta", "bot", "nec", ""),
+             lb = "", ub = "", stringsAsFactors = FALSE)
+}
+
+test_that("make_inits accepts a prior on the dispersion parameter", {
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  for (cl in c("sigma", "shape", "phi")) {
+    out <- bayesnec:::make_inits("nec4param", fct_args,
+                                 priors = disp_prior_df(cl), chains = 2)
+    expect_length(out, 2)
+    expect_setequal(names(out[[1]]), fct_args)
+  }
+})
+
+test_that("no initial value is generated for the dispersion parameter", {
+  # Deliberate: Stan random-initialises any parameter absent from an init list,
+  # and bayesnec has never given sigma an init. The prior still reaches brm();
+  # only the init search ignores it.
+  out <- bayesnec:::make_inits("nec4param",
+                               c("b_top", "b_beta", "b_bot", "b_nec"),
+                               priors = disp_prior_df(), chains = 2)
+  expect_false(any(grepl("sigma", names(out[[1]]))))
+  expect_length(out[[1]], 4)
+})
+
+test_that("a prior naming a parameter the curve does not have still errors", {
+  # The name check must keep doing its job. Only dispersion classes are exempt.
+  bad <- disp_prior_df()
+  bad <- bad[bad$class == "b", ]
+  bad$nlpar[1] <- "notaparameter"
+  expect_error(
+    bayesnec:::make_inits("nec4param", c("b_top", "b_beta", "b_bot", "b_nec"),
+                          priors = bad, chains = 2),
+    "do not match expectation"
+  )
+})
