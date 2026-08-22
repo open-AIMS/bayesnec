@@ -1,5 +1,17 @@
 # bayesnec 2.2.0
 
+- New vignette, `vignette("example8")` — *A complete analysis workflow* — running
+  a single analysis from data to reportable estimate: family choice from a
+  dispersion screen, fitting, sampler diagnostics per candidate model, fit
+  diagnostics via `pp_check()` and `check_fit()`, exclusion of models that fail
+  the screen, and reporting. It covers the two steps the other vignettes state
+  but do not demonstrate — choosing the family from the data, and removing a
+  model and seeing the effect on the weights and on the model-averaged estimate.
+  Worked for a counts-out-of-trials response and repeated for a continuous one,
+  since the family screen and the fit checks behave differently between them.
+  See #219.
+
+
 - New `check_fit()`, reporting per group of the predictor the observed location
   and scale of the response against what the fitted model simulates, with a
   posterior predictive p-value for each and the control group flagged. It sits

@@ -1,0 +1,295 @@
+---
+title: "A complete analysis workflow"
+output:
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{A complete analysis workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.path = "vignette-fig-",
+  fig.asp = 0.8,
+  out.width = "60%",
+  fig.align = "center",
+  dev = "png",
+  dpi = 150,
+  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+)
+```
+
+# Overview
+
+The other vignettes each explain one part of `bayesnec`: what the model set is,
+what a `bayesmanecfit` is, how priors are built, how to handle a two-block
+response. This one runs a single analysis from data to reportable estimate, in
+the order the steps actually occur, and shows the two that the others state but
+do not demonstrate: **choosing the family from the data**, and **removing a
+model from the set and seeing what that does to the answer**.
+
+The workflow is:
+
+1. Prepare the data and choose the family.
+2. Fit the candidate set.
+3. Check the sampler.
+4. Check the fit.
+5. Exclude what fails, and re-inspect the weights.
+6. Report.
+
+Steps 3 and 5 are the ones with consequences. `vignette("example2")` notes that
+there is little harm in leaving a poorly *shaped* model in the set with low
+weight — which is true — but a model that has not **converged** is a different
+matter, and dropping it changes the weights and therefore the model-averaged
+*N(S)EC* that gets reported. That is shown here rather than asserted.
+
+```{r libraries}
+library(bayesnec)
+library(ggplot2)
+```
+
+# 1. Data preparation and family choice
+
+The `nassarius` data are survival counts for a marine gastropod exposed to a
+contaminant, recorded per individual within replicate tanks.
+
+```{r data}
+data(nassarius)
+head(nassarius)
+```
+
+Survival is binary per individual, so the natural unit for a
+concentration-response model is the tank: the number alive out of the number
+exposed.
+
+```{r aggregate}
+surv <- aggregate(alive ~ dose + tank + contaminant,
+                  data = nassarius, FUN = function(x) c(suc = sum(x),
+                                                        tot = length(x)))
+surv <- do.call(data.frame, surv)
+names(surv)[names(surv) == "alive.suc"] <- "suc"
+names(surv)[names(surv) == "alive.tot"] <- "tot"
+surv <- surv[surv$contaminant == "A", ]
+head(surv)
+```
+
+## The pre-fit screen
+
+The obvious family for successes-out-of-trials is `binomial`. But a binomial
+model fixes the variance at $np(1-p)$, and replicate tanks almost always vary by
+more than that — animals within a tank share conditions, so the effective sample
+size is smaller than the number of individuals. Fitting the whole candidate set
+under a family that cannot represent the spread wastes the run.
+
+The screen is cheap: fit **one** model, and look at `dispersion()`.
+
+```{r screen}
+screen <- bnec(suc | trials(tot) ~ crf(dose, model = "nec4param"),
+               data = surv, family = binomial(link = "identity"),
+               iter = 2e3, chains = 2, seed = 17)
+dispersion(screen, summary = TRUE)
+```
+
+`dispersion()` returns the ratio of the residual variance to the variance the
+family assumes. A value near 1 means the family's variance assumption is
+supported. Comfortably above 1 means it is not, and the fix is a family with a
+free dispersion parameter — `beta_binomial` for counts out of trials.
+
+```{r family-choice}
+disp <- dispersion(screen, summary = TRUE)
+fam <- if (disp[["Estimate"]] > 1.5) "beta_binomial" else "binomial"
+fam
+```
+
+`dispersion()` returns a named vector — `Estimate`, `Q2.5`, `Q97.5` — and only
+for `poisson` and `binomial`, the two families whose variance is fixed by the
+mean. For anything else it returns an empty vector, which is the correct answer
+rather than an error: there is no over-dispersion decision to make when the
+family already carries a free dispersion parameter.
+
+The 1.5 threshold is a judgement, not a rule; what matters is that the decision
+is made from the data and recorded, rather than defaulted to. Note that
+`bnec()` forces `link = "identity"` on every family so that `top`, `bot` and
+`nec` stay on the response scale — see `vignette("example1")`.
+
+# 2. Fitting the candidate set
+
+```{r fit, results = "hide"}
+fit <- bnec(suc | trials(tot) ~ crf(dose, model = "decline"),
+            data = surv, family = fam,
+            iter = 5e3, chains = 3, seed = 17)
+```
+
+Two arguments are worth knowing before you need them:
+
+- `iter` and `warmup`. The defaults are generous, but a model with a poorly
+  identified `nec` may need more. Raising `iter` is the first thing to try when
+  Rhat is marginal.
+- `control = list(adapt_delta = 0.99, max_treedepth = 12)`. Raise `adapt_delta`
+  when there are divergent transitions; raise `max_treedepth` when the sampler
+  reports hitting it. Both cost time and neither fixes a misspecified model.
+
+Models that fail outright are recorded rather than silently dropped, and can be
+re-tried individually with `amend(add = )`:
+
+```{r failed}
+failed_models(fit)
+```
+
+# 3. Sampler diagnostics
+
+The first question is whether the sampler worked — not whether the model is
+any good, which is step 4.
+
+`rhat()` reports per candidate model, so the whole set is screened in one call
+rather than model by model.
+
+```{r rhat}
+rhat_out <- rhat(fit, rhat_cutoff = 1.01)
+rhat_tab <- data.frame(
+  model = names(rhat_out),
+  max_rhat = vapply(rhat_out, function(z) max(z$rhat_vals), numeric(1)),
+  failed = vapply(rhat_out, function(z) z$failed, logical(1))
+)
+rhat_tab[order(-rhat_tab$max_rhat), ]
+```
+
+A cutoff of 1.01 is stricter than the `bayesnec` default of 1.05, and is worth
+using here: the default is permissive, and the point of this step is to find the
+models that should not be averaged. Which cutoff to use is a decision to record,
+not a default to accept silently.
+
+Chain mixing is worth looking at for anything marginal, rather than for
+everything:
+
+```{r chains, eval = FALSE}
+check_chains(pull_out(fit, model = rhat_tab$model[1]))
+```
+
+# 4. Fit diagnostics
+
+Rhat says the sampler explored the posterior. It says nothing about whether the
+model *fits*. Two checks, and they answer different questions.
+
+`pp_check()` asks whether data simulated from the fitted model look like the
+data observed, overall:
+
+```{r ppcheck}
+pp_check(pull_out(fit, model = "nec4param"))
+```
+
+`check_fit()` asks the sharper question: does the model reproduce the observed
+**variability**, and the observed **level**, *locally* — within each
+concentration group, with the control flagged.
+
+```{r checkfit}
+check_fit(fit)
+```
+
+This is local by necessity. A global dispersion statistic averages over the
+curve and can return a clean bill of health while the model simulates far more
+variability than the data show in the control region — which is exactly the
+region *NSEC* is read off. The per-group table is what makes that visible.
+
+Read the posterior predictive p-value as a screen, not a test: values near 0 or
+1 mean the model is not reproducing that group, and the control row is the one
+to look at first.
+
+# 5. Exclusion, and what it does to the answer
+
+This is the step with no coverage elsewhere, and the one that changes the
+reported number.
+
+```{r before}
+weights_before <- fit$mod_stats[, c("model", "wi")]
+weights_before[order(-weights_before$wi), ]
+nec_before <- nec(fit)
+nec_before
+```
+
+Screen on the diagnostics from steps 3 and 4, then drop:
+
+```{r exclude}
+to_drop <- rhat_tab$model[rhat_tab$failed]
+to_drop
+fit_screened <- amend(fit, drop = to_drop)
+```
+
+`amend()` refuses to leave the set empty, so if everything fails the screen you
+get an error rather than a meaningless average — which is the right outcome, and
+a signal to go back to step 2 rather than to loosen the cutoff.
+
+```{r after}
+weights_after <- fit_screened$mod_stats[, c("model", "wi")]
+weights_after[order(-weights_after$wi), ]
+nec_after <- nec(fit_screened)
+rbind(before = nec_before, after = nec_after)
+```
+
+The weights are renormalised across the models that remain, so dropping a model
+does not merely remove its contribution — it redistributes its weight among the
+survivors, and the model-averaged estimate moves accordingly. That is why the
+exclusion step cannot be treated as incidental.
+
+```{r plot-after}
+autoplot(fit_screened)
+```
+
+# 6. Reporting
+
+What to state in a methods section:
+
+- **the family, and why** — including the dispersion screen and its value, since
+  a reader cannot otherwise tell whether `beta_binomial` was chosen or defaulted
+  to;
+- **the candidate set** as fitted, and any model that failed to fit at all;
+- **the diagnostic thresholds used** — the Rhat cutoff especially, since it is a
+  choice and it determines what gets excluded;
+- **which models were excluded and why**, with the weights before and after, so
+  a reader can see the effect of the screen rather than take it on trust;
+- **the model-averaged estimate with its credible interval**, and the weights of
+  the retained models.
+
+```{r report}
+summary(fit_screened)
+```
+
+# A second family: a continuous response
+
+The screen in step 1 and the checks in step 4 behave differently for a
+continuous response, so it is worth seeing both. The `herbicide` data record
+photosynthetic yield, a proportion bounded by 0 and 1 but not a count, which is
+the `beta` case.
+
+```{r herbicide, results = "hide"}
+data(herbicide)
+irgarol <- herbicide[herbicide$herbicide == "irgarol", ]
+fit_b <- bnec(fvfm ~ crf(log(concentration), model = "decline"),
+              data = irgarol, family = Beta(link = "identity"),
+              iter = 5e3, chains = 3, seed = 17)
+```
+
+Two differences to note.
+
+- **There is no family choice to make.** `beta` already carries a free
+  dispersion parameter (`phi`), so the over-dispersion screen has nothing to
+  decide. The screen in step 1 is specifically a `binomial` question.
+- **`check_fit()` is more informative here**, because a beta response has
+  genuine residual variability at every concentration, where a binomial response
+  near total mortality has almost none and every group looks well fitted by
+  construction.
+
+```{r herbicide-check}
+check_fit(fit_b)
+```
+
+The rest of the workflow — steps 3, 5 and 6 — is identical.
+
+# References
