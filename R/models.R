@@ -63,6 +63,60 @@
 #' not need to be controlled by the user and a call to \code{\link{bnec}} with
 #' \code{models = "all"} will simply exclude inappropriate models.
 #'
+#' \bold{Coming from the \code{drc} package}
+#'
+#' \code{drc}'s \code{NEC.2()}, \code{NEC.3()} and \code{NEC.4()} are
+#' wrappers around one generator that differ only in which parameters they hold
+#' fixed. Two of the three are already available here, and they are not
+#' approximations of one another: given \code{b = exp(}"beta"\code{)} the two
+#' implementations are identical to the last bit, over a grid spanning every
+#' parameter including thresholds outside the predictor range.
+#'
+#' \tabular{lll}{
+#'   \strong{drc} \tab \strong{fixes} \tab \strong{bayesnec} \cr
+#'   \code{NEC.4()} \tab nothing \tab \code{"nec4param"} \cr
+#'   \code{NEC.3()} \tab \code{c = 0} \tab \code{"nec3param"} \cr
+#'   \code{NEC.2()} \tab \code{c = 0}, \code{d = upper} \tab none, by choice
+#'                        --- see below \cr
+#' }
+#'
+#' The parameters map as \code{c = }"bot", \code{d = }"top",
+#' \code{e = }"nec" and \code{b = exp(}"beta"\code{)}. That last one is the
+#' only substantive difference between the two model families: \code{drc}
+#' estimates the decay rate directly, whereas \code{bayesnec} estimates
+#' "beta" and uses \code{exp(}"beta"\code{)}, so the decay rate is positive by
+#' construction. This is a reparameterisation of the same model over
+#' \code{b > 0}. It does mean \code{drc} can return \code{b < 0}, which is a
+#' threshold followed by unbounded exponential growth; \code{bayesnec} cannot
+#' represent that, and deliberately does not. A threshold followed by an
+#' increase is available as \code{"nec4param"} with "bot" greater than "top",
+#' which stays bounded.
+#'
+#' The reparameterisation runs in that direction and not the other. Converting
+#' a \code{drc} estimate by setting "beta" \code{= log(b)} does not recover
+#' \code{b} exactly, because \code{exp(log(b))} is not the identity in
+#' floating point; the resulting curves differ by round-off, on the order of
+#' \code{1e-15}. That is a property of the round trip rather than of either
+#' model, but it is worth knowing before concluding that two fits disagree.
+#'
+#' Note that the model given in \code{?drc::NEC} carries an additional
+#' log-logistic term, reproducing the general model of Pires et al. (2002).
+#' The function \code{drc} actually fits does not include that term, so the
+#' equivalences above are with the fitted model rather than with the
+#' documented one.
+#'
+#' \code{NEC.2()} fixes the upper asymptote at a constant, and has no
+#' \code{bayesnec} equivalent by choice. Doing so asserts that the control
+#' response is exactly that constant with no error, which is only defensible
+#' for data normalised to a control --- and normalising to an \emph{estimated}
+#' control discards the control's uncertainty and propagates none of it into
+#' the \emph{NEC}, which is the practice \code{bnec} warns about via its
+#' internal normalisation check. Where the upper bound is genuinely
+#' structural rather than estimated, use a \code{\link[brms]{constant}} prior
+#' or a tight informative prior
+#' on "top", which keeps the constraint explicit and leaves the rest of the
+#' machinery unchanged.
+#'
 #' @return A \code{\link[base]{list}} of the available or fitted models.
 #' @examples
 #' library(bayesnec)

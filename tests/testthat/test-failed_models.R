@@ -189,8 +189,17 @@ test_that("a model that fails in a set is reported with its priors and inits", {
   failed <- failed_models(out)
   expect_named(failed, "ecxwb1")
   expect_equal(failed$ecxwb1$model, "ecxwb1")
-  # Windows reports "CPU time limit" where Linux and macOS report "elapsed".
-  expect_match(failed$ecxwb1$message, "time limit")
+  # Deliberately NOT asserted on the message text. A 1 ms timeout is a race:
+  # where the interrupt lands is not deterministic, so the recorded message is
+  # sometimes R.utils' "time limit" and sometimes whatever the initial-value
+  # search was in the middle of -- observed in CI as "Expecting a single value
+  # when fixing parameter 'ec50'". Both are the same event as far as this test
+  # is concerned. What has to hold is that the failure was *captured and
+  # reported*, which is the behaviour this test is named for; the wording of the
+  # underlying error is incidental and pinning it made the suite flaky. See the
+  # #139 PR for the CI run that surfaced it.
+  expect_type(failed$ecxwb1$message, "character")
+  expect_gt(nchar(failed$ecxwb1$message), 0)
   # The whole point: the priors and initial values used are recoverable without
   # re-running the set, and the prior is usable as a `prior =` argument.
   expect_s3_class(failed$ecxwb1$prior, "brmsprior")
