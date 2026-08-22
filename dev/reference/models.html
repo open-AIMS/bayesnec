@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.8</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.9</span>
       </span>
     </div>
 
@@ -151,6 +151,47 @@ models that raise the predictor to a fractional power ("ecxsigm",
 predictor contains negative values. These restrictions do
 not need to be controlled by the user and a call to <code><a href="bnec.html">bnec</a></code> with
 <code>models = "all"</code> will simply exclude inappropriate models.</p>
+<p><b>Coming from the <code>drc</code> package</b></p>
+<p><code>drc</code>'s <code>NEC.2()</code>, <code>NEC.3()</code> and <code>NEC.4()</code> are
+wrappers around one generator that differ only in which parameters they hold
+fixed. Two of the three are already available here, and they are not
+approximations of one another: given <code>b = exp(</code>"beta"<code>)</code> the two
+implementations are identical to the last bit, over a grid spanning every
+parameter including thresholds outside the predictor range.</p>
+<table class="table table"><tr><td><strong>drc</strong></td><td><strong>fixes</strong></td><td><strong>bayesnec</strong></td></tr><tr><td><code>NEC.4()</code></td><td>nothing</td><td><code>"nec4param"</code></td></tr><tr><td><code>NEC.3()</code></td><td><code>c = 0</code></td><td><code>"nec3param"</code></td></tr><tr><td><code>NEC.2()</code></td><td><code>c = 0</code>, <code>d = upper</code></td><td>none, by choice
+— see below</td></tr></table><p>The parameters map as <code>c = </code>"bot", <code>d = </code>"top",
+<code>e = </code>"nec" and <code>b = exp(</code>"beta"<code>)</code>. That last one is the
+only substantive difference between the two model families: <code>drc</code>
+estimates the decay rate directly, whereas <code>bayesnec</code> estimates
+"beta" and uses <code>exp(</code>"beta"<code>)</code>, so the decay rate is positive by
+construction. This is a reparameterisation of the same model over
+<code>b &gt; 0</code>. It does mean <code>drc</code> can return <code>b &lt; 0</code>, which is a
+threshold followed by unbounded exponential growth; <code>bayesnec</code> cannot
+represent that, and deliberately does not. A threshold followed by an
+increase is available as <code>"nec4param"</code> with "bot" greater than "top",
+which stays bounded.</p>
+<p>The reparameterisation runs in that direction and not the other. Converting
+a <code>drc</code> estimate by setting "beta" <code>= log(b)</code> does not recover
+<code>b</code> exactly, because <code>exp(log(b))</code> is not the identity in
+floating point; the resulting curves differ by round-off, on the order of
+<code>1e-15</code>. That is a property of the round trip rather than of either
+model, but it is worth knowing before concluding that two fits disagree.</p>
+<p>Note that the model given in <code>?drc::NEC</code> carries an additional
+log-logistic term, reproducing the general model of Pires et al. (2002).
+The function <code>drc</code> actually fits does not include that term, so the
+equivalences above are with the fitted model rather than with the
+documented one.</p>
+<p><code>NEC.2()</code> fixes the upper asymptote at a constant, and has no
+<code>bayesnec</code> equivalent by choice. Doing so asserts that the control
+response is exactly that constant with no error, which is only defensible
+for data normalised to a control — and normalising to an <em>estimated</em>
+control discards the control's uncertainty and propagates none of it into
+the <em>NEC</em>, which is the practice <code>bnec</code> warns about via its
+internal normalisation check. Where the upper bound is genuinely
+structural rather than estimated, use a <code><a href="https://paulbuerkner.com/brms/reference/constant.html" class="external-link">constant</a></code> prior
+or a tight informative prior
+on "top", which keeps the constraint explicit and leaves the rest of the
+machinery unchanged.</p>
     </div>
 
     <div id="ref-examples">
