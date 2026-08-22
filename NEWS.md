@@ -1,4 +1,14 @@
-# bayesnec 2.1.3.7
+# bayesnec 2.1.4
+
+- The package website now publishes a **development preview** alongside the
+  released documentation. `master` continues to publish to the site root;
+  `dev` publishes to `/dev/`, carrying pkgdown's own development banner so the
+  two cannot be confused. This makes a vignette written or changed on `dev`
+  readable in rendered form without a contributor precompiling locally, and
+  makes drift between `dev` code and `master` vignette output visible before
+  release rather than at it. A separate manually-dispatched workflow rebuilds
+  the precompiled vignettes and opens a PR with the result, so a refresh no
+  longer requires a local Stan toolchain. See #215.
 
 - Model-averaged output from a `bayesmanecfit` is now reproducible. Averaging
   keeps `round(sample_size * wi)` of each component model's draws, and which

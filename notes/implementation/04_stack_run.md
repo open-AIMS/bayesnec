@@ -11,7 +11,10 @@ The literal procedure for the unattended run. Read `00_protocol.md` and
 
 ```bash
 git -C /mnt/c/Rworking/bayesnec fetch origin dev
-git -C /mnt/c/Rworking/bayesnec worktree add /mnt/c/Rworking/bayesnec-stack dev
+# NOT `worktree add <path> dev` -- dev is checked out in RF's main checkout and
+# git refuses. Create the worktree on the stack's first branch directly.
+git -C /mnt/c/Rworking/bayesnec worktree add -b issue-<n1>-<slug> \
+    /mnt/c/Rworking/bayesnec-stack dev
 cd /mnt/c/Rworking/bayesnec-stack
 uptime; nproc          # confirm the machine budget still holds
 ```
@@ -143,3 +146,30 @@ Decisions that will be waiting, known in advance:
 3. **#190 may need to run twice** if 2.1.4 ships to CRAN before 2.2.0. See the
    #190 section of the queue.
 4. **#148 decision (d)**, the combined hurdle check, if it was not reached.
+
+---
+
+## Running this as a loop
+
+RF authorised an unattended self-paced loop on 2026-08-21, with **skip-and-
+continue** on a stall. Each wake:
+
+1. Re-reads `01_work_queue.md` and `05_run_log.md` to find the next unfinished
+   item. The run log is the source of truth for where the stack has got to —
+   never infer it from the branch list alone.
+2. Does exactly one item, end to end, to the *Done when* in the queue entry.
+3. Opens its PR against the previous branch and appends to `05_run_log.md`.
+4. Schedules the next wake.
+
+**On a stall: skip, do not halt.** Push the partial work to
+`issue-<n>-<slug>-wip` with no PR, write a `BLOCKED` entry in the run log with
+enough detail for RF to act on without re-deriving anything, and cut the next
+item **from the last good branch** — never from the stalled one. Then continue.
+
+**Pacing.** Most items involve a full `devtools::test()` run, which is ~40 min on
+the Linux filesystem and longer under `/mnt/c`. Do not poll it in a tight loop.
+Wake on the long side and let CI and the test suite run between wakes.
+
+**Do not start an item you cannot finish** in the remaining budget — better to
+end a wake having logged the state cleanly than to leave a half-built branch
+load-bearing for the next one.
