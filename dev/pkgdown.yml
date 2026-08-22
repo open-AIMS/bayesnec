@@ -1,0 +1,15 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  example1: example1.html
+  example2: example2.html
+  example2b: example2b.html
+  example3: example3.html
+  example4: example4.html
+  example5: example5.html
+  example6: example6.html
+last_built: 2026-08-22T05:10Z
+urls:
+  reference: https://open-aims.github.io/bayesnec/reference
+  article: https://open-aims.github.io/bayesnec/articles
