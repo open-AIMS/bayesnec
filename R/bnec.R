@@ -535,7 +535,9 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     # Attached in both branches: where all but one model failed the return is a
     # bayesnecfit, and that is exactly the case where knowing what happened to
     # the other twenty-two matters most.
-    attach_failed_models(out, failed)
+    out <- attach_failed_models(out, failed)
+    message_control_fit(out)
+    out
   } else {
     mod_fit <- fit_bayesnec(formula = formula, data = data, model = model,
                             brm_args = brm_args, prior_type = prior_type,
@@ -544,6 +546,49 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     mod_fit <- expand_nec(mod_fit, formula = formula, x_range = x_range,
                           resolution = resolution, sig_val = sig_val,
                           loo_controls = loo_controls, model = model)
-    allot_class(mod_fit, c("bayesnecfit", "bnecfit"))
+    out <- allot_class(mod_fit, c("bayesnecfit", "bnecfit"))
+    message_control_fit(out)
+    out
   }
+}
+
+#' Say at the end of a fit if the control is not reproduced
+#'
+#' A control lack-of-fit is not something a user goes looking for, so it is
+#' surfaced once, where the fit happens. \code{\link{check_data}}'s
+#' normalisation messages are the precedent.
+#'
+#' \bold{Thresholded on the ratio, not the posterior predictive p-value},
+#' for the reason given in the summary machinery: a measured ~19\% control
+#' overshoot, reproducing across two independently fitted parameterisations,
+#' carried a \code{ppp} of about 0.82 and would never have flagged.
+#'
+#' A message rather than a warning, because a control mis-fit is a modelling
+#' result and not a fault. It is wrapped so that nothing here can fail a fit
+#' that otherwise succeeded --- a diagnostic that breaks the thing it is
+#' diagnosing is worse than no diagnostic.
+#'
+#' @param x A fitted \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
+#' @param cutoff A \code{\link[base]{numeric}} vector of length 1.
+#'
+#' @return Called for the side effect. Returns \code{NULL} invisibly.
+#'
+#' @noRd
+message_control_fit <- function(x, cutoff = 1.15) {
+  flagged <- try(control_fit_issues(x, cutoff), silent = TRUE)
+  if (inherits(flagged, "try-error") || is.null(flagged)) {
+    return(invisible(NULL))
+  }
+  bad <- names(flagged[unlist(flagged)])
+  if (length(bad) == 0) {
+    return(invisible(NULL))
+  }
+  message("The control group's observed and simulated response differ by more",
+          " than ", round((cutoff - 1) * 100), "% for: ",
+          paste0(bad, collapse = ", "), ".\n",
+          "nsec() reads its reference from the control, so this is the region",
+          " most likely to move a reported no-effect concentration.\n",
+          "See check_fit() for the per-group table. This is a modelling",
+          " result, not a fault.")
+  invisible(NULL)
 }

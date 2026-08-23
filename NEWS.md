@@ -11,6 +11,16 @@
   since the family screen and the fit checks behave differently between them.
   See #219.
 
+- A control lack-of-fit is now surfaced rather than waiting to be looked for:
+  once at the end of `bnec()`, and as a line in `summary()` alongside the
+  convergence verdict. Both threshold on the **ratio** of observed to simulated,
+  not on the posterior predictive p-value. That is deliberate and measured: on
+  two independently fitted parameterisations of the same data the simulated
+  control mean overshot the observed by ~19%, reproducing across fits, while
+  both p-values sat at about 0.82 and neither came near flagging. A p-value
+  threshold would stay silent on exactly the case the check exists to catch.
+  `nsec()` reads its reference from the control, so this is the region most
+  likely to move a reported no-effect concentration. See #148.
 
 - New `check_fit()`, reporting per group of the predictor the observed location
   and scale of the response against what the fitted model simulates, with a
