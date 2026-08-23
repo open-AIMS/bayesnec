@@ -40,8 +40,9 @@ This vignette asks what those conventions do to the toxicity estimates that are
 subsequently reported. It covers, in order: how the endpoints are defined and
 why the definition matters here; how each convention is expressed in
 `bayesnec`; a simulation study in which the true values are known, so that the
-conventions can be scored rather than merely compared; and what the same
-comparison looks like on real data.
+conventions can be scored rather than merely compared; whether fitting the
+package's candidate set instead of one equation changes the answer; and what the
+same comparison looks like on real data.
 
 The short answer is that `bayesnec`'s defaults are already correct, and that
 the difficulty enters upstream in data preparation rather than in the model. A
@@ -49,6 +50,12 @@ Gaussian response in `bayesnec` is not constrained to be positive, and the
 package already excludes the zero-bounded models from the candidate set when the
 family is Gaussian, for exactly this reason. What follows quantifies the cost of
 overriding that.
+
+Two of those defaults matter and they are separable. Not flooring is the one
+that carries the argument. Fitting a candidate set rather than one equation
+turns out to matter almost as much once the data *have* been floored: it
+recovers most of the lost accuracy on the ErC50, and on the NSEC it helps at
+realistic noise and hurts at high precision. Both are quantified below.
 
 To run this vignette we will need the following packages.
 
@@ -257,6 +264,12 @@ recorded explicitly because `bayesnec`'s default behaviour is to fit and average
 over a candidate set, and because the rules governing which models are valid for
 a given family are expected to change (issue #195). A reader reproducing this
 work should fix the model rather than rely on the default set of the day.
+
+That is a decision rather than a limitation, and it has been tested: a separate
+sweep re-ran a subset of these scenarios with every approach averaged over a
+candidate set instead of fixed. It changes the answer, and the section
+*Does model averaging rescue the floored approaches?* below reports what it
+changes and what it does not.
 
 **Why the link is identity.** `bnec()` sets `link = "identity"` for every family
 it accepts, so that `top`, `bot` and `nec` remain on the natural response scale
@@ -1427,6 +1440,14 @@ errs against protection. Reporting an NSEC three times the true no-effect
 concentration, from a fit whose diagnostics are unremarkable, is the worst
 outcome in this study.
 
+Two qualifications, both established by the model-averaging sweep reported
+below. The direction above is a property of the **single-model** analysis: under
+model averaging the NSEC bias reverses to *negative* at high precision, and at
+realistic noise it is largely repaired. And the sign is what makes the
+single-model NSEC the more serious of the two — under averaging the ErC50 is the
+estimate that stays reliable, while the NSEC is the one whose behaviour depends
+on how good the measurement is.
+
 ### Direction of the B1 contrast
 
 The contrast between B1 and the intact analysis changes sign across the sweep:
@@ -1451,6 +1472,115 @@ against B3 alone. B3 combines a compressing and an inflating mechanism, its
 contrast with A is close to neutral at high noise (a ratio of 1.01), and a study
 that compared only those two at a single realistic noise level could easily have
 concluded that nothing was wrong.
+
+<!-- NUMBERS IN THIS SECTION ARE GENERATED, NOT TYPED.
+     Source: negative-sgr/analysis/phase10_vignette_numbers.R, whose output is
+     analysis/phase10_vignette_numbers.txt. Regenerate and update this section
+     after any change to the Phase 10 sweep. Figures below are at n = 200 per
+     cell (3 cells x 200 x 5 arms, 27,600 model fits, 0 failures, 0 exclusions).
+     Same rule as the rest of the vignette: never edit a result in place. -->
+
+## Does model averaging rescue the floored approaches?
+
+Everything above fixes one equation in advance. That is the right design for
+scoring a convention — the generating model is the one fitted, so the only
+misspecification is the one each approach deliberately introduces — but it is
+not the workflow `bayesnec` recommends, which is to fit a candidate set and
+average over it. The eight-curve figure above suggests why that might matter:
+under B3, E and F the constrained curve visibly cannot follow the data, so it
+compensates by flattening its descent and pushing `nec` to the right, and the
+toxicity estimates follow. A more flexible equation might follow the same
+floored data adequately over the region where ErC10 and ErC50 are actually read,
+without ever going below zero.
+
+A separate sweep tested exactly that. Five approaches — A, C, B3, E and F — were
+re-run on three of the twelve scenarios, 200 simulated datasets each, with every
+approach averaged over the declining candidate set `bayesnec` retains for its
+family. The datasets are the same ones the single-model results used, so every
+comparison below is paired. Models that failed to converge (R-hat > 1.01) were
+dropped and the weights re-stacked over the survivors, which is what the
+workflow does; **no approach in any scenario ever lost its whole candidate set**,
+so no dataset was excluded from any arm and the comparison is not selective.
+
+**The generating model is almost never selected, and it does not matter.** Mean
+stacking weight on `nec4param` — the equation the data were generated from:
+
+| | A | C | B3 | E | F |
+|---|---|---|---|---|---|
+| control CV 1.9% | 0.62 | 0.36 | **0.001** | 0.007 | 0.002 |
+| control CV 9.6% | 0.27 | 0.33 | 0.21 | 0.086 | 0.044 |
+| CV 9.6%, `delta` 8 | 0.28 | 0.33 | 0.20 | 0.097 | 0.041 |
+
+The floored approaches load their weight onto `ecxwb2` and `ecxwb1` instead. The
+precision dependence is sharp: at a 1.9% control coefficient of variation the
+pinned `nec4param` keeps a tenth of one per cent of the weight, because data that
+good can see it does not fit.
+
+**ErC50 is rescued in every scenario tested.**
+
+| ErC50 relative bias | CV 1.9% | CV 9.6% | CV 9.6%, `delta` 8 |
+|---|---|---|---|
+| B3 | -10.2% → **-3.0%** | -7.6% → **-3.3%** | -7.8% → **-3.3%** |
+| E | -14.8% → **-5.5%** | -10.3% → **-5.0%** | -9.8% → **-4.9%** |
+| F | -15.7% → **+0.9%** | -5.3% → **+1.5%** | -13.3% → **+2.4%** |
+
+Coverage recovers with it — B3 from 0.00 to 0.58, 0.58 to 0.80 and 0.48 to
+0.80 — and, importantly, **RMSE falls at the same time**, from 0.52 to 0.17 for
+B3 at the highest precision. Intervals widen by only 1.1 to 1.6 times, and for F
+at high precision they *narrow*. This is accuracy gained rather than coverage
+bought with width, which is the distinction the B2 result above exists to warn
+about.
+
+**The NSEC divides on measurement precision, and this is the more interesting
+half.** At the noise levels of a real test, averaging repairs it: B3's bias moves
+from +72.9% to **-1.7%** and its coverage from 0.07 to 0.98 at a 9.6% control CV,
+and from +41.4% to **-6.0%** with coverage 0.10 to 0.98 at `delta` = 8. Every
+approach improves on bias, coverage and RMSE together.
+
+At the highest precision tested it does the opposite. B3 moves from +52.7% to
+**-62.7%**, its coverage from 0.00 to **0.01** — two of two hundred intervals
+contained the truth — and its **RMSE worsens**, 0.69 to 0.82. It is the one place
+in this study where averaging leaves an approach worse on every measure at once.
+E (-42.1%) and F (-53.5%) do the same thing less severely.
+
+That split is the same distinction the precision sweep draws throughout this
+vignette, now applied to the workflow rather than to the convention. **A
+discrepancy that shrinks as the noise shrinks is estimation error; one that does
+not is misspecification.** Averaging removes the estimation component of the
+NSEC bias, which is what dominates at realistic noise, and in doing so exposes a
+misspecification component that only dominates once the measurement is good. The
+single-model fits carried both at once and the noise axis alone could not
+separate them.
+
+**ErC10 is where averaging can cost you.** F moves from +15.7% to **-23.7%** at
+the highest precision, its coverage falling from 0.98 to 0.50, and from +10.1% to
+-10.6% at `delta` = 8. Even the intact analysis is not immune: arm A's ErC10 goes
+from +19.0% to -11.3% at a 9.6% control CV, with RMSE rising from 0.48 to 0.52.
+ErC10 asks a 10% decline to be resolved against the residual scatter, and
+averaging over shapes that disagree about the shoulder is not obviously the right
+way to do that. Do not summarise these approaches across endpoints.
+
+### What to take from this
+
+The practical reading is narrower than "averaging fixes it", and narrower than
+"flooring is fatal".
+
+* **Do not floor.** Nothing here rehabilitates the practice. The intact and
+  censored analyses are unbiased on ErC50 under both workflows, and they need no
+  rescue.
+* **If you have floored data and cannot recover it**, averaging over a candidate
+  set is markedly better than fitting one equation, on ErC50 in every scenario
+  tested and on the NSEC at realistic noise. Do not fix a single model on floored
+  data.
+* **The failure does not go away; it relocates.** The clean result is that the
+  flooring penalty is worst where the measurement is best, and that survives
+  averaging. A laboratory that improves its technique still ends up with an
+  analysis that is more confident and no less wrong — and at high precision
+  averaging makes the NSEC *worse* rather than better.
+* **A good stacking weight is not a good model.** The floored approaches recover
+  ErC50 while giving the true equation a tenth of one per cent of the weight.
+  Weights describe which shape fits the data in front of them, not which process
+  generated it, and a floored dataset is not the process.
 
 ## Case studies: four algal growth tests
 
