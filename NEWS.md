@@ -18,7 +18,9 @@
   could not previously answer. The table is computed on demand rather than
   materialised, since with 23 models and *G* levels it has 23^*G* cells. As for
   `crossed_weights()`, the identity is specific to pseudo-BMA: stacking
-  optimises a different objective whose solution is not an outer product.
+  optimises a different objective whose solution is not an outer product, and
+  `crossed_group_weights()` refuses a fit built with any other weighting method
+  rather than silently returning a table that looks right and is not.
 
   The family is chosen **once** from the whole response and passed down.
   Selecting it per subset could pick different families at different levels,

@@ -108,6 +108,19 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
             ". Pass `family` to override.")
   }
   family <- validate_family(family)
+  # The crossed weights are an outer product of the per-level weight vectors,
+  # and that identity holds for pseudo-BMA only. The method is captured here
+  # and checked in crossed_group_weights() rather than merely documented,
+  # because a bayesmanecfit does not record which method produced its `wi` --
+  # so it cannot be recovered from the fits afterwards, and multiplying
+  # stacking weights would give a wrong crossed table with nothing to signal
+  # it. See #33.
+  dots <- list(...)
+  wt_method <- if (!is.null(dots$loo_controls$weights$method)) {
+    dots$loo_controls$weights$method
+  } else {
+    "pseudobma"
+  }
   fits <- vector(mode = "list", length = length(levs))
   names(fits) <- levs
   for (i in seq_along(levs)) {
@@ -118,7 +131,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   }
   out <- list(fits = fits, group_var = group_var, levels = levs,
               formula = formula, data = data, family = family,
-              n = as.integer(counts[levs]))
+              n = as.integer(counts[levs]), weights_method = wt_method)
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }
 
@@ -137,7 +150,10 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
 #' to be materialised --- which matters, because with 23 models and \emph{G}
 #' levels it has \code{23^G} cells.
 #'
-#' \bold{This identity is specific to pseudo-BMA}, the package default.
+#' \bold{This identity is specific to pseudo-BMA}, the package default, and
+#' \code{crossed_group_weights()} enforces it rather than assuming it: a fit
+#' built with any other weighting method is refused, because there is no
+#' correct crossed table to return for one.
 #' Stacking optimises a different objective whose solution is not generally an
 #' outer product; stacked crossed weights would require the full pointwise
 #' matrix and are not computed here. The same caveat applies to
@@ -174,6 +190,24 @@ crossed_group_weights <- function(object) {
   if (!is_bayesnecgroupfit(object)) {
     stop("crossed_group_weights requires an object of class",
          " bayesnecgroupfit.", call. = FALSE)
+  }
+  # Refused rather than warned: under stacking there is no correct crossed
+  # table to return, so returning one that looks right is worse than returning
+  # nothing. The per-level weights remain valid and the message says so.
+  method <- object$weights_method
+  if (is.null(method)) {
+    method <- "pseudobma"
+  }
+  if (!identical(method, "pseudobma")) {
+    stop("crossed_group_weights is defined for pseudo-BMA weights only, and",
+         " this fit used \"", method, "\". The crossed weight of a",
+         " combination is the product of its per-level weights because a",
+         " pseudo-BMA weight is a deterministic function of that model's own",
+         " elpd, which is additive over levels. Stacking optimises a",
+         " different objective over the whole set at once and its solution is",
+         " not an outer product, so multiplying stacked weights gives a table",
+         " that looks right and is not. Refit with the default weighting, or",
+         " read the per-level weights off the fits directly.", call. = FALSE)
   }
   wt <- function(x) {
     if (inherits(x, "bayesmanecfit")) {

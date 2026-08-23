@@ -106,3 +106,43 @@ test_that("printing reports the shared family and the per-level model sets", {
   # the family is shared, so it is reported once rather than per level
   expect_equal(sum(grepl("family", out)), 1)
 })
+
+# #33 review finding: the outer-product identity holds for pseudo-BMA only, and
+# was documented but not enforced. `loo_controls` reaches bnec() through `...`,
+# so stacking weights were reachable and would have produced a crossed table
+# that looked right and was not.
+
+test_that("crossed_group_weights refuses a non-pseudo-BMA fit", {
+  # Built directly rather than fitted: the check is on what the object records,
+  # and fitting a group set twice to exercise an error is not worth the minutes.
+  fake <- structure(
+    list(fits = list(), group_var = "site", levels = c("a", "b"),
+         weights_method = "stacking"),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  expect_error(crossed_group_weights(fake), "pseudo-BMA weights only")
+  expect_error(crossed_group_weights(fake), "stacking")
+})
+
+test_that("an absent weights_method is treated as the default", {
+  # Defensive: the class is new, so no object should lack the field, but a
+  # hand-built one must not be refused on a technicality. Asserted as "does not
+  # fail the method check" rather than "does not fail", because an object with
+  # no fits has nothing to compute and will error further down for that reason.
+  fake <- structure(
+    list(fits = list(), group_var = "site", levels = c("a", "b")),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  msg <- tryCatch({
+    crossed_group_weights(fake)
+    ""
+  }, error = function(e) conditionMessage(e))
+  expect_false(grepl("pseudo-BMA", msg, fixed = TRUE))
+})
+
+test_that("bnec_group records the weighting method it was given", {
+  # The method cannot be recovered from a bayesmanecfit afterwards -- it does
+  # not store it -- which is why bnec_group() has to capture it up front.
+  expect_false("loo_controls" %in% names(manec_example))
+  expect_false(any(grepl("weight", names(manec_example), ignore.case = TRUE)))
+})
