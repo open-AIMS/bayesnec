@@ -7,6 +7,13 @@ on:
 
 name: pkgdown
 
+# github-pages-deploy-action pushes to gh-pages, which needs write access to
+# repository contents. Relying on the repository's default workflow permissions
+# leaves the deploy dependent on a setting that is read-only by default on
+# newer repositories. See #230.
+permissions:
+  contents: write
+
 jobs:
   pkgdown:
     runs-on: ubuntu-latest
