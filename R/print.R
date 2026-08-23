@@ -131,13 +131,43 @@ print.manecsummary <- function(x, ...) {
   print_mat(x$bayesr2)
   cat("\n\n")
   print_failed_models(x$failed_models)
-  with_issues <- names(x$rhat_issues[unlist(x$rhat_issues)])
-  if (length(with_issues) > 0) {
-      warning("The following model had Rhats > ",
-              if (is.null(x$rhat_cutoff)) 1.01 else x$rhat_cutoff,
-              " (no convergence):\n",
-              paste0("  -  ", with_issues, collapse = "\n"), "\n",
-              "Consider dropping them (see ?amend)\n", sep = "")
+  # One block covering both axes rather than two independent warnings, per D5
+  # of #148: the sampler question (did this model converge) and the fit
+  # question (does it reproduce the control) feed the same decision about which
+  # candidates belong in the averaged set, so they are read together.
+  rhat_bad <- names(x$rhat_issues[unlist(x$rhat_issues)])
+  fit_bad <- if (is.null(x$fit_issues)) {
+    character(0)
+  } else {
+    names(x$fit_issues[unlist(x$fit_issues)])
+  }
+  if (length(rhat_bad) > 0 || length(fit_bad) > 0) {
+    msg <- character(0)
+    if (length(rhat_bad) > 0) {
+      msg <- c(msg,
+               paste0("Rhat > ",
+                      if (is.null(x$rhat_cutoff)) 1.01 else x$rhat_cutoff,
+                      " (no convergence):\n",
+                      paste0("  -  ", rhat_bad, collapse = "\n")))
+    }
+    if (length(fit_bad) > 0) {
+      msg <- c(msg,
+               paste0("control observed/simulated ratio beyond ",
+                      x$fit_ratio_cutoff, " (see ?check_fit):\n",
+                      paste0("  -  ", fit_bad, collapse = "\n")))
+    }
+    # Deliberately different advice per axis. A model that did not converge is
+    # unusable and should be dropped; a model that converged but reproduces the
+    # control badly is a modelling result, and dropping it silently would hide
+    # what the user most needs to see.
+    tail_txt <- if (length(rhat_bad) > 0 && length(fit_bad) > 0) {
+      "\nConvergence failures should be dropped (see ?amend or ?screen_models).\nA control mis-fit is a result, not a fault: inspect it with check_fit().\n"
+    } else if (length(rhat_bad) > 0) {
+      "\nConsider dropping them (see ?amend or ?screen_models)\n"
+    } else {
+      "\nThis is a modelling result rather than a fault; inspect with check_fit().\n"
+    }
+    warning(paste0(msg, collapse = "\n\n"), tail_txt, sep = "")
   }
   invisible(x)
 }
