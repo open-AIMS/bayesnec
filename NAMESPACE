@@ -152,10 +152,7 @@ importFrom(brms,fixef)
 importFrom(brms,hypothesis)
 importFrom(brms,lf)
 importFrom(brms,ndraws)
-<<<<<<< HEAD
-=======
 importFrom(brms,neff_ratio)
->>>>>>> origin/issue-209-hurdle-counts
 importFrom(brms,negbinomial)
 importFrom(brms,nlf)
 importFrom(brms,nuts_params)
