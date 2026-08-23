@@ -6,9 +6,9 @@
 \alias{rhat.bayesmanecfit}
 \title{Extract Diagnostic Quantities of 'brms' Models}
 \usage{
-\method{rhat}{bayesnecfit}(x, rhat_cutoff = 1.05, ...)
+\method{rhat}{bayesnecfit}(x, rhat_cutoff = 1.01, ...)
 
-\method{rhat}{bayesmanecfit}(x, rhat_cutoff = 1.05, ...)
+\method{rhat}{bayesmanecfit}(x, rhat_cutoff = 1.01, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
