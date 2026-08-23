@@ -197,3 +197,66 @@ test_that("a user prior makes the two entry points disagree", {
                           family = gaussian())
   expect_false(identical(sort(got$prior), sort(generated$prior)))
 })
+
+# #231: `zi` is a genuine class-"zi" brms parameter for the zero-inflated COUNT
+# families, which bayesnec fits as a single block -- unlike hurdle_gamma and
+# zero_inflated_beta, whose second block carries class "b" with a prefixed
+# nlpar. usable_prior() dropped it, so get_priors() reported a set that was
+# silently incomplete for the one parameter those families exist to estimate.
+
+test_that("a user prior on zi round trips for a zero-inflated count family", {
+  set.seed(1)
+  x <- as.numeric(rep(1:10, each = 5))
+  y <- as.numeric(rpois(50, 20) * rbinom(50, 1, 0.6))
+  gp <- get_priors(y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
+                   family = "zero_inflated_poisson")
+  with_zi <- gp + brms::prior_string("beta(2, 5)", class = "zi")
+  out <- bayesnec:::usable_prior(with_zi)
+  expect_true("zi" %in% out$class)
+  expect_identical(out$prior[out$class == "zi"], "beta(2, 5)")
+  # the curve's own rows are untouched
+  expect_setequal(out$nlpar[out$class == "b"], c("beta", "top", "bot", "nec"))
+})
+
+test_that("a brms default on zi is still dropped", {
+  # source == "user" is what keeps this safe: reporting a prior brms chose for
+  # itself would suggest bayesnec had made a choice it did not make.
+  pr <- data.frame(prior = c("normal(0, 5)", "beta(1, 1)"),
+                   class = c("b", "zi"), coef = "", group = "", resp = "",
+                   dpar = "", nlpar = c("beta", ""), lb = NA_character_,
+                   ub = NA_character_, source = c("user", "default"),
+                   stringsAsFactors = FALSE)
+  out <- bayesnec:::usable_prior(pr)
+  expect_false("zi" %in% out$class)
+})
+
+test_that("a zi prior does not disturb the initial-value search", {
+  # make_inits() filters to class "b", so the zi row reaches brm() but plays no
+  # part in the init search and gets no initial value -- Stan draws it.
+  set.seed(2)
+  x <- as.numeric(rep(1:10, each = 5))
+  y <- as.numeric(rpois(50, 20) * rbinom(50, 1, 0.6))
+  gp <- get_priors(y ~ crf(x, "nec4param"), data = data.frame(x = x, y = y),
+                   family = "zero_inflated_poisson")
+  with_zi <- gp + brms::prior_string("beta(2, 5)", class = "zi")
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  out <- bayesnec:::make_inits("nec4param", fct_args, with_zi, chains = 2)
+  expect_length(out, 2)
+  expect_setequal(names(out[[1]]), fct_args)
+  expect_false(any(grepl("zi", names(out[[1]]))))
+})
+
+test_that("the two-block families are unaffected", {
+  # zero_inflated_beta carries its second block as class "b" with a prefixed
+  # nlpar, so adding "zi" to the kept classes is a no-op there rather than a
+  # conflict. Asserted so the no-op claim in auxiliary_classes() is not just an
+  # assertion in a comment.
+  pr <- data.frame(prior = rep("normal(0, 5)", 3), class = "b", coef = "",
+                   group = "", resp = "", dpar = "",
+                   nlpar = c("top", "zitop", "zinec"), lb = NA_character_,
+                   ub = NA_character_, source = "user",
+                   stringsAsFactors = FALSE)
+  out <- bayesnec:::usable_prior(pr)
+  expect_equal(nrow(out), 3)
+  expect_setequal(out$nlpar, c("top", "zitop", "zinec"))
+})
