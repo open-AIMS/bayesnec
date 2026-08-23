@@ -228,3 +228,55 @@ test_that("the combined simulation is on the full exposed set", {
   res <- suppressWarnings(check_fit(f$fit))
   expect_equal(sum(as.data.frame(res$combined)$n), nrow(f$dat))
 })
+
+# #148 decision (b): a control lack-of-fit is surfaced automatically, in the
+# summary and once at the end of the fit. Thresholded on the RATIO, not the
+# posterior predictive p-value -- a measured ~19% control overshoot carried a
+# ppp of ~0.82 and would never have flagged.
+
+test_that("summary carries both diagnostic axes and their cutoffs", {
+  skip_on_cran()
+  s <- suppressWarnings(summary(manec_example))
+  expect_true(all(c("rhat_issues", "rhat_cutoff",
+                    "fit_issues", "fit_ratio_cutoff") %in% names(s)))
+  expect_equal(s$rhat_cutoff, 1.01)
+  expect_equal(s$fit_ratio_cutoff, 1.15)
+  expect_type(unlist(s$fit_issues), "logical")
+})
+
+test_that("the fit axis can be switched off", {
+  # It recomputes on every call -- caching it on the object is ruled out by
+  # #180, which removed the stored prediction matrices deliberately.
+  skip_on_cran()
+  s <- suppressWarnings(summary(manec_example, check_fit = FALSE))
+  expect_null(s$fit_issues)
+})
+
+test_that("the cutoff is honoured rather than decorative", {
+  skip_on_cran()
+  # nothing can be beyond a ratio cutoff of infinity
+  s <- suppressWarnings(summary(manec_example, fit_ratio_cutoff = Inf))
+  expect_false(any(unlist(s$fit_issues)))
+  # everything is beyond a cutoff of 1
+  s2 <- suppressWarnings(summary(manec_example, fit_ratio_cutoff = 1))
+  expect_true(any(unlist(s2$fit_issues)))
+})
+
+test_that("print reports both axes in one block, with different advice", {
+  # D5: one block, because both feed the same decision about which candidates
+  # belong in the set. But a convergence failure is unusable while a control
+  # mis-fit is a result, so the advice must not be the same.
+  skip_on_cran()
+  s <- suppressWarnings(summary(manec_example))
+  msg <- tryCatch({ print(s); "" }, warning = function(w) conditionMessage(w))
+  expect_match(msg, "Rhat > 1.01")
+  expect_match(msg, "control observed/simulated ratio beyond 1.15")
+  expect_match(msg, "result, not a fault")
+})
+
+test_that("the end-of-fit message never breaks a fit that succeeded", {
+  # A diagnostic that breaks the thing it is diagnosing is worse than no
+  # diagnostic, so message_control_fit() swallows its own failures.
+  expect_silent(bayesnec:::message_control_fit(list(not = "a fit")))
+  expect_null(bayesnec:::message_control_fit(1:10))
+})

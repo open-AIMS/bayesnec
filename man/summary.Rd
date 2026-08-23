@@ -8,7 +8,15 @@
 \usage{
 \method{summary}{bayesnecfit}(object, ..., ecx = FALSE, ecx_vals = c(10, 50, 90))
 
-\method{summary}{bayesmanecfit}(object, ..., ecx = FALSE, ecx_vals = c(10, 50, 90), rhat_cutoff = 1.01)
+\method{summary}{bayesmanecfit}(
+  object,
+  ...,
+  ecx = FALSE,
+  ecx_vals = c(10, 50, 90),
+  rhat_cutoff = 1.01,
+  fit_ratio_cutoff = 1.15,
+  check_fit = TRUE
+)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or

@@ -45,10 +45,14 @@ test_that("summary behaves as expected", {
   # `rhat_cutoff` added under #148 Part D: print.manecsummary reports the
   # threshold actually in use rather than the hard-coded 1.05 it printed
   # before, so the summary object has to carry it.
+  # `fit_issues`/`fit_ratio_cutoff` added under #148 decision (b): the summary
+  # block covers both the sampler and the fit axis, so it has to carry both
+  # verdicts and both thresholds.
   expect_equal(names(summary.p), c("models", "family", "sample_size",
                                    "mod_weights", "mod_weights_method",
                                    "ecx_mods", "nec_vals", "ecs", "bayesr2",
                                    "rhat_issues", "rhat_cutoff",
+                                   "fit_issues", "fit_ratio_cutoff",
                                    "failed_models"))
   expect_equal(summary.p$rhat_cutoff, 1.01)
   # and it is honoured rather than decorative
