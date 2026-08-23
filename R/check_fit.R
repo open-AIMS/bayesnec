@@ -193,6 +193,17 @@ check_fit_table <- function(fit, y, grp, ndraws, seed, is_mixture) {
       sim_sd = median(sim_sd),
       sd_ratio = obs_sd / median(sim_sd),
       ppp_sd = ppp_value(sim_sd, obs_sd),
+      # The 95% span of the simulated statistic, carried so plot() can show the
+      # observed value against what the model actually simulates rather than
+      # against a point summary of it. A posterior predictive p-value says a
+      # group is off; the interval says by how much and in which direction,
+      # which is what decides whether it matters. Hidden by print() -- see
+      # print.checkfit() -- because it would take the console table past what
+      # fits on a line. See #148.
+      sim_mean_lo = unname(quantile(sim_mean, 0.025)),
+      sim_mean_hi = unname(quantile(sim_mean, 0.975)),
+      sim_sd_lo = unname(quantile(sim_sd, 0.025)),
+      sim_sd_hi = unname(quantile(sim_sd, 0.975)),
       stringsAsFactors = FALSE
     )
     if (is_mixture) {
@@ -275,6 +286,9 @@ check_fit.bayesmanecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
 #' @export
 print.checkfit <- function(x, ...) {
   y <- as.data.frame(x)
+  # The simulated intervals are for plot(), not for reading: including them
+  # takes the table past a readable line width. They stay on the object.
+  y <- y[, !grepl("_(lo|hi)$", names(y)), drop = FALSE]
   num <- vapply(y, is.numeric, logical(1))
   y[num] <- lapply(y[num], function(z) round(z, 3))
   print(y)
@@ -312,4 +326,82 @@ check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
                           seed = seed),
        survival = check_fit(x$survival, group = group, ndraws = ndraws,
                             seed = seed))
+}
+
+#' Plot a check_fit table
+#'
+#' The numeric table answers "is any group off?"; the plot answers "by how much,
+#' and in which direction?", which is the question that decides whether it
+#' matters. Each panel shows, per group of the predictor, the observed statistic
+#' against the 95% span of what the fitted model simulates. A point outside its
+#' interval is a group the model does not reproduce.
+#'
+#' Two panels rather than one: the location and the scale fail independently and
+#' for different reasons. A model can get the mean of every group right while
+#' simulating far too much spread, which is the case
+#' \code{\link{check_fit}} exists to catch and which a single combined panel
+#' would hide.
+#'
+#' The control is drawn differently because it is not just another group:
+#' \code{\link{nsec}} reads its reference from the control, so a discrepancy
+#' there moves a reported no-effect concentration in a way that a discrepancy at
+#' the top of the curve does not.
+#'
+#' Built directly in \pkg{ggplot2}, which is already in \code{Depends}. No
+#' \pkg{bayesplot} dependency -- see #148.
+#'
+#' @param x An object of class \code{checkfit}, from \code{\link{check_fit}}.
+#' @param ... Unused.
+#'
+#' @return A \code{\link[ggplot2]{ggplot}} object.
+#'
+#' @importFrom ggplot2 ggplot aes geom_linerange geom_point facet_wrap labs
+#' @importFrom ggplot2 scale_shape_manual scale_colour_manual theme_bw
+#' @importFrom ggplot2 element_text theme vars
+#'
+#' @examples
+#' \dontrun{
+#' library(bayesnec)
+#' plot(check_fit(manec_example))
+#' }
+#'
+#' @method plot checkfit
+#' @export
+plot.checkfit <- function(x, ...) {
+  d <- as.data.frame(x)
+  # Reshaped by rbind rather than a tidyr call: R/ is base R by convention, and
+  # two statistics do not justify a reshape dependency in package code.
+  long <- rbind(
+    data.frame(group = d$group, control = d$control,
+               statistic = "location (mean)",
+               observed = d$obs_mean, lo = d$sim_mean_lo, hi = d$sim_mean_hi,
+               stringsAsFactors = FALSE),
+    data.frame(group = d$group, control = d$control,
+               statistic = "scale (residual SD)",
+               observed = d$obs_sd, lo = d$sim_sd_lo, hi = d$sim_sd_hi,
+               stringsAsFactors = FALSE)
+  )
+  if (!is.null(d$model)) {
+    long$model <- rep(d$model, times = 2)
+  }
+  long$role <- ifelse(long$control, "control", "exposed")
+  long$group <- factor(long$group, levels = unique(d$group))
+  p <- ggplot(long, aes(x = .data$group)) +
+    geom_linerange(aes(ymin = .data$lo, ymax = .data$hi)) +
+    geom_point(aes(y = .data$observed, colour = .data$role,
+                   shape = .data$role), size = 2.4) +
+    scale_colour_manual(values = c(control = "#b2182b", exposed = "black")) +
+    scale_shape_manual(values = c(control = 17, exposed = 16)) +
+    labs(x = NULL, y = "observed against simulated (95%)",
+         colour = NULL, shape = NULL,
+         caption = paste("Bars are the 95% span of the statistic simulated",
+                         "from the fit.\nA point outside its bar is a group",
+                         "the model does not reproduce.")) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  if (!is.null(long$model)) {
+    p + facet_wrap(vars(.data$model, .data$statistic), scales = "free_y")
+  } else {
+    p + facet_wrap(vars(.data$statistic), scales = "free_y")
+  }
 }

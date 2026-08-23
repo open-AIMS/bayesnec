@@ -159,9 +159,13 @@
 #' \code{rate(denominator)} declares that the response is a count observed over
 #' an exposure --- animals per unit time, larvae per unit area --- and is valid
 #' for the \code{poisson} and \code{negbinomial} families only. Any other
-#' family is an error, the zero-inflated count families included: \pkg{brms}
-#' cannot place a rate denominator on those, and under \code{\link{bnec}}'s
-#' identity link there is no offset that would do the same job.
+#' family is an error when the family is known, the zero-inflated count
+#' families included: \pkg{brms} cannot place a rate denominator on those, and
+#' under \code{\link{bnec}}'s identity link there is no offset that would do
+#' the same job. The check necessarily needs a family to check against, so it
+#' fires on every path that fits --- \code{\link{bnec}} always supplies one ---
+#' but not on a bare \code{\link{make_brmsformula}(formula, data)} call, which
+#' has no family to validate and builds the formula unchecked.
 #'
 #' Because \code{\link{bnec}} forces \code{link = "identity"}, \pkg{brms}
 #' writes the denominator multiplicatively on the response scale rather than as
