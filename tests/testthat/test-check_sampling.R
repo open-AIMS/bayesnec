@@ -77,9 +77,11 @@ test_that("check_sampling refuses an object it cannot diagnose", {
 
 test_that("case 1 — nothing failed: unchanged, amend not called", {
   skip_on_cran()
-  out <- expect_message(
-    screen_models(manec_example, rhat_cutoff = 99, ess_cutoff = 0,
-                  divergence_cutoff = 1e6),
+  # Assigned inside expect_message(), not around it: expect_message() returns
+  # the message condition, not the value of the expression.
+  expect_message(
+    out <- screen_models(manec_example, rhat_cutoff = 99, ess_cutoff = 0,
+                         divergence_cutoff = 1e6),
     "All 2 candidate models passed"
   )
   expect_s3_class(out, "bayesmanecfit")
@@ -90,9 +92,9 @@ test_that("case 2 — some failed: the failures are dropped", {
   # No fixture in the package has a mixed pass/fail set, so the cutoff is put
   # between the two models' Rhats (1.213 and 1.088) rather than building one.
   skip_on_cran()
-  out <- suppressWarnings(expect_message(
-    screen_models(manec_example, rhat_cutoff = 1.15, ess_cutoff = 0,
-                  divergence_cutoff = 1e6),
+  suppressWarnings(expect_message(
+    out <- screen_models(manec_example, rhat_cutoff = 1.15, ess_cutoff = 0,
+                         divergence_cutoff = 1e6),
     "Dropping 1 of 2"
   ))
   # a two-model set reduced to one becomes a bayesnecfit, as amend() does

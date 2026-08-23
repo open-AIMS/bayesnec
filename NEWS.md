@@ -1,3 +1,35 @@
+# bayesnec 2.2.0
+
+- New `check_sampling()` and `screen_models()`. `check_sampling()` reports, per
+  candidate model, the largest Rhat, the smallest effective sample size and the
+  number of divergent transitions; `screen_models()` drops the failures and
+  **messages what went and why**, which is what a methods section has to cite.
+  They screen on the sampler only — a poor `check_fit()` is a modelling result,
+  and dropping on it silently would hide exactly what the user needs to see.
+
+  Effective sample size is reported as an absolute (`min_ess`) as well as a
+  ratio, so the default `ess_cutoff = 400` is directly Vehtari's recommendation
+  that both bulk and tail ESS exceed 100 per chain, at the four chains `bnec()`
+  fits by default. Note that a heavily thinned fit can fail a cutoff a ratio
+  would have passed; the answer is to retain more draws, not to lower the
+  cutoff, because thinning lowers ESS by construction. The divergence default of
+  10 has no literature behind it — Stan's guidance is that *any* divergence
+  means the sampler failed to explore the posterior — and is a working default
+  from practice with these non-linear models, documented as such. See #148.
+
+- **Behaviour change:** the default `rhat_cutoff` is now **1.01** rather than
+  1.05, in `rhat()` for all three fit classes and in `summary()`, following
+  Vehtari et al. (2021) — which is the reference `vignette("example2")` already
+  cited while the code used the looser value. `print()` on a summary now reports
+  the cutoff actually in use rather than the hard-coded 1.05 it printed before.
+
+  Relatedly, `summary()` now *computes* its convergence verdict with `rhat()`
+  instead of searching `brms`'s captured warning text for the literal string
+  `"some Rhats are > 1.05"`. That made the threshold `brms`'s to set rather than
+  `bayesnec`'s, and it would have failed silently: `brms (>= 2.23.0)` is a floor,
+  not a ceiling, so a reworded warning would have made every model report no
+  issue and the summary quietly stop warning. See #148.
+
 # bayesnec 2.1.4
 
 - The vignette precompilation workflow added in 2.1.4 can now actually be run,

@@ -4,7 +4,7 @@
 \alias{rhat.bayesnechurdlefit}
 \title{Rhat values for both components of a \code{\link{bayesnechurdlefit}}}
 \usage{
-\method{rhat}{bayesnechurdlefit}(x, ..., rhat_cutoff = 1.05)
+\method{rhat}{bayesnechurdlefit}(x, ..., rhat_cutoff = 1.01)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnechurdlefit}}.}
