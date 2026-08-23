@@ -9,7 +9,8 @@
   model and seeing the effect on the weights and on the model-averaged estimate.
   Worked for a counts-out-of-trials response and repeated for a continuous one,
   since the family screen and the fit checks behave differently between them.
-  See #219.
+  The screening step uses `check_sampling()` and `screen_models()` rather than
+  hand-rolled code, which is what those helpers exist for. See #219.
 
 - A control lack-of-fit is now surfaced rather than waiting to be looked for:
   once at the end of `bnec()`, and as a line in `summary()` alongside the

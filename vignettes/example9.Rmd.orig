@@ -151,15 +151,26 @@ any good, which is step 4.
 `rhat()` reports per candidate model, so the whole set is screened in one call
 rather than model by model.
 
-```{r rhat}
-rhat_out <- rhat(fit, rhat_cutoff = 1.01)
-rhat_tab <- data.frame(
-  model = names(rhat_out),
-  max_rhat = vapply(rhat_out, function(z) max(z$rhat_vals), numeric(1)),
-  failed = vapply(rhat_out, function(z) z$failed, logical(1))
-)
-rhat_tab[order(-rhat_tab$max_rhat), ]
+```{r sampling}
+check_sampling(fit)
 ```
+
+One row per candidate model, with the three diagnostics that decide whether a
+fit is usable at all: the largest Rhat, the smallest effective sample size, and
+the number of divergent transitions.
+
+Read `min_ess` rather than `min_ess_ratio` when deciding: the default cutoff of
+400 is Vehtari's recommendation that both bulk and tail ESS exceed 100 per
+chain [@Vehtari2021], at the four chains `bnec()` fits by default. The ratio is
+reported beside it so that "passed because we drew 8000" can be told apart from
+"passed efficiently".
+
+All three thresholds are arguments. The Rhat default of 1.01 and the ESS default
+of 400 follow published recommendations; **the divergence default of 10 does
+not** --- Stan's own guidance is that *any* divergence means the sampler failed
+to explore the posterior. Ten is pragmatic, from practice with these non-linear
+models, which routinely produce a handful near a boundary. State whichever you
+use, because it will be quoted.
 
 A cutoff of 1.01 is stricter than the `bayesnec` default of 1.05, and is worth
 using here: the default is permissive, and the point of this step is to find the
@@ -170,7 +181,8 @@ Chain mixing is worth looking at for anything marginal, rather than for
 everything:
 
 ```{r chains, eval = FALSE}
-check_chains(pull_out(fit, model = rhat_tab$model[1]))
+worst <- check_sampling(fit)
+check_chains(pull_out(fit, model = worst$model[which.max(worst$max_rhat)]))
 ```
 
 # 4. Fit diagnostics
@@ -192,6 +204,18 @@ concentration group, with the control flagged.
 ```{r checkfit}
 check_fit(fit)
 ```
+
+```{r checkfit-plot}
+plot(check_fit(fit))
+```
+
+The plot answers the question the table does not: not *is any group off* but
+*by how much, and in which direction*. Each panel shows the observed statistic
+against the 95% span of what the model simulates; a point outside its bar is a
+group the model does not reproduce. Location and scale are separate panels
+because they fail independently --- a model can get every group's mean right
+while simulating far too much spread, which is the case this check exists to
+catch.
 
 This is local by necessity. A global dispersion statistic averages over the
 curve and can return a clean bill of health while the model simulates far more
@@ -217,10 +241,23 @@ nec_before
 Screen on the diagnostics from steps 3 and 4, then drop:
 
 ```{r exclude}
-to_drop <- rhat_tab$model[rhat_tab$failed]
-to_drop
-fit_screened <- amend(fit, drop = to_drop)
+fit_screened <- screen_models(fit)
 ```
+
+`screen_models()` runs the same diagnostics, drops what failed, and **says what
+went and why** --- one line per model, naming every threshold it missed rather
+than just the first. That message is not decoration: it is what a methods
+section has to cite, and an exclusion step that leaves no record is not
+reproducible.
+
+It screens on the **sampler only**. A poor `check_fit()` is a modelling result,
+not a reason the fit is unusable, and dropping on it silently would hide exactly
+what step 4 exists to show you. The two are reported side by side and only one
+of them is acted on.
+
+If every candidate fails, `screen_models()` stops with an error saying so rather
+than leaving a meaningless average --- which is the right outcome, and a signal
+to go back to step 2 rather than to loosen a threshold.
 
 `amend()` refuses to leave the set empty, so if everything fails the screen you
 get an error rather than a meaningless average — which is the right outcome, and
@@ -250,8 +287,9 @@ What to state in a methods section:
   a reader cannot otherwise tell whether `beta_binomial` was chosen or defaulted
   to;
 - **the candidate set** as fitted, and any model that failed to fit at all;
-- **the diagnostic thresholds used** — the Rhat cutoff especially, since it is a
-  choice and it determines what gets excluded;
+- **the diagnostic thresholds used** — all three, since they are choices and
+  they determine what gets excluded. `check_sampling()`'s defaults are 1.01,
+  400 and 10; say if you moved any of them and why;
 - **which models were excluded and why**, with the weights before and after, so
   a reader can see the effect of the screen rather than take it on trust;
 - **the model-averaged estimate with its credible interval**, and the weights of
