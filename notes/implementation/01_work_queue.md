@@ -276,67 +276,90 @@ which of the two you are building and why.
 
 ---
 
-## 7. #148 — `check_fit()`, `pp_check()` methods, LOO-PIT
+## 7. #148 — `check_fit()`, `pp_check()` methods, LOO-PIT, and Part D
 
-Fully scoped across two long comments, RF's decisions settled 2026-08-21. **Read
-both comments in full before starting** — the scoping comment carries a worked
-demonstration that is the whole justification for the design.
+> **CORRECTED 2026-08-23.** The entry that stood here was wrong in four ways and
+> everything downstream inherited them — PR #226 was built to it, and the phase 2
+> review validated #226 against *this file* rather than against the issue. Read
+> **`notes/tasks/148-model-fit-diagnostics.md`** — the authoritative spec, written
+> at scoping time and referenced from the issue thread — before doing anything
+> here. It is 23 KB and covers Parts A–D, the settled decisions, the hazards and
+> a definition of done. **Neither the previous queue entry nor the phase 2 review
+> consulted it.**
+>
+> What was wrong:
+>
+> 1. **"Three parts"** — there are **four**. Part D (sampler diagnostics and
+>    screening) was folded into #148 deliberately, with a stated rationale.
+> 2. **"Decision (d) RF flagged but did not answer"** — RF answered it *in*, in
+>    the Final decisions table, and then **prototyped it** in a later comment.
+> 3. **Decision (b) was omitted entirely** — a message at the end of `bnec()`
+>    **and** a line in `summary()`, thresholding on the ratio.
+> 4. **The `example2` doc fix that rides on (b)** was not mentioned.
 
-**Settled:** part B in scope and extended to control lack-of-fit; the averaged
-check built in `ggplot2` directly with **no `bayesplot` dependency**; require
-replication but **fall back to automatic binning with a warning**; **#56 folds
-in**, LOO-PIT via `pp_check`, **no `DHARMa`**; deliver **both** a numeric test and
-a plot; the two-block families need nothing special, because `posterior_predict`
-draws the full mixture including the point mass at zero.
+**Read the spec file first.** What follows is a map of it, not a substitute.
 
-**Three parts.**
+**Four parts, not three.**
 
-- **A — `pp_check()` methods.** `pp_check(pull_brmsfit(fit))` already works; what
-  is missing is dispatch. One-line delegation for `bayesnecfit`. `brms` is in
-  `Depends`, so `importFrom(brms, pp_check)` adds no dependency.
-  `bayesnechurdlefit` returns one result per component, following `dispersion()`.
-- **B — `check_fit()`, the substance.** Per concentration group, report observed
-  against model-simulated **location and scale**, with a posterior predictive
-  p-value, and the control row flagged. Name it `check_fit()`, not
-  `check_variance()` — it reports the fit against the data, sitting alongside
-  `check_chains()` (the sampler) and `check_priors()` (the priors).
-- **C — LOO-PIT** through the part A methods; `add_criterion(fit, "loo")` is
-  something `bnec()` already does.
+- **A — `pp_check()` methods.** Dispatch for the three classes; `brms` is in
+  `Depends` so `importFrom(brms, pp_check)` adds nothing. `bayesnechurdlefit`
+  returns one result per component, following `dispersion()`.
+- **B — `check_fit()`, the substance.** Per concentration group, observed against
+  model-simulated **location and scale**, a posterior predictive p-value, control
+  row flagged. Named `check_fit()`, sitting alongside `check_chains()` (sampler)
+  and `check_priors()` (priors). **Deliver both a numeric table and a plot.**
+- **C — LOO-PIT** through the part A methods.
+- **D — sampler diagnostics and screening.** *The independent half.* D1 a
+  per-model sampler diagnostic table (Rhat, divergences, ESS); D2 the ESS
+  decision — settled as *report the absolute, threshold at 400*; D3 the screening
+  helper, `check_sampling()` plus a thin wrapper that applies thresholds and
+  **messages what it dropped and why**; D4 an `amend(drop = )` guard.
 
-**The two findings that shape it, both from the scoping comment.**
+  **Part D depends on nothing else.** It needs no `loo` and does not depend on
+  PR #217, where A and B both do — the spec says it "can be built and merged
+  first, on its own". That makes it the natural separate PR.
 
-- **A global dispersion statistic cannot see this.** On `manec_example` the global
-  Pearson ratio is 1.011 [0.71, 1.44] — a clean bill of health — while the same
-  fit binned by `x` simulates 27% more variability than the data show in the
-  control region, which is exactly the quantity `nsec` keys off. The diagnostic
-  has to be **local**.
-- **The statistic must be residual-based, not raw.** Within a bin the raw SD of
-  `y` mixes residual variability with the slope of the curve across the bin. On
-  `manec_example` the top bin's raw SD is 1.72 against a residual SD of 0.88.
-  Getting this wrong makes every steep-region bin look overdispersed.
+**The four decisions, all settled.**
 
-**Report per-candidate-model rows for a `bayesmanecfit`, not just the averaged
-row.** Stacking weights come from a global `elpd`, so a candidate can hold high
-weight while fitting the control badly — it wins on the bulk of the curve and pays
-almost nothing for the control. Without per-model rows the table cannot say which
-model is doing the damage.
+| | |
+|---|---|
+| (a) | `check_fit()` — one function covering both statistics |
+| (b) | a message at the end of `bnec()` **and** a line in `summary()` |
+| (c) | keep `dispersion()` as well |
+| (d) | **combined hurdle simulation IN** — and prototyped on the issue |
 
-**Zero fraction.** For the four mixture families, report `mean(y == 0)` against
-`mean(yrep == 0)`. Whether the zero fraction is right is the whole question those
-families exist to answer (#104), and nothing currently reports it.
+**(b)'s threshold question is also settled:** threshold on the **ratio**, with
+the `ppp` reported alongside. A `ppp` threshold stayed silent on both test fits,
+and silence reads as a pass.
 
-**One decision RF flagged but did not answer — decision (d).** Whether
-`bayesnechurdlefit` also gets a **combined** check: draw alive/dead from the
-survival fit, then a growth value per survivor, reconstructing the full observed
-response including its zeros. It is the only check of the hurdle fit *as a model
-of the data the user handed in*, rather than of its two halves separately. RF
-leaned toward including it. **Build A, B, C without it; if time remains, add it
-behind an argument and flag it in the PR for a decision.** Do not let it hold up
-the rest.
+**(d) is already written.** The issue thread carries a working six-line
+prototype and its result. The one thing to get right is `newdata = d` rather than
+the growth fit's own data — the growth component is fitted on survivors only, so
+it must be predicted onto the full exposed set for the product to line up with
+the observed response.
 
-**Vignette.** The natural home is a model-checking section, but anything added to
-`example1.Rmd.orig` will not render until #190. Author the `.Rmd.orig`, note it in
-the PR, do not run `precompile.R`.
+**A doc error rides on (b).** `vignettes/example2.Rmd.orig:102` claims the
+summary warns about divergent transitions. It does not: `print.manecsummary`
+warns on Rhat only (`R/print.R:136`), at a hard-coded 1.05, while the same
+vignette recommends 1.01. Part D makes the claim true rather than requiring it to
+be deleted.
+
+**The two findings that shape B**, both verified on `manec_example`: a global
+dispersion statistic cannot see the problem, because a free dispersion parameter
+absorbs exactly what it measures (global Pearson ratio 1.011 [0.71, 1.44] while
+the control region is badly mis-stated) — so the diagnostic must be **local**;
+and the scale statistic must be **residual-based**, since a raw within-group SD
+mixes residual variability with the slope of the curve across the group.
+
+**Per-candidate-model rows for a `bayesmanecfit`**, and the **zero fraction** for
+the four mixture families.
+
+**Vignette.** Author the `.Rmd.orig`; it does not render until #190.
+
+**Status, 2026-08-23.** PR #226 delivers A, B (numeric only), C. Outstanding:
+the **plot** half of B (added under review), **(b)** the automatic surfacing,
+**(d)** the combined hurdle check, and **all of Part D**. #219 depends on Part D
+and its dependency claim was correct.
 
 ---
 
