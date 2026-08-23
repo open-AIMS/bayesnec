@@ -3,21 +3,27 @@
 - New `vignette("example8")`, *Grouping and factor covariates*, covering both
   routes `bayesnec` offers for structured designs and when each is right. It
   turns on a distinction worth making explicitly: a **within-concentration**
-  grouping (a tank holds one dose, so the dependence does not span the response
-  curve) is what `ogl()` is for, while an **across-concentration** grouping
-  (each level spans the whole predictor range) can be given `pgl()`,
-  `(par | group)`, or its own separate fit. It uses `nassarius`, which carries
-  both — replicate tanks within four contaminants — and ends by composing them:
-  tanks as a nuisance term inside each contaminant's own fit.
+  grouping (a tank holds one dose, so the dependence cannot span the response
+  curve) is what `ogl()` and the other group-level terms are for, while an
+  **across-concentration** grouping (each level spans the whole predictor range)
+  is a candidate for its own separate fit via `bnec_group()`.
+
+  It uses the dataset each route actually suits: `nassarius` **survival** with
+  its replicate tanks for the group-level terms, and `herbicide` — seven
+  chemicals across the full concentration range — for the separate-fits route.
+  Survival rather than growth is deliberate and is explained in the vignette:
+  modelling growth would mean filtering to the survivors, which discards animals
+  non-randomly and increasingly with dose, so the top of the curve disappears
+  and the remaining growth values are survivorship-selected. That is what
+  `hurdle_gamma` exists to avoid, and a vignette about grouping should not
+  quietly demonstrate it.
 
   It covers all three group-level term types, priors for the group-level
-  standard deviations via `check_formula(run_par_checks = TRUE)`, the
-  `bnec_group()` route and its crossed model weights, and — at some length —
-  the failure modes, since hierarchical structure on non-linear parameters is
-  easy to specify and hard to identify. This completes #6, whose capability
-  landed in v2.0 and which has been open since only for want of a worked
-  example. See #6 and #33.
-
+  standard deviations via `check_formula(run_par_checks = TRUE)`, the failure
+  modes of hierarchical terms on non-linear parameters, `crossed_group_weights()`
+  for which equation suits each level, and `compare_posterior()` for whether the
+  fitted curves differ — noting that those two can disagree, and that the
+  comparison's draw pairing is not currently seeded (#218). See #6 and #33.
 - New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
   independently within each level of a factor and model-averaging within each
   level. This is the first support for a factor covariate, and it answers the
