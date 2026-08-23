@@ -1,26 +1,45 @@
-#' Quantile of a response, guarded against exact zeros
+#' Quantile of a response on the scale of its positive part
 #'
 #' The gamma priors for "top" and "bot" set their rate from a quantile of the
-#' response. Where a large share of the response is exactly zero those
-#' quantiles are zero, and the rate either collapses onto a fudge term or
-#' divides by zero outright -- \code{gamma(2, Inf)}. That is not a rare corner:
-#' the zero-inflated count families added under #104 exist precisely for
+#' response. Where a share of the response is exactly zero those quantiles are
+#' pulled down towards zero, and the prior collapses onto a scale that has
+#' nothing to do with the asymptote it is meant to locate. That is not a rare
+#' corner: the zero-inflated count families added under #104 exist precisely for
 #' responses where a quarter or more of the values are zero.
 #'
-#' The guard falls back to the same quantile of the \emph{positive} part of the
-#' response. That keeps the prior on the scale of the data actually carrying
-#' signal about the asymptotes, which is the quantity these priors are trying to
-#' locate, rather than on the scale of a structural-zero process that says
-#' nothing about them.
+#' \strong{Why the probability is rescaled rather than the vector.} A quantile
+#' of a zero-inflated response is a quantile of the \emph{mixture}, and it is
+#' biased downward by the zero fraction throughout its range -- reaching exactly
+#' zero only at the extreme. So testing for an exactly-zero quantile and
+#' substituting the positive part, as the first version of this guard did, is a
+#' step function applied to a continuous problem: it left the worst case, just
+#' below the threshold, entirely unguarded. On a `nec4param` response with a true
+#' `top` of 40 the `top` prior mean ran 33.5 at no zeros, 6.8 at 72\% zeros, and
+#' then jumped back to 29.0 at 76\% once the raw quantile finally hit zero.
+#'
+#' Level \code{p} of the distribution conditional on being positive sits at level
+#' \code{z + (1 - z)p} of the mixture, where \code{z} is the zero fraction: a
+#' share \code{z} of the mass has to be passed before any positive value is
+#' reached. Equivalently \code{1 - (1 - p)(1 - z)}. That is the quantile taken
+#' here. It reduces to the raw quantile exactly when \code{z} is zero, so a
+#' response with no zeros is untouched, and it degrades smoothly rather than in a
+#' jump.
+#'
+#' Note the multiplication. The dividing form \code{1 - (1 - p) / (1 - z)} moves
+#' the level the wrong way -- it returns 0.5 where the answer is 0.875 at
+#' \code{p = 0.75, z = 0.5} -- and goes negative past 75\% zeros, which is the
+#' regime this exists for.
 #'
 #' Deliberately not the same trick as \code{define_hurdle_prior()}, which
 #' computes the whole mu-block prior from the non-zero subset. That is exact for
 #' \code{hurdle_gamma}, because a Gamma has no mass at zero, so the non-zero
-#' subset *is* the mu process. Under zero-inflation it is not: the base
+#' subset \emph{is} the mu process. Under zero-inflation it is not: the base
 #' distribution emits zeros of its own, so conditioning on the positives draws
 #' from a truncated count distribution and biases the location upward. Here the
-#' positive part is used only to recover a *scale* when the raw quantile has
-#' collapsed, never as the estimate itself. See #210.
+#' positive part informs only a \emph{scale}, never the estimate itself.
+#'
+#' See #210 for the original three failure modes and #232 for why the guard
+#' became a rescaling.
 #'
 #' @param response A \code{\link[base]{numeric}} vector.
 #' @param probs A \code{\link[base]{numeric}} vector of length 1.
@@ -31,25 +50,27 @@
 #'
 #' @noRd
 positive_scale <- function(response, probs) {
-  q <- unname(quantile(response, probs = probs))
-  if (is.finite(q) && q > 0) {
-    return(q)
-  }
-  pos <- response[response > 0 & is.finite(response)]
+  finite <- response[is.finite(response)]
+  pos <- finite[finite > 0]
   if (!length(pos)) {
     stop("Cannot build priors for \"top\" and \"bot\": the response contains no",
          " positive values, so there is no scale to place them on. Check the",
          " response variable, and see ?bnec for the families bayesnec supports.",
          call. = FALSE)
   }
-  q_pos <- unname(quantile(pos, probs = probs))
-  # quantile(pos, 0) is min(pos), which is positive by construction, so this
-  # cannot itself return zero. The guard is kept anyway because probs is
-  # supplied by the caller and a future table could pass something else.
-  if (!is.finite(q_pos) || q_pos <= 0) {
+  zero_frac <- sum(finite <= 0) / length(finite)
+  # z == 0 leaves probs untouched, so a response with no zeros gets exactly the
+  # quantile it got before this guard existed.
+  probs_adj <- 1 - (1 - probs) * (1 - zero_frac)
+  q <- unname(quantile(finite, probs = probs_adj))
+  # The rescaled level can still land on a zero: at probs = 0 it stays at 0, and
+  # ties across the boundary can put it there too. min(pos) is the smallest
+  # scale the data actually supports, and is what the caller's fudge terms are
+  # already built around.
+  if (!is.finite(q) || q <= 0) {
     return(min(pos))
   }
-  q_pos
+  q
 }
 
 #' define_prior
