@@ -32,6 +32,18 @@
 
 # bayesnec 2.1.4
 
+- `get_priors()` now reports and round trips a prior on `zi` or `hu` for the
+  families where those are ordinary `brms` parameters. For
+  `zero_inflated_poisson` and `zero_inflated_negbinomial`, which `bayesnec` fits
+  as a single parameter block, `zi` carries a class of its own and sat on the
+  `brms` default `beta(1, 1)` with nothing in the reported prior set to say so —
+  the same gap that 2.1.4 closed for `sigma`, `shape` and `phi`, and arguably a
+  more important one, since for those two families `zi` is the zero-inflation
+  probability the family exists to estimate. `hurdle_gamma` and
+  `zero_inflated_beta` are unaffected: their second block is carried as class
+  `"b"` with a prefixed `nlpar`, so no class-`zi` row is ever generated. See
+  #231.
+
 - The `top` and `bot` prior scales for `Gamma`, `poisson` and `negbinomial` are
   now taken at a quantile rescaled by the zero fraction of the response, rather
   than at the raw quantile with a fallback that triggered only once that
