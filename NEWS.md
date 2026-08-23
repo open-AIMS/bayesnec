@@ -24,7 +24,10 @@
   `elpd` and a candidate can hold high weight while fitting the control badly.
   For the mixture families the observed and simulated proportion of zeros is
   reported too — the question those families exist to answer, which nothing
-  else reported. See #148, which also closes #56.
+  else reported. \code{plot()} shows the same table graphically: per group, the
+  observed statistic against the 95% span of what the fit simulates, in
+  separate location and scale panels with the control drawn apart. See #148,
+  which also closes #56.
 
 - New `pp_check()` methods for `bayesnecfit`, `bayesmanecfit` and
   `bayesnechurdlefit`, so posterior predictive checks no longer require

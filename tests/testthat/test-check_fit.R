@@ -4,7 +4,7 @@
 # the discrepancy the global statistic measures.
 
 test_that("check_fit returns a row per group with both statistics", {
-  skip_if(Sys.getenv("NOT_CRAN") == "")
+  skip_on_cran()
   n4 <- suppressMessages(pull_out(manec_example, model = "nec4param"))
   out <- check_fit(n4, group = 4, ndraws = 50)
   expect_s3_class(out, "checkfit")
@@ -21,7 +21,7 @@ test_that("exactly one group is flagged as the control, and it is the lowest", {
   # nsec() reads its reference from the fitted curve at min(x), and the
   # observed control is y[x == min(x)] -- the package's own convention. The
   # flag has to agree with that or it points at the wrong row.
-  skip_if(Sys.getenv("NOT_CRAN") == "")
+  skip_on_cran()
   n4 <- suppressMessages(pull_out(manec_example, model = "nec4param"))
   out <- check_fit(n4, group = 4, ndraws = 50)
   expect_equal(sum(out$control), 1)
@@ -29,7 +29,7 @@ test_that("exactly one group is flagged as the control, and it is the lowest", {
 })
 
 test_that("posterior predictive p-values are probabilities", {
-  skip_if(Sys.getenv("NOT_CRAN") == "")
+  skip_on_cran()
   n4 <- suppressMessages(pull_out(manec_example, model = "nec4param"))
   out <- check_fit(n4, group = 4, ndraws = 50)
   for (nm in c("ppp_mean", "ppp_sd")) {
@@ -41,7 +41,7 @@ test_that("ndraws is reduced to what the fit holds rather than erroring", {
   # brms errors instead of truncating, and manec_example carries 100 draws, so
   # the default of 1000 would fail on the package's own example object -- which
   # is exactly what someone runs a diagnostic on first.
-  skip_if(Sys.getenv("NOT_CRAN") == "")
+  skip_on_cran()
   n4 <- suppressMessages(pull_out(manec_example, model = "nec4param"))
   expect_no_error(check_fit(n4, group = 3, ndraws = 1e6))
 })
@@ -51,7 +51,7 @@ test_that("an unreplicated predictor is binned, with a warning", {
   # but it would refuse nec_data, which is the package's own example. Binning
   # always returns something, including where the answer is meaningless, so it
   # has to say so.
-  skip_if(Sys.getenv("NOT_CRAN") == "")
+  skip_on_cran()
   n4 <- suppressMessages(pull_out(manec_example, model = "nec4param"))
   expect_warning(check_fit(n4, ndraws = 50), "not a design point")
 })
@@ -86,7 +86,7 @@ test_that("a bayesmanecfit reports per-model rows carrying their weights", {
   # weight while fitting the control badly -- it wins on the bulk of the curve
   # and pays almost nothing for the control. Without per-model rows the table
   # cannot say which model is doing the damage.
-  skip_if(Sys.getenv("NOT_CRAN") == "")
+  skip_on_cran()
   out <- check_fit(manec_example, group = 3, ndraws = 50)
   expect_true(all(c("model", "wi") %in% names(out)))
   expect_setequal(unique(out$model), names(manec_example$mod_fits))
@@ -103,7 +103,7 @@ test_that("check_fit reproduces the local finding a global statistic misses", {
   # check (1.011 [0.71, 1.44]) while simulating materially more variability
   # than the data show in the control region. If check_fit cannot see that, it
   # does not do the job it was written for.
-  skip_if(Sys.getenv("NOT_CRAN") == "")
+  skip_on_cran()
   n4 <- suppressMessages(pull_out(manec_example, model = "nec4param"))
   out <- suppressWarnings(check_fit(n4, ndraws = 200, seed = 10))
   ctrl <- out[out$control, ]
@@ -111,4 +111,52 @@ test_that("check_fit reproduces the local finding a global statistic misses", {
   # and the steep tail fails the other way, which a single global number
   # averages away entirely
   expect_gt(max(out$sd_ratio), 1.2)
+})
+
+# #148: the settled scope was "deliver both a numeric test and a plot". The
+# table answers whether a group is off; the plot answers by how much and in
+# which direction, which is what decides whether it matters.
+
+test_that("plot.checkfit returns a ggplot with both statistics panelled", {
+  skip_on_cran()
+  cf <- suppressWarnings(check_fit(manec_example))
+  p <- plot(cf)
+  expect_s3_class(p, "ggplot")
+  # both panels present -- location and scale fail independently, so a single
+  # combined panel would hide exactly the case check_fit() exists to catch
+  expect_setequal(unique(p$data$statistic),
+                  c("location (mean)", "scale (residual SD)"))
+  # two rows per group, one per statistic
+  expect_equal(nrow(p$data), 2 * nrow(as.data.frame(cf)))
+})
+
+test_that("the control is distinguished in the plot data", {
+  skip_on_cran()
+  cf <- suppressWarnings(check_fit(manec_example))
+  p <- plot(cf)
+  expect_true("control" %in% p$data$role)
+  expect_true("exposed" %in% p$data$role)
+  # One control group per candidate model, appearing once in each of the two
+  # statistic panels. manec_example is a bayesmanecfit, so this is 2 * n_models
+  # rather than 2 -- the per-model rows are the point of the manec method.
+  n_models <- length(unique(as.data.frame(cf)$model))
+  expect_equal(sum(p$data$role == "control"), 2 * n_models)
+})
+
+test_that("the simulated intervals are on the object but not printed", {
+  skip_on_cran()
+  cf <- suppressWarnings(check_fit(manec_example))
+  expect_true(all(c("sim_mean_lo", "sim_mean_hi", "sim_sd_lo", "sim_sd_hi")
+                  %in% names(as.data.frame(cf))))
+  # print() drops them: they are for plot(), and including them takes the
+  # console table past a readable width
+  printed <- capture.output(print(cf))
+  expect_false(any(grepl("sim_mean_lo|sim_sd_hi", printed)))
+})
+
+test_that("the interval brackets the simulated median", {
+  skip_on_cran()
+  d <- as.data.frame(suppressWarnings(check_fit(manec_example)))
+  expect_true(all(d$sim_mean_lo <= d$sim_mean & d$sim_mean <= d$sim_mean_hi))
+  expect_true(all(d$sim_sd_lo <= d$sim_sd & d$sim_sd <= d$sim_sd_hi))
 })
