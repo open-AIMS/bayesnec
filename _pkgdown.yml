@@ -4,13 +4,25 @@ template:
   params:
     bootswatch: yeti
 
-# Development mode "auto" keys off the version in DESCRIPTION, which is exactly
-# how this repo already distinguishes the two lines: `master` carries a release
-# version (2.1.3.1) and `dev` carries a four-component development version
-# (2.1.3.7). So a build from `master` lands at the site root and a build from
-# `dev` lands at /dev/, with no branch name hard-coded anywhere and no second
-# config file to keep in sync. pkgdown also adds its own "development version"
-# banner to the dev site, which is the point of #215 -- the two must not be
-# mistakable for each other.
+# Development mode "auto" keys off the version in DESCRIPTION, but NOT in the way
+# an earlier version of this comment claimed. pkgdown:::dev_mode_auto() returns
+# "devel" for ANY version with four or more components whose first three are not
+# 0.0.0 -- the size of the fourth component is irrelevant. So:
+#
+#   dev_mode_auto("2.1.3.1")  -> "devel"    <- master today
+#   dev_mode_auto("2.1.3.12") -> "devel"    <- dev today
+#   dev_mode_auto("2.1.4")    -> "release"
+#
+# `master` is at 2.1.3.1, a four-component version, so it currently resolves to
+# devel as well and would publish into /dev/ rather than the root. This works
+# only while releases carry a THREE-component version; bayesnec has historically
+# released four-component ones (2.1.3.1 is on CRAN), and that is the
+# incompatibility. ssdtools relies on the same rule deliberately -- its main
+# branch carries 2.6.0.9002 and publishes to /dev/, with the root published on
+# release at a three-component version.
+#
+# So this is a versioning convention, not a config setting: cut releases as
+# x.y.z and the two sites separate correctly; cut one as x.y.z.n and they
+# collide again, silently. See #230.
 development:
   mode: auto
