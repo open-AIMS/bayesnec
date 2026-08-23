@@ -445,8 +445,25 @@ edited. `example6` was still running when this was written.
 | example3 | clean, 16.2 min | |
 | example4 | clean, 27.9 min | |
 | example5 | clean, 0.5 min | no fits; uses `##` not `#>` — see below |
-| example8 | **8 errors** | mine — dataset has no gradient |
-| example9 | **2 errors** | mine — appended Beta section only |
+| example6 | clean, ~2.5 h | **#209's hurdle changes**; 15 fit calls, 9 of them `bnec_hurdle()` |
+| example8 | **8 errors** | mine — dataset has no gradient; awaiting RF's decision |
+| example9 | clean after fix | irgarol → simazine; 479 lines, 0 errors |
+
+**All seven pre-existing vignettes render clean against the full stack.** Nothing
+in 224–228, 238 or 240 breaks existing vignette output.
+
+### A third trap: knitr evaluates chunks in the CALLING environment
+
+The driver crashed with `object 'f' not found` *after* `example6` rendered
+successfully. A vignette chunk cleared the workspace, which destroyed the
+driver's own loop variable — the render had already completed and been written,
+so the result was recoverable by reading the file directly, but the run recorded
+no outcome for it.
+
+Knit in an isolated environment (`knitr::knit(..., envir = new.env())`), or keep
+driver state somewhere a vignette cannot reach. This is the same class as the
+other two output-checking traps: the harness and the thing it measures were
+sharing state without it being obvious.
 
 ### Part D is worth more than the issue argued
 
