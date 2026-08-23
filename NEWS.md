@@ -50,6 +50,23 @@
 
 # bayesnec 2.1.4
 
+- The vignette precompilation workflow added in 2.1.4 can now actually be run,
+  and the documentation site configuration records what `pkgdown` really does.
+  `workflow_dispatch` only takes effect once a workflow file is on the
+  repository's default branch, so the job was invisible and undispatchable while
+  it lived on `dev` alone; it now also triggers on pushes to a `precompile/**`
+  branch, which makes it exercisable before it reaches `master`. Both workflows
+  declare the `permissions` they need rather than depending on the repository
+  default. The step that rebuilds a subset of vignettes now restores the ones it
+  held back — the previous `on.exit()` never fired, because `shell: Rscript {0}`
+  runs at top level. The cache on `~/.cmdstan` was removed: `brms` uses the
+  `rstan` backend here, so nothing is ever written there and the step cached an
+  empty directory while reading as though compilation were cached. The workflow
+  also gained a dry-run mode and branch-suffix selection, so that a run which
+  will take hours can have its plumbing — permissions, checkout, and the
+  pull-request step — verified first. See #230.
+
+
 - `bnec()` now accepts a prior on the family's own dispersion parameter —
   `sigma`, `shape` or `phi`. Supplying one previously failed in the
   initial-value search, because it compared the prior's parameter names against
