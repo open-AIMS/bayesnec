@@ -36,7 +36,9 @@
   could not previously answer. The table is computed on demand rather than
   materialised, since with 23 models and *G* levels it has 23^*G* cells. As for
   `crossed_weights()`, the identity is specific to pseudo-BMA: stacking
-  optimises a different objective whose solution is not an outer product.
+  optimises a different objective whose solution is not an outer product, and
+  `crossed_group_weights()` refuses a fit built with any other weighting method
+  rather than silently returning a table that looks right and is not.
 
   The family is chosen **once** from the whole response and passed down.
   Selecting it per subset could pick different families at different levels,
@@ -77,7 +79,10 @@
   `elpd` and a candidate can hold high weight while fitting the control badly.
   For the mixture families the observed and simulated proportion of zeros is
   reported too — the question those families exist to answer, which nothing
-  else reported. See #148, which also closes #56.
+  else reported. \code{plot()} shows the same table graphically: per group, the
+  observed statistic against the 95% span of what the fit simulates, in
+  separate location and scale panels with the control drawn apart. See #148,
+  which also closes #56.
 
 - New `pp_check()` methods for `bayesnecfit`, `bayesmanecfit` and
   `bayesnechurdlefit`, so posterior predictive checks no longer require

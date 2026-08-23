@@ -27,7 +27,10 @@ weights, so the whole table follows from the per-level vectors and never has
 to be materialised --- which matters, because with 23 models and \emph{G}
 levels it has \code{23^G} cells.
 
-\bold{This identity is specific to pseudo-BMA}, the package default.
+\bold{This identity is specific to pseudo-BMA}, the package default, and
+\code{crossed_group_weights()} enforces it rather than assuming it: a fit
+built with any other weighting method is refused, because there is no
+correct crossed table to return for one.
 Stacking optimises a different objective whose solution is not generally an
 outer product; stacked crossed weights would require the full pointwise
 matrix and are not computed here. The same caveat applies to
