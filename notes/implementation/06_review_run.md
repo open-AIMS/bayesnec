@@ -427,6 +427,82 @@ above it.
   step from corrupting a just-fixed branch. **Work detached** when scripting
   across branches; `--detach` cannot collide with another worktree.
 
+## Phase 4 — #190 run 2026-08-23, results
+
+Run against an **integration branch** (dev + every open PR), not `dev` — running
+it on `dev` would have rendered the old vignettes and verified nothing.
+
+### The stack is sound
+
+Six of seven pre-existing vignettes render clean, including both the stack
+edited. `example6` was still running when this was written.
+
+| vignette | result | what it verifies |
+|---|---|---|
+| example1 | clean, 12.9 min | stack broke nothing existing |
+| example2 | clean, 23.4 min | **Part D's Rhat 1.01 rewrite** |
+| example2b | clean, 0 min | **#139's drc table**; fits nothing by design |
+| example3 | clean, 16.2 min | |
+| example4 | clean, 27.9 min | |
+| example5 | clean, 0.5 min | no fits; uses `##` not `#>` — see below |
+| example8 | **8 errors** | mine — dataset has no gradient |
+| example9 | **2 errors** | mine — appended Beta section only |
+
+### Part D is worth more than the issue argued
+
+`example9`'s screening step, on real output:
+
+```
+      model max_rhat     min_ess  n_divergent failed
+1 nec3param 1.002117  409.823226           0   FALSE
+2 nec4param 1.246953    9.033458          55    TRUE
+4   ecxsigm 1.037810  117.413286        2413    TRUE
+...
+```
+
+Before screening the **highest-weighted model was `ecxsigm` at wi = 0.31**, with
+**2413 divergent transitions**. Dropping the six failures moved the reported
+N(S)EC from **1.195 to 0.847 — 29% more protective**. All three thresholds do
+work: `ecxwb2p3` passes Rhat at 1.015 and fails on ESS and divergences, so a
+Rhat-only screen (what `example2` did before Part D) would have kept it.
+`ecxll3` has one divergence and passes, which is why the cutoff is 10 not 0.
+
+### Three defects in the precompile process itself
+
+All recorded on #190 with a suggested fix. None documented anywhere before.
+
+1. **It renders against the INSTALLED package**, not the source tree. The first
+   attempt rendered everything against 2.1.3.7 and filled the vignettes with
+   "could not find function check_sampling". Install the branch first, and
+   **prepend** the scratch library to `.libPaths()` — replacing it makes `brms`
+   resolve to an older copy and fail bayesnec's own version floor.
+2. **`knit()` does not fail when a chunk fails.** It writes the error into the
+   document and returns cleanly. A vignette was reported "OK in 1.3 min" whose
+   output was entirely errors.
+3. **`purrr::walk` makes it all-or-nothing** — one failure discards the hours
+   already spent.
+
+### Two traps in checking the output
+
+- **Not every vignette uses `#>`.** A vignette with no `opts_chunk$set()` block
+  gets knitr's default `comment = "##"`. `example5` is one. An error scan that
+  greps only `^#>` passes it however many errors it contains.
+- **The repo ships rendered `.Rmd` files.** A vignette still rendering shows its
+  stale committed version, which is indistinguishable from a fresh clean one.
+  Check the mtime against the run's start.
+
+### My own two vignettes: the same mistake twice
+
+Both failed because the example data was chosen on **design tidiness** —
+balanced replication, clean nesting — without checking the **response** was
+identifiable. See `notes/tasks/dataset-response-gradients.md`. `nassarius`
+survival is a step function (contaminant C has *no* tank between 0 and 1);
+`herbicide` irgarol collapses to exactly zero across its top three
+concentrations, which a Beta on the open interval cannot represent.
+
+Check the response before the design. The failure surfaces as "Failed to fit
+model", which points at the model rather than at the data.
+
 ## Phase 4 — the release gate
 
 Not reached until RF has reviewed and merged the stack.
