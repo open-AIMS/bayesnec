@@ -176,11 +176,13 @@ prep_raw_data <- function(brms_fit, bayesnecformula) {
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   family <- brms_fit$family
   custom_name <- check_custom_name(family)
+  rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
   if (family$family == "binomial" | family$family == "beta_binomial") {
     trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
     r_df[[y_var]] <- r_df[[y_var]] / r_df[[trials_var]]
-  } else {
-    r_df[[y_var]] <- r_df[[y_var]]
+  } else if (!is.na(rate_var)) {
+    # Rate scale, matching the grid -- see the same branch in plot.R.
+    r_df[[y_var]] <- r_df[[y_var]] / r_df[[rate_var]]
   }
   r_df |>
     mutate(x_e = NA, y_e = NA, y_ci = NA, x_r = .data[[x_var]],

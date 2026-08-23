@@ -196,6 +196,11 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     family_growth <- validate_family(
       set_distribution(y[y > 0], silence_y_msgs = TRUE)
     )
+    # Checked on the auto-selected family as well as on a supplied one. An
+    # integer response picks poisson or negbinomial here, which is exactly the
+    # case that must not be fitted untruncated -- and it is the one a user
+    # reaches silently, without ever naming a family.
+    check_hurdle_growth_family(family_growth)
   } else {
     family_growth <- validate_family(family_growth)
     check_hurdle_growth_family(family_growth)
@@ -263,10 +268,35 @@ check_hurdle_growth_family <- function(family) {
          " likelihood does not factorise, so two separate fits would give you a",
          " different model. Use bnec(family = \"", fam_tag, "\") for the",
          " mixture. If every zero really is structural you want a hurdle on",
-         " counts, whose positive part is zero-truncated; bayesnec has no",
-         " zero-truncated count family yet, and leaving family_growth unset",
-         " here would fit an untruncated one to the non-zero counts, which",
-         " overestimates the mean where it is small. See ?bnec.",
+         " counts, whose positive part is zero-truncated: that is",
+         " bnec(family = \"hurdle_", sub("^zero_inflated_", "", fam_tag),
+         "\"). See ?bnec.",
+         call. = FALSE)
+  }
+  # Refused rather than fitted, and this is a behaviour change: bnec_hurdle
+  # fits the growth component to data[y > 0, ] with an ORDINARY count family,
+  # which is not the right likelihood. Conditioning a Poisson on y > 0
+  # estimates mu / (1 - exp(-mu)) rather than mu; the bias is negligible for
+  # large mu and grows as mu falls towards zero -- the high-concentration end
+  # where the NEC and ECx are read off. For hurdle_gamma the same construction
+  # is exact, because a Gamma has no mass at zero, which is why this was never
+  # a problem before counts were in scope.
+  #
+  # The separate-fits path cannot express the truncation without a trunc()
+  # aterm, and the joint families added in #209 do not need one: brms writes
+  # the zero-truncated positive part itself, via the - log1m_exp(-lambda)
+  # normaliser. So the fix is to send the user to the path that is correct by
+  # construction rather than to approximate it here. See #209.
+  if (fam_tag %in% c("poisson", "negbinomial")) {
+    stop("bnec_hurdle cannot use ", fam_tag, " as the growth family. Its",
+         " positive part would be fitted with an untruncated ", fam_tag,
+         " on the non-zero counts, which estimates mu / (1 - exp(-mu)) rather",
+         " than mu -- a bias that grows as the mean falls towards zero, which",
+         " is the high-concentration end the NEC and ECx are read off. Use",
+         " bnec(family = \"hurdle_", fam_tag, "\"), where brms writes the",
+         " zero-truncated positive part itself. That fit also gives both",
+         " blocks a concentration-response curve, which is what a count hurdle",
+         " is for. See ?bnec.",
          call. = FALSE)
   }
   if (is_hurdle_family(fam_tag)) {
@@ -384,7 +414,13 @@ check_hurdle_aterms <- function(formula) {
     weights = paste("whether a weight applies to the growth component, the",
                     "survival component or both is a modelling decision that",
                     "bnec_hurdle will not make for you. Make the two bnec()",
-                    "calls directly if you need it")
+                    "calls directly if you need it"),
+    rate = paste("the two components measure different things and only one of",
+                 "them is a count. An exposure denominator applies to the",
+                 "growth component, where it is a rate; the survival component",
+                 "is one Bernoulli trial per individual and has no rate to",
+                 "take a denominator. Fit the growth component with bnec() and",
+                 "a rate() term directly if you need it")
   )
   bad <- setdiff(names(aterms), "cens")
   if (length(bad) > 0) {

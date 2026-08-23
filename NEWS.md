@@ -1,3 +1,191 @@
+# bayesnec 2.3.0
+
+- New `vignette("example8")`, *Grouping and factor covariates*, covering both
+  routes `bayesnec` offers for structured designs and when each is right. It
+  turns on a distinction worth making explicitly: a **within-concentration**
+  grouping (a tank holds one dose, so the dependence cannot span the response
+  curve) is what `ogl()` and the other group-level terms are for, while an
+  **across-concentration** grouping (each level spans the whole predictor range)
+  is a candidate for its own separate fit via `bnec_group()`.
+
+  It uses the dataset each route actually suits: `nassarius` **survival** with
+  its replicate tanks for the group-level terms, and `herbicide` — seven
+  chemicals across the full concentration range — for the separate-fits route.
+  Survival rather than growth is deliberate and is explained in the vignette:
+  modelling growth would mean filtering to the survivors, which discards animals
+  non-randomly and increasingly with dose, so the top of the curve disappears
+  and the remaining growth values are survivorship-selected. That is what
+  `hurdle_gamma` exists to avoid, and a vignette about grouping should not
+  quietly demonstrate it.
+
+  It covers all three group-level term types, priors for the group-level
+  standard deviations via `check_formula(run_par_checks = TRUE)`, the failure
+  modes of hierarchical terms on non-linear parameters, `crossed_group_weights()`
+  for which equation suits each level, and `compare_posterior()` for whether the
+  fitted curves differ — noting that those two can disagree, and that the
+  comparison's draw pairing is not currently seeded (#218). See #6 and #33.
+- New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
+  independently within each level of a factor and model-averaging within each
+  level. This is the first support for a factor covariate, and it answers the
+  premise `vignette("example4")` has carried since the beginning: that the
+  *functional form* of the response may change between levels, not merely its
+  parameters.
+
+  Levels partition the data disjointly and share no parameters, so the expected
+  log predictive density is additive across them. Under pseudo-BMA — the package
+  default — the crossed model weights are therefore exactly the outer product of
+  the per-level weight vectors, the same identity `crossed_weights()` rests on
+  for the two blocks of a hurdle fit. New `crossed_group_weights()` reports both
+  readings of that table: the **unrestricted** maximum, which will typically
+  assign different equations to different levels, and the **diagonal**, which
+  asks which single equation best describes every level — a question `bayesnec`
+  could not previously answer. The table is computed on demand rather than
+  materialised, since with 23 models and *G* levels it has 23^*G* cells. As for
+  `crossed_weights()`, the identity is specific to pseudo-BMA: stacking
+  optimises a different objective whose solution is not an outer product, and
+  `crossed_group_weights()` refuses a fit built with any other weighting method
+  rather than silently returning a table that looks right and is not.
+
+  The family is chosen **once** from the whole response and passed down.
+  Selecting it per subset could pick different families at different levels,
+  which would put their `elpd` contributions on different scales and make the
+  crossed weights meaningless. Dispersion stays per level, deliberately: a
+  shared dispersion parameter would break the factorisation the crossed weights
+  depend on.
+
+  Every level is an ordinary `bayesnecfit` or `bayesmanecfit`, so `nec()`,
+  `ecx()`, `nsec()`, `summary()` and `plot()` work per level and everything that
+  works on a single fit works on each. Refitting the favoured combination
+  *jointly* is not included: that needs level-aware post-processing inside the
+  toxicity estimators, which is the code the `toxval` migration moves. See #33.
+
+# bayesnec 2.2.0
+
+- A control lack-of-fit is now surfaced rather than waiting to be looked for:
+  once at the end of `bnec()`, and as a line in `summary()` alongside the
+  convergence verdict. Both threshold on the **ratio** of observed to simulated,
+  not on the posterior predictive p-value. That is deliberate and measured: on
+  two independently fitted parameterisations of the same data the simulated
+  control mean overshot the observed by ~19%, reproducing across fits, while
+  both p-values sat at about 0.82 and neither came near flagging. A p-value
+  threshold would stay silent on exactly the case the check exists to catch.
+  `nsec()` reads its reference from the control, so this is the region most
+  likely to move a reported no-effect concentration. See #148.
+
+- New `check_fit()`, reporting per group of the predictor the observed location
+  and scale of the response against what the fitted model simulates, with a
+  posterior predictive p-value for each and the control group flagged. It sits
+  alongside `check_chains()`, which checks the sampler, and `check_priors()`,
+  which checks the priors: this checks the fit against the data.
+
+  It is deliberately **local**. `dispersion()` reports one global statistic, and
+  for any family with a free dispersion parameter that parameter absorbs exactly
+  the discrepancy the global statistic measures — on the packaged
+  `manec_example` the global Pearson ratio is a healthy 1.011 [0.71, 1.44] while
+  the same fit simulates about 26% more variability than the data show in the
+  control region. That matters because `nsec()` sets its reference from the
+  posterior of the control mean, so mis-stating control variability moves a
+  reported no-effect concentration, and nothing previously reported it.
+
+  The scale statistic is computed on residuals, not raw values: within a group
+  the raw standard deviation mixes residual variability with the slope of the
+  curve across that group, which would make every steep region look
+  overdispersed. Grouping prefers genuine replication and falls back to binning
+  with a warning. For a `bayesmanecfit` the per-candidate-model rows are
+  reported with their stacking weights, because weights come from a global
+  `elpd` and a candidate can hold high weight while fitting the control badly.
+  For the mixture families the observed and simulated proportion of zeros is
+  reported too — the question those families exist to answer, which nothing
+  else reported. \code{plot()} shows the same table graphically: per group, the
+  observed statistic against the 95% span of what the fit simulates, in
+  separate location and scale panels with the control drawn apart. See #148,
+  which also closes #56.
+
+- New `pp_check()` methods for `bayesnecfit`, `bayesmanecfit` and
+  `bayesnechurdlefit`, so posterior predictive checks no longer require
+  unwrapping the underlying `brmsfit`. `pp_check(x, type = "loo_pit_overlay")`
+  gives a LOO-PIT check — the Bayesian counterpart of a uniform quantile
+  residual — using the `loo` criterion `bnec()` already adds, so it needs no
+  extra step and no new dependency. See #148 and #56.
+
+- `hurdle_poisson` and `hurdle_negbinomial` are now available as two-block
+  families, the count analogues of `hurdle_gamma`. Use them where the non-zero
+  response is a count and the zeros are *observed* to be structural — the
+  individual died, the replicate failed. `brms` writes the positive part
+  zero-truncated, so the mean block estimates the mean of the surviving counts
+  rather than the mean of counts conditioned on being non-zero, and both blocks
+  carry an interpretable concentration-response curve. This is deliberately not
+  the same decision as for `zero_inflated_poisson` and
+  `zero_inflated_negbinomial`, which stay on the single-block path: there the
+  zeros are latent, so the zero-probability and the mean are weakly separated
+  exactly where the mean is small — the high-concentration end that determines
+  the *NEC*. See #209.
+
+- **Behaviour change:** `bnec_hurdle()` now refuses `poisson` and `negbinomial`
+  as the growth family, on the automatically selected path as well as a supplied
+  one. It fits the growth component to the non-zero rows with an *untruncated*
+  count family, which estimates `mu / (1 - exp(-mu))` rather than `mu`; the bias
+  is negligible for large means and grows as the mean falls towards zero, which
+  is the high-concentration end the *NEC* and ECx are read off. For
+  `hurdle_gamma` the same construction is exact, because a Gamma has no mass at
+  zero, which is why this only surfaced once counts were in scope. The separate
+  fits cannot express the truncation, so the error points at
+  `bnec(family = "hurdle_poisson")`, which is correct by construction. See #209.
+
+- `bnec()` now supports the `rate()` aterm for the `poisson` and `negbinomial`
+  families, so a count observed over an exposure — animals per unit time,
+  larvae per unit area — can be modelled directly. Because `bnec()` forces
+  `link = "identity"`, `brms` writes the denominator multiplicatively on the
+  response scale rather than as a log offset, so the mean *is* the rate and
+  `top`, `bot` and `nec` stay interpretable as counts per unit exposure. The
+  prediction grid holds the denominator at 1, so the fitted curve, `ecx()` and
+  `nsec()` are all read on the rate scale, and plots divide the observations
+  through to match. `rate()` was previously neither supported nor refused: it
+  emitted a generic message, fitted, and then failed in post-processing with a
+  `brms` error about a variable it could not find, and the priors for `top` and
+  `bot` were built from raw counts rather than rates — a prior mean of ~61
+  against a true `top` of 20 on the reprex in the issue, silently. `offset` is
+  deliberately not offered as an alternative: under an identity link it would be
+  additive on the mean. See #136.
+
+- **Breaking:** an `aterm` `bayesnec` has not validated is now an **error**
+  rather than a message. The validated set is `trials()`, `weights()`, `cens()`
+  and `rate()`. Passing anything else previously printed a warning and carried
+  on, which is how `rate()` came to fit and then fail tens of seconds later,
+  long after the message had scrolled past. An aterm the package has not
+  validated cannot be assumed to behave sensibly through prior generation, the
+  initial-value search and post-processing. See #136.
+
+- New `check_sampling()` and `screen_models()`. `check_sampling()` reports, per
+  candidate model, the largest Rhat, the smallest effective sample size and the
+  number of divergent transitions; `screen_models()` drops the failures and
+  **messages what went and why**, which is what a methods section has to cite.
+  They screen on the sampler only — a poor `check_fit()` is a modelling result,
+  and dropping on it silently would hide exactly what the user needs to see.
+
+  Effective sample size is reported as an absolute (`min_ess`) as well as a
+  ratio, so the default `ess_cutoff = 400` is directly Vehtari's recommendation
+  that both bulk and tail ESS exceed 100 per chain, at the four chains `bnec()`
+  fits by default. Note that a heavily thinned fit can fail a cutoff a ratio
+  would have passed; the answer is to retain more draws, not to lower the
+  cutoff, because thinning lowers ESS by construction. The divergence default of
+  10 has no literature behind it — Stan's guidance is that *any* divergence
+  means the sampler failed to explore the posterior — and is a working default
+  from practice with these non-linear models, documented as such. See #148.
+
+- **Behaviour change:** the default `rhat_cutoff` is now **1.01** rather than
+  1.05, in `rhat()` for all three fit classes and in `summary()`, following
+  Vehtari et al. (2021) — which is the reference `vignette("example2")` already
+  cited while the code used the looser value. `print()` on a summary now reports
+  the cutoff actually in use rather than the hard-coded 1.05 it printed before.
+
+  Relatedly, `summary()` now *computes* its convergence verdict with `rhat()`
+  instead of searching `brms`'s captured warning text for the literal string
+  `"some Rhats are > 1.05"`. That made the threshold `brms`'s to set rather than
+  `bayesnec`'s, and it would have failed silently: `brms (>= 2.23.0)` is a floor,
+  not a ceiling, so a reworded warning would have made every model report no
+  issue and the summary quietly stop warning. See #148.
+
 # bayesnec 2.1.4
 
 - `get_priors()` now reports and round trips a prior on `zi` or `hu` for the

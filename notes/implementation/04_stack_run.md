@@ -174,13 +174,57 @@ Wake on the long side and let CI and the test suite run between wakes.
 end a wake having logged the state cleanly than to leave a half-built branch
 load-bearing for the next one.
 
-## Operational note: do not nest background launches
+## Operational note: never launch a long job after a wait in the same task
 
-Launching a long job with `nohup ... &` from *inside* an already-backgrounded
-task does not work — when the outer task's shell exits, the inner job is reaped
-with it. This cost one wake cycle on #207: a chained "wait for the fit, then
-start the suite" command reported success, but the suite never ran and left no
-log.
+**Corrected after more evidence.** The first version of this note said
+backgrounding from inside a backgrounded task never works. That is too broad —
+`git commit && nohup Rscript -e 'devtools::test()' &` in a backgrounded task
+launched fine on #136.
 
-Launch long jobs **directly**, one per tool call, and use a separate
-`until`-loop task to wait on them. Waiting and launching are two calls, not one.
+The failure on #207 was narrower: the task ran a **long `until` loop first**,
+then launched. Something about that sequence — most likely the harness reaping
+the process group once the long-lived task finally exits — killed the job. It
+reported success and left no log, which is the dangerous part: a launch that
+silently does not happen looks exactly like one that did.
+
+So the rule is about *sequence*, not nesting:
+
+- **Never** put a launch after a wait in the same task.
+- **Always** verify a launch actually happened — check the log file exists and
+  the process is alive — before reporting it as running. A missing log is the
+  tell.
+
+Waiting and launching are two calls.
+
+## Checking whether a suite is still alive
+
+The R process for `devtools::test()` has this command line:
+
+    /usr/lib/R/bin/exec/R --no-echo --no-restore -e devtools::test()
+
+Match on `[d]evtools::test`, not on a flag order. A pattern like
+`exec/R --no-echo -e devtools` looks right and matches nothing, because
+`--no-restore` sits between the two — which reads as "the suite died" when it is
+running perfectly well.
+
+Cross-check with the log size before concluding anything: a complete run is
+~34.7 KB. A log that is short *and* growing is a slow run, not a dead one.
+
+## Check Rd links before pushing roxygen changes
+
+`devtools::test()` never builds the Rd files, so a broken `\link{}` target is
+invisible locally and turns **every** CI platform red with
+`checking Rd cross-references ... WARNING`. It cost two round trips in this run:
+
+- `1.011 [0.71, 1.44]` became `\link{0.71, 1.44}` --- square brackets around a
+  numeric interval are markdown link syntax to roxygen. Spell intervals out.
+- `\link{set_distribution}` --- **not exported**, so the link does not resolve.
+  The same mistake was caught earlier with `check_normalisation` and then
+  repeated, which is why there is now a script rather than a note.
+
+Run `Rscript notes/scripts/check_rd_links.R` after `document()` and before
+pushing. It exits non-zero and names the file and target.
+
+Not every internal helper is exported; `\link{}` only works for exported
+functions, aliases in `man/`, and base packages. For anything else use
+`\code{}` without the link.

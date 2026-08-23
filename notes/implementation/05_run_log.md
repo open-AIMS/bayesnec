@@ -179,3 +179,202 @@ All green at the time of writing except 223, which is still in CI.
 
 Next: the 2.2.0 tier. The first PR of it opens the `# bayesnec 2.2.0` heading in
 NEWS.md.
+
+## Item 5 — #136, rate() aterm for poisson and negbinomial
+
+Branch `issue-136-rate-aterm`, cut from `issue-207-dispersion-priors`.
+Tier **2.2.0** — the first of that tier, so it opens the `# bayesnec 2.2.0`
+heading in NEWS.md. Version 2.1.3.11 -> 2.1.3.12.
+**PR: https://github.com/open-AIMS/bayesnec/pull/224**.
+
+Full suite **1546 pass / 0 fail / 11 warn**, +20 on the branch below.
+
+Verified end to end on the issue's reprex: `top` prior mean 61 -> **19.8**
+against a true 20; the fit that previously errored in post-processing now
+returns NEC 3.893 [3.634, 4.125] against a true 4; `bnec_newdata()` resolves
+with the denominator pinned at 1; `ecx()` returns 4.071 [3.823, 4.289].
+
+**One worry in the scoping comment turned out to be moot.** It flagged
+`dispersion()` as needing care because negbinomial scales the shape by the
+denominator. `dispersion()`'s `allowed_fams` is `c("poisson", "binomial")` —
+negbinomial was never supported, so there is nothing to get wrong today. The
+Poisson case is the exact `mu * denom` analogue of the binomial branch and is
+implemented, with a comment warning whoever widens `allowed_fams`. Checked
+`brms:::posterior_epred_poisson` rather than assuming: it calls
+`multiply_dpar_rate_denom`, so it returns expected counts.
+
+**The breaking change bit two existing tests**, exactly as the queue entry
+warned. `test-make_brmsformula.R` carried `se(sei)` in two multi-aterm chains
+(incidental — the chains still exercise parsing with trials + weights + cens)
+and `test-cens.R` asserted the old message. Both updated. Vignettes and the JSS
+article swept for non-validated aterms: none.
+
+**Two bugs of mine caught by the new tests, worth remembering:**
+
+1. `[["rate_var"]]` on a named character vector is a subscript **error** when
+   the name is absent, where `[[` on a list gives NULL. That broke every
+   existing fit through `prediction_grid()`. The existing `trials_var` lookups
+   are safe only because a family branch guards them. Use single-bracket lookup
+   plus `is.na()` for any optional `bnec_pop` entry.
+2. An assertion compared an integer response against `as.numeric()`.
+
+## Item 6 — #209, hurdle_poisson and hurdle_negbinomial
+
+Branch `issue-209-hurdle-counts`, cut from `issue-136-rate-aterm`.
+Tier **2.2.0**. Version 2.1.3.12 -> 2.1.3.13.
+**PR: https://github.com/open-AIMS/bayesnec/pull/225**.
+
+Full suite **1570 pass / 0 fail / 11 warn**, +24 on the branch below. Verified
+on a real `hurdle_poisson` fit: NEC 3.049 [2.536, 3.607] against a true 3, both
+parameter blocks present, `ecx()` working on each via `dpar`.
+
+**The issue's two halves needed opposite treatments.** The joint families need
+no truncation work — brms writes the zero-truncated positive part itself. The
+`bnec_hurdle()` untruncated-likelihood defect cannot be fixed the same way: it
+would need a `trunc()` aterm, and #136 (directly below in the stack) had just
+made unvalidated aterms an error. Validating `trunc()` publicly is well beyond
+what #209 sanctions, so `bnec_hurdle()` refuses count growth families and points
+at the path that is correct by construction. **Flagged for RF as a judgement
+call.**
+
+**Two behaviour changes, both deliberate**, and one of them reverses a #104
+test that asserted a plain poisson growth family IS accepted. That was correct
+when written (no zero-truncated count family existed) and its own neighbouring
+comment names #209 as the fix. The test now asserts the refusal with the
+reasoning written into it.
+
+**A third registry the issue does not mention:** `mod_fams` in
+`data-raw/sysdata.R` is the allow-list `validate_family()` checks, separate from
+`hurdle_fams` and `hurdle_mu_fams`. Without it the families are rejected as "not
+currently implemented".
+
+---
+
+# 2.2.0 TIER: 2 of 3 done
+
+#136 (PR 224), #209 (PR 225). Remaining: #148, the largest item in the tier.
+
+## Item 7 — #148, check_fit() and pp_check()
+
+Branch `issue-148-check-fit`, cut from `issue-209-hurdle-counts`.
+Tier **2.2.0**. Version 2.1.3.13 -> 2.1.3.14.
+**PR: https://github.com/open-AIMS/bayesnec/pull/226**. Closes #148 and #56.
+
+Full suite **1608 pass / 0 fail / 11 warn**, +38 on the branch below.
+
+**Reproduces the finding the issue rests on**: on `manec_example` the control
+group's `sd_ratio` is 0.796 -- the model simulates ~26% more variability than
+the data show -- while the global `dispersion()` statistic reads 1.011
+[0.71, 1.44]. The scoping comment measured ~27% by hand. Pinned as a test,
+because it is the one assertion that would catch an implementation that looks
+right but is not actually local.
+
+All of RF's decisions implemented: part B in scope with control lack-of-fit;
+ggplot2 only, no bayesplot; replication preferred with warned binning fallback;
+#56 folded in via LOO-PIT, no DHARMa; both a numeric table and (via pp_check)
+plots; mixture families need nothing special.
+
+**Decision (d), the combined hurdle check, is deliberately NOT implemented** --
+the scoping comment left it open and said not to let it hold up the rest.
+Flagged in the PR.
+
+**Two implementation bugs found by running against manec_example rather than
+by reasoning:**
+
+1. New S3 generics need `devtools::document()` before `load_all()` can dispatch
+   them. This is the first stack item to add one, so the first where document()
+   is load-bearing for the code to run at all rather than just for man/.
+2. `ndraws` had to be clamped to what the fit holds. brms **errors** rather than
+   truncating, and manec_example carries 100 draws, so the default of 1000 would
+   have failed on the package's own example object.
+
+---
+
+# 2.2.0 TIER COMPLETE
+
+#136 (PR 224), #209 (PR 225), #148 (PR 226).
+
+Seven PRs open: #220 #221 #222 #223 (2.1.4) and #224 #225 #226 (2.2.0).
+Remaining: items 8 and 9, the 2.3.0 tier -- #33 stage 1 and the #6/#33 vignette.
+
+## Item 9 — #6 + #33, the grouping vignette
+
+Branch `issue-6-33-grouping-vignette`, cut from `issue-33-factor-covariate`.
+Tier **2.3.0**. Version 2.1.3.15 -> 2.1.3.16.
+**PR: https://github.com/open-AIMS/bayesnec/pull/228**. Closes #6.
+
+`vignettes/example8.Rmd.orig`, 287 lines. Organised on the within- versus
+across-concentration distinction from the `cr_modelling_training` material RF
+pointed at, which is what decides between `ogl()`, `pgl()`/`(par | group)`, and
+separate fits.
+
+**No new dataset needed:** `nassarius` carries both structures -- `tank` within
+concentration (34-62 per contaminant, one dose each) and `contaminant` across it
+(4 levels spanning the full dose range). The vignette ends by composing the two
+routes, tanks inside each contaminant's own fit.
+
+**A bug caught by running the chunks.** Every example used `nec3param`; `growth`
+is Gaussian and the zero-bounded models are excluded for that family, so every
+fitting chunk would have failed at #190's precompile -- hours later. Switched to
+`nec4param` and documented why. Vignette chunks are not executed until
+precompile, so authoring-time validation is the only cheap signal.
+
+`precompile.R` deliberately not run.
+
+**Flagged, not fixed:** `example4`'s overview paragraph says per-level
+functional flexibility "can be readily obtained using models fitted
+independently", which `bnec_group()` now automates. Its claim about
+*interactions* is still accurate. Left alone to avoid colliding with #190 and
+the sessions holding vignettes.
+
+---
+
+# RUN COMPLETE
+
+All ten queue items done.
+
+**Closed with no PR:** #79 (not reproducible, with evidence), #212 (RF's call),
+#166 (duplicate of toxval#29).
+
+**Nine PRs, stacked bottom to top, all CI green:**
+
+| PR | issue | tier |
+|---|---|---|
+| 220 | #215 dev vignette CI | 2.1.4 |
+| 221 | #139 drc NEC equivalence | 2.1.4 |
+| 222 | #210 define_prior zeros | 2.1.4 |
+| 223 | #207 dispersion priors | 2.1.4 |
+| 224 | #136 rate() aterm | 2.2.0 |
+| 225 | #209 hurdle count families | 2.2.0 |
+| 226 | #148 check_fit + pp_check (also closes #56) | 2.2.0 |
+| 227 | #33 factor covariate, stage 1 | 2.3.0 |
+| 228 | #6 grouping vignette | 2.3.0 |
+
+Suite grew 1457 -> 1633 (+176), warnings unchanged at 11 throughout.
+
+**Also raised:** #218, the three unseeded permutations.
+
+## Decisions waiting for RF
+
+1. **#207 changes numbers** -- fits that ran on flat priors now run on bayesnec
+   priors.
+2. **#136 makes unrecognised aterms an error** -- breaking; two existing tests
+   updated.
+3. **#209 refuses count growth families in `bnec_hurdle()`** and reverses a #104
+   test that accepted them. The alternative was validating `trunc()` publicly.
+4. **#148 decision (d)**, the combined hurdle check, deliberately not attempted.
+5. **#190 may need to run twice** if 2.1.4 ships to CRAN before 2.2.0.
+6. **`example4`'s overview paragraph** is partly stale after #33.
+
+## Notes for whoever runs the next stack
+
+- Read issue **comments**, not just bodies. The first triage missed several
+  fully-scoped issues by reading `--json body` alone.
+- Run `notes/scripts/check_rd_links.R` after `document()`. `devtools::test()`
+  never builds Rd, so a broken `\link{}` turns all eight CI checks red and is
+  invisible locally. It happened twice.
+- Verify a launch actually happened -- log present, process alive -- before
+  reporting a job as running.
+- Four bugs this run were found by executing against real objects and none by
+  reading: `[[rate_var]]` on a named vector, `ndraws` exceeding a fit's draws,
+  a missing `bayesnecformula()` coercion, and the vignette's family restriction.
