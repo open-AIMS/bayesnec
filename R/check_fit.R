@@ -171,6 +171,26 @@ check_fit_table <- function(fit, y, grp, ndraws, seed, is_mixture) {
   # and the simulated response, so that the two are comparable. Using each
   # draw's own mean instead would remove the very discrepancy being measured.
   mu <- apply(posterior_epred(fit), 2, median)
+  check_fit_stats(y, yrep, mu, grp, is_mixture)
+}
+
+#' The per-group statistics, given a response and a simulated response
+#'
+#' Split out from \code{check_fit_table()} so that the combined hurdle check can
+#' reuse it with a \code{yrep} it built itself rather than one drawn from a
+#' single fit. Everything about the statistics is identical; only the source of
+#' \code{yrep} and \code{mu} differs.
+#'
+#' @param y The observed response.
+#' @param yrep A draws-by-observations matrix of simulated responses.
+#' @param mu The fitted mean per observation.
+#' @param grp A \code{\link[base]{factor}} grouping the observations.
+#' @param is_mixture A \code{\link[base]{logical}}.
+#'
+#' @return A \code{\link[base]{data.frame}}, one row per group.
+#'
+#' @noRd
+check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
   levs <- levels(grp)
   out <- lapply(levs, function(lv) {
     idx <- which(grp == lv)
@@ -321,11 +341,99 @@ print.checkfit <- function(x, ...) {
 #'
 #' @export
 check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
-                                        seed = 10, ...) {
-  list(growth = check_fit(x$growth, group = group, ndraws = ndraws,
-                          seed = seed),
-       survival = check_fit(x$survival, group = group, ndraws = ndraws,
-                            seed = seed))
+                                        seed = 10, combined = TRUE, ...) {
+  chk_lgl(combined)
+  out <- list(growth = check_fit(x$growth, group = group, ndraws = ndraws,
+                                 seed = seed),
+              survival = check_fit(x$survival, group = group, ndraws = ndraws,
+                                   seed = seed))
+  if (combined) {
+    out$combined <- check_fit_combined(x, group = group, ndraws = ndraws,
+                                       seed = seed)
+  }
+  out
+}
+
+#' The hurdle fit checked against the data the user actually handed in
+#'
+#' The per-component tables check each half against its own subset: growth
+#' against the survivors, survival against everyone. Neither asks whether the
+#' fit reproduces the \emph{observed response} --- which contains the zeros, and
+#' which is what was measured. This does: draw alive/dead from the survival fit,
+#' draw a growth value for every exposed row, and multiply. The product is zero
+#' wherever the draw died, so it reconstructs the full response including its
+#' point mass at zero.
+#'
+#' Draws are paired row-wise and truncated to the smaller count, which is what
+#' \code{hurdle_component_preds()} already does and rests on the same fact: the
+#' hurdle likelihood factorises, so the two posteriors are independent and any
+#' pairing is as good as any other.
+#'
+#' \code{newdata} is the \strong{full} exposed set, not the growth fit's own
+#' data. The growth component is fitted on survivors only, so predicting from
+#' its own model frame would give a shorter vector that cannot be multiplied
+#' against the survival draws or compared with the observed response. This is
+#' the one thing to get right here.
+#'
+#' Growth is therefore extrapolated past the highest concentration where
+#' anything survived. That is harmless, for the reason
+#' \code{hurdle_component_preds()} gives: survival there is near zero, so the
+#' product is carried by the survival term whatever growth predicts.
+#'
+#' @inheritParams check_fit
+#'
+#' @return A \code{\link[base]{data.frame}} of class \code{checkfit}.
+#'
+#' @importFrom brms posterior_predict posterior_epred
+#' @importFrom stats median
+#'
+#' @noRd
+check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
+  gb <- pull_brmsfit(x$growth)
+  sb <- pull_brmsfit(x$survival)
+  s_dat <- model.frame(x$survival$bayesnecformula, data = sb$data)
+  predictor <- retrieve_var(s_dat, "x_var", error = TRUE)
+  y_obs <- hurdle_observed_response(x)
+  grp <- check_fit_groups(predictor, group)
+  n_av <- min(brms::ndraws(gb), brms::ndraws(sb))
+  nd <- min(ndraws, n_av)
+  set.seed(seed)
+  alive <- posterior_predict(sb, ndraws = nd)
+  grow <- posterior_predict(gb, newdata = sb$data, ndraws = nd)
+  n <- min(nrow(alive), nrow(grow))
+  yrep <- alive[seq_len(n), , drop = FALSE] * grow[seq_len(n), , drop = FALSE]
+  mu_alive <- apply(posterior_epred(sb), 2, median)
+  mu_grow <- apply(posterior_epred(gb, newdata = sb$data), 2, median)
+  mu <- mu_alive * mu_grow
+  out <- check_fit_stats(y_obs, yrep, mu, grp, is_mixture = TRUE)
+  allot_class(out, c("checkfit", "data.frame"))
+}
+
+#' The observed response of a hurdle fit, zeros included
+#'
+#' \code{bnec_hurdle()} splits the data into a survival frame carrying every
+#' exposed row and a growth frame carrying the survivors, so neither component's
+#' own data is the response as measured. Reconstructed here by zeroing the
+#' non-survivors.
+#'
+#' @param x A \code{\link{bayesnechurdlefit}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one element per exposed row.
+#'
+#' @noRd
+hurdle_observed_response <- function(x) {
+  sb <- pull_brmsfit(x$survival)
+  s_dat <- model.frame(x$survival$bayesnecformula, data = sb$data)
+  alive <- retrieve_var(s_dat, "y_var", error = TRUE)
+  gb <- pull_brmsfit(x$growth)
+  g_dat <- model.frame(x$growth$bayesnecformula, data = gb$data)
+  g_y <- retrieve_var(g_dat, "y_var", error = TRUE)
+  out <- numeric(length(alive))
+  # The survivors appear in the growth frame in the same order they appear in
+  # the survival frame -- bnec_hurdle() subsets rather than reorders -- so the
+  # growth response drops straight into the alive positions.
+  out[alive > 0] <- g_y
+  out
 }
 
 #' Plot a check_fit table
