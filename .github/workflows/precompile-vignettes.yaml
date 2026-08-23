@@ -10,6 +10,13 @@
 # PR with the regenerated `.Rmd` files and figures. It deliberately does not
 # push to the branch directly: precompilation changes every number in every
 # vignette, and that is a diff someone should look at.
+#
+# `workflow_dispatch` only works once this file is on the repository's DEFAULT
+# branch (`master` here). Until then GitHub answers a dispatch with
+# "workflow not found on the default branch" and the workflow is invisible to
+# `gh workflow list`. The `push` trigger on the `precompile/*` namespace exists
+# so the job can be exercised from `dev` before it ever reaches `master` --
+# push a branch named e.g. `precompile/test` and it runs. See #230.
 on:
   workflow_dispatch:
     inputs:
@@ -19,6 +26,29 @@ on:
           Leave blank to rebuild all of them -- slow, and what #190 wants.
         required: false
         default: ''
+      dry_run:
+        description: >-
+          Skip the fitting entirely and only exercise the plumbing -- checkout,
+          dependency install, and the pull-request step. Use this to verify the
+          workflow before committing hours of compute to it.
+        type: boolean
+        required: false
+        default: false
+  push:
+    branches: ['precompile/**']
+    # The branch suffix selects what to rebuild, since a push carries no inputs:
+    #   precompile/example1        -> rebuild example1 only
+    #   precompile/example1,ex4    -> rebuild both
+    #   precompile/all             -> rebuild everything (what #190 wants)
+    #   precompile/dry-run         -> skip fitting entirely; see PRECOMPILE_DRY_RUN
+
+# create-pull-request needs both of these, and the repository setting
+# "Allow GitHub Actions to create and approve pull requests" must be on.
+# Without them the final step fails after the whole fitting run has completed,
+# which is the most expensive possible place to discover a permissions problem.
+permissions:
+  contents: write
+  pull-requests: write
 
 name: precompile vignettes
 
@@ -47,19 +77,41 @@ jobs:
           extra-packages: any::knitr, any::purrr, any::rmarkdown, local::.
           needs: check
 
-      # Compiled Stan models are the bulk of the cost and they do not change
-      # between runs unless the model code does, so key the cache on sysdata.rda
-      # and the pred equations rather than on a lockfile.
-      - name: Cache compiled Stan models
-        uses: actions/cache@v4
-        with:
-          path: ~/.cmdstan
-          key: stan-${{ runner.os }}-${{ hashFiles('R/sysdata.rda', 'R/pred_equations.R') }}
-          restore-keys: stan-${{ runner.os }}-
+      # NOT cached: compiled Stan models. brms defaults to the rstan backend and
+      # nothing in this package sets `backend = "cmdstanr"`, so models are
+      # compiled in-process and nothing is written to ~/.cmdstan -- an earlier
+      # cache step on that path stored and restored an empty directory on every
+      # run while reading as though compilation were cached. Recompilation is
+      # the bulk of the cost here and it is genuinely paid each run; that is
+      # what `timeout-minutes` below has to accommodate, and what the
+      # `vignettes` input exists to let you batch around. See #230.
 
       - name: Precompile
         run: |
+          # The restore is driven off the directory rather than a variable, and
+          # deliberately so: `shell: Rscript {0}` runs this at top level, where
+          # on.exit() registers against no frame and silently never fires (which
+          # is why the held-back files were not being restored), AND
+          # precompile.R opens with `rm(list = ls())`, which sourced at top
+          # level clears the global environment -- so any flag held in a
+          # variable across the source() call would be wiped too. See #230.
+          ref <- Sys.getenv("PRECOMPILE_REF")
+          suffix <- if (startsWith(ref, "precompile/")) {
+            sub("^precompile/", "", ref)
+          } else {
+            ""
+          }
+          dry <- identical(tolower(Sys.getenv("PRECOMPILE_DRY_RUN")), "true") ||
+            identical(suffix, "dry-run")
+
+          local({
           sel <- Sys.getenv("VIGNETTE_SELECTION")
+          # A push carries no inputs, so the branch suffix stands in for them.
+          # `all` and `dry-run` are the two suffixes that are not vignette names.
+          if (!nzchar(sel) && nzchar(suffix) &&
+                !suffix %in% c("all", "dry-run")) {
+            sel <- suffix
+          }
           if (nzchar(sel)) {
             keep <- trimws(strsplit(sel, ",")[[1]])
             cat("Rebuilding only:", paste(keep, collapse = ", "), "\n")
@@ -73,18 +125,42 @@ jobs:
               file.rename(file.path("vignettes", paste0(d, ".Rmd.orig")),
                           file.path(".precompile_held", paste0(d, ".Rmd.orig")))
             }
-            on.exit({
-              for (f in dir(".precompile_held")) {
-                file.rename(file.path(".precompile_held", f),
-                            file.path("vignettes", f))
-              }
-              unlink(".precompile_held", recursive = TRUE)
-            }, add = TRUE)
           }
-          source("vignettes/precompile.R")
+          })
+          if (dry) {
+            # Nothing is fitted. A marker file gives the pull-request step an
+            # actual diff to commit, so this exercises the whole chain --
+            # including the `permissions:` above and the repository's
+            # "Allow GitHub Actions to create and approve pull requests"
+            # setting, which is the failure that would otherwise surface only
+            # after a full run. See #230.
+            writeLines(
+              c("Dry run of the precompile workflow.",
+                paste("ref:", ref),
+                "Delete this file; it is not part of the package."),
+              "vignettes/.precompile-dry-run"
+            )
+            cat("DRY RUN -- precompile.R was not sourced.\n")
+          } else {
+            source("vignettes/precompile.R")
+          }
+          # Restored after the run, so a partial rebuild leaves the tree as it
+          # found it. Keyed on the directory existing, which survives
+          # precompile.R's rm(list = ls()).
+          if (dir.exists(".precompile_held")) {
+            for (f in dir(".precompile_held")) {
+              file.rename(file.path(".precompile_held", f),
+                          file.path("vignettes", f))
+            }
+            unlink(".precompile_held", recursive = TRUE)
+          }
         shell: Rscript {0}
         env:
           VIGNETTE_SELECTION: ${{ inputs.vignettes }}
+          # Empty on a workflow_dispatch that named no vignettes; on a push it is
+          # the branch suffix, and `all` means the same as leaving it blank.
+          PRECOMPILE_REF: ${{ github.ref_name }}
+          PRECOMPILE_DRY_RUN: ${{ inputs.dry_run }}
 
       - name: Open a PR with the rebuilt vignettes
         uses: peter-evans/create-pull-request@v6
@@ -96,6 +172,7 @@ jobs:
           add-paths: |
             vignettes/*.Rmd
             vignettes/*.png
+            vignettes/.precompile-dry-run
           body: >-
             Regenerated by the `precompile vignettes` workflow from
             `${{ github.ref_name }}`.
