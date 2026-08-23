@@ -376,11 +376,6 @@ extract_warnings <- function(x) {
   }
 }
 
-#' @noRd
-has_r_hat_warnings <- function(...) {
-  x <- extract_warnings(...)
-  any(grepl("some Rhats are > 1.05", x, fixed = TRUE))
-}
 
 #' @noRd
 print_mat <- function(x, digits = 2) {

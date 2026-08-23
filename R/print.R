@@ -133,7 +133,9 @@ print.manecsummary <- function(x, ...) {
   print_failed_models(x$failed_models)
   with_issues <- names(x$rhat_issues[unlist(x$rhat_issues)])
   if (length(with_issues) > 0) {
-      warning("The following model had Rhats > 1.05 (no convergence):\n",
+      warning("The following model had Rhats > ",
+              if (is.null(x$rhat_cutoff)) 1.01 else x$rhat_cutoff,
+              " (no convergence):\n",
               paste0("  -  ", with_issues, collapse = "\n"), "\n",
               "Consider dropping them (see ?amend)\n", sep = "")
   }
