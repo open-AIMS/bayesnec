@@ -109,14 +109,20 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 #' @inherit summary description return details examples
 #'
 #' @importFrom purrr map
+#' @param rhat_cutoff A \code{\link[base]{numeric}} vector of length 1. The
+#' convergence threshold the summary reports against. Defaults to 1.01,
+#' following Vehtari et al. (2021) and matching \code{\link{rhat}}.
+#'
 #' @importFrom brms bayes_R2
 #' @importFrom chk chk_lgl chk_numeric
 #'
 #' @export
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
-                                  ecx_vals = c(10, 50, 90)) {
+                                  ecx_vals = c(10, 50, 90),
+                                  rhat_cutoff = 1.01) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
+  chk_numeric(rhat_cutoff)
   x <- object
   ecs <- NULL
   if (ecx) {
@@ -143,8 +149,15 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
     bayesr2 = x$mod_fits |>
       lapply(function(y)bayes_R2(y$fit)) |>
       do.call(what = "rbind.data.frame"),
-    rhat_issues = map(x$mod_fits, "fit") |>
-      map(has_r_hat_warnings),
+    # Computed, not grepped. This used to be has_r_hat_warnings(), which
+    # searched brms's captured warning text for the literal string
+    # "some Rhats are > 1.05". That made the summary's threshold brms's to set
+    # rather than bayesnec's, and it fails silently: brms (>= 2.23.0) is a
+    # floor, not a ceiling, so if that warning is ever reworded every model
+    # reports FALSE and the summary quietly stops warning. Silence reads as a
+    # pass. See #148 Part D.
+    rhat_issues = lapply(rhat(x, rhat_cutoff = rhat_cutoff), "[[", "failed"),
+    rhat_cutoff = rhat_cutoff,
     failed_models = failed_models(x)
   )
   allot_class(out, "manecsummary")

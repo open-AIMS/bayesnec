@@ -8,7 +8,7 @@
 \usage{
 \method{summary}{bayesnecfit}(object, ..., ecx = FALSE, ecx_vals = c(10, 50, 90))
 
-\method{summary}{bayesmanecfit}(object, ..., ecx = FALSE, ecx_vals = c(10, 50, 90))
+\method{summary}{bayesmanecfit}(object, ..., ecx = FALSE, ecx_vals = c(10, 50, 90), rhat_cutoff = 1.01)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecfit}} or
@@ -21,6 +21,10 @@
 \item{ecx_vals}{ECx targets (between 1 and 99). Only relevant if ecx = TRUE.
 If no value is specified by the user, returns calculations for EC10, EC50,
 and EC90.}
+
+\item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1. The
+convergence threshold the summary reports against. Defaults to 1.01,
+following Vehtari et al. (2021) and matching \code{\link{rhat}}.}
 }
 \value{
 A summary of the fitted model. In the case of a
