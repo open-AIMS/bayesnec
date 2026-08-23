@@ -1,6 +1,6 @@
 # bayesnec 2.2.0
 
-- New vignette, `vignette("example8")` — *A complete analysis workflow* — running
+- New vignette, `vignette("example9")` — *A complete analysis workflow* — running
   a single analysis from data to reportable estimate: family choice from a
   dispersion screen, fitting, sampler diagnostics per candidate model, fit
   diagnostics via `pp_check()` and `check_fit()`, exclusion of models that fail
