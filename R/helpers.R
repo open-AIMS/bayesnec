@@ -771,20 +771,37 @@ add_brm_defaults <- function(
   if (!("warmup" %in% names(brm_args))) {
     brm_args$warmup <- floor(brm_args$iter / 5) * 4
   }
-  default_priors <- define_prior(
-    model,
-    family,
-    predictor,
-    response,
-    prior_type = prior_type,
-    model_survival = model_survival,
-    disp_spec = disp_spec
-  )
+  build_defaults <- function() {
+    define_prior(
+      model,
+      family,
+      predictor,
+      response,
+      prior_type = prior_type,
+      model_survival = model_survival,
+      disp_spec = disp_spec
+    )
+  }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
   if (inherits(priors, "try-error")) {
-    brm_args$prior <- default_priors
+    # No usable prior from the user, so the defaults are the fit. If they cannot
+    # be built the error is the right outcome and is allowed to propagate.
+    brm_args$prior <- build_defaults()
   } else {
-    brm_args$prior <- fill_missing_priors(priors, default_priors, model)
+    # Built here rather than up front so a user who supplied their own complete
+    # set is never blocked by a default they will not use: #207 made this call
+    # unconditional, which turned any failure inside define_prior() into a hard
+    # stop even when there was a perfectly good user prior to fall back on.
+    # Where the defaults cannot be built there is nothing to fill from, and the
+    # user's set is used as supplied -- silently, because without the defaults
+    # there is no way to tell whether it is incomplete, and warning on every
+    # such fit would be noise the user cannot act on. See #229.
+    default_priors <- try(build_defaults(), silent = TRUE)
+    brm_args$prior <- if (inherits(default_priors, "try-error")) {
+      priors
+    } else {
+      fill_missing_priors(priors, default_priors, model)
+    }
   }
   if (!("init" %in% names(brm_args)) || skip_check) {
     msg_tag <- family$family

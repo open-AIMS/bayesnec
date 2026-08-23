@@ -1,5 +1,17 @@
 # bayesnec 2.1.4
 
+- The guard added for #210 is no longer evaluated for families whose priors do
+  not use it. The gamma-scaled `top` and `bot` prior strings are read only by
+  `Gamma`, `poisson` and `negbinomial`; every other family builds those priors
+  from `quantile()` and `sd()` directly, or from literals. Building the guarded
+  strings unconditionally made a "response contains no positive values" error
+  reachable for `gaussian`, where an entirely negative response — log ratios,
+  growth increments, anything expressed as a change — is ordinary input and
+  previously produced perfectly good priors. Related, `bnec()` no longer builds
+  the default priors when the user has supplied a complete set of their own, so
+  a failure while building a default the fit will not use can no longer block
+  it. See #229.
+
 - The vignette precompilation workflow added in 2.1.4 can now actually be run,
   and the documentation site configuration records what `pkgdown` really does.
   `workflow_dispatch` only takes effect once a workflow file is on the
