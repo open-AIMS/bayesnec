@@ -38,7 +38,7 @@ NULL
 #' @importFrom chk chk_numeric
 #'
 #' @export
-rhat.bayesnecfit <- function(x, rhat_cutoff = 1.05, ...) {
+rhat.bayesnecfit <- function(x, rhat_cutoff = 1.01, ...) {
   chk_numeric(rhat_cutoff)
   rhat_vals <- pull_brmsfit(x) |>
     rhat() |>
@@ -59,7 +59,7 @@ rhat.bayesnecfit <- function(x, rhat_cutoff = 1.05, ...) {
 #' @importFrom brms rhat
 #'
 #' @export
-rhat.bayesmanecfit <- function(x, rhat_cutoff = 1.05, ...) {
+rhat.bayesmanecfit <- function(x, rhat_cutoff = 1.01, ...) {
   out <- sapply(x$success_models, function(m, x, ...) {
     pull_out(x, model = m) |>
       suppressMessages() |>

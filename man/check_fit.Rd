@@ -13,7 +13,7 @@ check_fit(x, group = NULL, ndraws = 1000, seed = 10, ...)
 
 \method{check_fit}{bayesmanecfit}(x, group = NULL, ndraws = 1000, seed = 10, ...)
 
-\method{check_fit}{bayesnechurdlefit}(x, group = NULL, ndraws = 1000, seed = 10, ...)
+\method{check_fit}{bayesnechurdlefit}(x, group = NULL, ndraws = 1000, seed = 10, combined = TRUE, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
