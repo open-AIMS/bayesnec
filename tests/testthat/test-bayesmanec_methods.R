@@ -42,10 +42,18 @@ test_that("summary behaves as expected", {
   }
   summary.p <- suppressWarnings(summary(manec_example))
   expect_equal(class(summary.p), "manecsummary")
+  # `rhat_cutoff` added under #148 Part D: print.manecsummary reports the
+  # threshold actually in use rather than the hard-coded 1.05 it printed
+  # before, so the summary object has to carry it.
   expect_equal(names(summary.p), c("models", "family", "sample_size",
                                    "mod_weights", "mod_weights_method",
                                    "ecx_mods", "nec_vals", "ecs", "bayesr2",
-                                   "rhat_issues", "failed_models"))
+                                   "rhat_issues", "rhat_cutoff",
+                                   "failed_models"))
+  expect_equal(summary.p$rhat_cutoff, 1.01)
+  # and it is honoured rather than decorative
+  expect_equal(suppressWarnings(summary(manec_example,
+                                        rhat_cutoff = 1.5))$rhat_cutoff, 1.5)
 })
 
 test_that("formula behaves as expected", {

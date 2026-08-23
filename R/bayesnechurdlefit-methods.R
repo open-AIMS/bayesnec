@@ -467,7 +467,7 @@ pull_brmsfit.bayesnechurdlefit <- function(object, ...) {
 #' @method rhat bayesnechurdlefit
 #'
 #' @export
-rhat.bayesnechurdlefit <- function(x, ..., rhat_cutoff = 1.05) {
+rhat.bayesnechurdlefit <- function(x, ..., rhat_cutoff = 1.01) {
   hurdle_delegate(x, rhat, rhat_cutoff = rhat_cutoff, ...)
 }
 
