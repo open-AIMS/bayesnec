@@ -1,5 +1,19 @@
 # bayesnec 2.2.0
 
+- `dispersion()` now computes the residual variance with the link the model was
+  actually fitted with, rather than the family's default. `bnec()` forces
+  `link = "identity"`, but `dispersion()` rebuilt the family with
+  `get("poisson")()` or `get("binomial")()` — a log and a logit link — and
+  applied the inverse link to a linear predictor that was already on the
+  response scale. For a Poisson that meant exponentiating a mean of, say, 90,
+  producing variance weights near `1e39`; the weights do not cancel out of the
+  observed-to-simulated ratio, so the statistic was dominated by the
+  lowest-mean observations and understated dispersion. On simulated counts
+  drawn from a negative binomial the reported value was 1.66 [0.67, 4.76]
+  against a correct 6.23 [4.72, 8.35]. Dispersion estimates change for every
+  `poisson` and `binomial` fit; the effect is much smaller for `binomial`,
+  where `plogis()` compresses the weights into a narrow band. See #247.
+
 - `bnec()` now supports the `rate()` aterm for the `poisson` and `negbinomial`
   families, so a count observed over an exposure — animals per unit time,
   larvae per unit area — can be modelled directly. Because `bnec()` forces
