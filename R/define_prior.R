@@ -90,12 +90,30 @@ positive_scale <- function(response, probs) {
 #' @noRd
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
-                         model_survival = NULL, disp_spec = NULL) {
+                         model_survival = NULL, disp_spec = NULL,
+                         group_spec = NULL) {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
-    return(define_hurdle_prior(model, family, predictor, response,
-                               prior_type = prior_type,
-                               model_survival = model_survival))
+    hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
+                                         prior_type = prior_type,
+                                         model_survival = model_survival)
+    # A group-level term reaches the mu block only. add_formula_glef() runs
+    # before the hu sub-formulas are attached, so `ogl` and `pgl` never see
+    # them -- checked against the formula wrangle_model_formula() actually
+    # builds, not assumed. So the same priors apply here, on the same nlpar
+    # names, and the hu block needs nothing. Without this the hurdle families
+    # kept the whole of #245: they take the early return above, so group_spec
+    # was ignored for exactly the fits vignette("example8") part 3 needs.
+    # Scaled from the survivors only, which is the response the mu block is
+    # actually fitted to -- including the structural zeros would drag the scale
+    # down for the same reason define_hurdle_prior() excludes them from top and
+    # bot.
+    mu_response <- split_hurdle_response(predictor, response)$mu$y
+    group_priors <- define_group_prior(group_spec, predictor, mu_response)
+    if (!is.null(group_priors)) {
+      hurdle_priors <- hurdle_priors + group_priors
+    }
+    return(hurdle_priors)
   }
   link_tag <- family$link
   custom_name <- check_custom_name(family)
@@ -291,6 +309,12 @@ define_prior <- function(model, family, predictor, response,
   if (!is.null(disp_priors)) {
     priors <- priors + disp_priors
   }
+  # response is on the link scale by this point, which is what the group-level
+  # offsets are added on, so it is the right scale to take the prior from.
+  group_priors <- define_group_prior(group_spec, predictor, response)
+  if (!is.null(group_priors)) {
+    priors <- priors + group_priors
+  }
   priors
 }
 
@@ -354,6 +378,94 @@ define_disp_prior <- function(disp_spec, family, response) {
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
   for (p in setdiff(vf$pars, "c0")) {
     out <- out + prior_string(slope_prior, nlpar = p)
+  }
+  out
+}
+
+#' define_group_prior
+#'
+#' Builds priors for the parameters a group-level term introduces.
+#'
+#' @param group_spec The output of \code{\link{parse_group_terms}}.
+#' @param predictor A \code{\link[base]{numeric}} vector of the predictor.
+#' @param response A \code{\link[base]{numeric}} vector of the response, on
+#' the link scale.
+#'
+#' @details Without this, no prior is generated for a group-level standard
+#' deviation and it falls through to the \pkg{brms} default,
+#' \code{student_t(3, 0, 2.5)}. On a bounded response under the identity link
+#' \code{\link{bnec}} forces, an offset drawn at that scale puts the mean
+#' outside its support, where the likelihood is undefined. There is no inverse
+#' link to rescue it -- that is the trade \code{\link{bnec}} makes so that
+#' \code{top}, \code{bot} and \code{nec} stay directly interpretable -- so
+#' keeping the mean in range falls entirely to the prior. See #245.
+#'
+#' The scale follows the same three-way split \code{\link{define_prior}}
+#' already makes for the curve's own parameters, under one rule: \strong{a
+#' group-level standard deviation is given one tenth of the scale the
+#' parameter's own prior spans.} A group-level term describes deviation about a
+#' level the curve parameter itself carries, so it should be the smaller
+#' quantity by construction.
+#'
+#' \itemize{
+#'   \item \code{top}, \code{bot} and \code{ogl} are on the response scale:
+#'     \code{diff(range(response)) / 10}.
+#'   \item \code{nec} and \code{ec50} are on the predictor scale:
+#'     \code{diff(range(predictor)) / 10}.
+#'   \item \code{beta}, \code{slope}, \code{d} and \code{f} are
+#'     dimensionless and take \code{normal(0, 5)} of their own, so 0.5.
+#' }
+#'
+#' \code{student_t(3, 0, s)} keeps the shape and heavy tail of the \pkg{brms}
+#' default and changes only its scale, so this narrows a default that was never
+#' scale-aware rather than substituting a differently-shaped one.
+#'
+#' The \code{ogl} \emph{intercept} gets a prior too, and needs one for a
+#' different reason. \code{ogl} enters as an offset added to the whole curve,
+#' so its population intercept is \strong{not identified}: a constant added to
+#' \code{ogl} can be taken back out of \code{top} and \code{bot} with no
+#' change to the likelihood, and \pkg{brms} leaves a non-linear
+#' population-level parameter flat by default. Centring it at zero is what makes
+#' the decomposition identified -- \code{top} and \code{bot} carry the level,
+#' and the grouping term carries deviation about it.
+#'
+#' @return An object of class \code{\link[brms]{brmsprior}}, or \code{NULL}.
+#'
+#' @importFrom brms prior_string
+#'
+#' @noRd
+define_group_prior <- function(group_spec, predictor, response) {
+  if (is.null(group_spec) || length(group_spec$nlpars) == 0) {
+    return(NULL)
+  }
+  # A response or predictor with no spread gives a scale of zero, which is not a
+  # usable prior. It is degenerate input rather than something to model around,
+  # so fall back to the dimensionless scale and let the fit fail on its own
+  # terms if it is going to.
+  safe_scale <- function(x) {
+    s <- diff(range(x)) / 10
+    if (!is.finite(s) || s <= 0) 0.5 else s
+  }
+  s_y <- safe_scale(response)
+  s_x <- safe_scale(predictor)
+  scale_for <- function(par) {
+    if (par %in% c("top", "bot", "ogl")) {
+      s_y
+    } else if (par %in% c("nec", "ec50")) {
+      s_x
+    } else {
+      0.5
+    }
+  }
+  out <- NULL
+  for (p in group_spec$nlpars) {
+    pr <- prior_string(paste0("student_t(3, 0, ", signif(scale_for(p), 4), ")"),
+                       class = "sd", nlpar = p)
+    out <- if (is.null(out)) pr else out + pr
+  }
+  if (isTRUE(group_spec$ogl)) {
+    out <- out + prior_string(paste0("normal(0, ", signif(s_y, 4), ")"),
+                              nlpar = "ogl")
   }
   out
 }

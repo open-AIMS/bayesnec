@@ -260,3 +260,41 @@ test_that("the two-block families are unaffected", {
   expect_equal(nrow(out), 3)
   expect_setequal(out$nlpar, c("top", "zitop", "zinec"))
 })
+
+# --- #245: a group-level sd row is part of the record ------------------------
+# bayesnec now generates an sd prior, so leaving it out of usable_prior() would
+# make get_priors() a record of everything except the parameter a grouped model
+# is hardest to get right -- the same reasoning #207 and #231 applied to the
+# dispersion and mixing parameters.
+
+test_that("a group-level sd prior round trips", {
+  set.seed(245)
+  x <- as.numeric(rep(1:10, each = 5))
+  # declining, so check_data() has no cause to warn about the direction
+  y <- plogis(2 - 0.4 * x + rnorm(50, 0, 0.2))
+  d <- data.frame(x = x, y = y, tank = factor(rep(1:10, 5)))
+  gp <- suppressMessages(
+    get_priors(y ~ crf(x, "nec4param") + ogl(tank), data = d,
+               family = Beta(link = "identity"))
+  )
+  expect_true("sd" %in% gp$class)
+  out <- bayesnec:::usable_prior(gp)
+  expect_true("sd" %in% out$class)
+  expect_identical(out$prior[out$class == "sd"],
+                   gp$prior[gp$class == "sd"])
+  # the curve's own rows, and the ogl offset, come back untouched
+  expect_setequal(out$nlpar[out$class == "b"],
+                  c("beta", "top", "bot", "nec", "ogl"))
+})
+
+test_that("a brms default on sd is still dropped", {
+  # As for zi: reporting a prior brms chose for itself would suggest bayesnec
+  # had made a choice it did not make. This is the row the bug left behind.
+  pr <- data.frame(prior = c("normal(0, 5)", "student_t(3, 0, 2.5)"),
+                   class = c("b", "sd"), coef = "", group = c("", "tank"),
+                   resp = "", dpar = "", nlpar = c("beta", "ogl"),
+                   lb = NA_character_, ub = NA_character_,
+                   source = c("user", "default"), stringsAsFactors = FALSE)
+  out <- bayesnec:::usable_prior(pr)
+  expect_false("sd" %in% out$class)
+})

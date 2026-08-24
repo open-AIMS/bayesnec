@@ -471,3 +471,220 @@ test_that("a fixed parameter does not break rhat on a multi-model fit", {
   )
   expect_equal(length(out$mod_fits), length(fit$mod_fits))
 })
+
+# --- #245: the ogl offset must not reach the init name check ------------------
+# make_inits() tests exact set equality between the prior's parameter names and
+# the curve's own arguments. The class filter added by #207/#231 already drops
+# an sd row, but the ogl offset carries class "b" and survives it, so the check
+# rejected the whole set -- which is what stopped a user supplying by hand the
+# group-level prior that was never generated. Filtered in add_brm_defaults(),
+# alongside the dispersion parameters, for the same reason: neither plays any
+# part in getting the mean curve inside the response range.
+
+test_that("a group-level prior does not make the init search reject the set", {
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(245)
+  y <- plogis(3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1))
+  priors <- bayesnec:::define_prior(
+    "nec4param", validate_family("Beta"), x, y,
+    group_spec = list(nlpars = "ogl", ogl = TRUE)
+  )
+  # both rows are present in what reaches brm()
+  expect_true(any(priors$class == "sd" & priors$nlpar == "ogl"))
+  expect_true(any(priors$class == "b" & priors$nlpar == "ogl"))
+  out <- suppressMessages(
+    bayesnec:::add_brm_defaults(list(prior = priors, chains = 2, seed = 245),
+                                "nec4param", validate_family("Beta"), x, y,
+                                skip_check = FALSE, custom_name = NULL)
+  )
+  # the init search ran and produced values for the curve parameters only
+  expect_setequal(names(out$init[[1]]), c("b_top", "b_bot", "b_beta", "b_nec"))
+  # and the group-level priors still reach brm() untouched
+  expect_true(any(out$prior$class == "sd" & out$prior$nlpar == "ogl"))
+  expect_true(any(out$prior$class == "b" & out$prior$nlpar == "ogl"))
+})
+
+test_that("a group-level sd on a curve parameter leaves its own init alone", {
+  # pgl and (par | group) put the sd on the curve's own nlpar names, so the
+  # filter has to be by class rather than by name -- dropping "top" by name
+  # would take the curve's own prior with it.
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(245)
+  y <- plogis(3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1))
+  priors <- bayesnec:::define_prior(
+    "nec4param", validate_family("Beta"), x, y,
+    group_spec = list(nlpars = c("top", "nec"), ogl = FALSE)
+  )
+  out <- suppressMessages(
+    bayesnec:::add_brm_defaults(list(prior = priors, chains = 2, seed = 245),
+                                "nec4param", validate_family("Beta"), x, y,
+                                skip_check = FALSE, custom_name = NULL)
+  )
+  expect_setequal(names(out$init[[1]]), c("b_top", "b_bot", "b_beta", "b_nec"))
+  expect_equal(sum(out$prior$class == "sd"), 2)
+})
+
+test_that("a grouped fit on a bounded family initialises and samples", {
+  # The end-to-end case for #245, and the one that matters: the prior fix alone
+  # does NOT get this far. Stan initialises a lower-bounded sd as
+  # exp(uniform(-2, 2)) whatever prior is declared, and the ogl offset is
+  # unbounded, so without initial values of their own the mean starts outside a
+  # (0, 1) response's support and brm() returns a fit with no draws. Verified
+  # by running it both ways: priors only failed with "Initialization failed",
+  # priors plus inits sampled.
+  skip_on_cran()
+  set.seed(245)
+  n_tank <- 12
+  x <- rep(seq(0, 4, length.out = 15), each = 4)
+  tank <- factor(rep(seq_len(n_tank), length.out = length(x)))
+  # a real tank effect, so this tests a grouped model rather than a funnel
+  offset <- rnorm(n_tank, 0, 0.04)[as.integer(tank)]
+  mu <- 0.05 + (0.9 - 0.05) * exp(-exp(-0.4) * pmax(x - 2, 0)) + offset
+  mu <- pmin(pmax(mu, 0.01), 0.99)
+  y <- rbeta(length(mu), mu * 40, (1 - mu) * 40)
+  d <- data.frame(x = x, y = y, tank = tank)
+  fit <- suppressMessages(suppressWarnings(
+    bnec(y ~ crf(x, "nec4param") + ogl(tank), data = d,
+         family = Beta(link = "identity"), iter = 600, warmup = 300,
+         chains = 2, seed = 245, refresh = 0)
+  ))
+  expect_s3_class(fit, "bayesnecfit")
+  # a fit that failed to initialise carries no draws at all
+  expect_gt(brms::ndraws(fit$fit), 0)
+  # the group-level standard deviation was estimated, not merely declared
+  expect_true(any(grepl("^sd_tank", brms::variables(fit$fit))))
+})
+
+test_that("group_inits reads its indices from the model brms will build", {
+  # brms numbers group-level terms by its own internal ordering: one pgl term
+  # over four parameters becomes four separately indexed terms, not one.
+  # Guessing that ordering would silently mismatch the initial values, so the
+  # dimensions come from make_standata().
+  set.seed(245)
+  d <- data.frame(x = runif(60, 0, 4), y = runif(60, 0.1, 0.9),
+                  tank = factor(rep(1:12, 5)))
+  bf_one <- brms::bf(
+    y ~ ogl + bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)),
+    ogl ~ 1 + (1 | tank), bot ~ 1, top ~ 1, beta ~ 1, nec ~ 1, nl = TRUE
+  )
+  pr <- brms::prior_string("student_t(3, 0, 0.08)", class = "sd",
+                           nlpar = "ogl")
+  gi <- bayesnec:::group_inits(bf_one, d, Beta(link = "identity"), pr,
+                               ogl = TRUE)
+  expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
+  expect_equal(dim(gi$z_1), c(1L, 12L))
+  expect_true(all(gi$z_1 == 0))
+  expect_equal(as.numeric(gi$b_ogl), 0)
+  expect_equal(as.numeric(gi$sd_1), 0.08)
+
+  # a group-level term on two parameters gets two indices, not one
+  bf_two <- brms::bf(
+    y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)),
+    bot ~ 1 + (1 | tank), top ~ 1 + (1 | tank), beta ~ 1, nec ~ 1, nl = TRUE
+  )
+  gi2 <- bayesnec:::group_inits(bf_two, d, Beta(link = "identity"), pr)
+  expect_setequal(names(gi2), c("sd_1", "z_1", "sd_2", "z_2"))
+  expect_false("b_ogl" %in% names(gi2))
+})
+
+test_that("sd_prior_scales reads the scale out of a generated prior", {
+  pr <- brms::prior_string("student_t(3, 0, 0.0979)", class = "sd",
+                           nlpar = "ogl") +
+    brms::prior_string("student_t(3, 0, 0.5)", class = "sd", nlpar = "beta") +
+    brms::prior_string("normal(0, 5)", nlpar = "beta")
+  expect_equal(bayesnec:::sd_prior_scales(pr), c(0.0979, 0.5))
+  # no sd rows, and a set with no class column at all, both give nothing
+  expect_length(bayesnec:::sd_prior_scales(
+    brms::prior_string("normal(0, 5)", nlpar = "beta")), 0)
+  expect_length(bayesnec:::sd_prior_scales(NULL), 0)
+})
+
+test_that("a constant ogl intercept gets no initial value", {
+  # Fixing the ogl intercept at zero is the clean way to remove its confounding
+  # with top and bot. Stan then does not declare b_ogl, so an init for it has
+  # nothing to initialise. add_brm_defaults() strips inits for constant
+  # parameters before the group inits are appended, so fit_bayesnec() repeats
+  # the strip. Same hygiene as #244.
+  set.seed(245)
+  d <- data.frame(x = rep(seq(0, 4, length.out = 15), 4),
+                  y = runif(60, 0.1, 0.9), tank = factor(rep(1:12, 5)))
+  f <- y ~ crf(x, "nec4param") + ogl(tank)
+  pr <- suppressMessages(suppressWarnings(
+    get_priors(f, data = d, family = Beta(link = "identity"))
+  ))
+  pr$prior[pr$class == "b" & pr$nlpar == "ogl"] <- "constant(0)"
+  bnf <- bayesnecformula(f)
+  bdat <- suppressMessages(model.frame(bnf, data = d))
+  bb <- suppressMessages(suppressWarnings(
+    bayesnec:::wrangle_model_formula("nec4param", bnf, bdat,
+                                     validate_family("Beta"))
+  ))
+  gi <- bayesnec:::group_inits(bb, d, Beta(link = "identity"), pr, ogl = TRUE)
+  # group_inits itself is not prior-aware; the strip happens in fit_bayesnec
+  expect_true("b_ogl" %in% names(gi))
+  const <- as.data.frame(pr)
+  keep <- !names(gi) %in% paste0("b_", const$nlpar[
+    bayesnec:::is_constant_prior(const$prior) & const$class == "b" &
+      nzchar(const$nlpar)])
+  expect_false("b_ogl" %in% names(gi[keep]))
+  # and the group-level terms themselves still get theirs
+  expect_true(all(c("sd_1", "z_1") %in% names(gi[keep])))
+})
+
+test_that("group_inits works when the response is invalid for the fit's family", {
+  # The regression for the bug that hid inside this function's own error
+  # handling. group_inits() asks make_standata() for the group-level
+  # dimensions, and make_standata() validates the response against the family's
+  # support. A Beta response still carrying exact zeros and ones -- which is
+  # what reaches here before check_data() has nudged them -- made that call
+  # error, the try() turned it into an empty init list, and the fit then failed
+  # to initialise for a reason nothing reported. The dimensions do not depend
+  # on the family at all, so the query uses gaussian() and cannot fail this way.
+  set.seed(245)
+  d <- data.frame(x = rep(seq(0, 4, length.out = 15), 4),
+                  colony = factor(rep(1:5, 12)))
+  # exact 0 and 1 present, as the coral live-tissue response has
+  d$y <- c(rep(1, 20), runif(20, 0.1, 0.9), rep(0, 20))
+  bb <- brms::bf(
+    y ~ bot + (top - bot) * exp(-exp(beta) * (x - nec) * step(x - nec)),
+    bot ~ 1 + (1 | colony), top ~ 1 + (1 | colony),
+    beta ~ 1 + (1 | colony), nec ~ 1 + (1 | colony), nl = TRUE
+  )
+  pr <- brms::prior_string("student_t(3, 0, 0.1)", class = "sd", nlpar = "top")
+  gi <- expect_no_warning(
+    bayesnec:::group_inits(bb, d, Beta(link = "identity"), pr)
+  )
+  # pgl over four parameters gives four separately indexed group-level terms
+  expect_setequal(names(gi), c("sd_1", "z_1", "sd_2", "z_2",
+                               "sd_3", "z_3", "sd_4", "z_4"))
+  expect_true(all(vapply(gi[grep("^z_", names(gi))],
+                         function(z) all(z == 0), logical(1))))
+  expect_equal(unname(vapply(gi[grep("^z_", names(gi))],
+                             function(z) ncol(z), integer(1))),
+               rep(5L, 4))
+})
+
+test_that("pgl on a bounded family initialises and samples", {
+  # The end-to-end counterpart: pgl() is the case the silent-empty-inits bug
+  # actually broke, and it broke on a response carrying exact zeros and ones.
+  skip_on_cran()
+  set.seed(245)
+  n_col <- 5
+  x <- rep(seq(0, 4, length.out = 20), 4)
+  colony <- factor(rep(seq_len(n_col), length.out = length(x)))
+  mu <- 0.05 + (0.92 - 0.05) * exp(-exp(-0.3) * pmax(x - 2, 0))
+  mu <- pmin(pmax(mu + rnorm(n_col, 0, 0.03)[as.integer(colony)], 0.01), 0.99)
+  y <- rbeta(length(mu), mu * 30, (1 - mu) * 30)
+  # push a handful onto the boundaries, which is what check_data() has to nudge
+  y[sample(seq_along(y), 6)] <- 1
+  y[sample(which(x > 3), 4)] <- 0
+  d <- data.frame(x = x, y = y, colony = colony)
+  fit <- suppressMessages(suppressWarnings(
+    bnec(y ~ crf(x, "nec4param") + pgl(colony), data = d,
+         family = Beta(link = "identity"), iter = 600, warmup = 300,
+         chains = 2, seed = 245, refresh = 0)
+  ))
+  expect_s3_class(fit, "bayesnecfit")
+  expect_gt(brms::ndraws(fit$fit), 0)
+  expect_true(any(grepl("^sd_colony", brms::variables(fit$fit))))
+})

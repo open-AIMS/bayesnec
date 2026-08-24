@@ -1,5 +1,26 @@
 # bayesnec 2.1.4
 
+- Group-level terms now work with a bounded family. `ogl()`, `pgl()` and
+  `(par | group)` add parameters that `get_priors()` never described, so a
+  group-level standard deviation fell through to the `brms` default,
+  `student_t(3, 0, 2.5)`. Under the identity link `bnec()` forces there is no
+  inverse link to pull an offset of that scale back into the response range, so
+  on a Beta, binomial or bernoulli response the mean started outside its own
+  support and the fit could not initialise at all. `prior_type = "regularizing"`
+  could not help, because it narrows `top` and `bot` and there was no `sd` row
+  in the set to narrow. A group-level standard deviation is now given one tenth
+  of the scale the parameter's own prior spans — the response range for `top`,
+  `bot` and `ogl`, the predictor range for `nec` and `ec50`, and 0.5 for the
+  dimensionless `beta`, `slope`, `d` and `f` — keeping the shape of the `brms`
+  default and changing only its scale. The `ogl` intercept is given a
+  zero-centred prior of its own, because it is an offset on the whole curve and
+  so is confounded with `top` and `bot` unless something identifies it.
+  Supplying a group-level prior by hand now works too: the `ogl` offset carries
+  class `"b"` and so survived the initial-value search's class filter, and the
+  name check then rejected the whole set, which had left the defect with no
+  workaround. `get_priors()` reports `sd` rows, so a grouped model's priors can
+  be inspected and amended like any other. See #245.
+
 - `sample_priors(plot = NA)` returns the sampled values, as documented. The
   argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is
   `FALSE`, so the one value documented to return the draws was the one value

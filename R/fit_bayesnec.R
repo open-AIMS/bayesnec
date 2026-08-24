@@ -60,11 +60,43 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   }
   brms_bf <- wrangle_model_formula(model, formula, bdat, family,
                                    model_survival = model_survival)
+  group_spec <- parse_group_terms(formula, model)
   brm_args <- add_brm_defaults(brm_args, model, family, x, response,
                                skip_check, custom_name,
                                prior_type = prior_type,
                                model_survival = model_survival,
-                               disp_spec = parse_disp_term(formula))
+                               disp_spec = parse_disp_term(formula),
+                               group_spec = group_spec)
+  # A group-level term needs initial values as well as a prior. Stan's own
+  # draw for a lower-bounded standard deviation is uniform(-2, 2) on the
+  # unconstrained scale and ignores whatever prior was declared, so a prior
+  # alone does not stop the mean starting outside a bounded response's support.
+  # Appended here rather than inside add_brm_defaults(), alongside the
+  # dispersion inits, because the group-level indices are read from
+  # make_standata(), which needs the brms formula and the data -- neither of
+  # which that function is given. Names the caller already supplied are left
+  # alone: a user who wrote their own initial values meant them. See #245.
+  if (!is.null(group_spec) && is.list(brm_args$init)) {
+    g_init <- group_inits(brms_bf, data, family, brm_args$prior,
+                          ogl = group_spec$ogl)
+    # The ogl intercept may itself be fixed with a constant() prior, which is
+    # the cleanest way to remove its confounding with top and bot. Stan then
+    # does not declare b_ogl at all, so an init for it has nothing to
+    # initialise. add_brm_defaults() strips inits for constant parameters, but
+    # it does so before these are appended, so the same strip is applied here.
+    # Hygiene rather than a fix for a binding constraint, for the reasons #244
+    # records at the original site.
+    const_prior <- as.data.frame(brm_args$prior)
+    b_const <- is_constant_prior(const_prior$prior) &
+      const_prior$class == "b" & nzchar(const_prior$nlpar)
+    g_init <- g_init[!names(g_init) %in%
+                       paste0("b_", const_prior$nlpar[b_const])]
+    if (length(g_init) > 0) {
+      brm_args$init <- lapply(brm_args$init, function(chain) {
+        c(chain, g_init[setdiff(names(g_init), names(chain))])
+      })
+    }
+  }
   all_args <- c(list(formula = brms_bf, data = quote(data)), brm_args)
   # Any failure from here on is re-raised carrying the priors and initial values
   # this attempt was given. Both are constructed inside this function rather

@@ -371,3 +371,142 @@ test_that("the rescaling degrades smoothly rather than in a jump", {
   ratios <- scales[-1] / scales[-length(scales)]
   expect_true(all(ratios > 0.5 & ratios < 2))
 })
+
+# --- #245: priors for the parameters a group-level term introduces -----------
+# Without these, a group-level standard deviation falls through to the brms
+# default student_t(3, 0, 2.5). Under the identity link bnec() forces, an offset
+# at that scale puts a bounded mean outside its support and the fit cannot
+# initialise. The tests below pin the scale, not just the presence of a row:
+# a row carrying the wrong scale would pass a presence check and still fail.
+
+test_that("parse_group_terms describes each accepted group-level form", {
+  f_none <- bayesnecformula(y ~ crf(x, "nec4param"))
+  expect_null(bayesnec:::parse_group_terms(f_none, "nec4param"))
+
+  f_ogl <- bayesnecformula(y ~ crf(x, "nec4param") + ogl(tank))
+  spec_ogl <- bayesnec:::parse_group_terms(f_ogl, "nec4param")
+  expect_true(spec_ogl$ogl)
+  expect_equal(spec_ogl$nlpars, "ogl")
+
+  # pgl puts a group-level term on every parameter the model has at once
+  f_pgl <- bayesnecformula(y ~ crf(x, "nec4param") + pgl(site))
+  spec_pgl <- bayesnec:::parse_group_terms(f_pgl, "nec4param")
+  expect_false(spec_pgl$ogl)
+  expect_setequal(spec_pgl$nlpars, c("beta", "top", "bot", "nec"))
+
+  f_bar <- bayesnecformula(y ~ crf(x, "nec4param") + (top + nec | site))
+  expect_setequal(bayesnec:::parse_group_terms(f_bar, "nec4param")$nlpars,
+                  c("top", "nec"))
+
+  # a parameter the model does not have is dropped, matching what
+  # add_formula_glef() does when it builds the sub-formula
+  f_bad <- bayesnecformula(y ~ crf(x, "nec4param") + (zzz | site))
+  expect_null(bayesnec:::parse_group_terms(f_bad, "nec4param"))
+
+  # a disp() term is a variance function, not a grouping term
+  f_disp <- bayesnecformula(y ~ crf(x, "nec4param") + disp("power"))
+  expect_null(bayesnec:::parse_group_terms(f_disp, "nec4param"))
+})
+
+test_that("a group-level sd prior is scaled to the parameter it belongs to", {
+  set.seed(245)
+  x <- runif(100, 0, 10)
+  y <- runif(100, 0.1, 0.9)
+  spec_all <- list(nlpars = c("top", "bot", "nec", "beta"), ogl = FALSE)
+  pr <- as.data.frame(bayesnec:::define_group_prior(spec_all, x, y))
+  expect_true(all(pr$class == "sd"))
+  get_scale <- function(p) {
+    as.numeric(sub(".*, ([0-9.e+-]+)\\)$", "\\1", pr$prior[pr$nlpar == p]))
+  }
+  # response-scaled parameters take one tenth of the response range
+  expect_equal(get_scale("top"), signif(diff(range(y)) / 10, 4))
+  expect_equal(get_scale("bot"), signif(diff(range(y)) / 10, 4))
+  # predictor-scaled parameters take one tenth of the predictor range
+  expect_equal(get_scale("nec"), signif(diff(range(x)) / 10, 4))
+  # the dimensionless ones take one tenth of their own normal(0, 5)
+  expect_equal(get_scale("beta"), 0.5)
+  expect_true(all(grepl("^student_t\\(3, 0, ", pr$prior)))
+})
+
+test_that("the ogl intercept is given a zero-centred prior of its own", {
+  # ogl enters as an offset on the whole curve, so its population intercept is
+  # confounded with top and bot: a constant added to ogl comes back out of
+  # them with no change to the likelihood. brms leaves such a parameter flat,
+  # so centring it at zero is what identifies the decomposition.
+  set.seed(245)
+  x <- runif(100, 0, 10)
+  y <- runif(100, 0.1, 0.9)
+  pr <- as.data.frame(
+    bayesnec:::define_group_prior(list(nlpars = "ogl", ogl = TRUE), x, y)
+  )
+  b_row <- pr[pr$class == "b" & pr$nlpar == "ogl", ]
+  expect_equal(nrow(b_row), 1)
+  expect_true(grepl("^normal\\(0, ", b_row$prior))
+  expect_equal(as.numeric(sub(".*, ([0-9.e+-]+)\\)$", "\\1", b_row$prior)),
+               signif(diff(range(y)) / 10, 4))
+})
+
+test_that("a degenerate response does not produce an unusable scale", {
+  # diff(range()) is zero for a constant response, and a prior of scale zero is
+  # not a prior. Degenerate input is left to fail on its own terms downstream
+  # rather than here.
+  pr <- as.data.frame(
+    bayesnec:::define_group_prior(list(nlpars = "top", ogl = FALSE),
+                                  rep(1, 10), rep(0.5, 10))
+  )
+  expect_equal(pr$prior, "student_t(3, 0, 0.5)")
+})
+
+test_that("no group-level term leaves the prior set untouched", {
+  set.seed(245)
+  x <- runif(100, 0, 10)
+  y <- runif(100, 0.1, 0.9)
+  expect_null(bayesnec:::define_group_prior(NULL, x, y))
+  with_none <- bayesnec:::define_prior("nec4param", validate_family("gaussian"),
+                                       x, y)
+  with_null <- bayesnec:::define_prior("nec4param", validate_family("gaussian"),
+                                       x, y, group_spec = NULL)
+  expect_equal(with_none, with_null)
+})
+
+test_that("a hurdle family gets group-level priors too", {
+  # define_prior() returns early for a hurdle family, so without handling the
+  # group priors there as well the hurdle families kept the whole of #245 --
+  # which is exactly the fit vignette("example8") part 3 needs.
+  set.seed(245)
+  x <- rep(seq(0, 4, length.out = 20), 4)
+  y <- c(rep(0, 20), rgamma(60, 2, 1))
+  spec <- list(nlpars = "ogl", ogl = TRUE)
+  pr <- suppressWarnings(bayesnec:::define_prior(
+    "nec3param", validate_family("hurdle_gamma"), x, y, group_spec = spec
+  ))
+  expect_true(any(pr$class == "sd" & pr$nlpar == "ogl"))
+  expect_true(any(pr$class == "b" & pr$nlpar == "ogl"))
+  # both blocks' own parameters are still there and untouched
+  expect_true(all(c("top", "beta", "nec", "hutop", "hubeta", "hunec") %in%
+                    pr$nlpar))
+  # scaled from the survivors, not from the whole response including the
+  # structural zeros
+  scale_got <- as.numeric(sub(".*, ([0-9.e+-]+)\\)$", "\\1",
+                              pr$prior[pr$class == "sd"]))
+  expect_equal(scale_got, signif(diff(range(y[y > 0])) / 10, 4))
+})
+
+test_that("a group-level term on a hurdle reaches the mu block only", {
+  # add_formula_glef() runs before the hu sub-formulas are attached, so ogl and
+  # pgl never see them. Pinned because the prior scaling above depends on it,
+  # and because vignette("example8") tells the reader so.
+  set.seed(245)
+  d <- data.frame(x = rep(seq(0, 4, length.out = 20), 4),
+                  y = c(rep(0, 20), rgamma(60, 2, 1)),
+                  site = factor(rep(1:5, 16)))
+  f <- bayesnecformula(y ~ crf(x, "nec3param") + pgl(site))
+  bdat <- suppressMessages(model.frame(f, data = d))
+  bb <- suppressMessages(suppressWarnings(
+    bayesnec:::wrangle_model_formula("nec3param", f, bdat,
+                                     validate_family("hurdle_gamma"))
+  ))
+  subs <- vapply(bb$pforms, function(z) deparse1(z), character(1))
+  expect_true(all(grepl("site", subs[c("top", "beta", "nec")])))
+  expect_false(any(grepl("site", subs[c("hutop", "hubeta", "hunec")])))
+})

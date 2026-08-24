@@ -720,6 +720,81 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
   brmform
 }
 
+#' Describe the group-level structure a bayesnecformula carries
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param model A \code{\link[base]{character}} string naming a single model,
+#' needed to expand a \code{pgl} term over the parameters that model actually
+#' has.
+#'
+#' @details The counterpart of \code{\link{parse_disp_term}}, and added for the
+#' same reason. \code{\link{add_formula_glef}} already knows how to turn
+#' \code{ogl}, \code{pgl} and \code{(par | group)} into brms sub-formulas, but
+#' nothing passed that structure to \code{define_prior()}, so no prior was ever
+#' generated for the parameters those terms introduce. See #245.
+#'
+#' The parsing deliberately repeats \code{add_formula_glef()}'s rather than
+#' factoring it out: that function builds a formula and this one describes it,
+#' and the two are called from different places on different objects. Any change
+#' to the accepted term syntax has to be made in both.
+#'
+#' A \code{(par | group)} term naming a parameter the model does not have is
+#' dropped silently here. \code{add_formula_glef()} messages about it and
+#' ignores it, so generating a prior for a term that will not be in the model
+#' would put a row in the set that never reaches the fit.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{nlpars}, the
+#' non-linear parameters carrying a group-level standard deviation, and
+#' \code{ogl}, whether an \code{ogl} offset parameter was added; or
+#' \code{NULL} when the formula carries no group-level term.
+#'
+#' @importFrom stats terms
+#' @importFrom formula.tools rhs
+#'
+#' @noRd
+parse_group_terms <- function(formula, model) {
+  crf_term <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  if (length(crf_term) == 0) {
+    return(NULL)
+  }
+  to_eval <- paste0("update(formula, ~ . - ", crf_term, ")")
+  random_call <- rhs(eval(parse(text = to_eval)))
+  random_call <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(random_call))
+  split_random_call <- strsplit(random_call, " impossiblestr ")[[1]]
+  # disp() is a variance function, not a grouping term, and has its own prior
+  # route through define_disp_prior(). Dropping it here keeps a formula that
+  # carries only a disp() term from being reported as grouped.
+  split_random_call <- split_random_call[!grepl("disp(", split_random_call,
+                                                fixed = TRUE)]
+  model_pars <- names(get(paste0("bf_", model))[[2]])
+  nlpars <- character(0)
+  has_ogl <- FALSE
+  if (any(grepl("pgl(", split_random_call, fixed = TRUE))) {
+    # pgl puts a group-level term on every parameter of the model at once.
+    nlpars <- c(nlpars, model_pars)
+  }
+  if (any(grepl("ogl(", split_random_call, fixed = TRUE))) {
+    has_ogl <- TRUE
+    nlpars <- c(nlpars, "ogl")
+  }
+  bar_calls <- grep("|", split_random_call, fixed = TRUE, value = TRUE)
+  bar_calls <- bar_calls[!grepl("pgl(", bar_calls, fixed = TRUE) &
+                           !grepl("ogl(", bar_calls, fixed = TRUE)]
+  if (length(bar_calls) > 0) {
+    split_str_calls <- lapply(bar_calls, clean_bar_glef)
+    for (i in seq_along(split_str_calls)) {
+      pars_i <- strsplit(split_str_calls[[i]][1], " \\+ ")[[1]]
+      nlpars <- c(nlpars, trimws(pars_i))
+    }
+    nlpars <- intersect(nlpars, c(model_pars, "ogl"))
+  }
+  nlpars <- unique(nlpars)
+  if (length(nlpars) == 0) {
+    return(NULL)
+  }
+  list(nlpars = nlpars, ogl = has_ogl)
+}
+
 #' @noRd
 #' @importFrom stats terms
 get_model_from_formula <- function(formula) {

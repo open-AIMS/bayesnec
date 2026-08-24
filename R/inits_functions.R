@@ -386,3 +386,115 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
     c(mu_inits[[i]], hu_i)
   })
 }
+
+#' Initial values for the parameters a group-level term introduces
+#'
+#' @param brms_bf The \code{\link[brms]{brmsformula}} the fit will use.
+#' @param data The \code{\link[base]{data.frame}} the fit will use.
+#' @param family A \code{\link[stats]{family}} object.
+#' @param priors The \code{\link[brms]{brmsprior}} the fit will use, read for
+#' the scale of the generated group-level standard deviations.
+#' @param ogl Whether the formula carries an \code{ogl} offset parameter.
+#'
+#' @details A prior is not enough here, and this is the part of #245 that is
+#' easy to get wrong. Stan draws its default initial values as
+#' \code{uniform(-2, 2)} on the \emph{unconstrained} scale, which it does
+#' \strong{regardless of the prior declared}. A group-level standard deviation
+#' is lower-bounded at zero, so the realised initial value is
+#' \code{exp(uniform(-2, 2))}, between 0.135 and 7.39; the offset is
+#' \code{sd * z} under the non-centred parameterisation \pkg{brms} uses, with
+#' \code{z} initialised in the same range. On a response bounded in (0, 1)
+#' under the identity link \code{\link{bnec}} forces, that puts the mean
+#' outside its support before sampling begins, and no prior can prevent it.
+#'
+#' The \code{ogl} intercept is the same problem in a simpler form: it is a
+#' population-level parameter with no bounds, so Stan starts it anywhere in
+#' (-2, 2), which is already outside a unit-interval response.
+#'
+#' All group-level effects are therefore started at \strong{exactly zero}
+#' deviation -- \code{z = 0}, and the \code{ogl} offset at 0 -- which is a
+#' valid point for any family and any link, and is the model the fit reduces to
+#' if the grouping turns out to explain nothing.
+#'
+#' Because \code{z} is zero, the value given to \code{sd} itself does not
+#' affect whether the starting point is valid; it sets only where the sampler
+#' begins exploring. The median of the generated \code{sd} prior scales is
+#' used, so the starting scale tracks the data rather than being a constant that
+#' is tiny for one response and large for another.
+#'
+#' The indices are read from \code{\link[brms]{make_standata}} rather than
+#' reconstructed from the formula. \pkg{brms} numbers group-level terms by its
+#' own internal ordering -- a single \code{pgl} term over four parameters
+#' becomes four separately indexed terms, not one -- and guessing that ordering
+#' would be a silent source of mismatched initial values.
+#'
+#' @return A named \code{\link[base]{list}} of initial values.
+#'
+#' @importFrom brms make_standata
+#' @importFrom stats median gaussian
+#'
+#' @noRd
+group_inits <- function(brms_bf, data, family, priors, ogl = FALSE) {
+  # gaussian(), deliberately, and NOT the fit's own family. The group-level
+  # dimensions M_k and N_k come from the random-effects structure alone, so the
+  # family is irrelevant to the answer -- but it is not irrelevant to whether
+  # the call succeeds. make_standata() validates the response against the
+  # family's support, and the response reaching here has not necessarily been
+  # through check_data() yet, so a Beta response still carrying exact zeros and
+  # ones made this error. That error was caught and turned into "no initial
+  # values", which is silent, and produced exactly the failure this function
+  # exists to prevent -- on pgl(), where it is the harder one to diagnose.
+  # gaussian() accepts any numeric response, so the query cannot fail for a
+  # reason that has nothing to do with what is being asked.
+  sdata <- try(suppressMessages(
+    make_standata(brms_bf, data = data, family = gaussian())
+  ), silent = TRUE)
+  if (inherits(sdata, "try-error")) {
+    # Genuinely unexpected now. Warn rather than return quietly: an empty init
+    # list here is the difference between a fit that starts and one that does
+    # not, and a silent one is very hard to trace back to this line.
+    warning("Could not determine the group-level dimensions, so no initial ",
+            "values were generated for them. The fit may fail to initialise. ",
+            "See #245.", call. = FALSE)
+    return(list())
+  }
+  m_names <- grep("^M_[0-9]+$", names(sdata), value = TRUE)
+  if (length(m_names) == 0) {
+    return(list())
+  }
+  sd_scales <- sd_prior_scales(priors)
+  start_sd <- if (length(sd_scales) > 0) median(sd_scales) else 0.1
+  out <- list()
+  for (k in sort(as.integer(sub("^M_", "", m_names)))) {
+    n_terms <- sdata[[paste0("M_", k)]]
+    n_levels <- sdata[[paste0("N_", k)]]
+    out[[paste0("sd_", k)]] <- as.array(rep(start_sd, n_terms))
+    out[[paste0("z_", k)]] <- matrix(0, nrow = n_terms, ncol = n_levels)
+  }
+  if (isTRUE(ogl)) {
+    out$b_ogl <- as.array(0)
+  }
+  out
+}
+
+#' The scales of the group-level standard deviation priors in a prior set
+#'
+#' @param priors An object of class \code{\link[brms]{brmsprior}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector, possibly empty.
+#'
+#' @noRd
+sd_prior_scales <- function(priors) {
+  if (is.null(priors) || nrow(priors) == 0 || !"class" %in% names(priors)) {
+    return(numeric(0))
+  }
+  strs <- priors$prior[priors$class == "sd"]
+  strs <- strs[nzchar(strs)]
+  if (length(strs) == 0) {
+    return(numeric(0))
+  }
+  vals <- suppressWarnings(
+    as.numeric(sub("^.*,\\s*([0-9.eE+-]+)\\)\\s*$", "\\1", strs))
+  )
+  vals[is.finite(vals) & vals > 0]
+}

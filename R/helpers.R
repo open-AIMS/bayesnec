@@ -731,7 +731,8 @@ add_brm_defaults <- function(
   custom_name,
   prior_type = "uninformative",
   model_survival = NULL,
-  disp_spec = NULL
+  disp_spec = NULL,
+  group_spec = NULL
 ) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
@@ -753,7 +754,8 @@ add_brm_defaults <- function(
       response,
       prior_type = prior_type,
       model_survival = model_survival,
-      disp_spec = disp_spec
+      disp_spec = disp_spec,
+      group_spec = group_spec
     )
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
@@ -810,6 +812,18 @@ add_brm_defaults <- function(
     if (length(disp_par_names) > 0) {
       init_priors <- init_priors[!init_priors$nlpar %in% disp_par_names, ]
     }
+    # A group-level term introduces parameters that are no part of the mean
+    # curve either, and they have to come out for the same reason. Two kinds:
+    # the standard deviations, dropped by class, which is general and needs no
+    # maintenance; and the `ogl` offset, dropped by name, because it is the one
+    # parameter a group-level term adds that carries class "b" and so survives
+    # every class filter. The `ogl` row is what made make_inits() reject the
+    # whole set -- and therefore what stopped a user supplying by hand the
+    # group-level prior that was never generated. Filtering unconditionally
+    # rather than from group_spec: `ogl` is a reserved name, so a row carrying
+    # it is always this parameter and never a curve coefficient. See #245.
+    init_priors <- init_priors[init_priors$class != "sd", ]
+    init_priors <- init_priors[init_priors$nlpar != "ogl", ]
     inits <- if (is_hurdle_family(family)) {
       # Two blocks with differently-scaled responses, primed separately then
       # merged. response_link_scale() is a no-op for hurdle_gamma under an

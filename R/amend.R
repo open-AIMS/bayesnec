@@ -253,8 +253,12 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           tr <- retrieve_var(bdat, "trials_var", error = TRUE)
           y <- y / tr
         }
-        brm_args$prior <- define_prior(model, family, x, y,
-                                       prior_type = prior_type)
+        # Note this path still does not pass disp_spec, which predates #245
+        # and is left alone here rather than changed as a side effect.
+        brm_args$prior <- define_prior(
+          model, family, x, y, prior_type = prior_type,
+          group_spec = parse_group_terms(formula, model)
+        )
       } else {
         brm_args$prior <- model_priors
       }
