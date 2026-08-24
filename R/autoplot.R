@@ -187,7 +187,9 @@ prep_raw_data <- function(brms_fit, bayesnecformula) {
   r_df |>
     mutate(x_e = NA, y_e = NA, y_ci = NA, x_r = .data[[x_var]],
            y_r = .data[[y_var]]) |>
-    select(.data$x_e, .data$y_e, .data$y_ci, .data$x_r, .data$y_r)
+    # Quoted names rather than .data$: .data in a tidyselect expression is
+    # deprecated as of tidyselect 1.2.0 and warns ten times in the suite.
+    select("x_e", "y_e", "y_ci", "x_r", "y_r")
 }
 
 #' @param data A \code{\link[base]{data.frame}}.

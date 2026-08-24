@@ -56,6 +56,45 @@
 
 # bayesnec 2.1.4
 
+- `get_priors()` now reports and round trips a prior on `zi` or `hu` for the
+  families where those are ordinary `brms` parameters. For
+  `zero_inflated_poisson` and `zero_inflated_negbinomial`, which `bayesnec` fits
+  as a single parameter block, `zi` carries a class of its own and sat on the
+  `brms` default `beta(1, 1)` with nothing in the reported prior set to say so —
+  the same gap that 2.1.4 closed for `sigma`, `shape` and `phi`, and arguably a
+  more important one, since for those two families `zi` is the zero-inflation
+  probability the family exists to estimate. `hurdle_gamma` and
+  `zero_inflated_beta` are unaffected: their second block is carried as class
+  `"b"` with a prefixed `nlpar`, so no class-`zi` row is ever generated. See
+  #231.
+
+- The `top` and `bot` prior scales for `Gamma`, `poisson` and `negbinomial` are
+  now taken at a quantile rescaled by the zero fraction of the response, rather
+  than at the raw quantile with a fallback that triggered only once that
+  quantile hit exactly zero. A quantile of a zero-inflated response is a
+  quantile of the *mixture* and is pulled towards zero throughout its range, so
+  the previous guard left the worst case — just below the point where it fired —
+  entirely unguarded: on a `nec4param` response with a true `top` of 40, the
+  `top` prior mean ran 33.5 at no zeros, 6.8 at 72% zeros, then jumped back to
+  29.0 at 76%. It now holds between 28 and 35 across that whole range. **This
+  changes priors, and therefore results, for existing fits**: `poisson` and
+  `negbinomial` are long-released families, and a count response with a material
+  share of zeros reaches this code. A response containing no zeros is
+  unaffected, exactly — the rescaling reduces to the identity there. See #232.
+
+
+- The guard added for #210 is no longer evaluated for families whose priors do
+  not use it. The gamma-scaled `top` and `bot` prior strings are read only by
+  `Gamma`, `poisson` and `negbinomial`; every other family builds those priors
+  from `quantile()` and `sd()` directly, or from literals. Building the guarded
+  strings unconditionally made a "response contains no positive values" error
+  reachable for `gaussian`, where an entirely negative response — log ratios,
+  growth increments, anything expressed as a change — is ordinary input and
+  previously produced perfectly good priors. Related, `bnec()` no longer builds
+  the default priors when the user has supplied a complete set of their own, so
+  a failure while building a default the fit will not use can no longer block
+  it. See #229.
+
 - The vignette precompilation workflow added in 2.1.4 can now actually be run,
   and the documentation site configuration records what `pkgdown` really does.
   `workflow_dispatch` only takes effect once a workflow file is on the
