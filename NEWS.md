@@ -1,5 +1,10 @@
 # bayesnec 2.1.4
 
+- `sample_priors(plot = NA)` returns the sampled values, as documented. The
+  argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is
+  `FALSE`, so the one value documented to return the draws was the one value
+  rejected, and there was no route to them at all. Found while fixing #244.
+
 - A `constant()` prior now works when passed straight to `bnec(prior = )`, so a
   parameter can be fixed at a known value with a one-line change to the prior
   set. Previously the initial-value search looked the prior's distribution name

@@ -29,8 +29,13 @@
 #' @export
 sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   chk_numeric(n_samples)
-  if (!plot %in% c("ggplot", "base")) {
-    stop("plot must be a character string of either \"ggplot\" or \"base\"")
+  # NA is documented as the "return the draws" option, but `NA %in% c(...)` is
+  # FALSE, so the guard rejected the very value the documentation offers and
+  # there was no route to the sampled values at all. Tested for first, rather
+  # than added to the set, because `%in%` cannot express it. See #244.
+  if (!is.na(plot) && !plot %in% c("ggplot", "base")) {
+    stop("plot must be NA, or a character string of either ",
+         "\"ggplot\" or \"base\"")
   }
   fcts <- c(gamma = rgamma, normal = rnorm, beta = rbeta, uniform = runif)
   priors <- as.data.frame(priors) |>
