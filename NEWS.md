@@ -29,11 +29,29 @@
   shared dispersion parameter would break the factorisation the crossed weights
   depend on.
 
+  Passing `pooled` — a `bnec()` fit of the same model set to the whole data
+  with the factor ignored — adds the third reading, and it is the one that asks
+  whether the factor matters at all. A pooled fit is scored on exactly the same
+  observations as the levels together are, so the grouped and pooled WAIC are
+  directly comparable. A standard error accompanies the difference where the
+  pointwise values have been kept on the fits, and is `NA` where they have not,
+  rather than being quietly omitted.
+
   Every level is an ordinary `bayesnecfit` or `bayesmanecfit`, so `nec()`,
   `ecx()`, `nsec()`, `summary()` and `plot()` work per level and everything that
-  works on a single fit works on each. Refitting the favoured combination
-  *jointly* is not included: that needs level-aware post-processing inside the
-  toxicity estimators, which is the code the `toxval` migration moves. See #33.
+  works on a single fit works on each. `compare_posterior()` is now a generic
+  with a `bayesnecgroupfit` method comparing the levels: `crossed_group_weights()`
+  answers which *equation* best describes each level, while `compare_posterior()`
+  answers whether the levels differ in the *quantity being reported* — the
+  *NEC*, an ECx, or the fitted curve — and the two can disagree. The levels share
+  no parameters, so their posteriors are independent and the pairwise
+  probabilities are read directly, with no multiple-comparison adjustment
+  implied. `compare_posterior.default()` is the previous function unchanged, so
+  existing callers behave identically.
+
+  Refitting the favoured combination *jointly* is not included: that needs
+  level-aware post-processing inside the toxicity estimators, which is the code
+  the `toxval` migration moves. See #33.
 
 # bayesnec 2.2.0
 

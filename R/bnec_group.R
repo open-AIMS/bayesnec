@@ -83,6 +83,18 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
          " unambiguous; a numeric column is almost always a predictor that",
          " belongs in crf() instead.", call. = FALSE)
   }
+  # Refused rather than dropped. factor() removes NA from levels() and table()
+  # ignores it, so an NA group would pass every check below -- but
+  # data[grp == lev, ] is logical indexing with NA present, which puts an
+  # all-NA row into *every* level's subset. model.frame() would then quietly
+  # absorb them, so the fit would proceed and nothing would say why the level
+  # sizes reported here did not match what was fitted.
+  if (anyNA(grp)) {
+    stop("The grouping column \"", group_var, "\" has ", sum(is.na(grp)),
+         " missing value(s). Every observation must belong to a known level,",
+         " because each level is fitted as a separate model; drop or impute",
+         " those rows before calling bnec_group.", call. = FALSE)
+  }
   grp <- factor(grp)
   levs <- levels(grp)
   if (length(levs) < 2) {
@@ -109,12 +121,19 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   }
   family <- validate_family(family)
   # The crossed weights are an outer product of the per-level weight vectors,
-  # and that identity holds for pseudo-BMA only. The method is captured here
-  # and checked in crossed_group_weights() rather than merely documented,
-  # because a bayesmanecfit does not record which method produced its `wi` --
-  # so it cannot be recovered from the fits afterwards, and multiplying
-  # stacking weights would give a wrong crossed table with nothing to signal
-  # it. See #33.
+  # and that identity holds for pseudo-BMA only, so the method is checked in
+  # crossed_group_weights() rather than merely documented -- multiplying
+  # stacking weights gives a wrong crossed table with nothing to signal it.
+  #
+  # Captured here as well as read off the fits, because neither route is
+  # reliable alone. expand_manec() does record the method, as
+  # attr(mod_stats$wi, "method") (R/expand_classes.R), but that attribute
+  # survives cbind and is dropped by row-subsetting, so it is present on a
+  # fresh bayesmanecfit and absent after any reordering -- and a level that
+  # fitted a single model is a bayesnecfit with no mod_stats at all. The
+  # request is therefore recorded here, and crossed_group_weights() prefers
+  # whatever the fits themselves still carry, since that is what actually
+  # happened. See #33.
   dots <- list(...)
   wt_method <- if (!is.null(dots$loo_controls$weights$method)) {
     dots$loo_controls$weights$method
@@ -135,12 +154,34 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }
 
+#' The weighting method a single fit actually used
+#'
+#' \code{expand_manec()} stamps it on the weight vector. The attribute does not
+#' survive row-subsetting of \code{mod_stats}, and a single-model level is a
+#' bayesnecfit with no \code{mod_stats}, so an absent attribute means "unknown"
+#' rather than "pseudo-BMA" and contributes nothing.
+#'
+#' @param x A fit for one level.
+#'
+#' @return A length-1 \code{\link[base]{character}}, or \code{NULL}.
+#'
+#' @noRd
+fit_weights_method <- function(x) {
+  if (!inherits(x, "bayesmanecfit")) {
+    return(NULL)
+  }
+  attr(x$mod_stats$wi, "method")
+}
+
 #' Crossed model weights across the levels of a factor
 #'
 #' The weight of every combination of per-level models, and the two readings of
 #' that table which answer different questions.
 #'
 #' @param object An object of class \code{\link{bayesnecgroupfit}}.
+#' @param pooled Optionally, a fit of the same model set to the \emph{whole}
+#' data set, ignoring the factor, as returned by \code{\link{bnec}}. Used to
+#' answer whether the factor matters at all --- see Details.
 #'
 #' @details Levels partition the data disjointly and share no parameters, so
 #' \code{elpd} is additive across them:
@@ -171,9 +212,34 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
 #' every level. \code{bayesnec} could not answer that before, and it is often
 #' the question a reader of the analysis actually has.
 #'
+#' \bold{Does the factor matter at all?}
+#'
+#' Pass \code{pooled} --- a \code{\link{bnec}} fit of the same model set to the
+#' whole data set, with the factor ignored --- and the same additivity gives the
+#' third reading. A pooled fit is scored on exactly the same observations as the
+#' levels together are, so their information criteria are directly comparable:
+#' the grouped WAIC is the sum over levels of the best model's WAIC, and the
+#' difference against the pooled fit's is a like-for-like comparison. A negative
+#' \code{diff} favours the pooled fit, a positive one the grouped fit.
+#'
+#' The comparison is on WAIC because that is what \code{bayesnec} stores on
+#' every fit. A standard error for the difference needs the \emph{pointwise}
+#' values, which \pkg{brms} keeps on the fit object but which do not survive
+#' every route a fit can take --- they are absent from the packaged examples,
+#' for instance. Where they are present the standard error is computed and the
+#' observations are checked to line up; where they are not, \code{se_diff} is
+#' \code{NA} and the difference is a point estimate with no uncertainty
+#' attached, which is worth remembering before reading much into a small one.
+#'
+#' Note this compares the \emph{best} model per level against the \emph{best}
+#' pooled model, not the model-averaged predictions of either. Model averaging
+#' is within level by construction, and the averaged predictive density is not
+#' the weighted sum of the components'.
+#'
 #' @return A \code{\link[base]{list}} with the per-level weight vectors, the
-#' unrestricted best combination and its weight, and the diagonal weights over
-#' the models common to every level.
+#' unrestricted best combination and its weight, the diagonal weights over the
+#' models common to every level, and --- if \code{pooled} was given --- the
+#' grouped-versus-pooled WAIC comparison.
 #'
 #' @seealso \code{\link{bnec_group}}, \code{\link{crossed_weights}}
 #'
@@ -183,10 +249,10 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
 #' crossed_group_weights(fit)
 #' }
 #'
-#' @importFrom stats setNames
+#' @importFrom stats setNames sd
 #'
 #' @export
-crossed_group_weights <- function(object) {
+crossed_group_weights <- function(object, pooled = NULL) {
   if (!is_bayesnecgroupfit(object)) {
     stop("crossed_group_weights requires an object of class",
          " bayesnecgroupfit.", call. = FALSE)
@@ -194,9 +260,23 @@ crossed_group_weights <- function(object) {
   # Refused rather than warned: under stacking there is no correct crossed
   # table to return, so returning one that looks right is worse than returning
   # nothing. The per-level weights remain valid and the message says so.
-  method <- object$weights_method
-  if (is.null(method)) {
-    method <- "pseudobma"
+  #
+  # The fits are asked first: attr(wi, "method") is what the fit actually did,
+  # where object$weights_method is only what was requested of bnec_group(), and
+  # the two can part company if a fit was amended afterwards.
+  observed <- unique(unlist(lapply(object$fits, fit_weights_method)))
+  method <- if (length(observed) > 0) {
+    observed[[1]]
+  } else if (!is.null(object$weights_method)) {
+    object$weights_method
+  } else {
+    "pseudobma"
+  }
+  if (length(observed) > 1) {
+    stop("The levels of this fit were weighted by different methods (",
+         paste0("\"", observed, "\"", collapse = ", "), "). Their weights",
+         " are not on a common footing, so there is no crossed table to",
+         " return. Refit every level the same way.", call. = FALSE)
   }
   if (!identical(method, "pseudobma")) {
     stop("crossed_group_weights is defined for pseudo-BMA weights only, and",
@@ -230,9 +310,97 @@ crossed_group_weights <- function(object) {
   } else {
     numeric(0)
   }
-  list(per_level = per_level,
-       best_combination = best,
-       best_weight = best_weight,
-       common_models = common,
-       diagonal = sort(diagonal, decreasing = TRUE))
+  out <- list(per_level = per_level,
+              best_combination = best,
+              best_weight = best_weight,
+              common_models = common,
+              diagonal = sort(diagonal, decreasing = TRUE))
+  if (!is.null(pooled)) {
+    out$pooled <- compare_pooled(object, pooled, best)
+  }
+  out
+}
+
+#' The best model's WAIC on one level, with its pointwise values if kept
+#'
+#' @param x A fit for one level.
+#' @param model The model to read, or NULL for the best-weighted one.
+#'
+#' @return A \code{\link[base]{list}} of \code{model}, \code{waic} and
+#' \code{pointwise}.
+#'
+#' @noRd
+fit_best_waic <- function(x, model = NULL) {
+  if (inherits(x, "bayesmanecfit")) {
+    if (is.null(model)) {
+      model <- rownames(x$mod_stats)[which.max(x$mod_stats$wi)]
+    }
+    waic <- x$mod_stats$waic[match(model, rownames(x$mod_stats))]
+    brmfit <- x$mod_fits[[model]]$fit
+  } else {
+    model <- x$model
+    brmfit <- x$fit
+    waic <- try(extract_waic_estimate(x), silent = TRUE)
+    if (inherits(waic, "try-error")) {
+      waic <- NA_real_
+    }
+  }
+  pw <- brmfit$criteria$waic$pointwise
+  list(model = model,
+       waic = as.numeric(waic),
+       pointwise = if (is.null(pw)) NULL else as.numeric(pw[, "waic"]))
+}
+
+#' Grouped versus pooled, on the same observations
+#'
+#' @param object An object of class \code{\link{bayesnecgroupfit}}.
+#' @param pooled A fit of the same model set to the whole data.
+#' @param best The best model per level, from \code{crossed_group_weights}.
+#'
+#' @return A \code{\link[base]{list}}.
+#'
+#' @noRd
+compare_pooled <- function(object, pooled, best) {
+  if (!inherits(pooled, c("bayesnecfit", "bayesmanecfit"))) {
+    stop("`pooled` must be a bayesnecfit or bayesmanecfit, as returned by",
+         " bnec() on the whole data set with the factor ignored.",
+         call. = FALSE)
+  }
+  # The whole point of the comparison is that both sides are scored on the same
+  # observations, so a mismatch is refused rather than reported: a difference
+  # between fits of different data is not a comparison at all.
+  per_level <- lapply(seq_along(object$levels), function(i) {
+    fit_best_waic(object$fits[[i]], best[[object$levels[i]]])
+  })
+  names(per_level) <- object$levels
+  pooled_w <- fit_best_waic(pooled)
+  waic_grouped <- sum(vapply(per_level, function(z) z$waic, numeric(1)))
+  diff <- pooled_w$waic - waic_grouped
+  se_diff <- NA_real_
+  n_obs <- NA_integer_
+  grouped_pw <- lapply(per_level, function(z) z$pointwise)
+  if (!any(vapply(grouped_pw, is.null, logical(1))) &&
+        !is.null(pooled_w$pointwise)) {
+    n_level <- vapply(grouped_pw, length, integer(1))
+    if (identical(as.integer(n_level), as.integer(object$n)) &&
+          length(pooled_w$pointwise) == sum(n_level) &&
+          nrow(object$data) == sum(n_level)) {
+      # Assembled in level order, which is the order the pooled fit's rows are
+      # in only if the data were already sorted by level. The paired difference
+      # below is therefore taken on the level-ordered pooled values, recovered
+      # by the same split as the fits themselves used.
+      grp <- factor(object$data[[object$group_var]], levels = object$levels)
+      pooled_ordered <- pooled_w$pointwise[order(grp)]
+      d <- pooled_ordered - unlist(grouped_pw, use.names = FALSE)
+      n_obs <- length(d)
+      se_diff <- sqrt(n_obs) * sd(d)
+    }
+  }
+  list(grouped_models = best,
+       pooled_model = pooled_w$model,
+       waic_grouped = waic_grouped,
+       waic_pooled = pooled_w$waic,
+       diff = diff,
+       se_diff = se_diff,
+       n_obs = n_obs)
 }

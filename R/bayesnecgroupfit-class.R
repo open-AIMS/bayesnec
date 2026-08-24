@@ -53,20 +53,54 @@ group_lapply <- function(object, fun, ...) {
 #' Per-level toxicity estimates from a bayesnecgroupfit
 #'
 #' @param object An object of class \code{\link{bayesnecgroupfit}}.
+#' @param what The name of the calling method, for the error message.
+#' @param fun A function taking a fit as its first argument.
 #' @param ... Passed to the underlying method.
+#'
+#' @details The columns are taken from the \emph{names} of the vector each
+#' underlying method returns, not from its positions. \code{nec()} and
+#' \code{ecx()} both take \code{prob_vals}, so the returned vector is
+#' \code{length(prob_vals)} long and named for the quantiles actually asked
+#' for; reading positions 1 to 3 silently truncated a longer request and
+#' mislabelled a reordered one.
+#'
+#' \code{posterior = TRUE} is refused rather than accommodated. It makes the
+#' underlying methods return the full draw vector instead of a summary, and a
+#' positional table then reported draws 1, 2 and 3 as an estimate and its
+#' credible interval --- wrong, plausible-looking and silent. There is no
+#' sensible one-row-per-level table of posteriors, so the user is sent to the
+#' per-level fits, where the posteriors are exactly what they already were.
 #'
 #' @return A \code{\link[base]{data.frame}} with one row per level.
 #'
 #' @noRd
-group_estimate_table <- function(object, fun, ...) {
+group_estimate_table <- function(object, what, fun, ...) {
+  dots <- list(...)
+  if (isTRUE(dots$posterior)) {
+    stop(what, " on a bayesnecgroupfit returns one row per level, which a",
+         " posterior sample is not. Use lapply(x$fits, ", what,
+         ", posterior = TRUE) for the per-level posteriors: the levels are",
+         " fitted independently, so each element is an ordinary fit and its",
+         " posterior is unchanged by being part of a group.", call. = FALSE)
+  }
   est <- group_lapply(object, fun, ...)
+  nms <- names(est[[1]])
+  if (is.null(nms) || anyDuplicated(nms) > 0) {
+    stop("The per-level ", what, " estimates are not uniquely named, so they",
+         " cannot be tabulated. This should not happen; please report it.",
+         call. = FALSE)
+  }
   out <- do.call(rbind, lapply(seq_along(est), function(i) {
     e <- est[[i]]
-    data.frame(level = object$levels[i],
-               Estimate = unname(e[1]),
-               Q2.5 = unname(e[2]),
-               Q97.5 = unname(e[3]),
-               stringsAsFactors = FALSE)
+    # Matched by name, so a level whose method returned the quantiles in a
+    # different order cannot silently land in the wrong column.
+    if (!identical(names(e), nms)) {
+      stop("Level \"", object$levels[i], "\" returned ", what, " estimates",
+           " named differently from level \"", object$levels[1], "\".",
+           call. = FALSE)
+    }
+    cbind(data.frame(level = object$levels[i], stringsAsFactors = FALSE),
+          as.data.frame(as.list(unclass(e)[nms])))
   }))
   rownames(out) <- NULL
   out
@@ -102,21 +136,21 @@ print.bayesnecgroupfit <- function(x, ...) {
 #' @method nec bayesnecgroupfit
 #' @export
 nec.bayesnecgroupfit <- function(object, ...) {
-  group_estimate_table(object, function(f, ...) nec(f, ...), ...)
+  group_estimate_table(object, "nec", function(f, ...) nec(f, ...), ...)
 }
 
 #' @noRd
 #' @method ecx bayesnecgroupfit
 #' @export
 ecx.bayesnecgroupfit <- function(object, ...) {
-  group_estimate_table(object, function(f, ...) ecx(f, ...), ...)
+  group_estimate_table(object, "ecx", function(f, ...) ecx(f, ...), ...)
 }
 
 #' @noRd
 #' @method nsec bayesnecgroupfit
 #' @export
 nsec.bayesnecgroupfit <- function(object, ...) {
-  group_estimate_table(object, function(f, ...) nsec(f, ...), ...)
+  group_estimate_table(object, "nsec", function(f, ...) nsec(f, ...), ...)
 }
 
 #' @noRd

@@ -92,10 +92,37 @@ test_that("per-level estimates come back as one row per level", {
   expect_s3_class(out, "data.frame")
   expect_equal(nrow(out), 2)
   expect_setequal(out$level, c("a", "b"))
-  expect_true(all(c("Estimate", "Q2.5", "Q97.5") %in% names(out)))
+  # Columns are the names nec() itself returns, not fixed positions -- see the
+  # posterior/prob_vals tests below for why that matters.
+  expect_equal(names(out), c("level", "Q50", "Q2.5", "Q97.5"))
   # the same fit at both levels must give the same numbers -- the map must not
   # be reordering or recycling anything
-  expect_equal(out$Estimate[1], out$Estimate[2])
+  expect_equal(out$Q50[1], out$Q50[2])
+})
+
+# #33 second review: group_estimate_table() read positions 1:3 of whatever the
+# underlying method returned, while passing `...` straight through to methods
+# that take `posterior` and `prob_vals`. Both are silent-wrong-answer routes.
+
+test_that("posterior = TRUE is refused rather than tabulated", {
+  # nec(posterior = TRUE) returns the draws, not a summary, so a positional
+  # table reported draws 1, 2 and 3 as an estimate and its credible interval.
+  gf <- fake_group_fit()
+  expect_error(nec(gf, posterior = TRUE), "one row per level")
+  expect_error(ecx(gf, posterior = TRUE), "one row per level")
+  expect_error(nsec(gf, posterior = TRUE), "one row per level")
+  # and the message points at the route that does work
+  expect_error(nec(gf, posterior = TRUE), "lapply\\(x\\$fits")
+})
+
+test_that("a non-default prob_vals is carried through, not truncated", {
+  skip_if(Sys.getenv("NOT_CRAN") == "")
+  gf <- fake_group_fit()
+  # Five quantiles, in nec()'s required central/lower/upper order. Reading
+  # positions 1:3 dropped the last two without a word.
+  out <- nec(gf, prob_vals = c(0.5, 0.05, 0.95, 0.25, 0.75))
+  expect_equal(names(out), c("level", "Q50", "Q5", "Q95", "Q25", "Q75"))
+  expect_equal(nrow(out), 2)
 })
 
 test_that("printing reports the shared family and the per-level model sets", {
@@ -140,9 +167,106 @@ test_that("an absent weights_method is treated as the default", {
   expect_false(grepl("pseudo-BMA", msg, fixed = TRUE))
 })
 
-test_that("bnec_group records the weighting method it was given", {
-  # The method cannot be recovered from a bayesmanecfit afterwards -- it does
-  # not store it -- which is why bnec_group() has to capture it up front.
-  expect_false("loo_controls" %in% names(manec_example))
-  expect_false(any(grepl("weight", names(manec_example), ignore.case = TRUE)))
+test_that("the method is read off the fits where they still carry it", {
+  # Correction to the earlier rationale: expand_manec() *does* stamp the method
+  # on the weight vector, as attr(mod_stats$wi, "method"). It survives cbind but
+  # not row-subsetting, so it is a reliable cross-check where present and no
+  # substitute for capturing the request at fit time where it is not.
+  expect_equal(attr(manec_example$mod_stats$wi, "method"), "pseudobma")
+  stacked <- manec_example
+  attr(stacked$mod_stats$wi, "method") <- "stacking"
+  # weights_method says pseudobma; the fits say otherwise, and the fits win
+  gf <- fake_group_fit(list(a = stacked, b = stacked))
+  gf$weights_method <- "pseudobma"
+  expect_error(crossed_group_weights(gf), "pseudo-BMA weights only")
+})
+
+test_that("levels weighted by different methods are refused", {
+  # Their weights are not on a common footing, so there is no table to return.
+  stacked <- manec_example
+  attr(stacked$mod_stats$wi, "method") <- "stacking"
+  gf <- fake_group_fit(list(a = manec_example, b = stacked))
+  expect_error(crossed_group_weights(gf), "different methods")
+})
+
+test_that("a missing value in the grouping column is refused", {
+  # data[grp == lev, ] is logical indexing with NA present, which puts an
+  # all-NA row into *every* level's subset.
+  d <- data.frame(x = 1:20, y = runif(20),
+                  site = c(rep("a", 9), NA, rep("b", 10)))
+  expect_error(
+    bnec_group(y ~ crf(x, "nec3param"), d, group_var = "site"),
+    "missing value"
+  )
+})
+
+test_that("the pooled comparison is on the same observations", {
+  # The third reading from the queue: does the factor matter at all? A pooled
+  # fit ignoring the factor is scored on the same observations, so the WAICs
+  # are directly comparable.
+  gf <- fake_group_fit()
+  cw <- crossed_group_weights(gf, pooled = manec_example)
+  best <- rownames(manec_example$mod_stats)[which.max(manec_example$mod_stats$wi)]
+  w <- manec_example$mod_stats$waic[match(best, rownames(manec_example$mod_stats))]
+  expect_equal(cw$pooled$waic_grouped, 2 * w)
+  expect_equal(cw$pooled$waic_pooled, w)
+  expect_equal(cw$pooled$diff, w - 2 * w)
+  expect_equal(cw$pooled$pooled_model, best)
+  # manec_example carries no pointwise values, so the SE is NA rather than
+  # silently omitted or invented
+  expect_true(is.na(cw$pooled$se_diff))
+  expect_true(is.na(cw$pooled$n_obs))
+})
+
+test_that("the pooled fit must be a bnec fit", {
+  gf <- fake_group_fit()
+  expect_error(crossed_group_weights(gf, pooled = 1:10),
+               "bayesnecfit or bayesmanecfit")
+})
+
+test_that("no pooled argument leaves the result as it was", {
+  gf <- fake_group_fit()
+  expect_null(crossed_group_weights(gf)$pooled)
+  expect_named(crossed_group_weights(gf),
+               c("per_level", "best_combination", "best_weight",
+                 "common_models", "diagonal"))
+})
+
+# RF, on review of #228: compare_posterior() should compare the levels of a
+# bayesnecgroupfit. The levels are fitted independently, so `$fits` is already
+# the named list compare_posterior() takes -- this is dispatch, not new
+# machinery, the same shape as the pp_check() methods in #148 part A.
+
+test_that("compare_posterior is a generic with a default and a group method", {
+  expect_true(is.function(compare_posterior))
+  expect_false(is.null(getS3method("compare_posterior", "default",
+                                   optional = TRUE)))
+  expect_false(is.null(getS3method("compare_posterior", "bayesnecgroupfit",
+                                   optional = TRUE)))
+})
+
+test_that("the default path is unchanged for a named list", {
+  # compare_posterior() was a plain function before; making it generic must not
+  # move the behaviour every existing caller and vignette depends on.
+  skip_on_cran()
+  l <- list(a = suppressMessages(pull_out(manec_example, model = "nec4param")),
+            b = suppressMessages(pull_out(manec_example, model = "ecx4param")))
+  r <- suppressWarnings(suppressMessages(
+    compare_posterior(l, comparison = "n(s)ec")
+  ))
+  expect_named(r, c("posterior_list", "posterior_data", "diff_list",
+                    "diff_data", "prob_diff"))
+  expect_setequal(names(r$posterior_list), c("a", "b"))
+})
+
+test_that("the default still refuses input that is not a named list", {
+  expect_error(compare_posterior(list(1, 2)), "named list")
+  expect_error(compare_posterior("not a list"), "named list")
+})
+
+test_that("the group method passes the per-level fits through", {
+  # Asserted on the method body rather than by fitting a group set twice: the
+  # method is a one-line delegation and fitting to prove it costs minutes.
+  m <- getS3method("compare_posterior", "bayesnecgroupfit")
+  expect_match(paste(deparse(body(m)), collapse = " "), "x\\$fits")
 })
