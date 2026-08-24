@@ -37,3 +37,59 @@ number can be taken without being visible anywhere a new session would look.
    output, the figure names under `vignette-fig-`, every `vignette("exampleN")`
    cross-reference, and any published URL all carry the number.
 4. `2b` is a historical exception. Do not create further letter suffixes.
+
+---
+
+# Writing style — scientific report, not blog post
+
+**RF, 2026-08-24.** The vignettes drafted in August drifted into a conversational
+register that reads as machine-written. Corrected across example1, 7, 8 and 9;
+this section records the convention so it does not have to be corrected again.
+
+The reference is the published vignettes, not an abstract style guide. Their
+headings are **noun phrases**: *Background*, *Installation*, *The scale of the
+predictor*, *Preparing the response*, *Censoring*, *Non-constant dispersion*,
+*Choosing a variance function*, *Model definitions*, *Model suitability for
+response types*. Match that.
+
+## The five patterns that were corrected
+
+| pattern | example found | replaced with |
+|---|---|---|
+| question as heading | *Which kind of grouping is it?* | *Types of grouping* |
+| | *Does model averaging rescue the floored approaches?* | *Model averaging* |
+| conversational what/where clause | *Where these numbers come from* | *Provenance of the reported results* |
+| | *What saturation costs* | *Limits of the censored likelihood* |
+| | *What to take from this* | *Interpretation* |
+| em-dash or colon appositive | ``ogl()` --- an offset shared by a group`` | ``Group-level offsets: `ogl()``` |
+| | *A second family: a continuous response* | *A continuous response* |
+| comma-and tail | *Failure modes, and being honest about them* | *Failure modes* |
+| | *Exclusion, and what it does to the answer* | *Exclusion and its effect on the estimates* |
+| definite article plus count | *The eight approaches* | *Zero-handling approaches* |
+| | *The twelve scenarios* | *Simulation scenarios* |
+
+## In the body text
+
+The same register shows up in prose. These were removed rather than reworded
+wherever they carried no information:
+
+- *it is worth stating / worth noting / worth being explicit that* — say the thing;
+- *Read in order.* / *Two things follow, and the second is not what one would guess.*
+  — announce structure only where the reader needs it, and without the flourish;
+- *actually*, *plainly*, *honest* as intensifiers;
+- bold lead-ins phrased as questions (**Why the link is identity.**) rather than
+  as claims (**The link is the identity.**).
+
+A residual count remains in example7 (*deliberate*, 13 occurrences) that is
+mostly legitimate — a simulation study does need to say which choices were
+deliberate — but it is worth a look on the next pass.
+
+## Two structural rules
+
+1. **Do not let a heading make an argument the body then contradicts.** example7
+   carried *Why `nec4param` and not a model-averaged set*, and a later section
+   model-averaged. State the scope of the main comparison and forward-reference
+   the section that relaxes it.
+2. **Say a thing once.** The same justification appeared three times in
+   example7's Methods. If a point needs restating, the first statement was in
+   the wrong place.
