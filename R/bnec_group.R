@@ -366,9 +366,11 @@ compare_pooled <- function(object, pooled, best) {
          " bnec() on the whole data set with the factor ignored.",
          call. = FALSE)
   }
-  # The whole point of the comparison is that both sides are scored on the same
-  # observations, so a mismatch is refused rather than reported: a difference
-  # between fits of different data is not a comparison at all.
+  # The WAIC point estimates are always comparable, because bayesnec stores one
+  # per model on every fit. The *standard error* needs the pointwise values, and
+  # needs them to line up observation for observation -- so the checks below
+  # guard the SE only, and a mismatch leaves it NA rather than blocking the
+  # comparison or, worse, pairing values that do not correspond.
   per_level <- lapply(seq_along(object$levels), function(i) {
     fit_best_waic(object$fits[[i]], best[[object$levels[i]]])
   })
