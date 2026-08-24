@@ -33,9 +33,11 @@
   with the factor ignored — adds the third reading, and it is the one that asks
   whether the factor matters at all. A pooled fit is scored on exactly the same
   observations as the levels together are, so the grouped and pooled WAIC are
-  directly comparable. A standard error accompanies the difference where the
-  pointwise values have been kept on the fits, and is `NA` where they have not,
-  rather than being quietly omitted.
+  directly comparable. A standard error accompanies the difference where every
+  level and the pooled fit settled on a single model; a `bayesmanecfit` stores
+  its component fits as they were before their criteria were attached, so it
+  keeps each model's WAIC point estimate and none of the pointwise values the
+  standard error needs. It is `NA` in that case rather than quietly omitted.
 
   Every level is an ordinary `bayesnecfit` or `bayesmanecfit`, so `nec()`,
   `ecx()`, `nsec()`, `summary()` and `plot()` work per level and everything that

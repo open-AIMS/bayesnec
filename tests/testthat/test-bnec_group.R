@@ -331,3 +331,15 @@ test_that("a pooled fit on different observations leaves the SE NA", {
   expect_true(is.na(res$se_diff))
   expect_true(is.na(res$n_obs))
 })
+
+test_that("a model-averaged level yields a WAIC difference but no SE", {
+  # expand_manec() snapshots mod_fits *before* the expand_nec() loop that calls
+  # add_criteria(), so a bayesmanecfit keeps each model's WAIC point estimate in
+  # mod_stats and none of the pointwise values. The comparison still works; the
+  # standard error is not available and must not be invented.
+  expect_null(manec_example$mod_fits[[1]]$fit$criteria$waic$pointwise)
+  gf <- fake_group_fit()
+  res <- crossed_group_weights(gf, pooled = manec_example)$pooled
+  expect_false(is.na(res$diff))
+  expect_true(is.na(res$se_diff))
+})
