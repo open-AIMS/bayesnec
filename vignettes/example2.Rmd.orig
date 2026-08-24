@@ -149,11 +149,33 @@ rhat(exp_5) |>
   sapply("[[", "failed")
 ```
 
-Here we get a message because none of our models failed the default Rhat criterion. A more conservative cut off of 1.01 can also be used by changing the default argument to the desired value. In this case one model fails, although we note that this is a very stringent criterion, and we have also used less than the default `bayesnec` value of `iter` (10,000).
+The default cut off is 1.01, following @Vehtari2021, whose recommendation is that
+Rhat should not exceed 1.01 at convergence. Any model returning `TRUE` here did
+not converge, and should be dropped before the set is averaged --- note that we
+have also used far fewer than the default `bayesnec` `iter` (10,000) here, which
+makes convergence harder than it would usually be.
+
+`screen_models` does that, and reports what it dropped and why --- which is what
+a methods section has to cite. It screens on Rhat, effective sample size and
+divergent transitions together, all three of which `check_sampling` reports per
+candidate model.
+
+The older and more permissive 1.05 is still available by changing the argument,
+which is useful mainly for comparison against analyses that predate the current
+recommendation:
 
 ```{r}
-rhat(exp_5, rhat_cutoff = 1.01) |>
+rhat(exp_5, rhat_cutoff = 1.05) |>
   sapply("[[", "failed")
+```
+
+`rhat()` reports Rhat alone. To screen on all three sampler diagnostics at once
+--- Rhat, effective sample size and divergent transitions --- use
+`check_sampling()`, and `screen_models()` to drop the failures and report what
+went:
+
+```{r}
+check_sampling(exp_5)
 ```
 
 ### Extracting toxicity values
