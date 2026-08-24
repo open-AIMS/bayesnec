@@ -131,13 +131,21 @@ print.manecsummary <- function(x, ...) {
   print_mat(x$bayesr2)
   cat("\n\n")
   print_failed_models(x$failed_models)
-  with_issues <- names(x$rhat_issues[unlist(x$rhat_issues)])
+  # which() rather than logical indexing: rhat_issues is FALSE-by-construction
+  # now, but a manecsummary stored by an older version can still carry an NA,
+  # and an NA index yields an element named NA -- printing "- NA" as though a
+  # model called NA had failed.
+  with_issues <- names(x$rhat_issues)[which(unlist(x$rhat_issues))]
   if (length(with_issues) > 0) {
       warning("The following model had Rhats > ",
-              if (is.null(x$rhat_cutoff)) 1.01 else x$rhat_cutoff,
+              # 1.05 for a stored object with no cutoff recorded: that field
+              # post-dates the move to 1.01, so an object without it was
+              # assessed against the old 1.05 grep and reporting 1.01 would
+              # attribute the wrong threshold to it.
+              if (is.null(x$rhat_cutoff)) 1.05 else x$rhat_cutoff,
               " (no convergence):\n",
               paste0("  -  ", with_issues, collapse = "\n"), "\n",
-              "Consider dropping them (see ?amend)\n", sep = "")
+              "Consider dropping them (see ?screen_models)\n", sep = "")
   }
   invisible(x)
 }

@@ -1,4 +1,4 @@
-# bayesnec 2.2.0
+# bayesnec 2.1.4
 
 - `dispersion()` now computes the residual variance with the link the model was
   actually fitted with, rather than the family's default. `bnec()` forces
@@ -38,6 +38,30 @@
   validated cannot be assumed to behave sensibly through prior generation, the
   initial-value search and post-processing. See #136.
 
+- `sample_priors(plot = NA)` returns the sampled values, as documented. The
+  argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is
+  `FALSE`, so the one value documented to return the draws was the one value
+  rejected, and there was no route to them at all. Found while fixing #244.
+
+- A `constant()` prior now works when passed straight to `bnec(prior = )`, so a
+  parameter can be fixed at a known value with a one-line change to the prior
+  set. Previously the initial-value search looked the prior's distribution name
+  up in a table of `gamma` / `normal` / `beta` / `uniform` and stopped with
+  "attempt to apply non-function", which meant fixing one parameter obliged the
+  user to hand-write initial values for every *other* parameter in order to skip
+  the search. The fixed value is now carried *through* the search — it is
+  genuinely part of the curve being checked against the response range — and
+  dropped only where the initial values are handed to `brm()`, since Stan moves
+  a constant parameter out of its `parameters` block and an init for one has
+  nothing to initialise. `sample_priors()` accepts one too, sampling it as the
+  point mass it is, so a prior set containing a fixed parameter can be
+  inspected. `constant()` is also read as `brms` writes it: the value may be an
+  expression such as `constant(1/2)`, and the second `broadcast` argument is
+  allowed, both of which previously raised "must fix a single numeric value".
+  This does not add a `fixed` argument: see #84 for why fixing an asymptote is
+  usually the wrong move, and `vignette("example3")` for when it is not.
+  See #244.
+
 - New `check_sampling()` and `screen_models()`. `check_sampling()` reports, per
   candidate model, the largest Rhat, the smallest effective sample size and the
   number of divergent transitions; `screen_models()` drops the failures and
@@ -68,7 +92,42 @@
   not a ceiling, so a reworded warning would have made every model report no
   issue and the summary quietly stop warning. See #148.
 
-# bayesnec 2.1.4
+- `rhat()`, and the new `check_sampling()` with it, no longer reduce over the
+  `prior_*` variables. `bnec()` forces `sample_prior = "yes"`, so every fit
+  carries an independent draw from the prior for every parameter; their Rhat is
+  Monte Carlo noise about a distribution the sampler never had to explore. At
+  the old 1.05 cutoff this rarely bit, but at 1.01 it does — on the packaged
+  `manec_example`, `ecx4param` has `prior_b_bot` at 1.023 while nothing in the
+  model itself is over the cutoff. `lp__` and `lprior` are kept: unlike
+  `prior_*` they are functions of the posterior draws and do carry a
+  convergence signal. See #148.
+
+- A parameter fixed by a `constant()` prior no longer breaks the convergence
+  reporting. `posterior` returns `NA` for a zero-variance column, and that `NA`
+  propagated: `rhat()` on a multi-model fit errored outright, `summary()` and
+  `print()` reported a model named `NA`, and `screen_models()` would have
+  announced a drop it did not perform. Such parameters are now excluded from
+  the screen, which is what they are — a parameter fixed at a known value has
+  nothing to converge to. `failed` is a logical by construction in both
+  `rhat()` and `check_sampling()`. Reachable before this release through a
+  hand-written `init` list, and in one line from 2.1.4 — see #244. See #148.
+
+- `screen_models()` decides the all-candidates-failed case from the diagnostic
+  table rather than by catching an error from `amend()`, so `amend()`'s own
+  errors are no longer reported as convergence results. `check_sampling()` and
+  `screen_models()` now also accept a `bayesnechurdlefit`, delegating to both
+  components as the other model-set operations on that class already do. See
+  #148.
+
+- `rhat()` on a `bayesmanecfit` and `summary()` with it read each candidate's
+  `brmsfit` directly instead of rebuilding it through `pull_out()`. `summary()`
+  used to grep a stored string and now computes the verdict, so that cost lands
+  on an operation users run constantly. See #148.
+
+- Fixed a deprecation warning from `autoplot()`, which used `.data$` inside a
+  tidyselect expression. Removed the internal `extract_warnings()`, dead since
+  `summary()` stopped grepping warning text, and with it the `evaluate`
+  dependency.
 
 - `get_priors()` now reports and round trips a prior on `zi` or `hu` for the
   families where those are ordinary `brms` parameters. For

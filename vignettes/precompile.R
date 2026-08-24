@@ -33,3 +33,22 @@ if (!all(success)) {
 } else {
   unlink(images)
 }
+
+# Fail on a vignette whose chunks errored ---------------------------------
+# knitr renders a failed chunk as `#> Error...` and carries on, so a run can
+# report success while emitting a vignette that is a cascade of errors --
+# which is exactly what happened to example8 on 2026-08-24, unnoticed until
+# someone read the output. R CMD check does not catch this either: the error
+# text is just text in a rendered .Rmd. Check it here, where it is produced.
+rendered <- dir("vignettes", pattern = "^example.*\\.Rmd$", full.names = TRUE)
+errored <- Filter(function(f) any(grepl("^#> Error", readLines(f, warn = FALSE))),
+                  rendered)
+if (length(errored)) {
+  detail <- vapply(errored, function(f) {
+    hits <- grep("^#> Error", readLines(f, warn = FALSE), value = TRUE)
+    paste0("  ", basename(f), " (", length(hits), "): ", hits[1])
+  }, character(1))
+  stop("Chunks errored while knitting:\n", paste(detail, collapse = "\n"),
+       "\nFix the vignette source and re-run; do not ship this output.",
+       call. = FALSE)
+}

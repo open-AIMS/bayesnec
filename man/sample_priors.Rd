@@ -17,7 +17,10 @@ sampled priors, "ggplot" (default) returns a \code{\link[ggplot2]{ggplot}}
 and "base" returns a histogram in base R.}
 }
 \value{
-A \code{\link[base]{list}} containing the initialisation values.
+For \code{plot = NA}, a \code{\link[base]{list}} of numeric
+vectors of sampled prior values, one per parameter. Otherwise a
+\code{\link[ggplot2]{ggplot}} or, for \code{plot = "base"}, the histograms
+drawn as a side effect.
 }
 \description{
 Creates list or generates a plot of prior samples
