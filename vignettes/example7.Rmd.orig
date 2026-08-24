@@ -140,7 +140,7 @@ response, so dividing the data by the control mean beforehand would apply the
 same correction twice, and would additionally distort the error structure
 [@Ritz2026].
 
-The consequence for the present problem is worth stating explicitly. On the
+The consequence for the present problem is as follows. On the
 growth rate scale, **zero growth is by definition 100% effect**, for every
 dataset, whatever the control growth rate. A curve whose lower asymptote is
 negative therefore descends past 100% effect and keeps going. ErC10 and ErC50
@@ -193,19 +193,18 @@ Gaussian family and an identity link:
 bnec(y ~ crf(x, "nec4param"), data = dat, family = gaussian(link = "identity"))
 ```
 
-Three aspects of that specification are deliberate.
+Three aspects of that specification require comment.
 
-**Why `nec4param` and not a model-averaged set.** `bayesnec`'s usual
-recommendation is to fit a set of candidate models and average them
-(see the [Multi model usage][e2] vignette). That is the right default for
-estimating a toxicity value, but it is the wrong tool for the present question.
-Here the object of study is the effect of a *data-handling choice*, and if the
-model set were free to change at the same time, a shift in the toxicity estimate
-could come from either. Holding the functional form fixed makes the comparison
-attributable, and for the simulation it also removes model misspecification
-entirely, because `nec4param` is the model the data are generated from.
+**The functional form is held fixed.** `bayesnec` ordinarily fits a candidate
+set and averages it (see the [Multi model usage][e2] vignette), and that remains
+the recommendation for estimating a toxicity value. It is set aside for the main
+comparison because the object of study is a *data-handling choice*: were the
+model set free to vary at the same time, a shift in the estimate could be
+attributed to either. Fixing the form also removes misspecification from the
+simulation, since `nec4param` is the generating model. The *Model averaging*
+section relaxes this and reports the consequences.
 
-`nec4param` carries an explicit lower asymptote `bot`, which is the parameter two
+**The model carries an explicit lower asymptote.** `bot` is the parameter two
 of the three conventions act on directly. Note that `bot` plays no part in the
 *definition* of the toxicity estimate: `type = "absolute"` is referenced from the
 predicted control response down to zero and does not involve `bot` at all. `bot`
@@ -214,7 +213,7 @@ matters because constraining it changes the shape of the fitted curve — `nec` 
 The effect on the reported value is entirely indirect, which is what makes it
 easy to overlook.
 
-**Why the family already does the right thing.** Under a Gaussian family
+**The family determines the candidate set.** Under a Gaussian family
 `bayesnec` automatically drops the models whose lower asymptote is pinned at
 zero, because a Gaussian response is not bounded below. The candidate set is
 reduced from the full list to eight declining models:
@@ -253,32 +252,22 @@ What would be lost is `bayesnec`'s initial-value search and its `ecx()`/`nsec()`
 machinery, both of which would then have to be reimplemented; there is no
 statistical difference.
 
-**The model set actually fitted.** Every fit reported in this vignette used a
-single model, chosen in advance; no model averaging was performed and no model
-was selected from a set. For the six Gaussian approaches, across all twelve
-simulation scenarios and all four case studies, that model is `nec4param` with
+**Models fitted.** For the six Gaussian approaches, across all twelve
+simulation scenarios and all four case studies, the model is `nec4param` with
 `family = gaussian(link = "identity")`. The two family-floored approaches use
-`nec3param` with a Beta or a Gamma, for the reason given in their own section:
-`nec3param` holds the lower asymptote at zero, which is what makes them the
-family-enforced counterpart of B2 and B3. This is
-recorded explicitly because `bayesnec`'s default behaviour is to fit and average
-over a candidate set, and because the rules governing which models are valid for
-a given family are expected to change (issue #195). A reader reproducing this
-work should fix the model rather than rely on the default set of the day.
+`nec3param` with a Beta or a Gamma: `nec3param` holds the lower asymptote at
+zero, which makes them the family-enforced counterpart of B2 and B3. Recorded
+explicitly because the rules governing which models are valid for a given family
+are expected to change (issue #195), so a reader reproducing this work should
+fix the model rather than rely on the default set of the day.
 
-That is a decision rather than a limitation, and it has been tested: a separate
-sweep re-ran a subset of these scenarios with every approach averaged over a
-candidate set instead of fixed. It changes the answer, and the section
-*Does model averaging rescue the floored approaches?* below reports what it
-changes and what it does not.
-
-**Why the link is identity.** `bnec()` sets `link = "identity"` for every family
+**The link is the identity.** `bnec()` sets `link = "identity"` for every family
 it accepts, so that `top`, `bot` and `nec` remain on the natural response scale
 and stay directly interpretable. If you are writing raw `brms` code to compare
 against a `bnec()` fit, pass the link explicitly, because several `brms`
 families default to something else.
 
-## The eight approaches
+## Zero-handling approaches
 
 Eight approaches are compared, falling into three groups. Three retain the
 measured values. Three impose the zero boundary explicitly, by substituting the
@@ -301,7 +290,7 @@ The simplest way to do this with the exported interface is to fit the intact
 analysis with `bnec()`'s defaults, recover the prior it constructed with
 `pull_prior()`, and pass that object to every subsequent fit.
 
-### Approaches that retain the measurement
+### Approaches retaining the measurement
 
 **A — analyse as measured.** The negative growth rates are used exactly as
 recorded, and `bot` is estimated freely. This is the reference, and it is also
@@ -349,7 +338,7 @@ fit_D <- bnec(y ~ crf(x, "nec4param"), data = filter(dat, x < crossing),
               family = gaussian(link = "identity"), prior = shared_prior)
 ```
 
-### Approaches that impose the zero boundary
+### Approaches imposing the boundary directly
 
 **B1 — floor the data.** Every negative growth rate is replaced by zero. The
 model is unchanged and `bot` is still free.
@@ -386,7 +375,7 @@ fit_B3 <- bnec(y ~ crf(x, "nec4param"), data = dat_B1,
                family = gaussian(link = "identity"), prior = prior_fixed_bot)
 ```
 
-### Approaches that let the family impose the boundary
+### Approaches imposing the boundary through the family
 
 The three approaches above all impose the zero boundary deliberately, through a
 choice an analyst makes and could defend. There is a fourth route, and it is the
@@ -454,7 +443,7 @@ is right, because the true toxicity of a real substance is unknown. The
 comparison is therefore made on simulated data, where the true ErC10, ErC50 and
 `nec` are known by construction and each approach can be scored against them.
 
-### Where these numbers come from
+### Provenance of the reported results
 
 The simulation is not run by this vignette. It is a separate research
 compendium, [open-AIMS/negative-sgr](https://github.com/open-AIMS/negative-sgr)
@@ -471,8 +460,8 @@ and `analysis/phase10_metrics.csv` for the model-averaging section, with
 `analysis/phase10_vignette_numbers.R` producing the summary this vignette
 quotes.
 
-Two consequences are worth stating plainly, because a reader cannot see them
-from the code shown here. The numbers are **frozen**: they describe `bayesnec`
+Two consequences follow, neither visible from the code shown here. The
+reported figures are **frozen**: they describe `bayesnec`
 as it behaved at that commit, and nothing in this package's checks will notice
 if later changes move them. And the compendium, not this vignette, is the
 citable record of the study --- the description below is a summary of its
@@ -571,7 +560,7 @@ control fold-change as such.
 sigma_0 <- 0.096 * log(2.3) / 7   # absolute control SD, anchored at R = 2.3
 ```
 
-### The twelve scenarios
+### Simulation scenarios
 
 The design is nine scenarios crossing `delta` with `top_factor` at fixed
 `R` = 2.3, plus three further scenarios that hold `delta` = 4 and
@@ -683,8 +672,7 @@ scatter changes.
 # One colour per approach, used consistently in every figure below. Eight series
 # is past the point where a categorical palette is safe by inspection, so these
 # were checked for lightness, chroma and colour-vision separation rather than
-# chosen by eye. Two consequences are worth stating, because they constrain how
-# the figures may be drawn. The legend order is not arbitrary: the obvious
+# chosen by eye. Two consequences constrain how the figures may be drawn. The legend order is not arbitrary: the obvious
 # grouping puts D next to B1, which fails deutan separation, and reversing the
 # middle group clears every adjacent pair. And all-pairs separation is not
 # achievable with eight hues, only adjacent-pair separation, which is safe only
@@ -1190,7 +1178,7 @@ Nothing about the analysis looks wrong while this happens: E is the best-behaved
 approach in the set by sampler diagnostics.
 
 F's ErC10 is the one place where a family-floored approach improves with
-precision, falling from +49.3% to +15.7%, and it is worth being explicit that
+precision, falling from +49.3% to +15.7%. Note that
 this is not convergence on the truth: it flattens out near +16%, an order of
 magnitude away from arm A's +1.5%.
 
@@ -1200,7 +1188,7 @@ ordering, and the intact analysis is no longer sixth of eight. The apparent
 reversal at `R` = 2.3 is an artefact of reading a single, noisy scenario in
 isolation.
 
-## What the two family-floored approaches actually do
+## Mechanism of the family-floored approaches
 
 E and F fail in different ways and it is worth separating them, because only one
 of the two is surprising.
@@ -1384,7 +1372,7 @@ and F at 2.44, overestimating by **50% and 87%**. These are not estimation error
 and they do not improve with a better experiment.
 
 F is the one approach whose NSEC is still falling steeply at the precise end of
-the sweep, from 3.27 to 2.44, and it is worth saying plainly that this is not
+the sweep, from 3.27 to 2.44. This is not
 convergence: it is still 87% high at the finest precision tested, and its ratio
 to the intact analysis has *risen* throughout, from 1.43 to 1.69. What is falling
 is the part of the overestimate that belongs to the metric's definition and is
@@ -1442,12 +1430,12 @@ concluded that nothing was wrong.
      analysis/phase10_vignette_numbers.R, whose output is
      analysis/phase10_vignette_numbers.txt, over analysis/phase10_metrics.csv.
      Regenerate there and update this section after any change to the Phase 10
-     sweep, and move the pinned commit in "Where these numbers come from" to
+     sweep, and move the pinned commit in "Provenance of the reported results" to
      match. Figures below are at n = 200 per cell (3 cells x 200 x 5 arms,
      27,600 model fits, 0 failures, 0 exclusions).
      Same rule as the rest of the vignette: never edit a result in place. -->
 
-## Does model averaging rescue the floored approaches?
+## Model averaging
 
 Everything above fixes one equation in advance. That is the right design for
 scoring a convention — the generating model is the one fitted, so the only
@@ -1537,7 +1525,7 @@ ErC10 asks a 10% decline to be resolved against the residual scatter, and
 averaging over shapes that disagree about the shoulder is not obviously the right
 way to do that. Do not summarise these approaches across endpoints.
 
-### What to take from this
+### Interpretation
 
 The practical reading is narrower than "averaging fixes it", and narrower than
 "flooring is fatal".
@@ -1679,7 +1667,7 @@ ggplot(real_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
   theme(strip.background = element_blank(), legend.position = "none")
 ```
 
-Three things are visible in that figure, and it is worth being careful about
+Three features of that figure require care in
 what they do and do not establish.
 
 **The choice changes the answer, substantially.** On `c_proliferum` the floored
@@ -1769,7 +1757,7 @@ knitr::kable(
 )
 ```
 
-Two things follow, and the second is not what one would guess.
+Two conclusions follow.
 
 **The plateau is strongly prior-dependent in every approach that actually
 estimates it.** Across a sixteen-fold change in prior scale, `bot` moves by a
