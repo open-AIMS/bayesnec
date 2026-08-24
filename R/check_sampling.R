@@ -4,10 +4,10 @@
 #' the largest Rhat, the smallest effective sample size, and the number of
 #' divergent transitions. It sits alongside \code{\link{check_chains}} (chain
 #' mixing, visually), \code{\link{check_priors}} (the priors) and
-#' \code{check_fit()} (the fit against the data).
+#' \code{\link{check_fit}} (the fit against the data).
 #'
 #' \code{check_sampling()} asks \emph{did this model sample properly}, where
-#' \code{check_fit()} asks \emph{does this model reproduce the data}. Both
+#' \code{\link{check_fit}} asks \emph{does this model reproduce the data}. Both
 #' feed the same downstream question --- which candidates belong in the averaged
 #' set --- which is why \code{\link{screen_models}} screens on this one and
 #' reports the other beside it rather than acting on it.
@@ -61,7 +61,7 @@
 #' convergence of MCMC (with discussion). \emph{Bayesian Analysis}, 16(2),
 #' 667--718. doi:10.1214/20-BA1221
 #'
-#' @seealso \code{\link{screen_models}}, \code{check_fit()},
+#' @seealso \code{\link{screen_models}}, \code{\link{check_fit}},
 #' \code{\link{check_chains}}, \code{\link{rhat}}
 #'
 #' @importFrom brms nuts_params neff_ratio ndraws rhat

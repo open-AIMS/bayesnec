@@ -7,7 +7,7 @@
 #'
 #' @section What it screens on, and what it does not:
 #'
-#' Sampler diagnostics only. A poor \code{check_fit()} is a \emph{modelling
+#' Sampler diagnostics only. A poor \code{\link{check_fit}} is a \emph{modelling
 #' result} --- the model reproduces the data badly, which is information --- and
 #' dropping on it silently would hide exactly what the user needs to see. A
 #' sampler failure is different in kind: the fit is unusable, whatever it says.
@@ -41,7 +41,7 @@
 #' \code{\link{bayesmanecfit}} reduced to one model becomes a
 #' \code{\link{bayesnecfit}}, as \code{\link{amend}} already does.
 #'
-#' @seealso \code{\link{check_sampling}}, \code{check_fit()},
+#' @seealso \code{\link{check_sampling}}, \code{\link{check_fit}},
 #' \code{\link{amend}}
 #'
 #' @examples

@@ -33,6 +33,18 @@ and EC90.}
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1. The
 convergence threshold the summary reports against. Defaults to 1.01,
 following Vehtari et al. (2021) and matching \code{\link{rhat}}.}
+
+\item{fit_ratio_cutoff}{A \code{\link[base]{numeric}} vector of length 1.
+The threshold for flagging a candidate model that mis-states the control:
+the summary reports a model whose observed control statistic differs from
+the simulated one by more than this ratio, either way. Defaults to 1.15.
+Thresholded on the ratio rather than the posterior predictive p-value ---
+see \code{\link{check_fit}}.}
+
+\item{check_fit}{A \code{\link[base]{logical}} vector of length 1. Whether
+to run the control lack-of-fit check and report it in the summary block.
+Defaults to \code{TRUE}. Set \code{FALSE} to skip the posterior simulation
+it requires.}
 }
 \value{
 A summary of the fitted model. In the case of a
