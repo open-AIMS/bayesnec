@@ -34,6 +34,12 @@ test_that("rhat behaves as expected", {
   expect_message(rhat(manec_example, rhat_cutoff = 1))
   expect_equal(names(rhat2_p), manec_example$success_models)
   expect_equal(names(rhat_p[[1]]), c("rhat_vals", "failed"))
+  # The prior_* draws are not reported, and the verdict is not taken over them
+  expect_false(any(grepl("^prior_", names(rhat_p[[1]]$rhat_vals))))
+  expect_false(anyNA(rhat_p[[1]]$rhat_vals))
+  # `failed` is read as a logical by summary() and screen_models()
+  expect_type(rhat_p[[1]]$failed, "logical")
+  expect_false(anyNA(vapply(rhat_p, "[[", logical(1), "failed")))
 })
 
 test_that("summary behaves as expected", {
@@ -42,10 +48,56 @@ test_that("summary behaves as expected", {
   }
   summary.p <- suppressWarnings(summary(manec_example))
   expect_equal(class(summary.p), "manecsummary")
+  # `rhat_cutoff` added under #148 Part D: print.manecsummary reports the
+  # threshold actually in use rather than the hard-coded 1.05 it printed
+  # before, so the summary object has to carry it.
   expect_equal(names(summary.p), c("models", "family", "sample_size",
                                    "mod_weights", "mod_weights_method",
                                    "ecx_mods", "nec_vals", "ecs", "bayesr2",
-                                   "rhat_issues", "failed_models"))
+                                   "rhat_issues", "rhat_cutoff",
+                                   "failed_models"))
+  expect_equal(summary.p$rhat_cutoff, 1.01)
+  # and it is honoured rather than decorative
+  expect_equal(suppressWarnings(summary(manec_example,
+                                        rhat_cutoff = 1.5))$rhat_cutoff, 1.5)
+  # The verdict itself is computed, not stored. This is the assertion that
+  # catches a regression to has_r_hat_warnings(), which grepped brms's warning
+  # text for the literal "some Rhats are > 1.05" and so returned the same
+  # answer whatever cutoff was asked for.
+  expect_true(all(unlist(summary.p$rhat_issues)))
+  loose <- suppressWarnings(summary(manec_example, rhat_cutoff = 1.5))
+  expect_false(any(unlist(loose$rhat_issues)))
+})
+
+test_that("print.manecsummary names models, never NA", {
+  # An older stored manecsummary can carry an NA rhat_issues, from before
+  # zero-variance parameters were excluded. Logical indexing turns that into an
+  # element named NA, and the warning then reads "- NA" as though a model
+  # called NA had failed.
+  skip_on_cran()
+  s <- suppressWarnings(summary(manec_example))
+  s$rhat_issues <- list(nec4param = NA, ecx4param = TRUE)
+  msg <- tryCatch(print(s), warning = function(w) conditionMessage(w))
+  expect_match(msg, "ecx4param")
+  expect_false(grepl("-  NA", msg, fixed = TRUE))
+})
+
+test_that("print.manecsummary falls back to 1.05 for an object with no cutoff", {
+  # rhat_cutoff post-dates the move to 1.01, so an object without it was
+  # assessed against the old 1.05 grep; reporting 1.01 would attribute a
+  # threshold to it that was never applied.
+  skip_on_cran()
+  s <- suppressWarnings(summary(manec_example))
+  s$rhat_cutoff <- NULL
+  msg <- tryCatch(print(s), warning = function(w) conditionMessage(w))
+  expect_match(msg, "Rhats > 1.05")
+})
+
+test_that("the summary warning points at screen_models", {
+  skip_on_cran()
+  s <- suppressWarnings(summary(manec_example))
+  msg <- tryCatch(print(s), warning = function(w) conditionMessage(w))
+  expect_match(msg, "screen_models", fixed = TRUE)
 })
 
 test_that("formula behaves as expected", {

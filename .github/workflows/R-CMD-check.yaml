@@ -53,8 +53,13 @@ jobs:
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
+      # Vignettes ARE built and checked. They are precompiled -- precompile.R
+      # renders every .Rmd.orig to a .Rmd whose chunks are display-only -- so
+      # building them is markdown to HTML and costs ~16s, not a refit. Skipping
+      # them meant nothing in CI had ever checked a vignette, and the first
+      # check of them was the release precompile. See #190.
       - uses: r-lib/actions/check-r-package@v2
         with:
-          build_args: 'c("--no-manual", "--no-build-vignettes")'
-          args: 'c("--no-manual", "--as-cran", "--ignore-vignettes")'
+          build_args: 'c("--no-manual")'
+          args: 'c("--no-manual", "--as-cran")'
           upload-snapshots: true

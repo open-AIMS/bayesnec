@@ -6,23 +6,25 @@
 \alias{rhat.bayesmanecfit}
 \title{Extract Diagnostic Quantities of 'brms' Models}
 \usage{
-\method{rhat}{bayesnecfit}(x, rhat_cutoff = 1.05, ...)
+\method{rhat}{bayesnecfit}(x, rhat_cutoff = 1.01, ...)
 
-\method{rhat}{bayesmanecfit}(x, rhat_cutoff = 1.05, ...)
+\method{rhat}{bayesmanecfit}(x, rhat_cutoff = 1.01, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}}.}
 
-\item{rhat_cutoff}{A \code{\link[base]{numeric}} vector indicating the Rhat
-cut-off used to test for model convergence.}
+\item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1
+indicating the Rhat cut-off used to test for model convergence. Defaults to
+1.01 following Vehtari et al. (2021).}
 
 \item{...}{Unused.}
 }
 \value{
-A \code{\link[base]{list}} containing a vector or Rhat values
+A \code{\link[base]{list}} containing a vector of Rhat values
 returned for each parameter for a \code{\link[brms]{brmsfit}} object,
-for each of the fitted models.
+for each of the fitted models, and the logical \code{failed} verdict
+against \code{rhat_cutoff}.
 }
 \description{
 Extract Rhat statistic that can be used to diagnose sampling behaviour
@@ -30,6 +32,24 @@ of the algorithms applied by 'Stan' at the back-end of 'brms'.
 \code{x} should be of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.
 }
+\section{Which parameters are reported}{
+
+
+The \code{prior_*} variables are excluded. \code{\link{bnec}} forces
+\code{sample_prior = "yes"}, so every fit carries an independent draw from
+the prior for every parameter; the Rhat of those draws is Monte Carlo noise
+about a distribution the sampler never had to explore, and including them can
+fail a model on a variable that is not part of the model.
+
+Parameters with no variance are excluded too, because their Rhat is
+undefined. That is what a \code{constant()} prior produces: a parameter
+fixed at a known value has nothing to converge to.
+
+\code{lp__} and \code{lprior} are kept. They are deterministic functions of
+the posterior draws rather than of the prior, so they do carry a convergence
+signal.
+}
+
 \examples{
 \dontrun{
 library(bayesnec)
@@ -37,4 +57,13 @@ rhat(manec_example)
 nec4param <- pull_out(manec_example, model = "nec4param")
 rhat(nec4param)
 }
+}
+\references{
+Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C. (2021).
+Rank-normalization, folding, and localization: An improved Rhat for assessing
+convergence of MCMC (with discussion). \emph{Bayesian Analysis}, 16(2),
+667--718. doi:10.1214/20-BA1221
+}
+\seealso{
+\code{\link{check_sampling}}, \code{\link{screen_models}}
 }
