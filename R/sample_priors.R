@@ -18,7 +18,10 @@
 #' @importFrom rlang .data
 #'
 #' @seealso \code{\link{bnec}}
-#' @return A \code{\link[base]{list}} containing the initialisation values.
+#' @return For \code{plot = NA}, a \code{\link[base]{list}} of numeric
+#' vectors of sampled prior values, one per parameter. Otherwise a
+#' \code{\link[ggplot2]{ggplot}} or, for \code{plot = "base"}, the histograms
+#' drawn as a side effect.
 #'
 #' @examples
 #' library(bayesnec)
@@ -31,9 +34,13 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   chk_numeric(n_samples)
   # NA is documented as the "return the draws" option, but `NA %in% c(...)` is
   # FALSE, so the guard rejected the very value the documentation offers and
-  # there was no route to the sampled values at all. Tested for first, rather
-  # than added to the set, because `%in%` cannot express it. See #244.
-  if (!is.na(plot) && !plot %in% c("ggplot", "base")) {
+  # there was no route to the sampled values at all. `%in%` cannot express it,
+  # hence the explicit is.na() branch. The length check leads, because both
+  # NULL and a length-2 `plot` reach `if` with something that is not a single
+  # TRUE/FALSE and fail with an R internals message instead of this one.
+  # See #244.
+  if (!(length(plot) == 1 &&
+          (is.na(plot) || plot %in% c("ggplot", "base")))) {
     stop("plot must be NA, or a character string of either ",
          "\"ggplot\" or \"base\"")
   }

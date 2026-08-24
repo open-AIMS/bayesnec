@@ -49,4 +49,15 @@ test_that("plot still rejects a value that is neither NA nor a known option", {
     sample_priors(const_prior_set(), n_samples = 20, plot = "nonsense"),
     "plot must be NA"
   )
+  # NULL and a length-2 value reached `if` with something that is not a single
+  # TRUE/FALSE, and failed with an R internals message rather than this one.
+  expect_error(
+    sample_priors(const_prior_set(), n_samples = 20, plot = NULL),
+    "plot must be NA"
+  )
+  expect_error(
+    sample_priors(const_prior_set(), n_samples = 20,
+                  plot = c("ggplot", "base")),
+    "plot must be NA"
+  )
 })

@@ -388,7 +388,7 @@ fixef(pull_brmsfit(exmp_g))
 #> nec_Intercept  1.2103936 0.09888118 1.0471197 1.3913469
 ```
 
-Fix `top` at 0.5 and that outcome becomes indistinguishable from one centred on 0.62. The disagreement does not disappear when it is forbidden from appearing in `top`; it is absorbed into `beta` and `nec` instead, and so into the toxicity estimate, with intervals that no longer reflect it. Whatever value is asserted for `top` propagates into the *NEC* directly, which is visible here even though 0.5 is the value the data were generated from.
+That check only works while `top` is free, and here it passes: the interval covers 0.5, so this assay was unbiased at dose zero. The point is what it would have cost to be unable to ask. Had the assay carried a real baseline preference --- a `top` genuinely near 0.62 --- fixing it at 0.5 would have produced a fit that looked exactly as sound as this one. The disagreement does not disappear when it is forbidden from appearing in `top`; it is absorbed into `beta` and `nec` instead, and so into the toxicity estimate, with intervals that no longer reflect it. Whatever value is asserted for `top` propagates into the *NEC* directly, which is visible even here, where 0.5 is the value the data were generated from.
 
 
 ``` r

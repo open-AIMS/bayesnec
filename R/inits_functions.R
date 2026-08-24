@@ -44,17 +44,51 @@ is_constant_prior <- function(prior) {
 
 #' @noRd
 constant_prior_value <- function(prior) {
-  # suppressWarnings: an unreadable value is reported by the stop() below, and
-  # the coercion warning that precedes it says the same thing less clearly
-  out <- suppressWarnings(
-    as.numeric(gsub("^\\s*constant\\s*\\(\\s*|\\s*\\)\\s*$", "",
-                    as.character(prior)))
-  )
+  out <- vapply(as.character(prior), constant_one_value, numeric(1),
+                USE.NAMES = FALSE)
   if (any(is.na(out))) {
     stop("A constant() prior must fix a single numeric value; could not read ",
          paste0(prior[is.na(out)], collapse = ", "), ".")
   }
   out
+}
+
+#' The fixed value of a single constant() prior string
+#'
+#' Two things a plain \code{as.numeric()} on the bracket contents gets wrong,
+#' both of them legal \code{brms} priors: \code{constant()} takes a second
+#' \code{broadcast} argument, so \code{constant(0.5, broadcast = FALSE)} is
+#' not a number; and the value is an R expression rather than a literal, so
+#' \code{constant(1/2)} is as valid as \code{constant(0.5)}. Both used to
+#' reach the "must fix a single numeric value" error.
+#'
+#' Evaluated in \code{\link[base]{baseenv}}, so the expression sees base R and
+#' nothing of the caller's workspace --- a prior is a specification, not a hook
+#' for arbitrary code from elsewhere in the session.
+#'
+#' @param x A \code{\link[base]{character}} string.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1, \code{NA} if the
+#' value could not be read.
+#'
+#' @noRd
+constant_one_value <- function(x) {
+  inner <- sub("^\\s*constant\\s*\\(\\s*", "", x)
+  inner <- sub("\\s*\\)\\s*$", "", inner)
+  arg <- strsplit(inner, ",", fixed = TRUE)[[1]][1]
+  # The literal case first, so the overwhelmingly common form never goes near
+  # parse(). suppressWarnings: a non-literal is handled below, and the coercion
+  # warning would say the same thing less clearly.
+  out <- suppressWarnings(as.numeric(arg))
+  if (!is.na(out)) {
+    return(out)
+  }
+  out <- tryCatch(eval(parse(text = arg), envir = baseenv()),
+                  error = function(e) NA_real_)
+  if (!is.numeric(out) || length(out) != 1) {
+    return(NA_real_)
+  }
+  as.numeric(out)
 }
 
 #' make_inits

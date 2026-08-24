@@ -13,10 +13,13 @@
   user to hand-write initial values for every *other* parameter in order to skip
   the search. The fixed value is now carried *through* the search — it is
   genuinely part of the curve being checked against the response range — and
-  dropped only where the initial values are handed to `brm()`, because Stan does
-  not declare a parameter whose prior is constant. `sample_priors()` accepts one
-  too, sampling it as the point mass it is, so a prior set containing a fixed
-  parameter can be inspected. This does not add a `fixed` argument: see #84 for
+  dropped only where the initial values are handed to `brm()`, since Stan moves
+  a constant parameter out of its `parameters` block and an init for one has
+  nothing to initialise. `sample_priors()` accepts one too, sampling it as the
+  point mass it is, so a prior set containing a fixed parameter can be
+  inspected. `constant()` is also read as `brms` writes it: the value may be an
+  expression such as `constant(1/2)`, and the second `broadcast` argument is
+  allowed, both of which previously raised "must fix a single numeric value". This does not add a `fixed` argument: see #84 for
   why fixing an asymptote is usually the wrong move, and `vignette("example3")`
   for when it is not. See #244.
 

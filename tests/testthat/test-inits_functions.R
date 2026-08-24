@@ -357,10 +357,54 @@ test_that("a constant prior that fixes no readable value errors", {
   )
 })
 
+test_that("constant() is read as brms writes it, not as a bare number", {
+  # Both of these are legal brms priors that as.numeric() on the bracket
+  # contents cannot read: the value is an R expression rather than a literal,
+  # and constant() takes a second `broadcast` argument.
+  v <- bayesnec:::constant_prior_value
+  expect_equal(v("constant(0.5)"), 0.5)
+  expect_equal(v("constant( 0.5 )"), 0.5)
+  expect_equal(v("constant(-1e-3)"), -0.001)
+  expect_equal(v("constant(1/2)"), 0.5)
+  expect_equal(v("constant(0.5, broadcast = FALSE)"), 0.5)
+  expect_equal(v(c("constant(1/4)", "constant(2)")), c(0.25, 2))
+  expect_error(v("constant(a)"), "must fix a single numeric value")
+  expect_error(v("constant(c(1, 2))"), "must fix a single numeric value")
+})
+
+test_that("a fixed nec still reads as a nec, not silently as an NSEC", {
+  # brms carries a constant parameter into the draws as a zero-variance column
+  # and fixef() reports it, so extract_pars() finds it and expand_nec() keeps
+  # the model in the nec class. If that ever changed, extract_pars() would
+  # return NA, expand_nec() would fall through to mod_class <- "ecx", and the
+  # reported NEC would silently become an NSEC -- a wrong answer with nothing
+  # to signal it. Pinned here because #244 makes fixing `nec` a one-liner.
+  fef <- matrix(c(4, 4, 4, 3.04, 2.9, 3.2), nrow = 2, byrow = TRUE,
+                dimnames = list(c("nec_Intercept", "top_Intercept"),
+                                c("Estimate", "Q2.5", "Q97.5")))
+  local_mocked_bindings(fixef = function(...) fef, .package = "bayesnec")
+  out <- bayesnec:::extract_pars("nec", structure(list(), class = "brmsfit"))
+  expect_false(identical(out, NA))
+  expect_equal(unname(out["Estimate"]), 4)
+  # and the zero-width interval a fixed parameter has is not read as missing
+  expect_equal(unname(out["Q2.5"]), 4)
+})
+
+test_that("a constant prior value is not evaluated against the caller's data", {
+  # A prior is a specification, not a hook for arbitrary code from elsewhere in
+  # the session, so the expression is evaluated in baseenv().
+  secret_value_244 <- 99
+  expect_error(bayesnec:::constant_prior_value("constant(secret_value_244)"),
+               "must fix a single numeric value")
+})
+
 test_that("the fixed parameter is dropped before the inits reach brm", {
-  # Stan does not declare a parameter whose prior is constant, so an init for
-  # it is rejected. The value is carried through the search and removed only
-  # here, in add_brm_defaults().
+  # Stan moves a constant parameter out of its `parameters` block, so an init
+  # for it has nothing to initialise. Both backends currently accept such an
+  # init and ignore it, so this pins a deliberate choice rather than a
+  # constraint that binds: bayesnec does not send brm() an init for a parameter
+  # Stan does not declare. The value is carried through the search and removed
+  # only here, in add_brm_defaults().
   x <- as.numeric(rep(1:10, each = 5))
   set.seed(42)
   y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
