@@ -151,9 +151,14 @@ rhat(exp_5) |>
 
 The default cut off is 1.01, following @Vehtari2021, whose recommendation is that
 Rhat should not exceed 1.01 at convergence. Any model returning `TRUE` here did
-not converge, and should be dropped with `amend(drop = )` before the set is
-averaged --- note that we have also used far fewer than the default `bayesnec`
-`iter` (10,000) here, which makes convergence harder than it would usually be.
+not converge, and should be dropped before the set is averaged --- note that we
+have also used far fewer than the default `bayesnec` `iter` (10,000) here, which
+makes convergence harder than it would usually be.
+
+`screen_models` does that, and reports what it dropped and why --- which is what
+a methods section has to cite. It screens on Rhat, effective sample size and
+divergent transitions together, all three of which `check_sampling` reports per
+candidate model.
 
 The older and more permissive 1.05 is still available by changing the argument,
 which is useful mainly for comparison against analyses that predate the current

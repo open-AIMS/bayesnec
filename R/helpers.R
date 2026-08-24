@@ -356,27 +356,6 @@ modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
   posterior_sample
 }
 
-#' extract_warnings
-#'
-#' Extract warnings from a \code{\link[brms]{brmsfit}} object.
-#'
-#' @param x An object of class \code{\link[brms]{brmsfit}}.
-#'
-#' @importFrom evaluate evaluate is.warning
-#'
-#' @return A \code{\link[base]{list}} containing all warning messages.
-#' @noRd
-extract_warnings <- function(x) {
-  x <- evaluate("identity(x)", new_device = FALSE)
-  to_extract <- which(sapply(x, is.warning))
-  if (length(to_extract) > 0) {
-    x[to_extract]
-  } else {
-    NULL
-  }
-}
-
-
 #' @noRd
 print_mat <- function(x, digits = 2) {
   fmt <- paste0("%.", digits, "f")

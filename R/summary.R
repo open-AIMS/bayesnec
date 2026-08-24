@@ -114,7 +114,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 #' following Vehtari et al. (2021) and matching \code{\link{rhat}}.
 #'
 #' @importFrom brms bayes_R2
-#' @importFrom chk chk_lgl chk_numeric
+#' @importFrom chk chk_lgl chk_numeric chk_number
 #'
 #' @export
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
@@ -122,7 +122,9 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   rhat_cutoff = 1.01) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
-  chk_numeric(rhat_cutoff)
+  # chk_number, not chk_numeric: the documented type is a vector of length 1,
+  # and chk_numeric admits any length.
+  chk_number(rhat_cutoff)
   x <- object
   ecs <- NULL
   if (ecx) {
