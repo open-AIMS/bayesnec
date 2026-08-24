@@ -3,27 +3,43 @@
 - New `vignette("example8")`, *Grouping and factor covariates*, covering both
   routes `bayesnec` offers for structured designs and when each is right. It
   turns on a distinction worth making explicitly: a **within-concentration**
-  grouping (a tank holds one dose, so the dependence cannot span the response
-  curve) is what `ogl()` and the other group-level terms are for, while an
-  **across-concentration** grouping (each level spans the whole predictor range)
-  is a candidate for its own separate fit via `bnec_group()`.
+  grouping (a chamber holds one concentration, so the dependence cannot span the
+  response curve) is what `ogl()` and the other group-level terms are for, while
+  an **across-concentration** grouping (each level spans the whole predictor
+  range) is a candidate for its own separate fit via `bnec_group()`.
 
-  It uses the dataset each route actually suits: `nassarius` **survival** with
-  its replicate tanks for the group-level terms, and `herbicide` — seven
-  chemicals across the full concentration range — for the separate-fits route.
-  Survival rather than growth is deliberate and is explained in the vignette:
-  modelling growth would mean filtering to the survivors, which discards animals
-  non-randomly and increasingly with dose, so the top of the curve disappears
-  and the remaining growth values are survivorship-selected. That is what
-  `hurdle_gamma` exists to avoid, and a vignette about grouping should not
-  quietly demonstrate it.
+  It runs on the new `coral` dataset throughout, which carries both structures
+  and a factor covariate in one experiment: 32 chambers each holding a single
+  concentration, five coral colonies spread across the whole series, and two
+  light regimes. The choice of day is part of the vignette rather than a
+  detail — the live-tissue proportion has to be read where the response has
+  actually traversed its range, and the vignette shows why day four does and
+  days one and seven do not.
 
-  It covers all three group-level term types, priors for the group-level
-  standard deviations via `check_formula(run_par_checks = TRUE)`, the failure
-  modes of hierarchical terms on non-linear parameters, `crossed_group_weights()`
-  for which equation suits each level, and `compare_posterior()` for whether the
-  fitted curves differ — noting that those two can disagree, and that the
-  comparison's draw pairing is not currently seeded (#218). See #6 and #33.
+  It covers all three group-level term types, the priors now generated for the
+  group-level standard deviations (#245), the failure modes of hierarchical
+  terms on non-linear parameters, `crossed_group_weights()` for which equation
+  suits each level, and `compare_posterior()` for whether the fitted curves
+  differ — noting that those two can disagree, and that the comparison's draw
+  pairing is not currently seeded (#218). It ends by composing the two routes,
+  which is the realistic case: chambers as a nuisance term *inside* each light
+  level's own fit.
+
+  The joint-hurdle section reports a negative result rather than a worked one.
+  Coral growth is measured only where a fragment survived, and nothing survived
+  above the fifth of eight concentrations, so a `hurdle_gamma` fit with a
+  chamber term does not converge — maximum R-hat 1.24 on these data. The
+  vignette shows that, explains it from the data, and draws the same
+  compare-against-the-ungrouped-fit lesson it draws for the simpler families.
+  See #6 and #33.
+- New `coral` dataset: a seven-day flow-through exposure of *Acropora millepora*
+  to 1-methylnaphthalene under two light regimes, from Brinkman et al. (2023),
+  *Environmental Pollution* 332:121963. One row per coral fragment, with
+  measured concentrations, percent mortality and the proportion of live tissue
+  on each of seven days, plus growth rate and colour scores. It is the dataset
+  `vignette("example8")` uses, and it exists in the package because one
+  experiment carries a within-concentration grouping, an across-concentration
+  grouping and a factor covariate at once.
 - New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
   independently within each level of a factor and model-averaging within each
   level. This is the first support for a factor covariate, and it answers the

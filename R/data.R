@@ -253,3 +253,102 @@ NULL
 #' with(alga, table(species, contaminant, sgr_source))
 #'
 NULL
+
+#' Coral survival, growth and colour under aromatic hydrocarbon exposure
+#'
+#' A seven-day flow-through exposure of the reef-building coral
+#' \emph{Acropora millepora} to 1-methylnaphthalene, run under two light
+#' regimes. One row per coral fragment.
+#'
+#' The dataset exists in the package because it carries \bold{both} kinds of
+#' group-level structure in one experiment, which is the distinction
+#' \code{vignette("example8")} is built around:
+#'
+#' \itemize{
+#'   \item \code{chamber} is a \bold{within-concentration} grouping. Each of the
+#'     32 chambers held one concentration and one light regime, so the
+#'     non-independence it creates is confined inside a concentration and does
+#'     not span the response curve. This is what \code{ogl()} is for.
+#'   \item \code{colony} is an \bold{across-concentration} grouping. Each of the
+#'     five coral colonies was represented across the whole concentration
+#'     series, so it can, if the data support it, be given a curve of its own
+#'     --- \code{pgl()}, \code{(par | colony)}, or a separate fit.
+#' }
+#'
+#' \code{light} is a factor covariate rather than a grouping: two levels, both
+#' of interest in their own right, crossed with the full series.
+#'
+#' \bold{Two different measurements of mortality.} \code{surv_d*} is the
+#' proportion of live coral tissue relative to total area, read from images;
+#' \code{mort_d*} is a percent mortality score. They are not complements ---
+#' \code{surv} is not \code{1 - mort/100} --- and neither should be derived
+#' from the other.
+#'
+#' \bold{Choosing a day matters more than it looks.} The live-tissue proportion
+#' has to be read at a day where the response has actually traversed its range;
+#' at day 1 nothing has died and by day 7 the curve is close to a step. Days 3
+#' and 4 both carry 41 observations strictly between 0 and 1, and they differ
+#' in what they cost: day 3 is complete and balanced, with 20 fragments at every
+#' concentration and no missing values, while day 4 loses ten fragments to image
+#' quality and has slightly more spread on the descending limb.
+#'
+#' \bold{Zeros are of more than one kind.} \code{growth_rate} is missing for the
+#' 60 fragments that died outright, and is exactly \code{0} for 22 fragments
+#' that lived without measurably growing --- and those 22 sit at the middle
+#' concentrations, on the descending limb, where they are informative rather
+#' than incidental. A \code{hurdle_gamma} fit treats every zero as the hurdle
+#' process, so it would attribute all 82 to mortality. See
+#' \code{vignette("example6")} for what that distinction costs.
+#'
+#' \bold{Growth conditions on survival.} At the top two concentrations every
+#' fragment died, so a growth analysis loses those concentrations entirely and
+#' the surviving measurements are a non-random sample of what was exposed.
+#'
+#' The columns are as follows:
+#'
+#' \describe{
+#' \item{chamber}{Replicate exposure chamber, 32 levels (fct).}
+#' \item{colony}{Coral colony, 5 levels. Recorded in the source as tile colour:
+#'   fragments were affixed to coloured glass tiles to tell the colonies apart
+#'   (fct).}
+#' \item{nominal}{Nominal 1-methylnaphthalene concentration (dbl).}
+#' \item{light}{Light regime, \code{"PAR"} (photosynthetically active radiation
+#'   only) or \code{"UV"} (PAR plus ultraviolet) (fct).}
+#' \item{rep}{Replicate within treatment, A--D (fct).}
+#' \item{conc_d1--conc_d7}{Measured 1-methylnaphthalene concentration, in
+#'   \eqn{\mu}g/L, on each of days 1--7 (dbl).}
+#' \item{mort_d1--mort_d7}{Percent mortality on each of days 1--7. \code{NA}
+#'   where mortality could not be assessed (dbl).}
+#' \item{surv_d1--surv_d7}{Proportion of live coral tissue relative to total
+#'   area on each of days 1--7. \code{NA} where the assessment could not be
+#'   taken, because of poor image quality or a missing image (dbl).}
+#' \item{recovery_d7}{Proportion of live tissue after seven days of recovery
+#'   following exposure (dbl).}
+#' \item{growth_rate}{\code{(surface area at day 7 - surface area at day 0) / 7}.
+#'   \code{NA} where the fragment died outright and no growth rate could be
+#'   calculated (dbl).}
+#' \item{colour_d0, colour_d7}{Colour score of a representative area of tissue
+#'   at the start and after seven days, on a 0--6 scale with 0 lightest and 6
+#'   darkest. \code{colour_d7} is \code{NA} where the fragment died (dbl).}
+#' }
+#'
+#' Column meanings are taken verbatim from the data dictionary the source
+#' workbook carries, not inferred.
+#'
+#' @name coral
+#' @docType data
+#' @format An object of class `data.frame` with 160 rows and 30 columns.
+#' @keywords datasets
+#' @examples
+#' head(coral)
+#' # each chamber holds one concentration; each colony spans them all
+#' with(coral, table(colony, nominal))
+#'
+#' @references
+#' Brinkman DL, Flores F, Luter HM, Nordborg FM, Brooks M, Parkerton TF,
+#' Negri AP (2023) Sensitivity of the Indo-Pacific coral
+#' \emph{Acropora millepora} to aromatic hydrocarbons.
+#' \emph{Environmental Pollution} 332:121963.
+#' \doi{10.1016/j.envpol.2023.121963}
+#'
+NULL
