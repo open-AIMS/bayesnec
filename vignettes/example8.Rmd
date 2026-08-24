@@ -1,0 +1,363 @@
+---
+title: "Grouping and factor covariates"
+output:
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{Grouping and factor covariates}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+
+
+[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
+[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
+
+# Overview
+
+Concentration-response experiments are rarely a single clean series. Replicates
+sit together in tanks, vials or plates; the whole experiment may be repeated on
+different genotypes, in different seasons, or with different contaminants. Those
+structures are not usually of interest in themselves, but ignoring them means
+treating observations as independent when they are not.
+
+`bayesnec` offers two distinct routes, and choosing between them is the first
+decision to make:
+
+- **group-level (hierarchical) terms** --- `ogl()`, `pgl()` and
+  `(par | group)` --- which keep every observation in **one** fit and let the
+  grouping shift parts of the curve;
+- **fitting each level separately** --- `bnec_group()` --- which gives every
+  level its own complete model set, and lets the *functional form* differ
+  between levels.
+
+They answer different questions, and they suit different data. This vignette
+works through both, on the dataset each is actually suited to.
+
+
+``` r
+library(bayesnec)
+library(ggplot2)
+library(dplyr)
+```
+
+# Which kind of grouping is it?
+
+The distinction that matters is whether the grouping sits **within** a
+concentration or **across** it, because it decides which route applies.
+
+**Within concentration.** Each group occurs at one concentration only ---
+replicate tanks, vials, plates. The group cannot have its own
+concentration-response curve, because it spans no concentrations. What it can do
+is shift the response level up or down, and that is a **group-level term**.
+
+**Across concentration.** Each group spans the whole concentration range ---
+different chemicals, species, seasons. Every level *could* have its own curve,
+and the question is usually whether it does. That is **`bnec_group()`**.
+
+Both structures appear in the packaged data, which is why this vignette uses two
+datasets rather than forcing one to serve both:
+
+
+``` r
+data(nassarius)
+data(herbicide)
+```
+
+- `nassarius` has **tanks nested inside concentrations** --- each tank receives
+  one dose --- which is the within-concentration case.
+- `herbicide` has **seven herbicides each spanning the full concentration
+  range**, which is the across-concentration case.
+
+# Part 1: group-level terms, one fit
+
+## The data, and why survival rather than growth
+
+`nassarius` records survival and growth of snails exposed to contaminants, in
+replicate tanks of six animals.
+
+
+``` r
+nassarius |>
+  filter(contaminant == "A") |>
+  count(tank, dose) |>
+  head()
+#>   tank dose n
+#> 1  A-1 0.00 6
+#> 2 A-10 0.02 6
+#> 3 A-11 0.04 6
+#> 4 A-12 0.04 6
+#> 5 A-13 0.04 6
+#> 6 A-14 0.08 6
+```
+
+We model **survival**, not the growth of the survivors. That is a deliberate
+choice and worth being explicit about, because the alternative is a trap:
+
+
+``` r
+nassarius |>
+  filter(contaminant == "A") |>
+  group_by(dose) |>
+  summarise(n = n(), dead = sum(alive == 0), pct_dead = round(100 * mean(alive == 0)))
+#> # A tibble: 11 × 4
+#>     dose     n  dead pct_dead
+#>    <dbl> <int> <int>    <dbl>
+#>  1  0       24     3       12
+#>  2  0.01    18     1        6
+#>  3  0.02    18     0        0
+#>  4  0.04    18     1        6
+#>  5  0.08    18     0        0
+#>  6  0.16    18     0        0
+#>  7  0.31    18     0        0
+#>  8  0.63    18     0        0
+#>  9  1.25    18     0        0
+#> 10  2.5     18    15       83
+#> 11 20       18    18      100
+```
+
+Mortality rises with dose and reaches 100% at the top concentration. Filtering
+to `alive == 1` in order to model growth would discard those animals
+**non-randomly** --- more of them at higher doses --- so the surviving growth
+values at high concentration are a survivorship-selected sample, and the top of
+the curve disappears entirely. That is precisely what the `hurdle_gamma` family
+and `bnec_hurdle()` exist to avoid; see `vignette("example6")`.
+
+Modelling survival sidesteps it completely: every exposed animal is in the
+model, and the deaths are the response rather than a filter.
+
+
+``` r
+surv <- nassarius |>
+  filter(contaminant == "A") |>
+  group_by(tank, dose) |>
+  summarise(suc = sum(alive), tot = n(), .groups = "drop")
+head(surv)
+#> # A tibble: 6 × 4
+#>   tank   dose   suc   tot
+#>   <chr> <dbl> <int> <int>
+#> 1 A-1    0        5     6
+#> 2 A-10   0.02     6     6
+#> 3 A-11   0.04     6     6
+#> 4 A-12   0.04     6     6
+#> 5 A-13   0.04     5     6
+#> 6 A-14   0.08     6     6
+```
+
+Note that survival is not 6/6 in every control tank --- there is a little
+baseline mortality --- which is a useful reminder that the control is estimated,
+not assumed.
+
+## `ogl()` --- an offset shared by a group
+
+`ogl()` gives each level of the grouping its own intercept: the whole curve
+shifts up or down, and its shape is unchanged. This is the right term when
+tanks differ in overall condition but respond to the contaminant the same way.
+
+
+``` r
+fit_ogl <- bnec(suc | trials(tot) ~ crf(dose, model = "nec3param") + ogl(tank),
+                data = surv, family = binomial(link = "identity"),
+                iter = 5e3, chains = 3, seed = 17)
+#> Error: Failed to fit model nec3param.
+```
+
+## `pgl()` --- the grouping affects every parameter
+
+`pgl()` allows every curve parameter to vary by level. It is far more demanding
+of the data: with 34 tanks and six animals each there is very little information
+per tank about the *shape* of a curve that tank does not span.
+
+
+``` r
+fit_pgl <- bnec(suc | trials(tot) ~ crf(dose, model = "nec3param") + pgl(tank),
+                data = surv, family = binomial(link = "identity"),
+                iter = 5e3, chains = 3, seed = 17)
+```
+
+## `(par | group)` --- a named parameter varies
+
+Where there is prior reason to expect one specific parameter to vary, name it.
+This is the middle ground, and usually the honest one: it says what is expected
+to differ instead of allowing everything to.
+
+
+``` r
+fit_par <- bnec(suc | trials(tot) ~ crf(dose, model = "nec3param") + (top | tank),
+                data = surv, family = binomial(link = "identity"),
+                iter = 5e3, chains = 3, seed = 17)
+```
+
+## Priors for the group-level standard deviations
+
+The `bayesnec` default priors are built for the curve parameters, not for
+group-level standard deviations, so those fall through to the `brms` defaults.
+Check what a formula will produce before fitting it:
+
+
+``` r
+check_formula(bayesnecformula(suc | trials(tot) ~ crf(dose, "nec3param") +
+                                ogl(tank)),
+              data = surv, run_par_checks = TRUE)
+#> suc | trials(tot) ~ crf(dose, "nec3param") + ogl(tank)
+```
+
+## Failure modes, and being honest about them
+
+Hierarchical structure on non-linear parameters is easy to write and hard to
+identify. The caution in the `bayesnec` JSS article [@Fisher2024] applies
+directly: a group-level term that the data cannot support does not announce
+itself as an error --- it appears as a wide posterior, a divergent transition
+count that creeps up, or a group-level standard deviation whose posterior looks
+like its prior.
+
+Check all three:
+
+
+``` r
+check_sampling(fit_ogl)
+#> Error: object 'fit_ogl' not found
+```
+
+
+``` r
+check_priors(fit_ogl)
+```
+
+If the group-level standard deviation's posterior is indistinguishable from its
+prior, the grouping is not supported by the data and the term is adding
+uncertainty without adding information. Drop it and say so, rather than keeping
+it because it is more sophisticated.
+
+# Part 2: fitting each level separately
+
+Where each level spans the whole concentration range, the question changes: not
+"does this group shift the response" but "does this group have a different
+curve". `herbicide` is that case --- seven herbicides, each across the full
+range.
+
+
+``` r
+herbicide |>
+  group_by(herbicide) |>
+  summarise(concentrations = n_distinct(concentration), n = n())
+#> # A tibble: 7 × 3
+#>   herbicide   concentrations     n
+#>   <chr>                <int> <int>
+#> 1 ametryn                  8    96
+#> 2 atrazine                 7    84
+#> 3 diuron                   6    72
+#> 4 hexazinone               7    76
+#> 5 irgarol                  6    72
+#> 6 simazine                 6    72
+#> 7 tebuthiuron              9   108
+```
+
+Note `fvfm` is a proportion with observations at or beyond the 0/1 boundary, so
+`check_data()` applies its boundary handling for the `Beta` family --- see
+`vignette("example1")`.
+
+
+``` r
+fit_grp <- bnec_group(fvfm ~ crf(log(concentration), model = "decline"),
+                      data = herbicide, group_var = "herbicide",
+                      family = Beta(link = "identity"),
+                      iter = 5e3, chains = 3, seed = 17)
+#> Error in expand_manec(mod_fits, formula = formulas, x_range = x_range, : None of the models fit successfully, try using bnec with a single model (e.g. ecxexp) using the default settings as a starting point for trouble shooting, or check ?show_params to make sure you have the correct parameter names for your priors.
+```
+
+
+``` r
+fit_grp
+#> Error: object 'fit_grp' not found
+```
+
+The family is chosen **once**, from the whole response, and passed down. Chosen
+per level it could differ between levels, and the levels would no longer be
+comparable.
+
+## Crossed model weights
+
+
+``` r
+crossed_group_weights(fit_grp)
+#> Error: object 'fit_grp' not found
+```
+
+Two readings, and they answer different questions. The **unrestricted** maximum
+picks the best model for each level independently, and will typically assign
+different equations to different levels --- that is the direct answer to whether
+the functional form differs. The **diagonal** asks which single equation best
+describes every level, restricted to models that every level actually fitted.
+
+## Comparing the fitted curves
+
+The weights say which *equation* fits each level. They do not say whether the
+levels differ in the quantity being reported. For that, compare the posteriors
+directly:
+
+
+``` r
+comp <- compare_posterior(fit_grp, comparison = "fitted")
+#> Error: object 'fit_grp' not found
+```
+
+
+``` r
+ggplot(comp$posterior_data, aes(x = x, y = Estimate)) +
+  geom_ribbon(aes(ymin = Q2.5, ymax = Q97.5, fill = model), alpha = 0.3) +
+  geom_line(aes(colour = model)) +
+  labs(x = "log(concentration)", y = "Predicted fv/fm",
+       fill = NULL, colour = NULL) +
+  theme_classic()
+#> Error: object 'comp' not found
+```
+
+`comp$prob_diff` gives the probability that one level's fitted curve exceeds
+another's at each concentration, which is the quantity a reader usually wants
+when asking whether two chemicals differ:
+
+
+``` r
+head(comp$prob_diff)
+#> Error: object 'comp' not found
+```
+
+The two summaries can disagree, and that is informative rather than
+contradictory. Two levels can favour the same equation while their curves sit
+well apart, and two levels can favour different equations while their fitted
+curves overlap almost entirely. Report both.
+
+The levels are fitted independently and share no parameters, so the posteriors
+are independent and these probabilities are read directly, with no
+multiple-comparison adjustment implied.
+
+**One caveat on reproducibility.** `compare_posterior()` pairs draws across
+fits by permutation, and that permutation is not currently seeded --- see
+issue #218. Re-running the comparison will move the third decimal place. Set a
+seed for the fits themselves, and treat the comparison as indicative at that
+precision.
+
+# Choosing between the two routes
+
+| | group-level term | `bnec_group()` |
+|---|---|---|
+| grouping sits | within a concentration | across concentrations |
+| curve shape | shared | may differ by level |
+| information | shared across groups | none shared |
+| answers | does the group shift the response | does the group have a different curve |
+| cost | needs enough groups to estimate a standard deviation | needs enough data *per level* for a whole model set |
+
+A grouping that spans concentrations can technically be fitted either way, and
+the choice is then about what is being asked. If the levels are a nuisance ---
+plates, batches, seasons --- a group-level term is right, and sharing
+information across them is the point. If the levels are the subject of the
+analysis --- chemicals, species, treatments --- fitting them separately is
+right, and sharing information between them would blur the very contrast being
+tested.
+
+What should not happen is choosing by convenience. Both routes are cheap to fit;
+only one of them answers the question asked.
+
+# References

@@ -382,10 +382,10 @@ count_data <- nec_data |>
 str(count_data)
 #> 'data.frame':	100 obs. of  2 variables:
 #>  $ x: num  1.019 0.816 0.371 0.401 1.295 ...
-#>  $ y: int  82 82 83 69 60 93 76 97 95 79 ...
+#>  $ y: int  83 81 102 110 83 77 79 63 118 93 ...
 summary(count_data$y)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   16.00   67.50   82.00   77.86   94.00  124.00
+#>    4.00   68.00   84.00   79.18   94.00  118.00
 summary(count_data$x)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #> 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052
@@ -412,7 +412,7 @@ autoplot(exp_3)
 ``` r
 exp_3$dispersion
 #>   Estimate       Q2.5      Q97.5 
-#>  3.5337626  0.4859079 57.6675764
+#>  1.3734542  0.1758658 40.1698538
 ```
 
 We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the `family` argument.

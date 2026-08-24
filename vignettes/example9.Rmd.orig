@@ -306,11 +306,20 @@ continuous response, so it is worth seeing both. The `herbicide` data record
 photosynthetic yield, a proportion bounded by 0 and 1 but not a count, which is
 the `beta` case.
 
+`simazine` is chosen deliberately rather than arbitrarily. A `Beta` response is
+supported on the open interval (0, 1), so a series whose response reaches
+*exactly* zero at the top concentrations gives the fit a floor it cannot
+represent --- and the whole candidate set can fail on it. `simazine` spans
+0.16--0.71 and never reaches either boundary. Several of the other herbicides in
+this dataset do: `irgarol` has eight of twelve replicates at exactly zero at its
+highest concentration. Check the response before choosing the family, not
+after.
+
 ```{r herbicide, results = "hide"}
 data(herbicide)
-irgarol <- herbicide[herbicide$herbicide == "irgarol", ]
+simazine <- herbicide[herbicide$herbicide == "simazine", ]
 fit_b <- bnec(fvfm ~ crf(log(concentration), model = "decline"),
-              data = irgarol, family = Beta(link = "identity"),
+              data = simazine, family = Beta(link = "identity"),
               iter = 5e3, chains = 3, seed = 17)
 ```
 
