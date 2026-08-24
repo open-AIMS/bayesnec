@@ -378,7 +378,7 @@ Saturation is what makes the censored likelihood honest, and it is also its limi
 
 The lower asymptote is the usual casualty. Where every response near the bottom of the curve is censored, `bot` is told only that it lies somewhere below the bound, and nothing in the likelihood distinguishes one such value from another.
 
-An example, from a marine microalgal growth test in which the population fell below the counting limit at the highest concentrations, so that specific growth rate is undefined there. A counting limit of 10 cells mL^-1^ against a starting density of 3871 cells mL^-1^ over three days implies a bound of $(\log 10 - \log 3871)/3 = -1.99$ d^-1^. Fitting `nec4param` with a Gaussian family and the same prior throughout, and varying only how those rows are declared:
+An example, from the `alga` dataset that ships with the package --- *Rhodomonas salina* under contaminant A, the cell in which the population fell below the counting limit at the highest concentrations, so that specific growth rate is undefined there. Those 16 rows are flagged `sgr_source == "substituted"`. A counting limit of 10 cells mL^-1^ against the recorded `density_initial` of 3871 cells mL^-1^ over three days implies a bound of $(\log 10 - \log 3871)/3 = -1.99$ d^-1^. Fitting `nec4param` with a Gaussian family and the same prior throughout, and varying only how those rows are declared:
 
 | below-limit rows declared as | `bot`, median [95% CI] | posterior SD |
 |---|---|---|

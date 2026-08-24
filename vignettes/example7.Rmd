@@ -13,10 +13,6 @@ bibliography: bayesnec.bib
 
 [e1]: https://open-aims.github.io/bayesnec/articles/example1.html
 [e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
-[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
-[e6]: https://open-aims.github.io/bayesnec/articles/example6.html
 
 # Overview
 
@@ -365,10 +361,10 @@ fit_B2 <- bnec(y ~ crf(x, "nec4param"), data = dat,
                family = gaussian(link = "identity"), prior = prior_fixed_bot)
 ```
 
-A practical note: `bayesnec`'s default initial values are drawn by sampling each
-prior, and a `constant()` prior has no sampling distribution, so initial values
-must be supplied when `bot` is fixed. Stan does not declare a parameter whose
-prior is constant, so `b_bot` must be omitted from them.
+`bnec()` accepts a `constant()` prior directly: the fixed value is assigned
+rather than sampled during the initial-value search, and dropped again before
+the model is handed to Stan, which does not declare a parameter whose prior is
+constant. No initial values need to be supplied by hand (#244).
 
 **B3 — both.** The data are floored *and* `bot` is pinned. This combination is
 the most common in practice, because an analyst who floors the data usually also
@@ -425,8 +421,10 @@ In both cases the zeros that flooring creates are then adjusted by `bnec()`
 itself: `check_data()` shifts an exact zero to one tenth of the smallest positive
 value, and an exact one to `1 - 0.001`, because neither is inside the open
 support of the family. That adjustment is left in place here rather than
-pre-empted, since it is part of the convention being examined. `bnec()` reports
-the shift with a message.
+pre-empted, since it is part of the convention being examined. Under a Gamma
+`bnec()` reports the shift with a message; under a Beta it does not, so in
+approach E --- the most common preparation of the four --- the last step of the
+flooring happens silently.
 
 Dividing by the maximum does not affect the reported toxicity estimates.
 `ecx(type = "absolute")` solves `f(x) = max(f) * (1 - x/100)`, so both sides
@@ -782,8 +780,10 @@ true_curve <- data.frame(
   x = xx, y = nec4param_curve(xx, example_truth$top, example_truth$bot,
                               example_truth$beta, example_truth$nec))
 
-# the actual dataset these eight models were fitted to, rather than a fresh draw,
-# so that the points shown are the points the curves were estimated from
+# The simulated dataset these eight models were fitted to, rather than a fresh
+# draw, so that the points shown are the points the curves were estimated from.
+# Held here as the intact measurements; each panel below is given the version its
+# own approach saw.
 ex_dat <- read.csv(text = "x,y
 0,0.0926
 0,0.10881
@@ -857,12 +857,36 @@ ex_dat <- read.csv(text = "x,y
 18.4982,-0.09347
 ")
 
+# Each panel shows the data its own fit was given, not one intact copy repeated
+# eight times: B1, B3, E and F were handed floored values, C the bound with the
+# row declared censored, and D a series truncated at the concentration where
+# approach A's own posterior mean first reaches zero -- which is the rule the
+# approach is defined by, recovered here from A's stored parameters rather than
+# hard-coded. Only A and B2 saw the measurements as simulated. Open symbols mark
+# the rows the convention altered.
+ex_x <- sort(unique(ex_dat$x[ex_dat$x > 0]))
+ex_A <- example_pars[example_pars$arm == "A", ]
+ex_truncation <- min(ex_x[nec4param_curve(ex_x, ex_A$top, ex_A$bot,
+                                          ex_A$beta, ex_A$nec) <= 0])
+
+ex_points <- do.call(rbind, lapply(arm_levels, function(a) {
+  d <- subset(ex_dat, x > 0)
+  d$altered <- FALSE
+  if (a %in% c("B1", "B3", "E", "F", "C")) {
+    d$altered <- d$y < 0
+    d$y <- pmax(d$y, 0)
+  } else if (a == "D") {
+    d <- d[d$x < ex_truncation, ]
+  }
+  data.frame(arm = a, d)
+}))
+ex_points$arm <- factor(ex_points$arm, levels = arm_levels)
+
 ggplot(subset(ex_curves, x > 0), aes(x = x, y = y)) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
   geom_vline(xintercept = example_truth$ErC50, linetype = "dotted",
              colour = "grey40") +
-  geom_point(data = subset(ex_dat, x > 0), aes(shape = y < 0),
-             alpha = 0.5, size = 1) +
+  geom_point(data = ex_points, aes(shape = altered), alpha = 0.5, size = 1) +
   geom_line(data = subset(true_curve, x > 0), linewidth = 1.1, colour = "grey15") +
   geom_line(aes(colour = arm), linewidth = 0.8) +
   scale_shape_manual(values = c("FALSE" = 16, "TRUE" = 1), guide = "none") +
@@ -876,8 +900,8 @@ ggplot(subset(ex_curves, x > 0), aes(x = x, y = y)) +
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-example-curves-1.png" alt="Fitted curves from all eight approaches applied to a single simulated dataset from scenario 8, with the true curve in black. Points are the simulated observations; open points are the nine negative values that the conventions act on. The vertical line is the true ErC50." width="90%" />
-<p class="caption">Fitted curves from all eight approaches applied to a single simulated dataset from scenario 8, with the true curve in black. Points are the simulated observations; open points are the nine negative values that the conventions act on. The vertical line is the true ErC50.</p>
+<img src="vignette-fig-example-curves-1.png" alt="Fitted curves from all eight approaches applied to a single simulated dataset from scenario 8, with the true curve in black. Each panel shows the data that approach was given: intact under A and B2, floored to zero under B1, B3, E and F, the censoring bound under C, and truncated above 12.2 under D. Open symbols mark the nine rows the convention altered. Curves are drawn from posterior mean parameters, which for a non-linear model is not the same as the posterior mean curve; the difference is largest for B2. The vertical line is the true ErC50." width="90%" />
+<p class="caption">Fitted curves from all eight approaches applied to a single simulated dataset from scenario 8, with the true curve in black. Each panel shows the data that approach was given: intact under A and B2, floored to zero under B1, B3, E and F, the censoring bound under C, and truncated above 12.2 under D. Open symbols mark the nine rows the convention altered. Curves are drawn from posterior mean parameters, which for a non-linear model is not the same as the posterior mean curve; the difference is largest for B2. The vertical line is the true ErC50.</p>
 </div>
 
 The intact analysis is the only one whose fitted curve follows the true curve
@@ -1038,7 +1062,9 @@ Before any approach can be compared with another, the scenarios have to be
 separated into two groups, because the answer is qualitatively different in each.
 Where the concentration series stops at or before the zero crossing
 (`top_factor` 0.8 and 1.0), the lower asymptote is barely identified by *any*
-approach: there are no data in the region that determines it, and all eight
+approach: at `top_factor` = 0.8 no true mean reaches zero at all and at 1.0
+only the highest concentration does, so there is essentially nothing in the
+region that determines the asymptote, and all eight
 carry a shared bias of similar size and the same sign. Where the series runs past the
 crossing (`top_factor` = 2.0), the asymptote is identified and the approaches
 separate.
@@ -1077,7 +1103,8 @@ are at or below zero growth — none of this applies to your data.
 Within the reaching regime the ordering is consistent. Relative to a true value,
 the intact analysis (A) and left-censoring (C) are unbiased to within one per
 cent for ErC50; truncation (D) is close behind; and the approaches that impose
-the zero boundary deliberately are biased low by 5 to 10 per cent, in the
+the zero boundary deliberately are biased low by 5 to 10 per cent (B1 -4.9%,
+B3 -6.5%, B2 -9.5%), in the
 direction of making the substance appear more toxic than it is. The two
 approaches where the *family* imposes the boundary are E at -8.7%, worse than any
 of the deliberate ones bar B2, and F at -1.6%.
@@ -1309,9 +1336,10 @@ ggplot(precision, aes(x = cv_f, y = coverage, colour = arm, group = arm)) +
 <p class="caption">Proportion of 95% credible intervals containing the true value, against the control coefficient of variation. The dashed line is nominal coverage. Under B1 and B3 the intervals shrink around a displaced centre and coverage falls to zero; under B2 they are so wide that coverage reaches one while the point estimate is 11% low.</p>
 </div>
 
-At the highest precision tested, B1, B3 and E contained the true ErC50 in
-**none** of the 500 simulated datasets, and B3 and E likewise miss almost every
-ErC10 interval (0.000 and 0.126). F is not far behind at 0.116 on ErC50. The
+At the highest precision tested, B3 and E contained the true ErC50 in **none**
+of the 500 simulated datasets and B1 in one of them, and B3 and E likewise miss
+almost every ErC10 interval (0.000 and 0.126). F is not far behind at 0.116 on
+ErC50. The
 practical reading is uncomfortable: a laboratory that improves its technique,
 adds replicates and reduces its control variability will, if it floors its
 negative values — whether by substitution or by choosing a distribution that
@@ -1443,8 +1471,10 @@ affected more severely than ErC50, and in the opposite direction:
 
 * **ErC50 is biased low** under every approach that imposes the boundary, by 5
   to 16%. The substance appears *more* toxic than it is.
-* **The NSEC is biased high**, by 37 to 134% relative to the intact analysis at
-  the highest precision. The substance appears *less* toxic than it is.
+* **The NSEC is biased high**, by 34 to 113% relative to the intact analysis at
+  the highest precision --- and by 47 to 134% against the true `nec`, which is
+  the comparison the previous section makes. Either way the substance appears
+  *less* toxic than it is.
 
 For a metric whose purpose is to identify a concentration at which no
 significant effect occurs, the second is the more serious of the two, because it
@@ -1502,9 +1532,12 @@ scoring a convention — the generating model is the one fitted, so the only
 misspecification is the one each approach deliberately introduces — but it is
 not the workflow `bayesnec` recommends, which is to fit a candidate set and
 average over it. The eight-curve figure above suggests why that might matter:
-under B3, E and F the constrained curve visibly cannot follow the data, so it
-compensates by flattening its descent and pushing `nec` to the right, and the
-toxicity estimates follow. A more flexible equation might follow the same
+under B3, E and F the curve is held at zero where the data it was given also sit
+at zero, and the only way a `nec4param` shape can meet both that floor and the
+control is to flatten its descent and push `nec` to the right, which the fitted
+`beta` and `nec` show it doing. The toxicity estimates follow. (This is a
+different failure from B2's, where the data are *not* floored and the curve
+genuinely cannot reach them.) A more flexible equation might follow the same
 floored data adequately over the region where ErC10 and ErC50 are actually read,
 without ever going below zero.
 
@@ -1516,6 +1549,14 @@ comparison below is paired. Models that failed to converge (R-hat > 1.01) were
 dropped and the weights re-stacked over the survivors, which is what the
 workflow does; **no approach in any scenario ever lost its whole candidate set**,
 so no dataset was excluded from any arm and the comparison is not selective.
+
+One consequence of the pairing is worth stating, because it invites a
+cross-check that will otherwise look like an error. Every "before" figure in
+this section is the single-model result recomputed over these 200 datasets, not
+the 500-dataset figure quoted earlier, so the two differ slightly --- E at a
+9.6% control CV is -10.3% here against -10.6% in the precision sweep, and F is
+-5.3% against -5.6%. The paired 200 is the right baseline for a paired
+comparison; the 500 is the right one for the single-model results on their own.
 
 **The generating model is almost never selected, and it does not matter.** Mean
 model weight on `nec4param` — the equation the data were generated from:
@@ -1930,13 +1971,28 @@ perfectly calibrated, and the shortfall is at least partly attributable to the
 next point.
 
 **Residual error is generated heteroscedastic and fitted homoscedastic.** This
-is a real misspecification, shared by all eight approaches, and it is
-present because `bnec()` has no route to a distributional `sigma`. It is the
-realistic situation for anyone fitting these data today, but the coverage figures
-above should be read as reflecting it. A version of this study with a
-distributional `sigma` would be expected to improve coverage for all approaches;
-there is no reason to expect it to change the ordering, since the approaches
-differ in how they handle the mean structure.
+is a real misspecification and it is shared by all eight approaches. It is not
+forced: `bnec()` carries a dispersion sub-model, and for a response that crosses
+zero the available form is `disp("loglinear")`, which is linear in the mean
+rather than in `log(mu)` --- `disp("power")` is refused for exactly this case.
+See the *Non-constant dispersion* section of the [Single model usage][e1]
+vignette. The sweep predates that interface and was run without it, and the
+coverage figures above should be read as reflecting a single pooled `sigma`
+standing in for a residual scale that varies 8.1-fold along the curve.
+
+The consequence is not the same for the two toxicity estimates. **The ErC50
+ordering does not depend on it**: flooring deforms the mean structure, and it
+does so whether or not the residual scale is modelled. **The NSEC mechanism
+does.** The account given above of why B1 sits below the intact analysis at high
+noise runs through the residual scale --- flooring removes the most extreme low
+values, compresses `sigma`, raises the control reference quantile and pulls the
+crossing left. That channel exists only because `sigma` is *global*. Under a
+dispersion sub-model the control-region scale is estimated locally, where
+flooring has removed nothing, so the channel should close and the sign of the
+B1 contrast at high noise may not survive. The same argument applies to B2,
+whose inflated `sigma` is a global response to observations the curve cannot
+reach. Re-running the precision sweep under `disp("loglinear")` is the way to
+settle it and is not done here.
 
 **The two family-floored approaches use `nec3param`, and take their own
 default priors.** Both differences are deliberate and both limit what their
