@@ -1443,7 +1443,7 @@ workflow does; **no approach in any scenario ever lost its whole candidate set**
 so no dataset was excluded from any arm and the comparison is not selective.
 
 **The generating model is almost never selected, and it does not matter.** Mean
-stacking weight on `nec4param` — the equation the data were generated from:
+model weight on `nec4param` — the equation the data were generated from:
 
 | | A | C | B3 | E | F |
 |---|---|---|---|---|---|
@@ -1455,6 +1455,18 @@ The floored approaches load their weight onto `ecxwb2` and `ecxwb1` instead. The
 precision dependence is sharp: at a 1.9% control coefficient of variation the
 pinned `nec4param` keeps a tenth of one per cent of the weight, because data that
 good can see it does not fit.
+
+These are `bnec()`'s default weights — pseudo-BMA with Bayesian bootstrap, set
+by `define_loo_controls()` unless `loo_controls` says otherwise — and the default
+is what makes the sentence above readable. Stacking, `loo_model_weights()`'s own
+default, solves for the best-predicting mixture and will zero a model because it
+is redundant given the others just as readily as because it is wrong, so a small
+stacking weight says little about a single model. A pseudo-BMA weight is
+proportional to expected log predictive density, so a model reduced to a
+thousandth of the weight has been judged to fit much worse, not merely to have
+been covered by something else. If you re-run this with
+`loo_controls = list(weights = list(method = "stacking"))` the weights will move
+and should not be compared with these.
 
 **ErC50 is rescued in every scenario tested.**
 
@@ -1517,7 +1529,7 @@ The practical reading is narrower than "averaging fixes it", and narrower than
   averaging. A laboratory that improves its technique still ends up with an
   analysis that is more confident and no less wrong — and at high precision
   averaging makes the NSEC *worse* rather than better.
-* **A good stacking weight is not a good model.** The floored approaches recover
+* **A good model weight is not a good model.** The floored approaches recover
   ErC50 while giving the true equation a tenth of one per cent of the weight.
   Weights describe which shape fits the data in front of them, not which process
   generated it, and a floored dataset is not the process.
