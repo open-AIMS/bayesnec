@@ -4,15 +4,20 @@
 \alias{crossed_group_weights}
 \title{Crossed model weights across the levels of a factor}
 \usage{
-crossed_group_weights(object)
+crossed_group_weights(object, pooled = NULL)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesnecgroupfit}}.}
+
+\item{pooled}{Optionally, a fit of the same model set to the \emph{whole}
+data set, ignoring the factor, as returned by \code{\link{bnec}}. Used to
+answer whether the factor matters at all --- see Details.}
 }
 \value{
 A \code{\link[base]{list}} with the per-level weight vectors, the
-unrestricted best combination and its weight, and the diagonal weights over
-the models common to every level.
+unrestricted best combination and its weight, the diagonal weights over the
+models common to every level, and --- if \code{pooled} was given --- the
+grouped-versus-pooled WAIC comparison.
 }
 \description{
 The weight of every combination of per-level models, and the two readings of
@@ -47,6 +52,30 @@ The \strong{diagonal} maximum, \code{w_m proportional to prod_g w_gm}, is a
 comparison of \emph{common-form} models: which single equation best describes
 every level. \code{bayesnec} could not answer that before, and it is often
 the question a reader of the analysis actually has.
+
+\bold{Does the factor matter at all?}
+
+Pass \code{pooled} --- a \code{\link{bnec}} fit of the same model set to the
+whole data set, with the factor ignored --- and the same additivity gives the
+third reading. A pooled fit is scored on exactly the same observations as the
+levels together are, so their information criteria are directly comparable:
+the grouped WAIC is the sum over levels of the best model's WAIC, and the
+difference against the pooled fit's is a like-for-like comparison. A negative
+\code{diff} favours the pooled fit, a positive one the grouped fit.
+
+The comparison is on WAIC because that is what \code{bayesnec} stores on
+every fit. A standard error for the difference needs the \emph{pointwise}
+values, which \pkg{brms} keeps on the fit object but which do not survive
+every route a fit can take --- they are absent from the packaged examples,
+for instance. Where they are present the standard error is computed and the
+observations are checked to line up; where they are not, \code{se_diff} is
+\code{NA} and the difference is a point estimate with no uncertainty
+attached, which is worth remembering before reading much into a small one.
+
+Note this compares the \emph{best} model per level against the \emph{best}
+pooled model, not the model-averaged predictions of either. Model averaging
+is within level by construction, and the averaged predictive density is not
+the weighted sum of the components'.
 }
 \examples{
 \dontrun{
