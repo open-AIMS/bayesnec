@@ -270,3 +270,64 @@ test_that("the group method passes the per-level fits through", {
   m <- getS3method("compare_posterior", "bayesnecgroupfit")
   expect_match(paste(deparse(body(m)), collapse = " "), "x\\$fits")
 })
+
+# The standard error on the pooled comparison pairs each observation's pointwise
+# WAIC across the two fits, so the level-ordered grouped values have to line up
+# with the pooled fit's row order. Built from synthetic pointwise values rather
+# than fitted: the hazard is the reordering, and a fit would only obscure it.
+
+fake_waic_fit <- function(pointwise) {
+  structure(
+    list(model = "m",
+         fit = structure(
+           list(criteria = list(waic = list(
+             estimates = matrix(sum(pointwise), 1, 1,
+                                dimnames = list("waic", "Estimate")),
+             pointwise = cbind(waic = pointwise)))),
+           class = "brmsfit")),
+    class = c("bayesnecfit", "bnecfit")
+  )
+}
+
+test_that("the pooled SE pairs observations across differently ordered data", {
+  # site is deliberately NOT in level order, which is the case that would go
+  # wrong if the grouped values were simply concatenated against the pooled ones.
+  d <- data.frame(site = rep(c("b", "a"), each = 10))
+  grp <- factor(d$site, levels = c("a", "b"))
+  pooled_pw <- as.numeric(seq_len(20))
+  # every "a" row differs by 1, every "b" row by 2
+  lvl_a <- pooled_pw[grp == "a"] - 1
+  lvl_b <- pooled_pw[grp == "b"] - 2
+  gf <- structure(
+    list(fits = list(a = fake_waic_fit(lvl_a), b = fake_waic_fit(lvl_b)),
+         group_var = "site", levels = c("a", "b"), data = d,
+         n = c(10L, 10L), weights_method = "pseudobma"),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  res <- crossed_group_weights(gf, pooled = fake_waic_fit(pooled_pw))$pooled
+  expect_equal(res$waic_grouped, sum(lvl_a) + sum(lvl_b))
+  expect_equal(res$waic_pooled, sum(pooled_pw))
+  expect_equal(res$diff, sum(pooled_pw) - sum(lvl_a) - sum(lvl_b))
+  expect_equal(res$n_obs, 20L)
+  # the paired differences are 1 for every a row and 2 for every b row, which
+  # they only are if the reordering is right
+  expect_equal(res$se_diff, sqrt(20) * sd(c(rep(1, 10), rep(2, 10))))
+})
+
+test_that("a pooled fit on different observations leaves the SE NA", {
+  d <- data.frame(site = rep(c("a", "b"), each = 10))
+  gf <- structure(
+    list(fits = list(a = fake_waic_fit(as.numeric(1:10)),
+                     b = fake_waic_fit(as.numeric(11:20))),
+         group_var = "site", levels = c("a", "b"), data = d,
+         n = c(10L, 10L), weights_method = "pseudobma"),
+    class = c("bayesnecgroupfit", "bnecfit")
+  )
+  # 19 pooled observations against 20 grouped ones: the point estimates are
+  # still returned, the SE is not invented.
+  res <- crossed_group_weights(gf,
+                               pooled = fake_waic_fit(as.numeric(1:19)))$pooled
+  expect_false(is.na(res$diff))
+  expect_true(is.na(res$se_diff))
+  expect_true(is.na(res$n_obs))
+})
