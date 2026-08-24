@@ -233,14 +233,14 @@ usable_prior <- function(prior) {
     return(prior)
   }
   # class "b" is the curve's own coefficients and the parameters a route B
-  # disp() term adds. The dispersion classes are kept too, so that a prior the
-  # user supplied on sigma/shape/phi round trips and get_priors() is a complete
-  # record of the fit rather than a record of everything except dispersion.
-  # `source == "user"` is what makes that safe: a dispersion prior brms chose
-  # for itself is still dropped, because reporting it would suggest bayesnec had
-  # made a choice it did not make. See #207.
+  # disp() term adds. The parameter classes are kept too, so that a prior the
+  # user supplied on sigma/shape/phi/zi/hu round trips and get_priors() is a
+  # complete record of the fit rather than a record of everything except those.
+  # `source == "user"` is what makes that safe: a prior brms chose for itself is
+  # still dropped, because reporting it would suggest bayesnec had made a choice
+  # it did not make. See #207 and #231.
   keep <- prior$source == "user" & prior$coef == "" &
-    (prior$class == "b" | prior$class %in% dispersion_classes())
+    (prior$class == "b" | prior$class %in% auxiliary_classes())
   out <- prior[keep, , drop = FALSE]
   for (bound in c("lb", "ub")) {
     if (bound %in% names(out)) {
@@ -251,19 +251,36 @@ usable_prior <- function(prior) {
   out
 }
 
-#' Classes brms uses for a family's own dispersion parameter
+#' Classes brms uses for a family parameter that is not part of the mean curve
 #'
-#' The parameter that is not part of the mean curve but describes the spread
-#' around it: \code{sigma} for gaussian, \code{shape} for Gamma, negbinomial
-#' and their hurdle/zero-inflated forms, \code{phi} for Beta and beta_binomial.
-#' Poisson, binomial and bernoulli have none. \code{zi} and \code{hu} are
-#' deliberately absent: bayesnec models those as a second parameter block, so a
-#' prior on them carries class "b" with a prefixed \code{nlpar}, not a class of
-#' their own.
+#' Two kinds, kept together because \code{usable_prior()} treats them the same
+#' way -- a user may set a prior on either, and neither takes an initial value
+#' from the curve's own search.
+#'
+#' \emph{Dispersion}: the spread around the mean. \code{sigma} for gaussian,
+#' \code{shape} for Gamma, negbinomial and their hurdle/zero-inflated forms,
+#' \code{phi} for Beta and beta_binomial. Poisson, binomial and bernoulli have
+#' none.
+#'
+#' \emph{Mixing}: \code{zi} and \code{hu}, the probability of the second
+#' component. These are here only for the families bayesnec fits as a
+#' \emph{single} block -- \code{zero_inflated_poisson} and
+#' \code{zero_inflated_negbinomial}, added under #104 -- where brms carries the
+#' parameter with a class of its own and a default \code{beta(1, 1)}. For
+#' \code{hurdle_gamma} and \code{zero_inflated_beta}, which bayesnec fits as
+#' two parameter blocks, the second block's priors carry class "b" with a
+#' prefixed \code{nlpar} and no class-\code{zi} row is ever generated, so
+#' including these names is a no-op there rather than a conflict.
+#'
+#' Reporting \code{zi} matters more than it might look: for the two count
+#' families it is the zero-inflation probability, which is the quantity those
+#' families exist to estimate. Leaving it out of \code{\link{get_priors}} made
+#' the returned set silently incomplete in exactly the case the user cares
+#' about. See #231.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
 #' @noRd
-dispersion_classes <- function() {
-  c("sigma", "shape", "phi")
+auxiliary_classes <- function() {
+  c("sigma", "shape", "phi", "zi", "hu")
 }
