@@ -19,7 +19,7 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.19</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.20</span>
       </span>
     </div>
 
@@ -89,7 +89,15 @@ bayesmanecfit."><meta property="og:image" content="https://open-aims.github.io/b
 <span><span class="fu">summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, ecx <span class="op">=</span> <span class="cn">FALSE</span>, ecx_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">50</span>, <span class="fl">90</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'bayesmanecfit'</span></span>
-<span><span class="fu">summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span>, ecx <span class="op">=</span> <span class="cn">FALSE</span>, ecx_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">50</span>, <span class="fl">90</span><span class="op">)</span>, rhat_cutoff <span class="op">=</span> <span class="fl">1.01</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">summary</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  ecx <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  ecx_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">50</span>, <span class="fl">90</span><span class="op">)</span>,</span>
+<span>  rhat_cutoff <span class="op">=</span> <span class="fl">1.01</span>,</span>
+<span>  fit_ratio_cutoff <span class="op">=</span> <span class="fl">1.15</span>,</span>
+<span>  check_fit <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -119,6 +127,22 @@ and EC90.</p></dd>
 <dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 1. The
 convergence threshold the summary reports against. Defaults to 1.01,
 following Vehtari et al. (2021) and matching <code><a href="rhat.html">rhat</a></code>.</p></dd>
+
+
+<dt id="arg-fit-ratio-cutoff">fit_ratio_cutoff<a class="anchor" aria-label="anchor" href="#arg-fit-ratio-cutoff"></a></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 1.
+The threshold for flagging a candidate model that mis-states the control:
+the summary reports a model whose observed control statistic differs from
+the simulated one by more than this ratio, either way. Defaults to 1.15.
+Thresholded on the ratio rather than the posterior predictive p-value —
+see <code><a href="check_fit.html">check_fit</a></code>.</p></dd>
+
+
+<dt id="arg-check-fit">check_fit<a class="anchor" aria-label="anchor" href="#arg-check-fit"></a></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></code> vector of length 1. Whether
+to run the control lack-of-fit check and report it in the summary block.
+Defaults to <code>TRUE</code>. Set <code>FALSE</code> to skip the posterior simulation
+it requires.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -192,10 +216,15 @@ and Environmental Safety, 73(2), 123–131. doi: 10.1016/j.ecoenv.2009.09.012.</
 <span class="r-out co"><span class="r-pr">#&gt;</span> ecx4param     0.85      0.01 0.82  0.87</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>The following model had Rhats &gt; 1.01 (no convergence):</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Rhat &gt; 1.01 (no convergence):</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span>   -  nec4param</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span>   -  ecx4param</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> Consider dropping them (see ?screen_models)</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> control observed/simulated ratio beyond 1.15 (see ?check_fit):</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span>   -  nec4param</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span>   -  ecx4param</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> Convergence failures should be dropped (see ?amend or ?screen_models).</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> A control mis-fit is a result, not a fault: inspect it with check_fit().</span>
 <span class="r-in"><span><span class="va">nec4param</span> <span class="op">&lt;-</span> <span class="fu"><a href="pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">manec_example</span>, <span class="st">"nec4param"</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Pulling out model(s): nec4param</span>
 <span class="r-in"><span><span class="fu">summary</span><span class="op">(</span><span class="va">nec4param</span><span class="op">)</span></span></span>

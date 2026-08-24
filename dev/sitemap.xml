@@ -34,6 +34,7 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/c.bnecfit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/check_chains.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/check_chains.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/check_fit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/check_formula.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/check_priors.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/check_priors.html</loc></url>
@@ -74,6 +75,7 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/nsec.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/nsec.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/plot.bayesnechurdlefit.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/plot.checkfit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/plot.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/plus-.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/plus-.bnecfit.html</loc></url>
@@ -81,6 +83,7 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/posterior_epred.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/posterior_predict.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/posterior_predict.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/pp_check.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/prebayesnecfit-class.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/predict.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/predict.html</loc></url>
