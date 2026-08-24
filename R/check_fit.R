@@ -339,6 +339,12 @@ print.checkfit <- function(x, ...) {
 #' survival on every individual --- so there is no single table that describes
 #' both.
 #'
+#' @param combined A \code{\link[base]{logical}} vector of length 1. If
+#' \code{TRUE} (the default) a third table is returned checking the two
+#' components against the response they jointly predict, which is what the user
+#' actually observed. The growth component is predicted onto the full exposed
+#' set rather than onto its own data, since it is fitted on survivors only.
+#'
 #' @export
 check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
                                         seed = 10, combined = TRUE, ...) {
