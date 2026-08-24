@@ -23,6 +23,74 @@ blank_bounds_to_na <- function(priors) {
   priors
 }
 
+#' Recognise a brms constant() prior, and read the value it fixes
+#'
+#' A \code{constant()} prior is a point mass rather than a distribution, so it
+#' has no entry in the sampling tables \code{make_inits()},
+#' \code{refine_inits()} and \code{sample_priors()} use, and looking it up
+#' there raised "attempt to apply non-function". These two helpers are the
+#' single place the form is parsed. See #244.
+#'
+#' @param prior A \code{\link[base]{character}} vector of prior strings.
+#'
+#' @return \code{is_constant_prior()} a \code{\link[base]{logical}} vector;
+#' \code{constant_prior_value()} a \code{\link[base]{numeric}} vector of the
+#' fixed values.
+#'
+#' @noRd
+is_constant_prior <- function(prior) {
+  grepl("^\\s*constant\\s*\\(", as.character(prior))
+}
+
+#' @noRd
+constant_prior_value <- function(prior) {
+  out <- vapply(as.character(prior), constant_one_value, numeric(1),
+                USE.NAMES = FALSE)
+  if (any(is.na(out))) {
+    stop("A constant() prior must fix a single numeric value; could not read ",
+         paste0(prior[is.na(out)], collapse = ", "), ".")
+  }
+  out
+}
+
+#' The fixed value of a single constant() prior string
+#'
+#' Two things a plain \code{as.numeric()} on the bracket contents gets wrong,
+#' both of them legal \code{brms} priors: \code{constant()} takes a second
+#' \code{broadcast} argument, so \code{constant(0.5, broadcast = FALSE)} is
+#' not a number; and the value is an R expression rather than a literal, so
+#' \code{constant(1/2)} is as valid as \code{constant(0.5)}. Both used to
+#' reach the "must fix a single numeric value" error.
+#'
+#' Evaluated in \code{\link[base]{baseenv}}, so the expression sees base R and
+#' nothing of the caller's workspace --- a prior is a specification, not a hook
+#' for arbitrary code from elsewhere in the session.
+#'
+#' @param x A \code{\link[base]{character}} string.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1, \code{NA} if the
+#' value could not be read.
+#'
+#' @noRd
+constant_one_value <- function(x) {
+  inner <- sub("^\\s*constant\\s*\\(\\s*", "", x)
+  inner <- sub("\\s*\\)\\s*$", "", inner)
+  arg <- strsplit(inner, ",", fixed = TRUE)[[1]][1]
+  # The literal case first, so the overwhelmingly common form never goes near
+  # parse(). suppressWarnings: a non-literal is handled below, and the coercion
+  # warning would say the same thing less clearly.
+  out <- suppressWarnings(as.numeric(arg))
+  if (!is.na(out)) {
+    return(out)
+  }
+  out <- tryCatch(eval(parse(text = arg), envir = baseenv()),
+                  error = function(e) NA_real_)
+  if (!is.numeric(out) || length(out) != 1) {
+    return(NA_real_)
+  }
+  as.numeric(out)
+}
+
 #' make_inits
 #'
 #' Creates list of initialisation values
@@ -89,26 +157,38 @@ make_inits <- function(model, fct_args, priors, chains) {
     out[[i]] <- vector(mode = "list", length = nrow(priors))
     names(out[[i]]) <- par_names
     for (j in seq_len(nrow(priors))) {
-      bits <- gsub("\\(|\\)", ",", priors$prior[j])
-      bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
-      fct_i <- bits[1]
-      v1 <- as.numeric(bits[2])
-      v2 <- as.numeric(bits[3])
-      out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
-      if (any(!is.na(priors[j, c("lb", "ub")]))) {
-        n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
-        if (n_bounds == 2) {
-          bounds <- as.numeric(priors[j, c("lb", "ub")])
-          while (out[[i]][[j]] <= min(bounds) |
-                   out[[i]][[j]] >= max(bounds)) {
-            out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
-          }
-        } else if (n_bounds == 1) {
-          direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
-          bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
-          bounds <- as.numeric(priors[j, direction])
-          while (bound_fct(out[[i]][[j]], bounds)) {
-            out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+      # A constant() prior fixes the parameter, so it is assigned rather than
+      # sampled, and the bound-respecting redraw below is skipped -- a constant
+      # sitting outside its own lb/ub would spin that while loop forever. The
+      # value is kept in the list here on purpose: make_good_inits() evaluates
+      # the candidate curve, and a parameter fixed at, say, bot = 0 is
+      # genuinely part of that curve. It is removed only where the list is
+      # handed to brm(), in add_brm_defaults(), because Stan does not declare a
+      # parameter whose prior is constant. See #244.
+      if (is_constant_prior(priors$prior[j])) {
+        out[[i]][[j]] <- constant_prior_value(priors$prior[j])
+      } else {
+        bits <- gsub("\\(|\\)", ",", priors$prior[j])
+        bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
+        fct_i <- bits[1]
+        v1 <- as.numeric(bits[2])
+        v2 <- as.numeric(bits[3])
+        out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+        if (any(!is.na(priors[j, c("lb", "ub")]))) {
+          n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
+          if (n_bounds == 2) {
+            bounds <- as.numeric(priors[j, c("lb", "ub")])
+            while (out[[i]][[j]] <= min(bounds) |
+                     out[[i]][[j]] >= max(bounds)) {
+              out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+            }
+          } else if (n_bounds == 1) {
+            direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
+            bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
+            bounds <- as.numeric(priors[j, direction])
+            while (bound_fct(out[[i]][[j]], bounds)) {
+              out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+            }
           }
         }
       }
@@ -165,6 +245,9 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
   for (par in tunable) {
     pr_row <- which(priors$nlpar == gsub("^b_", "", par))
     if (length(pr_row) != 1) next
+    # Nothing to tune on a parameter the user has fixed, and the sampling
+    # table below has no constant() entry. See #244.
+    if (is_constant_prior(priors$prior[pr_row])) next
     bits <- gsub("\\(|\\)", ",", priors$prior[pr_row])
     bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
     fct_i <- bits[1]

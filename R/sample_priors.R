@@ -18,7 +18,10 @@
 #' @importFrom rlang .data
 #'
 #' @seealso \code{\link{bnec}}
-#' @return A \code{\link[base]{list}} containing the initialisation values.
+#' @return For \code{plot = NA}, a \code{\link[base]{list}} of numeric
+#' vectors of sampled prior values, one per parameter. Otherwise a
+#' \code{\link[ggplot2]{ggplot}} or, for \code{plot = "base"}, the histograms
+#' drawn as a side effect.
 #'
 #' @examples
 #' library(bayesnec)
@@ -29,8 +32,17 @@
 #' @export
 sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   chk_numeric(n_samples)
-  if (!plot %in% c("ggplot", "base")) {
-    stop("plot must be a character string of either \"ggplot\" or \"base\"")
+  # NA is documented as the "return the draws" option, but `NA %in% c(...)` is
+  # FALSE, so the guard rejected the very value the documentation offers and
+  # there was no route to the sampled values at all. `%in%` cannot express it,
+  # hence the explicit is.na() branch. The length check leads, because both
+  # NULL and a length-2 `plot` reach `if` with something that is not a single
+  # TRUE/FALSE and fail with an R internals message instead of this one.
+  # See #244.
+  if (!(length(plot) == 1 &&
+          (is.na(plot) || plot %in% c("ggplot", "base")))) {
+    stop("plot must be NA, or a character string of either ",
+         "\"ggplot\" or \"base\"")
   }
   fcts <- c(gamma = rgamma, normal = rnorm, beta = rbeta, uniform = runif)
   priors <- as.data.frame(priors) |>
@@ -43,6 +55,15 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   }
   out <- vector(mode = "list", length = nrow(priors))
   for (j in seq_len(nrow(priors))) {
+    # A constant() prior is a point mass: every draw is the fixed value, and
+    # the bound filtering below is skipped because there is nothing to reject
+    # against. Without this branch the whole call failed on any prior set
+    # containing a fixed parameter, so a user could not inspect the priors they
+    # had just written. See #244.
+    if (is_constant_prior(priors$prior[j])) {
+      out[[j]] <- rep(constant_prior_value(priors$prior[j]), n_samples)
+      next
+    }
     bits <- gsub("\\(|\\)", ",", priors$prior[j])
     bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
     fct_i <- bits[1]

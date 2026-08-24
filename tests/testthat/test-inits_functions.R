@@ -270,3 +270,204 @@ test_that("a prior naming a parameter the curve does not have still errors", {
     "do not match expectation"
   )
 })
+
+# #244: a constant() prior fixes a parameter, but has no entry in the sampling
+# table make_inits() looks distributions up in, so the whole init search died
+# with "attempt to apply non-function". Fixing a parameter then required the
+# user to hand-write an `init` list for every *other* parameter in order to
+# skip the search, which is what example7 (#193) had to do.
+
+const_prior_df <- function(prior_bot = "constant(0)", lb = "", ub = "") {
+  data.frame(prior = c("normal(1,1)", "normal(0,5)", prior_bot,
+                       "gamma(5,2)"),
+             class = "b", coef = "", group = "", resp = "", dpar = "",
+             nlpar = c("top", "beta", "bot", "nec"),
+             lb = c("", "", lb, ""), ub = c("", "", ub, ""),
+             stringsAsFactors = FALSE)
+}
+
+test_that("make_inits assigns a constant prior rather than sampling it", {
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  out <- bayesnec:::make_inits("nec4param", fct_args,
+                               priors = const_prior_df(), chains = 3)
+  expect_length(out, 3)
+  for (chain in out) {
+    expect_setequal(names(chain), fct_args)
+    expect_equal(as.numeric(chain$b_bot), 0)
+  }
+  # a non-zero constant is carried through as itself, not coerced
+  out2 <- bayesnec:::make_inits("nec4param", fct_args,
+                               priors = const_prior_df("constant(0.5)"),
+                               chains = 2)
+  expect_equal(as.numeric(out2[[1]]$b_bot), 0.5)
+})
+
+test_that("a constant outside its own bounds does not hang", {
+  # The bound-respecting redraw loops until the value falls inside lb/ub. A
+  # constant cannot be redrawn, so without the branch this spins forever --
+  # a hang rather than an error, which is why it is tested explicitly.
+  out <- bayesnec:::make_inits(
+    "nec4param", c("b_top", "b_beta", "b_bot", "b_nec"),
+    priors = const_prior_df("constant(0)", lb = "1", ub = "10"), chains = 2
+  )
+  expect_equal(as.numeric(out[[1]]$b_bot), 0)
+})
+
+test_that("the fixed value is kept for the curve check, not dropped", {
+  # make_good_inits() evaluates the candidate curve, and a parameter fixed at
+  # bot = 0 is genuinely part of that curve. Dropping the constant here -- the
+  # obvious reading of "skip constant priors" -- makes every candidate fail the
+  # range check and sends the search to Stan's defaults after 10,000 trials.
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(42)
+  y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
+  priors <- bayesnec:::define_prior("nec4param",
+                                    validate_family("gaussian"), x, y)
+  priors$prior[priors$nlpar == "bot"] <- "constant(0)"
+  inits <- bayesnec:::make_good_inits("nec4param", x, y, priors = priors,
+                                      chains = 2, seed = 42)
+  expect_false(is.character(inits))   # i.e. not the "random" fallback
+  expect_true("b_bot" %in% names(inits[[1]]))
+  expect_equal(as.numeric(inits[[1]]$b_bot), 0)
+})
+
+test_that("refine_inits skips a parameter that is fixed", {
+  # refine_inits() re-draws slope/d/beta from its own copy of the sampling
+  # table, so a constant on one of those hit the identical error.
+  x <- as.numeric(rep(1:10, each = 5))
+  priors <- const_prior_df()
+  priors$prior[priors$nlpar == "beta"] <- "constant(-0.5)"
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  init <- list(b_top = as.array(1e6), b_beta = as.array(-0.5),
+               b_bot = as.array(0), b_nec = as.array(5))
+  expect_silent(
+    out <- bayesnec:::refine_inits(init, sort(x),
+                                   bayesnec:::pred_nec4param, fct_args,
+                                   limits = c(0, 3), priors = priors,
+                                   n_sub = 5)
+  )
+  expect_equal(as.numeric(out$b_beta), -0.5)
+})
+
+test_that("a constant prior that fixes no readable value errors", {
+  expect_error(
+    bayesnec:::make_inits("nec4param", c("b_top", "b_beta", "b_bot", "b_nec"),
+                          priors = const_prior_df("constant(a)"), chains = 2),
+    "must fix a single numeric value"
+  )
+})
+
+test_that("constant() is read as brms writes it, not as a bare number", {
+  # Both of these are legal brms priors that as.numeric() on the bracket
+  # contents cannot read: the value is an R expression rather than a literal,
+  # and constant() takes a second `broadcast` argument.
+  v <- bayesnec:::constant_prior_value
+  expect_equal(v("constant(0.5)"), 0.5)
+  expect_equal(v("constant( 0.5 )"), 0.5)
+  expect_equal(v("constant(-1e-3)"), -0.001)
+  expect_equal(v("constant(1/2)"), 0.5)
+  expect_equal(v("constant(0.5, broadcast = FALSE)"), 0.5)
+  expect_equal(v(c("constant(1/4)", "constant(2)")), c(0.25, 2))
+  expect_error(v("constant(a)"), "must fix a single numeric value")
+  expect_error(v("constant(c(1, 2))"), "must fix a single numeric value")
+})
+
+test_that("a fixed nec still reads as a nec, not silently as an NSEC", {
+  # brms carries a constant parameter into the draws as a zero-variance column
+  # and fixef() reports it, so extract_pars() finds it and expand_nec() keeps
+  # the model in the nec class. If that ever changed, extract_pars() would
+  # return NA, expand_nec() would fall through to mod_class <- "ecx", and the
+  # reported NEC would silently become an NSEC -- a wrong answer with nothing
+  # to signal it. Pinned here because #244 makes fixing `nec` a one-liner.
+  fef <- matrix(c(4, 4, 4, 3.04, 2.9, 3.2), nrow = 2, byrow = TRUE,
+                dimnames = list(c("nec_Intercept", "top_Intercept"),
+                                c("Estimate", "Q2.5", "Q97.5")))
+  local_mocked_bindings(fixef = function(...) fef, .package = "bayesnec")
+  out <- bayesnec:::extract_pars("nec", structure(list(), class = "brmsfit"))
+  expect_false(identical(out, NA))
+  expect_equal(unname(out["Estimate"]), 4)
+  # and the zero-width interval a fixed parameter has is not read as missing
+  expect_equal(unname(out["Q2.5"]), 4)
+})
+
+test_that("a constant prior value is not evaluated against the caller's data", {
+  # A prior is a specification, not a hook for arbitrary code from elsewhere in
+  # the session, so the expression is evaluated in baseenv().
+  secret_value_244 <- 99
+  expect_error(bayesnec:::constant_prior_value("constant(secret_value_244)"),
+               "must fix a single numeric value")
+})
+
+test_that("the fixed parameter is dropped before the inits reach brm", {
+  # Stan moves a constant parameter out of its `parameters` block, so an init
+  # for it has nothing to initialise. Both backends currently accept such an
+  # init and ignore it, so this pins a deliberate choice rather than a
+  # constraint that binds: bayesnec does not send brm() an init for a parameter
+  # Stan does not declare. The value is carried through the search and removed
+  # only here, in add_brm_defaults().
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(42)
+  y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
+  priors <- bayesnec:::define_prior("nec4param",
+                                    validate_family("gaussian"), x, y)
+  priors$prior[priors$nlpar == "bot"] <- "constant(0)"
+  out <- suppressMessages(
+    bayesnec:::add_brm_defaults(list(prior = priors, chains = 2, seed = 42),
+                               "nec4param", validate_family("gaussian"), x, y,
+                               skip_check = FALSE, custom_name = NULL)
+  )
+  expect_false("b_bot" %in% names(out$init[[1]]))
+  expect_setequal(names(out$init[[1]]), c("b_top", "b_beta", "b_nec"))
+  # the prior itself must still reach brm(); only the init is dropped
+  expect_true("constant(0)" %in% out$prior$prior)
+})
+# --- #244 x #148: the two halves of the constant-prior NA ---------------------
+# brms carries a parameter fixed by constant() into the draws as a zero-variance
+# column, and posterior returns NA for it. Before #148 Part D that NA reached
+# `if (all(failed))` in rhat.bayesmanecfit and errored outright, and reached
+# `failed` in check_sampling as an NA that made screen_models report a drop it
+# had not performed. Part D excludes zero-variance parameters from the screen;
+# this is the end-to-end case, which needs both halves to exist -- the fit needs
+# the constant() support added here, the pass needs Part D's exclusion.
+
+test_that("a fixed parameter does not break rhat on a multi-model fit", {
+  skip_on_cran()
+  set.seed(244)
+  x <- rep(seq(0, 5, length.out = 20), 3)
+  y <- 3 * exp(-exp(-0.5) * pmax(x - 2, 0)) + rnorm(length(x), 0, 0.1)
+  d <- data.frame(x = x, y = y)
+  # nec4param and ecx4param, not nec3param: nec3param is dropped for a Gaussian
+  # response, and this needs two candidates to reach rhat.bayesmanecfit.
+  f <- y ~ crf(x, model = c("nec4param", "ecx4param"))
+  p <- lapply(get_priors(f, data = d, family = gaussian()), function(z) {
+    z$prior[z$nlpar == "top"] <- "constant(3)"
+    z
+  })
+  fit <- suppressWarnings(suppressMessages(
+    bnec(f, data = d, family = gaussian(), prior = p, chains = 2, iter = 600,
+         warmup = 300, seed = 244, open_progress = FALSE, refresh = 0)
+  ))
+  skip_if_not(is_bayesmanecfit(fit), "both candidates were needed for this test")
+
+  # the error this used to raise was `if (all(failed))` on an NA
+  r <- expect_silent(rhat(fit, rhat_cutoff = 99))
+  verdicts <- vapply(r, "[[", logical(1), "failed")
+  expect_false(anyNA(verdicts))
+  # the fixed parameter is out of the screen rather than in it as an NA
+  expect_false(anyNA(r[[1]]$rhat_vals))
+  expect_false("top" %in% names(r[[1]]$rhat_vals))
+
+  # and the same on the check_sampling side
+  tab <- check_sampling(fit, rhat_cutoff = 99, ess_cutoff = 0,
+                        divergence_cutoff = 1e6)
+  expect_false(anyNA(tab$failed))
+  expect_false(anyNA(tab$max_rhat))
+  expect_false(any(tab$failed))
+  # screen_models must be a genuine no-op here, not a silent one
+  expect_message(
+    out <- screen_models(fit, rhat_cutoff = 99, ess_cutoff = 0,
+                         divergence_cutoff = 1e6),
+    "candidate models passed"
+  )
+  expect_equal(length(out$mod_fits), length(fit$mod_fits))
+})
