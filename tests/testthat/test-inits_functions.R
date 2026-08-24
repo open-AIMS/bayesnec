@@ -421,3 +421,53 @@ test_that("the fixed parameter is dropped before the inits reach brm", {
   # the prior itself must still reach brm(); only the init is dropped
   expect_true("constant(0)" %in% out$prior$prior)
 })
+# --- #244 x #148: the two halves of the constant-prior NA ---------------------
+# brms carries a parameter fixed by constant() into the draws as a zero-variance
+# column, and posterior returns NA for it. Before #148 Part D that NA reached
+# `if (all(failed))` in rhat.bayesmanecfit and errored outright, and reached
+# `failed` in check_sampling as an NA that made screen_models report a drop it
+# had not performed. Part D excludes zero-variance parameters from the screen;
+# this is the end-to-end case, which needs both halves to exist -- the fit needs
+# the constant() support added here, the pass needs Part D's exclusion.
+
+test_that("a fixed parameter does not break rhat on a multi-model fit", {
+  skip_on_cran()
+  set.seed(244)
+  x <- rep(seq(0, 5, length.out = 20), 3)
+  y <- 3 * exp(-exp(-0.5) * pmax(x - 2, 0)) + rnorm(length(x), 0, 0.1)
+  d <- data.frame(x = x, y = y)
+  # nec4param and ecx4param, not nec3param: nec3param is dropped for a Gaussian
+  # response, and this needs two candidates to reach rhat.bayesmanecfit.
+  f <- y ~ crf(x, model = c("nec4param", "ecx4param"))
+  p <- lapply(get_priors(f, data = d, family = gaussian()), function(z) {
+    z$prior[z$nlpar == "top"] <- "constant(3)"
+    z
+  })
+  fit <- suppressWarnings(suppressMessages(
+    bnec(f, data = d, family = gaussian(), prior = p, chains = 2, iter = 600,
+         warmup = 300, seed = 244, open_progress = FALSE, refresh = 0)
+  ))
+  skip_if_not(is_bayesmanecfit(fit), "both candidates were needed for this test")
+
+  # the error this used to raise was `if (all(failed))` on an NA
+  r <- expect_silent(rhat(fit, rhat_cutoff = 99))
+  verdicts <- vapply(r, "[[", logical(1), "failed")
+  expect_false(anyNA(verdicts))
+  # the fixed parameter is out of the screen rather than in it as an NA
+  expect_false(anyNA(r[[1]]$rhat_vals))
+  expect_false("top" %in% names(r[[1]]$rhat_vals))
+
+  # and the same on the check_sampling side
+  tab <- check_sampling(fit, rhat_cutoff = 99, ess_cutoff = 0,
+                        divergence_cutoff = 1e6)
+  expect_false(anyNA(tab$failed))
+  expect_false(anyNA(tab$max_rhat))
+  expect_false(any(tab$failed))
+  # screen_models must be a genuine no-op here, not a silent one
+  expect_message(
+    out <- screen_models(fit, rhat_cutoff = 99, ess_cutoff = 0,
+                         divergence_cutoff = 1e6),
+    "candidate models passed"
+  )
+  expect_equal(length(out$mod_fits), length(fit$mod_fits))
+})
