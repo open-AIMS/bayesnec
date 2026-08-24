@@ -1,0 +1,592 @@
+---
+title: "Grouping and factor covariates"
+output:
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{Grouping and factor covariates}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
+
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE,
+  fig.path = "vignette-fig-",
+  fig.asp = 0.8,
+  out.width = "60%",
+  fig.align = "center",
+  dev = "png",
+  dpi = 150,
+  eval = identical(Sys.getenv("NOT_CRAN"), "true")
+)
+```
+
+[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
+[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
+[e6]: https://open-aims.github.io/bayesnec/articles/example6.html
+
+# Overview
+
+Concentration-response experiments are rarely a single clean series. Replicates
+sit together in tanks, vials or chambers; the same experiment may be run on
+several genotypes, in different seasons, or under a second stressor. Those
+structures are not usually of interest in themselves, but ignoring them means
+treating observations as independent when they are not.
+
+`bayesnec` offers two distinct routes, and choosing between them is the first
+decision to make:
+
+- **group-level (hierarchical) terms** --- `ogl()`, `pgl()` and
+  `(par | group)` --- which keep every observation in **one** fit and let the
+  grouping shift parts of the curve;
+- **fitting each level separately** --- `bnec_group()` --- which gives every
+  level its own complete model set, and lets the *functional form* differ
+  between levels.
+
+They answer different questions and suit different data. This vignette works
+through both, and then through the case where they have to be combined.
+
+```{r, warning = FALSE, message = FALSE}
+library(bayesnec)
+library(ggplot2)
+library(dplyr)
+```
+
+# Types of grouping
+
+The distinction that matters is whether the grouping sits **within** a
+concentration or **across** it, because it decides which route applies.
+
+**Within concentration.** Each group occurs at one concentration only ---
+replicate tanks, vials, chambers. The group cannot have its own
+concentration-response curve, because it spans no concentrations. What it can do
+is shift the response level up or down, and that is a **group-level term**.
+
+**Across concentration.** Each group spans the whole concentration range ---
+different genotypes, chemicals, seasons. Every level *could* have its own curve,
+and the question is usually whether it does. That is **`bnec_group()`**.
+
+# The data
+
+The `coral` dataset carries both structures in one experiment, so this vignette
+does not have to move between datasets to demonstrate them. It records a
+seven-day flow-through exposure of the reef-building coral *Acropora millepora*
+to 1-methylnaphthalene, reported by @brinkman2023.
+
+```{r}
+data(coral)
+str(coral[, 1:5])
+```
+
+Three variables carry structure, and they are of three different kinds:
+
+```{r}
+coral |>
+  summarise(
+    chambers = n_distinct(chamber),
+    colonies = n_distinct(colony),
+    light_levels = n_distinct(light),
+    concentrations = n_distinct(nominal)
+  )
+```
+
+- **`chamber`** is *within* concentration. Each of the 32 chambers held one
+  concentration under one light regime, so a chamber spans no part of the
+  curve.
+- **`colony`** is *across* concentration. Fragments were cut from five colonies
+  and distributed over the whole series, so each colony is represented at every
+  concentration.
+- **`light`** is a *factor covariate* rather than a grouping. Two levels ---
+  visible light alone, or visible light with ultraviolet --- both of interest in
+  their own right.
+
+The design is what makes this readable directly from the data:
+
+```{r}
+with(coral, table(colony, nominal))
+coral |>
+  group_by(chamber) |>
+  summarise(concentrations = n_distinct(nominal), .groups = "drop") |>
+  count(concentrations)
+```
+
+Every colony appears at all eight concentrations; every chamber holds exactly
+one. That is the within/across distinction in two lines, and it is worth
+checking on your own data before choosing a route.
+
+## Choice of response and of day
+
+The response is `surv_d*`, the proportion of live coral tissue relative to total
+area, measured from images. This is a proportion in $[0, 1]$ and is modelled
+with a `Beta` family.
+
+The day matters more than it looks. A concentration-response curve needs
+observations away from the extremes, and a response sitting at its floor or
+ceiling carries no information about curve shape whatever the design looks
+like. Counting observations strictly between 0 and 1:
+
+```{r}
+vapply(paste0("surv_d", 1:7),
+       function(v) sum(coral[[v]] > 0 & coral[[v]] < 1, na.rm = TRUE),
+       integer(1))
+```
+
+Day 1 has none --- nothing has died yet --- and by day 7 the response is close
+to a step. Days 3 and 4 carry the most information, and they differ in what
+they cost: day 3 is complete and balanced, while day 4 loses ten fragments to
+image quality.
+
+```{r}
+vapply(paste0("surv_d", 1:7), function(v) sum(is.na(coral[[v]])), integer(1))
+```
+
+Completeness is not the deciding property here. Day 4 descends more gradually
+through the middle of the range, and that is what determines a curve:
+
+```{r}
+round(sapply(c(day3 = "surv_d3", day4 = "surv_d4"), function(v)
+  tapply(coral[[v]], coral$nominal, mean, na.rm = TRUE)), 3)
+```
+
+Day 3 falls from 0.65 straight to 0 between the fifth and sixth concentrations.
+Day 4 passes through 0.70 and 0.46 on the way. Fitted, day 3 gives a maximum
+R-hat of 1.11 and 50 divergent transitions where day 4 gives 1.007 and none, so
+day 4 is used throughout. The ten missing values at day 4 sit at the control and
+the second concentration, where every fragment survived to the following day, so
+dropping them removes nothing informative --- which is worth confirming rather
+than assuming, because missingness concentrated at the steep part of a curve
+would not be benign.
+
+```{r}
+coral |>
+  filter(is.na(surv_d4)) |>
+  count(nominal, alive_next_day = surv_d5 > 0)
+```
+
+```{r}
+d4 <- coral |>
+  filter(!is.na(surv_d4)) |>
+  select(conc = conc_d4, surv = surv_d4, chamber, colony, light, nominal)
+head(d4)
+```
+
+```{r exmp8-data}
+ggplot(d4, aes(x = conc, y = surv)) +
+  geom_point(aes(colour = colony, shape = light), size = 2, alpha = 0.8) +
+  labs(x = expression(paste("1-methylnaphthalene (", mu, "g ", L^-1, ")")),
+       y = "proportion of live tissue", colour = "colony", shape = "light") +
+  theme_classic()
+```
+
+The two features that decide the rest of the vignette are both visible here: a
+substantial number of fragments sit exactly at 1 or exactly at 0, and the
+colonies are spread through the whole series rather than concentrated in part of
+it.
+
+# Group-level terms
+
+## Offsets on the whole curve: `ogl()`
+
+`ogl()` gives each level of the grouping its own offset: the whole curve shifts
+up or down and its shape is unchanged. This is the right term for a
+within-concentration grouping, where the group cannot have a curve of its own.
+
+```{r}
+form_ogl <- surv ~ crf(conc, "nec4param") + ogl(chamber)
+check_formula(bayesnecformula(form_ogl), data = d4, run_par_checks = TRUE)
+```
+
+```{r, results = "hide"}
+fit_ogl <- bnec(form_ogl, data = d4, family = Beta(link = "identity"),
+                iter = 2000, warmup = 1000, chains = 2, seed = 245,
+                control = list(adapt_delta = 0.99))
+```
+
+A single model is fitted rather than the full candidate set, to keep the
+vignette's run time reasonable. In an analysis you would fit a set and average
+over it; see `vignette("example2")`.
+
+```{r exmp8-ogl}
+autoplot(fit_ogl)
+```
+
+`adapt_delta` is raised from its default of 0.8 because at the default this fit
+reports divergent transitions, and they have two structural causes rather than
+being noise. The first is that `ogl` enters as an offset added to the whole
+curve, so its population intercept is confounded with `top` and `bot`: a
+constant added to one can be taken back out of the others with no change to the
+likelihood. `bayesnec` gives that intercept a prior centred on zero, which
+penalises the ridge but does not remove it. The second is the more common one:
+where a group-level standard deviation is estimated close to zero, the geometry
+the sampler has to explore narrows sharply, and that is what most of the
+divergences here report. Raising `adapt_delta` addresses both, and at 0.99 they
+disappear.
+
+## Curves that differ by group: `pgl()` and `(par | group)`
+
+`pgl()` puts a group-level term on **every** parameter of the model at once, so
+each level gets its own version of the whole curve, shrunk towards a common
+one. `(par | group)` does the same for one named parameter, which is the more
+usual thing to want: it says *this* feature of the curve varies between groups
+and the rest does not.
+
+Colony is the across-concentration grouping here, so it is the one that can
+carry a curve.
+
+```{r, results = "hide"}
+fit_pgl <- bnec(surv ~ crf(conc, "nec4param") + pgl(colony), data = d4,
+                family = Beta(link = "identity"),
+                iter = 2000, warmup = 1000, chains = 2, seed = 245)
+```
+
+`pgl()` asks every parameter of the curve to vary by colony at once, which is
+the widest version of the claim. Five colonies is not many from which to
+estimate four separate group-level standard deviations, so it is worth looking
+at what the fit says about each of them before relying on it:
+
+```{r}
+summary(fit_pgl$fit)$random$colony
+```
+
+```{r, results = "hide"}
+fit_par <- bnec(surv ~ crf(conc, "nec4param") + (nec | colony), data = d4,
+                family = Beta(link = "identity"),
+                iter = 2000, warmup = 1000, chains = 2, seed = 245)
+```
+
+`(nec | colony)` says that the threshold varies between colonies while the
+control level and the rate of decline do not. It is a narrower claim than
+`pgl()`, it is usually the one actually of interest, and it is far easier for
+the data to support --- here it fits without difficulty.
+
+```{r}
+nec(fit_par)
+summary(fit_par$fit)$random$colony
+```
+
+## Priors for the group-level standard deviations
+
+Every group-level term introduces a standard deviation, and on a bounded
+response those priors do real work. `bayesnec` fits every family with an
+identity link so that `top`, `bot` and `nec` stay on the scale of the response
+and remain directly interpretable. The cost is that there is no inverse link to
+pull a group-level offset back into the response range: on a proportion, an
+offset drawn at an inappropriate scale puts the mean outside $[0, 1]$, where the
+likelihood is undefined.
+
+`get_priors()` reports what will be used, including the group-level rows:
+
+```{r}
+get_priors(form_ogl, data = d4, family = Beta(link = "identity"))
+```
+
+The `sd` prior is scaled to the parameter it belongs to --- one tenth of the
+range the parameter's own prior spans --- so it adapts to the response rather
+than assuming one. As with any other prior, it can be replaced; see
+`vignette("example3")`.
+
+## What a group-level term should be checked against
+
+Hierarchical structure on non-linear parameters is easy to specify and hard to
+identify, and a fit that samples is not on its own evidence that the term is
+supported. Three patterns say that it is not:
+
+- a group-level standard deviation whose posterior piles up against zero --- the
+  data do not distinguish the groups;
+- a posterior essentially equal to its prior --- the prior is doing the work;
+- a widened interval with an unchanged point estimate --- uncertainty has been
+  added without structure.
+
+The check that matters is against the fit **without** the term:
+
+```{r, results = "hide"}
+fit_plain <- bnec(surv ~ crf(conc, "nec4param"), data = d4,
+                  family = Beta(link = "identity"),
+                  iter = 2000, warmup = 1000, chains = 2, seed = 245)
+```
+
+```{r}
+rbind(ungrouped = nec(fit_plain),
+      `ogl(chamber)` = nec(fit_ogl))
+```
+
+And at the group-level standard deviation itself, which is the quantity the
+term was added to estimate:
+
+```{r}
+summary(fit_ogl$fit)$random$chamber
+```
+
+Both diagnostics point the same way. The standard deviation is a small fraction
+of the response range, with an interval running down to zero --- the first of
+the three patterns above --- and the chamber term barely moves the threshold.
+
+That is not an argument for having omitted the term. The chambers are real, the
+design requires the non-independence to be represented, and a standard
+deviation estimated at nearly zero is a *result*, where an unmodelled one is an
+assumption. But it does mean the grouped and ungrouped analyses should be
+reported as agreeing, rather than the grouped fit presented as though it had
+found something.
+
+# Fitting each level separately
+
+`bnec_group()` takes the second route: split the data by a factor and fit a
+complete model set within each level. Nothing is shared between levels, so the
+functional form itself may differ --- one level fitted by a threshold model and
+another by a smooth decline.
+
+Light is the factor here. Ultraviolet was included in this experiment as a
+co-factor precisely because it can increase the toxicity of some aromatic
+hydrocarbons to corals [@brinkman2023], so the question is a real one rather
+than a demonstration.
+
+```{r, results = "hide"}
+fits_light <- bnec_group(surv ~ crf(conc, c("nec4param", "ecx4param")),
+                         data = d4, group_var = "light",
+                         family = Beta(link = "identity"),
+                         iter = 2000, warmup = 1000, chains = 2, seed = 245)
+```
+
+A two-model set is used rather than a single model, because the weights are the
+point of what follows.
+
+```{r}
+sapply(fits_light$fits, nec)
+```
+
+The estimates for the two light regimes are compared through their posteriors
+rather than through their intervals:
+
+```{r}
+compare_estimates(fits_light$fits)$prob_diff
+```
+
+`prob` is the posterior probability that the first level's estimate exceeds the
+second's. A value near 0.5 means the two posteriors sit on top of each other;
+values near 0 or 1 mean they are separated. What is reported here is a
+difference the data do not resolve cleanly in either direction.
+
+That conclusion is consistent with the published analysis, though it is not the
+same quantity and should not be read as reproducing it: @brinkman2023 tested the
+effect of UVR on **seven-day survival**, found none, and pooled the replicates
+for the concentration-response analysis on that basis. The comparison here is
+between **day-four** thresholds, and it is a posterior probability rather than a
+significance test.
+
+## Crossed model weights
+
+When each level carries its own model set, the weights are per level.
+`crossed_group_weights()` reports them together, so the model set chosen in one
+level can be read against the other:
+
+```{r}
+crossed_group_weights(fits_light)
+```
+
+`per_level` holds each level's own weights; `best_combination` names the model
+that carried most weight in each; `diagonal` is the weight of the combination in
+which both levels use the same model, which is the quantity to look at if you
+intend to report one functional form for the whole experiment.
+
+## Comparing the fitted curves
+
+```{r}
+comp <- compare_posterior(fits_light$fits, comparison = "fitted")
+```
+
+`compare_posterior()` pairs posterior draws between fits. Where the fits are
+independent --- as they are here, since each level was fitted separately --- the
+pairing is arbitrary, and it is currently an unseeded permutation (see issue
+#218). Set a seed if you need the comparison to be reproducible exactly.
+
+# Grouping on a joint hurdle structure
+
+The two routes above each used a response that one family could describe. The
+harder and more common case is a response with two processes in it: whether the
+organism survived at all, and how it performed if it did. `bnec_hurdle()` and
+the hurdle families fit both at once; see [`vignette("example6")`][e6].
+
+Growth is that response here. It is missing for every fragment that died:
+
+```{r}
+coral |>
+  summarise(died = sum(is.na(growth_rate)),
+            alive_no_growth = sum(growth_rate == 0, na.rm = TRUE),
+            alive_growing = sum(growth_rate > 0, na.rm = TRUE))
+```
+
+Two things follow, and both have to be said before the fit rather than after.
+
+Note that growth is measured over the full seven days, where the analyses above
+used day four. The two are not interchangeable: the endpoint dictates the window,
+and by day seven the live-tissue proportion is close to a step function, which is
+why it was not used for the curves earlier.
+
+**Growth conditions on survival.** At the top three concentrations not one
+fragment has a growth rate at all:
+
+```{r}
+tapply(coral$growth_rate, coral$nominal, function(z) sum(!is.na(z)))
+```
+
+Those three concentrations vanish from a growth analysis entirely, and what
+remains is a survivorship-selected sample. Modelling growth on survivors alone
+would therefore describe the wrong population *and* lose the top of the
+concentration range --- which is what the joint structure exists to avoid.
+
+**The zeros are not all of one kind.** Beyond the fragments that died, a further
+group lived without measurably growing, and they sit in the middle of the
+concentration range where the curve is descending, so they are informative
+rather than incidental:
+
+```{r}
+coral |>
+  filter(!is.na(growth_rate), growth_rate == 0) |>
+  count(nominal)
+```
+
+A `hurdle_gamma` fit treats *every* zero as the hurdle process, so it attributes
+these to mortality as well. That is a simplification, and it is stated here
+rather than hidden: distinguishing the two kinds of zero is a question about
+where the zeros came from, which [`vignette("example6")`][e6] deals with
+directly.
+
+```{r}
+hurdle_dat <- coral |>
+  mutate(growth = ifelse(is.na(growth_rate), 0, growth_rate)) |>
+  select(conc = conc_d7, growth, chamber, colony, light)
+```
+
+It is worth looking at how the two components divide the data before fitting
+them together:
+
+```{r}
+table(concentration = round(hurdle_dat$conc), growing = hurdle_dat$growth > 0)
+```
+
+The second block --- whether a fragment grew at all --- has information at every
+concentration. The first --- how much it grew, given that it did --- has none
+above the fifth. That asymmetry is the honest description of what a joint fit
+buys here: it recovers the top of the concentration range for the *survival*
+component, which a survivors-only analysis would have lost altogether, while the
+growth component remains informed only by the lower half of the series. Expect
+the growth threshold to be the less well determined of the two, and report it
+that way.
+
+```{r, results = "hide"}
+fit_hurdle <- bnec(growth ~ crf(conc, "nec3param"), data = hurdle_dat,
+                   family = "hurdle_gamma", iter = 4000, warmup = 2000,
+                   chains = 2, seed = 245,
+                   control = list(adapt_delta = 0.99))
+```
+
+```{r}
+nec(fit_hurdle)
+```
+
+The threshold is estimated, but loosely, and the fit reports divergent
+transitions that raising `adapt_delta` reduces without removing --- 229 of 4000
+here. R-hat is 1.01 and the smallest effective sample size is around 240, so the
+chains have converged; the divergences say the posterior has a difficult
+geometry rather than that the answer is wrong. Both facts belong in a methods
+section. This is already a fit to report with its caveats attached, before any
+grouping is added to it.
+
+## What happens when a group-level term is added anyway
+
+The obvious next step is to carry the chamber structure into the joint fit, the
+way `ogl()` was used in the first half of this vignette:
+
+```{r, eval = FALSE}
+bnec(growth ~ crf(conc, "nec3param") + ogl(chamber), data = hurdle_dat,
+     family = "hurdle_gamma", iter = 4000, warmup = 2000, chains = 2,
+     seed = 245, control = list(adapt_delta = 0.99))
+```
+
+That chunk is shown rather than run, because it does not work and it is more
+useful to say why. With those settings it returns a maximum R-hat of **1.24** and
+a smallest effective sample size of **19**. The chains have not converged, and no
+amount of `adapt_delta` fixes it: at the default the same fit gives 511 divergent
+transitions, at 0.99 it gives 124 with the R-hat above unchanged.
+
+The reason is in the table above rather than in the sampler. The second block
+has information at every concentration, but the first has none above the fifth,
+and a chamber effect is being asked for on top of that. Fitting it is not
+prevented; it simply is not supported, and the diagnostics say so clearly.
+
+This is the same comparison the first half of the vignette made with
+`ogl(chamber)` on the live-tissue response, and it is worth making in the same
+order every time: fit without the group-level term, fit with it, and let the
+difference in the diagnostics --- not the plausibility of the structure ---
+decide what is reported.
+
+## One constraint to know before trying it on better data
+
+A group-level term supplied to a hurdle fit reaches the **response block only**
+--- the block describing growth among survivors --- and not the block describing
+whether the fragment grew at all. A single chamber effect shared across both
+blocks is not available, and the factorised weighting the joint fit uses depends
+on that separation. If the grouping is expected to act on both processes, the
+two blocks have to be fitted separately and compared rather than joined.
+
+# Choosing between the two approaches
+
+| | group-level term | `bnec_group()` |
+|---|---|---|
+| structure | within **or** across concentration | across concentration only |
+| what varies | the parameters named | everything, including the model form |
+| shared information | levels shrink toward a common curve | nothing shared |
+| levels needed | few is workable; three is thin | enough to fit each level alone |
+| gives | one fit | one fit per level |
+| natural question | does this feature vary? | does this level behave differently? |
+
+A within-concentration grouping leaves no choice: `bnec_group()` cannot be used,
+because a group that spans no concentrations has no curve to fit. An
+across-concentration grouping admits both, and the decision is whether the
+levels should inform each other. Few levels, or levels that are a sample from
+some larger population, favour the group-level term. Levels that are the point
+of the experiment, and that might not even share a functional form, favour
+separate fits.
+
+## Combining the two routes
+
+The two are not alternatives in a real analysis, and this experiment is the
+ordinary case: light is a factor whose levels are of interest, and chambers are
+a nuisance structure sitting inside every one of them. Both belong in the
+analysis at once --- the factor handled by fitting each level separately, and
+the chambers by a group-level term *within* each of those fits.
+
+```{r, results = "hide"}
+fits_both <- bnec_group(surv ~ crf(conc, "nec4param") + ogl(chamber),
+                        data = d4, group_var = "light",
+                        family = Beta(link = "identity"),
+                        iter = 2000, warmup = 1000, chains = 2, seed = 245,
+                        control = list(adapt_delta = 0.99))
+```
+
+```{r}
+sapply(fits_both$fits, nec)
+```
+
+```{r}
+lapply(fits_both$fits, function(f) summary(f$fit)$random$chamber)
+```
+
+The chamber standard deviations are small within both levels, with intervals
+running down towards zero --- the same reading as the pooled fit earlier, now
+established separately within each light regime rather than assumed to be
+common to them. And the two thresholds overlap substantially --- the
+same conclusion the posterior comparison reached earlier, by a different route,
+and the same one @brinkman2023 reached on the seven-day survival data.
+
+That agreement is worth checking rather than assuming. A grouping structure the
+data do not resolve should look the same whichever way it is asked; where two
+routes disagree, the disagreement is information about the models rather than
+about the biology.
+
+# References

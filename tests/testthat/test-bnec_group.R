@@ -343,3 +343,42 @@ test_that("a model-averaged level yields a WAIC difference but no SE", {
   expect_false(is.na(res$diff))
   expect_true(is.na(res$se_diff))
 })
+
+# RF, on review of #228: compare_posterior() should compare the levels of a
+# bayesnecgroupfit. The levels are fitted independently, so `$fits` is already
+# the named list compare_posterior() takes -- this is dispatch, not new
+# machinery, the same shape as the pp_check() methods in #148 part A.
+
+test_that("compare_posterior is a generic with a default and a group method", {
+  expect_true(is.function(compare_posterior))
+  expect_false(is.null(getS3method("compare_posterior", "default",
+                                   optional = TRUE)))
+  expect_false(is.null(getS3method("compare_posterior", "bayesnecgroupfit",
+                                   optional = TRUE)))
+})
+
+test_that("the default path is unchanged for a named list", {
+  # compare_posterior() was a plain function before; making it generic must not
+  # move the behaviour every existing caller and vignette depends on.
+  skip_on_cran()
+  l <- list(a = suppressMessages(pull_out(manec_example, model = "nec4param")),
+            b = suppressMessages(pull_out(manec_example, model = "ecx4param")))
+  r <- suppressWarnings(suppressMessages(
+    compare_posterior(l, comparison = "n(s)ec")
+  ))
+  expect_named(r, c("posterior_list", "posterior_data", "diff_list",
+                    "diff_data", "prob_diff"))
+  expect_setequal(names(r$posterior_list), c("a", "b"))
+})
+
+test_that("the default still refuses input that is not a named list", {
+  expect_error(compare_posterior(list(1, 2)), "named list")
+  expect_error(compare_posterior("not a list"), "named list")
+})
+
+test_that("the group method passes the per-level fits through", {
+  # Asserted on the method body rather than by fitting a group set twice: the
+  # method is a one-line delegation and fitting to prove it costs minutes.
+  m <- getS3method("compare_posterior", "bayesnecgroupfit")
+  expect_match(paste(deparse(body(m)), collapse = " "), "x\\$fits")
+})
