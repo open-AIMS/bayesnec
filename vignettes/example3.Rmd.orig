@@ -233,3 +233,76 @@ necsigm_priors <- c(prior_string("beta(5, 1)", nlpar = "top"),
                     prior_string("normal(0, 2)", nlpar = "d"))
 exmp_e <- amend(exmp_d, add = "necsigm", priors = necsigm_priors)
 ```
+
+## Fixing a parameter
+
+A parameter can be held at a known value rather than estimated, by giving it a `constant()` prior. This works wherever a user-specified prior works and requires no other change. `bayesnec` has no `fixed` argument of the kind `drc` provides, because a point-mass prior expresses the same thing through machinery that already exists.
+
+The case where this is defensible is an asymptote that is structural rather than measured. In a two-choice avoidance assay, animals are offered a treated and an untreated container, and the expected proportion in the treated container at zero dose is 0.5 *by design*: at zero dose the two containers are identical.
+
+```{r, results = "hide"}
+set.seed(333)
+avoid_x <- rep(c(0, 0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 3.0), each = 6)
+avoid_mu <- 0.5 * exp(-exp(0.3) * pmax(avoid_x - 1.1, 0))
+avoid_data <- data.frame(x = avoid_x,
+                         y = rbeta(length(avoid_x), avoid_mu * 60,
+                                   (1 - avoid_mu) * 60))
+```
+
+`get_priors` returns the priors `bnec` would generate for a formula and data without fitting anything, so the set can be edited before the first run. Fixing `top` is a change to one row.
+
+```{r}
+fixed_prior <- get_priors(y ~ crf(x, model = "nec3param"), data = avoid_data,
+                          family = Beta(link = "identity"))
+fixed_prior$prior[fixed_prior$nlpar == "top"] <- "constant(0.5)"
+fixed_prior
+```
+
+```{r, results = "hide"}
+set.seed(333)
+exmp_f <- bnec(y ~ crf(x, model = "nec3param"), data = avoid_data,
+               family = Beta(link = "identity"), prior = fixed_prior,
+               iter = 1e4, control = list(adapt_delta = 0.99),
+               open_progress = FALSE)
+```
+
+`top` is reported with an estimate of exactly 0.5 and no error, because it was never sampled. Stan does not declare a parameter whose prior is constant, so it contributes nothing to the posterior.
+
+```{r}
+fixef(pull_brmsfit(exmp_f))
+```
+
+### Consequences of fixing an asymptote
+
+Two things are given up, and both are easy to miss because the fit itself looks better rather than worse.
+
+The first is a diagnostic. In the assay above, 0.5 is a *null expectation* rather than a design constant: it holds only if there is no baseline preference between the two containers arising from position, lighting, handling order or substrate. Fitting the same data with `top` free gives a credible interval that comfortably covers 0.5, and that is positive evidence the assay was unbiased before the contaminant was involved. No other output of the model carries it.
+
+```{r, results = "hide"}
+set.seed(333)
+exmp_g <- bnec(y ~ crf(x, model = "nec3param"), data = avoid_data,
+               family = Beta(link = "identity"), iter = 1e4,
+               control = list(adapt_delta = 0.99), open_progress = FALSE)
+```
+
+```{r}
+fixef(pull_brmsfit(exmp_g))
+```
+
+Fix `top` at 0.5 and that outcome becomes indistinguishable from one centred on 0.62. The disagreement does not disappear when it is forbidden from appearing in `top`; it is absorbed into `beta` and `nec` instead, and so into the toxicity estimate, with intervals that no longer reflect it. Whatever value is asserted for `top` propagates into the *NEC* directly, which is visible here even though 0.5 is the value the data were generated from.
+
+```{r}
+rbind(fixed = nec(exmp_f), free = nec(exmp_g))
+```
+
+The second is uncertainty. A constant asserts the value is known exactly, so none of it propagates into ECx or the *NEC*, and the credible intervals narrow. That reads as a better analysis and is the opposite.
+
+A tight informative prior is therefore the better tool in most cases, because it states what is known while still letting the data move the parameter and still carrying the uncertainty forward. `beta(6, 6)` has a mean of 0.5 and a standard deviation of 0.14, concentrating `top` around the design expectation without asserting it.
+
+```{r, eval = FALSE}
+fixed_prior$prior[fixed_prior$nlpar == "top"] <- "beta(6, 6)"
+```
+
+### Fixing an asymptote on control-normalised data
+
+A response divided by its control mean has a maximum of 1 by construction, and fixing `top` at 1 is a common reflex. It should be resisted, for a reason beyond the two above. Normalising to an *estimated* control already discards the sampling variability of the divisor; fixing the asymptote afterwards makes that loss invisible rather than merely present, because the intervals it narrows are the ones that were already too narrow. `bnec` warns when it detects a normalised response. See the "Preparing the response" section of `vignette("example1")` and `?bnec` for the alternative, which is to model the raw response and read the decline relative to the fitted control.
