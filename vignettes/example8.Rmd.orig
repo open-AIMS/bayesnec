@@ -48,7 +48,7 @@ decision to make:
   between levels.
 
 They answer different questions, and they suit different data. This vignette
-works through both, on the dataset each is actually suited to.
+works through both, on the dataset each is suited to.
 
 ```{r, warning = FALSE, message = FALSE}
 library(bayesnec)
@@ -56,7 +56,7 @@ library(ggplot2)
 library(dplyr)
 ```
 
-# Which kind of grouping is it?
+# Types of grouping
 
 The distinction that matters is whether the grouping sits **within** a
 concentration or **across** it, because it decides which route applies.
@@ -83,9 +83,9 @@ data(herbicide)
 - `herbicide` has **seven herbicides each spanning the full concentration
   range**, which is the across-concentration case.
 
-# Part 1: group-level terms, one fit
+# Group-level terms
 
-## The data, and why survival rather than growth
+## Data and choice of response
 
 `nassarius` records survival and growth of snails exposed to contaminants, in
 replicate tanks of six animals.
@@ -98,7 +98,7 @@ nassarius |>
 ```
 
 We model **survival**, not the growth of the survivors. That is a deliberate
-choice and worth being explicit about, because the alternative is a trap:
+choice, because the alternative introduces a bias:
 
 ```{r}
 nassarius |>
@@ -129,7 +129,7 @@ Note that survival is not 6/6 in every control tank --- there is a little
 baseline mortality --- which is a useful reminder that the control is estimated,
 not assumed.
 
-## `ogl()` --- an offset shared by a group
+## Group-level offsets: `ogl()`
 
 `ogl()` gives each level of the grouping its own intercept: the whole curve
 shifts up or down, and its shape is unchanged. This is the right term when
@@ -141,7 +141,7 @@ fit_ogl <- bnec(suc | trials(tot) ~ crf(dose, model = "nec3param") + ogl(tank),
                 iter = 5e3, chains = 3, seed = 17)
 ```
 
-## `pgl()` --- the grouping affects every parameter
+## Group-level curves: `pgl()`
 
 `pgl()` allows every curve parameter to vary by level. It is far more demanding
 of the data: with 34 tanks and six animals each there is very little information
@@ -153,7 +153,7 @@ fit_pgl <- bnec(suc | trials(tot) ~ crf(dose, model = "nec3param") + pgl(tank),
                 iter = 5e3, chains = 3, seed = 17)
 ```
 
-## `(par | group)` --- a named parameter varies
+## Group-level terms on named parameters
 
 Where there is prior reason to expect one specific parameter to vary, name it.
 This is the middle ground, and usually the honest one: it says what is expected
@@ -177,7 +177,7 @@ check_formula(bayesnecformula(suc | trials(tot) ~ crf(dose, "nec3param") +
               data = surv, run_par_checks = TRUE)
 ```
 
-## Failure modes, and being honest about them
+## Failure modes
 
 Hierarchical structure on non-linear parameters is easy to write and hard to
 identify. The caution in the `bayesnec` JSS article [@Fisher2024] applies
@@ -201,7 +201,7 @@ prior, the grouping is not supported by the data and the term is adding
 uncertainty without adding information. Drop it and say so, rather than keeping
 it because it is more sophisticated.
 
-# Part 2: fitting each level separately
+# Fitting each level separately
 
 Where each level spans the whole concentration range, the question changes: not
 "does this group shift the response" but "does this group have a different
@@ -287,7 +287,7 @@ issue #218. Re-running the comparison will move the third decimal place. Set a
 seed for the fits themselves, and treat the comparison as indicative at that
 precision.
 
-# Choosing between the two routes
+# Choosing between the two approaches
 
 | | group-level term | `bnec_group()` |
 |---|---|---|
