@@ -65,12 +65,17 @@ difference against the pooled fit's is a like-for-like comparison. A negative
 
 The comparison is on WAIC because that is what \code{bayesnec} stores on
 every fit. A standard error for the difference needs the \emph{pointwise}
-values, which \pkg{brms} keeps on the fit object but which do not survive
-every route a fit can take --- they are absent from the packaged examples,
-for instance. Where they are present the standard error is computed and the
-observations are checked to line up; where they are not, \code{se_diff} is
-\code{NA} and the difference is a point estimate with no uncertainty
-attached, which is worth remembering before reading much into a small one.
+values, and those are kept only on a single-model fit. A
+\code{\link{bayesmanecfit}} stores its component fits as they were before
+\code{expand_nec()} attached their criteria, so it carries each model's WAIC
+point estimate in \code{mod_stats} and none of the pointwise values.
+
+So \code{se_diff} is reported when every level, and the pooled fit, settled
+on a single model, and is \code{NA} whenever any of them is
+model-averaged --- in which case the difference is a point estimate with no
+uncertainty attached, which is worth remembering before reading much into a
+small one. Where the values are present the observations are additionally
+checked to line up before anything is computed.
 
 Note this compares the \emph{best} model per level against the \emph{best}
 pooled model, not the model-averaged predictions of either. Model averaging
