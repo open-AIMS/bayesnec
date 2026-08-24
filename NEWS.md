@@ -23,6 +23,56 @@
   This does not add a `fixed` argument: see #84 for why fixing an asymptote is
   usually the wrong move, and `vignette("example3")` for when it is not.
   See #244.
+
+- A control lack-of-fit is now surfaced rather than waiting to be looked for:
+  once at the end of `bnec()`, and as a line in `summary()` alongside the
+  convergence verdict. Both threshold on the **ratio** of observed to simulated,
+  not on the posterior predictive p-value. That is deliberate and measured: on
+  two independently fitted parameterisations of the same data the simulated
+  control mean overshot the observed by ~19%, reproducing across fits, while
+  both p-values sat at about 0.82 and neither came near flagging. A p-value
+  threshold would stay silent on exactly the case the check exists to catch.
+  `nsec()` reads its reference from the control, so this is the region most
+  likely to move a reported no-effect concentration. See #148.
+
+- New `check_fit()`, reporting per group of the predictor the observed location
+  and scale of the response against what the fitted model simulates, with a
+  posterior predictive p-value for each and the control group flagged. It sits
+  alongside `check_chains()`, which checks the sampler, and `check_priors()`,
+  which checks the priors: this checks the fit against the data.
+
+  It is deliberately **local**. `dispersion()` reports one global statistic, and
+  for any family with a free dispersion parameter that parameter absorbs exactly
+  the discrepancy the global statistic measures — on the packaged
+  `manec_example` the global Pearson ratio is a healthy 1.011 [0.71, 1.44] while
+  the same fit simulates about 26% more variability than the data show in the
+  control region. That matters because `nsec()` sets its reference from the
+  posterior of the control mean, so mis-stating control variability moves a
+  reported no-effect concentration, and nothing previously reported it.
+
+  The scale statistic is computed on residuals, not raw values: within a group
+  the raw standard deviation mixes residual variability with the slope of the
+  curve across that group, which would make every steep region look
+  overdispersed. Grouping prefers genuine replication and falls back to binning
+  with a warning. For a `bayesmanecfit` the per-candidate-model rows are
+  reported with their stacking weights, because weights come from a global
+  `elpd` and a candidate can hold high weight while fitting the control badly.
+  For the mixture families the observed and simulated proportion of zeros is
+  reported too — the question those families exist to answer, which nothing
+  else reported. On a `bayesnechurdlefit` a third `combined` table checks the
+  fit against the response as it was measured, zeros included, which neither
+  per-component table asks. `plot()` shows the same table graphically: per
+  group, the observed statistic against the 95% span of what the fit simulates,
+  in separate location and scale panels with the control drawn apart. See #148,
+  which also closes #56.
+
+- New `pp_check()` methods for `bayesnecfit`, `bayesmanecfit` and
+  `bayesnechurdlefit`, so posterior predictive checks no longer require
+  unwrapping the underlying `brmsfit`. `pp_check(x, type = "loo_pit_overlay")`
+  gives a LOO-PIT check — the Bayesian counterpart of a uniform quantile
+  residual — using the `loo` criterion `bnec()` already adds, so it needs no
+  extra step and no new dependency. See #148 and #56.
+
 - New `check_sampling()` and `screen_models()`. `check_sampling()` reports, per
   candidate model, the largest Rhat, the smallest effective sample size and the
   number of divergent transitions; `screen_models()` drops the failures and
