@@ -1464,9 +1464,7 @@ is redundant given the others just as readily as because it is wrong, so a small
 stacking weight says little about a single model. A pseudo-BMA weight is
 proportional to expected log predictive density, so a model reduced to a
 thousandth of the weight has been judged to fit much worse, not merely to have
-been covered by something else. If you re-run this with
-`loo_controls = list(weights = list(method = "stacking"))` the weights will move
-and should not be compared with these.
+been covered by something else.
 
 **ErC50 is rescued in every scenario tested.**
 
