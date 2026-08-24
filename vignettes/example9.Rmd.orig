@@ -226,7 +226,7 @@ Read the posterior predictive p-value as a screen, not a test: values near 0 or
 1 mean the model is not reproducing that group, and the control row is the one
 to look at first.
 
-# 5. Exclusion, and what it does to the answer
+# 5. Exclusion and its effect on the estimates
 
 This is the step with no coverage elsewhere, and the one that changes the
 reported number.
@@ -299,7 +299,7 @@ What to state in a methods section:
 summary(fit_screened)
 ```
 
-# A second family: a continuous response
+# A continuous response
 
 The screen in step 1 and the checks in step 4 behave differently for a
 continuous response, so it is worth seeing both. The `herbicide` data record
