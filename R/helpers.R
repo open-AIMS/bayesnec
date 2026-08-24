@@ -869,6 +869,24 @@ add_brm_defaults <- function(
       d_init <- disp_inits(disp_spec, family, response)
       inits <- lapply(inits, function(chain) c(chain, d_init))
     }
+    # Stan does not declare a parameter whose prior is constant, so supplying an
+    # init for one is rejected. The value was carried through the init search on
+    # purpose -- the search evaluates the candidate curve, of which a fixed
+    # parameter is genuinely part -- and is dropped here, at the point the list
+    # is handed to brm(). Taken from brm_args$prior rather than init_priors so
+    # that a constant on a disp() parameter, appended just above, is caught too.
+    # No effect where the search fell back to "random". See #244.
+    if (!is.character(inits)) {
+      all_priors <- as.data.frame(brm_args$prior)
+      is_const <- is_constant_prior(all_priors$prior) &
+        all_priors$class == "b" & !is.na(all_priors$nlpar)
+      const_pars <- paste0("b_", all_priors$nlpar[is_const])
+      if (length(const_pars) > 0) {
+        inits <- lapply(inits, function(chain) {
+          chain[!names(chain) %in% const_pars]
+        })
+      }
+    }
     brm_args$init <- inits
   }
   brm_args

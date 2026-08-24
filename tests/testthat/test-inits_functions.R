@@ -270,3 +270,110 @@ test_that("a prior naming a parameter the curve does not have still errors", {
     "do not match expectation"
   )
 })
+
+# #244: a constant() prior fixes a parameter, but has no entry in the sampling
+# table make_inits() looks distributions up in, so the whole init search died
+# with "attempt to apply non-function". Fixing a parameter then required the
+# user to hand-write an `init` list for every *other* parameter in order to
+# skip the search, which is what example7 (#193) had to do.
+
+const_prior_df <- function(prior_bot = "constant(0)", lb = "", ub = "") {
+  data.frame(prior = c("normal(1,1)", "normal(0,5)", prior_bot,
+                       "gamma(5,2)"),
+             class = "b", coef = "", group = "", resp = "", dpar = "",
+             nlpar = c("top", "beta", "bot", "nec"),
+             lb = c("", "", lb, ""), ub = c("", "", ub, ""),
+             stringsAsFactors = FALSE)
+}
+
+test_that("make_inits assigns a constant prior rather than sampling it", {
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  out <- bayesnec:::make_inits("nec4param", fct_args,
+                               priors = const_prior_df(), chains = 3)
+  expect_length(out, 3)
+  for (chain in out) {
+    expect_setequal(names(chain), fct_args)
+    expect_equal(as.numeric(chain$b_bot), 0)
+  }
+  # a non-zero constant is carried through as itself, not coerced
+  out2 <- bayesnec:::make_inits("nec4param", fct_args,
+                               priors = const_prior_df("constant(0.5)"),
+                               chains = 2)
+  expect_equal(as.numeric(out2[[1]]$b_bot), 0.5)
+})
+
+test_that("a constant outside its own bounds does not hang", {
+  # The bound-respecting redraw loops until the value falls inside lb/ub. A
+  # constant cannot be redrawn, so without the branch this spins forever --
+  # a hang rather than an error, which is why it is tested explicitly.
+  out <- bayesnec:::make_inits(
+    "nec4param", c("b_top", "b_beta", "b_bot", "b_nec"),
+    priors = const_prior_df("constant(0)", lb = "1", ub = "10"), chains = 2
+  )
+  expect_equal(as.numeric(out[[1]]$b_bot), 0)
+})
+
+test_that("the fixed value is kept for the curve check, not dropped", {
+  # make_good_inits() evaluates the candidate curve, and a parameter fixed at
+  # bot = 0 is genuinely part of that curve. Dropping the constant here -- the
+  # obvious reading of "skip constant priors" -- makes every candidate fail the
+  # range check and sends the search to Stan's defaults after 10,000 trials.
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(42)
+  y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
+  priors <- bayesnec:::define_prior("nec4param",
+                                    validate_family("gaussian"), x, y)
+  priors$prior[priors$nlpar == "bot"] <- "constant(0)"
+  inits <- bayesnec:::make_good_inits("nec4param", x, y, priors = priors,
+                                      chains = 2, seed = 42)
+  expect_false(is.character(inits))   # i.e. not the "random" fallback
+  expect_true("b_bot" %in% names(inits[[1]]))
+  expect_equal(as.numeric(inits[[1]]$b_bot), 0)
+})
+
+test_that("refine_inits skips a parameter that is fixed", {
+  # refine_inits() re-draws slope/d/beta from its own copy of the sampling
+  # table, so a constant on one of those hit the identical error.
+  x <- as.numeric(rep(1:10, each = 5))
+  priors <- const_prior_df()
+  priors$prior[priors$nlpar == "beta"] <- "constant(-0.5)"
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  init <- list(b_top = as.array(1e6), b_beta = as.array(-0.5),
+               b_bot = as.array(0), b_nec = as.array(5))
+  expect_silent(
+    out <- bayesnec:::refine_inits(init, sort(x),
+                                   bayesnec:::pred_nec4param, fct_args,
+                                   limits = c(0, 3), priors = priors,
+                                   n_sub = 5)
+  )
+  expect_equal(as.numeric(out$b_beta), -0.5)
+})
+
+test_that("a constant prior that fixes no readable value errors", {
+  expect_error(
+    bayesnec:::make_inits("nec4param", c("b_top", "b_beta", "b_bot", "b_nec"),
+                          priors = const_prior_df("constant(a)"), chains = 2),
+    "must fix a single numeric value"
+  )
+})
+
+test_that("the fixed parameter is dropped before the inits reach brm", {
+  # Stan does not declare a parameter whose prior is constant, so an init for
+  # it is rejected. The value is carried through the search and removed only
+  # here, in add_brm_defaults().
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(42)
+  y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
+  priors <- bayesnec:::define_prior("nec4param",
+                                    validate_family("gaussian"), x, y)
+  priors$prior[priors$nlpar == "bot"] <- "constant(0)"
+  out <- suppressMessages(
+    bayesnec:::add_brm_defaults(list(prior = priors, chains = 2, seed = 42),
+                               "nec4param", validate_family("gaussian"), x, y,
+                               skip_check = FALSE, custom_name = NULL)
+  )
+  expect_false("b_bot" %in% names(out$init[[1]]))
+  expect_setequal(names(out$init[[1]]), c("b_top", "b_beta", "b_nec"))
+  # the prior itself must still reach brm(); only the init is dropped
+  expect_true("constant(0)" %in% out$prior$prior)
+})

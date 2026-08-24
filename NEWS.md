@@ -1,5 +1,20 @@
 # bayesnec 2.1.4
 
+- A `constant()` prior now works when passed straight to `bnec(prior = )`, so a
+  parameter can be fixed at a known value with a one-line change to the prior
+  set. Previously the initial-value search looked the prior's distribution name
+  up in a table of `gamma` / `normal` / `beta` / `uniform` and stopped with
+  "attempt to apply non-function", which meant fixing one parameter obliged the
+  user to hand-write initial values for every *other* parameter in order to skip
+  the search. The fixed value is now carried *through* the search — it is
+  genuinely part of the curve being checked against the response range — and
+  dropped only where the initial values are handed to `brm()`, because Stan does
+  not declare a parameter whose prior is constant. `sample_priors()` accepts one
+  too, sampling it as the point mass it is, so a prior set containing a fixed
+  parameter can be inspected. This does not add a `fixed` argument: see #84 for
+  why fixing an asymptote is usually the wrong move, and `vignette("example3")`
+  for when it is not. See #244.
+
 - `get_priors()` now reports and round trips a prior on `zi` or `hu` for the
   families where those are ordinary `brms` parameters. For
   `zero_inflated_poisson` and `zero_inflated_negbinomial`, which `bayesnec` fits

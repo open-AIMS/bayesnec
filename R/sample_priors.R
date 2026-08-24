@@ -43,6 +43,15 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
   }
   out <- vector(mode = "list", length = nrow(priors))
   for (j in seq_len(nrow(priors))) {
+    # A constant() prior is a point mass: every draw is the fixed value, and
+    # the bound filtering below is skipped because there is nothing to reject
+    # against. Without this branch the whole call failed on any prior set
+    # containing a fixed parameter, so a user could not inspect the priors they
+    # had just written. See #244.
+    if (is_constant_prior(priors$prior[j])) {
+      out[[j]] <- rep(constant_prior_value(priors$prior[j]), n_samples)
+      next
+    }
     bits <- gsub("\\(|\\)", ",", priors$prior[j])
     bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
     fct_i <- bits[1]
