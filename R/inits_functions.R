@@ -1,3 +1,28 @@
+#' Treat an empty-string prior bound as absent
+#'
+#' \pkg{brms} records an absent bound as \code{""} in the \code{prior} slot a
+#' fitted object carries, while \code{define_prior()} and \code{brms::prior()}
+#' use \code{NA}. All three mean unbounded, but the bound-respecting redraw in
+#' \code{make_inits()} tests with \code{is.na()}, so \code{""} was read as a
+#' bound, then coerced to \code{NA} by \code{as.numeric()}, leaving a
+#' \code{while (NA)} and the error "missing value where TRUE/FALSE needed".
+#' That is what stopped a fit's own priors from being usable as a \code{prior}
+#' argument. See #141.
+#'
+#' @param priors A \code{\link[base]{data.frame}} of priors.
+#'
+#' @return \code{priors}, with blank bounds set to \code{NA}.
+#'
+#' @noRd
+blank_bounds_to_na <- function(priors) {
+  for (bound in c("lb", "ub")) {
+    if (bound %in% names(priors)) {
+      priors[[bound]][!nzchar(as.character(priors[[bound]]))] <- NA
+    }
+  }
+  priors
+}
+
 #' make_inits
 #'
 #' Creates list of initialisation values
@@ -21,8 +46,24 @@ make_inits <- function(model, fct_args, priors, chains) {
             normal = rnorm,
             beta = rbeta,
             uniform = runif)
-  priors <- as.data.frame(priors)
+  priors <- blank_bounds_to_na(as.data.frame(priors))
   priors <- priors[priors$prior != "", ]
+  # Only the curve's own coefficients are the business of the initial-value
+  # search. Any prior carrying a class other than "b" describes no part of the
+  # mean curve -- the family's dispersion parameter (sigma, shape, phi), the
+  # mixing probability of a single-block zero-inflated family (zi, hu), a
+  # group-level standard deviation (sd) -- and previously made the name check
+  # below fail outright, so a user simply could not supply one. Note the filter
+  # is general, not a list of dispersion classes: anything that is not "b" is
+  # out, which is the correct rule and needs no maintenance as families are
+  # added. Dropping them here is the same move add_brm_defaults() already makes
+  # for the parameters a disp() variance function introduces, and it has the
+  # second effect the fix needs: no initial value is generated for them, which
+  # is correct. Stan random-initialises any parameter absent from an init list,
+  # and bayesnec has never given sigma an init, so nothing downstream needs
+  # teaching. The priors themselves still reach brm(); only the init search
+  # ignores them. See #207 and #231.
+  priors <- priors[priors$class == "b", ]
   par_names <- character(length = nrow(priors))
   for (j in seq_along(par_names)) {
     sep <- ifelse(priors$class[j] == "b", "_", "")
@@ -170,7 +211,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
   fct_args <- names(unlist(as.list(args(pred_fct))))
   fct_args <- setdiff(fct_args, "x")
   dots <- list(...)
-  priors_df <- as.data.frame(dots$priors)
+  priors_df <- blank_bounds_to_na(as.data.frame(dots$priors))
   priors_df <- priors_df[priors_df$prior != "", ]
   set.seed(seed)
   inits <- make_inits(model, fct_args, ...)

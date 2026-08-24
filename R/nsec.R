@@ -219,6 +219,16 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 1000,
     stop("You may only pass one sig_val")
   }
   sample_size <- object$sample_size
+  # The same weighted index every other quantity on this object uses, rather
+  # than a fresh unseeded sample() here. Two things follow. The model-averaged
+  # NSEC stops moving between calls -- and it was the lower bound, the end a
+  # protective concentration is read off, that moved most. And the NSEC and its
+  # ecnsec are drawn with one index instead of two independent ones, so a pair
+  # is now the same posterior draw of the same model rather than two unrelated
+  # ones. Which draws are kept is unchanged in kind, and each NSEC is still read
+  # off its own model's curve exactly as before, so this settles nothing about
+  # what those curves are anchored to (#19). See #216.
+  draw_index <- pull_draw_index(object, names(object$mod_fits), sample_size)
   # A closure rather than positional dispatch through sapply(), for the reason
   # given in ecx.bayesmanecfit: the previous form silently dropped any argument
   # not named in the positional list, dpar included.
@@ -229,9 +239,10 @@ nsec.bayesmanecfit <- function(object, sig_val = 0.01, resolution = 1000,
                 hormesis_def = hormesis_def,
                 x_range = x_range, xform = xform, prob_vals = prob_vals,
                 posterior = TRUE, dpar = dpar)
-    n_s <- as.integer(round(sample_size * object$mod_stats[x, "wi"]))
-    sample_out <- sample(out, n_s)
-    attr(sample_out, "ecnsec_relativeP") <- sample(attributes(out)$ecnsec_relativeP, n_s)
+    idx <- draw_index[[mod]]
+    sample_out <- out[idx]
+    attr(sample_out, "ecnsec_relativeP") <-
+      attributes(out)$ecnsec_relativeP[idx]
     sample_out
   }
   to_iter <- seq_len(length(object$success_models))

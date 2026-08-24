@@ -34,6 +34,21 @@ name of the successfully fitted models.}
 \item{\code{sample_size}}{The size of the posterior sample.
 Information on the priors used in the model.}
 
+\item{\code{w_draw_index}}{The realised model-averaging draw: a
+\code{\link[base]{list}} of the row indices kept for each component model.
+Model averaging keeps a weighted subset of each model's draws, and this
+records which ones, so every call on the object uses the same subset.
+\code{fitted}, \code{posterior_epred}, \code{ecx} and \code{nsec} are
+therefore reproducible, and agree with \code{w_ne_posterior} and
+\code{w_pred_vals}. \code{predict} and \code{posterior_predict} still vary
+between calls unless a seed is set, because they simulate new observations
+from the likelihood, as they do for a single \code{\link[brms]{brmsfit}}.}
+
+\item{\code{w_draw_seed}}{The seed that realised \code{w_draw_index}. Used only
+where the stored index cannot apply: when a caller thins to a different
+number of draws, and for objects saved before version 2.1.3.7, which carry
+neither field and fall back to a fixed seed.}
+
 \item{\code{w_ne_posterior}}{The model-weighted posterior estimate of the no-effect
 toxicity estimate.}
 
@@ -43,9 +58,17 @@ data.}
 \item{\code{w_residuals}}{Model-weighted residual values
 (i.e. observed - w_predicted_y).}
 
-\item{\code{w_pred_vals}}{A \code{\link[base]{list}} containing model-weighted
-posterior predicted values based on the supplied \code{resolution} and
-\code{x_range}.}
+\item{\code{w_pred_vals}}{A \code{\link[base]{list}} with a single element
+\code{data}, a \code{\link[base]{data.frame}} of summary model-weighted
+posterior predicted values over a grid set by \code{resolution} and
+\code{x_range}. Up to and including version 2.1.3.6 it also held
+\code{posterior}, the full \code{sample_size x resolution} matrix of
+weighted draws those summaries came from. Once the per-model matrices were
+dropped that one matrix dominated what remained, so it is no longer stored.
+To obtain it directly, use \code{posterior_epred(x, newdata =
+bnec_newdata(x, resolution = 1000), re_formula = NA)}, which draws from the
+component models in the same weighted proportions. Objects saved before the
+change still carry it and are unaffected.}
 
 \item{\code{w_ne}}{The summary stats (median and 95\% credibility intervals) of
 w_ne_posterior.}

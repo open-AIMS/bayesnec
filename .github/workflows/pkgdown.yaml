@@ -1,10 +1,18 @@
 on:
   push:
-    branches: master
+    branches: [master, dev]
   pull_request:
-    branches: master
+    branches: [master, dev]
+  workflow_dispatch:
 
 name: pkgdown
+
+# github-pages-deploy-action pushes to gh-pages, which needs write access to
+# repository contents. Relying on the repository's default workflow permissions
+# leaves the deploy dependent on a setting that is read-only by default on
+# newer repositories. See #230.
+permissions:
+  contents: write
 
 jobs:
   pkgdown:
@@ -12,7 +20,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -29,9 +37,14 @@ jobs:
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
 
+      # `clean: false` is what lets the two sites coexist. A build from `master`
+      # writes docs/ at the root and leaves docs/dev/ untouched; a build from
+      # `dev` writes only docs/dev/ (see `development: mode: auto` in
+      # _pkgdown.yml) and leaves the root untouched. Turning cleaning on would
+      # make whichever branch published last delete the other one.
       - name: Deploy to GitHub pages 🚀
         if: github.event_name != 'pull_request'
-        uses: JamesIves/github-pages-deploy-action@4.1.4
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           clean: false
           branch: gh-pages

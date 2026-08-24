@@ -22,10 +22,13 @@
 \item{object}{An object of class \code{\link{bayesnechurdlefit}}.}
 
 \item{drop}{A \code{\link[base]{character}} vector containing the names of
-model types you which to exclude for the modified fit.}
+model types you which to exclude for the modified fit. A
+\code{\link{bayesnecfit}} contains a single model, so there is nothing that
+can be dropped from it and \code{drop} is an error in that case.}
 
 \item{add}{A \code{\link[base]{character}} vector containing the names of
-model types you which to include to the modified fit.}
+model types you which to include to the modified fit. Adding models to a
+\code{\link{bayesnecfit}} promotes it to a \code{\link{bayesmanecfit}}.}
 
 \item{loo_controls}{A named \code{\link[base]{list}} of two elements
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}

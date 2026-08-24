@@ -1,3 +1,475 @@
+# bayesnec 2.1.4
+
+- `get_priors()` now reports and round trips a prior on `zi` or `hu` for the
+  families where those are ordinary `brms` parameters. For
+  `zero_inflated_poisson` and `zero_inflated_negbinomial`, which `bayesnec` fits
+  as a single parameter block, `zi` carries a class of its own and sat on the
+  `brms` default `beta(1, 1)` with nothing in the reported prior set to say so —
+  the same gap that 2.1.4 closed for `sigma`, `shape` and `phi`, and arguably a
+  more important one, since for those two families `zi` is the zero-inflation
+  probability the family exists to estimate. `hurdle_gamma` and
+  `zero_inflated_beta` are unaffected: their second block is carried as class
+  `"b"` with a prefixed `nlpar`, so no class-`zi` row is ever generated. See
+  #231.
+
+- The `top` and `bot` prior scales for `Gamma`, `poisson` and `negbinomial` are
+  now taken at a quantile rescaled by the zero fraction of the response, rather
+  than at the raw quantile with a fallback that triggered only once that
+  quantile hit exactly zero. A quantile of a zero-inflated response is a
+  quantile of the *mixture* and is pulled towards zero throughout its range, so
+  the previous guard left the worst case — just below the point where it fired —
+  entirely unguarded: on a `nec4param` response with a true `top` of 40, the
+  `top` prior mean ran 33.5 at no zeros, 6.8 at 72% zeros, then jumped back to
+  29.0 at 76%. It now holds between 28 and 35 across that whole range. **This
+  changes priors, and therefore results, for existing fits**: `poisson` and
+  `negbinomial` are long-released families, and a count response with a material
+  share of zeros reaches this code. A response containing no zeros is
+  unaffected, exactly — the rescaling reduces to the identity there. See #232.
+
+
+- The guard added for #210 is no longer evaluated for families whose priors do
+  not use it. The gamma-scaled `top` and `bot` prior strings are read only by
+  `Gamma`, `poisson` and `negbinomial`; every other family builds those priors
+  from `quantile()` and `sd()` directly, or from literals. Building the guarded
+  strings unconditionally made a "response contains no positive values" error
+  reachable for `gaussian`, where an entirely negative response — log ratios,
+  growth increments, anything expressed as a change — is ordinary input and
+  previously produced perfectly good priors. Related, `bnec()` no longer builds
+  the default priors when the user has supplied a complete set of their own, so
+  a failure while building a default the fit will not use can no longer block
+  it. See #229.
+
+- The vignette precompilation workflow added in 2.1.4 can now actually be run,
+  and the documentation site configuration records what `pkgdown` really does.
+  `workflow_dispatch` only takes effect once a workflow file is on the
+  repository's default branch, so the job was invisible and undispatchable while
+  it lived on `dev` alone; it now also triggers on pushes to a `precompile/**`
+  branch, which makes it exercisable before it reaches `master`. Both workflows
+  declare the `permissions` they need rather than depending on the repository
+  default. The step that rebuilds a subset of vignettes now restores the ones it
+  held back — the previous `on.exit()` never fired, because `shell: Rscript {0}`
+  runs at top level. The cache on `~/.cmdstan` was removed: `brms` uses the
+  `rstan` backend here, so nothing is ever written there and the step cached an
+  empty directory while reading as though compilation were cached. The workflow
+  also gained a dry-run mode and branch-suffix selection, so that a run which
+  will take hours can have its plumbing — permissions, checkout, and the
+  pull-request step — verified first. See #230.
+
+
+- `bnec()` now accepts a prior on the family's own dispersion parameter —
+  `sigma`, `shape` or `phi`. Supplying one previously failed in the
+  initial-value search, because it compared the prior's parameter names against
+  the *curve's* arguments as an exact set, so any row naming something the mean
+  curve does not have killed the call. There is now no way to regularise
+  dispersion where the data are sparse and the `brms` default is too vague, and
+  `get_priors()` could not report it either, so a fit's prior set was a complete
+  record of everything except dispersion. No initial value is generated for it:
+  Stan random-initialises any parameter absent from an init list. See #207.
+
+- A prior set that is missing parameters the model needs is now filled from the
+  `bayesnec` defaults, with a warning naming each one, instead of being accepted
+  as though it were complete. Previously the unmentioned parameters fell through
+  to `brms`, which means a **flat** prior — the opposite of what `bayesnec` is
+  for, since it generates weakly informative priors precisely because flat ones
+  are rarely useful in non-linear modelling. The case this bit hardest is the
+  one `define_disp_prior()` exists to prevent: drop the `c0` and slope rows a
+  route B `disp()` term adds and the fit ran on flat priors for parameters its
+  own documentation calls "near-perfectly confounded", with nothing to say so.
+  Editing a returned prior set and handing it back is exactly the workflow
+  `get_priors()` invites, so this was easy to hit. **This changes results**: a
+  fit that previously ran on flat priors for the parameters it did not mention
+  will now run on `bayesnec` priors and give different numbers. See #207.
+
+- `define_prior()` no longer collapses the `top` and `bot` priors when a large
+  share of the response is exactly zero. The gamma rates for those parameters
+  are set from quantiles of the response, and those quantiles are zero once
+  enough of the response is — so `bot` was pinned near zero whatever the real
+  lower asymptote was (from 25% zeros under the default `prior_type`, and from a
+  *single* zero under `"regularizing"`, which uses the minimum), and past 75%
+  zeros the `top` rate divided by zero and produced the literal prior string
+  `gamma(2, Inf)`. Where a quantile has collapsed, the scale now falls back to
+  the same quantile of the positive part of the response. This is not new to the
+  zero-inflated count families added in 2.1.4 — a `poisson` or `Gamma` response
+  with many zeros always hit it — but those families exist precisely for that
+  regime, which made it the normal case rather than an accident. A response with
+  no positive values at all now raises an informative error instead. Priors for
+  a response containing no zeros are unchanged. See #210.
+
+- `?models` and `vignette("example2b")` now document how the `drc` package's
+  `NEC.2()`, `NEC.3()` and `NEC.4()` map onto the `bayesnec` model set.
+  `NEC.4()` and `NEC.3()` are `nec4param` and `nec3param` — not approximations
+  of them: given `b = exp(beta)` the two implementations agree to the last bit.
+  The documentation also records the one substantive difference (`bayesnec`
+  estimates `beta` and uses `exp(beta)`, so the decay rate is positive by
+  construction, and `drc`'s `b < 0` region is deliberately unreachable here),
+  that the extra log-logistic term in `?drc::NEC` appears in that help page but
+  not in the code `drc` fits, and why `NEC.2()` has no equivalent here. See
+  #139.
+
+- The package website now publishes a **development preview** alongside the
+  released documentation. `master` continues to publish to the site root;
+  `dev` publishes to `/dev/`, carrying pkgdown's own development banner so the
+  two cannot be confused. This makes a vignette written or changed on `dev`
+  readable in rendered form without a contributor precompiling locally, and
+  makes drift between `dev` code and `master` vignette output visible before
+  release rather than at it. A separate manually-dispatched workflow rebuilds
+  the precompiled vignettes and opens a PR with the result, so a refresh no
+  longer requires a local Stan toolchain. See #215.
+
+- Model-averaged output from a `bayesmanecfit` is now reproducible. Averaging
+  keeps `round(sample_size * wi)` of each component model's draws, and which
+  draws those were used to be settled by an unseeded `sample()` at every call
+  site independently. `posterior_epred()`, `posterior_predict()`, `ecx()`,
+  `nsec()` and everything built on them therefore returned a different answer on
+  every call, and none of them agreed with the summaries stored on the object.
+  For `nsec()` the instability landed almost entirely on the lower bound, which
+  is the end used to set a protective concentration: over six replicate calls it
+  spanned 0.735–0.844 while the median moved by less than 0.5%. The draw is now
+  realised once, when the object is built, and kept on the object as the new
+  `w_draw_index` slot, with the seed behind it in `w_draw_seed`; every later call
+  reuses it. Realisation *i* now means "component *m*[*i*], iteration *j*[*i*]"
+  for every quantity taken from one object. The averaging method is unchanged —
+  only where the randomness is drawn. Three consequences worth knowing.
+  Model-averaged numbers will differ from those produced by earlier versions;
+  the old ones were not reproducible, so there is no "before" to match.
+  `posterior_epred()` over the build grid now returns exactly the draws that
+  `w_pred_vals` summarises rather than an independent redraw of them. And an
+  `nsec()` and its `ecnsec` are now the same draw of the same component model,
+  where before they came from two independent `sample()` calls and a pair could
+  be two unrelated draws of two different models. `predict()` and
+  `posterior_predict()` still vary between calls unless a seed is set, because
+  they simulate new observations from the likelihood — the same behaviour `brms`
+  has for a single fit, and unrelated to model averaging. Objects saved before
+  this version carry neither field and fall back to a fixed seed, which is
+  equally reproducible. See #216.
+
+- Model-averaged predictions from a `bayesmanecfit` no longer collapse when
+  `newdata` has a single row. Asking what the averaged curve predicts at one
+  concentration — `fitted(fit, newdata = data.frame(x = 3))` — returned one row
+  per retained draw instead of one row per prediction, because the weighted row
+  selection dropped to a vector and the per-model results were then stacked as
+  rows rather than columns. The point estimate looked plausible, but its
+  `Est.Error` and quantiles were computed across models rather than over draws.
+  A `bayesnecfit` was unaffected, as was any `newdata` with more than one row.
+
+- `brms (>= 2.23.0)` is now required. Earlier versions generate the
+  `beta_binomial` likelihood by passing the whole `trials` array to
+  `beta_binomial_lpmf` instead of `trials[n]`, so each response is evaluated
+  against every trial count. With varying `trials` the density is `-Inf`
+  everywhere and the model cannot initialise; with constant `trials` it samples
+  on a likelihood inflated by a factor of `N`, which is silent and leaves
+  posteriors overconfident by roughly `sqrt(N)`. Fixed upstream in 2.23.0. See
+  `notes/beta_binomial_varying_trials.md`.
+- Fixed a doubled roxygen marker in the references section of `?nsec`, which
+  left a stray `#'` in the rendered help.
+- New `disp()` term in `bayesnecformula`, allowing a family's dispersion
+  parameter to vary across the concentration-response curve instead of being
+  held constant. Two forms. `disp(~x)` models dispersion on the **predictor** —
+  an ordinary `brms` distributional formula, so `disp(~log(x))` and
+  `disp(~s(x))` also work — and says only that noise is larger at one end of the
+  dose axis. `disp("power")` models it on the **fitted mean**, a variance
+  function in the GLM sense, which is a statement about the measurement process
+  rather than about the dose axis. The two coincide for a monotone curve, where
+  `mu` is itself a monotone function of `x`, and separate under hormesis or
+  where a design revisits the same `mu`.
+- Variance functions are named and registered in the same spirit as the models,
+  so adding one later is a registry entry and a prior rather than a change to
+  the generator. `"power"` gives `log(dpar) = c0 + c1 * (log(mu) - log(m))`,
+  which is `dpar = exp(c0) * (mu/m)^c1` because every eligible family puts a log
+  link on its
+  dispersion parameter and `validate_family()` forces identity on `mu` only.
+  `"twosided"` adds a `c2 * (log(1 - mu) - log(1 - m))` term for `Beta` and `beta_binomial`, so
+  that variance can shrink toward both boundaries of `(0, 1)` — the shape a
+  bounded family asserts, without asserting a ceiling with it. `c1 = 0` is the
+  constant-dispersion model in every case, and is where the prior on `c1` sits.
+- The covariate in every variance function is **centred** on a reference `m`
+  computed from the response before fitting — its median, or its geometric
+  median for the forms taking `log(mu)`. `m` is a constant, not an estimated
+  quantity, so only the coordinates change and not the likelihood. Without it
+  `c0` would be the dispersion parameter at `mu = 1` (or `mu = 0` for
+  `"loglinear"`), which is nowhere near the data unless the response happens to
+  be of order one: fitting algal cell density (`mu ~ 1.8e4`) uncentred gave a
+  posterior correlation between `c0` and `c1` of 0.99, a `c1` of the wrong sign
+  and an implied CV of `1e6` against an observed 0.03–0.6. Centred, that fit
+  behaves and `c0` is interpretable as the dispersion at a typical response.
+- The parameters a variance function introduces are now initialised at the
+  constant-dispersion null (every slope at zero) rather than left to Stan's
+  default draw. The sign of a slope is tied to the direction of the mean curve,
+  so a chain started in the mirror-image basin converges to an inverted
+  solution; leaving these to chance produced an R-hat of 1.85 with one chain
+  reporting the wrong sign, where seeding from the null gives 1.001.
+- `"loglinear"` gives `log(dpar) = c0 + c1 * (mu - m)`, linear in the mean rather than
+  in its logarithm, and so is the one form defined where the fitted mean reaches
+  or crosses zero. It is also what a log-transformed endpoint inherits from a
+  power law on its original scale: if a density has `sd ~ mu^p` then
+  `sd(log N) ~ mu^(p - 1)` by the delta method, and substituting
+  `mu_N = N0 * exp(days * mu_sgr)` for an average specific growth rate leaves
+  `log sd(sgr) = const + days * (p - 1) * mu_sgr`. A growth rate is therefore
+  not a case a variance function cannot reach, only one the power law cannot,
+  and `p < 1` implies `c1 < 0` — dispersion falling as the growth rate rises,
+  which is the pattern the algal tests show.
+- `c1` is dimensionless where it multiplies `log(mu)` but carries units of
+  `1/response` where it multiplies `mu`, so the default prior for `"loglinear"`
+  is scaled by the observed spread of the response. A fixed `normal(0, 2)` would
+  be near-flat for a response spanning thousands and sharply informative for one
+  spanning a fraction.
+- Route B needs the curve expression written out a second time inside the
+  dispersion formula, because `mu` is not in scope for another distributional
+  parameter's formula in `brms`. Only the source is duplicated, not the fitted
+  quantity: the curve parameters are shared, being declared once for the whole
+  formula. This is mechanical here because `bayesnec` already owns every curve
+  expression in `sysdata`.
+- What the exponent means depends on the family, since each already imposes its
+  own mean-variance link — `c1 = 1` is constant CV under `gaussian`, while under
+  `Gamma` a constant `shape` is already constant CV, so `c1 = 0` is. The form is
+  defined on the dispersion parameter, which is what `brms` fits, and the
+  implied variance per family is tabulated in `?bayesnecformula` rather than
+  algebraically normalised away.
+- `disp()` requires a family with a free dispersion parameter and is refused
+  with an explanation for `poisson`, `bernoulli` and `binomial`, whose variance
+  is a deterministic function of the mean. Those are exactly the families the
+  existing `dispersion()` diagnostic applies to, so the two cover disjoint sets
+  of families and are complements rather than alternatives. The two-block
+  families are also refused for now, since coupling a variance function to one
+  block of a joint fit needs a decision about the other.
+- A `log(mu)` variance function is refused where the fitted mean crosses zero,
+  rather than failing at initialisation, with the error pointing at
+  `disp("loglinear")` or `disp(~x)`.
+  See [#191](https://github.com/open-AIMS/bayesnec/issues/191).
+- New *Non-constant dispersion* section in `vignette("example1")`, presenting
+  `disp()` as a diagnostic rather than a routine addition. It gives three
+  explanations to exclude before concluding that dispersion is genuinely
+  non-constant — substituted or censored values, a misspecified family, and
+  lack of fit in the mean — then works a simulated example through to the
+  consequences for the toxicity estimates. Across nineteen datasets screened
+  with adequate replication, no real dataset showed a dispersion relationship
+  that survived its own confound, which is why the example is simulated.
+- New *The scale of the predictor* section in `vignette("example1")`, placed
+  before any model is fitted. The scale on which the predictor enters the model
+  is the user's decision and `bnec` takes it as given, yet it typically matters
+  more than the choice of equation. The section covers how to judge it from the
+  spacing of the design rather than the response, the `crf(log(x))` syntax,
+  offsets for zero concentrations, and back-transforming the toxicity estimates.
+  See [#194](https://github.com/open-AIMS/bayesnec/issues/194).
+- Every `bnec()` call in `vignette("example1")` now passes `seed` explicitly.
+  `set.seed()` governs the initial values `bayesnec` generates but not the seed
+  Stan's sampler uses, so repeated builds of the vignette drifted; passing
+  `seed` makes them bit-identical.
+- `amend()` now has a method for `bayesnecfit`, so models can be added to a
+  single-model fit. `?bnec` recommends testing a fit with one likely model
+  before committing to a set, and `amend(fit, add = )` is the natural next step;
+  previously it errored and the fit already paid for had to be discarded, or
+  combined by hand with `+`. Adding models promotes the object to a
+  `bayesmanecfit`, as `+` and `c()` already do. `drop` is an error for a
+  single-model fit rather than a silent no-op, since honouring it would leave
+  nothing to return. Both methods now share one implementation, so the single-
+  and multi-model paths cannot drift apart. See
+  [#176](https://github.com/open-AIMS/bayesnec/issues/176).
+- `bnec_hurdle()` now accepts a `cens()` aterm on the response, which unblocks
+  the combination the censoring work was raised for: a growth endpoint that is
+  both zero-bounded with structural zeros (deaths) and left-censored at the
+  recording resolution (survivors measured below the limit). Only a two-part
+  model with a censored response component can tell those two zeros apart. The
+  guard was stricter than the constraint it protected — `hurdle_response_var()`
+  required the whole left-hand side to deparse to a bare name, when what the
+  zero-as-death convention needs is a bare *response*; an aterm alongside it
+  does not threaten that.
+- The declaration is routed rather than merely allowed. It is passed to the
+  growth component, where the censoring indicator travels as an ordinary data
+  column and is subset with everything else, and dropped from the survival
+  component, whose alive/dead response is observed exactly. That was already the
+  behaviour of `swap_response()`, incidentally; it is now deliberate and tested.
+- A row that is both zero and censored is refused. A structural zero and a
+  censored observation are the two things a hurdle model exists to separate, and
+  accepting a row claiming to be both would reproduce the confusion
+  `vignette("example6")` warns about. Under a Gamma growth component the
+  censoring bound cannot be `0` — `bnec()` already rejects that — so the
+  encoding is "at most the smallest resolvable value", which `?bnec_hurdle` now
+  says.
+- Other aterms keep erroring, but by name and with the reason. `trials()` has no
+  meaning for either component; `weights()` is refused because whether a weight
+  applies to the growth component, the survival component or both is a modelling
+  decision `bnec_hurdle()` will not make on the user's behalf. See
+  [#188](https://github.com/open-AIMS/bayesnec/issues/188).
+- `models()` and `check_models()` no longer disagree about which equations are
+  available for a given response range. `models(c(0, 1))` was dropping
+  `nechorme` and `nechorme4`, which `bnec()` fits happily for a 0-1 bounded
+  identity family, and `models(c(0, Inf))` was keeping `nechormepwr01`, which
+  `bnec()` drops for a zero-bounded one. The numeric branch of `models()` now
+  asks `check_models()` — the function the fitting path itself uses — rather
+  than restating the rules, so the advertised set is the set that will be
+  fitted. A test asserts the two agree for every response range and every family
+  sharing it. **No restriction has been relaxed:** the behaviour of `bnec()` is
+  unchanged, and `models()` has been corrected to describe it. See
+  [#170](https://github.com/open-AIMS/bayesnec/issues/170).
+- `models()` now errors informatively on input it cannot map. A numeric range
+  that is neither unbounded, 0-1 bounded nor zero-bounded — `models(c(0, 100))`
+  — and an unrecognised character argument both used to fail with "object
+  'use_mods' not found". `models()` also accepts every model group `bnec()`
+  does: `"decline"` and `"hormesis"` are valid in `bnec(model = )` through
+  `handle_set()` but were missing from the list `models()` recognised.
+- New `failed_models()`, returning the models `bnec()` or `amend()` attempted
+  and could not fit, each with the error, the priors and the initial values used
+  in the attempt. A set fitted with `model = "all"` regularly loses a model or
+  two and the error scrolls past mid-run; what is needed to diagnose one is the
+  prior and the starting values it was given, and both are constructed inside
+  `bnec()` rather than supplied by the user, so re-running the whole set was
+  previously the only way to see them. The returned prior is a `brmsprior` and
+  is directly usable, so the natural next step —
+  `bnec(..., model = "nechormepwr", prior = failed_models(fit)$nechormepwr$prior)`
+  — needs no reconstruction. `summary()` reports how many models failed and
+  which. See [#133](https://github.com/open-AIMS/bayesnec/issues/133).
+- The record is attached to a single-model `bayesnecfit` as well as to a
+  `bayesmanecfit`: where all but one model of a set failed, `bnec()` returns the
+  one that worked, and that is the case where knowing what happened to the
+  others matters most. It is attached only where something did fail, so
+  `names()` on a fitted object is otherwise unchanged, and objects saved before
+  this release report no failures rather than erroring.
+- `summary()` of a `bayesnechurdlefit` reports failures per component, labelled
+  `growth` or `survival`. A hurdle fit runs two independent model sets through
+  `bnec()`, so a model can fail on one and fit on the other, and the summary
+  otherwise printed a short model list with no explanation for it.
+- `pull_out()` carries the record across. Unlike `amend()` it refits nothing,
+  only subsets a set already fitted, so what `bnec()` attempted is still an
+  accurate description of the object returned.
+- New `get_priors()`, returning priors in the form `bnec()` accepts them, from
+  either end of a fit. **Given a fit** it returns the priors that fit actually
+  used, user overrides included, so `bnec(formula, data = data, prior =
+  get_priors(fit))` reproduces the model. **Given a formula and data** it returns
+  the priors `bayesnec` would generate, without fitting anything, so they can be
+  inspected and edited before the first run — the family is chosen from the data
+  and invalid models dropped exactly as `bnec()` would, because the same
+  functions do it. A single model returns a `brmsprior`, a model set a named list
+  of them, both directly usable as `prior =`. The two entry points answer
+  different questions and can disagree once a prior has been overridden, which is
+  documented and tested. Where a `disp()` variance function is in the formula its
+  parameters come back with the curve's, from both entry points: `bnec()` takes a
+  supplied prior whole, so a set returned without them would leave `brms` to put
+  a flat prior on each. What is left to `brms` is the family's own dispersion
+  parameter where dispersion is constant, and the linear predictor of a
+  `disp(~x)` sub-model — neither is accepted by `bnec(prior = )` today. See
+  [#141](https://github.com/open-AIMS/bayesnec/issues/141).
+- `pull_prior()` is unchanged and still returns the whole `brmsprior` a fit
+  carries — `brms` defaults, duplicated vectorized rows and all. That object is
+  for looking at, and is not accepted by `bnec(prior = )`: the extra `sigma` row
+  fails the parameter-name check in `make_inits()`. `?pull_prior` now says so and
+  points at `get_priors()`.
+- Fixed: the prior a fitted object carries could not be fed back to `bnec()`
+  even once the extra rows were removed. `brms` records an absent bound as `""`
+  in a fit's own `prior` slot, where `define_prior()` and `brms::prior()` use
+  `NA`. All three mean unbounded, but the bound-respecting redraw in
+  `make_inits()` tested with `is.na()`, so `""` was read as a bound, coerced to
+  `NA` by `as.numeric()`, and then evaluated as `while (NA)` — "missing value
+  where TRUE/FALSE needed". Blank bounds are now normalised before use, which is
+  the second half of what `get_priors()` needed to round trip.
+- `nechormepwr` and `nechorme4pwr` are now excluded up front for 0-1 bounded
+  families under an identity link, and for the zero-probability block of the
+  two-block families, instead of failing after minutes of fruitless
+  initialisation. Their hormesis term is `x^(1 / (1 + exp(slope)))`, which
+  carries no coefficient: the exponent lies in (0, 1), so at `x = 1` the term
+  contributes exactly 1 whatever `slope` is, and below the threshold — where the
+  decay factor is exactly 1 — the fitted mean is at least `top + 1`. No
+  parameter value keeps that inside (0, 1) for a predictor that reaches 1, so
+  there is nothing for a better initial-value search to find. `nechormepwr01` is
+  the bounded hormesis form and is unaffected, as are `nechorme` and
+  `nechorme4`, whose increment is scaled by `exp(slope)`.
+- The consequence in practice: `model = "zero_bounded"` under `hurdle_gamma`
+  reported 11 models and averaged over 9 — one dropped by design and one lost
+  silently to an initialisation failure that cost roughly eight minutes per run.
+  It now reports 9, and says why each was dropped. The message for these two
+  names the reason rather than sharing the generic one, and points at the
+  hormesis models that do work on a bounded response. See
+  [#177](https://github.com/open-AIMS/bayesnec/issues/177).
+- New families `"zero_inflated_poisson"` and `"zero_inflated_negbinomial"`, for
+  count data with more zeros than the count distribution alone can account for.
+  They take the ordinary single-block path: the concentration-response curve is
+  fitted to `mu` and `brms` estimates a single constant `zi` alongside it. See
+  [#104](https://github.com/open-AIMS/bayesnec/issues/104).
+- They are deliberately **not** two-block families, which is worth stating
+  because `zero_inflated_beta` is one and the names suggest they should match.
+  Zero-inflation differs from a hurdle only when the base distribution can
+  itself produce a zero. Neither Gamma nor Beta can, so for those the two
+  coincide — every zero came from the inflation component, the likelihood
+  separates exactly, and `brms` generates the hurdle density with no mixture at
+  zero. Poisson and negative binomial **can** produce a zero, so the equivalence
+  fails: an observed zero is evidence about both components at once, the
+  likelihood carries a `log_sum_exp` over them and does not factorise. That
+  rules out `bnec_hurdle()`, which is that factorisation performed as two fits.
+  It does not by itself rule out a joint fit with a curve on `zi`, which `brms`
+  can express; `zi` is held constant for the separate reasons `?bnec` now sets
+  out — `zi` and `mu` are weakly separated exactly where `mu` is small, which is
+  the end of the range that sets the threshold, and `zi` is a latent class
+  rather than anything the experiment observed. The rule that follows: if you
+  can tell which zeros are structural, you have a hurdle, not zero-inflation.
+- Consequently `bnec_hurdle()` refuses them as `family_growth`, with an error
+  saying why and pointing at `bnec(family = )` for the mixture. It also now
+  refuses a two-block `family_growth`, which was previously accepted and would
+  have nested one two-part model inside another. `model_survival` is refused for
+  them as for any other single-block family, and `disp()` is refused with the
+  reason that applies — the dispersion parameter describes the count component
+  while the response is the mixture — rather than the generic "no free
+  dispersion parameter", which would be wrong for `zero_inflated_negbinomial`.
+- Predictions for these families are on the scale of the mixture, not of `mu`:
+  `posterior_epred()` returns `mu * (1 - zi)`, so `predict()`, `fitted()`,
+  `autoplot()` and `pred_vals` sit a factor `1 - zi` below the `top` and `bot`
+  that `summary()` reports. `ecx()` and the no-effect threshold are unaffected,
+  since a constant factor cancels from both. Documented under `?bnec`.
+- Neither family is selected automatically. A count response is still read as
+  `poisson`; the zero-inflated forms have to be asked for.
+- Known limitation: a genuine hurdle on a *count* response needs a
+  zero-truncated count family, which is not yet available
+  ([#209](https://github.com/open-AIMS/bayesnec/issues/209)). `bnec_hurdle()`
+  accepts a count `family_growth` but fits it untruncated to the non-zero
+  subset, which overestimates the mean where the mean is small. The prior
+  tables also degrade when a large share of the response is zero
+  ([#210](https://github.com/open-AIMS/bayesnec/issues/210)).
+- A fitted object no longer stores `pred_vals$posterior`, the
+  `n_draws x resolution` matrix of posterior predictions over the plotting grid.
+  It dominated the size of every fit — **31.8 MB against a 1.2 MB `brmsfit`** at
+  the package defaults, 96% of the object — and the cost multiplied with the
+  model set and with `iter`: `model = "all"` retained roughly 1.5 GB in a single
+  `bnec()` call. The measured reproducer from the issue now returns **1.28 MB**.
+  `pred_vals$data`, the small summary that `plot()` and `autoplot()` use, is
+  unchanged. See [#180](https://github.com/open-AIMS/bayesnec/issues/180).
+- The matrix had exactly one reader in the package, the model-averaging path in
+  `expand_manec()`, which now builds each model's posterior itself and thins it
+  to the weighted draws one model at a time. The weighted draws are the same.
+  Nothing else read it: `predict()` did not, and the plot methods use the
+  summary.
+- This is a net saving in computation, not a trade. `expand_nec()` used to
+  compute the matrix for every model whether or not anything needed it; it now
+  computes it only where it does — for smooth (`ecx`-type) models, whose NSEC is
+  read off the curve, and for the two-block families. A threshold model fitted
+  on its own no longer computes it at all. The one place it is computed twice is
+  a model set containing smooth models, at about 0.2 s per model against fitting
+  times measured in minutes.
+- **This is a breaking change for code that read the matrix off a fitted
+  object.** `x$pred_vals$posterior` now returns `NULL` rather than erroring, so
+  downstream code will fail a step later. Replace it with
+  `posterior_epred(x, newdata = bnec_newdata(x, resolution = 1000), re_formula = NA)`,
+  which returns the same thing computed on demand. Objects saved before this
+  change still carry the matrix and are unaffected; every accessor works on
+  both, which is tested.
+- A `bayesmanecfit` no longer stores `w_pred_vals$posterior` either, the single
+  `sample_size x resolution` matrix of model-weighted draws. Once the per-model
+  matrices were gone this was 77% of what remained — 7.65 MB of a 9.90 MB
+  five-model set, and roughly 64 MB on its own at the package defaults. Nothing
+  in the package read it. `w_pred_vals$data` is unchanged, and the same
+  `posterior_epred()` call above reproduces the draws, sampling the component
+  models in the same weighted proportions. See
+  [#213](https://github.com/open-AIMS/bayesnec/issues/213).
+- A two-block fit no longer stores `hurdle$mu_pred` and `hurdle$hu_pred`, the
+  two component curves. They were written on every hurdle fit and never read
+  anywhere, so they are no longer computed at all — removing two
+  `posterior_epred()` calls per two-block fit, and four per `bnec_hurdle()`
+  pair. See [#214](https://github.com/open-AIMS/bayesnec/issues/214).
+- The prediction grid is now built in exactly one place. `bnec_newdata()`,
+  `expand_nec()` and the internal `posterior_on_grid()` had three separate
+  copies of the same code, which disagreed on a partially specified `x_range`:
+  `bnec_newdata()` silently ignored it, the other two produced `seq(NA, NA)`.
+  A partially specified `x_range` is now rejected with a clear error. See
+  [#211](https://github.com/open-AIMS/bayesnec/issues/211).
+
 # bayesnec 2.1.3.6
 
 - New *Censoring* section in `vignette("example1")`, giving the `cens()` aterm

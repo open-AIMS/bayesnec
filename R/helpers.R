@@ -85,12 +85,108 @@ extract_waic_estimate <- function(x) {
   x$fit$criteria$waic$estimates["waic", "Estimate"]
 }
 
+#' Realise the model-averaging draw once, reproducibly.
+#'
+#' Model averaging keeps \code{round(sample_size * wi)} of each component's
+#' draws. Which draws those are used to be decided by an unseeded
+#' \code{sample()} at every call site, so \code{predict()},
+#' \code{posterior_epred()} and the summaries stored on the object were each a
+#' different realisation and no two calls agreed. Seeding the draw from a value
+#' carried on the \code{bayesmanecfit} makes realisation \emph{i} mean
+#' "component m[i], iteration j[i]" for every quantity computed from that
+#' object. See #216.
+#'
+#' Restores the caller's RNG state rather than calling \code{set.seed()}
+#' outright: model averaging must not silently reset a user's simulation seed.
+#'
+#' \code{sample.kind} is pinned rather than left at whatever the session is
+#' using. A seed alone does not fix a draw: R 3.6.0 changed the algorithm behind
+#' \code{sample()}, and the same seed gives a different index either side of
+#' that change. Left unpinned, a saved \code{bayesmanecfit} reloaded under a
+#' different R would silently rebuild a different index and quietly stop
+#' matching its own stored summaries -- which is the bug this is meant to close,
+#' merely deferred. "Rejection" is the post-3.6.0 default, so pinning it changes
+#' nothing today and holds the draw fixed for objects that outlive this R.
+#'
+#' @param model_set A \code{\link[base]{character}} vector of model names.
+#' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
+#' number of draws available per component.
+#' @param mod_stats A \code{\link[base]{data.frame}} with a \code{wi} column
+#' and model names as row names.
+#' @param seed A \code{\link[base]{numeric}} vector of length 1, or NULL.
+#'
+#' @return A named \code{\link[base]{list}} of integer vectors, the draw
+#' indices kept for each model.
 #' @noRd
-w_nec_calc <- function(index, mod_fits, sample_size, mod_stats) {
-  sample(
-    mod_fits[[index]]$ne_posterior,
-    as.integer(round(sample_size * mod_stats[index, "wi"]))
-  )
+weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
+  if (is.null(seed)) {
+    # Objects built before #216 carry no seed. A fixed fallback still makes
+    # every call on such an object agree with every other, which is the point;
+    # erroring would break saved objects and re-drawing would restore the bug.
+    seed <- 216
+  }
+  old_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (has_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    # RNGkind() first, then the seed: the generator kind is encoded in
+    # .Random.seed[1], so restoring the seed last leaves both correct. Where
+    # there was no seed to restore, RNGkind() is what puts sample.kind back --
+    # removing .Random.seed on its own would not.
+    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  set.seed(seed, sample.kind = "Rejection")
+  out <- lapply(model_set, function(index) {
+    size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
+    sample(seq_len(sample_size), size)
+  })
+  names(out) <- model_set
+  out
+}
+
+#' The model-averaging index to use for a given number of available draws.
+#'
+#' Prefers the index realised when the object was built and stored on it. That
+#' is exact and cannot drift: it survives being reloaded under a different R,
+#' where regenerating from the seed is only as stable as \code{sample()}'s
+#' algorithm. Rebuilding from the seed is the fallback, for two cases -- a
+#' caller thinning to a different number of draws (\code{ndraws},
+#' \code{draw_ids}), where the stored index does not apply, and objects saved
+#' before the index was stored. See #216.
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}}.
+#' @param model_set A \code{\link[base]{character}} vector of model names.
+#' @param sample_size A \code{\link[base]{numeric}} vector of length 1, the
+#' number of draws available per component.
+#'
+#' @return A named \code{\link[base]{list}} of integer vectors.
+#' @noRd
+pull_draw_index <- function(object, model_set, sample_size) {
+  idx <- object$w_draw_index
+  # `==` rather than identical(): sample_size is a double off the object and an
+  # integer off nrow(), and identical() would call those different and silently
+  # take the fallback every time.
+  same_n <- isTRUE(object$sample_size == sample_size)
+  if (!is.null(idx) && same_n && all(model_set %in% names(idx))) {
+    idx[model_set]
+  } else {
+    weighted_draw_index(model_set, sample_size, object$mod_stats,
+                        object$w_draw_seed)
+  }
+}
+
+#' @noRd
+w_nec_calc <- function(index, mod_fits, draw_index) {
+  mod_fits[[index]]$ne_posterior[draw_index[[index]]]
 }
 
 #' @noRd
@@ -98,18 +194,40 @@ w_pred_calc <- function(index, mod_fits, mod_stats) {
   mod_fits[[index]]$predicted_y * mod_stats[index, "wi"]
 }
 
+#' Take one model's weighted share of rows from its posterior matrix.
+#'
+#' \code{drop = FALSE} is load bearing. \code{pred_list[[index]]} is a
+#' draws-by-grid matrix and the results are stacked across models with
+#' \code{rbind}, so a single grid column -- a one-row \code{newdata}, i.e.
+#' "what does the curve predict at this one concentration?" -- would otherwise
+#' drop to a vector and be bound as a *row*. That returned a
+#' models-by-draws matrix instead of a draws-by-1 one, recycling the shorter
+#' model's draws, and the resulting summary was computed across draws rather
+#' than over them: the point estimate looked plausible while its interval came
+#' from as many values as there were models.
+#'
 #' @noRd
-w_post_pred_calc <- function(index, mod_fits, sample_size, mod_stats) {
-  x <- seq_len(sample_size)
-  size <- round(sample_size * mod_stats[index, "wi"])
-  mod_fits[[index]]$pred_vals$posterior[sample(x, size), ]
+w_pred_list_calc <- function(index, pred_list, draw_index) {
+  pred_list[[index]][draw_index[[index]], , drop = FALSE]
 }
 
+#' Compute one model's grid posterior and immediately thin it to its weight.
+#'
+#' Used by expand_manec(), where the posteriors are built rather than read off
+#' the objects. Computing and thinning in the same step means only one model's
+#' full matrix exists at a time; collecting them into a list first would hold
+#' every model's at once. Thins through w_pred_list_calc() rather than
+#' repeating the draw, so this and posterior_epred.bayesmanecfit() cannot
+#' sample differently. See #180.
+#'
 #' @noRd
-w_pred_list_calc <- function(index, pred_list, sample_size, mod_stats) {
-  x <- seq_len(sample_size)
-  size <- round(sample_size * mod_stats[index, "wi"])
-  pred_list[[index]][sample(x, size), ]
+w_grid_pred_calc <- function(index, mod_fits, formulas, x_range, resolution,
+                             draw_index) {
+  pred_list <- list(posterior_on_grid(mod_fits[[index]]$fit, formulas[[index]],
+                                      x_range = x_range,
+                                      resolution = resolution))
+  names(pred_list) <- index
+  w_pred_list_calc(index, pred_list, draw_index)
 }
 
 #' @noRd
@@ -336,7 +454,12 @@ contains_negative <- function(x) {
 #' @noRd
 response_link_scale <- function(response, family) {
   link_tag <- family$link
-  min_z_val <- min(response[which(response > 0)]) / 100
+  # Computed on demand rather than eagerly. An all-zero response is legitimate
+  # input for a zero-inflated family, and reaches none of the branches below --
+  # but min(response[response > 0]) on it is Inf and emits a warning the caller
+  # can do nothing about. Surfaced by the #210 tests; the value itself is
+  # unchanged wherever it is actually used.
+  min_z_val <- function() min(response[which(response > 0)]) / 100
   if (link_tag == "logit") {
     max_o_val <- max(response[which(response < 1)]) +
       (1 - max(response[which(response < 1)])) * 0.99
@@ -346,7 +469,7 @@ response_link_scale <- function(response, family) {
   if (link_tag %in% c("logit", "log")) {
     if (family$family %in% c("bernoulli", "binomial", "beta_binomial")) {
       if (contains_zero(response)) {
-        response <- lr(response, r_out = c(min_z_val, max(response)))
+        response <- lr(response, r_out = c(min_z_val(), max(response)))
       }
       if (contains_one(response)) {
         response <- lr(response, r_out = c(min(response), max_o_val))
@@ -354,7 +477,7 @@ response_link_scale <- function(response, family) {
       response <- family$linkfun(response)
     } else {
       if (contains_zero(response)) {
-        response <- lr(response, r_out = c(min_z_val, max(response)))
+        response <- lr(response, r_out = c(min_z_val(), max(response)))
       }
       response <- family$linkfun(response)
     }
@@ -366,7 +489,7 @@ response_link_scale <- function(response, family) {
     # Clamp response away from the boundaries so that initial values
     # derived from it stay within the valid support.
     if (contains_zero(response)) {
-      response <- lr(response, r_out = c(min_z_val, max(response)))
+      response <- lr(response, r_out = c(min_z_val(), max(response)))
     }
     if (contains_one(response)) {
       max_o_val <- max(response[which(response < 1)]) +
@@ -633,7 +756,8 @@ add_brm_defaults <- function(
   skip_check,
   custom_name,
   prior_type = "uninformative",
-  model_survival = NULL
+  model_survival = NULL,
+  disp_spec = NULL
 ) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
@@ -647,18 +771,37 @@ add_brm_defaults <- function(
   if (!("warmup" %in% names(brm_args))) {
     brm_args$warmup <- floor(brm_args$iter / 5) * 4
   }
-  priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
-  if (inherits(priors, "try-error")) {
-    brm_args$prior <- define_prior(
+  build_defaults <- function() {
+    define_prior(
       model,
       family,
       predictor,
       response,
       prior_type = prior_type,
-      model_survival = model_survival
+      model_survival = model_survival,
+      disp_spec = disp_spec
     )
+  }
+  priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
+  if (inherits(priors, "try-error")) {
+    # No usable prior from the user, so the defaults are the fit. If they cannot
+    # be built the error is the right outcome and is allowed to propagate.
+    brm_args$prior <- build_defaults()
   } else {
-    brm_args$prior <- priors
+    # Built here rather than up front so a user who supplied their own complete
+    # set is never blocked by a default they will not use: #207 made this call
+    # unconditional, which turned any failure inside define_prior() into a hard
+    # stop even when there was a perfectly good user prior to fall back on.
+    # Where the defaults cannot be built there is nothing to fill from, and the
+    # user's set is used as supplied -- silently, because without the defaults
+    # there is no way to tell whether it is incomplete, and warning on every
+    # such fit would be noise the user cannot act on. See #229.
+    default_priors <- try(build_defaults(), silent = TRUE)
+    brm_args$prior <- if (inherits(default_priors, "try-error")) {
+      priors
+    } else {
+      fill_missing_priors(priors, default_priors, model)
+    }
   }
   if (!("init" %in% names(brm_args)) || skip_check) {
     msg_tag <- family$family
@@ -681,6 +824,18 @@ add_brm_defaults <- function(
     if ("seed" %in% names(brm_args)) {
       init_seed <- brm_args$seed
     }
+    # A variance function adds parameters that belong to no curve. The init
+    # search validates prior names against the model's own parameter set and
+    # only ever evaluates the mean curve, so those are filtered out here rather
+    # than taught to it: they play no part in getting the curve inside the
+    # response range. They are added back at the constant-dispersion null once
+    # the search has run -- see disp_inits(), and note that leaving them to
+    # Stan's own draw is NOT benign.
+    init_priors <- brm_args$prior
+    disp_par_names <- disp_pars(disp_spec)
+    if (length(disp_par_names) > 0) {
+      init_priors <- init_priors[!init_priors$nlpar %in% disp_par_names, ]
+    }
     inits <- if (is_hurdle_family(family)) {
       # Two blocks with differently-scaled responses, primed separately then
       # merged. response_link_scale() is a no-op for hurdle_gamma under an
@@ -689,7 +844,7 @@ add_brm_defaults <- function(
         model,
         predictor,
         response,
-        priors = brm_args$prior,
+        priors = init_priors,
         chains = brm_args$chains,
         dpar = hurdle_dpar(family),
         seed = init_seed,
@@ -700,13 +855,19 @@ add_brm_defaults <- function(
         model,
         predictor,
         response_link,
-        priors = brm_args$prior,
+        priors = init_priors,
         chains = brm_args$chains,
         seed = init_seed
       )
     }
     if (length(inits) == 1 && "random" %in% names(inits)) {
       inits <- inits$random
+    }
+    # Only when the search returned per-chain values; where it fell back to
+    # "random" there is no list to append to and Stan initialises everything.
+    if (length(disp_par_names) > 0 && !is.character(inits)) {
+      d_init <- disp_inits(disp_spec, family, response)
+      inits <- lapply(inits, function(chain) c(chain, d_init))
     }
     brm_args$init <- inits
   }
@@ -826,9 +987,21 @@ check_data_equality <- function(mod_fits) {
 #' @importFrom chk chk_numeric
 check_args_newdata <- function(resolution, x_range) {
   chk_numeric(resolution)
-  if (!is.na(x_range[1])) {
-    chk_numeric(x_range)
+  # The documented "not supplied" value, and the only NA accepted.
+  if (length(x_range) == 1 && is.na(x_range)) {
+    return(invisible(NULL))
   }
+  chk_numeric(x_range)
+  # A partially specified range used to be handled inconsistently, and
+  # differently depending on which end was missing -- bnec_newdata() ignored it
+  # silently, expand_nec() turned c(1, NA) into seq(NA, NA) but fell back to the
+  # observed range for c(NA, 4). It is not a meaningful request either way, so
+  # reject it rather than pick one. See #211.
+  if (any(is.na(x_range))) {
+    stop("x_range must be either NA or fully specified; ",
+         "it cannot contain NA alongside a value.", call. = FALSE)
+  }
+  invisible(NULL)
 }
 
 #' @noRd
@@ -940,4 +1113,67 @@ newdata_eval_fitted <- function(
 #' @export
 step <- function(x) {
   as.numeric(x > 0)
+}
+
+#' Fill a user-supplied prior set from the bayesnec defaults
+#'
+#' \code{validate_priors()} checks that a supplied prior is a
+#' \code{brmsprior} for the right model, and nothing more, so a set that is
+#' merely *incomplete* was used as though it were complete. Every parameter the
+#' user did not mention then fell through to \pkg{brms}, which means a flat
+#' prior.
+#'
+#' That is the opposite of what bayesnec is for. The package generates weakly
+#' informative priors deliberately, because flat priors are rarely useful in
+#' non-linear modelling, and the case this bites hardest is the one
+#' \code{define_disp_prior()} exists to prevent: drop the \code{c0} and slope
+#' rows a route B \code{disp()} term adds and the fit runs on flat priors for
+#' parameters its own documentation describes as "near-perfectly confounded".
+#' Nothing warned.
+#'
+#' Editing a returned prior set and handing it back is exactly the workflow
+#' \code{\link{get_priors}} invites, so this is easy to hit rather than
+#' exotic.
+#'
+#' Filling rather than erroring is the deliberate choice: an error would refuse
+#' the user's partial set and produce no fit at all, where filling gives them
+#' the model they asked for with the priors bayesnec would have chosen anyway.
+#' The warning names every parameter filled, so the result is never silent.
+#' See #207.
+#'
+#' @param priors A \code{\link[brms]{brmsprior}} supplied by the user.
+#' @param defaults A \code{\link[brms]{brmsprior}} from
+#' \code{define_prior()}.
+#' @param model A \code{\link[base]{character}} string naming the model.
+#'
+#' @return An object of class \code{\link[brms]{brmsprior}}.
+#'
+#' @noRd
+fill_missing_priors <- function(priors, defaults, model) {
+  if (is.null(defaults) || nrow(defaults) == 0) {
+    return(priors)
+  }
+  # Identity is class + nlpar + dpar. coef is not part of it: bayesnec's
+  # generated priors never set it, and a user row that does is a
+  # coefficient-level prior sitting alongside the parameter-level one rather
+  # than replacing it.
+  key <- function(p) paste(p$class, p$nlpar, p$dpar, sep = "\r")
+  missing <- !key(defaults) %in% key(priors)
+  if (!any(missing)) {
+    return(priors)
+  }
+  add <- defaults[missing, , drop = FALSE]
+  named <- add$nlpar
+  named[!nzchar(named)] <- add$class[!nzchar(named)]
+  warning("The prior supplied for model ", model, " has no entry for ",
+          paste0(named, collapse = ", "),
+          ". Using the bayesnec default for ",
+          if (length(named) > 1) "those parameters" else "that parameter",
+          " rather than leaving ",
+          if (length(named) > 1) "them" else "it",
+          " on a flat prior; see ?get_priors to inspect the full set.",
+          call. = FALSE)
+  out <- rbind(priors, add)
+  rownames(out) <- NULL
+  out
 }

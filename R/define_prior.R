@@ -1,3 +1,78 @@
+#' Quantile of a response on the scale of its positive part
+#'
+#' The gamma priors for "top" and "bot" set their rate from a quantile of the
+#' response. Where a share of the response is exactly zero those quantiles are
+#' pulled down towards zero, and the prior collapses onto a scale that has
+#' nothing to do with the asymptote it is meant to locate. That is not a rare
+#' corner: the zero-inflated count families added under #104 exist precisely for
+#' responses where a quarter or more of the values are zero.
+#'
+#' \strong{Why the probability is rescaled rather than the vector.} A quantile
+#' of a zero-inflated response is a quantile of the \emph{mixture}, and it is
+#' biased downward by the zero fraction throughout its range -- reaching exactly
+#' zero only at the extreme. So testing for an exactly-zero quantile and
+#' substituting the positive part, as the first version of this guard did, is a
+#' step function applied to a continuous problem: it left the worst case, just
+#' below the threshold, entirely unguarded. On a `nec4param` response with a true
+#' `top` of 40 the `top` prior mean ran 33.5 at no zeros, 6.8 at 72\% zeros, and
+#' then jumped back to 29.0 at 76\% once the raw quantile finally hit zero.
+#'
+#' Level \code{p} of the distribution conditional on being positive sits at level
+#' \code{z + (1 - z)p} of the mixture, where \code{z} is the zero fraction: a
+#' share \code{z} of the mass has to be passed before any positive value is
+#' reached. Equivalently \code{1 - (1 - p)(1 - z)}. That is the quantile taken
+#' here. It reduces to the raw quantile exactly when \code{z} is zero, so a
+#' response with no zeros is untouched, and it degrades smoothly rather than in a
+#' jump.
+#'
+#' Note the multiplication. The dividing form \code{1 - (1 - p) / (1 - z)} moves
+#' the level the wrong way -- it returns 0.5 where the answer is 0.875 at
+#' \code{p = 0.75, z = 0.5} -- and goes negative past 75\% zeros, which is the
+#' regime this exists for.
+#'
+#' Deliberately not the same trick as \code{define_hurdle_prior()}, which
+#' computes the whole mu-block prior from the non-zero subset. That is exact for
+#' \code{hurdle_gamma}, because a Gamma has no mass at zero, so the non-zero
+#' subset \emph{is} the mu process. Under zero-inflation it is not: the base
+#' distribution emits zeros of its own, so conditioning on the positives draws
+#' from a truncated count distribution and biases the location upward. Here the
+#' positive part informs only a \emph{scale}, never the estimate itself.
+#'
+#' See #210 for the original three failure modes and #232 for why the guard
+#' became a rescaling.
+#'
+#' @param response A \code{\link[base]{numeric}} vector.
+#' @param probs A \code{\link[base]{numeric}} vector of length 1.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1, strictly positive.
+#'
+#' @importFrom stats quantile
+#'
+#' @noRd
+positive_scale <- function(response, probs) {
+  finite <- response[is.finite(response)]
+  pos <- finite[finite > 0]
+  if (!length(pos)) {
+    stop("Cannot build priors for \"top\" and \"bot\": the response contains no",
+         " positive values, so there is no scale to place them on. Check the",
+         " response variable, and see ?bnec for the families bayesnec supports.",
+         call. = FALSE)
+  }
+  zero_frac <- sum(finite <= 0) / length(finite)
+  # z == 0 leaves probs untouched, so a response with no zeros gets exactly the
+  # quantile it got before this guard existed.
+  probs_adj <- 1 - (1 - probs) * (1 - zero_frac)
+  q <- unname(quantile(finite, probs = probs_adj))
+  # The rescaled level can still land on a zero: at probs = 0 it stays at 0, and
+  # ties across the boundary can put it there too. min(pos) is the smallest
+  # scale the data actually supports, and is what the caller's fudge terms are
+  # already built around.
+  if (!is.finite(q) || q <= 0) {
+    return(min(pos))
+  }
+  q
+}
+
 #' define_prior
 #'
 #' Generates prior model objects to pass to \pkg{brms}
@@ -15,7 +90,7 @@
 #' @noRd
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
-                         model_survival = NULL) {
+                         model_survival = NULL, disp_spec = NULL) {
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
     return(define_hurdle_prior(model, family, predictor, response,
@@ -29,6 +104,21 @@ define_prior <- function(model, family, predictor, response,
   } else { 
     fam_tag <- family$family
    }
+  # The mu block of a zero-inflated count family is an ordinary poisson or
+  # negbinomial mean -- the mixture changes how many zeros are observed, not the
+  # scale of mu -- so the base family's priors are the right ones rather than a
+  # duplicated set of entries in every table below.
+  #
+  # The quantiles below are taken over the whole response, structural zeros
+  # included. That used to collapse the `top` and `bot` priors once a large
+  # share of the response was zero -- the regime these families exist for --
+  # and is now guarded by positive_scale(), which falls back to the same
+  # quantile of the positive part. See its documentation for why that is not
+  # the same trick define_hurdle_prior() uses, and #210 for what the three
+  # failure modes were.
+  if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
+    fam_tag <- sub("^zero_inflated_", "", fam_tag)
+  }
   if (family$family == "beta_binomial" || family$family == "binomial") {
     if (is.integer(response) || max(response) > 1) {
       stop("Response vector must be passed as a proportion to define_prior",
@@ -46,14 +136,26 @@ define_prior <- function(model, family, predictor, response,
   #    models, sits at the upper end of the response range.
   # Only the response-scaled (top/bot) priors differ between the two sets; the
   # predictor-scaled and fixed priors below are shared.
+  # Only these three families read u_t_g / u_b_g out of the tables below; every
+  # other entry is a literal or is built from quantile()/sd() directly, and is
+  # well defined on a response that is entirely negative or entirely zero. So
+  # the gamma-scaled strings are built only when they will be used. Building
+  # them unconditionally made positive_scale()'s "no positive values" error --
+  # and the unguarded min(response[response > 0]) beside it -- reachable for
+  # gaussian, where an all-negative response (log ratios, growth increments,
+  # anything expressed as a change) is ordinary input. See #229.
+  gamma_scaled <- fam_tag %in% c("Gamma", "poisson", "negbinomial")
   if (prior_type == "uninformative") {
-    u_t_g <- paste0("gamma(2, ",
-                    1 / (quantile(response, probs = 0.75) / 2),
-                    ")")
-    u_b_g <- paste0("gamma(2, ",
-                    1 / ((quantile(response, probs = 0.25) +
-                      min(response[response > 0]) / 100) / 2),
-                    ")")
+    u_t_g <- u_b_g <- NA_character_
+    if (gamma_scaled) {
+      u_t_g <- paste0("gamma(2, ",
+                      1 / (positive_scale(response, probs = 0.75) / 2),
+                      ")")
+      u_b_g <- paste0("gamma(2, ",
+                      1 / ((positive_scale(response, probs = 0.25) +
+                        min(response[response > 0]) / 100) / 2),
+                      ")")
+    }
     y_t_prs <- c(Gamma = u_t_g,
                  poisson = u_t_g,
                  negbinomial = u_t_g,
@@ -75,13 +177,21 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = "beta(2, 5)",
                  beta = "beta(2, 5)")
   } else {
-    u_t_g <- paste0("gamma(5, ",
-                    5 / (quantile(response, probs = 1)),
-                    ")")
-    u_b_g <- paste0("gamma(5, ",
-                    5 / ((quantile(response, probs = 0) +
-                      min(response[response > 0]) / 10)),
-                    ")")
+    u_t_g <- u_b_g <- NA_character_
+    if (gamma_scaled) {
+      u_t_g <- paste0("gamma(5, ",
+                      5 / (positive_scale(response, probs = 1)),
+                      ")")
+      # probs = 0 is the minimum, which is zero for a response containing a
+      # single zero -- not merely for a mostly-zero one. So under
+      # "regularizing" the collapse was unconditional on the zero fraction,
+      # where under "uninformative" it needed a quarter of the response to be
+      # zero.
+      u_b_g <- paste0("gamma(5, ",
+                      5 / ((positive_scale(response, probs = 0) +
+                        min(response[response > 0]) / 10)),
+                      ")")
+    }
     y_t_prs <- c(Gamma = u_t_g,
                  poisson = u_t_g,
                  negbinomial = u_t_g,
@@ -177,7 +287,75 @@ define_prior <- function(model, family, predictor, response,
   if (model == "ecxhormebc5") {
     priors <- pr_bot + pr_top + pr_beta + pr_ec50 + pr_slope
   }
+  disp_priors <- define_disp_prior(disp_spec, family, response)
+  if (!is.null(disp_priors)) {
+    priors <- priors + disp_priors
+  }
   priors
+}
+
+#' define_disp_prior
+#'
+#' Builds priors for the non-linear parameters a variance function introduces.
+#'
+#' @param disp_spec The output of \code{\link{parse_disp_term}}.
+#' @param family A \code{\link[stats]{family}} function.
+#' @param response The response variable, already on the link scale.
+#'
+#' @details Only route (B) is given priors here. Route (A) is an ordinary
+#' distributional formula and is left to the \pkg{brms} defaults, which already
+#' suit a linear predictor on a log link.
+#'
+#' \code{c1} and \code{c2} are centred on zero, which is the constant-dispersion
+#' case, so the prior asserts no mean-variance relationship and lets the data
+#' supply one. \code{c0} is the dispersion parameter on the log scale at the
+#' variance function's reference value (see \code{\link{disp_centre}}) -- that
+#' is, at a typical response rather than at \code{mu = 1}. That is what makes
+#' these priors mean anything at all: uncentred, \code{c0} and the slope are
+#' near-perfectly confounded and the induced prior on the dispersion parameter
+#' at the data spans many orders of magnitude whenever the response is far from
+#' one. The scale is still deliberately loose, because the reference locates the
+#' intercept but says nothing about how large the dispersion there should be.
+#'
+#' @return An object of class \code{\link[brms]{brmsprior}}, or \code{NULL}.
+#'
+#' @importFrom brms prior_string
+#' @importFrom stats sd
+#'
+#' @noRd
+define_disp_prior <- function(disp_spec, family, response) {
+  if (is.null(disp_spec) || disp_spec$route != "B") {
+    return(NULL)
+  }
+  fam_tag <- family$family
+  c0_prs <- c(
+    gaussian = paste0("normal(", round(log(sd(response)), 3), ", 2)"),
+    # shape is an inverse dispersion for both of these: a CV of 0.1 to 0.5 puts
+    # a Gamma shape between about 4 and 100, i.e. 1.4 to 4.6 on the log scale.
+    Gamma = "normal(2, 2)",
+    negbinomial = "normal(2, 2)",
+    # phi likewise, on the wider scale the PAM fits needed.
+    beta = "normal(4, 3)",
+    beta_binomial = "normal(4, 3)"
+  )
+  vf <- disp_functions[[disp_spec$value]]
+  # A slope on log(mu) is dimensionless, so a fixed scale means the same thing
+  # whatever the response is measured in. A slope on mu itself is not: it
+  # carries units of 1/response, and normal(0, 2) would be near-flat for a
+  # response spanning thousands and highly informative for one spanning a
+  # fraction. Scaling by the observed spread restores the intended meaning --
+  # that a one-standard-deviation change in the mean moves the dispersion
+  # parameter by about two units on the log scale at the edge of the prior.
+  slope_prior <- if (isTRUE(vf$scale_free)) {
+    "normal(0, 2)"
+  } else {
+    paste0("normal(0, ", signif(2 / sd(response), 4), ")")
+  }
+  out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
+  for (p in setdiff(vf$pars, "c0")) {
+    out <- out + prior_string(slope_prior, nlpar = p)
+  }
+  out
 }
 
 #' define_hurdle_prior

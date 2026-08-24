@@ -52,6 +52,10 @@ calculated by \code{\link[brms]{bayes_R2}}.}
 
 \item{\code{rhat_issues}}{A \code{\link[base]{list}} detailing whether each fitted
 model exhibited convergence issues based on the Rhat evaluation.}
+
+\item{\code{failed_models}}{Any models from the requested set that could not be
+fitted, with the priors and initial values used. See
+\code{\link{failed_models}}.}
 }}
 
 \references{

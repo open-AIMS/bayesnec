@@ -43,7 +43,9 @@ mod_fams <- c(gaussian = "gaussian",
               beta_binomial = "beta_binomial",
               beta = "Beta",
               hurdle_gamma = "hurdle_gamma",
-              zero_inflated_beta = "zero_inflated_beta")
+              zero_inflated_beta = "zero_inflated_beta",
+              zero_inflated_poisson = "zero_inflated_poisson",
+              zero_inflated_negbinomial = "zero_inflated_negbinomial")
 
 # Families with a second parameter block modelling the probability of a zero,
 # mapped to the name brms gives that block. brms calls it "hu" for the hurdle
@@ -51,11 +53,109 @@ mod_fams <- c(gaussian = "gaussian",
 # model (see notes/hurdle_gamma_design.md 1.5), so bayesnec treats them alike and
 # simply carries the name through. Kept separate from mod_fams so that code can
 # ask "is this a two-block family?" without enumerating tags at each call site.
+# NB the zero-inflated COUNT families are deliberately absent. zero_inflated_beta
+# belongs here because Beta cannot emit a zero, so zero-inflation collapses to a
+# hurdle and brms generates the hurdle density with no mixture. Poisson and
+# negbinomial can emit zeros, so the equivalence fails: a zero-inflated count
+# model is a genuine mixture and its likelihood does not factorise into two
+# independent blocks. Note what that argument does and does not settle. It rules
+# out bnec_hurdle(), which is the factorised two-fit procedure. It does NOT rule
+# out a joint fit carrying a curve on zi, which brms can express perfectly well
+# -- that is left out for the separate reasons given in ?bnec, namely that zi
+# and mu are weakly separated exactly where mu is small, and that zi is a latent
+# class rather than anything the experiment observed. Leaving these tags out of
+# this registry is what routes them through the ordinary family path in bnec(),
+# where brms fits the mixture itself with a constant zi. See #104.
 hurdle_fams <- c(hurdle_gamma = "hu", zero_inflated_beta = "zi")
 
 # The family whose defaults the mu block should reuse for priors and initial
 # values, i.e. what the response looks like once the zeros are set aside.
 hurdle_mu_fams <- c(hurdle_gamma = "Gamma", zero_inflated_beta = "beta")
+
+###############################
+# DISPERSION SUB-MODELS (disp)
+###############################
+# Families with a free dispersion parameter, mapped to the name brms gives it.
+# Only these can carry a dispersion sub-model: for poisson, bernoulli and
+# binomial the variance is a deterministic function of the mean, so there is no
+# parameter to model. Over-dispersion there is remedied by changing family
+# (poisson -> negbinomial, binomial -> beta_binomial), which is what the
+# existing dispersion() diagnostic is for -- the two apply to disjoint sets of
+# families and are complements rather than alternatives.
+disp_dpars <- c(gaussian = "sigma", Gamma = "shape", negbinomial = "shape",
+                beta = "phi", beta_binomial = "phi")
+
+# Named variance functions for the disp() term, in the same spirit as the named
+# models: each entry knows the expression it expands to, the non-linear
+# parameters it introduces, and which families it is valid for. Adding a form
+# later is an entry here plus a prior, not a change to the generator.
+#
+# The expression is written for the DISPERSION PARAMETER, which is what brms
+# actually fits, not for the implied standard deviation. Every eligible family
+# gives that parameter a log link (validate_family() forces identity on mu
+# only), so a linear sub-model here is a power law on the response scale:
+# log(dpar) = c0 + c1 * log(mu) is dpar = exp(c0) * mu^c1. Because each family
+# already imposes its own mean-variance link the same c1 means different things
+# per family -- documented in ?bayesnecformula rather than algebraically
+# normalised away, which would change what is fitted for no gain.
+#
+# "@MU@" is replaced by the model's own curve expression at formula-build time.
+# The curve has to be written out again because mu is not in scope for another
+# distributional parameter's formula in brms; only the source is duplicated,
+# not the fitted quantity.
+# "positive_mu" marks the forms that take log(mu) and so cannot be used where
+# the fitted mean reaches zero. "scale_free" marks those whose slope is
+# dimensionless -- a slope multiplying log(mu) is, one multiplying mu itself is
+# not, and its prior has to be scaled to the response (see define_disp_prior).
+#
+# THE COVARIATE IS CENTRED, and this is not cosmetic. Uncentred, c0 is the
+# dispersion parameter at mu = 1 for the log forms and at mu = 0 for the linear
+# one -- points that are nowhere near the data unless the response happens to be
+# of order 1. Fitting algal cell density (mu ~ 1.8e4, so log(mu) ~ 9.8) with an
+# uncentred "power" gave a posterior correlation between c0 and c1 of 0.99, a c1
+# of the wrong sign, and an implied CV of 1e6 against an observed 0.03-0.6: the
+# prior normal(0, 2) on c1 spreads log(dpar) at the data over +/- 19.6, which is
+# no prior at all. Centring at a reference computed from the response makes c0
+# the dispersion parameter at a TYPICAL mu, so its prior means something and the
+# two parameters decorrelate. "@LOGREF@" / "@REF@" are replaced by that constant
+# at formula-build time; it is a fixed number, not an estimated quantity, so
+# nothing about the likelihood changes -- only the coordinates it is written in.
+disp_functions <- list(
+  power = list(
+    expr = "c0 + c1 * (log(@MU@) - @LOGREF@)",
+    pars = c("c0", "c1"),
+    families = c("gaussian", "Gamma", "negbinomial", "beta", "beta_binomial"),
+    positive_mu = TRUE,
+    scale_free = TRUE,
+    centre = "log"
+  ),
+  twosided = list(
+    expr = paste0("c0 + c1 * (log(@MU@) - @LOGREF@)",
+                  " + c2 * (log(1 - (@MU@)) - @LOG1MREF@)"),
+    pars = c("c0", "c1", "c2"),
+    families = c("beta", "beta_binomial"),
+    positive_mu = TRUE,
+    scale_free = TRUE,
+    centre = "log"
+  ),
+  # Linear in mu rather than in log(mu), so it is defined for a response on the
+  # real line, which the two above are not. This is the form a log-transformed
+  # endpoint inherits from a power law on its original scale. If density has
+  # sd ~ mu_N^p then sd(log N) ~ mu_N^(p - 1) by the delta method, and since
+  # mu_N = N0 * exp(days * mu_sgr) for a specific growth rate, that is
+  # log sd(sgr) = const + days * (p - 1) * mu_sgr -- log-linear in the mean.
+  # So a growth rate is not a case the variance function cannot reach, only one
+  # the power law cannot: p < 1 gives c1 < 0, dispersion falling as the growth
+  # rate rises. See notes/alga_dataset.md.
+  loglinear = list(
+    expr = "c0 + c1 * ((@MU@) - @REF@)",
+    pars = c("c0", "c1"),
+    families = c("gaussian", "Gamma", "negbinomial", "beta", "beta_binomial"),
+    positive_mu = FALSE,
+    scale_free = FALSE,
+    centre = "identity"
+  )
+)
 
 ############
 # NEC MODELS
@@ -227,6 +327,7 @@ pred_functions <- list(nec3param = pred_nec3param,
 ####################
 usethis::use_data(
   mod_groups, mod_fams, hurdle_fams, hurdle_mu_fams,
+  disp_dpars, disp_functions,
   # neclin
   bf_neclin,
   # nec3param
