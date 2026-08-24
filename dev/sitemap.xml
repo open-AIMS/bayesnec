@@ -37,6 +37,7 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/check_formula.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/check_priors.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/check_priors.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/check_sampling.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_estimates.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_fitted.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_posterior.html</loc></url>
@@ -92,6 +93,7 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/rhat.bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/rhat.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/sample_priors.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/screen_models.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/show_params.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/step.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/summary.bayesnechurdlefit.html</loc></url>
