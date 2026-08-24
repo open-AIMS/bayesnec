@@ -454,6 +454,30 @@ is right, because the true toxicity of a real substance is unknown. The
 comparison is therefore made on simulated data, where the true ErC10, ErC50 and
 `nec` are known by construction and each approach can be scored against them.
 
+### Where these numbers come from
+
+The simulation is not run by this vignette. It is a separate research
+compendium, [open-AIMS/negative-sgr](https://github.com/open-AIMS/negative-sgr)
+[@negativesgr2026], which carries the generating code, the `targets` pipeline
+that runs it, an `renv` lockfile pinning every package version, and the result
+tables. Fitting it takes days of machine time on many cores, so it cannot run
+at vignette build time.
+
+**Every figure quoted below is transcribed from that compendium's output at a
+fixed commit**, `0181d66e`, and appears here as a literal rather than as
+something recomputed. The tables you can regenerate and check against this
+document are `analysis/phase5_metrics.csv` for the eight-approach comparison
+and `analysis/phase10_metrics.csv` for the model-averaging section, with
+`analysis/phase10_vignette_numbers.R` producing the summary this vignette
+quotes.
+
+Two consequences are worth stating plainly, because a reader cannot see them
+from the code shown here. The numbers are **frozen**: they describe `bayesnec`
+as it behaved at that commit, and nothing in this package's checks will notice
+if later changes move them. And the compendium, not this vignette, is the
+citable record of the study --- the description below is a summary of its
+design, complete enough to follow the argument but not a substitute for it.
+
 ### The generating model
 
 Data are generated from the same `nec4param` curve that is fitted, so that the
@@ -1414,10 +1438,13 @@ that compared only those two at a single realistic noise level could easily have
 concluded that nothing was wrong.
 
 <!-- NUMBERS IN THIS SECTION ARE GENERATED, NOT TYPED.
-     Source: negative-sgr/analysis/phase10_vignette_numbers.R, whose output is
-     analysis/phase10_vignette_numbers.txt. Regenerate and update this section
-     after any change to the Phase 10 sweep. Figures below are at n = 200 per
-     cell (3 cells x 200 x 5 arms, 27,600 model fits, 0 failures, 0 exclusions).
+     Source: open-AIMS/negative-sgr at commit 0181d66e --
+     analysis/phase10_vignette_numbers.R, whose output is
+     analysis/phase10_vignette_numbers.txt, over analysis/phase10_metrics.csv.
+     Regenerate there and update this section after any change to the Phase 10
+     sweep, and move the pinned commit in "Where these numbers come from" to
+     match. Figures below are at n = 200 per cell (3 cells x 200 x 5 arms,
+     27,600 model fits, 0 failures, 0 exclusions).
      Same rule as the rest of the vignette: never edit a result in place. -->
 
 ## Does model averaging rescue the floored approaches?
