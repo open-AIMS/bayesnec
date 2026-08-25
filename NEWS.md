@@ -1,4 +1,4 @@
-# bayesnec 2.3.0
+# bayesnec 2.2.0
 
 - New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
   independently within each level of a factor and model-averaging within each

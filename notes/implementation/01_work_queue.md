@@ -29,11 +29,11 @@ the run still leaves a clean, mergeable run of PRs at the bottom.
 | 2 | #139 | document the `drc` NEC equivalence | S | 2.1.4 |
 | 3 | #210 | `define_prior()` collapse on many zeros | S | 2.1.4 |
 | 4 | #207 | dispersion priors; fill incomplete prior sets | M | 2.1.4 |
-| 5 | #136 | `rate()` aterm for Poisson / negbinomial | M | 2.2.0 |
-| 6 | #209 | `hurdle_poisson`, `hurdle_negbinomial` | M–L | 2.2.0 |
-| 7 | #148 | `check_fit()`, `pp_check()` methods, LOO-PIT | L | 2.2.0 |
-| 8 | #33 | factor covariate, stage 1 | XL | 2.3.0 |
-| 9 | #6 + #33 | the grouping vignette | L | 2.3.0 |
+| 5 | #136 | `rate()` aterm for Poisson / negbinomial | M | 2.1.4 |
+| 6 | #209 | `hurdle_poisson`, `hurdle_negbinomial` | M–L | 2.1.4 (on hold) |
+| 7 | #148 | `check_fit()`, `pp_check()` methods, LOO-PIT | L | 2.1.4 |
+| 8 | #33 | factor covariate, stage 1 | XL | 2.2.0 |
+| 9 | #6 + #33 | the grouping vignette | L | 2.2.0 |
 | — | #190 | full `precompile.R` | L | **attended, per release** |
 
 ---
@@ -456,9 +456,10 @@ RF, 2026-08-21: *"do this immediately before the CRAN submission, so all vignett
 changes and anything that might change vignette numbers is completed."*
 
 **A consequence that needs a decision at review time.** If 2.1.4 ships to CRAN
-before 2.2.0, `precompile.R` has to run **twice** — once before each submission —
-because #136, #148 and the #6/#33 vignette all change vignette content after the
-2.1.4 boundary. It takes hours and needs the full fitting stack. The alternatives
+before 2.2.0, `precompile.R` has to run **twice** — once before each submission.
+Under the revised tiers (2026-08-25) #136 and #148 sit *inside* 2.1.4, so the
+only vignette content crossing the boundary is the #6/#33 grouping vignette —
+but that is still a second full run. It takes hours and needs the full fitting stack. The alternatives
 are to accept the double cost, or to hold the CRAN submission until 2.2.0 is ready
 and precompile once.
 
