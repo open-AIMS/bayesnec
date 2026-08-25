@@ -174,13 +174,24 @@ Wake on the long side and let CI and the test suite run between wakes.
 end a wake having logged the state cleanly than to leave a half-built branch
 load-bearing for the next one.
 
-## Operational note: do not nest background launches
+## Operational note: never launch a long job after a wait in the same task
 
-Launching a long job with `nohup ... &` from *inside* an already-backgrounded
-task does not work — when the outer task's shell exits, the inner job is reaped
-with it. This cost one wake cycle on #207: a chained "wait for the fit, then
-start the suite" command reported success, but the suite never ran and left no
-log.
+**Corrected after more evidence.** The first version of this note said
+backgrounding from inside a backgrounded task never works. That is too broad —
+`git commit && nohup Rscript -e 'devtools::test()' &` in a backgrounded task
+launched fine on #136.
 
-Launch long jobs **directly**, one per tool call, and use a separate
-`until`-loop task to wait on them. Waiting and launching are two calls, not one.
+The failure on #207 was narrower: the task ran a **long `until` loop first**,
+then launched. Something about that sequence — most likely the harness reaping
+the process group once the long-lived task finally exits — killed the job. It
+reported success and left no log, which is the dangerous part: a launch that
+silently does not happen looks exactly like one that did.
+
+So the rule is about *sequence*, not nesting:
+
+- **Never** put a launch after a wait in the same task.
+- **Always** verify a launch actually happened — check the log file exists and
+  the process is alive — before reporting it as running. A missing log is the
+  tell.
+
+Waiting and launching are two calls.

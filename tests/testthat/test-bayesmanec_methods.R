@@ -51,10 +51,14 @@ test_that("summary behaves as expected", {
   # `rhat_cutoff` added under #148 Part D: print.manecsummary reports the
   # threshold actually in use rather than the hard-coded 1.05 it printed
   # before, so the summary object has to carry it.
+  # `fit_issues`/`fit_ratio_cutoff` added under #148 decision (b): the summary
+  # block covers both the sampler and the fit axis, so it has to carry both
+  # verdicts and both thresholds.
   expect_equal(names(summary.p), c("models", "family", "sample_size",
                                    "mod_weights", "mod_weights_method",
                                    "ecx_mods", "nec_vals", "ecs", "bayesr2",
                                    "rhat_issues", "rhat_cutoff",
+                                   "fit_issues", "fit_ratio_cutoff",
                                    "failed_models"))
   expect_equal(summary.p$rhat_cutoff, 1.01)
   # and it is honoured rather than decorative
@@ -86,11 +90,15 @@ test_that("print.manecsummary falls back to 1.05 for an object with no cutoff", 
   # rhat_cutoff post-dates the move to 1.01, so an object without it was
   # assessed against the old 1.05 grep; reporting 1.01 would attribute a
   # threshold to it that was never applied.
+  #
+  # Wording is "Rhat", not "Rhats": #148 decision (b) folded this warning into
+  # a single block covering both the sampler and the fit axis, which restated
+  # the line. The 1.05 fallback it guards is unchanged and is what this asserts.
   skip_on_cran()
   s <- suppressWarnings(summary(manec_example))
   s$rhat_cutoff <- NULL
   msg <- tryCatch(print(s), warning = function(w) conditionMessage(w))
-  expect_match(msg, "Rhats > 1.05")
+  expect_match(msg, "Rhat > 1.05")
 })
 
 test_that("the summary warning points at screen_models", {

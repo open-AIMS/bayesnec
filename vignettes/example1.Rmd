@@ -226,7 +226,7 @@ This model fit does not look great. You can see that the error bounds around the
 ``` r
 exp_1$dispersion
 #> Estimate     Q2.5    Q97.5 
-#> 19.65927 13.20570 31.09474
+#> 17.55434 12.07456 27.10157
 ```
 
 ### Beta-Binomial
@@ -366,26 +366,34 @@ autoplot(exp_2, xform = function(x)exp(x) - 1)
 
 ### Poisson data
 
-Where data are a count (of, for example, individuals or cells), the response is likely to be Poisson distributed. Such data are distributed from `0` to `Inf` and are integers. First we mimic count data based on the package's internal dataset, and make it overdispersed. Then we plot the concentration (i.e. predictor) data.
+Where data are a count (of, for example, individuals or cells), the response is likely to be Poisson distributed. Such data are distributed from `0` to `Inf` and are integers. Here we simulate counts whose mean follows an *NEC* curve across the concentrations used elsewhere in this vignette, then summarise the concentration (i.e. predictor) data.
 
 
 ``` r
+set.seed(333)
 data(nec_data)
-count_data <- nec_data |>
-  dplyr::mutate(
-    y = (y * 100 + rnorm(nrow(nec_data), 0, 15)) |>
-      round() |>
-      as.integer() |>
-      abs()
-  )
+# The counts are drawn from a Poisson whose mean follows the curve, rather than
+# built by adding Gaussian noise to a proportion and rounding. Additive noise of
+# constant standard deviation leaves a variance that does not change with the
+# mean, and no count distribution can represent that: neither a Poisson nor a
+# Negative binomial fit would be adequate, so such data cannot be used to
+# illustrate the difference between them.
+nec4 <- function(x, top, bot, nec, beta) {
+  bot + (top - bot) * exp(-exp(beta) * (x - nec) * (x > nec))
+}
+count_mu <- nec4(nec_data$x, top = 85, bot = 5, nec = 1.5, beta = 0.3)
+count_data <- data.frame(
+  x = nec_data$x,
+  y = as.integer(rpois(length(count_mu), count_mu))
+)
 
 str(count_data)
 #> 'data.frame':	100 obs. of  2 variables:
 #>  $ x: num  1.019 0.816 0.371 0.401 1.295 ...
-#>  $ y: int  82 82 83 69 60 93 76 97 95 79 ...
+#>  $ y: int  84 102 66 80 82 88 97 95 74 76 ...
 summary(count_data$y)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#>   16.00   67.50   82.00   77.86   94.00  124.00
+#>   11.00   65.75   82.00   74.76   88.00  106.00
 summary(count_data$x)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #> 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052
@@ -411,23 +419,32 @@ autoplot(exp_3)
 
 ``` r
 exp_3$dispersion
-#>   Estimate       Q2.5      Q97.5 
-#>  3.5337626  0.4859079 57.6675764
+#>  Estimate      Q2.5     Q97.5 
+#> 0.9626916 0.7322350 1.2964718
 ```
 
-We first plot the model chains (with `plot(exp_3$fit)`) and parameter estimates to check the fit. The chains look OK. However, our plot of the fit is not very convincing. The model uncertainty is very narrow, and this does not seem to be a particularly good model for these data. Note that the dispersion estimate is much greater than one, indicating serious overdispersion. In this case we can try to refit the model but instead deliberately specifying the Negative Binomial distribution for via the `family` argument.
+The dispersion estimate, described in the Binomial example above, is near one here, as it should be for data simulated from a Poisson, and the credible bands are commensurate with the spread of the points. We would also plot the model chains (with `plot(exp_3$fit)`) and the parameter estimates to check the fit.
 
 ### Negative binomial
 
-When count data are overdispersed and cannot be modelled using the Poisson distribution, the Negative binomial distribution is generally used. We can do this by calling `family = "negbinomial"`.
+Count data are often more variable than a Poisson allows, a situation known as *overdispersion*, and the Negative binomial distribution is generally used in that case. To show the difference we simulate a second set of counts from the same curve, but with extra-Poisson variability.
 
 
 ``` r
-exp_3b <- bnec(y ~ crf(x, model = "nec4param"), data = count_data,
-               family = "negbinomial", seed = 333, open_progress = FALSE)
+set.seed(333)
+count_data_od <- data.frame(
+  x = nec_data$x,
+  y = as.integer(rnbinom(length(count_mu), mu = count_mu, size = 20))
+)
 ```
 
-The resultant plot seems to indicate the Negative Binomial distribution works better in terms of dispersion (more sensible wider confidence bands), however it still might not be the best model for these data. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
+Fitting these with a Poisson gives credible bands that are far too narrow for the variability among the points, and a dispersion estimate well above one. That is the signal to reach for a different distribution.
+
+
+``` r
+exp_3b <- bnec(y ~ crf(x, model = "nec4param"), data = count_data_od,
+               seed = 333, open_progress = FALSE)
+```
 
 
 ``` r
@@ -435,9 +452,97 @@ autoplot(exp_3b)
 ```
 
 <div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-poisson-od-1.png" alt="plot of chunk exmp1-poisson-od" width="60%" />
+<p class="caption">plot of chunk exmp1-poisson-od</p>
+</div>
+
+``` r
+exp_3b$dispersion
+#> Estimate     Q2.5    Q97.5 
+#> 4.890077 3.758650 6.492500
+```
+
+We can refit these data by deliberately specifying the Negative binomial distribution via the `family` argument.
+
+
+``` r
+exp_3c <- bnec(y ~ crf(x, model = "nec4param"), data = count_data_od,
+               family = "negbinomial", seed = 333, open_progress = FALSE)
+```
+
+The resultant plot has wider, more realistic credible bands than the Poisson fit to the same data. Note that a dispersion estimate is not returned here, as `bayesnec` calculates one only for the Poisson and Binomial families. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
+
+
+``` r
+autoplot(exp_3c)
+```
+
+<div class="figure" style="text-align: center">
 <img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%" />
 <p class="caption">plot of chunk exmp1-negbinbase</p>
 </div>
+
+### Counts observed over an exposure
+
+A count is very often observed over an exposure that is not the same in every replicate: offspring counted per replicate where the number of fecund adults differs, cells counted over different areas, or events counted over different lengths of time. The `rate` term declares that exposure, and is available for the `poisson` and `negbinomial` families. Here we simulate offspring counts where the number of females per replicate varies.
+
+
+``` r
+set.seed(333)
+n_females <- sample(8:24, nrow(nec_data), replace = TRUE)
+fecundity_data <- data.frame(
+  x = nec_data$x,
+  n_females = n_females,
+  # The curve gives a rate -- offspring per female -- and the Poisson mean is
+  # that rate multiplied by the number of females in the replicate, so the
+  # response is a genuine count rather than a ratio.
+  y = as.integer(rpois(nrow(nec_data),
+                       nec4(nec_data$x, top = 6, bot = 0.4, nec = 1.5,
+                            beta = 0.3) * n_females))
+)
+```
+
+The raw counts are passed to `bnec` unchanged, so a replicate with twenty females contributes more information than one with eight — which is exactly what would be lost by fitting `y / n_females` as a continuous response.
+
+
+``` r
+exp_3d <- bnec(y | rate(n_females) ~ crf(x, model = "nec4param"),
+               data = fecundity_data, family = "poisson",
+               seed = 333, open_progress = FALSE)
+```
+
+Because `bnec` uses an identity link, `brms` applies the denominator multiplicatively on the response scale rather than as a log offset on the linear predictor. The fitted mean therefore *is* the rate, and `top`, `bot` and `nec` are all directly interpretable as offspring per female. The prediction grid holds the denominator at 1, so the fitted curve and any `ecx` or `nsec` read from it are on that same scale, and `autoplot` divides the observed counts through by the denominator to match.
+
+
+``` r
+autoplot(exp_3d)
+```
+
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-rate-1.png" alt="plot of chunk exmp1-rate" width="60%" />
+<p class="caption">plot of chunk exmp1-rate</p>
+</div>
+
+
+``` r
+exp_3d$ne
+#> Estimate     Q2.5    Q97.5 
+#> 1.528463 1.454308 1.609457
+ecx(exp_3d, ecx_val = 10)
+#>      Q50     Q2.5    Q97.5 
+#> 1.612073 1.551437 1.679091 
+#> attr(,"resolution")
+#> [1] 1000
+#> attr(,"ecx_val")
+#> [1] 10
+#> attr(,"toxicity_estimate")
+#> [1] "ecx"
+exp_3d$dispersion
+#>  Estimate      Q2.5     Q97.5 
+#> 0.8827904 0.6642228 1.1865479
+```
+
+One caveat is worth stating explicitly. If the exposure varies for reasons unrelated to the treatment — a replicate simply received fewer animals — then `rate` is doing exactly what is wanted. If instead the exposure is itself an effect of the treatment, as it would be were `n_females` the number of females *surviving* to the point of counting, then the endpoint has quietly changed from reproductive output to fecundity conditional on survival. Both are legitimate, but they are different endpoints and will not return the same *NEC*.
 
 ### Measure data
 

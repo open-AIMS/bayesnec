@@ -384,7 +384,13 @@ check_hurdle_aterms <- function(formula) {
     weights = paste("whether a weight applies to the growth component, the",
                     "survival component or both is a modelling decision that",
                     "bnec_hurdle will not make for you. Make the two bnec()",
-                    "calls directly if you need it")
+                    "calls directly if you need it"),
+    rate = paste("the two components measure different things and only one of",
+                 "them is a count. An exposure denominator applies to the",
+                 "growth component, where it is a rate; the survival component",
+                 "is one Bernoulli trial per individual and has no rate to",
+                 "take a denominator. Fit the growth component with bnec() and",
+                 "a rate() term directly if you need it")
   )
   bad <- setdiff(names(aterms), "cens")
   if (length(bad) > 0) {
