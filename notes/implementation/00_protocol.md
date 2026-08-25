@@ -142,6 +142,16 @@ the first PR in the stack; its contents (the #216 work) belong to that release.
 - **Do not run `vignettes/precompile.R`,** and do not regenerate any `*.Rmd`
   from `*.Rmd.orig`. Vignette rebuilds take hours and are handled separately
   under #190. If a change alters vignette output, say so in the PR body.
+  This rule still stands, and a precompile is **not** a precondition for
+  merging: since #242 the rendered `.Rmd` files are display-only markdown that
+  `R CMD check` builds in ~16s, and `dev` has no required checks. Where a
+  rendered number genuinely has to be current before a merge — it is quoted in
+  prose, or the published dev site would mislead — dispatch the
+  `precompile vignettes` workflow with that one vignette named, which is ~20
+  minutes and opens a PR with the diff. Since #251 it fans out one job per
+  vignette, so the release run under #190 is also the slowest vignette rather
+  than the sum. Do not run a full local rebuild per branch; that is the drift
+  #251 was opened to stop.
 - **Do not edit** `CLAUDE.md` or any settings/config file. The `.github/`
   prohibition is **lifted for #215 only** (RF, 2026-08-21) — that issue is
   entirely CI work. No other issue in the stack may touch `.github/`.

@@ -1,5 +1,35 @@
 # bayesnec 2.1.4
 
+- Vignette precompilation is now usable one vignette at a time, which is what
+  makes it something other than an all-or-nothing release step. Three things had
+  to be true and none of them was. The `create-pull-request` step listed
+  `vignettes/.precompile-dry-run` in `add-paths`, a file that exists only on a
+  dry run — and `git add` stages *nothing* when any single pathspec matches
+  nothing, so every real run fitted its models correctly and then discarded the
+  result at the last step; the dry run, the one path where that file exists, was
+  the only configuration that had ever passed. The errored-chunk guard added
+  alongside the CI vignette check globbed every rendered vignette in the
+  directory rather than the ones it had just knitted, so a partial rebuild was
+  judged against vignettes it had not touched and was not shipping. And the job
+  knitted every `.Rmd.orig` in sequence, making a full rebuild the sum of all of
+  them — 3–4 hours — with any single failure aborting the lot.
+
+  The workflow now resolves and *validates* the vignette selection up front (a
+  name with no matching `.Rmd.orig` fails in seconds, where it previously held
+  back every vignette and reported success having rebuilt nothing), then fans
+  out one job per vignette. Wall clock is the slowest vignette rather than the
+  sum, a vignette that fails is confined to its own leg, and each leg uploads
+  what it produced as an artifact *before* the pull-request step, so a failure
+  there costs the review rather than the compute. A single job then opens one PR
+  against the branch the run was dispatched from, or against an explicit `base`
+  input. See #251.
+
+  Precompiling is not a precondition for merging a branch that edits a vignette
+  and should not be treated as one: since the CI vignette check the rendered
+  `.Rmd` files are display-only markdown that `R CMD check` builds in seconds.
+  Edit the `.Rmd.orig`, note in the pull request that the rendered output is
+  stale, and rebuild at release. See #190.
+
 - `sample_priors(plot = NA)` returns the sampled values, as documented. The
   argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is
   `FALSE`, so the one value documented to return the draws was the one value
