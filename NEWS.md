@@ -1,4 +1,4 @@
-# bayesnec 2.1.4
+# bayesnec 2.3.0
 
 - New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
   independently within each level of a factor and model-averaging within each
@@ -54,6 +54,8 @@
   Refitting the favoured combination *jointly* is not included: that needs
   level-aware post-processing inside the toxicity estimators, which is the code
   the `toxval` migration moves. See #33.
+
+# bayesnec 2.1.4
 
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the
   `beta_binomial` density and CDF, so anything that computes a log-likelihood
