@@ -40,5 +40,13 @@ doc/
 !vignettes/vignette-fig-*.pdf
 prompts/
 
+# Figures knitted from the repo root. precompile.R writes them here before
+# moving them into vignettes/ and deleting them, so they are transient -- but an
+# ad-hoc knit of a single chunk leaves them behind, and `git add -A` then commits
+# six stray copies of files that already live in vignettes/. That happened in
+# bb977541; .Rbuildignore has no rule for them, so they would have shipped in the
+# tarball. The vignettes/ copies are the tracked ones.
+/vignette-fig-*.png
+
 # Safety-net backups of untracked files before editing; never committed.
 superceded/
