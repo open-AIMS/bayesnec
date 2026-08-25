@@ -57,6 +57,37 @@
 
 # bayesnec 2.1.4
 
+- New vignette `example7`, *Modelling growth data and other potentially negative
+  response values*. Specific growth rate is a rate of change and a declining
+  population has a negative one, so the response is not bounded below --- and the
+  conventions used to remove those negatives (substituting zero, pinning the
+  lower asymptote, or choosing a Beta or Gamma whose support excludes them) bias
+  the toxicity estimates that are then reported. The vignette scores eight
+  handling approaches against known truth in a simulation study, and reports two
+  results: the boundary-imposing approaches are biased low on ErC50 and high on
+  the NSEC by amounts that do *not* shrink as the experiment becomes more
+  precise, and fitting the candidate set rather than one equation recovers most
+  of the lost ErC50 accuracy once the data have already been floored.
+  `bayesnec`'s defaults are already correct here --- a Gaussian response is not
+  constrained positive and the zero-bounded models are dropped for Gaussian ---
+  so the vignette is a caution about data preparation upstream of the fit. The
+  simulation itself is a separate research compendium
+  ([open-AIMS/negative-sgr](https://github.com/open-AIMS/negative-sgr)), pinned
+  at a commit and cited; its results appear here as transcribed literals because
+  fitting takes days on many cores. See #193.
+
+- `example1` gains a *Limits of the censored likelihood* subsection. Saturation
+  is what makes a censored likelihood honest and is also its limit: once the
+  fitted curve sits well below the bound the likelihood is flat, so a `bot` whose
+  only expression is there is not identified and what gets reported for it is the
+  prior. Worked on a microalgal growth test, with the interval-censored repair
+  and the prior-to-posterior contraction as the diagnostic an interval alone
+  hides. See #193.
+
+- `example6` no longer states that `bayesnecformula` cannot carry a `cens()`
+  aterm through to the fit. It can, since #181; the section now points at the
+  *Censoring* section of `example1`.
+
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the
   `beta_binomial` density and CDF, so anything that computes a log-likelihood
   for that family — `loo()`, `waic()`, `summary()` — stopped with "Please

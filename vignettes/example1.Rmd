@@ -657,7 +657,29 @@ y | cens(censoring) ~ crf(x, model = "nec4param")
 
 Because the bound has been declared, a censored row is exempt from the boundary shifts `bnec` otherwise applies to zeros under the Gamma and Beta families; moving the bound would restate it. Declaring a row censored at a value the family excludes — left-censored at `0` under Gamma or Beta, right-censored at `1` under Beta — is an error rather than a shift, because the censored likelihood is degenerate there.
 
-The reason this changes the fit is worth stating. A censored row contributes $F(\text{bound})$, the probability of falling at or below the bound, rather than a density at a point. As the fitted curve descends past the bound, $F$ rises toward 1 and *saturates*: the curve is not rewarded for passing further below, but neither is it penalised. A substituted value instead contributes a density, which falls away as the curve descends, so substitution actively pulls the curve back up toward the value that was substituted.
+The mechanism is as follows. A censored row contributes $F(\text{bound})$, the probability of falling at or below the bound, rather than a density at a point. As the fitted curve descends past the bound, $F$ rises toward 1 and *saturates*: the curve is not rewarded for passing further below, but neither is it penalised. A substituted value instead contributes a density, which falls away as the curve descends, so substitution actively pulls the curve back up toward the value that was substituted.
+
+## Limits of the censored likelihood
+
+Saturation is what makes the censored likelihood honest, and it is also its limit. Once the fitted curve sits a few residual standard deviations below the bound, $F(\text{bound})$ is indistinguishable from 1 and moving the curve further down changes the likelihood by nothing. The likelihood is *flat* over that region, so a parameter whose only expression is there is not identified by the data, and what gets reported for it is the prior.
+
+The lower asymptote is the usual casualty. Where every response near the bottom of the curve is censored, `bot` is told only that it lies somewhere below the bound, and nothing in the likelihood distinguishes one such value from another.
+
+An example, from the `alga` dataset that ships with the package --- *Rhodomonas salina* under contaminant A, the cell in which the population fell below the counting limit at the highest concentrations, so that specific growth rate is undefined there. Those 16 rows are flagged `sgr_source == "substituted"`. A counting limit of 10 cells mL^-1^ against the recorded `density_initial` of 3871 cells mL^-1^ over three days implies a bound of $(\log 10 - \log 3871)/3 = -1.99$ d^-1^. Fitting `nec4param` with a Gaussian family and the same prior throughout, and varying only how those rows are declared:
+
+| below-limit rows declared as | `bot`, median [95% CI] | posterior SD |
+|---|---|---|
+| the bound, treated as observed | −1.985 [−2.013, −1.958] | 0.014 |
+| `cens(censoring)`, left-censored at the bound | −5.64 [−11.0, −2.51] | 2.23 |
+| `cens(censoring, upper)`, interval-censored from extinction to the bound | −2.45 [−2.68, −2.10] | 0.17 |
+
+Taking the rows in order: substitution is not only wrong about the value, it is *confident*: the posterior SD is 0.014, an interval a tenth the width of any other, because those rows have been asserted to sit exactly at the bound when all that is known is that they lie below it.
+
+Left-censoring withdraws the false assertion, and what it reveals is that the data contain almost nothing about `bot`. The posterior widens by a factor of 160 and runs down to −11 d^-1^, a rate at which the population would fall by $e^{33}$ over the test. That is the prior's lower tail rather than an estimate. Nothing has gone wrong mechanically: the chains mix, $\widehat{R}$ is 1.00, and the sampler reports 5 divergent transitions in 8000 draws — nothing a routine check would stop on. The number is simply uninformed, and an interval alone will not tell you so.
+
+The third row is the repair. A population below the counting limit is not below extinction, so the truth lies in an interval and `cens(censoring, upper)` can say exactly that. Bounding the flat region from below restores a usable posterior. It is worth being clear about what that estimate then rests on: the lower end is the declared extinction floor, here 1 cell mL^-1^ and so −2.75 d^-1^, and the posterior presses against it. The asymptote is constrained by that assumption rather than measured, and should be reported that way. This fit also needed a longer warmup and a smaller step size to converge (the default settings left one chain of four stranded on a ridge in `beta`, $\widehat{R} = 1.47$); the interval declaration gives the curve slack in the region the other two preparations pin down, and that slack has to be sampled.
+
+Two points follow for practice. First, read identification from the prior-to-posterior contraction rather than from the interval: across these three fits it is 0.996, 0.379 and 0.953 respectively, and the middle value is the diagnostic that the interval hides. `pull_prior()` and the posterior draws are enough to compute it. Second, the problem propagates — any quantity read off the deep part of the fitted curve inherits the prior dependence, so an `ecx()` value whose target falls near the asymptote deserves the same scepticism as `bot` itself.
 
 Whether a value is censored at all is a separate question from how to handle it once it is. A zero that marks a distinct event — an organism that died, rather than a measurement that fell below a limit — is structural, and belongs in a hurdle model rather than a censoring declaration; see `vignette("example6")`.
 

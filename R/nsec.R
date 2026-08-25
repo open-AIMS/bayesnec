@@ -66,7 +66,7 @@
 #'
 #' @references
 #' Fisher R, Fox DR (2023). Introducing the no significant effect concentration
-#' (NSEC).Environmental Toxicology and Chemistry, 42(9), 2019–2028.
+#' (NSEC). Environmental Toxicology and Chemistry, 42(9), 2019–2028.
 #' doi: 10.1002/etc.5610.
 #'
 #' @examples

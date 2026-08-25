@@ -1248,8 +1248,9 @@ written to file, so the censoring indicator and the failure indicator must be
 hurdle, a living one that shrank is a censored observation and belongs to the
 response block. Collapsing them is flooring by another route.
 
-`bayesnecformula` does not yet carry the `cens()` aterm through to the fit, so
-this route is not available in `bayesnec` today — see issue #181.
+`bayesnecformula` carries the `cens()` aterm through to the fit, so this route
+is available directly; see the Censoring section of `vignette("example1")` for
+the declaration and for what a censored likelihood can and cannot recover.
 
 **3. If the values are already floored and unrecoverable**, the same
 left-censored likelihood is the salvage: it replaces a false assertion with a

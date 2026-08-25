@@ -54,8 +54,17 @@ errored <- Filter(function(f) any(grepl("^#> Error", readLines(f, warn = FALSE))
                   rendered)
 if (length(errored)) {
   detail <- vapply(errored, function(f) {
-    hits <- grep("^#> Error", readLines(f, warn = FALSE), value = TRUE)
-    paste0("  ", basename(f), " (", length(hits), "): ", hits[1])
+    ln <- readLines(f, warn = FALSE)
+    i <- grep("^#> Error", ln)
+    # knitr wraps a long message onto following `#>` lines, so reporting only
+    # the matched line yields a bare "#> Error:" that says nothing. Carry the
+    # continuation lines of the first error through to the message.
+    first <- ln[i[1]]
+    j <- i[1] + 1
+    while (j <= length(ln) && grepl("^#>", ln[j]) && !grepl("^#> Error", ln[j])) {
+      first <- paste(first, sub("^#>\\s*", "", ln[j])); j <- j + 1
+    }
+    paste0("  ", basename(f), " (", length(i), " errored chunks): ", first)
   }, character(1))
   stop("Chunks errored while knitting:\n", paste(detail, collapse = "\n"),
        "\nFix the vignette source and re-run; do not ship this output.",
