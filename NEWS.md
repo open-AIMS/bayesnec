@@ -1,3 +1,60 @@
+# bayesnec 2.2.0
+
+- New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
+  independently within each level of a factor and model-averaging within each
+  level. This is the first support for a factor covariate, and it answers the
+  premise `vignette("example4")` has carried since the beginning: that the
+  *functional form* of the response may change between levels, not merely its
+  parameters.
+
+  Levels partition the data disjointly and share no parameters, so the expected
+  log predictive density is additive across them. Under pseudo-BMA — the package
+  default — the crossed model weights are therefore exactly the outer product of
+  the per-level weight vectors, the same identity `crossed_weights()` rests on
+  for the two blocks of a hurdle fit. New `crossed_group_weights()` reports both
+  readings of that table: the **unrestricted** maximum, which will typically
+  assign different equations to different levels, and the **diagonal**, which
+  asks which single equation best describes every level — a question `bayesnec`
+  could not previously answer. The table is computed on demand rather than
+  materialised, since with 23 models and *G* levels it has 23^*G* cells. As for
+  `crossed_weights()`, the identity is specific to pseudo-BMA: stacking
+  optimises a different objective whose solution is not an outer product, and
+  `crossed_group_weights()` refuses a fit built with any other weighting method
+  rather than silently returning a table that looks right and is not.
+
+  The family is chosen **once** from the whole response and passed down.
+  Selecting it per subset could pick different families at different levels,
+  which would put their `elpd` contributions on different scales and make the
+  crossed weights meaningless. Dispersion stays per level, deliberately: a
+  shared dispersion parameter would break the factorisation the crossed weights
+  depend on.
+
+  Passing `pooled` — a `bnec()` fit of the same model set to the whole data
+  with the factor ignored — adds the third reading, and it is the one that asks
+  whether the factor matters at all. A pooled fit is scored on exactly the same
+  observations as the levels together are, so the grouped and pooled WAIC are
+  directly comparable. A standard error accompanies the difference where every
+  level and the pooled fit settled on a single model; a `bayesmanecfit` stores
+  its component fits as they were before their criteria were attached, so it
+  keeps each model's WAIC point estimate and none of the pointwise values the
+  standard error needs. It is `NA` in that case rather than quietly omitted.
+
+  Every level is an ordinary `bayesnecfit` or `bayesmanecfit`, so `nec()`,
+  `ecx()`, `nsec()`, `summary()` and `plot()` work per level and everything that
+  works on a single fit works on each. `compare_posterior()` is now a generic
+  with a `bayesnecgroupfit` method comparing the levels: `crossed_group_weights()`
+  answers which *equation* best describes each level, while `compare_posterior()`
+  answers whether the levels differ in the *quantity being reported* — the
+  *NEC*, an ECx, or the fitted curve — and the two can disagree. The levels share
+  no parameters, so their posteriors are independent and the pairwise
+  probabilities are read directly, with no multiple-comparison adjustment
+  implied. `compare_posterior.default()` is the previous function unchanged, so
+  existing callers behave identically.
+
+  Refitting the favoured combination *jointly* is not included: that needs
+  level-aware post-processing inside the toxicity estimators, which is the code
+  the `toxval` migration moves. See #33.
+
 # bayesnec 2.1.4
 
 - New vignette `example7`, *Modelling growth data and other potentially negative
@@ -31,6 +88,82 @@
   aterm through to the fit. It can, since #181; the section now points at the
   *Censoring* section of `example1`.
 
+- `extraDistr` is declared in `Suggests`. `brms` requires it for the
+  `beta_binomial` density and CDF, so anything that computes a log-likelihood
+  for that family — `loo()`, `waic()`, `summary()` — stopped with "Please
+  install the 'extraDistr' package" on a machine that did not happen to have it.
+  It was declared nowhere in the package, so the Beta-Binomial section of
+  `vignette("example1")` could not be rendered on a clean install; it went
+  unnoticed because precompilation had only ever been run where the package was
+  already present.
+
+- `dispersion()` now computes the residual variance with the link the model was
+  actually fitted with, rather than the family's default. `bnec()` forces
+  `link = "identity"`, but `dispersion()` rebuilt the family with
+  `get("poisson")()` or `get("binomial")()` — a log and a logit link — and
+  applied the inverse link to a linear predictor that was already on the
+  response scale. For a Poisson that meant exponentiating a mean of, say, 90,
+  producing variance weights near `1e39`; the weights do not cancel out of the
+  observed-to-simulated ratio, so the statistic was dominated by the
+  lowest-mean observations and understated dispersion. On simulated counts
+  drawn from a negative binomial the reported value was 1.66 [0.67, 4.76]
+  against a correct 6.23 [4.72, 8.35]. Dispersion estimates change for every
+  `poisson` and `binomial` fit; the effect is much smaller for `binomial`,
+  where `plogis()` compresses the weights into a narrow band. See #247.
+
+- `bnec()` now supports the `rate()` aterm for the `poisson` and `negbinomial`
+  families, so a count observed over an exposure — animals per unit time,
+  larvae per unit area — can be modelled directly. Because `bnec()` forces
+  `link = "identity"`, `brms` writes the denominator multiplicatively on the
+  response scale rather than as a log offset, so the mean *is* the rate and
+  `top`, `bot` and `nec` stay interpretable as counts per unit exposure. The
+  prediction grid holds the denominator at 1, so the fitted curve, `ecx()` and
+  `nsec()` are all read on the rate scale, and plots divide the observations
+  through to match. `rate()` was previously neither supported nor refused: it
+  emitted a generic message, fitted, and then failed in post-processing with a
+  `brms` error about a variable it could not find, and the priors for `top` and
+  `bot` were built from raw counts rather than rates — a prior mean of ~61
+  against a true `top` of 20 on the reprex in the issue, silently. `offset` is
+  deliberately not offered as an alternative: under an identity link it would be
+  additive on the mean. See #136.
+
+- **Breaking:** an `aterm` `bayesnec` has not validated is now an **error**
+  rather than a message. The validated set is `trials()`, `weights()`, `cens()`
+  and `rate()`. Passing anything else previously printed a warning and carried
+  on, which is how `rate()` came to fit and then fail tens of seconds later,
+  long after the message had scrolled past. An aterm the package has not
+  validated cannot be assumed to behave sensibly through prior generation, the
+  initial-value search and post-processing. See #136.
+- Vignette precompilation is now usable one vignette at a time, which is what
+  makes it something other than an all-or-nothing release step. Three things had
+  to be true and none of them was. The `create-pull-request` step listed
+  `vignettes/.precompile-dry-run` in `add-paths`, a file that exists only on a
+  dry run — and `git add` stages *nothing* when any single pathspec matches
+  nothing, so every real run fitted its models correctly and then discarded the
+  result at the last step; the dry run, the one path where that file exists, was
+  the only configuration that had ever passed. The errored-chunk guard added
+  alongside the CI vignette check globbed every rendered vignette in the
+  directory rather than the ones it had just knitted, so a partial rebuild was
+  judged against vignettes it had not touched and was not shipping. And the job
+  knitted every `.Rmd.orig` in sequence, making a full rebuild the sum of all of
+  them — 3–4 hours — with any single failure aborting the lot.
+
+  The workflow now resolves and *validates* the vignette selection up front (a
+  name with no matching `.Rmd.orig` fails in seconds, where it previously held
+  back every vignette and reported success having rebuilt nothing), then fans
+  out one job per vignette. Wall clock is the slowest vignette rather than the
+  sum, a vignette that fails is confined to its own leg, and each leg uploads
+  what it produced as an artifact *before* the pull-request step, so a failure
+  there costs the review rather than the compute. A single job then opens one PR
+  against the branch the run was dispatched from, or against an explicit `base`
+  input. See #251.
+
+  Precompiling is not a precondition for merging a branch that edits a vignette
+  and should not be treated as one: since the CI vignette check the rendered
+  `.Rmd` files are display-only markdown that `R CMD check` builds in seconds.
+  Edit the `.Rmd.orig`, note in the pull request that the rendered output is
+  stale, and rebuild at release. See #190.
+
 - `sample_priors(plot = NA)` returns the sampled values, as documented. The
   argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is
   `FALSE`, so the one value documented to return the draws was the one value
@@ -54,6 +187,57 @@
   This does not add a `fixed` argument: see #84 for why fixing an asymptote is
   usually the wrong move, and `vignette("example3")` for when it is not.
   See #244.
+
+
+
+- A control lack-of-fit is now surfaced rather than waiting to be looked for:
+  once at the end of `bnec()`, and as a line in `summary()` alongside the
+  convergence verdict. Both threshold on the **ratio** of observed to simulated,
+  not on the posterior predictive p-value. That is deliberate and measured: on
+  two independently fitted parameterisations of the same data the simulated
+  control mean overshot the observed by ~19%, reproducing across fits, while
+  both p-values sat at about 0.82 and neither came near flagging. A p-value
+  threshold would stay silent on exactly the case the check exists to catch.
+  `nsec()` reads its reference from the control, so this is the region most
+  likely to move a reported no-effect concentration. See #148.
+
+- New `check_fit()`, reporting per group of the predictor the observed location
+  and scale of the response against what the fitted model simulates, with a
+  posterior predictive p-value for each and the control group flagged. It sits
+  alongside `check_chains()`, which checks the sampler, and `check_priors()`,
+  which checks the priors: this checks the fit against the data.
+
+  It is deliberately **local**. `dispersion()` reports one global statistic, and
+  for any family with a free dispersion parameter that parameter absorbs exactly
+  the discrepancy the global statistic measures — on the packaged
+  `manec_example` the global Pearson ratio is a healthy 1.011 [0.71, 1.44] while
+  the same fit simulates about 26% more variability than the data show in the
+  control region. That matters because `nsec()` sets its reference from the
+  posterior of the control mean, so mis-stating control variability moves a
+  reported no-effect concentration, and nothing previously reported it.
+
+  The scale statistic is computed on residuals, not raw values: within a group
+  the raw standard deviation mixes residual variability with the slope of the
+  curve across that group, which would make every steep region look
+  overdispersed. Grouping prefers genuine replication and falls back to binning
+  with a warning. For a `bayesmanecfit` the per-candidate-model rows are
+  reported with their stacking weights, because weights come from a global
+  `elpd` and a candidate can hold high weight while fitting the control badly.
+  For the mixture families the observed and simulated proportion of zeros is
+  reported too — the question those families exist to answer, which nothing
+  else reported. On a `bayesnechurdlefit` a third `combined` table checks the
+  fit against the response as it was measured, zeros included, which neither
+  per-component table asks. `plot()` shows the same table graphically: per
+  group, the observed statistic against the 95% span of what the fit simulates,
+  in separate location and scale panels with the control drawn apart. See #148,
+  which also closes #56.
+
+- New `pp_check()` methods for `bayesnecfit`, `bayesmanecfit` and
+  `bayesnechurdlefit`, so posterior predictive checks no longer require
+  unwrapping the underlying `brmsfit`. `pp_check(x, type = "loo_pit_overlay")`
+  gives a LOO-PIT check — the Bayesian counterpart of a uniform quantile
+  residual — using the `loo` criterion `bnec()` already adds, so it needs no
+  extra step and no new dependency. See #148 and #56.
 - New `check_sampling()` and `screen_models()`. `check_sampling()` reports, per
   candidate model, the largest Rhat, the smallest effective sample size and the
   number of divergent transitions; `screen_models()` drops the failures and

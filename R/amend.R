@@ -253,6 +253,13 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
           tr <- retrieve_var(bdat, "trials_var", error = TRUE)
           y <- y / tr
         }
+        # The rate denominator, for the same reason as trials above: this path
+        # rebuilds priors for a model added to an existing set, and they have to
+        # be on the same scale as the ones the original fit used. See #136.
+        denom <- retrieve_var(bdat, "rate_var")
+        if (!is.null(denom)) {
+          y <- y / denom
+        }
         brm_args$prior <- define_prior(model, family, x, y,
                                        prior_type = prior_type)
       } else {

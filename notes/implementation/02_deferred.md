@@ -19,9 +19,31 @@ dependency of `bayesnec`. Fixing them here would be work thrown away.
 
 **Prerequisite for all of these:** toxval currently has `bayesnec` in its
 `Imports`, so the dependency runs the wrong way, and both packages already
-register `predict.bayesnecfit`, `predict.bayesmanecfit`, `nsec.brmsfit` and
-`nsec.drc`. That collision is live today. Untangling it comes before any of the
-five.
+register methods on the same generics for the same classes. Verified against
+toxval's `NAMESPACE` on 2026-08-24 — seven of them:
+
+| generic | class | registered by |
+|---|---|---|
+| `predict` | `bayesnecfit` | both |
+| `predict` | `bayesmanecfit` | both |
+| `nsec` | `brmsfit` | both |
+| `nsec` | `drc` | both |
+| `nsec` | `bnecfit` | toxval |
+| `ecx` | `bnecfit` | toxval |
+| `ecx` | `brmsfit` | toxval |
+
+`ecx.bnecfit` and `nsec.bnecfit` matter for #33: `bayesnecgroupfit` inherits
+from `bnecfit`, so once toxval owns those generics a group fit reaches
+toxval's `bnecfit` method unless bayesnec's more specific method travels with
+it. That collision is live today. Untangling it comes before any of the five.
+
+**Method surface added since this list was written**, and to be carried into
+the migration inventory:
+
+| | |
+|---|---|
+| #33 | `ecx.bayesnecgroupfit`, `nsec.bayesnecgroupfit` — level-aware wrappers, a `lapply` over per-level fits, added by PR #227. They are the sanctioned wrapper rather than a change to the estimators, so they do not trip #33's stop condition, but they are two more methods on generics that are moving. |
+| #33 | `compare_posterior.bayesnecgroupfit` and `compare_posterior.default` — `compare_posterior()` became a generic in PR #227. It is **not** in the migrating set, so this one is noted only so the inventory is complete. |
 
 ## Owned by another session
 

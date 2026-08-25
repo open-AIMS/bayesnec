@@ -31,8 +31,8 @@
 #' is censored, the censoring indicator and any interval upper bound) and, if
 #' applicable, the group-level variables (attribute \code{"bnec_group"}).
 #' Elements of \code{"bnec_pop"} are named \code{"y_var"}, \code{"x_var"},
-#' \code{"trials_var"}, \code{"cens_var"} and \code{"cens_y2_var"}, and only the
-#' ones the formula supplies are present.
+#' \code{"trials_var"}, \code{"cens_var"}, \code{"cens_y2_var"} and
+#' \code{"rate_var"}, and only the ones the formula supplies are present.
 #'
 #' @examples
 #' \donttest{

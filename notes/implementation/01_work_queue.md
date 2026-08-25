@@ -22,19 +22,30 @@ Branches stack: each is cut from the one above it, and its PR targets the one
 above it. See `00_protocol.md`. Order is least-risky first, so a stall late in
 the run still leaves a clean, mergeable run of PRs at the bottom.
 
-| # | issue | what | size | tier |
-|---|---|---|---|---|
-| 0 | #79, #212, #166 | close, no PR | — | — |
-| 1 | #215 | publish `dev` vignettes from CI | S | 2.1.4 |
-| 2 | #139 | document the `drc` NEC equivalence | S | 2.1.4 |
-| 3 | #210 | `define_prior()` collapse on many zeros | S | 2.1.4 |
-| 4 | #207 | dispersion priors; fill incomplete prior sets | M | 2.1.4 |
-| 5 | #136 | `rate()` aterm for Poisson / negbinomial | M | 2.2.0 |
-| 6 | #209 | `hurdle_poisson`, `hurdle_negbinomial` | M–L | 2.2.0 |
-| 7 | #148 | `check_fit()`, `pp_check()` methods, LOO-PIT | L | 2.2.0 |
-| 8 | #33 | factor covariate, stage 1 | XL | 2.3.0 |
-| 9 | #6 + #33 | the grouping vignette | L | 2.3.0 |
-| — | #190 | full `precompile.R` | L | **attended, per release** |
+**Status column refreshed 2026-08-25.** Every PR in this stack targets `dev`,
+not the default branch, so `Closes #n` never fires on merge and the issues have
+to be closed by hand. Do that as each one merges. Status here is the truth as of
+`dev` at `879ab53f`; the tracker was reconciled against it on 2026-08-25.
+
+| # | issue | what | size | tier | status |
+|---|---|---|---|---|---|
+| 0 | #79, #212, #166 | close, no PR | — | — | **done** — all three closed |
+| 1 | #215 | publish `dev` vignettes from CI | S | 2.1.4 | **merged** #220 · issue closed |
+| 2 | #139 | document the `drc` NEC equivalence | S | 2.1.4 | **merged** #221 · issue closed |
+| 3 | #210 | `define_prior()` collapse on many zeros | S | 2.1.4 | **merged** #222 · issue closed |
+| 4 | #207 | dispersion priors; fill incomplete prior sets | M | 2.1.4 | **merged** #223 · issue closed |
+| 5 | #136 | `rate()` aterm for Poisson / negbinomial | M | 2.1.4 | **merged** #224 (also #247) · both closed |
+| 6 | #209 | `hurdle_poisson`, `hurdle_negbinomial` | M–L | 2.1.4 (on hold) | **PR #225 open, blocked** on a `brms` bug — see #249 |
+| 7 | #148 | `check_fit()`, `pp_check()` methods, LOO-PIT | L | 2.1.4 | **merged** #226 (A/B/C + b + d) and #240 (Part D) · issue closed |
+| 8 | #33 | factor covariate, stage 1 | XL | 2.2.0 | **stage 1 merged** #227 · issue **stays open** for stage 2 |
+| 9 | #6 + #33 | the grouping vignette | L | 2.2.0 | **PR #228 open** · #6 and #33 both held open by it |
+| — | #190 | full `precompile.R` | L | **attended, per release** | **outstanding** — the release gate; #248 rides on it |
+
+**Two merged branches must not be deleted.** `issue-136-rate-aterm` is the base of
+PR #225 and `issue-148-check-fit` is the base of PR #238; deleting a merged base
+closes the PR stacked on it and it cannot be reopened until the branch is
+restored. Both are still on the remote. Everything else in this stack can be
+deleted as it merges.
 
 ---
 
@@ -208,6 +219,9 @@ That is the intended fix, but it is not a silent one. Say so in the PR.
 
 ## 5. #136 — `rate()` aterm for Poisson and negative binomial
 
+> **MERGED, PR #224 — read that PR. #136 and #247 closed.** Tier is 2.1.4, not
+> the 2.2.0 below. Nothing outstanding. Original scope kept for the record.
+
 Fully scoped in the issue comments; **RF settled both open calls on 2026-08-21**:
 refuse `rate()` on the zero-inflated count families with a clear message, and make
 unrecognised aterms an **error** rather than a message.
@@ -248,6 +262,10 @@ error.
 ---
 
 ## 6. #209 — `hurdle_poisson` and `hurdle_negbinomial`
+
+> **ON HOLD.** PR #225 open, blocked on a `brms` bug — read **#249**. Its base
+> branch `issue-136-rate-aterm` has merged; **do not delete it** or #225 closes
+> irrecoverably.
 
 **Scope.** The count analogues of `hurdle_gamma`. Add both to `hurdle_fams` and
 `hurdle_mu_fams` in `data-raw/sysdata.R`, extend the `switch()` in
@@ -356,14 +374,22 @@ the four mixture families.
 
 **Vignette.** Author the `.Rmd.orig`; it does not render until #190.
 
-**Status, 2026-08-23.** PR #226 delivers A, B (numeric only), C. Outstanding:
-the **plot** half of B (added under review), **(b)** the automatic surfacing,
-**(d)** the combined hurdle check, and **all of Part D**. #219 depends on Part D
-and its dependency claim was correct.
+**Status — COMPLETE. #148 closed 2026-08-25**, with the evidence in the closing
+comment on the issue. All four parts are on `dev`: PR #226 (A/B/C, decisions (b)
+and (d)) and PR #240 (Part D).
+
+Two things ride on it and are **not** done: the rendered `example2` still shows
+the 1.05 Rhat default (**#248**, under #190), and **PR #238 (#219) still needs
+rewriting** — it hand-rolls a screen that `screen_models()` now provides. #238's
+base branch `issue-148-check-fit` has merged; **do not delete it** while #238 is
+open.
 
 ---
 
 ## 8. #33 — factor covariate, stage 1 only
+
+> **STAGE 1 MERGED, PR #227 — read that PR and the comment on #33.** `#33 stays
+> open`: stage 2 is still toxval-gated and the vignette at item 9 is still a PR.
 
 Feasibility assessed in the issue comment; RF cleared it for the stack on
 2026-08-21. **Stage 1 only.**
@@ -409,6 +435,9 @@ place, which is a finding worth more than a partial implementation.
 ---
 
 ## 9. #6 + #33 — the grouping vignette
+
+> **PR #228 open**, and unblocked — #33 stage 1 is on `dev`. #6 and #33 are both
+> held open by this PR; #6 has no other outstanding work.
 
 **One vignette covering both**, per RF on both issues (2026-08-21): they are two
 ways of dealing with data grouping and belong together. Cut this branch from #33's,
@@ -456,9 +485,10 @@ RF, 2026-08-21: *"do this immediately before the CRAN submission, so all vignett
 changes and anything that might change vignette numbers is completed."*
 
 **A consequence that needs a decision at review time.** If 2.1.4 ships to CRAN
-before 2.2.0, `precompile.R` has to run **twice** — once before each submission —
-because #136, #148 and the #6/#33 vignette all change vignette content after the
-2.1.4 boundary. It takes hours and needs the full fitting stack. The alternatives
+before 2.2.0, `precompile.R` has to run **twice** — once before each submission.
+Under the revised tiers (2026-08-25) #136 and #148 sit *inside* 2.1.4, so the
+only vignette content crossing the boundary is the #6/#33 grouping vignette —
+but that is still a second full run. It takes hours and needs the full fitting stack. The alternatives
 are to accept the double cost, or to hold the CRAN submission until 2.2.0 is ready
 and precompile once.
 
@@ -493,4 +523,7 @@ another session's.
 | #218 | the three unseeded permutations. Documentation-and-constraint outcome, not a code fix — see the issue. Cheap; add to a later stack. |
 | #184 | `future_apply`. **Attended, and blocked on the machine.** RF has had trouble with `future_apply` on WSL and wants a testing pass with the findings posted as a comment before any implementation. Must wait until the simulation study finishes — it is the same resource. |
 | #139 option C | the Pires et al. (2002) two-component model, conditional on reading *Environmetrics* 13:15–27. |
-| #148 decision (d) | the combined hurdle check — see item 7. |
+| ~~#148 decision (d)~~ | **done** — shipped in PR #226. |
+| #245 | group-level terms with bounded families. PR #250 open, another session's. |
+| #249 | the factorised count hurdle, blocked on `brms`. Holds #209 / PR #225. |
+| #248, #190 | the release precompile and the stale `example2` Rhat text it fixes. |

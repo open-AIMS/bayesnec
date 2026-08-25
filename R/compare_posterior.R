@@ -63,10 +63,24 @@
 #' }
 #'
 #' @export
-compare_posterior <- function(x, comparison = "n(s)ec", ecx_val = 10,
-                              type = "absolute", hormesis_def = "control",
-                              sig_val = 0.01, resolution, x_range = NA,
-                              make_newdata = TRUE, ...) {
+compare_posterior <- function(x, ...) {
+  UseMethod("compare_posterior")
+}
+
+#' @rdname compare_posterior
+#' @order 2
+#'
+#' @method compare_posterior default
+#'
+#' @inherit compare_posterior description return examples
+#'
+#' @export
+compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
+                                      type = "absolute",
+                                      hormesis_def = "control",
+                                      sig_val = 0.01, resolution,
+                                      x_range = NA, make_newdata = TRUE,
+                                      ...) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list.")
   }
@@ -89,4 +103,32 @@ compare_posterior <- function(x, comparison = "n(s)ec", ecx_val = 10,
                           make_newdata = make_newdata, ...)
   }
   out
+}
+
+#' @rdname compare_posterior
+#' @order 3
+#'
+#' @method compare_posterior bayesnecgroupfit
+#'
+#' @inherit compare_posterior description return examples
+#'
+#' @details For a \code{\link{bayesnecgroupfit}} the comparison is across the
+#' levels of the grouping factor: each level was fitted independently, so the
+#' per-level fits are already the named list this function takes, and the method
+#' is dispatch rather than new machinery.
+#'
+#' This is the natural companion to \code{\link{crossed_group_weights}}. That
+#' answers which \emph{equation} best describes each level; this answers whether
+#' the levels differ in the \emph{quantity being reported} --- the \emph{NEC},
+#' an ECx, or the fitted curve. A factor covariate analysis usually wants both,
+#' and they can disagree: two levels can favour the same model form while
+#' differing in where the threshold falls, and vice versa.
+#'
+#' The levels share no parameters, so the posteriors are independent and the
+#' pairwise probabilities are read directly, with no multiple-comparison
+#' adjustment implied.
+#'
+#' @export
+compare_posterior.bayesnecgroupfit <- function(x, ...) {
+  compare_posterior(x$fits, ...)
 }

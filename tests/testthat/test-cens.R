@@ -59,12 +59,16 @@ test_that("the brmsformula keeps the cens term", {
   expect_true(grepl("cens(cen)", deparse1(bf$nec4param$formula), fixed = TRUE))
 })
 
-test_that("cens() no longer trips the unvalidated-aterm message", {
+test_that("cens() passes the aterm check and an unvalidated aterm errors", {
   expect_no_message(check_formula(bnf(resp | cens(cen) ~
                                         crf(pred, "nec4param")), data))
-  expect_message(
+  # Changed from a message to an error under #136: an aterm bayesnec has not
+  # validated cannot be assumed to behave sensibly through prior generation,
+  # the initial-value search and post-processing, and the message was easy to
+  # miss -- rate() fitted and then failed tens of seconds later.
+  expect_error(
     check_formula(bnf(resp | se(wgt) ~ crf(pred, "nec4param")), data),
-    "aterms other than trials, weights and cens"
+    "aterms bayesnec does not support"
   )
 })
 

@@ -1,72 +1,41 @@
 # Review run — the pre-CRAN loop
 
-> ## START HERE — handoff, 2026-08-23
+> ## START HERE — 2026-08-25
 >
-> The session that ran phases 0–3 ended here. **Read this block, then
-> `notes/tasks/148-model-fit-diagnostics.md`, before anything else.**
+> **Do not look for the state of the stack in this file.** It lives on GitHub,
+> and the one-line-per-item index is the **status column** in the stack table in
+> `01_work_queue.md`. Everything else — why a PR did what it did, what it left
+> undone — is in the PR body or the issue thread. RF, 2026-08-25: the same facts
+> were being written into three notes files and the tracker, and that is what
+> makes it hard to follow.
 >
-> ### The correction that matters most
->
-> `01_work_queue.md` item 7 (#148) was **wrong in four ways**, and everything
-> downstream inherited it: PR #226 was built to it, and the phase 2 review
-> validated #226 against the queue rather than against the issue. Item 7 has now
-> been corrected and carries the detail. In short: there are **four** parts not
-> three (Part D exists), decision **(d) was answered *in* and prototyped**,
-> decision **(b) was omitted entirely**, and a doc fix in `example2` rides on (b).
->
-> **The authoritative source is `notes/tasks/148-model-fit-diagnostics.md`** —
-> 23 KB, written at scoping time, referenced from the issue thread, and never
-> consulted by the queue entry or the review. **`notes/tasks/` is untracked, so
-> this file is not in git. Commit it before anything else can be trusted.**
->
-> ### The lesson, stated plainly
->
-> Four of the five phase 2 findings were gaps between what code did and what was
-> *claimed* about it. The review then made the same mistake at one level up:
-> it validated PRs against a summary of the requirements instead of the
-> requirements. **Check claims against sources, including claims made by these
-> notes.**
->
-> ### Work outstanding, all confirmed in scope pre-CRAN by RF
->
-> | what | where | note |
-> |---|---|---|
-> | (b) automatic surfacing | into PR #226 | `bnec()` message + `summary()` line, threshold on the **ratio** |
-> | (d) combined hurdle check | into PR #226 | prototype already written on the #148 thread |
-> | **Part D** (D1–D4) | **its own PR** | needs no `loo`, does not depend on #217 — the spec says build it standalone |
-> | `example2.Rmd.orig:102` doc fix | with Part D | claims summary warns on divergences; it does not |
-> | rewrite PR #238 | after Part D | currently hand-rolls the screen because Part D was thought absent |
-> | phase 4 release gate | after merges | see below |
->
-> ### State of the PRs
->
-> Nine open, all MERGEABLE, all reviewed. Versions pinned monotonically along
-> the merge path so merging in this order costs no conflicts:
->
-> ```
-> dev .14 → 235 .15 → 236 .16 → 237 .17 → 224 .18 → 225 .19
->        → 226 .20 → 227 .21 → 228 .22 → 238 .23
+> ```bash
+> gh pr list   --repo open-AIMS/bayesnec --state open
+> gh issue list --repo open-AIMS/bayesnec --state open
 > ```
 >
-> **Delete each branch as it merges** — an undeleted merged base stops GitHub
-> retargeting the PR above it, which has already bitten twice in this run.
+> Two things that are **not** on GitHub and will bite you:
 >
-> ### Two things that changed late
+> - **Every PR here targets `dev`, not the default branch, so `Closes #n` never
+>   fires.** Close issues by hand after verifying the work is on `dev`.
+> - **`issue-136-rate-aterm` and `issue-148-check-fit` have merged but must not
+>   be deleted** — they are the bases of PRs #225 and #238, and deleting a merged
+>   base closes the PR above it irrecoverably.
 >
-> - **The machine is free.** Load 0.29 on 22 cores; the `negative-sgr` simulation
->   study has finished. The 2-core budget in `00_protocol.md` no longer binds and
->   **#190 is unblocked**.
-> - **A full-suite run to characterise the `WARN 10`** was launched and did not
->   finish before the session ended. Re-run it; ten testthat warnings on every
->   platform should be cleared before submission.
->
-> ### The loop
->
-> Ran in `/loop` dynamic mode and **does not survive the session**. Restart with
-> the same prompt to resume. Worktrees `/mnt/c/Rworking/bayesnec-review` and
-> `-review2` were created by that session and can be removed with
-> `git worktree remove`.
+> The 2026-08-23 handoff below is kept for its lesson, not its PR list.
 
+> ## The lesson from phases 0–3, 2026-08-23
+>
+> Four of the five phase 2 findings were gaps between what the code did and what
+> was *claimed* about it. The review then made the same mistake one level up: it
+> validated PRs against a **summary** of the requirements — `01_work_queue.md`
+> item 7 — instead of against the requirements. Item 7 was wrong in four ways,
+> and #226 was built to it. **Check claims against sources, including claims
+> made by these notes.**
+>
+> The rest of that handoff has been cut: its PR list, branch advice and
+> outstanding-work table are all either stale or now recorded on the PRs and
+> issues themselves.
 
 How a Claude Code session works through the *review* of the stack `01_work_queue.md`
 built, and the issues that review generated. Read `00_protocol.md` first — every

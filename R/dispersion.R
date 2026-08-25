@@ -31,7 +31,11 @@
 #' \dontrun{
 #' library(bayesnec)
 #' data(nec_data)
-#' nec_data$y <- as.integer(round(nec_data$y * 100))
+#' # A Poisson mean following the curve, so the counts are a genuine count
+#' # process; rounding a scaled proportion gives a variance that does not change
+#' # with the mean, which no count distribution can represent.
+#' mu <- 5 + (85 - 5) * exp(-exp(0.3) * (nec_data$x - 1.5) * (nec_data$x > 1.5))
+#' nec_data$y <- as.integer(rpois(length(mu), mu))
 #' nec4param <- bnec(y ~ crf(x, "nec4param"), data = nec_data, chains = 2)
 #' dispersion(nec4param, summary = TRUE)
 #' }
@@ -53,7 +57,17 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   allowed_fams <- c("poisson", "binomial")
   fam <- model$family$family
   if (fam %in% allowed_fams) {
-    fam_fcts <- get(fam)()
+    # The link is taken from the fit rather than left at the family default.
+    # get("poisson")() is a log link and get("binomial")() a logit one, but
+    # bnec() forces link = "identity", so posterior_linpred() below is already
+    # on the response scale and linkinv() would transform it a second time. For
+    # a Poisson that means exp() of a mean of ~90, giving variance weights of
+    # ~1e39; they do not cancel out of the ratio, because rowSums() weights the
+    # two sums over observations separately, so the statistic ends up dominated
+    # by the lowest-mean observations and understates dispersion. Reading the
+    # link off the fit rather than hard-coding "identity" keeps this correct if
+    # a future path stops forcing it. See #247.
+    fam_fcts <- get(fam)(link = model$family$link)
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
     prd_out <- posterior_epred(model)
@@ -68,6 +82,19 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       if (fam == "binomial") {
         trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
         prd_var_y <- prd_var_y * model$data[[trials_var]]
+      }
+      rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
+      if (fam == "poisson" && !is.na(rate_var)) {
+        # Exactly parallel to the binomial branch, and exact for Poisson:
+        # prd_mu is the rate, the observations are counts over an exposure, and
+        # Var(count) = mu * denom. Note this does NOT generalise to
+        # negbinomial, where brms scales the shape by the denominator too, so
+        # the count-scale variance is mu_c + mu_c^2 / (shape * denom) rather
+        # than a plain multiple. dispersion() does not accept negbinomial at
+        # all -- see allowed_fams above -- so there is nothing to get wrong
+        # today, but whoever widens that list must derive the negbinomial case
+        # rather than copying this line. See #136.
+        prd_var_y <- prd_var_y * model$data[[rate_var]]
       }
       prd_res <- (obs_y - prd_y) / sqrt(prd_var_y)
       sim_y <- ppd_out[i, ]
