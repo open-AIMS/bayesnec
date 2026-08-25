@@ -74,7 +74,23 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::knitr, any::purrr, any::rmarkdown, local::.
+          # BH, RcppEigen and StanHeaders are LinkingTo dependencies of rstan.
+          # Installing rstan's binary does not pull them, but precompiling
+          # COMPILES a Stan model at run time and needs the headers -- without
+          # them every bnec() call dies instantly with "Boost not found; call
+          # install.packages('BH')", which is what happened to the first
+          # precompile run that selected a vignette with fitting chunks
+          # (example7, 2026-08-25: 83 chunks in 14 seconds, 5 errored). The
+          # R-CMD-check workflow has carried BH since 2021 for the same reason;
+          # this workflow was added later and did not inherit it.
+          extra-packages: |
+            any::knitr
+            any::purrr
+            any::rmarkdown
+            BH
+            RcppEigen
+            StanHeaders
+            local::.
           needs: check
 
       # NOT cached: compiled Stan models. brms defaults to the rstan backend and
