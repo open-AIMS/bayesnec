@@ -1,5 +1,14 @@
 # bayesnec 2.1.4
 
+- `extraDistr` is declared in `Suggests`. `brms` requires it for the
+  `beta_binomial` density and CDF, so anything that computes a log-likelihood
+  for that family — `loo()`, `waic()`, `summary()` — stopped with "Please
+  install the 'extraDistr' package" on a machine that did not happen to have it.
+  It was declared nowhere in the package, so the Beta-Binomial section of
+  `vignette("example1")` could not be rendered on a clean install; it went
+  unnoticed because precompilation had only ever been run where the package was
+  already present.
+
 - `dispersion()` now computes the residual variance with the link the model was
   actually fitted with, rather than the family's default. `bnec()` forces
   `link = "identity"`, but `dispersion()` rebuilt the family with
