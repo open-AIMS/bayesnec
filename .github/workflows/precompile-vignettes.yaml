@@ -1,4 +1,5 @@
-# Manually-triggered vignette precompilation (#215, and the mechanism for #190).
+# Manually-triggered vignette precompilation (#215, #230, #251; the mechanism
+# for #190).
 #
 # `vignettes/*.Rmd` are generated from `*.Rmd.orig` by `vignettes/precompile.R`,
 # which fits every model in every vignette. That is hours of compute and needs a
@@ -6,59 +7,148 @@
 # vignette edited on `dev` is unreadable in rendered form until a contributor
 # precompiles locally -- which is the complaint in #215.
 #
-# So: run it on demand. Dispatch this workflow against a branch and it opens a
-# PR with the regenerated `.Rmd` files and figures. It deliberately does not
-# push to the branch directly: precompilation changes every number in every
-# vignette, and that is a diff someone should look at.
+# So: run it on demand, one vignette per job. A single vignette takes ~20 min on
+# a runner (`example1` was 20m37s in run 32794834438), so fanning out makes the
+# wall clock the slowest vignette rather than the sum of all nine, and confines a
+# vignette that fails to its own leg instead of aborting the run. See #251.
 #
-# `workflow_dispatch` only works once this file is on the repository's DEFAULT
-# branch (`master` here). Until then GitHub answers a dispatch with
-# "workflow not found on the default branch" and the workflow is invisible to
-# `gh workflow list`. The `push` trigger on the `precompile/*` namespace exists
-# so the job can be exercised from `dev` before it ever reaches `master` --
-# push a branch named e.g. `precompile/test` and it runs. See #230.
+# It deliberately does not push to the branch directly: precompilation changes
+# every number in every vignette, and that is a diff someone should look at.
+#
+# NOTE. Precompiling is *not* a precondition for merging a branch that edits a
+# vignette, and treating it as one costs hours per branch for no gain. Since
+# #242 the rendered `.Rmd` files are display-only markdown that `R CMD check`
+# builds in ~16s, `dev` has no required checks, and the protocol in
+# `notes/implementation/00_protocol.md` is explicit: edit the `.Rmd.orig`, say in
+# the PR body that the rendered output is stale, and rebuild at release under
+# #190. Reach for this workflow when a rendered number is about to be quoted or
+# the published dev site would actively mislead -- not as a merge gate.
 on:
   workflow_dispatch:
     inputs:
       vignettes:
         description: >-
           Comma-separated vignette basenames to rebuild (e.g. example1,example4).
-          Leave blank to rebuild all of them -- slow, and what #190 wants.
+          Leave blank to rebuild all of them -- what #190 wants. A name with no
+          matching .Rmd.orig now fails the run in seconds rather than silently
+          rebuilding nothing.
+        required: false
+        default: ''
+      base:
+        description: >-
+          Branch the resulting PR targets. Defaults to the branch this was
+          dispatched against, which is normally what you want.
         required: false
         default: ''
       dry_run:
         description: >-
           Skip the fitting entirely and only exercise the plumbing -- checkout,
-          dependency install, and the pull-request step. Use this to verify the
-          workflow before committing hours of compute to it.
+          dependency install, artifact upload, and the pull-request step. Use
+          this to verify the workflow before committing hours of compute to it.
         type: boolean
         required: false
         default: false
   push:
     branches: ['precompile/**']
+    # Fallback path, kept from #230 for the case where `workflow_dispatch` is
+    # unavailable. It cannot choose the PR base independently of the vignette
+    # selection -- the branch name has to serve as both -- so prefer dispatch.
     # The branch suffix selects what to rebuild, since a push carries no inputs:
     #   precompile/example1        -> rebuild example1 only
     #   precompile/example1,ex4    -> rebuild both
     #   precompile/all             -> rebuild everything (what #190 wants)
-    #   precompile/dry-run         -> skip fitting entirely; see PRECOMPILE_DRY_RUN
+    #   precompile/dry-run         -> skip fitting entirely
 
 # create-pull-request needs both of these, and the repository setting
 # "Allow GitHub Actions to create and approve pull requests" must be on.
 # Without them the final step fails after the whole fitting run has completed,
 # which is the most expensive possible place to discover a permissions problem.
+# Each leg now uploads its output as an artifact *before* that step, so a
+# failure there costs the review, not the compute. See #251.
 permissions:
   contents: write
   pull-requests: write
 
 name: precompile vignettes
 
+# Two runs on one branch would race for the same PR branch. Queue rather than
+# cancel: a run that is 40 minutes into fitting should not be thrown away.
+concurrency:
+  group: precompile-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
-  precompile:
+  # Resolves the selection to a JSON list of vignette basenames, and validates
+  # it. Previously a typo in `vignettes` held back every .Rmd.orig, so
+  # precompile.R knitted nothing, the errored-chunk guard passed vacuously, and
+  # the run reported success having rebuilt nothing. See #251.
+  plan:
     runs-on: ubuntu-latest
-    # precompile.R fits every model in every vignette. The default 6h ceiling is
-    # the real constraint here, not this number; if a full run approaches it,
-    # rebuild vignettes in batches using the `vignettes` input.
-    timeout-minutes: 350
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: resolve
+        env:
+          VIGNETTE_SELECTION: ${{ inputs.vignettes }}
+          PRECOMPILE_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF_NAME}"
+          suffix=""
+          case "$ref" in precompile/*) suffix="${ref#precompile/}" ;; esac
+
+          if [ "${PRECOMPILE_DRY_RUN,,}" = "true" ] || [ "$suffix" = "dry-run" ]
+          then
+            echo 'matrix=["dry-run"]' >> "$GITHUB_OUTPUT"
+            echo "DRY RUN -- no fitting will happen."
+            exit 0
+          fi
+
+          sel="${VIGNETTE_SELECTION:-}"
+          # A push carries no inputs, so the branch suffix stands in for them.
+          # `all` is the one suffix that is not a vignette name.
+          if [ -z "$sel" ] && [ -n "$suffix" ] && [ "$suffix" != "all" ]; then
+            sel="$suffix"
+          fi
+
+          available=$(cd vignettes && ls -1 *.Rmd.orig | sed 's/\.Rmd\.orig$//')
+          if [ -n "$sel" ]; then
+            chosen=""
+            for v in $(printf '%s' "$sel" | tr ',' ' '); do
+              if printf '%s\n' "$available" | grep -qxF "$v"; then
+                chosen="$chosen $v"
+              else
+                echo "::error::no vignettes/$v.Rmd.orig; available:" \
+                  "$(printf '%s' "$available" | tr '\n' ' ')"
+                exit 1
+              fi
+            done
+          else
+            chosen="$available"
+          fi
+
+          # Built by hand rather than with jq: the names are basenames of
+          # files that were just listed, so there is nothing to escape, and it
+          # keeps the step runnable outside a runner for testing.
+          matrix="["
+          for v in $chosen; do matrix="$matrix\"$v\","; done
+          matrix="${matrix%,}]"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "Rebuilding: $matrix"
+
+  precompile:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      # One bad vignette must not take the other eight down with it; #251.
+      fail-fast: false
+      matrix:
+        vignette: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    # A single vignette is ~20 min. This is a runaway backstop, not a budget --
+    # a leg that is anywhere near it has something wrong with it.
+    timeout-minutes: 180
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       NOT_CRAN: true
@@ -81,101 +171,140 @@ jobs:
       # nothing in this package sets `backend = "cmdstanr"`, so models are
       # compiled in-process and nothing is written to ~/.cmdstan -- an earlier
       # cache step on that path stored and restored an empty directory on every
-      # run while reading as though compilation were cached. Recompilation is
-      # the bulk of the cost here and it is genuinely paid each run; that is
-      # what `timeout-minutes` below has to accommodate, and what the
-      # `vignettes` input exists to let you batch around. See #230.
+      # run while reading as though compilation were cached. Recompilation is a
+      # real per-run cost; making it cacheable means moving to cmdstanr and
+      # pointing `cmdstanr_write_stan_file_dir` at a cached path, which is a
+      # bigger change than this one. See #230, #251.
 
-      - name: Precompile
+      # Held back rather than passed as an argument because precompile.R globs
+      # the directory. Nothing is restored afterwards: this checkout is thrown
+      # away, and only the tarball built below leaves the job. That retires the
+      # hold-back/restore dance from #230, which had to be keyed off a directory
+      # because on.exit() never fires at `Rscript {0}` top level and
+      # precompile.R opens with `rm(list = ls())`.
+      - name: Hold back every vignette but ${{ matrix.vignette }}
+        if: matrix.vignette != 'dry-run'
         run: |
-          # The restore is driven off the directory rather than a variable, and
-          # deliberately so: `shell: Rscript {0}` runs this at top level, where
-          # on.exit() registers against no frame and silently never fires (which
-          # is why the held-back files were not being restored), AND
-          # precompile.R opens with `rm(list = ls())`, which sourced at top
-          # level clears the global environment -- so any flag held in a
-          # variable across the source() call would be wiped too. See #230.
-          ref <- Sys.getenv("PRECOMPILE_REF")
-          suffix <- if (startsWith(ref, "precompile/")) {
-            sub("^precompile/", "", ref)
-          } else {
-            ""
-          }
-          dry <- identical(tolower(Sys.getenv("PRECOMPILE_DRY_RUN")), "true") ||
-            identical(suffix, "dry-run")
+          set -euo pipefail
+          mkdir -p .precompile_held
+          for f in vignettes/*.Rmd.orig; do
+            b=$(basename "$f" .Rmd.orig)
+            if [ "$b" != "${{ matrix.vignette }}" ]; then
+              mv "$f" .precompile_held/
+            fi
+          done
+          ls -1 vignettes/*.Rmd.orig
 
-          local({
-          sel <- Sys.getenv("VIGNETTE_SELECTION")
-          # A push carries no inputs, so the branch suffix stands in for them.
-          # `all` and `dry-run` are the two suffixes that are not vignette names.
-          if (!nzchar(sel) && nzchar(suffix) &&
-                !suffix %in% c("all", "dry-run")) {
-            sel <- suffix
-          }
-          if (nzchar(sel)) {
-            keep <- trimws(strsplit(sel, ",")[[1]])
-            cat("Rebuilding only:", paste(keep, collapse = ", "), "\n")
-            all_orig <- dir("vignettes", pattern = "\\.Rmd\\.orig$")
-            drop <- setdiff(tools::file_path_sans_ext(
-              tools::file_path_sans_ext(all_orig)), keep)
-            # precompile.R globs the directory, so hide the ones we are not
-            # rebuilding rather than reimplementing its loop here.
-            dir.create(".precompile_held", showWarnings = FALSE)
-            for (d in drop) {
-              file.rename(file.path("vignettes", paste0(d, ".Rmd.orig")),
-                          file.path(".precompile_held", paste0(d, ".Rmd.orig")))
-            }
-          }
-          })
-          if (dry) {
-            # Nothing is fitted. A marker file gives the pull-request step an
-            # actual diff to commit, so this exercises the whole chain --
-            # including the `permissions:` above and the repository's
-            # "Allow GitHub Actions to create and approve pull requests"
-            # setting, which is the failure that would otherwise surface only
-            # after a full run. See #230.
-            writeLines(
-              c("Dry run of the precompile workflow.",
-                paste("ref:", ref),
-                "Delete this file; it is not part of the package."),
-              "vignettes/.precompile-dry-run"
-            )
-            cat("DRY RUN -- precompile.R was not sourced.\n")
-          } else {
-            source("vignettes/precompile.R")
-          }
-          # Restored after the run, so a partial rebuild leaves the tree as it
-          # found it. Keyed on the directory existing, which survives
-          # precompile.R's rm(list = ls()).
-          if (dir.exists(".precompile_held")) {
-            for (f in dir(".precompile_held")) {
-              file.rename(file.path(".precompile_held", f),
-                          file.path("vignettes", f))
-            }
-            unlink(".precompile_held", recursive = TRUE)
-          }
+      - name: Precompile ${{ matrix.vignette }}
+        if: matrix.vignette != 'dry-run'
+        run: Rscript vignettes/precompile.R
+
+      # Nothing is fitted. A real PNG under the name below gives the
+      # pull-request step an actual diff to commit, and it is covered by the
+      # `vignettes/*.png` glob that step already stages -- which is the whole
+      # point: the marker must live inside `add-paths`, not alongside it.
+      # Listing a dry-run-only path in `add-paths` is what made every real run
+      # fail at `git add` while every dry run passed. See #251.
+      - name: Dry run
+        if: matrix.vignette == 'dry-run'
+        run: |
+          png("vignettes/vignette-fig-precompile-dry-run-1.png",
+              width = 480, height = 240)
+          plot.new()
+          text(0.5, 0.6, "precompile workflow dry run", cex = 1.2)
+          text(0.5, 0.4, Sys.getenv("GITHUB_REF_NAME"), cex = 0.9)
+          dev.off()
+          cat("DRY RUN -- precompile.R was not sourced.\n")
         shell: Rscript {0}
-        env:
-          VIGNETTE_SELECTION: ${{ inputs.vignettes }}
-          # Empty on a workflow_dispatch that named no vignettes; on a push it is
-          # the branch suffix, and `all` means the same as leaving it blank.
-          PRECOMPILE_REF: ${{ github.ref_name }}
-          PRECOMPILE_DRY_RUN: ${{ inputs.dry_run }}
+
+      # Exactly what this leg changed, by asking git rather than by guessing at
+      # the figure naming convention -- figure names are chunk-derived and do
+      # not carry the vignette's own name.
+      - name: Pack this leg's output
+        id: pack
+        run: |
+          set -euo pipefail
+          # Restricted to the two globs the pull-request step stages, so the
+          # artifact is exactly what will be committed and nothing else a leg
+          # happened to dirty.
+          files=$(git ls-files --others --modified --exclude-standard \
+            -- 'vignettes/*.Rmd' 'vignettes/*.png')
+          if [ -z "$files" ]; then
+            echo "::warning::${{ matrix.vignette }} produced no changes"
+            echo "packed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s\n' "$files"
+          printf '%s\n' $files | tar -cf precompiled.tar -T -
+          echo "packed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload
+        if: steps.pack.outputs.packed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: precompiled-${{ matrix.vignette }}
+          path: precompiled.tar
+          retention-days: 14
+
+  open-pr:
+    needs: [plan, precompile]
+    # Runs even when a leg failed, so the vignettes that did rebuild are not
+    # held hostage to the one that did not. The run is still marked failed by
+    # the failing leg itself.
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: precompiled-*
+          path: _precompiled
+
+      - name: Unpack
+        id: unpack
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          rebuilt=""
+          for t in _precompiled/precompiled-*/precompiled.tar; do
+            leg=$(basename "$(dirname "$t")")
+            leg="${leg#precompiled-}"
+            tar -xf "$t"
+            rebuilt="$rebuilt $leg"
+          done
+          rm -rf _precompiled
+          if [ -z "$rebuilt" ]; then
+            echo "::error::no leg produced any output; nothing to open a PR for"
+            exit 1
+          fi
+          echo "rebuilt=$(printf '%s' "$rebuilt" | xargs)" >> "$GITHUB_OUTPUT"
+          echo "outcome=${{ needs.precompile.result }}" >> "$GITHUB_OUTPUT"
 
       - name: Open a PR with the rebuilt vignettes
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: precompile/${{ github.ref_name }}
-          base: ${{ github.ref_name }}
+          # `precompiled/` rather than `precompile/`, so the branch this action
+          # pushes cannot itself match the `precompile/**` push trigger.
+          branch: precompiled/${{ github.ref_name }}
+          base: ${{ inputs.base || github.ref_name }}
           title: "Rebuild precompiled vignettes from ${{ github.ref_name }}"
           commit-message: "rebuild precompiled vignettes"
+          # Only paths that always exist. A pathspec matching nothing makes
+          # `git add` exit 128 and stage *nothing*, which silently discarded
+          # every successful run before #251.
           add-paths: |
             vignettes/*.Rmd
             vignettes/*.png
-            vignettes/.precompile-dry-run
           body: >-
             Regenerated by the `precompile vignettes` workflow from
             `${{ github.ref_name }}`.
+
+
+            Rebuilt: `${{ steps.unpack.outputs.rebuilt }}`.
+            Fan-out result: `${{ needs.precompile.result }}` — if that is not
+            `success`, at least one vignette failed to rebuild and is **absent
+            from this diff**; check the run before merging.
 
 
             Every number in these vignettes comes from a fresh fit, so expect the
