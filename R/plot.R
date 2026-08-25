@@ -94,9 +94,16 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
   if (family == "binomial" | family == "beta_binomial") {
     trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
     y_dat <- x$fit$data[[y_var]] / x$fit$data[[trials_var]]
+  } else if (!is.na(rate_var)) {
+    # The fitted curve is drawn on the rate scale, because the grid pins the
+    # denominator at 1. Plotting raw counts against it would put the
+    # observations and the curve on different axes -- with a varying exposure,
+    # visibly so. See #136.
+    y_dat <- x$fit$data[[y_var]] / x$fit$data[[rate_var]]
   } else {
     y_dat <- x$fit$data[[y_var]]
   }

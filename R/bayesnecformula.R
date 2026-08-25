@@ -144,11 +144,38 @@
 #' been tested yet. If this is extremely important to your work, please
 #' raise an issue on bayesnec GitHub, and we will consider further testing and 
 #' development.
-#' Currently, the only three \code{aterms} that have validated behaviour are:
+#' Currently, the only four \code{aterms} that have validated behaviour are:
 #' 1) \code{trials()}, which is essential in binomially-distributed data, e.g.
 #' \code{y | trials(trials_variable)}, 2) weights, e.g.
-#' \code{y | weights(weights_variable)}, and 3) \code{cens()} (see below),
-#' following \pkg{brms} formula syntax.
+#' \code{y | weights(weights_variable)}, 3) \code{cens()} (see below), and
+#' 4) \code{rate()} (see below), following \pkg{brms} formula syntax.
+#' Any other \code{aterm} is an error rather than a warning: an aterm
+#' \code{bayesnec} has not validated cannot be assumed to behave sensibly
+#' through the prior generation, initial-value search and post-processing that
+#' follow.
+#'
+#' \bold{Rates and exposure}
+#'
+#' \code{rate(denominator)} declares that the response is a count observed over
+#' an exposure --- animals per unit time, larvae per unit area --- and is valid
+#' for the \code{poisson} and \code{negbinomial} families only. Any other
+#' family is an error when the family is known, the zero-inflated count
+#' families included: \pkg{brms} cannot place a rate denominator on those, and
+#' under \code{\link{bnec}}'s identity link there is no offset that would do
+#' the same job. The check necessarily needs a family to check against, so it
+#' fires on every path that fits --- \code{\link{bnec}} always supplies one ---
+#' but not on a bare \code{\link{make_brmsformula}(formula, data)} call, which
+#' has no family to validate and builds the formula unchecked.
+#'
+#' Because \code{\link{bnec}} forces \code{link = "identity"}, \pkg{brms}
+#' writes the denominator multiplicatively on the response scale rather than as
+#' a log offset on the linear predictor, so the mean \emph{is} the rate and
+#' "top", "bot" and "nec" stay directly interpretable as counts per unit
+#' exposure. The prediction grid holds the denominator at 1, so a fitted curve,
+#' an \code{\link{ecx}} and an \code{\link{nsec}} are all read on the rate
+#' scale; plots put the observations on that same scale by dividing through.
+#' \code{offset} is deliberately not offered as an alternative --- under an
+#' identity link it would be additive on the mean, which is not what is wanted.
 #' Please note that \pkg{brms} does not implement design weights as in other
 #' standard \pkg{base} functions. From their help page, \pkg{brms} "takes the
 #' weights literally, which means that an observation with weight 2 receives 2
@@ -472,10 +499,18 @@ check_formula.bayesnecformula <- function(formula, data,
   split_lhs_calls <- strsplit(lhs_calls, " \\| | impossiblestr ")[[1]]
   no_resp <- split_lhs_calls[-1]
   if (length(no_resp) > 0) {
-    if (sum(grepl("trials\\(|weights\\(|cens\\(", no_resp)) < length(no_resp)) {
-      message("You have specified brms special aterms other than trials,",
-              " weights and cens. bnec may yield unexpected model fits,",
-              " proceed at your own risk. See ?bayesnecformula.")
+    # An error rather than a message, per RF on #136. A silent pass-through cost
+    # more than it saved: rate() was neither validated nor refused, so it fitted
+    # and then failed in post-processing with a brms error about a missing
+    # variable, tens of seconds after the message had scrolled past. An aterm
+    # bayesnec has not validated cannot be assumed harmless.
+    validated <- "trials\\(|weights\\(|cens\\(|rate\\("
+    unvalidated <- no_resp[!grepl(validated, no_resp)]
+    if (length(unvalidated) > 0) {
+      stop("You have specified brms special aterms bayesnec does not support: ",
+           paste0(unvalidated, collapse = ", "),
+           ". The supported aterms are trials, weights, cens and rate.",
+           " See ?bayesnecformula.", call. = FALSE)
     }
     cens_calls <- grep("cens\\(", no_resp, value = TRUE)
     if (length(cens_calls) > 0 &&
@@ -532,6 +567,8 @@ simplify_formula <- function(formula, data, ...) {
     t_var <- NA
     c_call <- 1
     c_vars <- character(0)
+    ra_call <- 1
+    ra_var <- character(0)
   } else if (length(formula_lhs) == 3) {
     y_call <- formula_lhs[[2]]
     split_terms <- split_calls(formula_lhs[[3]])
@@ -539,6 +576,8 @@ simplify_formula <- function(formula, data, ...) {
     t_var <- split_terms$t_var
     c_call <- split_terms$c_call
     c_vars <- split_terms$c_vars
+    ra_call <- split_terms$ra_call
+    ra_var <- split_terms$ra_var
   }
   y_var <- all.vars(y_call)
   x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
@@ -563,19 +602,25 @@ simplify_formula <- function(formula, data, ...) {
   } else {
     r_call <- str2lang(paste0(r_vars, collapse = " + "))
   }
-  short_form <- substitute(a ~ b + c + d + e, list(a = y_call, b = x_call,
-                                                   c = t_call, d = c_call,
-                                                   e = r_call))
+  # The rate slot goes between censoring and the grouping terms, because
+  # pop_vars below lists it there and retrieve_var() finds a variable by its
+  # POSITION in bnec_pop, then indexes the model frame with it. Term order here
+  # and name order there must stay in lockstep; the comment below says why.
+  short_form <- substitute(a ~ b + c + d + f + e, list(a = y_call, b = x_call,
+                                                       c = t_call, d = c_call,
+                                                       f = ra_call,
+                                                       e = r_call))
   # Names are attached here rather than assigned positionally downstream: the
   # trials slot may be absent while the censoring slot is present, so
   # "the third element is trials_var" no longer holds. The order of the terms in
   # short_form must stay in step with this vector, because retrieve_var() finds
   # a variable by its position in bnec_pop and indexes the model frame with it.
-  pop_vars <- c(y_var, x_var, t_var, c_vars)
+  pop_vars <- c(y_var, x_var, t_var, c_vars, ra_var)
   names(pop_vars) <- c(rep("y_var", length(y_var)),
                        rep("x_var", length(x_var)),
                        rep("trials_var", length(t_var)),
-                       names(c_vars))
+                       names(c_vars),
+                       rep("rate_var", length(ra_var)))
   list(formula = as.formula(short_form), pop_vars = pop_vars,
        group_vars = r_vars)
 }
@@ -619,6 +664,34 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
   # last so that the curve expression it duplicates (route B) is the one any
   # group-level terms above have already been applied to.
   disp_spec <- parse_disp_term(formula)
+  # rate() is accepted by brms for poisson and negbinomial only -- checked
+  # against brms 2.23.0, non-linear formula included. Everything else, the
+  # zero-inflated count families among them, rejects it outright. The check
+  # needs the family, so it belongs here rather than in check_formula(), which
+  # does not have it: without it a user got a brms stack trace tens of seconds
+  # into compilation instead of a bayesnec error naming what was wrong.
+  #
+  # The zero-inflated count families get their own message because they are
+  # exactly what someone reaches for next after a rate model, and there is no
+  # offset workaround for them under an identity link either (RF, #136).
+  rate_var <- retrieve_var(data, "rate_var")
+  if (!is.null(rate_var) && !is.null(family)) {
+    fam_tag <- if (inherits(family, "family")) family$family else family
+    if (!fam_tag %in% c("poisson", "negbinomial")) {
+      extra <- if (grepl("^zero_inflated_", fam_tag)) {
+        paste0(" brms cannot place a rate denominator on a zero-inflated",
+               " count family, and under bnec()'s identity link there is no",
+               " offset that would do the same job. Model the exposure as a",
+               " predictor, or use family = \"", sub("^zero_inflated_", "",
+                                                    fam_tag), "\".")
+      } else {
+        " Use family = \"poisson\" or family = \"negbinomial\"."
+      }
+      stop("A rate() term is only valid for the poisson and negbinomial",
+           " families; you supplied \"", fam_tag, "\".", extra,
+           call. = FALSE)
+    }
+  }
   if (!is.null(disp_spec)) {
     if (is.null(family)) {
       stop("A disp() term needs the model family to know which dispersion",
@@ -812,6 +885,8 @@ split_calls <- function(formula_part) {
   t_var <- NA
   c_call <- 1
   c_vars <- character(0)
+  ra_call <- 1
+  ra_var <- character(0)
   if (length(formula_part) >= 2) {
     tmp_ <- list()
     n <- 0
@@ -854,8 +929,26 @@ split_calls <- function(formula_part) {
         c_call <- str2lang(paste0(c_vars, collapse = " + "))
       }
     }
+    if (any(grepl("rate(", tmp_, fixed = TRUE))) {
+      # Carried as a plain column, following the cens() precedent rather than
+      # the trials() one. trials() is kept as the call because brms wants
+      # `trials(n)` on the response and clean_aterms() strips it back out again;
+      # rate() needs neither, so keeping the bare column name avoids another
+      # clean_aterms() special case and lets find_transformations() match it
+      # unaided. See #136.
+      ra_call_raw <- tmp_[[grep("rate(", tmp_, fixed = TRUE)[1]]]
+      ra_var <- all.vars(ra_call_raw)
+      if (length(ra_var) > 0) {
+        ra_var <- ra_var[1]
+        names(ra_var) <- "rate_var"
+        ra_call <- str2lang(ra_var)
+      } else {
+        ra_var <- character(0)
+      }
+    }
   }
-  list(t_call = t_call, t_var = t_var, c_call = c_call, c_vars = c_vars)
+  list(t_call = t_call, t_var = t_var, c_call = c_call, c_vars = c_vars,
+       ra_call = ra_call, ra_var = ra_var)
 }
 
 #' @noRd

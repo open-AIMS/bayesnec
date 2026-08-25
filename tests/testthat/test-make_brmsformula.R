@@ -7,10 +7,13 @@ dat <- data.frame(x = seq(1, 20, length.out = 10), tr = 100, wght = c(1, 2),
                   group5 = "b", group6 = "c", z = 19, k = 20, sei = 30)
 dat$y <- fct(b_beta, b_nec, b_top, dat$x)
 
-x0 <- y | trials(tr) + weights(wght) + se(sei) +
+# se() was dropped from this chain under #136: unvalidated aterms are now an
+# error, and it was incidental here -- what these tests exercise is parsing a
+# chain of several aterms, which trials + weights + cens still does.
+x0 <- y | trials(tr) + weights(wght) +
   cens(k) ~ crf(sqrt(x), "nec") +
   ogl(group1) + pgl(group2) + (nec | group1)
-x1 <- log(y) | trials(tr) + weights(wght) + se(sei) +
+x1 <- log(y) | trials(tr) + weights(wght) +
   cens(k) ~ crf(sqrt(x), "nec3param") + 
   ogl(group2) + pgl(group3)
 x2 <- log(y) ~ crf(sqrt(x), "nec3param")
@@ -35,4 +38,14 @@ test_that("correct classes", {
   expect_type(suppressMessages(make_brmsformula(x7, dat)), "list")
   expect_type(suppressMessages(make_brmsformula(x8, dat)), "list")
   expect_type(suppressMessages(make_brmsformula(x9, dat)), "list")
+})
+
+test_that("an unvalidated aterm in a chain is an error", {
+  # #136. The chain must be rejected as a whole rather than having the
+  # unrecognised term quietly ignored, which is what the old message amounted
+  # to in practice.
+  expect_error(
+    make_brmsformula(y | trials(tr) + se(sei) ~ crf(x, "nec3param"), dat),
+    "aterms bayesnec does not support"
+  )
 })

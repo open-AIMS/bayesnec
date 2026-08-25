@@ -766,3 +766,33 @@ test_that("a hurdle grouped fit initialises and samples", {
   expect_gt(brms::ndraws(fit$fit), 0)
   expect_true(any(grepl("^sd_site", brms::variables(fit$fit))))
 })
+
+test_that("group_inits works for a formula carrying a rate() aterm", {
+  # The companion to the trials() case, and the reason the fix is a fallback
+  # rather than a special case for trials. rate() arrived on dev under #136,
+  # after the group-level work was written, and is valid for poisson and
+  # negbinomial only -- so a gaussian()-only query to make_standata() fails on
+  # it in exactly the same way. Asking the fit's own family first covers it
+  # without knowing it exists. Confirmed that the gaussian()-only form does
+  # error here, so this is a live case rather than a hypothetical one.
+  set.seed(245)
+  d <- data.frame(y = rpois(60, 40), expo = rep(2, 60),
+                  x = rep(seq(0, 4, length.out = 15), 4),
+                  site = factor(rep(1:12, 5)))
+  f <- bayesnecformula(y | rate(expo) ~ crf(x, "nec3param") + ogl(site))
+  bdat <- suppressMessages(model.frame(f, data = d))
+  bb <- suppressMessages(suppressWarnings(
+    bayesnec:::wrangle_model_formula("nec3param", f, bdat,
+                                     validate_family("poisson"))
+  ))
+  expect_error(
+    suppressMessages(brms::make_standata(bb, data = d, family = gaussian()))
+  )
+  pr <- brms::prior_string("student_t(3, 0, 2)", class = "sd", nlpar = "ogl")
+  gi <- expect_no_warning(
+    bayesnec:::group_inits(bb, d, poisson(link = "identity"), pr, ogl = TRUE)
+  )
+  expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
+  expect_equal(dim(gi$z_1), c(1L, 12L))
+  expect_true(all(gi$z_1 == 0))
+})

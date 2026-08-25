@@ -35,7 +35,11 @@ squares.
 \dontrun{
 library(bayesnec)
 data(nec_data)
-nec_data$y <- as.integer(round(nec_data$y * 100))
+# A Poisson mean following the curve, so the counts are a genuine count
+# process; rounding a scaled proportion gives a variance that does not change
+# with the mean, which no count distribution can represent.
+mu <- 5 + (85 - 5) * exp(-exp(0.3) * (nec_data$x - 1.5) * (nec_data$x > 1.5))
+nec_data$y <- as.integer(rpois(length(mu), mu))
 nec4param <- bnec(y ~ crf(x, "nec4param"), data = nec_data, chains = 2)
 dispersion(nec4param, summary = TRUE)
 }

@@ -182,6 +182,21 @@ prediction_grid <- function(fit, formula, x_range = NA, resolution = 1000) {
   if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
     newdata[[attr(mod_dat, "bnec_pop")[["trials_var"]]]] <- 1
   }
+  # A rate() denominator has to be pinned at 1 on the grid, not carried through
+  # at its observed values. With a varying exposure the "fitted curve" would not
+  # be a curve at all -- it would be the curve times whatever denominator each
+  # grid row happened to inherit -- and ecx()/nsec() read off it would be
+  # meaningless. At 1 the grid reports the rate itself, which under bnec()'s
+  # forced identity link is exactly what top, bot and nec are expressed in.
+  # This is also what makes bnec_newdata() work at all for a rate model: the
+  # grid previously had no denominator column, so posterior_epred() errored on a
+  # variable it could not find. See #136.
+  # Single bracket, not [[: bnec_pop is a named character vector, so [[ on a
+  # name that is not there is a subscript error rather than NULL.
+  rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
+  if (!is.na(rate_var)) {
+    newdata[[rate_var]] <- 1
+  }
   list(newdata = newdata, x_seq = x_seq, x_var = x_var)
 }
 
