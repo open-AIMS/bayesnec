@@ -171,7 +171,9 @@ coral |>
 ```{r}
 d4 <- coral |>
   filter(!is.na(surv_d4)) |>
-  select(conc = conc_d4, surv = surv_d4, chamber, colony, light, nominal)
+  mutate(live = as.integer(round(surv_d4 * 20)), tot = 20L) |>
+  select(conc = conc_d4, live, tot, surv = surv_d4, chamber, colony, light,
+         nominal)
 head(d4)
 ```
 
@@ -197,12 +199,12 @@ up or down and its shape is unchanged. This is the right term for a
 within-concentration grouping, where the group cannot have a curve of its own.
 
 ```{r}
-form_ogl <- surv ~ crf(conc, "nec4param") + ogl(chamber)
+form_ogl <- live | trials(tot) ~ crf(conc, "nec4param") + ogl(chamber)
 check_formula(bayesnecformula(form_ogl), data = d4, run_par_checks = TRUE)
 ```
 
 ```{r, results = "hide"}
-fit_ogl <- bnec(form_ogl, data = d4, family = Beta(link = "identity"),
+fit_ogl <- bnec(form_ogl, data = d4, family = "beta_binomial",
                 iter = 2000, warmup = 1000, chains = 2, seed = 245,
                 control = list(adapt_delta = 0.99))
 ```
@@ -239,8 +241,9 @@ Colony is the across-concentration grouping here, so it is the one that can
 carry a curve.
 
 ```{r, results = "hide"}
-fit_pgl <- bnec(surv ~ crf(conc, "nec4param") + pgl(colony), data = d4,
-                family = Beta(link = "identity"),
+fit_pgl <- bnec(live | trials(tot) ~ crf(conc, "nec4param") + pgl(colony),
+                data = d4,
+                family = "beta_binomial",
                 iter = 2000, warmup = 1000, chains = 2, seed = 245)
 ```
 
@@ -253,9 +256,14 @@ at what the fit says about each of them before relying on it:
 summary(fit_pgl$fit)$random$colony
 ```
 
+```{r exmp8-pgl}
+autoplot(fit_pgl)
+```
+
 ```{r, results = "hide"}
-fit_par <- bnec(surv ~ crf(conc, "nec4param") + (nec | colony), data = d4,
-                family = Beta(link = "identity"),
+fit_par <- bnec(live | trials(tot) ~ crf(conc, "nec4param") + (nec | colony),
+                data = d4,
+                family = "beta_binomial",
                 iter = 2000, warmup = 1000, chains = 2, seed = 245)
 ```
 
@@ -267,6 +275,10 @@ the data to support --- here it fits without difficulty.
 ```{r}
 nec(fit_par)
 summary(fit_par$fit)$random$colony
+```
+
+```{r exmp8-par}
+autoplot(fit_par)
 ```
 
 ## Priors for the group-level standard deviations
@@ -282,7 +294,7 @@ likelihood is undefined.
 `get_priors()` reports what will be used, including the group-level rows:
 
 ```{r}
-get_priors(form_ogl, data = d4, family = Beta(link = "identity"))
+get_priors(form_ogl, data = d4, family = "beta_binomial")
 ```
 
 The `sd` prior is scaled to the parameter it belongs to --- one tenth of the
@@ -305,10 +317,18 @@ supported. Three patterns say that it is not:
 The check that matters is against the fit **without** the term:
 
 ```{r, results = "hide"}
-fit_plain <- bnec(surv ~ crf(conc, "nec4param"), data = d4,
-                  family = Beta(link = "identity"),
+fit_plain <- bnec(live | trials(tot) ~ crf(conc, "nec4param"), data = d4,
+                  family = "beta_binomial",
                   iter = 2000, warmup = 1000, chains = 2, seed = 245)
 ```
+
+```{r exmp8-plain}
+autoplot(fit_plain)
+```
+
+Set against the grouped fit above the two curves are hard to tell apart,
+which is the first half of the comparison. The second half is the estimate
+itself:
 
 ```{r}
 rbind(ungrouped = nec(fit_plain),
@@ -346,14 +366,21 @@ hydrocarbons to corals [@brinkman2023], so the question is a real one rather
 than a demonstration.
 
 ```{r, results = "hide"}
-fits_light <- bnec_group(surv ~ crf(conc, c("nec4param", "ecx4param")),
+fits_light <- bnec_group(live | trials(tot) ~ crf(conc, c("nec4param", "ecx4param")),
                          data = d4, group_var = "light",
-                         family = Beta(link = "identity"),
+                         family = "beta_binomial",
                          iter = 2000, warmup = 1000, chains = 2, seed = 245)
 ```
 
 A two-model set is used rather than a single model, because the weights are the
 point of what follows.
+
+`bnec_group()` returns an object with a `plot()` method of its own, which
+draws one panel per level:
+
+```{r exmp8-group, fig.asp = 0.55, out.width = "90%"}
+plot(fits_light)
+```
 
 ```{r}
 sapply(fits_light$fits, nec)
@@ -485,6 +512,10 @@ fit_hurdle <- bnec(growth ~ crf(conc, "nec3param"), data = hurdle_dat,
                    control = list(adapt_delta = 0.99))
 ```
 
+```{r exmp8-hurdle}
+autoplot(fit_hurdle)
+```
+
 ```{r}
 nec(fit_hurdle)
 ```
@@ -562,11 +593,15 @@ analysis at once --- the factor handled by fitting each level separately, and
 the chambers by a group-level term *within* each of those fits.
 
 ```{r, results = "hide"}
-fits_both <- bnec_group(surv ~ crf(conc, "nec4param") + ogl(chamber),
+fits_both <- bnec_group(live | trials(tot) ~ crf(conc, "nec4param") + ogl(chamber),
                         data = d4, group_var = "light",
-                        family = Beta(link = "identity"),
+                        family = "beta_binomial",
                         iter = 2000, warmup = 1000, chains = 2, seed = 245,
                         control = list(adapt_delta = 0.99))
+```
+
+```{r exmp8-both, fig.asp = 0.55, out.width = "90%"}
+plot(fits_both)
 ```
 
 ```{r}
