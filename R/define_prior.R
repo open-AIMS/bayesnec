@@ -107,9 +107,16 @@ define_prior <- function(model, family, predictor, response,
     # Scaled from the survivors only, which is the response the mu block is
     # actually fitted to -- including the structural zeros would drag the scale
     # down for the same reason define_hurdle_prior() excludes them from top and
-    # bot.
-    mu_response <- split_hurdle_response(predictor, response)$mu$y
-    group_priors <- define_group_prior(group_spec, predictor, mu_response)
+    # bot. Put on the link scale of the mu family before it is measured, so
+    # that this branch and the one below both take the scale from the quantity
+    # the offsets are actually added to rather than differing over a step that
+    # is a no-op only for as long as bnec() forces the identity link.
+    mu_family <- hurdle_mu_family(family)
+    mu_response <- response_link_scale(
+      split_hurdle_response(predictor, response)$mu$y, mu_family
+    )
+    group_priors <- define_group_prior(group_spec, predictor, mu_response,
+                                       prior_type = prior_type)
     if (!is.null(group_priors)) {
       hurdle_priors <- hurdle_priors + group_priors
     }
@@ -311,7 +318,8 @@ define_prior <- function(model, family, predictor, response,
   }
   # response is on the link scale by this point, which is what the group-level
   # offsets are added on, so it is the right scale to take the prior from.
-  group_priors <- define_group_prior(group_spec, predictor, response)
+  group_priors <- define_group_prior(group_spec, predictor, response,
+                                     prior_type = prior_type)
   if (!is.null(group_priors)) {
     priors <- priors + group_priors
   }
@@ -390,6 +398,7 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' @param predictor A \code{\link[base]{numeric}} vector of the predictor.
 #' @param response A \code{\link[base]{numeric}} vector of the response, on
 #' the link scale.
+#' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
 #'
 #' @details Without this, no prior is generated for a group-level standard
 #' deviation and it falls through to the \pkg{brms} default,
@@ -400,12 +409,10 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' \code{top}, \code{bot} and \code{nec} stay directly interpretable -- so
 #' keeping the mean in range falls entirely to the prior. See #245.
 #'
-#' The scale follows the same three-way split \code{\link{define_prior}}
-#' already makes for the curve's own parameters, under one rule: \strong{a
-#' group-level standard deviation is given one tenth of the scale the
-#' parameter's own prior spans.} A group-level term describes deviation about a
-#' level the curve parameter itself carries, so it should be the smaller
-#' quantity by construction.
+#' \strong{The rule.} A group-level standard deviation is given one tenth of
+#' the observed range of \emph{the scale its parameter lives on}, following the
+#' same three-way split \code{\link{define_prior}} already makes for the
+#' curve's own parameters:
 #'
 #' \itemize{
 #'   \item \code{top}, \code{bot} and \code{ogl} are on the response scale:
@@ -416,9 +423,49 @@ define_disp_prior <- function(disp_spec, family, response) {
 #'     dimensionless and take \code{normal(0, 5)} of their own, so 0.5.
 #' }
 #'
+#' \strong{It is a rule about the data, not about the parameter's own prior},
+#' and the distinction is worth keeping straight because the two coincide only
+#' for the dimensionless parameters, where \code{normal(0, 5)} gives exactly
+#' 0.5. Elsewhere the realised group-level standard deviation runs between
+#' roughly a twentieth and a third of the spread of the parameter's own prior,
+#' depending on family and data -- 0.06 of it for a \code{poisson} \code{top},
+#' 0.34 for a Beta one. Tying it to the parameter's prior instead would inherit
+#' scales chosen to be deliberately diffuse: \code{top} on a gaussian response
+#' takes \code{2.5 * sd(response)}, which is a reasonable statement of
+#' ignorance about a level and a poor one about deviation around it. The
+#' observed range is the more defensible anchor, and it is the same quantity
+#' the predictor-scaled priors are already bounded by.
+#'
+#' For \code{nec} and \code{ec50} the two readings do agree, because those
+#' priors are truncated to \code{[min(predictor), max(predictor)]}, so the
+#' range \emph{is} the scale the prior spans.
+#'
 #' \code{student_t(3, 0, s)} keeps the shape and heavy tail of the \pkg{brms}
 #' default and changes only its scale, so this narrows a default that was never
 #' scale-aware rather than substituting a differently-shaped one.
+#'
+#' \strong{What the prior cannot do.} Every prior
+#' \code{\link{define_prior}} generates constrains its parameter to the region
+#' where the model is defined: \code{beta(5, 2)} on (0, 1), \code{lb = 0} for
+#' the count and Gamma families, \code{nec} truncated to the predictor range.
+#' A group-level deviation cannot be bounded that way -- \pkg{brms} declares
+#' \code{r_} unconstrained -- so a grouped fit does not inherit the guarantee
+#' that \code{top}, \code{bot} and \code{nec} stay in range, and no choice of
+#' scale here restores it. For a Beta response spanning most of the unit
+#' interval, the scale above reduces the prior probability of a group-level
+#' mean leaving the (0, 1) support from about 0.70 under the \pkg{brms} default
+#' to about 0.05, which is the difference between a fit that cannot start and
+#' one that samples; it does not reach zero, and a grouped fit on a bounded
+#' family may still need \code{adapt_delta}. See \code{vignette("example3")}.
+#'
+#' \strong{prior_type.} \code{"regularizing"} halves every generated scale.
+#' The two default sets differ only in the response-scaled parameters for the
+#' curve itself, but a user reaching for the narrower set on a grouped fit is
+#' usually reaching for it \emph{because} of the grouping, and leaving the one
+#' parameter that provoked the choice untouched would make the argument inert
+#' where it is most wanted. A factor of two is the same order as the narrowing
+#' the response-scaled priors get (2.5 for gaussian, 1.6 for the gamma-scaled
+#' families, 1.3 for the beta-scaled ones).
 #'
 #' The \code{ogl} \emph{intercept} gets a prior too, and needs one for a
 #' different reason. \code{ogl} enters as an offset added to the whole curve,
@@ -434,16 +481,19 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' @importFrom brms prior_string
 #'
 #' @noRd
-define_group_prior <- function(group_spec, predictor, response) {
+define_group_prior <- function(group_spec, predictor, response,
+                               prior_type = "uninformative") {
   if (is.null(group_spec) || length(group_spec$nlpars) == 0) {
     return(NULL)
   }
+  narrow <- if (prior_type == "regularizing") 2 else 1
   # A response or predictor with no spread gives a scale of zero, which is not a
   # usable prior. It is degenerate input rather than something to model around,
   # so fall back to the dimensionless scale and let the fit fail on its own
-  # terms if it is going to.
+  # terms if it is going to. The fallback is not narrowed: it is a stand-in for
+  # a scale that could not be measured, not a measurement to be regularized.
   safe_scale <- function(x) {
-    s <- diff(range(x)) / 10
+    s <- diff(range(x)) / (10 * narrow)
     if (!is.finite(s) || s <= 0) 0.5 else s
   }
   s_y <- safe_scale(response)
@@ -454,7 +504,7 @@ define_group_prior <- function(group_spec, predictor, response) {
     } else if (par %in% c("nec", "ec50")) {
       s_x
     } else {
-      0.5
+      0.5 / narrow
     }
   }
   out <- NULL

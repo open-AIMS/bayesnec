@@ -688,3 +688,81 @@ test_that("pgl on a bounded family initialises and samples", {
   expect_gt(brms::ndraws(fit$fit), 0)
   expect_true(any(grepl("^sd_colony", brms::variables(fit$fit))))
 })
+
+test_that("group_inits works for a family whose formula carries trials()", {
+  # The regression for the binomial half of the make_standata() query. The
+  # dimensions do not depend on the family, so the call was made with
+  # gaussian() to survive a Beta response carrying exact zeros and ones -- but
+  # `trials` is not a valid aterm for gaussian, so every binomial and
+  # beta_binomial fit took the error path instead, got an empty init list, and
+  # kept the whole of #245 for two of the three bounded families the fix is
+  # for. The fit's own family is asked first now, gaussian() only as a
+  # fallback, and neither case can take the other's failure.
+  set.seed(245)
+  d <- data.frame(y = rbinom(60, 20, 0.5), tr = rep(20, 60),
+                  x = rep(seq(0, 4, length.out = 15), 4),
+                  tank = factor(rep(1:12, 5)))
+  f <- bayesnecformula(y | trials(tr) ~ crf(x, "nec3param") + ogl(tank))
+  bdat <- suppressMessages(model.frame(f, data = d))
+  bb <- suppressMessages(suppressWarnings(
+    bayesnec:::wrangle_model_formula("nec3param", f, bdat,
+                                     validate_family("binomial"))
+  ))
+  pr <- brms::prior_string("student_t(3, 0, 0.08)", class = "sd", nlpar = "ogl")
+  gi <- expect_no_warning(
+    bayesnec:::group_inits(bb, d, binomial(link = "identity"), pr, ogl = TRUE)
+  )
+  expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
+  expect_equal(dim(gi$z_1), c(1L, 12L))
+  expect_true(all(gi$z_1 == 0))
+  expect_equal(as.numeric(gi$b_ogl), 0)
+})
+
+test_that("a binomial grouped fit initialises and samples", {
+  # The end-to-end counterpart of the test above, and the case NEWS names but
+  # the first version of the fix did not actually reach.
+  skip_on_cran()
+  set.seed(245)
+  n_tank <- 12
+  x <- rep(seq(0, 4, length.out = 15), each = 4)
+  tank <- factor(rep(seq_len(n_tank), length.out = length(x)))
+  offset <- rnorm(n_tank, 0, 0.04)[as.integer(tank)]
+  mu <- 0.05 + (0.9 - 0.05) * exp(-exp(-0.4) * pmax(x - 2, 0)) + offset
+  mu <- pmin(pmax(mu, 0.01), 0.99)
+  tr <- rep(20, length(mu))
+  y <- rbinom(length(mu), tr, mu)
+  d <- data.frame(x = x, y = y, tr = tr, tank = tank)
+  fit <- suppressMessages(suppressWarnings(
+    bnec(y | trials(tr) ~ crf(x, "nec3param") + ogl(tank), data = d,
+         family = binomial(link = "identity"), iter = 600, warmup = 300,
+         chains = 2, seed = 245, refresh = 0)
+  ))
+  expect_s3_class(fit, "bayesnecfit")
+  expect_gt(brms::ndraws(fit$fit), 0)
+  expect_true(any(grepl("^sd_tank", brms::variables(fit$fit))))
+})
+
+test_that("a hurdle grouped fit initialises and samples", {
+  # define_prior() returns early for a hurdle family, so the group priors are
+  # added on a separate branch. Pinned end to end rather than at prior level
+  # only: the branch has its own response (survivors, link-scaled) and its own
+  # route through group_inits(), and neither is exercised by the unit tests.
+  skip_on_cran()
+  set.seed(245)
+  n_site <- 6
+  x <- rep(seq(0, 4, length.out = 15), each = 4)
+  site <- factor(rep(seq_len(n_site), length.out = length(x)))
+  mu <- 8 * exp(-exp(-0.4) * pmax(x - 2, 0)) +
+    rnorm(n_site, 0, 0.5)[as.integer(site)]
+  y <- rgamma(length(mu), shape = 5, rate = 5 / pmax(mu, 0.1))
+  y[x > 3 & runif(length(x)) < 0.5] <- 0
+  d <- data.frame(x = x, y = y, site = site)
+  fit <- suppressMessages(suppressWarnings(
+    bnec(y ~ crf(x, "nec3param") + ogl(site), data = d,
+         family = "hurdle_gamma", iter = 600, warmup = 300,
+         chains = 2, seed = 245, refresh = 0)
+  ))
+  expect_s3_class(fit, "bayesnecfit")
+  expect_gt(brms::ndraws(fit$fit), 0)
+  expect_true(any(grepl("^sd_site", brms::variables(fit$fit))))
+})

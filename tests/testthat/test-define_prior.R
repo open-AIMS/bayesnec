@@ -510,3 +510,58 @@ test_that("a group-level term on a hurdle reaches the mu block only", {
   expect_true(all(grepl("site", subs[c("top", "beta", "nec")])))
   expect_false(any(grepl("site", subs[c("hutop", "hubeta", "hunec")])))
 })
+
+test_that("prior_type narrows the group-level scales too", {
+  # Before this, "regularizing" narrowed top and bot and left the group-level
+  # parameters at the uninformative scale -- inert on exactly the parameter a
+  # user selecting the narrower set for a grouped fit is selecting it for.
+  set.seed(245)
+  x <- runif(100, 0, 10)
+  y <- runif(100, 0.1, 0.9)
+  spec <- list(nlpars = c("top", "nec", "beta"), ogl = TRUE)
+  get_scale <- function(pr, p, cls) {
+    pr <- as.data.frame(pr)
+    as.numeric(sub(".*, ([0-9.e+-]+)\\)$", "\\1",
+                   pr$prior[pr$nlpar == p & pr$class == cls]))
+  }
+  u <- bayesnec:::define_group_prior(spec, x, y, prior_type = "uninformative")
+  r <- bayesnec:::define_group_prior(spec, x, y, prior_type = "regularizing")
+  # signif(., 4) is applied to each scale as it is built, so the halves are
+  # compared after the same rounding rather than to an unrounded half.
+  for (p in c("top", "nec", "beta")) {
+    expect_equal(get_scale(r, p, "sd"), signif(get_scale(u, p, "sd") / 2, 4))
+  }
+  # the ogl intercept narrows with them
+  expect_equal(get_scale(r, "ogl", "b"),
+               signif(get_scale(u, "ogl", "b") / 2, 4))
+  # and the default is unchanged
+  expect_equal(bayesnec:::define_group_prior(spec, x, y), u)
+})
+
+test_that("prior_type reaches define_group_prior through define_prior", {
+  set.seed(245)
+  x <- as.numeric(rep(1:10, 5))
+  y <- plogis(rnorm(50, 1, 1))
+  spec <- list(nlpars = "top", ogl = FALSE)
+  sd_of <- function(pt) {
+    pr <- as.data.frame(bayesnec:::define_prior(
+      "nec4param", validate_family("Beta"), x, y, prior_type = pt,
+      group_spec = spec
+    ))
+    pr$prior[pr$class == "sd"]
+  }
+  expect_equal(sd_of("regularizing"),
+               paste0("student_t(3, 0, ", signif(diff(range(y)) / 20, 4), ")"))
+  expect_equal(sd_of("uninformative"),
+               paste0("student_t(3, 0, ", signif(diff(range(y)) / 10, 4), ")"))
+})
+
+test_that("a degenerate scale is not narrowed by prior_type", {
+  # The 0.5 fallback stands in for a scale that could not be measured. Halving
+  # it would regularize a measurement that was never taken.
+  pr <- as.data.frame(bayesnec:::define_group_prior(
+    list(nlpars = "top", ogl = FALSE), rep(1, 10), rep(0.5, 10),
+    prior_type = "regularizing"
+  ))
+  expect_equal(pr$prior, "student_t(3, 0, 0.5)")
+})

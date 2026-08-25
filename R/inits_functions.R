@@ -428,6 +428,9 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
 #' becomes four separately indexed terms, not one -- and guessing that ordering
 #' would be a silent source of mismatched initial values.
 #'
+#' The query is made twice where it has to be, because no single family can
+#' answer it for every fit. See the comment at the call.
+#'
 #' @return A named \code{\link[base]{list}} of initial values.
 #'
 #' @importFrom brms make_standata
@@ -435,20 +438,33 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
 #'
 #' @noRd
 group_inits <- function(brms_bf, data, family, priors, ogl = FALSE) {
-  # gaussian(), deliberately, and NOT the fit's own family. The group-level
-  # dimensions M_k and N_k come from the random-effects structure alone, so the
-  # family is irrelevant to the answer -- but it is not irrelevant to whether
-  # the call succeeds. make_standata() validates the response against the
-  # family's support, and the response reaching here has not necessarily been
-  # through check_data() yet, so a Beta response still carrying exact zeros and
-  # ones made this error. That error was caught and turned into "no initial
-  # values", which is silent, and produced exactly the failure this function
-  # exists to prevent -- on pgl(), where it is the harder one to diagnose.
-  # gaussian() accepts any numeric response, so the query cannot fail for a
-  # reason that has nothing to do with what is being asked.
-  sdata <- try(suppressMessages(
-    make_standata(brms_bf, data = data, family = gaussian())
-  ), silent = TRUE)
+  # The group-level dimensions M_k and N_k come from the random-effects
+  # structure alone, so the family is irrelevant to the answer -- but it is not
+  # irrelevant to whether the call succeeds, and each of the two candidates
+  # fails on a case the other handles.
+  #
+  # The fit's own family fails where the response has not yet been through
+  # check_data(): a Beta response still carrying exact zeros and ones, which is
+  # what reaches here when the formula transforms a variable, or on the amend()
+  # path where check_data() never runs at all. gaussian() fails where the
+  # formula carries a trials() aterm, because trials is not a valid aterm for
+  # gaussian -- that is every binomial and beta_binomial fit, which is the
+  # standard workflow for those families and one of the three bounded families
+  # this function exists for.
+  #
+  # So: the fit's own family first, gaussian() as the fallback. Ordered that
+  # way round because the real family is the one that describes the model, and
+  # a query answered by it needs no justification; gaussian() is the escape
+  # hatch for a response the family will not accept yet, and can only be wrong
+  # about something this function does not ask.
+  ask <- function(fam) {
+    try(suppressMessages(make_standata(brms_bf, data = data, family = fam)),
+        silent = TRUE)
+  }
+  sdata <- ask(family)
+  if (inherits(sdata, "try-error")) {
+    sdata <- ask(gaussian())
+  }
   if (inherits(sdata, "try-error")) {
     # Genuinely unexpected now. Warn rather than return quietly: an empty init
     # list here is the difference between a fit that starts and one that does

@@ -6,20 +6,25 @@
   `student_t(3, 0, 2.5)`. Under the identity link `bnec()` forces there is no
   inverse link to pull an offset of that scale back into the response range, so
   on a Beta, binomial or bernoulli response the mean started outside its own
-  support and the fit could not initialise at all. `prior_type = "regularizing"`
-  could not help, because it narrows `top` and `bot` and there was no `sd` row
-  in the set to narrow. A group-level standard deviation is now given one tenth
-  of the scale the parameter's own prior spans — the response range for `top`,
-  `bot` and `ogl`, the predictor range for `nec` and `ec50`, and 0.5 for the
-  dimensionless `beta`, `slope`, `d` and `f` — keeping the shape of the `brms`
-  default and changing only its scale. The `ogl` intercept is given a
-  zero-centred prior of its own, because it is an offset on the whole curve and
-  so is confounded with `top` and `bot` unless something identifies it.
-  Supplying a group-level prior by hand now works too: the `ogl` offset carries
-  class `"b"` and so survived the initial-value search's class filter, and the
-  name check then rejected the whole set, which had left the defect with no
-  workaround. `get_priors()` reports `sd` rows, so a grouped model's priors can
-  be inspected and amended like any other. See #245.
+  support and the fit could not initialise at all. A group-level standard
+  deviation is now given one tenth of the observed range of the scale its
+  parameter lives on — the response range for `top`, `bot` and `ogl`, the
+  predictor range for `nec` and `ec50`, and 0.5 for the dimensionless `beta`,
+  `slope`, `d` and `f` — keeping the shape of the `brms` default and changing
+  only its scale. `prior_type = "regularizing"` halves every one of those
+  scales; previously it could not help at all, because it narrows only `top`
+  and `bot` and there was no `sd` row in the set to narrow. The `ogl` intercept
+  is given a zero-centred prior of its own, because it is an offset on the whole
+  curve and so is confounded with `top` and `bot` unless something identifies
+  it. Supplying a group-level prior by hand now works too: the `ogl` offset
+  carries class `"b"` and so survived the initial-value search's class filter,
+  and the name check then rejected the whole set, which had left the defect with
+  no workaround. `get_priors()` reports `sd` rows, so a grouped model's priors
+  can be inspected and amended like any other. Note that a group-level deviation
+  cannot be bounded the way the curve's own parameters are, so a grouped fit
+  does not inherit the guarantee that `top`, `bot` and `nec` stay within range;
+  `vignette("example3")` describes what this means in practice and when
+  `adapt_delta` is still needed. See #245.
 
 - `sample_priors(plot = NA)` returns the sampled values, as documented. The
   argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is

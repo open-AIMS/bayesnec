@@ -76,6 +76,21 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   # make_standata(), which needs the brms formula and the data -- neither of
   # which that function is given. Names the caller already supplied are left
   # alone: a user who wrote their own initial values meant them. See #245.
+  #
+  # The list test is a real constraint, not a formality. brms takes `init`
+  # either as one list per chain or as a single keyword, so where the curve
+  # search gave up and fell back to "random" there is nothing to append to and
+  # the group-level protection is simply not available -- on the datasets where
+  # the search struggled, which are the ones most likely to need it. Announced
+  # rather than dropped quietly: this is the same outcome group_inits() warns
+  # about, reached by a different route.
+  if (!is.null(group_spec) && identical(brm_args$init, "random")) {
+    message("bayesnec fell back to Stan's default initialisation for the curve",
+            " parameters, so no initial values could be set for the",
+            " group-level terms either. On a bounded response the fit may",
+            " fail to initialise; see ?bayesnecformula for the group-level",
+            " terms and ?bnec for supplying `init` directly.")
+  }
   if (!is.null(group_spec) && is.list(brm_args$init)) {
     g_init <- group_inits(brms_bf, data, family, brm_args$prior,
                           ogl = group_spec$ogl)
