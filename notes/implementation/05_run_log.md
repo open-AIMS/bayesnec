@@ -217,3 +217,71 @@ article swept for non-validated aterms: none.
    are safe only because a family branch guards them. Use single-bracket lookup
    plus `is.na()` for any optional `bnec_pop` entry.
 2. An assertion compared an integer response against `as.numeric()`.
+
+---
+
+## Item 7 — #148 parts A/B/C, decisions (b) and (d): `check_fit()` and `pp_check()`
+
+Branch `issue-148-check-fit`, **restacked off the stalled 2.2.0 tier and rebased
+straight onto `dev`**. Version 2.1.3.19 -> 2.1.3.20.
+**PR: https://github.com/open-AIMS/bayesnec/pull/226**. Closes #148 (with #240,
+which carried Part D) and #56.
+
+**Why it left the stack.** It was cut from `issue-209-hurdle-counts` (PR #225),
+which is stalled on a `brms` bug, behind `issue-136-rate-aterm` (PR #224). Both
+are `DIRTY`. Nothing in this branch depends on either: `bnec_hurdle()`,
+`is_hurdle_family()`, `hurdle_component_preds()` and `bayesnechurdlefit` are all
+already on `dev`, and the hurdle test fixture is a continuous gamma hurdle, not
+one of the count families #225 adds. Rebasing rather than merging was required —
+a merge would have dragged all of #224 and #225 into `dev`.
+
+**Resolutions the restack needed**, both against #240, which touched the same
+warning block from the other side:
+
+1. `R/print.R` — kept this branch's single two-axis block (D5: the sampler
+   question and the fit question feed the same drop-or-keep decision), grafted
+   #240's two guards onto it. `which()` rather than logical indexing on *both*
+   axes, so a `manecsummary` stored by an older version carrying an `NA` cannot
+   print `- NA` as a failed model; and the `rhat_cutoff` fallback stays **1.05**,
+   not 1.01, because an object stored before that field existed was assessed
+   against the old 1.05 grep. `fit_ratio_cutoff` gets the same treatment for the
+   same reason.
+2. `R/summary.R` — `chk_number`, not `chk_numeric`, for both cutoffs: the
+   documented type is a vector of length 1 and `chk_numeric` admits any length.
+
+**NEWS placement changed.** The entries go under `# bayesnec 2.1.4`, not the
+`# bayesnec 2.2.0` heading this branch used to open. Part D of the same issue
+already shipped into 2.1.4 via #240, and `dev` is still at 2.1.3.x working
+towards 2.1.4; opening a 2.2.0 section for the other half of an issue whose
+first half is in 2.1.4 would split one issue across two releases. A one-line
+move if the tier is restored.
+
+**`fit_ratio_cutoff = 1.15` confirmed by RF** on 2026-08-24. It was flagged on
+the PR as a judgement the spec does not settle — the spec fixes only that the
+threshold is on the ratio and not the `ppp`. Now the documented default.
+
+**Reproduces the finding the issue rests on**: on `manec_example` the control
+group's `sd_ratio` is 0.796 -- the model simulates ~26% more variability than
+the data show -- while the global `dispersion()` statistic reads 1.011
+[0.71, 1.44]. Pinned as a test, because it is the one assertion that would catch
+an implementation that looks right but is not actually local.
+
+**Two implementation bugs found by running rather than by reasoning:**
+
+1. New S3 generics need `devtools::document()` before `load_all()` can dispatch
+   them.
+2. `ndraws` had to be clamped to what the fit holds. `brms` **errors** rather
+   than truncating, and `manec_example` carries 100 draws, so the default of
+   1000 would have failed on the package's own example object.
+
+**One test broke on the restack, and it was the resolution's fault, not the
+feature's.** `test-bayesmanec_methods.R` "print.manecsummary falls back to 1.05
+for an object with no cutoff" is #240's test and asserts the message text
+`"Rhats > 1.05"`. Decision (b) folds the Rhat warning into the two-axis block
+and restates the line as `"Rhat > ..."`, so the assertion missed. The 1.05
+fallback it guards is intact and still asserted; only the regexp moved. The
+other two #240 guards in that file -- the `NA` index test and the
+`screen_models` pointer -- passed unchanged, which is what confirmed the graft
+held. Worth recording because a branch cut before a test exists cannot fail it
+until the two meet, and this is the second time that shape of thing has bitten
+this stack.
