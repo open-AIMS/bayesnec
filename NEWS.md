@@ -1,3 +1,60 @@
+# bayesnec 2.2.0
+
+- New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
+  independently within each level of a factor and model-averaging within each
+  level. This is the first support for a factor covariate, and it answers the
+  premise `vignette("example4")` has carried since the beginning: that the
+  *functional form* of the response may change between levels, not merely its
+  parameters.
+
+  Levels partition the data disjointly and share no parameters, so the expected
+  log predictive density is additive across them. Under pseudo-BMA — the package
+  default — the crossed model weights are therefore exactly the outer product of
+  the per-level weight vectors, the same identity `crossed_weights()` rests on
+  for the two blocks of a hurdle fit. New `crossed_group_weights()` reports both
+  readings of that table: the **unrestricted** maximum, which will typically
+  assign different equations to different levels, and the **diagonal**, which
+  asks which single equation best describes every level — a question `bayesnec`
+  could not previously answer. The table is computed on demand rather than
+  materialised, since with 23 models and *G* levels it has 23^*G* cells. As for
+  `crossed_weights()`, the identity is specific to pseudo-BMA: stacking
+  optimises a different objective whose solution is not an outer product, and
+  `crossed_group_weights()` refuses a fit built with any other weighting method
+  rather than silently returning a table that looks right and is not.
+
+  The family is chosen **once** from the whole response and passed down.
+  Selecting it per subset could pick different families at different levels,
+  which would put their `elpd` contributions on different scales and make the
+  crossed weights meaningless. Dispersion stays per level, deliberately: a
+  shared dispersion parameter would break the factorisation the crossed weights
+  depend on.
+
+  Passing `pooled` — a `bnec()` fit of the same model set to the whole data
+  with the factor ignored — adds the third reading, and it is the one that asks
+  whether the factor matters at all. A pooled fit is scored on exactly the same
+  observations as the levels together are, so the grouped and pooled WAIC are
+  directly comparable. A standard error accompanies the difference where every
+  level and the pooled fit settled on a single model; a `bayesmanecfit` stores
+  its component fits as they were before their criteria were attached, so it
+  keeps each model's WAIC point estimate and none of the pointwise values the
+  standard error needs. It is `NA` in that case rather than quietly omitted.
+
+  Every level is an ordinary `bayesnecfit` or `bayesmanecfit`, so `nec()`,
+  `ecx()`, `nsec()`, `summary()` and `plot()` work per level and everything that
+  works on a single fit works on each. `compare_posterior()` is now a generic
+  with a `bayesnecgroupfit` method comparing the levels: `crossed_group_weights()`
+  answers which *equation* best describes each level, while `compare_posterior()`
+  answers whether the levels differ in the *quantity being reported* — the
+  *NEC*, an ECx, or the fitted curve — and the two can disagree. The levels share
+  no parameters, so their posteriors are independent and the pairwise
+  probabilities are read directly, with no multiple-comparison adjustment
+  implied. `compare_posterior.default()` is the previous function unchanged, so
+  existing callers behave identically.
+
+  Refitting the favoured combination *jointly* is not included: that needs
+  level-aware post-processing inside the toxicity estimators, which is the code
+  the `toxval` migration moves. See #33.
+
 # bayesnec 2.1.4
 
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the

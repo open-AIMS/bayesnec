@@ -120,9 +120,17 @@ diff and reviewable:
 
 | heading | tier | issues |
 |---|---|---|
-| `# bayesnec 2.1.4` | bug fixes, docs, CI — **ships to CRAN first** | #216 (landed), #139, #210, #207 |
-| `# bayesnec 2.2.0` | features | #136, #209, #148 |
-| `# bayesnec 2.3.0` | the factor covariate | #33, and the #6/#33 vignette |
+| `# bayesnec 2.1.4` | bug fixes, docs, CI, and the feature work that landed with them — **ships to CRAN first** | #216 (landed), #139, #210, #207, #136, #209, #148 |
+| `# bayesnec 2.2.0` | the factor covariate | #33, and the #6/#33 vignette |
+
+**Revised 2026-08-25, RF.** The tiers were originally 2.1.4 bug fixes / 2.2.0
+features / 2.3.0 factor covariate. #136 and #148 merged into the 2.1.4 heading
+when their branches were restacked onto `dev`, and #209 is on hold, so the
+feature tier no longer exists as a separate release. Rather than unpick it, the
+plan now treats 2.1.4 as everything up to and including the feature work, and
+**2.2.0 as the factor covariate release** --- `bnec_group()` is significant new
+functionality that never existed before and warrants a release of its own.
+There is no 2.3.0 tier.
 
 The first PR of each tier opens that tier's heading. Everything after it in the
 tier files underneath. **RF sets the actual release version** in `DESCRIPTION`
