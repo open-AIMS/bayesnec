@@ -20,7 +20,7 @@ models to be defined."><meta property="og:image" content="https://open-aims.gith
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.20</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.21</span>
       </span>
     </div>
 
@@ -193,10 +193,34 @@ strongly discourage their use because those functionalities have not
 been tested yet. If this is extremely important to your work, please
 raise an issue on bayesnec GitHub, and we will consider further testing and
 development.
-Currently, the only three <code>aterms</code> that have validated behaviour are:</p><ol><li><p><code>trials()</code>, which is essential in binomially-distributed data, e.g.
+Currently, the only four <code>aterms</code> that have validated behaviour are:</p><ol><li><p><code>trials()</code>, which is essential in binomially-distributed data, e.g.
 <code>y | trials(trials_variable)</code>, 2) weights, e.g.
-<code>y | weights(weights_variable)</code>, and 3) <code>cens()</code> (see below),
-following <span class="pkg">brms</span> formula syntax.
+<code>y | weights(weights_variable)</code>, 3) <code>cens()</code> (see below), and</p></li>
+<li><p><code>rate()</code> (see below), following <span class="pkg">brms</span> formula syntax.
+Any other <code>aterm</code> is an error rather than a warning: an aterm
+<code>bayesnec</code> has not validated cannot be assumed to behave sensibly
+through the prior generation, initial-value search and post-processing that
+follow.</p></li>
+</ol><p><b>Rates and exposure</b></p>
+<p><code>rate(denominator)</code> declares that the response is a count observed over
+an exposure — animals per unit time, larvae per unit area — and is valid
+for the <code>poisson</code> and <code>negbinomial</code> families only. Any other
+family is an error when the family is known, the zero-inflated count
+families included: <span class="pkg">brms</span> cannot place a rate denominator on those, and
+under <code><a href="bnec.html">bnec</a></code>'s identity link there is no offset that would do
+the same job. The check necessarily needs a family to check against, so it
+fires on every path that fits — <code><a href="bnec.html">bnec</a></code> always supplies one —
+but not on a bare <code><a href="make_brmsformula.html">make_brmsformula</a>(formula, data)</code> call, which
+has no family to validate and builds the formula unchecked.</p>
+<p>Because <code><a href="bnec.html">bnec</a></code> forces <code>link = "identity"</code>, <span class="pkg">brms</span>
+writes the denominator multiplicatively on the response scale rather than as
+a log offset on the linear predictor, so the mean <em>is</em> the rate and
+"top", "bot" and "nec" stay directly interpretable as counts per unit
+exposure. The prediction grid holds the denominator at 1, so a fitted curve,
+an <code><a href="ecx.html">ecx</a></code> and an <code><a href="nsec.html">nsec</a></code> are all read on the rate
+scale; plots put the observations on that same scale by dividing through.
+<code>offset</code> is deliberately not offered as an alternative — under an
+identity link it would be additive on the mean, which is not what is wanted.
 Please note that <span class="pkg">brms</span> does not implement design weights as in other
 standard <span class="pkg">base</span> functions. From their help page, <span class="pkg">brms</span> "takes the
 weights literally, which means that an observation with weight 2 receives 2
@@ -205,8 +229,8 @@ using a weight of 2 is equivalent to adding the corresponding observation
 twice to the data frame". Other <code>aterms</code> might be added, though we
 cannot attest to their functionality within
 <code><a href="bayesnec-package.html">bayesnec</a></code>, i.e. checks will
-be done outside via <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>.</p></li>
-</ol><p><b>Censored responses: <code>cens</code></b></p>
+be done outside via <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>.</p>
+<p><b>Censored responses: <code>cens</code></b></p>
 <p>A response that is rounded at the recording resolution, reported below a
 limit of detection, or deliberately coarsened at a boundary is censored: the
 true value is known to lie in an interval rather than at a point. The
@@ -253,27 +277,27 @@ formula.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bd01d11368&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x555806b46c38&gt;</span>
 <span class="r-in"><span><span class="co"># or use shot alias bnf</span></span></span>
 <span class="r-in"><span><span class="fu">bayesnecformula</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(sqrt(x), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bd01d11368&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x555806b46c38&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">ogl</span><span class="op">(</span><span class="va">group_1</span><span class="op">)</span> <span class="op">+</span> <span class="fu">pgl</span><span class="op">(</span><span class="va">group_2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + ogl(group_1) + pgl(group_2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bd01d11368&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x555806b46c38&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the predictor</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="op">~</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp(~x)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bd01d11368&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x555806b46c38&gt;</span>
 <span class="r-in"><span><span class="co"># dispersion as a function of the fitted mean</span></span></span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ crf(x, "nec3param") + disp("power")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bd01d11368&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x555806b46c38&gt;</span>
 <span class="r-in"><span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">nec</span> <span class="op">+</span> <span class="va">top</span> <span class="op">|</span> <span class="va">group_1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(x, "nec3param") + (nec + top | group_1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bd01d11368&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x555806b46c38&gt;</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># complex transformations are not advisable because</span></span></span>
@@ -281,7 +305,7 @@ formula.</p>
 <span class="r-in"><span><span class="co"># and are likely to fail -- transform your variable beforehand!</span></span></span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">bnf</span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">trials</span><span class="op">(</span><span class="va">tr</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/scale.html" class="external-link">scale</a></span><span class="op">(</span><span class="va">x</span>, scale <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="st">"nec3param"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x55bd01d11368&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x555806b46c38&gt;</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.20</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.21</span>
       </span>
     </div>
 
@@ -457,7 +457,7 @@ such as the Beta-Binomial.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_1</span><span class="op">$</span><span class="va">dispersion</span></span>
 <span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
-<span><span class="co">#&gt; 19.65927 13.20570 31.09474</span></span></code></pre></div>
+<span><span class="co">#&gt; 17.55434 12.07456 27.10157</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="beta-binomial">Beta-Binomial<a class="anchor" aria-label="anchor" href="#beta-binomial"></a>
@@ -605,26 +605,35 @@ plot of chunk exmp1-beta
 </h4>
 <p>Where data are a count (of, for example, individuals or cells), the
 response is likely to be Poisson distributed. Such data are distributed
-from <code>0</code> to <code>Inf</code> and are integers. First we mimic
-count data based on the package’s internal dataset, and make it
-overdispersed. Then we plot the concentration (i.e. predictor) data.</p>
+from <code>0</code> to <code>Inf</code> and are integers. Here we
+simulate counts whose mean follows an <em>NEC</em> curve across the
+concentrations used elsewhere in this vignette, then summarise the
+concentration (i.e. predictor) data.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
-<span><span class="va">count_data</span> <span class="op">&lt;-</span> <span class="va">nec_data</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    y <span class="op">=</span> <span class="op">(</span><span class="va">y</span> <span class="op">*</span> <span class="fl">100</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>, <span class="fl">0</span>, <span class="fl">15</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
+<span><span class="co"># The counts are drawn from a Poisson whose mean follows the curve, rather than</span></span>
+<span><span class="co"># built by adding Gaussian noise to a proportion and rounding. Additive noise of</span></span>
+<span><span class="co"># constant standard deviation leaves a variance that does not change with the</span></span>
+<span><span class="co"># mean, and no count distribution can represent that: neither a Poisson nor a</span></span>
+<span><span class="co"># Negative binomial fit would be adequate, so such data cannot be used to</span></span>
+<span><span class="co"># illustrate the difference between them.</span></span>
+<span><span class="va">nec4</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">top</span>, <span class="va">bot</span>, <span class="va">nec</span>, <span class="va">beta</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">bot</span> <span class="op">+</span> <span class="op">(</span><span class="va">top</span> <span class="op">-</span> <span class="va">bot</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">beta</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">nec</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="va">x</span> <span class="op">&gt;</span> <span class="va">nec</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">count_mu</span> <span class="op">&lt;-</span> <span class="fu">nec4</span><span class="op">(</span><span class="va">nec_data</span><span class="op">$</span><span class="va">x</span>, top <span class="op">=</span> <span class="fl">85</span>, bot <span class="op">=</span> <span class="fl">5</span>, nec <span class="op">=</span> <span class="fl">1.5</span>, beta <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span></span>
+<span><span class="va">count_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">nec_data</span><span class="op">$</span><span class="va">x</span>,</span>
+<span>  y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">count_mu</span><span class="op">)</span>, <span class="va">count_mu</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">)</span></span>
 <span><span class="co">#&gt; 'data.frame':    100 obs. of  2 variables:</span></span>
 <span><span class="co">#&gt;  $ x: num  1.019 0.816 0.371 0.401 1.295 ...</span></span>
-<span><span class="co">#&gt;  $ y: int  82 82 83 69 60 93 76 97 95 79 ...</span></span>
+<span><span class="co">#&gt;  $ y: int  84 102 66 80 82 88 97 95 74 76 ...</span></span>
 <span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">y</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
-<span><span class="co">#&gt;   16.00   67.50   82.00   77.86   94.00  124.00</span></span>
+<span><span class="co">#&gt;   11.00   65.75   82.00   74.76   88.00  106.00</span></span>
 <span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">count_data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. </span></span>
 <span><span class="co">#&gt; 0.03235 0.43424 0.87599 1.05142 1.59336 3.22052</span></span></code></pre></div>
@@ -645,40 +654,138 @@ plot of chunk exmp1-poisson
 </div>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_3</span><span class="op">$</span><span class="va">dispersion</span></span>
-<span><span class="co">#&gt;   Estimate       Q2.5      Q97.5 </span></span>
-<span><span class="co">#&gt;  3.5337626  0.4859079 57.6675764</span></span></code></pre></div>
-<p>We first plot the model chains (with <code>plot(exp_3$fit)</code>)
-and parameter estimates to check the fit. The chains look OK. However,
-our plot of the fit is not very convincing. The model uncertainty is
-very narrow, and this does not seem to be a particularly good model for
-these data. Note that the dispersion estimate is much greater than one,
-indicating serious overdispersion. In this case we can try to refit the
-model but instead deliberately specifying the Negative Binomial
-distribution for via the <code>family</code> argument.</p>
+<span><span class="co">#&gt;  Estimate      Q2.5     Q97.5 </span></span>
+<span><span class="co">#&gt; 0.9626916 0.7322350 1.2964718</span></span></code></pre></div>
+<p>The dispersion estimate, described in the Binomial example above, is
+near one here, as it should be for data simulated from a Poisson, and
+the credible bands are commensurate with the spread of the points. We
+would also plot the model chains (with <code>plot(exp_3$fit)</code>) and
+the parameter estimates to check the fit.</p>
 </div>
 <div class="section level4">
 <h4 id="negative-binomial">Negative binomial<a class="anchor" aria-label="anchor" href="#negative-binomial"></a>
 </h4>
-<p>When count data are overdispersed and cannot be modelled using the
-Poisson distribution, the Negative binomial distribution is generally
-used. We can do this by calling <code>family = "negbinomial"</code>.</p>
+<p>Count data are often more variable than a Poisson allows, a situation
+known as <em>overdispersion</em>, and the Negative binomial distribution
+is generally used in that case. To show the difference we simulate a
+second set of counts from the same curve, but with extra-Poisson
+variability.</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">exp_3b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="va">count_data_od</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">nec_data</span><span class="op">$</span><span class="va">x</span>,</span>
+<span>  y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/NegBinomial.html" class="external-link">rnbinom</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">count_mu</span><span class="op">)</span>, mu <span class="op">=</span> <span class="va">count_mu</span>, size <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Fitting these with a Poisson gives credible bands that are far too
+narrow for the variability among the points, and a dispersion estimate
+well above one. That is the signal to reach for a different
+distribution.</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">exp_3b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data_od</span>,</span>
+<span>               seed <span class="op">=</span> <span class="fl">333</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">)</span></span></code></pre></div>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-poisson-od-1.png" alt="plot of chunk exmp1-poisson-od" width="60%"><p class="caption">
+plot of chunk exmp1-poisson-od
+</p>
+</div>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">exp_3b</span><span class="op">$</span><span class="va">dispersion</span></span>
+<span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
+<span><span class="co">#&gt; 4.890077 3.758650 6.492500</span></span></code></pre></div>
+<p>We can refit these data by deliberately specifying the Negative
+binomial distribution via the <code>family</code> argument.</p>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">exp_3c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">count_data_od</span>,</span>
 <span>               family <span class="op">=</span> <span class="st">"negbinomial"</span>, seed <span class="op">=</span> <span class="fl">333</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<p>The resultant plot seems to indicate the Negative Binomial
-distribution works better in terms of dispersion (more sensible wider
-confidence bands), however it still might not be the best model for
-these data. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model
+<p>The resultant plot has wider, more realistic credible bands than the
+Poisson fit to the same data. Note that a dispersion estimate is not
+returned here, as <code>bayesnec</code> calculates one only for the
+Poisson and Binomial families. See the <a href="https://open-aims.github.io/bayesnec/articles/example2b.html">Model
 details</a> and <a href="https://open-aims.github.io/bayesnec/articles/example2.html">Multi
 model usage</a> vignettes for options to fit other models to these
 data.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3b</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3c</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="vignette-fig-exmp1-negbinbase-1.png" alt="plot of chunk exmp1-negbinbase" width="60%"><p class="caption">
 plot of chunk exmp1-negbinbase
 </p>
 </div>
+</div>
+<div class="section level4">
+<h4 id="counts-observed-over-an-exposure">Counts observed over an exposure<a class="anchor" aria-label="anchor" href="#counts-observed-over-an-exposure"></a>
+</h4>
+<p>A count is very often observed over an exposure that is not the same
+in every replicate: offspring counted per replicate where the number of
+fecund adults differs, cells counted over different areas, or events
+counted over different lengths of time. The <code>rate</code> term
+declares that exposure, and is available for the <code>poisson</code>
+and <code>negbinomial</code> families. Here we simulate offspring counts
+where the number of females per replicate varies.</p>
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
+<span><span class="va">n_females</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">8</span><span class="op">:</span><span class="fl">24</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">fecundity_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  x <span class="op">=</span> <span class="va">nec_data</span><span class="op">$</span><span class="va">x</span>,</span>
+<span>  n_females <span class="op">=</span> <span class="va">n_females</span>,</span>
+<span>  <span class="co"># The curve gives a rate -- offspring per female -- and the Poisson mean is</span></span>
+<span>  <span class="co"># that rate multiplied by the number of females in the replicate, so the</span></span>
+<span>  <span class="co"># response is a genuine count rather than a ratio.</span></span>
+<span>  y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Poisson.html" class="external-link">rpois</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span>,</span>
+<span>                       <span class="fu">nec4</span><span class="op">(</span><span class="va">nec_data</span><span class="op">$</span><span class="va">x</span>, top <span class="op">=</span> <span class="fl">6</span>, bot <span class="op">=</span> <span class="fl">0.4</span>, nec <span class="op">=</span> <span class="fl">1.5</span>,</span>
+<span>                            beta <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">*</span> <span class="va">n_females</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The raw counts are passed to <code>bnec</code> unchanged, so a
+replicate with twenty females contributes more information than one with
+eight — which is exactly what would be lost by fitting
+<code>y / n_females</code> as a continuous response.</p>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">exp_3d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">|</span> <span class="fu">rate</span><span class="op">(</span><span class="va">n_females</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>,</span>
+<span>               data <span class="op">=</span> <span class="va">fecundity_data</span>, family <span class="op">=</span> <span class="st">"poisson"</span>,</span>
+<span>               seed <span class="op">=</span> <span class="fl">333</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<p>Because <code>bnec</code> uses an identity link, <code>brms</code>
+applies the denominator multiplicatively on the response scale rather
+than as a log offset on the linear predictor. The fitted mean therefore
+<em>is</em> the rate, and <code>top</code>, <code>bot</code> and
+<code>nec</code> are all directly interpretable as offspring per female.
+The prediction grid holds the denominator at 1, so the fitted curve and
+any <code>ecx</code> or <code>nsec</code> read from it are on that same
+scale, and <code>autoplot</code> divides the observed counts through by
+the denominator to match.</p>
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_3d</span><span class="op">)</span></span></code></pre></div>
+<div class="figure" style="text-align: center">
+<img src="vignette-fig-exmp1-rate-1.png" alt="plot of chunk exmp1-rate" width="60%"><p class="caption">
+plot of chunk exmp1-rate
+</p>
+</div>
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">exp_3d</span><span class="op">$</span><span class="va">ne</span></span>
+<span><span class="co">#&gt; Estimate     Q2.5    Q97.5 </span></span>
+<span><span class="co">#&gt; 1.528463 1.454308 1.609457</span></span>
+<span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_3d</span>, ecx_val <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="co">#&gt;      Q50     Q2.5    Q97.5 </span></span>
+<span><span class="co">#&gt; 1.612073 1.551437 1.679091 </span></span>
+<span><span class="co">#&gt; attr(,"resolution")</span></span>
+<span><span class="co">#&gt; [1] 1000</span></span>
+<span><span class="co">#&gt; attr(,"ecx_val")</span></span>
+<span><span class="co">#&gt; [1] 10</span></span>
+<span><span class="co">#&gt; attr(,"toxicity_estimate")</span></span>
+<span><span class="co">#&gt; [1] "ecx"</span></span>
+<span><span class="va">exp_3d</span><span class="op">$</span><span class="va">dispersion</span></span>
+<span><span class="co">#&gt;  Estimate      Q2.5     Q97.5 </span></span>
+<span><span class="co">#&gt; 0.8827904 0.6642228 1.1865479</span></span></code></pre></div>
+<p>One caveat is worth stating explicitly. If the exposure varies for
+reasons unrelated to the treatment — a replicate simply received fewer
+animals — then <code>rate</code> is doing exactly what is wanted. If
+instead the exposure is itself an effect of the treatment, as it would
+be were <code>n_females</code> the number of females <em>surviving</em>
+to the point of counting, then the endpoint has quietly changed from
+reproductive output to fecundity conditional on survival. Both are
+legitimate, but they are different endpoints and will not return the
+same <em>NEC</em>.</p>
 </div>
 <div class="section level4">
 <h4 id="measure-data">Measure data<a class="anchor" aria-label="anchor" href="#measure-data"></a>
@@ -691,21 +798,21 @@ continuous. Here we use the <code>nec_data</code> supplied with
 <code>bayesnec</code> with the response <code>y</code> on the
 exponential scale to ensure the right data range for a Gamma as an
 example.</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nec_data</span><span class="op">)</span></span>
 <span><span class="va">measure_data</span> <span class="op">&lt;-</span> <span class="va">nec_data</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>measure <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">exp_4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">measure</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">measure_data</span>,</span>
 <span>              seed <span class="op">=</span> <span class="fl">333</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></span></code></pre></div>
 <div class="figure" style="text-align: center">
 <img src="vignette-fig-exmp1-gammabase-1.png" alt="plot of chunk exmp1-gammabase" width="60%"><p class="caption">
 plot of chunk exmp1-gammabase
 </p>
 </div>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/summary.html">summary</a></span><span class="op">(</span><span class="va">exp_4</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Object of class bayesnecfit containing the nec4param model</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -850,7 +957,7 @@ the bound itself treated as though it had been observed — states more
 than is known. <code>bayesnec</code> passes through the
 <code>cens()</code> aterm from <code>brms</code>, so the bound can be
 declared instead:</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">|</span> <span class="fu">cens</span><span class="op">(</span><span class="va">censoring</span><span class="op">)</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span></span></code></pre></div>
 <p><code>censoring</code> is a variable in the data rather than a
 constant, because in a concentration-response dataset only some rows are
@@ -905,7 +1012,7 @@ variability is too large at one end of the series and too small at the
 other.</p>
 <p>The special term <code>disp</code> relaxes the assumption, in one of
 two ways.</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="op">~</span><span class="va">x</span><span class="op">)</span>         <span class="co"># on the predictor</span></span>
 <span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec4param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span>    <span class="co"># on the fitted mean</span></span></code></pre></div>
 <p><code>disp(~x)</code> is an ordinary <code>brms</code> distributional
@@ -1047,7 +1154,7 @@ simulate a standard deviation proportional to
 — steeper than the family alone provides, so that there is something for
 a variance function to do. This is the second of the three checks above,
 applied when designing the example rather than after the fact.</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">disp_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.3</span>, <span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">10</span>, <span class="fl">30</span>, <span class="fl">100</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></span>
 <span><span class="va">disp_mu</span> <span class="op">&lt;-</span> <span class="fl">2</span> <span class="op">+</span> <span class="op">(</span><span class="fl">18</span> <span class="op">-</span> <span class="fl">2</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">disp_x</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">6</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fl">0.5</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -1059,7 +1166,7 @@ applied when designing the example rather than after the fact.</p>
 replicate variability within each concentration. Because these summaries
 are computed inside each concentration, no curve enters the calculation
 and no lack of fit in the mean can inflate them.</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">within_conc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, <span class="va">disp_dat</span>, <span class="kw">function</span><span class="op">(</span><span class="va">z</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">z</span><span class="op">)</span>, sd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">z</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="va">within_conc</span><span class="op">$</span><span class="va">x</span>,</span>
@@ -1078,7 +1185,7 @@ and no lack of fit in the mean can inflate them.</p>
 <p>The coefficient of variation is not constant, which is what tells us
 a <code>Gamma</code> on its own will not describe these data. We fit
 with and without a variance function and compare.</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># seed is passed through to brm() so that both fits are exactly reproducible.</span></span>
 <span><span class="co"># set.seed() alone is not sufficient: it governs the initial values bayesnec</span></span>
 <span><span class="co"># generates, but not the seed Stan's sampler uses, so repeated runs differ.</span></span>
@@ -1086,7 +1193,7 @@ with and without a variance function and compare.</p>
 <span>                   data <span class="op">=</span> <span class="va">disp_dat</span>, seed <span class="op">=</span> <span class="fl">333</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">disp_power</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, model <span class="op">=</span> <span class="st">"ecx4param"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">disp</span><span class="op">(</span><span class="st">"power"</span><span class="op">)</span>,</span>
 <span>                   data <span class="op">=</span> <span class="va">disp_dat</span>, seed <span class="op">=</span> <span class="fl">333</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/loo/reference/loo_compare.html" class="external-link">loo_compare</a></span><span class="op">(</span><span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">disp_const</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>                  <span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                          elpd_diff se_diff</span></span>
@@ -1102,7 +1209,7 @@ simulate the data,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>μ</mi><mn>1.6</mn></msup><annotation encoding="application/x-tex">\mu^{1.6}</annotation></semantics></math>,
 therefore corresponds to
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>c</mi><mn>1</mn></msub><mo>=</mo><mi>−</mi><mn>1.2</mn></mrow><annotation encoding="application/x-tex">c_1 = -1.2</annotation></semantics></math>:</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">brms</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"c0_Intercept"</span>, <span class="st">"c1_Intercept"</span><span class="op">)</span>, <span class="op">]</span></span>
 <span><span class="co">#&gt;               Estimate Est.Error      Q2.5      Q97.5</span></span>
 <span><span class="co">#&gt; c0_Intercept  4.678649 0.1801369  4.306412  5.0135912</span></span>
@@ -1115,7 +1222,7 @@ observed mean at each concentration, in units of the
 within-concentration replicate standard deviation. Values of a few
 standard deviations or more would indicate a problem with the mean model
 that a variance function would conceal rather than resolve.</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">disp_fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="fu"><a href="../reference/posterior_epred.html">posterior_epred</a></span><span class="op">(</span><span class="va">disp_power</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">lof</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>obs <span class="op">=</span> <span class="va">disp_dat</span><span class="op">$</span><span class="va">y</span>, fit <span class="op">=</span> <span class="va">disp_fitted</span><span class="op">)</span> <span class="op">~</span> <span class="va">disp_dat</span><span class="op">$</span><span class="va">x</span>, FUN <span class="op">=</span> <span class="va">mean</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">lof</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"x"</span></span>
@@ -1140,7 +1247,7 @@ response. We take the two intervals from the same draws: the
 <em>credible</em> interval on the fitted mean, and the
 <em>prediction</em> interval a new observation would be expected to fall
 in. Only the second carries the fitted dispersion directly.</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">disp_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">disp_dat</span><span class="op">$</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">disp_dat</span><span class="op">$</span><span class="va">x</span><span class="op">)</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -1163,7 +1270,7 @@ in. Only the second carries the fitted dispersion directly.</p>
 <span></span>
 <span><span class="va">bands</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu">disp_bands</span><span class="op">(</span><span class="va">disp_const</span>, <span class="st">"constant dispersion"</span><span class="op">)</span>,</span>
 <span>               <span class="fu">disp_bands</span><span class="op">(</span><span class="va">disp_power</span>, <span class="st">"disp(\"power\")"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">bands</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_ribbon.html" class="external-link">geom_ribbon</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>ymin <span class="op">=</span> <span class="va">lo</span>, ymax <span class="op">=</span> <span class="va">hi</span>, fill <span class="op">=</span> <span class="va">model</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">md</span>, colour <span class="op">=</span> <span class="va">model</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -1186,7 +1293,7 @@ similar. At the high concentrations, where the replicate standard
 deviation has fallen to 0.065, the constant-dispersion interval remains
 far wider than the data warrant. Plotting the width of each interval
 directly makes the pattern easier to read than the bands do.</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bands</span><span class="op">$</span><span class="va">width</span> <span class="op">&lt;-</span> <span class="va">bands</span><span class="op">$</span><span class="va">hi</span> <span class="op">-</span> <span class="va">bands</span><span class="op">$</span><span class="va">lo</span></span>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">bands</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">width</span>, colour <span class="op">=</span> <span class="va">model</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -1209,7 +1316,7 @@ section, and the reason the consequences fall on the toxicity estimates
 rather than on the fitted curve.</p>
 <p>Those consequences are not in a single direction, and it is worth
 seeing why.</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tox</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fit</span>, <span class="va">label</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">vals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>ec10 <span class="op">=</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">fit</span>, ecx_val <span class="op">=</span> <span class="fl">10</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span>,</span>
 <span>                ec50 <span class="op">=</span> <span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">fit</span>, ecx_val <span class="op">=</span> <span class="fl">50</span>, xform <span class="op">=</span> <span class="va">exp</span><span class="op">)</span>,</span>
@@ -1235,7 +1342,7 @@ weight. Under <code>disp("power")</code> the tightly grouped
 high-concentration replicates carry more and the variable control
 replicates carry less, which is visible in the parameters
 themselves.</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Only the curve parameters are shared: the disp fit carries c0 and c1 as well.</span></span>
 <span><span class="va">curve_pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"top_Intercept"</span>, <span class="st">"bot_Intercept"</span>, <span class="st">"beta_Intercept"</span>, <span class="st">"ec50_Intercept"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span></span>
