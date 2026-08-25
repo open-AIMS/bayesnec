@@ -1353,6 +1353,16 @@ enough to contain almost anything. **Coverage should never be reported without a
 measure of interval width**, or the two worst-performing approaches here would be
 scored as the two best.
 
+B2 carries one further qualification, which the Limitations section sets out and
+which is worth flagging where its numbers are read. Every fit in this study
+holds `sigma` constant along the curve, and B2 is the approach that suffers most
+from that: it leaves genuinely negative observations in place and then forbids
+the curve to reach them, so a single residual scale has to cover both them and
+the control. Fitted with a dispersion sub-model instead, most of B2's bias, its
+interval width and its divergent transitions go away. Its poor showing here is
+substantially a property of the homoscedastic fit rather than of the
+constraint.
+
 ## NSEC
 
 The NSEC needs separate treatment, and it turns out to be the toxicity estimate
@@ -1980,19 +1990,46 @@ vignette. The sweep predates that interface and was run without it, and the
 coverage figures above should be read as reflecting a single pooled `sigma`
 standing in for a residual scale that varies 8.1-fold along the curve.
 
-The consequence is not the same for the two toxicity estimates. **The ErC50
-ordering does not depend on it**: flooring deforms the mean structure, and it
-does so whether or not the residual scale is modelled. **The NSEC mechanism
-does.** The account given above of why B1 sits below the intact analysis at high
-noise runs through the residual scale --- flooring removes the most extreme low
-values, compresses `sigma`, raises the control reference quantile and pulls the
-crossing left. That channel exists only because `sigma` is *global*. Under a
-dispersion sub-model the control-region scale is estimated locally, where
-flooring has removed nothing, so the channel should close and the sign of the
-B1 contrast at high noise may not survive. The same argument applies to B2,
-whose inflated `sigma` is a global response to observations the curve cannot
-reach. Re-running the precision sweep under `disp("loglinear")` is the way to
-settle it and is not done here.
+This has been checked rather than left as a worry, on scenario 8 --- 50
+datasets, the six Gaussian approaches fitted twice each, once homoscedastic and
+once under `disp("loglinear")`, paired so every contrast is within-dataset. The
+result splits the approaches in two, and it does not fall where the rest of this
+vignette would lead you to expect.
+
+**The case against flooring is unaffected.** B1's ErC50 bias moves from -9.0% to
+-8.5% and B3's from -10.7% to -9.8%, with coverage still 0.50 and 0.44. Flooring
+damages the mean structure, and modelling the residual scale does not repair
+that.
+
+**B2 is largely exonerated.** Its ErC50 bias moves from -12.7% to **-1.2%**, its
+NSEC overestimate from 1.49 times the intact analysis to **1.06**, and its
+divergent transitions from 3.22 per fit to 0.12. All three of the symptoms
+reported for B2 above have one cause, and it is not the pinned asymptote: it is a
+single `sigma` being asked to cover both the control scatter and observations the
+constrained curve cannot reach. Given a dispersion sub-model, pinning `bot` on
+data that were never floored is close to unbiased. **Read B2's results above as a
+property of the homoscedastic fit rather than of the constraint.**
+
+**The direction of the B1 contrast is also a property of the homoscedastic
+fit.** The account given above --- flooring compresses `sigma`, raises the
+control reference quantile and pulls the NSEC crossing left --- depends on
+`sigma` being *global*. Under a dispersion sub-model the control-region scale is
+estimated where the control data are, flooring has removed nothing there, and
+the channel closes: B1 moves from 1.01 to 1.21 and B3 from 1.05 to 1.28, from
+level with the intact analysis to clearly above it.
+
+One further observation, unanticipated and not chased down: floored data and a
+dispersion sub-model sample badly together. B3 draws 13.8 divergent transitions
+per fit under `disp("loglinear")` and B1 4.1, against none at all when
+homoscedastic --- so which approach the sampler complains about reverses along
+with everything else.
+
+This is one scenario at one noise level, and `"loglinear"` is itself an
+approximation to the linear `sigma` ramp the data were generated from. It shows
+the ordering is dispersion-dependent for B2; it does not re-score the study.
+Re-running the full precision sweep under `disp("loglinear")` would, and is not
+done here. The check is recorded in `notes/disp_sensitivity_example7.md`, with
+its script and full output alongside.
 
 **The two family-floored approaches use `nec3param`, and take their own
 default priors.** Both differences are deliberate and both limit what their
