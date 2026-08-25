@@ -22,9 +22,11 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnec-package.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnecfit-class.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnecformula.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/bayesnecgroupfit-class.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bayesnechurdlefit.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/best_crossed.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bnec.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/bnec_group.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bnec_hurdle.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bnec_joint.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/bnec_newdata.bayesnechurdlefit.html</loc></url>
@@ -42,6 +44,7 @@
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_estimates.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_fitted.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/compare_posterior.html</loc></url>
+<url><loc>https://open-aims.github.io/bayesnec/reference/crossed_group_weights.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/crossed_weights.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/dispersion.html</loc></url>
 <url><loc>https://open-aims.github.io/bayesnec/reference/ecnsec.bayesnechurdlefit.html</loc></url>
