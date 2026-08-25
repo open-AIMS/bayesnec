@@ -15,8 +15,9 @@
 #' @param prob_vals A vector indicating the probability values over which to
 #' return the estimated NSEC value. Defaults to 0.5 (median) and 0.025 and
 #' 0.975 (95 percent credible intervals).
-#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"}
-#' or \code{"zero_inflated_beta"}), the parameter block to report:
+#' @param dpar For a joint two-block fit only (\code{family = "hurdle_gamma"},
+#' \code{"zero_inflated_beta"}, \code{"hurdle_poisson"} or
+#' \code{"hurdle_negbinomial"}), the parameter block to report:
 #' \code{"mu"} for the response block, or \code{"hu"} (\code{"zi"} for the
 #' zero-inflated families) for survival. Defaults to \code{NULL}, which gives
 #' the combined endpoint \code{mu * (1 - hu)}. The zero-probability block is

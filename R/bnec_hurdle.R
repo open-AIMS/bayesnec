@@ -47,11 +47,14 @@
 #' two-block family (\code{hurdle_gamma}, \code{zero_inflated_beta}) is refused,
 #' because \code{bnec_hurdle} is itself the two-part model, and so are the
 #' zero-inflated count families, which are mixtures rather than hurdles -- see
-#' \code{\link{bnec}}. Note that a count family is accepted here but fitted
+#' \code{\link{bnec}}. The plain count families (\code{poisson},
+#' \code{negbinomial}) are refused too: \code{bnec_hurdle} would fit them
 #' \emph{untruncated} to the non-zero subset, whereas the positive part of a
 #' hurdle on counts is zero-truncated. That overestimates the mean where the
-#' mean is small, which is the upper end of the concentration range; a
-#' zero-truncated count family is not yet available.
+#' mean is small, which is the upper end of the concentration range. Use
+#' \code{bnec(family = "hurdle_poisson")} or
+#' \code{bnec(family = "hurdle_negbinomial")}, where \pkg{brms} writes the
+#' zero-truncated positive part itself.
 #' @param ... Further arguments passed to both \code{\link{bnec}} calls.
 #'
 #' @details
@@ -196,6 +199,11 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
     family_growth <- validate_family(
       set_distribution(y[y > 0], silence_y_msgs = TRUE)
     )
+    # Checked on the auto-selected family as well as on a supplied one. An
+    # integer response picks poisson or negbinomial here, which is exactly the
+    # case that must not be fitted untruncated -- and it is the one a user
+    # reaches silently, without ever naming a family.
+    check_hurdle_growth_family(family_growth)
   } else {
     family_growth <- validate_family(family_growth)
     check_hurdle_growth_family(family_growth)
@@ -263,10 +271,49 @@ check_hurdle_growth_family <- function(family) {
          " likelihood does not factorise, so two separate fits would give you a",
          " different model. Use bnec(family = \"", fam_tag, "\") for the",
          " mixture. If every zero really is structural you want a hurdle on",
-         " counts, whose positive part is zero-truncated; bayesnec has no",
-         " zero-truncated count family yet, and leaving family_growth unset",
-         " here would fit an untruncated one to the non-zero counts, which",
-         " overestimates the mean where it is small. See ?bnec.",
+         " counts, whose positive part is zero-truncated: that is",
+         " bnec(family = \"hurdle_", sub("^zero_inflated_", "", fam_tag),
+         "\"). See ?bnec.",
+         call. = FALSE)
+  }
+  # Refused rather than fitted, and this is a behaviour change: bnec_hurdle
+  # fits the growth component to data[y > 0, ] with an ORDINARY count family,
+  # which is not the right likelihood. Conditioning a Poisson on y > 0
+  # estimates mu / (1 - exp(-mu)) rather than mu; the bias is negligible for
+  # large mu and grows as mu falls towards zero -- the high-concentration end
+  # where the NEC and ECx are read off. For hurdle_gamma the same construction
+  # is exact, because a Gamma has no mass at zero, which is why this was never
+  # a problem before counts were in scope.
+  #
+  # The obvious repair -- add trunc(lb = 1) to the growth formula, which is a
+  # fact about the y > 0 subset rather than a user modelling choice -- is
+  # blocked upstream, and that is the durable reason this stays refused rather
+  # than the scope of #209. brms handles trunc(lb =) inconsistently on discrete
+  # families: the generated Stan normalises at lb - 1 (inclusive, so the fit is
+  # right), but posterior_epred_trunc_discrete() sums over (min_lb + 1):ub and
+  # divides by cdf(ub) - cdf(lb) (exclusive), so ecx(), nsec(), fitted() and
+  # every plot would be silently wrong with no warning. log_lik had the same
+  # off-by-one; that half is fixed on brms master (paul-buerkner/brms#1922) but
+  # unreleased, and the epred half (paul-buerkner/brms#1923) is still open, so
+  # no brms version makes the route work end to end and pinning is not a way
+  # out. trunc(lb = 0) is not a workaround either -- Stan then fits untruncated
+  # while the R side zero-truncates. Tracked in #249; until it closes, the
+  # joint families are the only correct route, and brms writes their
+  # zero-truncated positive part itself via the - log1m_exp(-lambda)
+  # normaliser. See #209 and #249.
+  if (fam_tag %in% c("poisson", "negbinomial")) {
+    stop("bnec_hurdle cannot use ", fam_tag, " as the growth family. Its",
+         " positive part would be fitted with an untruncated ", fam_tag,
+         " on the non-zero counts, which estimates mu / (1 - exp(-mu)) rather",
+         " than mu -- a bias that grows as the mean falls towards zero, which",
+         " is the high-concentration end the NEC and ECx are read off. Use",
+         " bnec(family = \"hurdle_", fam_tag, "\"), where brms writes the",
+         " zero-truncated positive part itself. That fit also gives both",
+         " blocks a concentration-response curve, which is what a count hurdle",
+         " is for. Restoring the separate-fits route needs a zero-truncated",
+         " count likelihood, which is deferred on an upstream brms bug in the",
+         " post-processing of trunc() for discrete families",
+         " (open-AIMS/bayesnec#249). See ?bnec.",
          call. = FALSE)
   }
   if (is_hurdle_family(fam_tag)) {

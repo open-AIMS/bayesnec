@@ -37,14 +37,15 @@ hurdle_dpar <- function(family) {
 #'
 #' The mu block describes the response with the zeros set aside, so its priors
 #' and initial values should come from whatever family that subset looks like:
-#' Gamma for hurdle_gamma, Beta for zero_inflated_beta.
+#' Gamma for hurdle_gamma, Beta for zero_inflated_beta, and the corresponding
+#' count family for hurdle_poisson and hurdle_negbinomial.
 #'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
 #'
 #' @return An object of class \code{\link[stats]{family}}.
 #'
-#' @importFrom stats Gamma
-#' @importFrom brms Beta
+#' @importFrom stats Gamma poisson
+#' @importFrom brms Beta negbinomial
 #'
 #' @noRd
 hurdle_mu_family <- function(family) {
@@ -52,6 +53,8 @@ hurdle_mu_family <- function(family) {
   switch(unname(hurdle_mu_fams[[fam_tag]]),
          Gamma = Gamma(link = "identity"),
          beta = Beta(link = "identity"),
+         poisson = poisson(link = "identity"),
+         negbinomial = negbinomial(link = "identity"),
          stop("No mu family defined for ", fam_tag, ".", call. = FALSE))
 }
 

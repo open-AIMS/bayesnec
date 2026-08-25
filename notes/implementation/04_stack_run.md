@@ -195,3 +195,17 @@ So the rule is about *sequence*, not nesting:
   tell.
 
 Waiting and launching are two calls.
+
+## Checking whether a suite is still alive
+
+The R process for `devtools::test()` has this command line:
+
+    /usr/lib/R/bin/exec/R --no-echo --no-restore -e devtools::test()
+
+Match on `[d]evtools::test`, not on a flag order. A pattern like
+`exec/R --no-echo -e devtools` looks right and matches nothing, because
+`--no-restore` sits between the two — which reads as "the suite died" when it is
+running perfectly well.
+
+Cross-check with the log size before concluding anything: a complete run is
+~34.7 KB. A log that is short *and* growing is a slow run, not a dead one.

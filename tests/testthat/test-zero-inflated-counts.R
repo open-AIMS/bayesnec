@@ -89,11 +89,18 @@ test_that("bnec_hurdle refuses the zero-inflated count families", {
                 family_growth = "hurdle_gamma"),
     "already a two-block family"
   )
-  # A plain count family is still accepted, which is the hurdle-on-counts case.
-  expect_error(
+  # Reversed under #209, deliberately. When this test was written there was no
+  # zero-truncated count family, so a plain poisson growth family was the only
+  # way to get a hurdle on counts at all -- accepted as a stopgap, with the
+  # untruncated bias, pending #209. #209 has now added hurdle_poisson and
+  # hurdle_negbinomial, whose positive part brms writes zero-truncated, so the
+  # stopgap is no longer the best available answer and the biased fit is
+  # refused rather than offered.
+  err_p <- expect_error(
     bayesnec:::check_hurdle_growth_family(validate_family("poisson")),
-    NA
+    "untruncated"
   )
+  expect_match(conditionMessage(err_p), "hurdle_poisson")
 })
 
 test_that("disp() is refused, with the reason that applies", {

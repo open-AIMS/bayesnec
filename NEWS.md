@@ -23,6 +23,30 @@
   `poisson` and `binomial` fit; the effect is much smaller for `binomial`,
   where `plogis()` compresses the weights into a narrow band. See #247.
 
+- `hurdle_poisson` and `hurdle_negbinomial` are now available as two-block
+  families, the count analogues of `hurdle_gamma`. Use them where the non-zero
+  response is a count and the zeros are *observed* to be structural — the
+  individual died, the replicate failed. `brms` writes the positive part
+  zero-truncated, so the mean block estimates the mean of the surviving counts
+  rather than the mean of counts conditioned on being non-zero, and both blocks
+  carry an interpretable concentration-response curve. This is deliberately not
+  the same decision as for `zero_inflated_poisson` and
+  `zero_inflated_negbinomial`, which stay on the single-block path: there the
+  zeros are latent, so the zero-probability and the mean are weakly separated
+  exactly where the mean is small — the high-concentration end that determines
+  the *NEC*. See #209.
+
+- **Behaviour change:** `bnec_hurdle()` now refuses `poisson` and `negbinomial`
+  as the growth family, on the automatically selected path as well as a supplied
+  one. It fits the growth component to the non-zero rows with an *untruncated*
+  count family, which estimates `mu / (1 - exp(-mu))` rather than `mu`; the bias
+  is negligible for large means and grows as the mean falls towards zero, which
+  is the high-concentration end the *NEC* and ECx are read off. For
+  `hurdle_gamma` the same construction is exact, because a Gamma has no mass at
+  zero, which is why this only surfaced once counts were in scope. The separate
+  fits cannot express the truncation, so the error points at
+  `bnec(family = "hurdle_poisson")`, which is correct by construction. See #209.
+
 - `bnec()` now supports the `rate()` aterm for the `poisson` and `negbinomial`
   families, so a count observed over an exposure — animals per unit time,
   larvae per unit area — can be modelled directly. Because `bnec()` forces
