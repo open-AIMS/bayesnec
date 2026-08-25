@@ -1684,7 +1684,7 @@ six Gaussian approaches, built the same way — one shared prior taken from the
 intact analysis, so that a change of arm is a change of likelihood and nothing
 else — applied to each dataset in turn.
 
-```{r}
+```{r, results = "hide"}
 # One dataset's six arms. The prior is pulled from A and passed to the other
 # five for the reason given in the Methods: bnec() derives the default Gaussian
 # priors from the response vector, and on r_salina2 the substituted zeros pull
@@ -1697,7 +1697,8 @@ fit_arms <- function(d) {
   d$y <- ifelse(d$below_limit, d$bound, d$sgr)
 
   fit_A <- bnec(y ~ crf(dose, "nec4param"), data = d,
-                family = gaussian(link = "identity"), seed = 333)
+                family = gaussian(link = "identity"), seed = 333,
+                open_progress = FALSE)
   shared <- get_priors(fit_A)
   pinned <- shared
   pinned$prior[pinned$nlpar == "bot"] <- "constant(0)"
@@ -1723,15 +1724,20 @@ fit_arms <- function(d) {
   list(
     A  = fit_A,
     C  = bnec(y | cens(cens) ~ crf(dose, "nec4param"), data = d_cens,
-              family = gaussian(link = "identity"), prior = shared, seed = 333),
+              family = gaussian(link = "identity"), prior = shared,
+              seed = 333, open_progress = FALSE),
     D  = bnec(y ~ crf(dose, "nec4param"), data = subset(d, dose < cross),
-              family = gaussian(link = "identity"), prior = shared, seed = 333),
+              family = gaussian(link = "identity"), prior = shared,
+              seed = 333, open_progress = FALSE),
     B1 = bnec(y ~ crf(dose, "nec4param"), data = d_floored,
-              family = gaussian(link = "identity"), prior = shared, seed = 333),
+              family = gaussian(link = "identity"), prior = shared,
+              seed = 333, open_progress = FALSE),
     B2 = bnec(y ~ crf(dose, "nec4param"), data = d,
-              family = gaussian(link = "identity"), prior = pinned, seed = 333),
+              family = gaussian(link = "identity"), prior = pinned,
+              seed = 333, open_progress = FALSE),
     B3 = bnec(y ~ crf(dose, "nec4param"), data = d_floored,
-              family = gaussian(link = "identity"), prior = pinned, seed = 333))
+              family = gaussian(link = "identity"), prior = pinned,
+              seed = 333, open_progress = FALSE))
 }
 
 real_fits <- lapply(split(alga, alga$dataset), fit_arms)
@@ -1770,22 +1776,49 @@ real_ratios <- real_estimates |>
   select(dataset, arm, estimate, r, rlo, rhi, usable)
 ```
 
+```{r, echo = FALSE}
+# Every figure the prose below quotes is computed here rather than typed, so a
+# refit cannot leave the text describing an earlier one.
+rr <- function(ds, a, est = "ErC50", what = "r") {
+  real_ratios[[what]][real_ratios$dataset == ds & real_ratios$arm == a &
+                        real_ratios$estimate == est]
+}
+wid <- function(ds, a, est = "ErC50") (rr(ds, a, est, "rhi") - rr(ds, a, est, "rlo")) /
+  (rr(ds, "A", est, "rhi") - rr(ds, "A", est, "rlo"))
+fl <- c("B1", "B3")                      # the two floored arms
+f1 <- function(x) sprintf("%.1f", x)
+# a width ratio can be two figures or three; a trailing ".0" on 116 reads oddly
+fw <- function(x) if (x >= 10) sprintf("%.0f", x) else sprintf("%.1f", x)
+f2 <- function(x) sprintf("%.2f", x)
+pc <- function(x) sprintf("%.0f%%", 100 * x)
+```
+
 Because the four datasets have toxicity values on completely different
 concentration scales, each estimate is shown as the ratio computed above — the
 approach's estimate divided by the intact analysis on the same dataset. A ratio
 of 1 means the approach agreed with the intact analysis; a ratio of 2 means it
 returned twice the toxicity value.
 
-```{r real-ratios, fig.asp = 0.62, out.width = "95%", fig.cap = "Estimated ErC50 and NSEC from each approach on the four real datasets, expressed as a ratio to the intact analysis (A) on the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement with the intact analysis. Open symbols mark estimates flagged as unusable: for B2 the interval reached the edge of the tested concentration range, and for D on two datasets truncation left too few concentrations above the crossing to estimate an interval at all, so the interval is degenerate."}
+```{r real-ratios, fig.asp = 0.62, out.width = "95%", fig.cap = "Estimated ErC50 and NSEC from each approach on the four real datasets, expressed as a ratio to the intact analysis (A) on the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement with the intact analysis. Open symbols mark estimates flagged as unusable: for B2 the interval reached the edge of the tested concentration range, and for D on two datasets truncation left too few concentrations above the crossing to estimate an interval at all, so the interval is degenerate. Intervals extending past the plotted range are clipped at the panel edge."}
 real_ratios$arm <- factor(real_ratios$arm, levels = rev(arm_levels))
+
+# B2's lower bound runs to the bottom of the tested range on two datasets, which
+# on a log axis is four decades and compresses every other estimate onto the
+# reference line. Those estimates are already flagged unusable, so the bar is
+# clipped to the panel and the open symbol carries the meaning. Clipping by
+# pmax/pmin on the data rather than a scale limit, to avoid depending on
+# `scales` for an oob handler.
+ratio_lim <- c(0.1, 4)
+real_ratios$rlo_p <- pmax(real_ratios$rlo, ratio_lim[1])
+real_ratios$rhi_p <- pmin(real_ratios$rhi, ratio_lim[2])
 
 ggplot(real_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
   geom_vline(xintercept = 1, linetype = "dashed", colour = "grey40") +
-  geom_errorbar(aes(xmin = rlo, xmax = rhi), orientation = "y",
+  geom_errorbar(aes(xmin = rlo_p, xmax = rhi_p), orientation = "y",
                 width = 0, linewidth = 0.6) +
   geom_point(size = 2.2, fill = "white") +
   scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 21), guide = "none") +
-  scale_x_log10(breaks = c(0.25, 0.5, 1, 2, 4)) +
+  scale_x_log10(breaks = c(0.25, 0.5, 1, 2, 4), limits = ratio_lim) +
   facet_grid(estimate ~ dataset) +
   labs(x = "Estimate as a ratio to the intact analysis (log scale)",
        y = "Approach") +
@@ -1798,16 +1831,19 @@ Three features of that figure require care in
 what they do and do not establish.
 
 **The choice changes the answer, substantially.** On `c_proliferum` the floored
-analyses return an ErC50 roughly 1.8 to 1.9 times that of the intact analysis,
-and the pinned analysis returns 0.74 times it — a spread of about two and a half
-fold between approaches applied to the same data. On `r_salina` the pinned
-analysis returns 0.43 times the intact ErC50 and 0.26 times its NSEC. These are
-not rounding differences; they are the difference between one regulatory value
-and another.
+analyses return an ErC50 `r f1(min(sapply(fl, function(a) rr("c_proliferum", a))))` to
+`r f1(max(sapply(fl, function(a) rr("c_proliferum", a))))` times that of the intact
+analysis, and the pinned analysis returns `r f2(rr("c_proliferum", "B2"))` times it — a
+spread of about `r f1(max(sapply(fl, function(a) rr("c_proliferum", a))) / rr("c_proliferum", "B2"))`-fold
+between approaches applied to the same data. On `r_salina` the pinned analysis returns
+`r f2(rr("r_salina", "B2"))` times the intact ErC50 and `r f2(rr("r_salina", "B2", "NSEC"))`
+times its NSEC. These are not rounding differences; they are the difference between one
+regulatory value and another.
 
 **The direction is not predictable from the data alone.** On `c_proliferum` the
 floored analyses sit *above* the intact one; on `r_salina2` they sit *below* it;
-on `c_proliferum2` they are within 6% of it. The simulation is unambiguous that
+on `c_proliferum2` they are within
+`r pc(max(abs(sapply(fl, function(a) rr("c_proliferum2", a)) - 1)))` of it. The simulation is unambiguous that
 flooring biases ErC50 downward, but a single real dataset can show the opposite,
 because the intact analysis on that dataset carries its own error and the two are
 not separable without a known truth. This is the reason the study rests on the
@@ -1816,8 +1852,10 @@ which way, and averaging four noisy comparisons does not fix that.
 
 **B2 is unusable more often than not.** On two of the four datasets its interval
 ran to the lower edge of the tested concentration range, which is why those
-estimates are shown as open symbols. Its intervals on the remaining two are 2.9
-and 116 times wider than the intact analysis. Pinning the asymptote at zero while
+estimates are shown as open symbols. Its intervals on the remaining two are
+`r fw(min(wid("c_proliferum", "B2"), wid("r_salina", "B2")))` and
+`r fw(max(wid("c_proliferum", "B2"), wid("r_salina", "B2")))` times wider than the
+intact analysis. Pinning the asymptote at zero while
 leaving genuinely negative data in place asks the model to fit a curve that
 cannot reach its own observations, and the sampler reports this honestly, as
 divergent transitions and enormous uncertainty.
@@ -1825,7 +1863,9 @@ divergent transitions and enormous uncertainty.
 The NSEC panel is consistent with the simulation on the dataset best placed to
 show it. `r_salina2` has the largest proportion of observations at or below zero
 of the four (30%), and there all three boundary-imposing approaches return an
-NSEC between 1.8 and 2.5 times the intact one — the same upward direction, and a
+NSEC between `r f1(min(sapply(c("B1","B2","B3"), function(a) rr("r_salina2", a, "NSEC"))))`
+and `r f1(max(sapply(c("B1","B2","B3"), function(a) rr("r_salina2", a, "NSEC"))))` times
+the intact one — the same upward direction, and a
 similar magnitude, to the 47–134% overestimates measured in the simulation.
 
 ## Sensitivity to the `bot` prior

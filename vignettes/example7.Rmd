@@ -283,7 +283,12 @@ given in their own section below.
 
 The simplest way to do this with the exported interface is to fit the intact
 analysis with `bnec()`'s defaults, recover the prior it constructed with
-`pull_prior()`, and pass that object to every subsequent fit.
+`get_priors()`, and pass that object to every subsequent fit. `get_priors()` is
+the accessor to use here, not `pull_prior()`: the latter returns the whole
+`brmsprior` a fit carries --- `brms` defaults and duplicated vectorized rows
+included, wrapped in a list --- and is documented as not accepted by
+`bnec(prior = )`. Passing it is not currently an error, so a prior modified that
+way is silently discarded and the fit quietly falls back to its own defaults.
 
 ### Approaches retaining the measurement
 
@@ -297,13 +302,13 @@ fit_A <- bnec(y ~ crf(x, "nec4param"), data = dat,
               family = gaussian(link = "identity"))
 
 # the default prior bnec() built from the intact response vector, reused below
-shared_prior <- pull_prior(fit_A)
+shared_prior <- get_priors(fit_A)
 shared_prior
-#>                     prior class coef group resp dpar nlpar  lb ub
-#>              normal(0, 5)     b                       beta
-#>   normal(0.128, 0.404...)     b                        top
-#>  normal(-0.270, 0.404...)     b                        bot
-#>               gamma(5, 8)     b                        nec   0 20
+#>                     prior class coef group resp dpar nlpar     lb    ub
+#>              normal(0, 5)     b                       beta   <NA>  <NA>
+#>  normal(-0.270, 0.404...)     b                        bot   <NA>  <NA>
+#>               gamma(5, 8)     b                        nec  0.018  18.5
+#>   normal(0.128, 0.404...)     b                        top   <NA>  <NA>
 ```
 
 **C — left-censor at zero.** Each negative value is declared as censored at
@@ -1665,40 +1670,63 @@ the choice makes a practical difference, and the answer is that it does — by u
 to a factor of two on a single dataset.
 
 Four marine microalgal growth tests were analysed by the six Gaussian
-approaches. E and F are simulation-only: on a real dataset there is no true value
-to score them against, and what they add to the study — that the bias survives to
-the noise-free limit — can only be shown where the truth is known. Two are
-on *Cladocopium proliferum*, a coral endosymbiont, over seven days; two are on
-*Rhodomonas salina* over three days.
+approaches. They ship with the package as `alga`, so everything in this section
+is computed here rather than transcribed: two tests on *Cladocopium proliferum*,
+a coral endosymbiont, over seven days, and two on *Rhodomonas salina* over three
+days, each species exposed to two contaminants on undisclosed and mutually
+incomparable concentration scales. E and F are simulation-only: on a real dataset
+there is no true value to score them against, and what they add to the study —
+that the bias survives to the noise-free limit — can only be shown where the
+truth is known.
 
 
 ``` r
-datasets <- read.csv(text = "
-dataset,species,duration_d,n,n_conc,control_rate,fold_change_R,prop_at_or_below_zero
-c_proliferum,Cladocopium proliferum,7,85,14,0.119,2.31,0.141
-c_proliferum2,Cladocopium proliferum,7,70,13,0.169,3.27,0.143
-r_salina,Rhodomonas salina,3,85,14,1.431,73.1,0.235
-r_salina2,Rhodomonas salina,3,70,13,0.951,17.3,0.300
-")
+data(alga)
+
+# The four case studies are the four species-by-contaminant cells of `alga`.
+# The names used throughout this section are the vignette's; the mapping is by
+# cell rather than by row order, so it survives any reordering of the data.
+alga$dataset <- factor(
+  paste0(as.character(alga$species), ifelse(alga$contaminant == "B", "2", "")),
+  levels = c("c_proliferum", "c_proliferum2", "r_salina", "r_salina2"))
+
+# The growth rate implied by the counting limit of 10 cells per mL, against the
+# starting density recorded for the test. Where the source substituted a zero
+# for a below-limit count -- flagged `sgr_source == "substituted"` -- this is the
+# rate that substitution should have carried, and it is what the intact analysis
+# uses in place of the substituted zero.
+alga$bound <- (log(10) - log(alga$density_initial)) / alga$days
+alga$below_limit <- alga$sgr_source == "substituted"
+
+datasets <- alga |>
+  group_by(dataset, species, duration_d = days) |>
+  summarise(n = n(), n_conc = n_distinct(dose),
+            control_rate = mean(sgr[dose == 0]),
+            below_limit = sum(below_limit),
+            prop_at_or_below_zero = mean(sgr <= 0), .groups = "drop") |>
+  mutate(fold_change_R = exp(control_rate * duration_d), .before = below_limit)
 ```
 
 
 
-Table: The four real datasets. All are in the regime where the design reaches the zero-growth boundary.
+Table: The four case-study datasets, computed from `alga`. All are in the regime where the design reaches the zero-growth boundary. `Below limit` counts the rows whose population fell below the counting limit, for which the source substituted a zero.
 
-|Dataset       |Species                | Days|  n| Concentrations| Control rate (per d)| Fold change R| Prop. at or below zero|
-|:-------------|:----------------------|----:|--:|--------------:|--------------------:|-------------:|----------------------:|
-|c_proliferum  |Cladocopium proliferum |    7| 85|             14|                0.119|          2.31|                  0.141|
-|c_proliferum2 |Cladocopium proliferum |    7| 70|             13|                0.169|          3.27|                  0.143|
-|r_salina      |Rhodomonas salina      |    3| 85|             14|                1.431|         73.10|                  0.235|
-|r_salina2     |Rhodomonas salina      |    3| 70|             13|                0.951|         17.30|                  0.300|
+|Dataset       |Species      | Days|  n| Concentrations| Control rate (per d)| Fold change R| Below limit| Prop. at or below zero|
+|:-------------|:------------|----:|--:|--------------:|--------------------:|-------------:|-----------:|----------------------:|
+|c_proliferum  |c_proliferum |    7| 85|             14|                0.119|          2.31|           0|                  0.141|
+|c_proliferum2 |c_proliferum |    7| 70|             13|                0.169|          3.27|           0|                  0.143|
+|r_salina      |r_salina     |    3| 85|             14|                1.431|         73.12|          16|                  0.235|
+|r_salina2     |r_salina     |    3| 70|             13|                0.951|         17.32|           4|                  0.300|
 
 
 
 One feature of the *Rhodomonas* tests needs stating before their results are
 read. At the highest concentrations the population fell below the counting limit
 of 10 cells per mL, so the density is recorded as zero and the specific growth
-rate is *undefined* rather than negative. There is no measured value to retain,
+rate is *undefined* rather than negative. Those rows carry
+`sgr_source == "substituted"` in `alga`, 16 on `r_salina` and 4 on
+`r_salina2`; the two *Cladocopium* tests have none, and their negative values are
+measurements. There is no measured value to retain,
 and every approach must substitute something. For these two datasets the
 "intact" analysis therefore uses the growth rate implied by the counting limit,
 which is itself a substitution — a conservative one, but a substitution
@@ -1707,77 +1735,144 @@ and the comparison is correspondingly weaker. This is a common situation with
 real algal data and it is one of the reasons left-censoring is useful: it can
 express "at or below the limit" without inventing a value.
 
+That also settles what arm C means on these two datasets. Left-censoring
+declares that the truth lies at or below a bound, so the bound should be the
+tightest one the measurement supports: zero for a growth rate that was measured
+and came out negative, since withdrawing its magnitude is the convention under
+test, but the counting limit itself for a row that fell below it, which is a
+stronger statement than "below zero" and is the one thing the test does
+establish about that row. Censoring such a row at zero instead moves the ErC50
+by 3 to 6% and the NSEC by 26 to 30%, in both cases away from the value the
+retained-measurement arms give.
+
+Unlike the simulation, these fits are run by this vignette. They are the same
+six Gaussian approaches, built the same way — one shared prior taken from the
+intact analysis, so that a change of arm is a change of likelihood and nothing
+else — applied to each dataset in turn.
+
 
 ``` r
-real_ratios <- read.csv(text = "
-dataset,arm,estimate,r,rlo,rhi,usable
-c_proliferum,A,ErC50,1.000,0.786,1.309,TRUE
-c_proliferum,B1,ErC50,1.887,1.714,2.083,TRUE
-c_proliferum,B2,ErC50,0.744,0.173,1.667,TRUE
-c_proliferum,B3,ErC50,1.797,1.637,1.958,TRUE
-c_proliferum,C,ErC50,1.940,1.791,2.089,TRUE
-c_proliferum,D,ErC50,1.486,1.486,1.486,FALSE
-c_proliferum2,A,ErC50,1.000,0.967,1.031,TRUE
-c_proliferum2,B1,ErC50,0.950,0.911,0.986,TRUE
-c_proliferum2,B2,ErC50,0.953,0.000,1.195,FALSE
-c_proliferum2,B3,ErC50,0.944,0.908,0.978,TRUE
-c_proliferum2,C,ErC50,0.981,0.950,1.011,TRUE
-c_proliferum2,D,ErC50,0.984,0.949,1.021,TRUE
-r_salina,A,ErC50,1.000,0.996,1.000,TRUE
-r_salina,B1,ErC50,1.008,0.996,1.016,TRUE
-r_salina,B2,ErC50,0.430,0.211,0.673,TRUE
-r_salina,B3,ErC50,1.008,1.000,1.016,TRUE
-r_salina,C,ErC50,1.004,0.996,1.012,TRUE
-r_salina,D,ErC50,0.995,0.995,0.995,FALSE
-r_salina2,A,ErC50,1.000,0.903,1.112,TRUE
-r_salina2,B1,ErC50,0.806,0.776,0.828,TRUE
-r_salina2,B2,ErC50,0.843,0.000,1.134,FALSE
-r_salina2,B3,ErC50,0.806,0.776,0.828,TRUE
-r_salina2,C,ErC50,0.873,0.821,0.925,TRUE
-r_salina2,D,ErC50,0.803,0.769,0.845,TRUE
-c_proliferum,A,NSEC,1.000,0.531,1.706,TRUE
-c_proliferum,B1,NSEC,1.187,0.668,1.607,TRUE
-c_proliferum,B2,NSEC,0.942,0.300,2.313,TRUE
-c_proliferum,B3,NSEC,1.347,0.987,1.816,TRUE
-c_proliferum,C,NSEC,1.012,0.613,1.443,TRUE
-c_proliferum,D,NSEC,0.758,0.416,1.278,TRUE
-c_proliferum2,A,NSEC,1.000,0.940,1.066,TRUE
-c_proliferum2,B1,NSEC,0.891,0.769,0.982,TRUE
-c_proliferum2,B2,NSEC,1.300,0.857,1.856,TRUE
-c_proliferum2,B3,NSEC,0.923,0.804,0.995,TRUE
-c_proliferum2,C,NSEC,0.763,0.694,0.843,TRUE
-c_proliferum2,D,NSEC,0.757,0.676,0.845,TRUE
-r_salina,A,NSEC,1.000,0.993,1.013,TRUE
-r_salina,B1,NSEC,0.960,0.923,1.013,TRUE
-r_salina,B2,NSEC,0.260,0.134,0.451,TRUE
-r_salina,B3,NSEC,0.963,0.928,1.012,TRUE
-r_salina,C,NSEC,0.968,0.938,1.017,TRUE
-r_salina,D,NSEC,0.466,0.426,0.503,TRUE
-r_salina2,A,NSEC,1.000,0.677,1.390,TRUE
-r_salina2,B1,NSEC,1.771,1.623,1.884,TRUE
-r_salina2,B2,NSEC,2.456,1.585,3.526,TRUE
-r_salina2,B3,NSEC,1.771,1.630,1.879,TRUE
-r_salina2,C,NSEC,1.229,1.028,1.457,TRUE
-r_salina2,D,NSEC,1.775,1.468,1.947,TRUE
-")
+# One dataset's six arms. The prior is pulled from A and passed to the other
+# five for the reason given in the Methods: bnec() derives the default Gaussian
+# priors from the response vector, and on r_salina2 the substituted zeros pull
+# the default bot prior onto zero, so letting each arm take its own default
+# would leak the convention under test into the prior.
+fit_arms <- function(d) {
+  # The intact analysis restores the counting-limit rate where the source
+  # substituted a zero. On the two Cladocopium tests nothing is substituted and
+  # this is the measured series unchanged.
+  d$y <- ifelse(d$below_limit, d$bound, d$sgr)
+
+  fit_A <- bnec(y ~ crf(dose, "nec4param"), data = d,
+                family = gaussian(link = "identity"), seed = 333,
+                open_progress = FALSE)
+  shared <- get_priors(fit_A)
+  pinned <- shared
+  pinned$prior[pinned$nlpar == "bot"] <- "constant(0)"
+
+  d_floored <- transform(d, y = pmax(y, 0))
+  # Left-censoring declares only that the truth lies at or below a bound, so the
+  # bound should be the tightest one the measurement supports. For a measured
+  # negative that is zero -- withdrawing the magnitude is the convention under
+  # test. For a row whose population fell below the counting limit it is the
+  # limit itself, which is a stronger statement than "below zero" and is what is
+  # actually known; censoring such a row at zero would discard the one thing the
+  # test does tell you about it. See the Limits of the censored likelihood
+  # section of the Single model usage vignette.
+  d_cens <- transform(d,
+    cens = ifelse(below_limit | y < 0, "left", "none"),
+    y = ifelse(below_limit, bound, pmax(y, 0)))
+  # D's cut-off is the lowest tested concentration at which A's own posterior
+  # mean has reached zero, which is how the approach is defined -- it cannot be
+  # applied without first fitting A.
+  mu_A <- fitted(fit_A, newdata = data.frame(dose = d$dose))[, "Estimate"]
+  cross <- suppressWarnings(min(d$dose[mu_A <= 0]))
+
+  list(
+    A  = fit_A,
+    C  = bnec(y | cens(cens) ~ crf(dose, "nec4param"), data = d_cens,
+              family = gaussian(link = "identity"), prior = shared,
+              seed = 333, open_progress = FALSE),
+    D  = bnec(y ~ crf(dose, "nec4param"), data = subset(d, dose < cross),
+              family = gaussian(link = "identity"), prior = shared,
+              seed = 333, open_progress = FALSE),
+    B1 = bnec(y ~ crf(dose, "nec4param"), data = d_floored,
+              family = gaussian(link = "identity"), prior = shared,
+              seed = 333, open_progress = FALSE),
+    B2 = bnec(y ~ crf(dose, "nec4param"), data = d,
+              family = gaussian(link = "identity"), prior = pinned,
+              seed = 333, open_progress = FALSE),
+    B3 = bnec(y ~ crf(dose, "nec4param"), data = d_floored,
+              family = gaussian(link = "identity"), prior = pinned,
+              seed = 333, open_progress = FALSE))
+}
+
+real_fits <- lapply(split(alga, alga$dataset), fit_arms)
 ```
 
+
+``` r
+# ErC50 and NSEC from every fit, with the tested concentration range carried
+# alongside so that an interval running to the edge of the design can be
+# flagged rather than read as an estimate.
+real_estimates <- do.call(rbind, lapply(names(real_fits), function(ds) {
+  rng <- range(alga$dose[alga$dataset == ds & alga$dose > 0])
+  do.call(rbind, lapply(names(real_fits[[ds]]), function(a) {
+    f <- real_fits[[ds]][[a]]
+    e <- ecx(f, ecx_val = 50, type = "absolute")
+    n <- nsec(f)
+    rbind(data.frame(dataset = ds, arm = a, estimate = "ErC50",
+                     val = e[1], lo = e[2], hi = e[3]),
+          data.frame(dataset = ds, arm = a, estimate = "NSEC",
+                     val = n[1], lo = n[2], hi = n[3])) |>
+      transform(x_min = rng[1], x_max = rng[2])
+  }))
+}))
+
+# Expressed as a ratio to the intact analysis on the same dataset, because the
+# four tests are on undisclosed and mutually incomparable concentration scales.
+# An estimate is flagged unusable where its interval has collapsed to a point --
+# truncation can leave too few concentrations above the crossing to support one
+# -- or has run to an edge of the tested range, where the bound is the design
+# rather than the data.
+real_ratios <- real_estimates |>
+  group_by(dataset, estimate) |>
+  mutate(ref = val[arm == "A"],
+         r = val / ref, rlo = lo / ref, rhi = hi / ref,
+         usable = !(lo <= x_min | hi >= x_max | hi - lo < .Machine$double.eps^0.5)) |>
+  ungroup() |>
+  select(dataset, arm, estimate, r, rlo, rhi, usable)
+```
+
+
+
 Because the four datasets have toxicity values on completely different
-concentration scales, each estimate is shown as a ratio to the intact analysis
-on the same dataset. A ratio of 1 means the approach agreed with the intact
-analysis; a ratio of 2 means it returned twice the toxicity value.
+concentration scales, each estimate is shown as the ratio computed above — the
+approach's estimate divided by the intact analysis on the same dataset. A ratio
+of 1 means the approach agreed with the intact analysis; a ratio of 2 means it
+returned twice the toxicity value.
 
 
 ``` r
 real_ratios$arm <- factor(real_ratios$arm, levels = rev(arm_levels))
 
+# B2's lower bound runs to the bottom of the tested range on two datasets, which
+# on a log axis is four decades and compresses every other estimate onto the
+# reference line. Those estimates are already flagged unusable, so the bar is
+# clipped to the panel and the open symbol carries the meaning. Clipping by
+# pmax/pmin on the data rather than a scale limit, to avoid depending on
+# `scales` for an oob handler.
+ratio_lim <- c(0.1, 4)
+real_ratios$rlo_p <- pmax(real_ratios$rlo, ratio_lim[1])
+real_ratios$rhi_p <- pmin(real_ratios$rhi, ratio_lim[2])
+
 ggplot(real_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
   geom_vline(xintercept = 1, linetype = "dashed", colour = "grey40") +
-  geom_errorbar(aes(xmin = rlo, xmax = rhi), orientation = "y",
+  geom_errorbar(aes(xmin = rlo_p, xmax = rhi_p), orientation = "y",
                 width = 0, linewidth = 0.6) +
   geom_point(size = 2.2, fill = "white") +
   scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 21), guide = "none") +
-  scale_x_log10(breaks = c(0.25, 0.5, 1, 2, 4)) +
+  scale_x_log10(breaks = c(0.25, 0.5, 1, 2, 4), limits = ratio_lim) +
   facet_grid(estimate ~ dataset) +
   labs(x = "Estimate as a ratio to the intact analysis (log scale)",
        y = "Approach") +
@@ -1787,24 +1882,27 @@ ggplot(real_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
 ```
 
 <div class="figure" style="text-align: center">
-<img src="vignette-fig-real-ratios-1.png" alt="Estimated ErC50 and NSEC from each approach on the four real datasets, expressed as a ratio to the intact analysis (A) on the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement with the intact analysis. Open symbols mark estimates flagged as unusable: for B2 the interval reached the edge of the tested concentration range, and for D on two datasets truncation left too few concentrations above the crossing to estimate an interval at all, so the interval is degenerate." width="95%" />
-<p class="caption">Estimated ErC50 and NSEC from each approach on the four real datasets, expressed as a ratio to the intact analysis (A) on the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement with the intact analysis. Open symbols mark estimates flagged as unusable: for B2 the interval reached the edge of the tested concentration range, and for D on two datasets truncation left too few concentrations above the crossing to estimate an interval at all, so the interval is degenerate.</p>
+<img src="vignette-fig-real-ratios-1.png" alt="Estimated ErC50 and NSEC from each approach on the four real datasets, expressed as a ratio to the intact analysis (A) on the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement with the intact analysis. Open symbols mark estimates flagged as unusable: for B2 the interval reached the edge of the tested concentration range, and for D on two datasets truncation left too few concentrations above the crossing to estimate an interval at all, so the interval is degenerate. Intervals extending past the plotted range are clipped at the panel edge." width="95%" />
+<p class="caption">Estimated ErC50 and NSEC from each approach on the four real datasets, expressed as a ratio to the intact analysis (A) on the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement with the intact analysis. Open symbols mark estimates flagged as unusable: for B2 the interval reached the edge of the tested concentration range, and for D on two datasets truncation left too few concentrations above the crossing to estimate an interval at all, so the interval is degenerate. Intervals extending past the plotted range are clipped at the panel edge.</p>
 </div>
 
 Three features of that figure require care in
 what they do and do not establish.
 
 **The choice changes the answer, substantially.** On `c_proliferum` the floored
-analyses return an ErC50 roughly 1.8 to 1.9 times that of the intact analysis,
-and the pinned analysis returns 0.74 times it — a spread of about two and a half
-fold between approaches applied to the same data. On `r_salina` the pinned
-analysis returns 0.43 times the intact ErC50 and 0.26 times its NSEC. These are
-not rounding differences; they are the difference between one regulatory value
-and another.
+analyses return an ErC50 1.8 to
+1.9 times that of the intact
+analysis, and the pinned analysis returns 0.75 times it — a
+spread of about 2.5-fold
+between approaches applied to the same data. On `r_salina` the pinned analysis returns
+0.43 times the intact ErC50 and 0.25
+times its NSEC. These are not rounding differences; they are the difference between one
+regulatory value and another.
 
 **The direction is not predictable from the data alone.** On `c_proliferum` the
 floored analyses sit *above* the intact one; on `r_salina2` they sit *below* it;
-on `c_proliferum2` they are within 6% of it. The simulation is unambiguous that
+on `c_proliferum2` they are within
+6% of it. The simulation is unambiguous that
 flooring biases ErC50 downward, but a single real dataset can show the opposite,
 because the intact analysis on that dataset carries its own error and the two are
 not separable without a known truth. This is the reason the study rests on the
@@ -1813,8 +1911,10 @@ which way, and averaging four noisy comparisons does not fix that.
 
 **B2 is unusable more often than not.** On two of the four datasets its interval
 ran to the lower edge of the tested concentration range, which is why those
-estimates are shown as open symbols. Its intervals on the remaining two are 2.9
-and 116 times wider than the intact analysis. Pinning the asymptote at zero while
+estimates are shown as open symbols. Its intervals on the remaining two are
+2.7 and
+116 times wider than the
+intact analysis. Pinning the asymptote at zero while
 leaving genuinely negative data in place asks the model to fit a curve that
 cannot reach its own observations, and the sampler reports this honestly, as
 divergent transitions and enormous uncertainty.
@@ -1822,7 +1922,9 @@ divergent transitions and enormous uncertainty.
 The NSEC panel is consistent with the simulation on the dataset best placed to
 show it. `r_salina2` has the largest proportion of observations at or below zero
 of the four (30%), and there all three boundary-imposing approaches return an
-NSEC between 1.8 and 2.5 times the intact one — the same upward direction, and a
+NSEC between 1.8
+and 2.5 times
+the intact one — the same upward direction, and a
 similar magnitude, to the 47–134% overestimates measured in the simulation.
 
 ## Sensitivity to the `bot` prior
