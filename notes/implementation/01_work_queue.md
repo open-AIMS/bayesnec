@@ -22,19 +22,30 @@ Branches stack: each is cut from the one above it, and its PR targets the one
 above it. See `00_protocol.md`. Order is least-risky first, so a stall late in
 the run still leaves a clean, mergeable run of PRs at the bottom.
 
-| # | issue | what | size | tier |
-|---|---|---|---|---|
-| 0 | #79, #212, #166 | close, no PR | — | — |
-| 1 | #215 | publish `dev` vignettes from CI | S | 2.1.4 |
-| 2 | #139 | document the `drc` NEC equivalence | S | 2.1.4 |
-| 3 | #210 | `define_prior()` collapse on many zeros | S | 2.1.4 |
-| 4 | #207 | dispersion priors; fill incomplete prior sets | M | 2.1.4 |
-| 5 | #136 | `rate()` aterm for Poisson / negbinomial | M | 2.1.4 |
-| 6 | #209 | `hurdle_poisson`, `hurdle_negbinomial` | M–L | 2.1.4 (on hold) |
-| 7 | #148 | `check_fit()`, `pp_check()` methods, LOO-PIT | L | 2.1.4 |
-| 8 | #33 | factor covariate, stage 1 | XL | 2.2.0 |
-| 9 | #6 + #33 | the grouping vignette | L | 2.2.0 |
-| — | #190 | full `precompile.R` | L | **attended, per release** |
+**Status column refreshed 2026-08-25.** Every PR in this stack targets `dev`,
+not the default branch, so `Closes #n` never fires on merge and the issues have
+to be closed by hand. Do that as each one merges. Status here is the truth as of
+`dev` at `879ab53f`; the tracker was reconciled against it on 2026-08-25.
+
+| # | issue | what | size | tier | status |
+|---|---|---|---|---|---|
+| 0 | #79, #212, #166 | close, no PR | — | — | **done** — all three closed |
+| 1 | #215 | publish `dev` vignettes from CI | S | 2.1.4 | **merged** #220 · issue closed |
+| 2 | #139 | document the `drc` NEC equivalence | S | 2.1.4 | **merged** #221 · issue closed |
+| 3 | #210 | `define_prior()` collapse on many zeros | S | 2.1.4 | **merged** #222 · issue closed |
+| 4 | #207 | dispersion priors; fill incomplete prior sets | M | 2.1.4 | **merged** #223 · issue closed |
+| 5 | #136 | `rate()` aterm for Poisson / negbinomial | M | 2.1.4 | **merged** #224 (also #247) · both closed |
+| 6 | #209 | `hurdle_poisson`, `hurdle_negbinomial` | M–L | 2.1.4 (on hold) | **PR #225 open, blocked** on a `brms` bug — see #249 |
+| 7 | #148 | `check_fit()`, `pp_check()` methods, LOO-PIT | L | 2.1.4 | **merged** #226 (A/B/C + b + d) and #240 (Part D) · issue closed |
+| 8 | #33 | factor covariate, stage 1 | XL | 2.2.0 | **stage 1 merged** #227 · issue **stays open** for stage 2 |
+| 9 | #6 + #33 | the grouping vignette | L | 2.2.0 | **PR #228 open** · #6 and #33 both held open by it |
+| — | #190 | full `precompile.R` | L | **attended, per release** | **outstanding** — the release gate; #248 rides on it |
+
+**Two merged branches must not be deleted.** `issue-136-rate-aterm` is the base of
+PR #225 and `issue-148-check-fit` is the base of PR #238; deleting a merged base
+closes the PR stacked on it and it cannot be reopened until the branch is
+restored. Both are still on the remote. Everything else in this stack can be
+deleted as it merges.
 
 ---
 
@@ -208,6 +219,15 @@ That is the intended fix, but it is not a silent one. Say so in the PR.
 
 ## 5. #136 — `rate()` aterm for Poisson and negative binomial
 
+> **MERGED 2026-08-25, PR #224. #136 and #247 are both closed.** Both of RF's
+> calls are implemented: `rate()` is refused on the zero-inflated count families
+> with its own message, and an unvalidated aterm is now an **error** (its own
+> `**Breaking:**` NEWS bullet). The PR also carries #247 — `dispersion()` was
+> applying the family's *default* link inverse rather than the identity link
+> `bnec()` actually fits with, so every `poisson` and `binomial` dispersion value
+> changes. The tier is **2.1.4**, not the 2.2.0 this entry was written against.
+> Nothing outstanding. What follows is the original scope, kept for the record.
+
 Fully scoped in the issue comments; **RF settled both open calls on 2026-08-21**:
 refuse `rate()` on the zero-inflated count families with a clear message, and make
 unrecognised aterms an **error** rather than a message.
@@ -248,6 +268,12 @@ error.
 ---
 
 ## 6. #209 — `hurdle_poisson` and `hurdle_negbinomial`
+
+> **ON HOLD, 2026-08-25.** PR #225 is open and blocked on a `brms` bug: `trunc()`
+> on counts is right in the Stan code and wrong in `log_lik`/`posterior_epred`,
+> which blocks the factorised count hurdle. Tracked as **#249**. The branch
+> `issue-209-hurdle-counts` sits on `issue-136-rate-aterm`, which has merged —
+> **do not delete that base branch**, it would close #225 irrecoverably.
 
 **Scope.** The count analogues of `hurdle_gamma`. Add both to `hurdle_fams` and
 `hurdle_mu_fams` in `data-raw/sysdata.R`, extend the `switch()` in
@@ -356,14 +382,35 @@ the four mixture families.
 
 **Vignette.** Author the `.Rmd.orig`; it does not render until #190.
 
-**Status, 2026-08-23.** PR #226 delivers A, B (numeric only), C. Outstanding:
-the **plot** half of B (added under review), **(b)** the automatic surfacing,
-**(d)** the combined hurdle check, and **all of Part D**. #219 depends on Part D
-and its dependency claim was correct.
+**Status, 2026-08-25 — COMPLETE, #148 closed.** All four parts are on `dev`.
+PR #226 delivered A, B (numeric *and* plot), C, plus decision **(b)** — the
+end-of-`bnec()` message and the `summary()` line, thresholding on the **ratio**
+with `fit_ratio_cutoff = 1.15`, confirmed by RF 2026-08-24 — and decision **(d)**,
+the combined hurdle check. PR #240 delivered **Part D**: `check_sampling()`,
+`screen_models()`, and the Rhat default moved to 1.01. Verified on `dev` at
+`879ab53f`: `check_fit`, `check_sampling`, `screen_models` and the three
+`pp_check` methods are exported.
+
+Two things ride on it and are **not** done:
+
+- The `example2` doc fix is in the `.Rmd.orig`, but the **rendered** vignette
+  still documents the 1.05 default — that is **#248**, under #190.
+- **PR #238 (#219) still needs rewriting.** It hand-rolls a model screen because
+  Part D was thought absent; it can now call `screen_models()`. Its base branch
+  `issue-148-check-fit` has merged — **do not delete it** while #238 is open.
 
 ---
 
 ## 8. #33 — factor covariate, stage 1 only
+
+> **STAGE 1 MERGED 2026-08-25, PR #227.** `bnec_group()`, `bayesnecgroupfit`,
+> `crossed_group_weights()`, and per-level `print`/`nec`/`ecx`/`plot`. Both
+> readings of the crossed table are reported, and the `23^G` array is never
+> materialised. **#33 stays open** — stage 2 (the joint dummy-coded refit) is
+> still toxval-gated, and the vignette at item 9 is still a PR. The gate was
+> re-verified rather than assumed at merge time: `toxval` still `Imports`
+> `bayesnec` and registers seven colliding methods. `02_deferred.md` now records
+> the method surface #227 adds.
 
 Feasibility assessed in the issue comment; RF cleared it for the stack on
 2026-08-21. **Stage 1 only.**
@@ -409,6 +456,10 @@ place, which is a finding worth more than a partial implementation.
 ---
 
 ## 9. #6 + #33 — the grouping vignette
+
+> **PR #228 open, 2026-08-25.** Its dependency — #33 stage 1 — is now on `dev`,
+> so it is unblocked. **#6 and #33 are both held open by this PR alone**; #6 has
+> no other outstanding work.
 
 **One vignette covering both**, per RF on both issues (2026-08-21): they are two
 ways of dealing with data grouping and belong together. Cut this branch from #33's,
@@ -494,4 +545,7 @@ another session's.
 | #218 | the three unseeded permutations. Documentation-and-constraint outcome, not a code fix — see the issue. Cheap; add to a later stack. |
 | #184 | `future_apply`. **Attended, and blocked on the machine.** RF has had trouble with `future_apply` on WSL and wants a testing pass with the findings posted as a comment before any implementation. Must wait until the simulation study finishes — it is the same resource. |
 | #139 option C | the Pires et al. (2002) two-component model, conditional on reading *Environmetrics* 13:15–27. |
-| #148 decision (d) | the combined hurdle check — see item 7. |
+| ~~#148 decision (d)~~ | **done** — shipped in PR #226. |
+| #245 | group-level terms with bounded families. PR #250 open, another session's. |
+| #249 | the factorised count hurdle, blocked on `brms`. Holds #209 / PR #225. |
+| #248, #190 | the release precompile and the stale `example2` Rhat text it fixes. |
