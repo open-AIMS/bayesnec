@@ -1,5 +1,52 @@
 # bayesnec 2.1.4
 
+- `extraDistr` is declared in `Suggests`. `brms` requires it for the
+  `beta_binomial` density and CDF, so anything that computes a log-likelihood
+  for that family — `loo()`, `waic()`, `summary()` — stopped with "Please
+  install the 'extraDistr' package" on a machine that did not happen to have it.
+  It was declared nowhere in the package, so the Beta-Binomial section of
+  `vignette("example1")` could not be rendered on a clean install; it went
+  unnoticed because precompilation had only ever been run where the package was
+  already present.
+
+- `dispersion()` now computes the residual variance with the link the model was
+  actually fitted with, rather than the family's default. `bnec()` forces
+  `link = "identity"`, but `dispersion()` rebuilt the family with
+  `get("poisson")()` or `get("binomial")()` — a log and a logit link — and
+  applied the inverse link to a linear predictor that was already on the
+  response scale. For a Poisson that meant exponentiating a mean of, say, 90,
+  producing variance weights near `1e39`; the weights do not cancel out of the
+  observed-to-simulated ratio, so the statistic was dominated by the
+  lowest-mean observations and understated dispersion. On simulated counts
+  drawn from a negative binomial the reported value was 1.66 [0.67, 4.76]
+  against a correct 6.23 [4.72, 8.35]. Dispersion estimates change for every
+  `poisson` and `binomial` fit; the effect is much smaller for `binomial`,
+  where `plogis()` compresses the weights into a narrow band. See #247.
+
+- `bnec()` now supports the `rate()` aterm for the `poisson` and `negbinomial`
+  families, so a count observed over an exposure — animals per unit time,
+  larvae per unit area — can be modelled directly. Because `bnec()` forces
+  `link = "identity"`, `brms` writes the denominator multiplicatively on the
+  response scale rather than as a log offset, so the mean *is* the rate and
+  `top`, `bot` and `nec` stay interpretable as counts per unit exposure. The
+  prediction grid holds the denominator at 1, so the fitted curve, `ecx()` and
+  `nsec()` are all read on the rate scale, and plots divide the observations
+  through to match. `rate()` was previously neither supported nor refused: it
+  emitted a generic message, fitted, and then failed in post-processing with a
+  `brms` error about a variable it could not find, and the priors for `top` and
+  `bot` were built from raw counts rather than rates — a prior mean of ~61
+  against a true `top` of 20 on the reprex in the issue, silently. `offset` is
+  deliberately not offered as an alternative: under an identity link it would be
+  additive on the mean. See #136.
+
+- **Breaking:** an `aterm` `bayesnec` has not validated is now an **error**
+  rather than a message. The validated set is `trials()`, `weights()`, `cens()`
+  and `rate()`. Passing anything else previously printed a warning and carried
+  on, which is how `rate()` came to fit and then fail tens of seconds later,
+  long after the message had scrolled past. An aterm the package has not
+  validated cannot be assumed to behave sensibly through prior generation, the
+  initial-value search and post-processing. See #136.
+
 - `sample_priors(plot = NA)` returns the sampled values, as documented. The
   argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is
   `FALSE`, so the one value documented to return the draws was the one value
@@ -23,6 +70,8 @@
   This does not add a `fixed` argument: see #84 for why fixing an asymptote is
   usually the wrong move, and `vignette("example3")` for when it is not.
   See #244.
+
+
 
 - A control lack-of-fit is now surfaced rather than waiting to be looked for:
   once at the end of `bnec()`, and as a line in `summary()` alongside the
@@ -72,7 +121,6 @@
   gives a LOO-PIT check — the Bayesian counterpart of a uniform quantile
   residual — using the `loo` criterion `bnec()` already adds, so it needs no
   extra step and no new dependency. See #148 and #56.
-
 - New `check_sampling()` and `screen_models()`. `check_sampling()` reports, per
   candidate model, the largest Rhat, the smallest effective sample size and the
   number of divergent transitions; `screen_models()` drops the failures and

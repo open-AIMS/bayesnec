@@ -180,6 +180,44 @@ All green at the time of writing except 223, which is still in CI.
 Next: the 2.2.0 tier. The first PR of it opens the `# bayesnec 2.2.0` heading in
 NEWS.md.
 
+## Item 5 — #136, rate() aterm for poisson and negbinomial
+
+Branch `issue-136-rate-aterm`, cut from `issue-207-dispersion-priors`.
+Tier **2.2.0** — the first of that tier, so it opens the `# bayesnec 2.2.0`
+heading in NEWS.md. Version 2.1.3.11 -> 2.1.3.12.
+**PR: https://github.com/open-AIMS/bayesnec/pull/224**.
+
+Full suite **1546 pass / 0 fail / 11 warn**, +20 on the branch below.
+
+Verified end to end on the issue's reprex: `top` prior mean 61 -> **19.8**
+against a true 20; the fit that previously errored in post-processing now
+returns NEC 3.893 [3.634, 4.125] against a true 4; `bnec_newdata()` resolves
+with the denominator pinned at 1; `ecx()` returns 4.071 [3.823, 4.289].
+
+**One worry in the scoping comment turned out to be moot.** It flagged
+`dispersion()` as needing care because negbinomial scales the shape by the
+denominator. `dispersion()`'s `allowed_fams` is `c("poisson", "binomial")` —
+negbinomial was never supported, so there is nothing to get wrong today. The
+Poisson case is the exact `mu * denom` analogue of the binomial branch and is
+implemented, with a comment warning whoever widens `allowed_fams`. Checked
+`brms:::posterior_epred_poisson` rather than assuming: it calls
+`multiply_dpar_rate_denom`, so it returns expected counts.
+
+**The breaking change bit two existing tests**, exactly as the queue entry
+warned. `test-make_brmsformula.R` carried `se(sei)` in two multi-aterm chains
+(incidental — the chains still exercise parsing with trials + weights + cens)
+and `test-cens.R` asserted the old message. Both updated. Vignettes and the JSS
+article swept for non-validated aterms: none.
+
+**Two bugs of mine caught by the new tests, worth remembering:**
+
+1. `[["rate_var"]]` on a named character vector is a subscript **error** when
+   the name is absent, where `[[` on a list gives NULL. That broke every
+   existing fit through `prediction_grid()`. The existing `trials_var` lookups
+   are safe only because a family branch guards them. Use single-bracket lookup
+   plus `is.na()` for any optional `bnec_pop` entry.
+2. An assertion compared an integer response against `as.numeric()`.
+
 ---
 
 ## Item 7 — #148 parts A/B/C, decisions (b) and (d): `check_fit()` and `pp_check()`
