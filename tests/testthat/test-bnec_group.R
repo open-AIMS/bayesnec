@@ -206,8 +206,9 @@ test_that("the pooled comparison is on the same observations", {
   # are directly comparable.
   gf <- fake_group_fit()
   cw <- crossed_group_weights(gf, pooled = manec_example)
-  best <- rownames(manec_example$mod_stats)[which.max(manec_example$mod_stats$wi)]
-  w <- manec_example$mod_stats$waic[match(best, rownames(manec_example$mod_stats))]
+  ms <- manec_example$mod_stats
+  best <- rownames(ms)[which.max(ms$wi)]
+  w <- ms$waic[match(best, rownames(ms))]
   expect_equal(cw$pooled$waic_grouped, 2 * w)
   expect_equal(cw$pooled$waic_pooled, w)
   expect_equal(cw$pooled$diff, w - 2 * w)
@@ -291,7 +292,7 @@ fake_waic_fit <- function(pointwise) {
 
 test_that("the pooled SE pairs observations across differently ordered data", {
   # site is deliberately NOT in level order, which is the case that would go
-  # wrong if the grouped values were simply concatenated against the pooled ones.
+  # wrong if the grouped values were simply concatenated against the pooled.
   d <- data.frame(site = rep(c("b", "a"), each = 10))
   grp <- factor(d$site, levels = c("a", "b"))
   pooled_pw <- as.numeric(seq_len(20))

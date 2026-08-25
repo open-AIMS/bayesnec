@@ -42,7 +42,8 @@ blocks of a hurdle fit. See \code{\link{crossed_group_weights}}.
 
 \bold{The family is chosen once}
 
-The family chosen from each subset separately could differ between levels, which would make the levels incomparable ---
+The family chosen from each subset separately could differ between
+levels, which would make the levels incomparable ---
 their \code{elpd} contributions would not be on the same scale and the
 crossed weights would be meaningless. So it is chosen from the whole response
 and passed down.
