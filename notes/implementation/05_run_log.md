@@ -290,55 +290,17 @@ this stack.
 
 # MERGE RECORD — 2026-08-25
 
-Written when the tracker was reconciled against `dev` at `879ab53f`. **These PRs
-all target `dev`, so `Closes #n` does not fire on merge** — every issue below was
-closed by hand, and any future PR in this run needs the same treatment.
+**The PR bodies are the record.** This table exists only so a session knows
+which PR to read; nothing here restates one.
 
-| merged | PR | issue(s) closed | note |
-|---|---|---|---|
-| 08-24 | #240 | — (#148 Part D) | landed before its sibling; #148 stayed open until #226 |
-| 08-24 | #241, #242 | — | notes, and the first CI check of a vignette |
-| 08-24 | #246 | #244 | also fixed `sample_priors(plot = NA)`, found in passing |
-| 08-24 | #226 | **#148** | closed 2026-08-25 once verified on `dev` |
-| 08-25 | #252 | #251 | vignette precompile fanned out, one job per vignette |
-| 08-25 | #224 | #136, #247 | breaking: an unvalidated aterm is now an error |
-| 08-25 | #227 | — (#33 **stage 1**) | #33 left open on purpose |
+| merged | PR | issues closed |
+|---|---|---|
+| 08-24 | #240, #241, #242, #246 | #244 |
+| 08-24 | #226 | **#148** (with #240) — closed by hand 08-25 |
+| 08-25 | #252 | #251 |
+| 08-25 | #224 | #136, #247 |
+| 08-25 | #227 | — (#33 **stage 1**; #33 left open for stage 2) |
 
-## Item 8 — #33 stage 1, `bnec_group()`
-
-Merged as PR #227. `bnec_group()` fits the model set independently within each
-level of a factor, model-averages within level, and returns a `bayesnecgroupfit`
-with per-level `print` / `nec` / `ecx` / `plot`. Crossed model weights come off
-the per-level vectors as an outer product under pseudo-BMA, and **both** readings
-of the crossed table are reported — the unrestricted maximum, and the diagonal
-maximum that asks which single equation describes every level. The `23^G` array is
-never materialised.
-
-**Restacked on 2026-08-25 and that mattered.** The branch had been sitting on
-#226 and carrying #225's hurdle-count work through the old stack; #225 is on hold,
-so it was rebased onto #224 alone. The result is #33's own six commits — 14 files,
-+1373 lines, with no `hurdle_poisson` / `hurdle_negbinomial` content.
-
-**Release tiers were revised in the same pass.** `2.1.4` is now everything up to
-and including the feature work (#136, #148); **`2.2.0` is the factor covariate
-release**, since `bnec_group()` is functionality that never existed. The `2.3.0`
-tier that briefly existed for `bnec_group()` is gone.
-
-**#33 was not closed.** Stage 2 — the joint dummy-coded refit — is still
-toxval-gated, and the gate was re-verified rather than assumed: `toxval` still
-`Imports` `bayesnec` and registers seven colliding methods. Building only stage 2's
-formula assembly would yield a fit no per-level estimate can be read from, because
-`nec()`/`nsec()` read `b_nec_Intercept` by fixed name and `bnec_newdata()` /
-`fitted()` / `predict()` carry no group handling. The grouping vignette (item 9,
-PR #228) also still references this issue.
-
-## What the merges left open
-
-- **PR #238** (#219) must be rewritten before it can go in: it hand-rolls a model
-  screen because Part D was thought absent, and can now call `screen_models()`.
-- **PR #228** (#6, #33) is unblocked — its dependency is on `dev`.
-- **PR #225** (#209) is blocked on `brms`, tracked as **#249**.
-- **#190** — the release precompile — is the remaining gate, and **#248** (the
-  rendered `example2` still documenting the 1.05 Rhat default) rides on it.
-- **Do not delete `issue-136-rate-aterm` or `issue-148-check-fit`.** They are the
-  bases of PRs #225 and #238; deleting a merged base closes the PR above it.
+Release tiers were revised in the #227 pass: `2.1.4` is everything through the
+feature work, **`2.2.0` is the factor covariate release**, and the short-lived
+`2.3.0` tier is gone.

@@ -30,6 +30,16 @@ not a notes change** and the rule below applies in full. PRs #239 and #241 were
 notes-only and went through the stack; #254 was the same and was closed unmerged
 in favour of a direct push.
 
+**Write it once, and write it in the PR body or the issue comment.** RF,
+2026-08-25: the same facts were being restated in `01_work_queue.md`,
+`05_run_log.md`, `06_review_run.md` *and* the tracker, and the duplication is
+what makes the run hard to follow. Reasoning, evidence and what-was-left-undone
+belong on the PR or the issue, where they stay attached to the change. These
+notes carry only what GitHub cannot: the plan not yet started, and the
+one-line-per-item **status column** in the stack table above, which points at
+the PR rather than summarising it. If you find yourself writing a paragraph here
+that repeats a PR body, delete it and link the PR.
+
 **One issue, one branch, one PR, and the branches STACK.** This reverses the
 rule that stood for the 2026-08-14 run. Each branch is cut from the *previous*
 issue's branch, not from `dev`, and its PR targets the previous branch so the

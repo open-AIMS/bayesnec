@@ -219,14 +219,8 @@ That is the intended fix, but it is not a silent one. Say so in the PR.
 
 ## 5. #136 — `rate()` aterm for Poisson and negative binomial
 
-> **MERGED 2026-08-25, PR #224. #136 and #247 are both closed.** Both of RF's
-> calls are implemented: `rate()` is refused on the zero-inflated count families
-> with its own message, and an unvalidated aterm is now an **error** (its own
-> `**Breaking:**` NEWS bullet). The PR also carries #247 — `dispersion()` was
-> applying the family's *default* link inverse rather than the identity link
-> `bnec()` actually fits with, so every `poisson` and `binomial` dispersion value
-> changes. The tier is **2.1.4**, not the 2.2.0 this entry was written against.
-> Nothing outstanding. What follows is the original scope, kept for the record.
+> **MERGED, PR #224 — read that PR. #136 and #247 closed.** Tier is 2.1.4, not
+> the 2.2.0 below. Nothing outstanding. Original scope kept for the record.
 
 Fully scoped in the issue comments; **RF settled both open calls on 2026-08-21**:
 refuse `rate()` on the zero-inflated count families with a clear message, and make
@@ -269,11 +263,9 @@ error.
 
 ## 6. #209 — `hurdle_poisson` and `hurdle_negbinomial`
 
-> **ON HOLD, 2026-08-25.** PR #225 is open and blocked on a `brms` bug: `trunc()`
-> on counts is right in the Stan code and wrong in `log_lik`/`posterior_epred`,
-> which blocks the factorised count hurdle. Tracked as **#249**. The branch
-> `issue-209-hurdle-counts` sits on `issue-136-rate-aterm`, which has merged —
-> **do not delete that base branch**, it would close #225 irrecoverably.
+> **ON HOLD.** PR #225 open, blocked on a `brms` bug — read **#249**. Its base
+> branch `issue-136-rate-aterm` has merged; **do not delete it** or #225 closes
+> irrecoverably.
 
 **Scope.** The count analogues of `hurdle_gamma`. Add both to `hurdle_fams` and
 `hurdle_mu_fams` in `data-raw/sysdata.R`, extend the `switch()` in
@@ -382,35 +374,22 @@ the four mixture families.
 
 **Vignette.** Author the `.Rmd.orig`; it does not render until #190.
 
-**Status, 2026-08-25 — COMPLETE, #148 closed.** All four parts are on `dev`.
-PR #226 delivered A, B (numeric *and* plot), C, plus decision **(b)** — the
-end-of-`bnec()` message and the `summary()` line, thresholding on the **ratio**
-with `fit_ratio_cutoff = 1.15`, confirmed by RF 2026-08-24 — and decision **(d)**,
-the combined hurdle check. PR #240 delivered **Part D**: `check_sampling()`,
-`screen_models()`, and the Rhat default moved to 1.01. Verified on `dev` at
-`879ab53f`: `check_fit`, `check_sampling`, `screen_models` and the three
-`pp_check` methods are exported.
+**Status — COMPLETE. #148 closed 2026-08-25**, with the evidence in the closing
+comment on the issue. All four parts are on `dev`: PR #226 (A/B/C, decisions (b)
+and (d)) and PR #240 (Part D).
 
-Two things ride on it and are **not** done:
-
-- The `example2` doc fix is in the `.Rmd.orig`, but the **rendered** vignette
-  still documents the 1.05 default — that is **#248**, under #190.
-- **PR #238 (#219) still needs rewriting.** It hand-rolls a model screen because
-  Part D was thought absent; it can now call `screen_models()`. Its base branch
-  `issue-148-check-fit` has merged — **do not delete it** while #238 is open.
+Two things ride on it and are **not** done: the rendered `example2` still shows
+the 1.05 Rhat default (**#248**, under #190), and **PR #238 (#219) still needs
+rewriting** — it hand-rolls a screen that `screen_models()` now provides. #238's
+base branch `issue-148-check-fit` has merged; **do not delete it** while #238 is
+open.
 
 ---
 
 ## 8. #33 — factor covariate, stage 1 only
 
-> **STAGE 1 MERGED 2026-08-25, PR #227.** `bnec_group()`, `bayesnecgroupfit`,
-> `crossed_group_weights()`, and per-level `print`/`nec`/`ecx`/`plot`. Both
-> readings of the crossed table are reported, and the `23^G` array is never
-> materialised. **#33 stays open** — stage 2 (the joint dummy-coded refit) is
-> still toxval-gated, and the vignette at item 9 is still a PR. The gate was
-> re-verified rather than assumed at merge time: `toxval` still `Imports`
-> `bayesnec` and registers seven colliding methods. `02_deferred.md` now records
-> the method surface #227 adds.
+> **STAGE 1 MERGED, PR #227 — read that PR and the comment on #33.** `#33 stays
+> open`: stage 2 is still toxval-gated and the vignette at item 9 is still a PR.
 
 Feasibility assessed in the issue comment; RF cleared it for the stack on
 2026-08-21. **Stage 1 only.**
@@ -457,9 +436,8 @@ place, which is a finding worth more than a partial implementation.
 
 ## 9. #6 + #33 — the grouping vignette
 
-> **PR #228 open, 2026-08-25.** Its dependency — #33 stage 1 — is now on `dev`,
-> so it is unblocked. **#6 and #33 are both held open by this PR alone**; #6 has
-> no other outstanding work.
+> **PR #228 open**, and unblocked — #33 stage 1 is on `dev`. #6 and #33 are both
+> held open by this PR; #6 has no other outstanding work.
 
 **One vignette covering both**, per RF on both issues (2026-08-21): they are two
 ways of dealing with data grouping and belong together. Cut this branch from #33's,

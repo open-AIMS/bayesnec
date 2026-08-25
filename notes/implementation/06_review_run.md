@@ -1,48 +1,28 @@
 # Review run — the pre-CRAN loop
 
-> ## START HERE — state of the tracker, 2026-08-25
+> ## START HERE — 2026-08-25
 >
-> **The 2026-08-23 handoff block below is superseded on the PR-state question.**
-> Read this first; everything in the older block that is not about PR state
-> still applies, in particular the lesson about checking claims against sources.
+> **Do not look for the state of the stack in this file.** It lives on GitHub,
+> and the one-line-per-item index is the **status column** in the stack table in
+> `01_work_queue.md`. Everything else — why a PR did what it did, what it left
+> undone — is in the PR body or the issue thread. RF, 2026-08-25: the same facts
+> were being written into three notes files and the tracker, and that is what
+> makes it hard to follow.
 >
-> `dev` is at `879ab53f`. **Every PR in this run targets `dev`, not the default
-> branch, so `Closes #n` never fires — issues have to be closed by hand.** The
-> tracker was reconciled against `dev` on 2026-08-25 and is now correct.
+> ```bash
+> gh pr list   --repo open-AIMS/bayesnec --state open
+> gh issue list --repo open-AIMS/bayesnec --state open
+> ```
 >
-> ### Merged, issues closed
+> Two things that are **not** on GitHub and will bite you:
 >
-> | PR | issue(s) | what |
-> |---|---|---|
-> | #220–#223 | #215, #139, #210, #207 | the original 2.1.4 tier |
-> | #233, #235, #236, #237 | #230, #229, #232, #231 | phase 1, the review's own findings |
-> | #240 | #148 Part D | `check_sampling()`, `screen_models()`, Rhat on 1.01 |
-> | #226 | #148 (A/B/C + b + d), #56 | `check_fit()`, `pp_check()` — **#148 closed 2026-08-25** |
-> | #246 | #244 | `constant()` priors through `bnec()` |
-> | #224 | #136, #247 | the `rate()` aterm; `dispersion()`'s link |
-> | #252 | #251 | vignette precompilation fanned out and unbroken |
-> | #227 | #33 **stage 1** | `bnec_group()` — **#33 deliberately left open**, see below |
-> | #239, #241, #242 | — | notes, and the CI vignette check |
+> - **Every PR here targets `dev`, not the default branch, so `Closes #n` never
+>   fires.** Close issues by hand after verifying the work is on `dev`.
+> - **`issue-136-rate-aterm` and `issue-148-check-fit` have merged but must not
+>   be deleted** — they are the bases of PRs #225 and #238, and deleting a merged
+>   base closes the PR above it irrecoverably.
 >
-> ### Still open, and why
->
-> | | |
-> |---|---|
-> | **#33** | stage 1 merged; **stage 2 is still toxval-gated** and the vignette is PR #228. Do not close. |
-> | **#6** | held open by PR #228 alone. Nothing else outstanding on it. |
-> | **PR #228** (#6, #33) | open, and now unblocked — its dependency #33 stage 1 is on `dev`. |
-> | **PR #238** (#219) | open, **needs rewriting**: it hand-rolls a screen because Part D was thought absent. Call `screen_models()`. |
-> | **PR #225** (#209) | blocked on a `brms` bug — `trunc()` on counts is right in Stan, wrong in `log_lik`/`posterior_epred`. Tracked as **#249**. |
-> | **PR #250** (#245) | another session's. Group-level terms with bounded families. See `notes/tasks/245-and-example8-overnight.md`. |
-> | **PR #243** (#193) | another session's. `example7`, negative growth rates. |
-> | **#190** | the release gate: the full `precompile.R` run. **#248** (stale `example2` Rhat text) rides on it. |
->
-> ### Two merged branches must not be deleted
->
-> `issue-136-rate-aterm` is the base of PR #225 and `issue-148-check-fit` is the
-> base of PR #238. Deleting a merged base closes the PR stacked on it, and it
-> cannot be reopened until the branch is restored. Both are still on the remote.
-> Every other merged branch in this run can go.
+> The 2026-08-23 handoff below is kept for its lesson, not its PR list.
 
 > ## Handoff, 2026-08-23 — superseded on PR state, see above
 >
