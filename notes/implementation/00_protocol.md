@@ -21,6 +21,15 @@ cd /mnt/c/Rworking/bayesnec-stack
 uptime; nproc          # confirm the machine budget still holds
 ```
 
+**Notes-only changes go straight to `dev`. No branch, no PR.** RF, 2026-08-25:
+a PR that touches nothing but `notes/` still triggers the full check matrix, and
+the volume of those runs had got out of hand. Commit to `dev` and push. This
+covers `notes/**` and nothing else — **if a commit touches one line of `R/`,
+`tests/`, `man/`, `DESCRIPTION`, `NAMESPACE`, `vignettes/` or `.github/`, it is
+not a notes change** and the rule below applies in full. PRs #239 and #241 were
+notes-only and went through the stack; #254 was the same and was closed unmerged
+in favour of a direct push.
+
 **One issue, one branch, one PR, and the branches STACK.** This reverses the
 rule that stood for the 2026-08-14 run. Each branch is cut from the *previous*
 issue's branch, not from `dev`, and its PR targets the previous branch so the
