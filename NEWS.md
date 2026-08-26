@@ -133,6 +133,31 @@
   Edit the `.Rmd.orig`, note in the pull request that the rendered output is
   stale, and rebuild at release. See #190.
 
+- Internal: a single statement of the interval the response distribution allows
+  the mean to occupy, and of what each model's mean can produce.
+  `mu_support()` returns that interval given family **and link as fitted** —
+  `(-Inf, Inf)` for gaussian and for any family under a `log` or `logit` link,
+  `(0, 1)` for the proportion families and `(0, Inf)` for the count and Gamma
+  families. `model_mu_ranges()` records, for each of the 23 models, whether its
+  mean can fall below zero, whether it can exceed its own level through a term
+  carrying no coefficient, whether it decays onto zero, whether it saturates at
+  one, and which parameters a group-level deviation on can take the mean out of
+  range.
+
+  These are two different questions and the flags are not interchangeable.
+  Support asks whether the mean can leave the interval the likelihood defines;
+  appropriateness asks whether the shape is meaningful for the response at all.
+  `nechormepwr01` is excluded from the count and Gamma families on
+  appropriateness — its hormetic term saturates at exactly 1, so for a mean
+  above 1 it expresses a decline where hormesis is intended — and a
+  support-only rule would have wrongly reinstated it.
+
+  No behaviour change. `check_models()` keeps its own five gates, and a new
+  test asserts they agree with the table for every family, so the two cannot
+  drift apart as `?models` and `check_models()` did in #170. A later change
+  makes the gates derive from the table, where any difference is then a
+  decision rather than a regression. See #256.
+
 - Group-level terms now work with a bounded family. `ogl()`, `pgl()` and
   `(par | group)` add parameters that `get_priors()` never described, so a
   group-level standard deviation fell through to the `brms` default,
