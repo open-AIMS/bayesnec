@@ -509,6 +509,17 @@ sd_prior_scales <- function(priors) {
   if (length(strs) == 0) {
     return(numeric(0))
   }
+  # Only read a scale from the distributions whose last argument is one. The
+  # last argument of gamma() and inv_gamma() is a rate, exponential() has a rate
+  # and no comma at all, and constant() carries a value rather than a scale --
+  # taking the last number from any of those returns a number that is not a
+  # scale, silently. A user-supplied gamma(2, 100) previously gave a starting
+  # value of 100 on a unit-interval response.
+  scale_families <- "^\\s*(student_t|normal|cauchy|lognormal|logistic)\\s*\\("
+  strs <- strs[grepl(scale_families, strs)]
+  if (length(strs) == 0) {
+    return(numeric(0))
+  }
   vals <- suppressWarnings(
     as.numeric(sub("^.*,\\s*([0-9.eE+-]+)\\)\\s*$", "\\1", strs))
   )
