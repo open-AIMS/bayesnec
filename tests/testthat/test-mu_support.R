@@ -5,8 +5,11 @@
 # checked is the same failure with an extra file.
 
 expected_supports <- function() {
-  # Keyed on the family tag, so a family added to mod_fams without a decision
-  # here fails the completeness test below rather than taking a fallback.
+  # Keyed on the constructor names mod_fams holds as values, which is the form
+  # validate_family() accepts. The tag brms reports differs for one family --
+  # "beta" against the constructor "Beta" -- and validate_family("beta") errors,
+  # which is recorded on #256 and not this test's subject. A family added to
+  # mod_fams without a decision here fails the completeness test below.
   list(gaussian = c(-Inf, Inf),
        Gamma = c(0, Inf), poisson = c(0, Inf), negbinomial = c(0, Inf),
        zero_inflated_poisson = c(0, Inf),
@@ -37,28 +40,57 @@ test_that("every family in mod_fams has a decided support", {
   expect_setequal(names(expected_supports()), unname(bayesnec:::mod_fams))
 })
 
-test_that("mu_is_constrained asks the link as well as the family", {
+test_that("mu_is_constrained asks family and link together, not either alone", {
   f <- bayesnec:::mu_is_constrained
-  # identity passes the linear predictor straight into the likelihood
+  # identity passes the linear predictor through untouched, so the mean is
+  # whatever the curve produces
   expect_true(f(validate_family("Beta")))
   expect_true(f(validate_family("Gamma")))
   expect_true(f(validate_family("beta_binomial")))
   expect_true(f(validate_family("hurdle_gamma")))
-  # gaussian has nothing to violate
+  # gaussian has nothing to violate, whatever the link
   expect_false(f(validate_family("gaussian")))
-  # brms applies the inverse link before the likelihood, so under these the mean
-  # is valid by construction whatever is proposed
-  expect_false(f(Beta(link = "logit")))
   expect_false(f(gaussian(link = "log")))
+  # a link whose inverse maps into the support guarantees a valid mean
+  expect_false(f(Beta(link = "logit")))
   expect_false(f(binomial(link = "probit")))
   expect_false(f(binomial(link = "cloglog")))
   expect_false(f(poisson(link = "sqrt")))
-  # inverse is the exception: inv(eta) is negative wherever eta is, so a Gamma
-  # fitted on it can still be handed an invalid mean. Confirmed against the
-  # generated Stan code, which emits `mu = inv(mu)` then
-  # `gamma_lpdf(Y | shape, shape ./ mu)`.
+  expect_false(f(Gamma(link = "log")))
+
+  # The case that shows neither family nor link decides it alone. exp(eta) is
+  # positive but unbounded above, so on a (0, 1) response a log link can hand
+  # beta_lpdf a negative second shape parameter -- while guaranteeing a valid
+  # mean for every count family. Confirmed against the generated Stan code,
+  # which emits `mu = exp(mu)` then `beta_lpdf(Y | mu .* phi, (1 - mu) .* phi)`.
+  expect_true(f(Beta(link = "log")))
+  expect_true(f(binomial(link = "log")))
+  expect_false(f(Gamma(link = "log")))
+
+  # inverse maps onto the whole real line, so it guarantees nothing
   expect_true(f(Gamma(link = "inverse")))
+
+  # an unrecognised link is treated as reaching anywhere, so it never lies
+  # inside a bounded support and the answer errs towards raising adapt_delta
+  odd <- validate_family("Beta"); odd$link <- "not_a_real_link"
+  expect_true(f(odd))
+  odd_g <- validate_family("gaussian"); odd_g$link <- "not_a_real_link"
+  expect_false(f(odd_g))
+
   expect_false(f(NULL))
+})
+
+test_that("a two-block family is asked about the block's own link", {
+  # validate_family() requires link_hu = "identity", so the hu block is always
+  # on identity with (0, 1) support and is always reachable, whatever the mu
+  # link is. Reading family$link for the hu block would answer the mu question
+  # twice.
+  f <- bayesnec:::mu_is_constrained
+  hg <- validate_family("hurdle_gamma")
+  expect_true(f(hg, dpar = "hu"))
+  hg_log <- hg; hg_log$link <- "log"
+  expect_false(f(hg_log))
+  expect_true(f(hg_log, dpar = "hu"))
 })
 
 test_that("the model range table covers every model exactly once", {
@@ -263,4 +295,60 @@ test_that("the agreement test covers every family in mod_fams", {
                "zero_inflated_negbinomial", "gaussian",
                "hurdle_gamma", "zero_inflated_beta")
   expect_setequal(covered, unname(bayesnec:::mod_fams))
+})
+
+test_that("the slope and beta observations hold over the admissible equations", {
+  # The roxygen records two observations rather than a per-parameter column.
+  # They are asserted here over the equations that are actually admissible for
+  # a (0, 1) response, which is the domain they are stated for -- the two the
+  # numerical derivation could not baseline, nechormepwr and nechorme4pwr, are
+  # excluded by that gate anyway.
+  admissible <- suppressMessages(
+    bayesnec:::check_models(models()$all, validate_family("Beta"))
+  )
+  base <- list(top = 0.6, bot = 0.2, nec = 2, ec50 = 2,
+               beta = 0, slope = -5, d = 0, f = 0)
+  xs <- seq(0, 6, length.out = 200)
+  leaves_range <- function(model, par, grid) {
+    pars <- names(get(paste0("bf_", model))[[2]])
+    any(vapply(grid, function(v) {
+      p_i <- base[pars]
+      p_i[[par]] <- v
+      mu <- eval_mu(model, as.data.frame(p_i), xs)
+      mu <- mu[is.finite(mu)]
+      length(mu) > 0 && (max(mu) > 1 + 1e-9 || min(mu) < -1e-9)
+    }, logical(1)))
+  }
+  has_par <- function(model, par) {
+    par %in% names(get(paste0("bf_", model))[[2]])
+  }
+
+  # slope is exponentiated everywhere, but it sets a level, and in four of the
+  # five admissible equations carrying it a deviation alone takes the mean
+  # above one
+  slope_models <- admissible[vapply(admissible, has_par, logical(1), "slope")]
+  expect_setequal(slope_models, c("nechorme", "nechorme4", "nechormepwr01",
+                                  "ecxhormebc4", "ecxhormebc5"))
+  for (m in setdiff(slope_models, "nechormepwr01")) {
+    expect_true(leaves_range(m, "slope", seq(-5, 5, length.out = 25)), info = m)
+  }
+  # and cannot in nechormepwr01, whose factor is bounded by max(top, 1)
+  expect_false(leaves_range("nechormepwr01", "slope",
+                            seq(-25, 25, length.out = 60)))
+
+  # beta enters through a factor bounded in (0, 1] in every admissible
+  # equation, so a deviation on it alone never leaves the range
+  beta_models <- admissible[vapply(admissible, has_par, logical(1), "beta")]
+  for (m in beta_models) {
+    expect_false(leaves_range(m, "beta", seq(-25, 25, length.out = 60)),
+                 info = m)
+  }
+  # neclinhorme is the equation where it does not hold, and it is excluded on
+  # below_zero rather than on anything to do with beta
+  expect_false("neclinhorme" %in% admissible)
+  expect_true(leaves_range("neclinhorme", "beta", seq(-5, 5, length.out = 25)))
+  # 21 of the 23 equations carry beta
+  expect_equal(sum(vapply(models()$all, has_par, logical(1), "beta")), 21)
+  expect_setequal(models()$all[!vapply(models()$all, has_par, logical(1), "beta")],
+                  c("neclin", "ecxlin"))
 })

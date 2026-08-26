@@ -135,19 +135,21 @@
 
 - Internal: a single statement of the interval the response distribution allows
   the mean to occupy, and of what each model's mean can produce.
-  `mu_support()` returns that interval — `(-Inf, Inf)` for gaussian, `(0, 1)`
-  for the proportion families and `(0, Inf)` for the count and Gamma families,
-  with a `dpar` argument for the second block of a two-block family, whose `hu`
-  or `zi` probability is on `(0, 1)` whatever its `mu` block is.
-  `mu_is_constrained()` adds the link: `brms` applies the inverse link before
-  the likelihood, so a proposal can only be invalid under `identity`, which
-  passes the linear predictor through untouched, or `inverse`, which is
-  negative wherever the linear predictor is. `model_mu_ranges()` records, for each of the 23 models, whether its
-  mean can fall below zero, whether it can exceed its own level through a term
-  carrying no coefficient, whether it decays onto zero, whether it saturates at
-  one, and which parameters a group-level deviation on can take the mean out of
-  range.
+  `mu_support()` returns that interval as a property of the response
+  distribution — `(-Inf, Inf)` for gaussian, `(0, 1)` for the proportion
+  families and `(0, Inf)` for the count and Gamma families, with a `dpar`
+  argument for the second block of a two-block family, whose `hu` or `zi`
+  probability is on `(0, 1)` whatever its `mu` block is. `mu_is_constrained()`
+  adds the link, and asks family and link **together**: `brms` applies the
+  inverse link before the likelihood, so what decides it is whether the range of
+  that inverse lies inside the support. `Beta(link = "log")` is the case that
+  shows neither decides it alone — `exp()` is positive but unbounded above, so
+  on a 0–1 response it can still hand the likelihood an invalid mean, under a
+  link that is perfectly safe for every count family.
 
+  `model_mu_ranges()` records, for each of the 23 models, whether its mean can
+  fall below zero, whether it can exceed one through a term carrying no
+  coefficient, whether it decays onto zero, and whether it saturates at one.
   These are two different questions and the flags are not interchangeable.
   Support asks whether the mean can leave the interval the likelihood defines;
   appropriateness asks whether the shape is meaningful for the response at all.
@@ -156,11 +158,23 @@
   above 1 it expresses a decline where hormesis is intended — and a
   support-only rule would have wrongly reinstated it.
 
-  No behaviour change. `check_models()` keeps its own five gates, and a new
-  test asserts they agree with the table for every family, so the two cannot
+  `check_models()` is unchanged and keeps its own gates. A new test asserts they
+  agree with the table for all twelve families in `mod_fams`, so the two cannot
   drift apart as `?models` and `check_models()` did in #170. A later change
-  makes the gates derive from the table, where any difference is then a
-  decision rather than a regression. See #256.
+  makes the gates derive from the table, where any difference is then a decision
+  rather than a regression. See #256.
+
+- The `adapt_delta = 0.99` that a grouped fit receives is now decided by whether
+  the link's inverse maps into the response distribution's support, rather than
+  by the family tag and a list of two links. Two corrections follow, both
+  affecting grouped fits only. `binomial(link = "log")` and `Beta(link = "log")`
+  now receive it and previously did not, which is the defect above: a log link
+  does not keep a 0–1 bounded mean in range. And eighteen combinations of a
+  non-identity link whose inverse does map into the support — `probit`,
+  `cloglog`, `cauchit` and `sqrt` across the bounded and count families — no
+  longer receive it, because no proposal under those links can reach an invalid
+  mean and the raise was costing gradient evaluations for nothing. Ungrouped
+  fits are unaffected in every case. See #256.
 
 - Group-level terms now work with a bounded family. `ogl()`, `pgl()` and
   `(par | group)` add parameters that `get_priors()` never described, so a
