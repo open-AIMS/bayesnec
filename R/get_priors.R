@@ -175,7 +175,8 @@ get_priors.formula <- function(object, data, family = NULL,
     }
     define_prior(m, checked$family, checked$mod_dat$x, y,
                  prior_type = prior_type, model_survival = model_survival,
-                 disp_spec = disp_spec)
+                 disp_spec = disp_spec,
+                 group_spec = parse_group_terms(single_form, m))
   })
   names(out) <- model
   if (length(out) == 1) {
@@ -282,5 +283,9 @@ usable_prior <- function(prior) {
 #'
 #' @noRd
 auxiliary_classes <- function() {
-  c("sigma", "shape", "phi", "zi", "hu")
+  # "sd" is a group-level standard deviation. It is here for the same reason
+  # the dispersion classes are: bayesnec now generates one, so leaving it out
+  # would make get_priors() a record of everything except the parameter a
+  # grouped model is hardest to get right. See #245.
+  c("sigma", "shape", "phi", "zi", "hu", "sd")
 }

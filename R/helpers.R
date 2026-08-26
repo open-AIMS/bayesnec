@@ -731,7 +731,8 @@ add_brm_defaults <- function(
   custom_name,
   prior_type = "uninformative",
   model_survival = NULL,
-  disp_spec = NULL
+  disp_spec = NULL,
+  group_spec = NULL
 ) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
@@ -745,6 +746,37 @@ add_brm_defaults <- function(
   if (!("warmup" %in% names(brm_args))) {
     brm_args$warmup <- floor(brm_args$iter / 5) * 4
   }
+  # A group-level offset is declared unconstrained by brms, and on every family
+  # except gaussian the identity link leaves the mean it is added to constrained:
+  # (0, 1) for bernoulli, beta, binomial and beta_binomial, (0, Inf) for Gamma,
+  # poisson, negbinomial and the zero-inflated counts. Any leapfrog step that
+  # carries mu outside that range makes the likelihood throw, Stan rejects the
+  # whole trajectory, and it is counted as a divergent transition. A smaller step
+  # size overshoots the boundary less often, which is the only lever available
+  # here; no prior on the standard deviation helps, because the posterior for it
+  # is an order of magnitude smaller than the distance from the fitted mean to
+  # the boundary.
+  #
+  # Measured on nec3param with ogl(): 50.2% divergent at 0.8 against 4.9% at
+  # 0.99 for beta_binomial, and 87.3% at 0.99 for poisson where the curve's tail
+  # sits on zero. The residual is not small and is not constant -- across a sweep
+  # of group count and group-level standard deviation it ranged from 0.03% to
+  # 42.9% -- so this is a mitigation and vignette("example3") says so.
+  #
+  # Gated on the support of mu rather than on the presence of a group-level term:
+  # a gaussian response is unconstrained and shows 0% divergent at 0.8 with the
+  # identical curve and grouping, and under a log or logit link mu is the linear
+  # predictor and is likewise unconstrained. Raised only where it is needed,
+  # because it costs roughly fourteen times the gradient evaluations per
+  # iteration. #257 proposes the parameterisation change that removes the need
+  # for it. See #245.
+  if (!is.null(group_spec) && mu_is_constrained(family)) {
+    ctrl <- if ("control" %in% names(brm_args)) brm_args$control else list()
+    if (!("adapt_delta" %in% names(ctrl))) {
+      ctrl$adapt_delta <- 0.99
+      brm_args$control <- ctrl
+    }
+  }
   build_defaults <- function() {
     define_prior(
       model,
@@ -753,7 +785,8 @@ add_brm_defaults <- function(
       response,
       prior_type = prior_type,
       model_survival = model_survival,
-      disp_spec = disp_spec
+      disp_spec = disp_spec,
+      group_spec = group_spec
     )
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
@@ -810,6 +843,18 @@ add_brm_defaults <- function(
     if (length(disp_par_names) > 0) {
       init_priors <- init_priors[!init_priors$nlpar %in% disp_par_names, ]
     }
+    # A group-level term introduces parameters that are no part of the mean
+    # curve either, and they have to come out for the same reason. Two kinds:
+    # the standard deviations, dropped by class, which is general and needs no
+    # maintenance; and the `ogl` offset, dropped by name, because it is the one
+    # parameter a group-level term adds that carries class "b" and so survives
+    # every class filter. The `ogl` row is what made make_inits() reject the
+    # whole set -- and therefore what stopped a user supplying by hand the
+    # group-level prior that was never generated. Filtering unconditionally
+    # rather than from group_spec: `ogl` is a reserved name, so a row carrying
+    # it is always this parameter and never a curve coefficient. See #245.
+    init_priors <- init_priors[init_priors$class != "sd", ]
+    init_priors <- init_priors[init_priors$nlpar != "ogl", ]
     inits <- if (is_hurdle_family(family)) {
       # Two blocks with differently-scaled responses, primed separately then
       # merged. response_link_scale() is a no-op for hurdle_gamma under an
