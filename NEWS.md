@@ -6,10 +6,18 @@
   diagnostics via `pp_check()` and `check_fit()`, exclusion of models that fail
   the screen, and reporting. It covers the two steps the other vignettes state
   but do not demonstrate — choosing the family from the data, and removing a
-  model and seeing the effect on the weights and on the model-averaged estimate.
-  Worked for a counts-out-of-trials response and repeated for a continuous one,
-  since the family screen and the fit checks behave differently between them.
-  The screening step uses `check_sampling()` and `screen_models()` rather than
+  model from the set and seeing what that does to the answer.
+
+  The family screen reads the `dispersion()` posterior against its null value of
+  1 rather than thresholding the point estimate, which is the package's existing
+  convention and the only coherent reading of a statistic returned with an
+  interval. The exclusion step is worked on three datasets because the outcome
+  differs between them: `nassarius` drops half the model weight and the
+  model-averaged *N(S)EC* does not move, `simazine` drops far less weight and it
+  does, and `diuron` has nothing to drop. Weight redistribution and movement of
+  the estimate are separate consequences, and neither is predictable before the
+  screen is run — which is the argument for the step being obligatory. The
+  screening itself uses `check_sampling()` and `screen_models()` rather than
   hand-rolled code, which is what those helpers exist for. See #219.
 
 - A control lack-of-fit is now surfaced rather than waiting to be looked for:
