@@ -21,6 +21,25 @@ cd /mnt/c/Rworking/bayesnec-stack
 uptime; nproc          # confirm the machine budget still holds
 ```
 
+**Notes-only changes go straight to `dev`. No branch, no PR.** RF, 2026-08-25:
+a PR that touches nothing but `notes/` still triggers the full check matrix, and
+the volume of those runs had got out of hand. Commit to `dev` and push. This
+covers `notes/**` and nothing else — **if a commit touches one line of `R/`,
+`tests/`, `man/`, `DESCRIPTION`, `NAMESPACE`, `vignettes/` or `.github/`, it is
+not a notes change** and the rule below applies in full. PRs #239 and #241 were
+notes-only and went through the stack; #254 was the same and was closed unmerged
+in favour of a direct push.
+
+**Write it once, and write it in the PR body or the issue comment.** RF,
+2026-08-25: the same facts were being restated in `01_work_queue.md`,
+`05_run_log.md`, `06_review_run.md` *and* the tracker, and the duplication is
+what makes the run hard to follow. Reasoning, evidence and what-was-left-undone
+belong on the PR or the issue, where they stay attached to the change. These
+notes carry only what GitHub cannot: the plan not yet started, and the
+one-line-per-item **status column** in the stack table above, which points at
+the PR rather than summarising it. If you find yourself writing a paragraph here
+that repeats a PR body, delete it and link the PR.
+
 **One issue, one branch, one PR, and the branches STACK.** This reverses the
 rule that stood for the 2026-08-14 run. Each branch is cut from the *previous*
 issue's branch, not from `dev`, and its PR targets the previous branch so the
@@ -120,9 +139,17 @@ diff and reviewable:
 
 | heading | tier | issues |
 |---|---|---|
-| `# bayesnec 2.1.4` | bug fixes, docs, CI — **ships to CRAN first** | #216 (landed), #139, #210, #207 |
-| `# bayesnec 2.2.0` | features | #136, #209, #148 |
-| `# bayesnec 2.3.0` | the factor covariate | #33, and the #6/#33 vignette |
+| `# bayesnec 2.1.4` | bug fixes, docs, CI, and the feature work that landed with them — **ships to CRAN first** | #216 (landed), #139, #210, #207, #136, #209, #148 |
+| `# bayesnec 2.2.0` | the factor covariate | #33, and the #6/#33 vignette |
+
+**Revised 2026-08-25, RF.** The tiers were originally 2.1.4 bug fixes / 2.2.0
+features / 2.3.0 factor covariate. #136 and #148 merged into the 2.1.4 heading
+when their branches were restacked onto `dev`, and #209 is on hold, so the
+feature tier no longer exists as a separate release. Rather than unpick it, the
+plan now treats 2.1.4 as everything up to and including the feature work, and
+**2.2.0 as the factor covariate release** --- `bnec_group()` is significant new
+functionality that never existed before and warrants a release of its own.
+There is no 2.3.0 tier.
 
 The first PR of each tier opens that tier's heading. Everything after it in the
 tier files underneath. **RF sets the actual release version** in `DESCRIPTION`
@@ -142,6 +169,16 @@ the first PR in the stack; its contents (the #216 work) belong to that release.
 - **Do not run `vignettes/precompile.R`,** and do not regenerate any `*.Rmd`
   from `*.Rmd.orig`. Vignette rebuilds take hours and are handled separately
   under #190. If a change alters vignette output, say so in the PR body.
+  This rule still stands, and a precompile is **not** a precondition for
+  merging: since #242 the rendered `.Rmd` files are display-only markdown that
+  `R CMD check` builds in ~16s, and `dev` has no required checks. Where a
+  rendered number genuinely has to be current before a merge — it is quoted in
+  prose, or the published dev site would mislead — dispatch the
+  `precompile vignettes` workflow with that one vignette named, which is ~20
+  minutes and opens a PR with the diff. Since #251 it fans out one job per
+  vignette, so the release run under #190 is also the slowest vignette rather
+  than the sum. Do not run a full local rebuild per branch; that is the drift
+  #251 was opened to stop.
 - **Do not edit** `CLAUDE.md` or any settings/config file. The `.github/`
   prohibition is **lifted for #215 only** (RF, 2026-08-21) — that issue is
   entirely CI work. No other issue in the stack may touch `.github/`.

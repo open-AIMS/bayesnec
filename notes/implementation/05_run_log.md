@@ -285,3 +285,22 @@ other two #240 guards in that file -- the `NA` index test and the
 held. Worth recording because a branch cut before a test exists cannot fail it
 until the two meet, and this is the second time that shape of thing has bitten
 this stack.
+
+---
+
+# MERGE RECORD — 2026-08-25
+
+**The PR bodies are the record.** This table exists only so a session knows
+which PR to read; nothing here restates one.
+
+| merged | PR | issues closed |
+|---|---|---|
+| 08-24 | #240, #241, #242, #246 | #244 |
+| 08-24 | #226 | **#148** (with #240) — closed by hand 08-25 |
+| 08-25 | #252 | #251 |
+| 08-25 | #224 | #136, #247 |
+| 08-25 | #227 | — (#33 **stage 1**; #33 left open for stage 2) |
+
+Release tiers were revised in the #227 pass: `2.1.4` is everything through the
+feature work, **`2.2.0` is the factor covariate release**, and the short-lived
+`2.3.0` tier is gone.

@@ -1,3 +1,60 @@
+# bayesnec 2.2.0
+
+- New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
+  independently within each level of a factor and model-averaging within each
+  level. This is the first support for a factor covariate, and it answers the
+  premise `vignette("example4")` has carried since the beginning: that the
+  *functional form* of the response may change between levels, not merely its
+  parameters.
+
+  Levels partition the data disjointly and share no parameters, so the expected
+  log predictive density is additive across them. Under pseudo-BMA — the package
+  default — the crossed model weights are therefore exactly the outer product of
+  the per-level weight vectors, the same identity `crossed_weights()` rests on
+  for the two blocks of a hurdle fit. New `crossed_group_weights()` reports both
+  readings of that table: the **unrestricted** maximum, which will typically
+  assign different equations to different levels, and the **diagonal**, which
+  asks which single equation best describes every level — a question `bayesnec`
+  could not previously answer. The table is computed on demand rather than
+  materialised, since with 23 models and *G* levels it has 23^*G* cells. As for
+  `crossed_weights()`, the identity is specific to pseudo-BMA: stacking
+  optimises a different objective whose solution is not an outer product, and
+  `crossed_group_weights()` refuses a fit built with any other weighting method
+  rather than silently returning a table that looks right and is not.
+
+  The family is chosen **once** from the whole response and passed down.
+  Selecting it per subset could pick different families at different levels,
+  which would put their `elpd` contributions on different scales and make the
+  crossed weights meaningless. Dispersion stays per level, deliberately: a
+  shared dispersion parameter would break the factorisation the crossed weights
+  depend on.
+
+  Passing `pooled` — a `bnec()` fit of the same model set to the whole data
+  with the factor ignored — adds the third reading, and it is the one that asks
+  whether the factor matters at all. A pooled fit is scored on exactly the same
+  observations as the levels together are, so the grouped and pooled WAIC are
+  directly comparable. A standard error accompanies the difference where every
+  level and the pooled fit settled on a single model; a `bayesmanecfit` stores
+  its component fits as they were before their criteria were attached, so it
+  keeps each model's WAIC point estimate and none of the pointwise values the
+  standard error needs. It is `NA` in that case rather than quietly omitted.
+
+  Every level is an ordinary `bayesnecfit` or `bayesmanecfit`, so `nec()`,
+  `ecx()`, `nsec()`, `summary()` and `plot()` work per level and everything that
+  works on a single fit works on each. `compare_posterior()` is now a generic
+  with a `bayesnecgroupfit` method comparing the levels: `crossed_group_weights()`
+  answers which *equation* best describes each level, while `compare_posterior()`
+  answers whether the levels differ in the *quantity being reported* — the
+  *NEC*, an ECx, or the fitted curve — and the two can disagree. The levels share
+  no parameters, so their posteriors are independent and the pairwise
+  probabilities are read directly, with no multiple-comparison adjustment
+  implied. `compare_posterior.default()` is the previous function unchanged, so
+  existing callers behave identically.
+
+  Refitting the favoured combination *jointly* is not included: that needs
+  level-aware post-processing inside the toxicity estimators, which is the code
+  the `toxval` migration moves. See #33.
+
 # bayesnec 2.1.4
 
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the
@@ -46,6 +103,35 @@
   long after the message had scrolled past. An aterm the package has not
   validated cannot be assumed to behave sensibly through prior generation, the
   initial-value search and post-processing. See #136.
+- Vignette precompilation is now usable one vignette at a time, which is what
+  makes it something other than an all-or-nothing release step. Three things had
+  to be true and none of them was. The `create-pull-request` step listed
+  `vignettes/.precompile-dry-run` in `add-paths`, a file that exists only on a
+  dry run — and `git add` stages *nothing* when any single pathspec matches
+  nothing, so every real run fitted its models correctly and then discarded the
+  result at the last step; the dry run, the one path where that file exists, was
+  the only configuration that had ever passed. The errored-chunk guard added
+  alongside the CI vignette check globbed every rendered vignette in the
+  directory rather than the ones it had just knitted, so a partial rebuild was
+  judged against vignettes it had not touched and was not shipping. And the job
+  knitted every `.Rmd.orig` in sequence, making a full rebuild the sum of all of
+  them — 3–4 hours — with any single failure aborting the lot.
+
+  The workflow now resolves and *validates* the vignette selection up front (a
+  name with no matching `.Rmd.orig` fails in seconds, where it previously held
+  back every vignette and reported success having rebuilt nothing), then fans
+  out one job per vignette. Wall clock is the slowest vignette rather than the
+  sum, a vignette that fails is confined to its own leg, and each leg uploads
+  what it produced as an artifact *before* the pull-request step, so a failure
+  there costs the review rather than the compute. A single job then opens one PR
+  against the branch the run was dispatched from, or against an explicit `base`
+  input. See #251.
+
+  Precompiling is not a precondition for merging a branch that edits a vignette
+  and should not be treated as one: since the CI vignette check the rendered
+  `.Rmd` files are display-only markdown that `R CMD check` builds in seconds.
+  Edit the `.Rmd.orig`, note in the pull request that the rendered output is
+  stale, and rebuild at release. See #190.
 
 - Group-level terms now work with a bounded family. `ogl()`, `pgl()` and
   `(par | group)` add parameters that `get_priors()` never described, so a
