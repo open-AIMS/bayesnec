@@ -537,7 +537,7 @@ test_that("a grouped fit on a bounded family initialises and samples", {
   n_tank <- 12
   x <- rep(seq(0, 4, length.out = 15), each = 4)
   tank <- factor(rep(seq_len(n_tank), length.out = length(x)))
-  # a real tank effect, so this tests a grouped model rather than a funnel
+  # a genuine tank effect, so this exercises an estimated group-level term
   offset <- rnorm(n_tank, 0, 0.04)[as.integer(tank)]
   mu <- 0.05 + (0.9 - 0.05) * exp(-exp(-0.4) * pmax(x - 2, 0)) + offset
   mu <- pmin(pmax(mu, 0.01), 0.99)
@@ -597,6 +597,77 @@ test_that("sd_prior_scales reads the scale out of a generated prior", {
   expect_length(bayesnec:::sd_prior_scales(
     brms::prior_string("normal(0, 5)", nlpar = "beta")), 0)
   expect_length(bayesnec:::sd_prior_scales(NULL), 0)
+  # Only the distributions whose last argument is a scale are read. gamma() and
+  # exponential() carry a rate there and constant() a value, so taking the last
+  # number from them returns something that is not a scale. A user-supplied
+  # gamma(2, 100) previously produced a starting value of 100.
+  mixed <- data.frame(
+    prior = c("exponential(25)", "student_t(3, 0, 0.09)", "constant(0)",
+              "normal(0, 0.5)", "gamma(2, 100)", "cauchy(0, 2)"),
+    class = rep("sd", 6), stringsAsFactors = FALSE
+  )
+  expect_equal(bayesnec:::sd_prior_scales(mixed), c(0.09, 0.5, 2))
+})
+
+test_that("the adapt_delta raise is gated on the support of mu", {
+  # An unconstrained mean has no boundary for a group-level offset to cross, so
+  # a grouped gaussian fit is left at the brms default; every other family under
+  # an identity link restricts mu and gets the raise. Under a log or logit link
+  # mu is the linear predictor and is unconstrained whatever the family. See
+  # #245 and #256.
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(245)
+  y <- plogis(rnorm(50, 1, 1))
+  defaults <- function(family, group) {
+    suppressMessages(bayesnec:::add_brm_defaults(
+      list(chains = 2), "nec3param", family, x, y,
+      skip_check = TRUE, custom_name = NULL, group_spec = group
+    ))
+  }
+  grouped <- list(nlpars = "ogl", ogl = TRUE)
+
+  # constrained mean, grouped: raised
+  expect_equal(defaults(validate_family("Beta"), grouped)$control$adapt_delta,
+               0.99)
+  expect_equal(defaults(validate_family("Gamma"), grouped)$control$adapt_delta,
+               0.99)
+  expect_equal(defaults(validate_family("poisson"), grouped)$control$adapt_delta,
+               0.99)
+  # unconstrained mean, grouped: left alone
+  expect_null(defaults(validate_family("gaussian"), grouped)$control)
+  expect_null(defaults(gaussian(link = "log"), grouped)$control)
+  expect_null(defaults(Beta(link = "logit"), grouped)$control)
+  # constrained mean, ungrouped: left alone, since there is no unconstrained
+  # deviation to carry the mean out of range
+  expect_null(defaults(validate_family("Beta"), NULL)$control)
+
+  # a control list supplied for another reason keeps its own entries
+  both <- suppressMessages(bayesnec:::add_brm_defaults(
+    list(chains = 2, control = list(max_treedepth = 12)), "nec3param",
+    validate_family("Beta"), x, y, skip_check = TRUE, custom_name = NULL,
+    group_spec = grouped))
+  expect_equal(both$control$max_treedepth, 12)
+  expect_equal(both$control$adapt_delta, 0.99)
+  # and an adapt_delta the caller chose is theirs, including a lower one
+  own <- suppressMessages(bayesnec:::add_brm_defaults(
+    list(chains = 2, control = list(adapt_delta = 0.8)), "nec3param",
+    validate_family("Beta"), x, y, skip_check = TRUE, custom_name = NULL,
+    group_spec = grouped))
+  expect_equal(own$control$adapt_delta, 0.8)
+})
+
+test_that("mu_is_constrained answers on family and link together", {
+  f <- bayesnec:::mu_is_constrained
+  expect_true(f(validate_family("Beta")))
+  expect_true(f(validate_family("beta_binomial")))
+  expect_true(f(validate_family("Gamma")))
+  expect_true(f(validate_family("poisson")))
+  expect_true(f(validate_family("hurdle_gamma")))
+  expect_false(f(validate_family("gaussian")))
+  # the link is asked as well as the family
+  expect_false(f(gaussian(link = "log")))
+  expect_false(f(Beta(link = "logit")))
+  expect_false(f(NULL))
 })
 
 test_that("a constant ogl intercept gets no initial value", {
