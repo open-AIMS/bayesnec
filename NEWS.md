@@ -135,10 +135,14 @@
 
 - Internal: a single statement of the interval the response distribution allows
   the mean to occupy, and of what each model's mean can produce.
-  `mu_support()` returns that interval given family **and link as fitted** —
-  `(-Inf, Inf)` for gaussian and for any family under a `log` or `logit` link,
-  `(0, 1)` for the proportion families and `(0, Inf)` for the count and Gamma
-  families. `model_mu_ranges()` records, for each of the 23 models, whether its
+  `mu_support()` returns that interval — `(-Inf, Inf)` for gaussian, `(0, 1)`
+  for the proportion families and `(0, Inf)` for the count and Gamma families,
+  with a `dpar` argument for the second block of a two-block family, whose `hu`
+  or `zi` probability is on `(0, 1)` whatever its `mu` block is.
+  `mu_is_constrained()` adds the link: `brms` applies the inverse link before
+  the likelihood, so a proposal can only be invalid under `identity`, which
+  passes the linear predictor through untouched, or `inverse`, which is
+  negative wherever the linear predictor is. `model_mu_ranges()` records, for each of the 23 models, whether its
   mean can fall below zero, whether it can exceed its own level through a term
   carrying no coefficient, whether it decays onto zero, whether it saturates at
   one, and which parameters a group-level deviation on can take the mean out of

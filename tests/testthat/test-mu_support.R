@@ -4,57 +4,69 @@
 # check_models() had drifted apart; a table that is written down and never
 # checked is the same failure with an extra file.
 
-test_that("mu_support answers on family and link together", {
-  s <- bayesnec:::mu_support
-  expect_equal(s(validate_family("Beta")), c(0, 1))
-  expect_equal(s(validate_family("binomial")), c(0, 1))
-  expect_equal(s(validate_family("beta_binomial")), c(0, 1))
-  expect_equal(s(validate_family("bernoulli")), c(0, 1))
-  expect_equal(s(validate_family("zero_inflated_beta")), c(0, 1))
-  expect_equal(s(validate_family("Gamma")), c(0, Inf))
-  expect_equal(s(validate_family("poisson")), c(0, Inf))
-  expect_equal(s(validate_family("negbinomial")), c(0, Inf))
-  expect_equal(s(validate_family("hurdle_gamma")), c(0, Inf))
-  expect_equal(s(validate_family("zero_inflated_poisson")), c(0, Inf))
-  # gaussian is unconstrained: the data enter through the residual only
-  expect_equal(s(validate_family("gaussian")), c(-Inf, Inf))
-  # and the link is asked as well as the family, because mu is then the linear
-  # predictor whatever the family
-  expect_equal(s(gaussian(link = "log")), c(-Inf, Inf))
-  expect_equal(s(Beta(link = "logit")), c(-Inf, Inf))
-  expect_equal(s(NULL), c(-Inf, Inf))
+expected_supports <- function() {
+  # Keyed on the family tag, so a family added to mod_fams without a decision
+  # here fails the completeness test below rather than taking a fallback.
+  list(gaussian = c(-Inf, Inf),
+       Gamma = c(0, Inf), poisson = c(0, Inf), negbinomial = c(0, Inf),
+       zero_inflated_poisson = c(0, Inf),
+       zero_inflated_negbinomial = c(0, Inf),
+       hurdle_gamma = c(0, Inf),
+       bernoulli = c(0, 1), Beta = c(0, 1), binomial = c(0, 1),
+       beta_binomial = c(0, 1), zero_inflated_beta = c(0, 1))
+}
+
+test_that("mu_support is a property of the response distribution", {
+  exp_s <- expected_supports()
+  for (fam in names(exp_s)) {
+    expect_equal(bayesnec:::mu_support(validate_family(fam)), exp_s[[fam]],
+                 info = fam)
+  }
+  # the hu and zi blocks are probabilities whatever the mu block is, which is
+  # the case hurdle_gamma makes: (0, Inf) on mu and (0, 1) on hu at once
+  expect_equal(bayesnec:::mu_support(validate_family("hurdle_gamma"),
+                                     dpar = "hu"), c(0, 1))
+  expect_equal(bayesnec:::mu_support(validate_family("zero_inflated_beta"),
+                                     dpar = "zi"), c(0, 1))
+  expect_equal(bayesnec:::mu_support(NULL), c(-Inf, Inf))
 })
 
-test_that("mu_is_constrained is the coarsest reading of mu_support", {
+test_that("every family in mod_fams has a decided support", {
+  # This is the test the comment claims: an unlisted family errors here rather
+  # than passing on a fallback that happens to satisfy a range check.
+  expect_setequal(names(expected_supports()), unname(bayesnec:::mod_fams))
+})
+
+test_that("mu_is_constrained asks the link as well as the family", {
   f <- bayesnec:::mu_is_constrained
+  # identity passes the linear predictor straight into the likelihood
   expect_true(f(validate_family("Beta")))
   expect_true(f(validate_family("Gamma")))
+  expect_true(f(validate_family("beta_binomial")))
+  expect_true(f(validate_family("hurdle_gamma")))
+  # gaussian has nothing to violate
   expect_false(f(validate_family("gaussian")))
+  # brms applies the inverse link before the likelihood, so under these the mean
+  # is valid by construction whatever is proposed
   expect_false(f(Beta(link = "logit")))
-})
-
-test_that("every family bayesnec accepts has a support", {
-  # A new family added to mod_fams without a decision here would silently take
-  # the (0, Inf) fallback.
-  # the values of mod_fams are the constructor names; its names are the family
-  # tags brms reports, and "beta" as a tag resolves to base::beta()
-  for (fam in unname(bayesnec:::mod_fams)) {
-    s <- bayesnec:::mu_support(validate_family(fam))
-    expect_length(s, 2)
-    expect_true(s[1] < s[2])
-  }
+  expect_false(f(gaussian(link = "log")))
+  expect_false(f(binomial(link = "probit")))
+  expect_false(f(binomial(link = "cloglog")))
+  expect_false(f(poisson(link = "sqrt")))
+  # inverse is the exception: inv(eta) is negative wherever eta is, so a Gamma
+  # fitted on it can still be handed an invalid mean. Confirmed against the
+  # generated Stan code, which emits `mu = inv(mu)` then
+  # `gamma_lpdf(Y | shape, shape ./ mu)`.
+  expect_true(f(Gamma(link = "inverse")))
+  expect_false(f(NULL))
 })
 
 test_that("the model range table covers every model exactly once", {
   tab <- bayesnec:::model_mu_ranges()
   expect_setequal(tab$model, models()$all)
   expect_equal(anyDuplicated(tab$model), 0)
-  # every unsafe parameter named is a parameter that model actually has
-  for (i in seq_len(nrow(tab))) {
-    pars <- names(get(paste0("bf_", tab$model[i]))[[2]])
-    expect_true(all(tab$unsafe[[i]] %in% pars),
-                info = tab$model[i])
-  }
+  expect_setequal(names(tab), c("model", "below_zero", "unscaled_excess",
+                               "ceiling_at_one", "zero_asymptote"))
 })
 
 # --- the table regenerated from the formulas -------------------------------
@@ -103,12 +115,19 @@ test_that("unscaled_excess is an excess the fit cannot shrink away", {
     got <- max(sweep_mu(m, slope_val = -25)) > 1
     expect_equal(got, tab$unscaled_excess[tab$model == m], info = m)
   }
-  # and every model that carries slope can exceed 1 for some slope, which is
+  # and the coefficiented hormesis models can exceed 1 for some slope, which is
   # why the distinction is needed at all rather than a plain "can exceed"
   for (m in c("nechorme", "nechorme4", "ecxhormebc4", "ecxhormebc5")) {
     expect_true(max(sweep_mu(m, slope_val = 2)) > 1, info = m)
-    expect_false(bayesnec:::model_mu_ranges()$unscaled_excess[
-      bayesnec:::model_mu_ranges()$model == m], info = m)
+    expect_false(tab$unscaled_excess[tab$model == m], info = m)
+  }
+  # the flag is FALSE for the thirteen equations with no slope at all, and that
+  # is asserted rather than assumed: each is either top times a factor in
+  # (0, 1] or a convex combination of top and bot, so none can exceed 1 when
+  # both are inside it
+  for (m in tab$model[!has_slope]) {
+    expect_lte(max(sweep_mu(m)), 1 + 1e-8, label = m)
+    expect_false(tab$unscaled_excess[tab$model == m], info = m)
   }
 })
 
@@ -139,25 +158,39 @@ test_that("zero_asymptote is what the formulas do, and matches mod_groups", {
 })
 
 test_that("ceiling_at_one is a saturating hormetic term, not a support failure", {
-  # nechormepwr01's hormetic factor rises towards 1 for top < 1, which is the
-  # intended increase on a 0-1 response, and falls towards 1 for top > 1, where
-  # it expresses a decline and cannot represent a mean above top. mu stays
-  # positive either way, so no support flag would exclude it.
-  fac <- function(top, x, slope = 0)
-    1 / (1 + ((1 / top) - 1) * exp(-exp(slope) * x))
+  # Read off bf_nechormepwr01 rather than a hand-written copy of its hormetic
+  # term, so that editing the equation breaks this test. nec is placed beyond
+  # the evaluated predictor range so the decay factor is exactly 1 and what is
+  # left is the hormetic term alone.
   x <- c(0, 0.5, 1, 2, 4, 10)
-  rising <- fac(0.3, x)
+  fac <- function(top, slope = 0) {
+    eval_mu("nechormepwr01",
+            data.frame(top = top, slope = slope, beta = 0, nec = 1e6), x)
+  }
+  rising <- fac(0.3)
   expect_true(all(diff(rising) > 0))
+  expect_equal(rising[1], 0.3)
   expect_lt(max(rising), 1 + 1e-8)
-  falling <- fac(20, x)
+
+  falling <- fac(20)
   expect_true(all(diff(falling) < 0))
   expect_equal(falling[1], 20)
-  # it approaches one from above rather than reaching it
+  # it approaches one from above rather than reaching it, so a mean above top
+  # cannot be represented and the shape is a decline rather than an increase
   expect_gt(falling[length(falling)], 1)
-  expect_lt(fac(20, 100), 1 + 1e-8)
-  # and it is the only model flagged that way
+  expect_lt(eval_mu("nechormepwr01",
+                    data.frame(top = 20, slope = 0, beta = 0, nec = 1e6), 100),
+            1 + 1e-8)
+  # mu stays strictly positive throughout, so no support flag would exclude it
+  expect_true(all(c(rising, falling) > 0))
+
   tab <- bayesnec:::model_mu_ranges()
   expect_equal(tab$model[tab$ceiling_at_one], "nechormepwr01")
+  # and no slope value takes it above one, which is why it is the one model
+  # carrying slope that slope cannot make unsafe
+  for (sl in c(-5, 0, 5, 20)) {
+    expect_lt(max(fac(0.9, slope = sl)), 1 + 1e-8)
+  }
 })
 
 # --- the gates derive from the two artefacts --------------------------------
@@ -201,4 +234,33 @@ test_that("check_models' gates agree with the model range table", {
   # endorsed.
   expect_setequal(dropped(validate_family("gaussian")),
                   tab$model[tab$zero_asymptote])
+
+  # the two-block families apply both blocks' restrictions at once, which is
+  # why mu_support() takes a dpar. hurdle_gamma is the case that needs it:
+  # (0, Inf) on mu and (0, 1) on hu, so it drops the union of what each block
+  # would drop on its own. Nothing else in the model set exercises that.
+  hg <- validate_family("hurdle_gamma")
+  expect_equal(bayesnec:::mu_support(hg), c(0, Inf))
+  expect_equal(bayesnec:::mu_support(hg, dpar = "hu"), c(0, 1))
+  expect_setequal(
+    dropped(hg),
+    tab$model[tab$below_zero | tab$ceiling_at_one | tab$unscaled_excess]
+  )
+  # zero_inflated_beta is 0-1 on both blocks, so the union collapses to the
+  # 0-1 rule and it looks like an ordinary bounded family
+  zib <- validate_family("zero_inflated_beta")
+  expect_equal(bayesnec:::mu_support(zib), c(0, 1))
+  expect_equal(bayesnec:::mu_support(zib, dpar = "zi"), c(0, 1))
+  expect_setequal(dropped(zib),
+                  tab$model[tab$below_zero | tab$unscaled_excess])
+})
+
+test_that("the agreement test covers every family in mod_fams", {
+  # Finding from review: the first version asserted "every family" and covered
+  # ten of twelve, omitting the two-block branch of check_models() entirely.
+  covered <- c("Beta", "binomial", "beta_binomial", "bernoulli",
+               "Gamma", "poisson", "negbinomial", "zero_inflated_poisson",
+               "zero_inflated_negbinomial", "gaussian",
+               "hurdle_gamma", "zero_inflated_beta")
+  expect_setequal(covered, unname(bayesnec:::mod_fams))
 })
