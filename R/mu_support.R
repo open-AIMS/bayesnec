@@ -81,10 +81,13 @@ unit_interval_families <- function() {
 #' \code{1/mu^2} also falls to the default, and correctly: its inverse is
 #' \code{eta^(-1/2)}, which is undefined for a non-positive linear predictor.
 #'
-#' The enumeration is every link the twelve families in \code{mod_fams} accept,
-#' obtained by constructing each rather than from documentation, and
-#' \code{test-mu_support.R} asserts that none falls to the default except
-#' \code{identity}, \code{inverse} and \code{1/mu^2}.
+#' \code{test-mu_support.R} constructs each of the twelve families in
+#' \code{mod_fams} against a fixed list of candidate links, keeps those the
+#' family accepts, and asserts that none falls to the default except
+#' \code{identity}, \code{inverse} and \code{1/mu^2}. That candidate list is
+#' complete for brms 2.23.0; a link added to an existing family in a later
+#' version would be missed rather than caught, since brms does not expose the
+#' accepted set programmatically.
 #'
 #' An unrecognised link returns the whole real line, which is the conservative
 #' answer: it never lies inside a bounded support, so
@@ -220,7 +223,7 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #'     it.
 #' }
 #'
-#' \strong{Scope.} Three restrictions, each of which would otherwise be an
+#' \strong{Scope.} Four restrictions, each of which would otherwise be an
 #' unstated assumption:
 #'
 #' \itemize{
