@@ -448,15 +448,19 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' \code{\link{define_prior}} generates constrains its parameter to the region
 #' where the model is defined: \code{beta(5, 2)} on (0, 1), \code{lb = 0} for
 #' the count and Gamma families, \code{nec} truncated to the predictor range.
-#' A group-level deviation cannot be bounded that way -- \pkg{brms} declares
-#' \code{r_} unconstrained -- so a grouped fit does not inherit the guarantee
-#' that \code{top}, \code{bot} and \code{nec} stay in range, and no choice of
-#' scale here restores it. For a Beta response spanning most of the unit
-#' interval, the scale above reduces the prior probability of a group-level
-#' mean leaving the (0, 1) support from about 0.70 under the \pkg{brms} default
-#' to about 0.05, which is the difference between a fit that cannot start and
-#' one that samples; it does not reach zero, and a grouped fit on a bounded
-#' family may still need \code{adapt_delta}. See \code{vignette("example3")}.
+#' A group-level deviation cannot be constrained that way -- \pkg{brms} declares
+#' \code{r_} unconstrained -- so a grouped fit does not inherit the property
+#' that \code{top}, \code{bot} and \code{nec} remain in range, and no choice
+#' of scale here restores it. Scaling the prior is what allows such a fit to
+#' initialise; it does not stop the sampler reaching the boundary afterwards,
+#' because the posterior for the standard deviation is an order of magnitude
+#' smaller than the distance from the fitted mean to that boundary and it is the
+#' length of the leapfrog trajectory that crosses it. Divergent transitions on a
+#' grouped fit are therefore expected wherever the response distribution
+#' restricts the range of the mean; see \code{\link{add_brm_defaults}} for the
+#' \code{adapt_delta} that mitigates them, \code{vignette("example3")} for what
+#' a user should check, and #257 for the parameterisation change that removes
+#' the cause.
 #'
 #' \strong{prior_type.} \code{"regularizing"} halves every generated scale.
 #' The two default sets differ only in the response-scaled parameters for the
