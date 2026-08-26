@@ -614,8 +614,10 @@ test_that("sd_prior_scales reads the scale out of a generated prior", {
 test_that("the adapt_delta raise is gated on the support of mu", {
   # An unconstrained mean has no boundary for a group-level offset to cross, so
   # a grouped gaussian fit is left at the brms default; every other family under
-  # an identity link restricts mu and gets the raise. Under a log or logit link
-  # mu is the linear predictor and is unconstrained whatever the family. See
+  # an identity link restricts mu and gets the raise. A non-identity link is
+  # decided by whether the range of its inverse lies inside that support, which
+  # is not the same as "any link other than identity is safe": Beta(link =
+  # "log") is not, because exp() is unbounded above. See mu_is_constrained(),
   # #245 and #256.
   x <- as.numeric(rep(1:10, each = 5))
   set.seed(245)
@@ -657,6 +659,7 @@ test_that("the adapt_delta raise is gated on the support of mu", {
     group_spec = grouped))
   expect_equal(own$control$adapt_delta, 0.8)
 })
+
 test_that("a constant ogl intercept gets no initial value", {
   # Fixing the ogl intercept at zero is the clean way to remove its confounding
   # with top and bot. Stan then does not declare b_ogl, so an init for it has

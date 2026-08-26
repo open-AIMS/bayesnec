@@ -68,11 +68,23 @@ unit_interval_families <- function() {
 #'
 #' @details \pkg{brms} applies the inverse link to the linear predictor before
 #' the likelihood is evaluated, so what reaches the likelihood is the image of
-#' the real line under that inverse. \code{log} gives \code{exp(eta)} on
-#' (0, Inf); \code{logit}, \code{probit}, \code{cloglog} and \code{cauchit}
-#' give (0, 1); \code{sqrt} and \code{softplus} give (0, Inf);
-#' \code{identity} passes the predictor through untouched; and \code{inverse}
-#' gives \code{inv(eta)}, which is negative wherever \code{eta} is.
+#' the real line under that inverse. \code{log}, \code{softplus} and
+#' \code{squareplus} give (0, Inf); \code{logit}, \code{probit},
+#' \code{probit_approx}, \code{cloglog}, \code{cauchit} and \code{softit}
+#' give (0, 1); \code{sqrt} gives \code{eta^2}, so \strong{[0, Inf)} rather
+#' than (0, Inf) --- it reaches zero at \code{eta = 0}, which is outside the
+#' open support the count and Gamma families require, though on a set of
+#' measure zero under continuous sampling; \code{identity} passes the predictor
+#' through untouched; and \code{inverse} gives \code{inv(eta)}, which is
+#' negative wherever \code{eta} is.
+#'
+#' \code{1/mu^2} also falls to the default, and correctly: its inverse is
+#' \code{eta^(-1/2)}, which is undefined for a non-positive linear predictor.
+#'
+#' The enumeration is every link the twelve families in \code{mod_fams} accept,
+#' obtained by constructing each rather than from documentation, and
+#' \code{test-mu_support.R} asserts that none falls to the default except
+#' \code{identity}, \code{inverse} and \code{1/mu^2}.
 #'
 #' An unrecognised link returns the whole real line, which is the conservative
 #' answer: it never lies inside a bounded support, so
@@ -87,12 +99,14 @@ link_range <- function(link) {
   switch(link,
     log = c(0, Inf),
     softplus = c(0, Inf),
+    squareplus = c(0, Inf),
     sqrt = c(0, Inf),
     logit = c(0, 1),
     probit = c(0, 1),
     probit_approx = c(0, 1),
     cloglog = c(0, 1),
     cauchit = c(0, 1),
+    softit = c(0, 1),
     c(-Inf, Inf)
   )
 }
@@ -140,6 +154,8 @@ mu_is_constrained <- function(family, dpar = "mu") {
     family[[paste0("link_", dpar)]]
   }
   if (is.null(link)) {
+    # A dpar the family does not carry. No caller reaches this, and reporting
+    # the mean as constrained is the conservative answer if one ever does.
     return(TRUE)
   }
   reachable <- link_range(link)
@@ -218,6 +234,14 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #'     \code{nechorme4pwr} --- and for a different reason, a fractional power
 #'     of a negative base being undefined rather than the mean being negative.
 #'     That sixth gate is not described by this table.
+#'   \item \code{zero_asymptote} states a property of the mean function, but
+#'     the gate consuming it tests \code{link} against \code{"logit"} and
+#'     \code{"log"} only. The same reachability argument applies to
+#'     \code{probit}, \code{cloglog}, \code{cauchit} and \code{softit},
+#'     under which no model is currently dropped. The table describes the
+#'     property and \code{\link{check_models}} implements a narrower rule;
+#'     closing that gap changes which models a fit uses, and is left to the
+#'     change that makes the gates derive from this table.
 #'   \item \code{unscaled_excess} is stated against 1 rather than against the
 #'     model's own level, so it is specific to a (0, 1) bounded response. On a
 #'     count response nothing caps the mean and the flag has no work to do.

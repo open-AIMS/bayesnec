@@ -167,14 +167,21 @@
 - The `adapt_delta = 0.99` that a grouped fit receives is now decided by whether
   the link's inverse maps into the response distribution's support, rather than
   by the family tag and a list of two links. Two corrections follow, both
-  affecting grouped fits only. `binomial(link = "log")` and `Beta(link = "log")`
-  now receive it and previously did not, which is the defect above: a log link
-  does not keep a 0–1 bounded mean in range. And eighteen combinations of a
-  non-identity link whose inverse does map into the support — `probit`,
-  `cloglog`, `cauchit` and `sqrt` across the bounded and count families — no
-  longer receive it, because no proposal under those links can reach an invalid
-  mean and the raise was costing gradient evaluations for nothing. Ungrouped
-  fits are unaffected in every case. See #256.
+  affecting grouped fits only. Over the 87 family and link combinations
+  `validate_family()` accepts — every family in `mod_fams` against every link it
+  constructs, with `link_hu` and `link_zi` at the identity `bnec()` requires:
+
+  - **4 combinations now receive it and did not before**:
+    `binomial(link = "log")`, `bernoulli(link = "log")`, `Beta(link = "log")`
+    and `zero_inflated_beta(link = "log")`. This is the defect above — a log
+    link does not keep a 0–1 bounded mean in range — so these were previously
+    sampling without the mitigation.
+  - **42 no longer receive it**, across `probit`, `probit_approx`, `cloglog`,
+    `cauchit`, `softit`, `sqrt`, `softplus` and `squareplus`. The inverse of
+    each maps into the support, so no proposal can reach an invalid mean and the
+    raise was costing gradient evaluations with nothing to prevent.
+
+  Ungrouped fits are unaffected in every case. See #256.
 
 - Group-level terms now work with a bounded family. `ogl()`, `pgl()` and
   `(par | group)` add parameters that `get_priors()` never described, so a

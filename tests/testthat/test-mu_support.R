@@ -65,7 +65,8 @@ test_that("mu_is_constrained asks family and link together, not either alone", {
   # which emits `mu = exp(mu)` then `beta_lpdf(Y | mu .* phi, (1 - mu) .* phi)`.
   expect_true(f(Beta(link = "log")))
   expect_true(f(binomial(link = "log")))
-  expect_false(f(Gamma(link = "log")))
+  expect_true(f(brms::bernoulli(link = "log")))
+  expect_true(f(brms::zero_inflated_beta(link = "log")))
 
   # inverse maps onto the whole real line, so it guarantees nothing
   expect_true(f(Gamma(link = "inverse")))
@@ -91,6 +92,45 @@ test_that("a two-block family is asked about the block's own link", {
   hg_log <- hg; hg_log$link <- "log"
   expect_false(f(hg_log))
   expect_true(f(hg_log, dpar = "hu"))
+
+  # The case that discriminates. On hurdle_gamma both readings answer TRUE for
+  # the hu block, so reverting to family$link would leave the tests passing. A
+  # zero_inflated_beta on a logit mu link does not: the mu block is guaranteed
+  # and the zi block, on identity, is not.
+  zib <- validate_family("zero_inflated_beta")
+  zib$link <- "logit"
+  expect_false(f(zib))
+  expect_true(f(zib, dpar = "zi"))
+  expect_equal(zib$link_zi, "identity")
+})
+
+test_that("no link any accepted family takes falls to the default unintended", {
+  # link_range()'s default is c(-Inf, Inf), which reports the mean as reachable.
+  # That is correct for identity, inverse and 1/mu^2 and wrong for anything
+  # else, so the enumeration is asserted rather than assumed. Obtained by
+  # constructing every family in mod_fams against every candidate link.
+  fams <- list(gaussian = stats::gaussian, Gamma = stats::Gamma,
+               poisson = stats::poisson, binomial = stats::binomial,
+               negbinomial = brms::negbinomial, bernoulli = brms::bernoulli,
+               Beta = brms::Beta, beta_binomial = brms::beta_binomial,
+               hurdle_gamma = brms::hurdle_gamma,
+               zero_inflated_beta = brms::zero_inflated_beta,
+               zero_inflated_poisson = brms::zero_inflated_poisson,
+               zero_inflated_negbinomial = brms::zero_inflated_negbinomial)
+  candidates <- c("identity", "log", "logit", "probit", "probit_approx",
+                  "cloglog", "cauchit", "inverse", "sqrt", "softplus",
+                  "squareplus", "softit", "1/mu^2")
+  accepted <- character(0)
+  for (fn in names(fams)) {
+    for (l in candidates) {
+      ok <- tryCatch({fams[[fn]](link = l); TRUE},
+                     error = function(e) FALSE, warning = function(w) TRUE)
+      if (ok) accepted <- union(accepted, l)
+    }
+  }
+  falls_to_default <- accepted[vapply(accepted, function(l)
+    all(is.infinite(bayesnec:::link_range(l))), logical(1))]
+  expect_setequal(falls_to_default, c("identity", "inverse", "1/mu^2"))
 })
 
 test_that("the model range table covers every model exactly once", {
