@@ -124,7 +124,7 @@ summary.bayesnecfit <- function(object, ..., ecx = FALSE,
 #' it requires.
 #'
 #' @importFrom brms bayes_R2
-#' @importFrom chk chk_lgl chk_numeric
+#' @importFrom chk chk_lgl chk_numeric chk_number
 #'
 #' @export
 summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
@@ -134,8 +134,10 @@ summary.bayesmanecfit <- function(object, ..., ecx = FALSE,
                                   check_fit = TRUE) {
   chk_lgl(ecx)
   chk_numeric(ecx_vals)
-  chk_numeric(rhat_cutoff)
-  chk_numeric(fit_ratio_cutoff)
+  # chk_number, not chk_numeric: the documented type of both cutoffs is a
+  # vector of length 1, and chk_numeric admits any length.
+  chk_number(rhat_cutoff)
+  chk_number(fit_ratio_cutoff)
   chk_lgl(check_fit)
   x <- object
   ecs <- NULL

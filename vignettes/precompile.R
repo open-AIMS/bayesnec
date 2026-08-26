@@ -33,3 +33,31 @@ if (!all(success)) {
 } else {
   unlink(images)
 }
+
+# Fail on a vignette whose chunks errored ---------------------------------
+# knitr renders a failed chunk as `#> Error...` and carries on, so a run can
+# report success while emitting a vignette that is a cascade of errors --
+# which is exactly what happened to example8 on 2026-08-24, unnoticed until
+# someone read the output. R CMD check does not catch this either: the error
+# text is just text in a rendered .Rmd. Check it here, where it is produced.
+#
+# Scoped to what this run actually knitted, not to every rendered vignette in
+# the directory. The precompile workflow rebuilds one vignette per job by
+# holding back the other `.Rmd.orig` files -- it cannot hide the rendered
+# `.Rmd` files, which have to stay in place for the partial diff to make sense.
+# Globbing the directory therefore judged a partial rebuild against vignettes
+# it had not touched and was not shipping, so one known-bad vignette sitting in
+# the tree would fail every partial rebuild, at the last step, after the
+# compute had been spent. See #251.
+rendered <- file_path_sans_ext(orig_files)
+errored <- Filter(function(f) any(grepl("^#> Error", readLines(f, warn = FALSE))),
+                  rendered)
+if (length(errored)) {
+  detail <- vapply(errored, function(f) {
+    hits <- grep("^#> Error", readLines(f, warn = FALSE), value = TRUE)
+    paste0("  ", basename(f), " (", length(hits), "): ", hits[1])
+  }, character(1))
+  stop("Chunks errored while knitting:\n", paste(detail, collapse = "\n"),
+       "\nFix the vignette source and re-run; do not ship this output.",
+       call. = FALSE)
+}

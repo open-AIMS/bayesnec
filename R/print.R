@@ -135,39 +135,69 @@ print.manecsummary <- function(x, ...) {
   # of #148: the sampler question (did this model converge) and the fit
   # question (does it reproduce the control) feed the same decision about which
   # candidates belong in the averaged set, so they are read together.
-  rhat_bad <- names(x$rhat_issues[unlist(x$rhat_issues)])
+  #
+  # which() rather than logical indexing on both axes: the issue lists are
+  # FALSE-by-construction now, but a manecsummary stored by an older version
+  # can still carry an NA, and an NA index yields an element named NA --
+  # printing "- NA" as though a model called NA had failed.
+  rhat_bad <- names(x$rhat_issues)[which(unlist(x$rhat_issues))]
   fit_bad <- if (is.null(x$fit_issues)) {
     character(0)
   } else {
-    names(x$fit_issues[unlist(x$fit_issues)])
+    names(x$fit_issues)[which(unlist(x$fit_issues))]
   }
   if (length(rhat_bad) > 0 || length(fit_bad) > 0) {
     msg <- character(0)
     if (length(rhat_bad) > 0) {
       msg <- c(msg,
                paste0("Rhat > ",
-                      if (is.null(x$rhat_cutoff)) 1.01 else x$rhat_cutoff,
-                      " (no convergence):\n",
-                      paste0("  -  ", rhat_bad, collapse = "\n")))
+                      # 1.05 for a stored object with no cutoff recorded: that
+                      # field post-dates the move to 1.01, so an object without
+                      # it was assessed against the old 1.05 grep and reporting
+                      # 1.01 would attribute the wrong threshold to it.
+                      if (is.null(x$rhat_cutoff)) 1.05 else x$rhat_cutoff,
+                      " (no convergence):
+",
+                      paste0("  -  ", rhat_bad, collapse = "
+")))
     }
     if (length(fit_bad) > 0) {
       msg <- c(msg,
                paste0("control observed/simulated ratio beyond ",
-                      x$fit_ratio_cutoff, " (see ?check_fit):\n",
-                      paste0("  -  ", fit_bad, collapse = "\n")))
+                      # Same reasoning as rhat_cutoff above: an object stored
+                      # before the field existed cannot report a cutoff it was
+                      # never assessed against, so fall back to the default.
+                      if (is.null(x$fit_ratio_cutoff)) {
+                        1.15
+                      } else {
+                        x$fit_ratio_cutoff
+                      },
+                      " (see ?check_fit):
+",
+                      paste0("  -  ", fit_bad, collapse = "
+")))
     }
     # Deliberately different advice per axis. A model that did not converge is
     # unusable and should be dropped; a model that converged but reproduces the
     # control badly is a modelling result, and dropping it silently would hide
     # what the user most needs to see.
     tail_txt <- if (length(rhat_bad) > 0 && length(fit_bad) > 0) {
-      "\nConvergence failures should be dropped (see ?amend or ?screen_models).\nA control mis-fit is a result, not a fault: inspect it with check_fit().\n"
+      "
+Convergence failures should be dropped (see ?amend or ?screen_models).
+A control mis-fit is a result, not a fault: inspect it with check_fit().
+"
     } else if (length(rhat_bad) > 0) {
-      "\nConsider dropping them (see ?amend or ?screen_models)\n"
+      "
+Consider dropping them (see ?amend or ?screen_models)
+"
     } else {
-      "\nThis is a modelling result rather than a fault; inspect with check_fit().\n"
+      "
+This is a modelling result rather than a fault; inspect with check_fit().
+"
     }
-    warning(paste0(msg, collapse = "\n\n"), tail_txt, sep = "")
+    warning(paste0(msg, collapse = "
+
+"), tail_txt, sep = "")
   }
   invisible(x)
 }

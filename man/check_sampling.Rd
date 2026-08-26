@@ -7,8 +7,8 @@
 check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 }
 \arguments{
-\item{x}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}}.}
+\item{x}{An object of class \code{\link{bayesnecfit}},
+\code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
@@ -19,7 +19,10 @@ check_sampling(x, rhat_cutoff = 1.01, ess_cutoff = 400, divergence_cutoff = 10)
 \value{
 A \code{\link[base]{data.frame}} with one row per candidate model and
 columns \code{model}, \code{max_rhat}, \code{min_ess}, \code{min_ess_ratio},
-\code{n_divergent} and \code{failed}.
+\code{n_divergent} and \code{failed}. For a
+\code{\link{bayesnechurdlefit}}, a named \code{\link[base]{list}} of two
+such tables --- \code{growth} and \code{survival} --- as
+\code{\link{rhat}} also returns for that class.
 }
 \description{
 Reports, per candidate model, whether the sampler explored the posterior:
@@ -42,8 +45,8 @@ All three are arguments; the defaults are recommendations, not rules, and
 whichever ships will be quoted in methods sections.
 
 \bold{Rhat 1.01} follows Vehtari et al. (2021), which is also the reference
-\code{vignette("example2")} cites. Note \code{\link{rhat}} defaults to the
-older 1.05.
+\code{vignette("example2")} cites. \code{\link{rhat}} and
+\code{\link{summary}} default to the same value.
 
 \bold{ESS 400} is Vehtari's recommendation that both bulk and tail ESS exceed
 100 per chain, at the four chains \code{\link{bnec}} fits by default. The
@@ -70,6 +73,19 @@ passed. \bold{The correct response is to retain more draws, not to lower the
 cutoff}: thinning lowers ESS by construction, and the tempting fix is the
 wrong one. \code{min_ess_ratio} is reported alongside so that "passed because
 we drew 8000" can be told apart from "passed efficiently".
+}
+
+\section{Which parameters are reduced over}{
+
+
+The same set \code{\link{rhat}} reports: the \code{prior_*} draws that
+\code{sample_prior = "yes"} adds are excluded, because their Rhat and ESS
+describe a distribution the sampler never had to explore, and a parameter
+with no variance is excluded because both quantities are undefined for it ---
+which is what a \code{constant()} prior produces. \code{failed} is a
+logical by construction and is never \code{NA}: a model that cannot be
+assessed is not the same thing as a model that failed, and folding the two
+together silently turns \code{\link{screen_models}} into a no-op.
 }
 
 \examples{

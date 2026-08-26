@@ -356,27 +356,6 @@ modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
   posterior_sample
 }
 
-#' extract_warnings
-#'
-#' Extract warnings from a \code{\link[brms]{brmsfit}} object.
-#'
-#' @param x An object of class \code{\link[brms]{brmsfit}}.
-#'
-#' @importFrom evaluate evaluate is.warning
-#'
-#' @return A \code{\link[base]{list}} containing all warning messages.
-#' @noRd
-extract_warnings <- function(x) {
-  x <- evaluate("identity(x)", new_device = FALSE)
-  to_extract <- which(sapply(x, is.warning))
-  if (length(to_extract) > 0) {
-    x[to_extract]
-  } else {
-    NULL
-  }
-}
-
-
 #' @noRd
 print_mat <- function(x, digits = 2) {
   fmt <- paste0("%.", digits, "f")
@@ -863,6 +842,33 @@ add_brm_defaults <- function(
     if (length(disp_par_names) > 0 && !is.character(inits)) {
       d_init <- disp_inits(disp_spec, family, response)
       inits <- lapply(inits, function(chain) c(chain, d_init))
+    }
+    # Stan does not declare a parameter whose prior is constant -- stancode()
+    # moves it out of `parameters` into `transformed parameters` -- so an init
+    # for one has nothing to initialise. Both rstan and cmdstanr currently
+    # accept such an init and ignore it, so this is hygiene rather than a fix
+    # for a constraint that binds today; it is kept because sending brm() an
+    # init for a parameter Stan does not declare is meaningless, and depending
+    # on both backends continuing to ignore it is the weaker position.
+    # The value was carried through the init search on purpose -- the search
+    # evaluates the candidate curve, of which a fixed parameter is genuinely
+    # part -- and is dropped here, at the point the list is handed to brm().
+    # Taken from brm_args$prior rather than init_priors so that a constant on a
+    # disp() parameter, appended just above, is caught too. No effect where the
+    # search fell back to "random". See #244.
+    if (!is.character(inits)) {
+      all_priors <- as.data.frame(brm_args$prior)
+      # nzchar, not !is.na: brms records an absent nlpar as "", never NA, so
+      # the is.na form excluded nothing. Harmless in effect, since paste0("b_",
+      # "") matches no init name, but it read as a filter that was not one.
+      is_const <- is_constant_prior(all_priors$prior) &
+        all_priors$class == "b" & nzchar(all_priors$nlpar)
+      const_pars <- paste0("b_", all_priors$nlpar[is_const])
+      if (length(const_pars) > 0) {
+        inits <- lapply(inits, function(chain) {
+          chain[!names(chain) %in% const_pars]
+        })
+      }
     }
     brm_args$init <- inits
   }

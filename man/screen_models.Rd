@@ -13,8 +13,8 @@ screen_models(
 )
 }
 \arguments{
-\item{x}{An object of class \code{\link{bayesnecfit}} or
-\code{\link{bayesmanecfit}}.}
+\item{x}{An object of class \code{\link{bayesnecfit}},
+\code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}}.}
 
 \item{rhat_cutoff}{A \code{\link[base]{numeric}} vector of length 1.}
 
@@ -29,7 +29,9 @@ set it.}
 \value{
 The object with failing candidates removed. A
 \code{\link{bayesmanecfit}} reduced to one model becomes a
-\code{\link{bayesnecfit}}, as \code{\link{amend}} already does.
+\code{\link{bayesnecfit}}, as \code{\link{amend}} already does. A
+\code{\link{bayesnechurdlefit}} comes back as one, with each component
+screened.
 }
 \description{
 Runs \code{\link{check_sampling}}, drops every candidate that failed, and
@@ -60,10 +62,25 @@ here rather than in \code{\link{amend}}, which is deliberately not modified:
 correctly, and silently returns the object unchanged only when \emph{every}
 named model is absent.
 
-\emph{Everything failed} --- \code{\link{amend}} errors with "All models
-removed, nothing to return". That is caught and replaced with something that
-says what happened and what to do about it, because a fit where no candidate
-sampled properly is a result, not a usage error.
+\emph{Everything failed} --- decided here, from the table, before
+\code{\link{amend}} is called at all, and reported as a result rather than
+a usage error, with the same per-model reasons the drop message carries: a
+fit where no candidate sampled properly is an outcome the analysis has to
+state, and stating it without saying what failed is not enough to write up. Deciding it up front rather than catching an error out
+of \code{\link{amend}} matters, because \code{\link{amend}} raises
+unrelated errors that would otherwise be reported as convergence results ---
+a \code{\link{bayesnecfit}} raises "Cannot drop models from a bayesnecfit",
+and refitting the model weights can fail for reasons of its own. Everything
+except the all-failed case now propagates as itself.
+}
+
+\section{Hurdle fits}{
+
+
+A \code{\link{bayesnechurdlefit}} is screened one component at a time and
+rewrapped, as \code{\link{amend}} already does for that class. The two
+components may legitimately end up with different model sets --- a model
+valid for the 0-1 bounded survival component need not be valid for growth.
 }
 
 \examples{
