@@ -56,22 +56,7 @@ A group-level term---`ogl()`, `pgl()`, or `(par | group)`, see `?bayesnecformula
 
 Note that *s* is set from the observed data, not from the spread of the parameter's own prior. The two are not the same, and the difference is deliberate: **top** on a Gaussian response has a prior standard deviation of `2.5` times that of the response, which is a reasonable statement of ignorance about a *level* and a poor one about *deviation around* that level. For **nec** and **ec50** the distinction does not arise, since those priors are already truncated to the observed predictor range.
 
-There is one property of the default priors that a grouped fit does not inherit, and it has a measurable cost. Every prior described above constrains its parameter to the region in which the model is defined---`beta(5, 2)` on `0` to `1`, a lower bound of `0` for the count and Gamma families, **nec** truncated to the predictor range---and this is what allows `bayesnec` to fit on the `"identity"` link and keep **top**, **bot** and **nec** directly interpretable. A group-level deviation cannot be bounded in the same way, because `brms` declares it unconstrained. For a Beta response spanning most of the unit interval, the scaling above reduces the prior probability that a group-level mean falls outside the `0` to `1` support from around `0.70` under the `brms` default to around `0.05`. That is the difference between a fit that cannot start at all and one that samples, but it does not reach zero, and what remains is difficult sampling geometry rather than a prior that can be improved.
-
-**Because of this, `bnec()` raises `adapt_delta` to `0.99` whenever the formula carries a group-level term**, and leaves it alone otherwise. The `brms` default of `0.8` does not resolve the neck of the funnel that a group-level standard deviation creates. On a `beta_binomial` **nec3param** fit with `ogl()`, at `bnec()`'s own `iter` and `warmup`, the proportion of divergent post-warmup transitions was:
-
-| setting | divergent |
-|---|---|
-| no group-level term | 0% |
-| `adapt_delta = 0.8` | 46.7% |
-| `adapt_delta = 0.99` (the default from 2.1.4) | 9.0% |
-| `adapt_delta = 0.999` | 8.2% |
-| `adapt_delta = 0.99`, **ogl** intercept at `constant(0)` | 5.1% |
-| `pgl()` instead of `ogl()`, `adapt_delta = 0.99` | 4.3% |
-
-Three things are worth taking from that table. **Maximum R-hat was between 1.002 and 1.005 for every row**, including the 46.7% one, so R-hat alone will not tell you a grouped fit has gone wrong---check the divergence count. **Running longer does not help**: the same fit is 52% divergent at `iter = 800` and 47% at `iter = 10000`. And **pushing `adapt_delta` past `0.99` buys almost nothing**, which is why `0.99` rather than something higher is the default.
-
-The residual few percent is a property of putting an unbounded offset on a bounded mean, not something a default can remove. Two levers are yours if a grouped fit still diverges. Fixing the **ogl** offset with `constant(0)` (see **Fixing a parameter** below) removes its confounding with **top** and **bot** outright; it changes the model rather than the prior, which is why it is not the default, but it roughly halves the divergences. And where the science allows it, `pgl()` or `(par | group)` put the grouping on parameters that are individually identified and sample better than `ogl()`, which adds a free offset duplicating **top**.
+There is one property of the default priors that a grouped fit does not inherit. Every prior described above constrains its parameter to the region in which the model is defined---`beta(5, 2)` on `0` to `1`, a lower bound of `0` for the count and Gamma families, **nec** truncated to the predictor range---and this is what allows `bayesnec` to fit on the `"identity"` link and keep **top**, **bot** and **nec** directly interpretable. A group-level deviation cannot be bounded in the same way, because `brms` declares it unconstrained. For a Beta response spanning most of the unit interval, the scaling above reduces the prior probability that a group-level mean falls outside the `0` to `1` support from around `0.70` under the `brms` default to around `0.05`, which is the difference between a fit that cannot start at all and one that samples, but it does not reach zero. A grouped fit on a bounded family may therefore still report divergent transitions, and `control = list(adapt_delta = 0.99)` is the first thing to try. Fixing the **ogl** offset with `constant(0)` (see **Fixing a parameter** below) removes its confounding with **top** and **bot** outright, but it changes the model rather than the prior and in testing it reduced divergences without eliminating them.
 
 ### Selecting the default prior set
 

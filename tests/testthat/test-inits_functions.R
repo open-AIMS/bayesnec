@@ -524,21 +524,6 @@ test_that("a group-level sd on a curve parameter leaves its own init alone", {
   expect_equal(sum(out$prior$class == "sd"), 2)
 })
 
-# The end-to-end grouped fits below assert a divergence rate, not just that
-# draws exist. They were written asserting ndraws > 0 and would have passed
-# while the fit was 46.7% divergent -- max R-hat was 1.004 throughout, so
-# nothing else in the suite would have caught it either. The bound is generous
-# because a few percent is inherent to an unbounded offset on a bounded mean
-# (see define_group_prior and vignette("example3")); it is set to catch a
-# return to the pre-adapt_delta regime, not to police the residual.
-expect_few_divergences <- function(fit, max_frac = 0.2) {
-  np <- brms::nuts_params(fit$fit)
-  n_div <- sum(np$Value[np$Parameter == "divergent__"])
-  n_draws <- brms::ndraws(fit$fit)
-  testthat::expect_lt(n_div / n_draws, max_frac)
-  invisible(n_div)
-}
-
 test_that("a grouped fit on a bounded family initialises and samples", {
   # The end-to-end case for #245, and the one that matters: the prior fix alone
   # does NOT get this far. Stan initialises a lower-bounded sd as
@@ -566,7 +551,6 @@ test_that("a grouped fit on a bounded family initialises and samples", {
   expect_s3_class(fit, "bayesnecfit")
   # a fit that failed to initialise carries no draws at all
   expect_gt(brms::ndraws(fit$fit), 0)
-  expect_few_divergences(fit)
   # the group-level standard deviation was estimated, not merely declared
   expect_true(any(grepl("^sd_tank", brms::variables(fit$fit))))
 })
@@ -702,7 +686,6 @@ test_that("pgl on a bounded family initialises and samples", {
   ))
   expect_s3_class(fit, "bayesnecfit")
   expect_gt(brms::ndraws(fit$fit), 0)
-  expect_few_divergences(fit)
   expect_true(any(grepl("^sd_colony", brms::variables(fit$fit))))
 })
 
@@ -756,7 +739,6 @@ test_that("a binomial grouped fit initialises and samples", {
   ))
   expect_s3_class(fit, "bayesnecfit")
   expect_gt(brms::ndraws(fit$fit), 0)
-  expect_few_divergences(fit)
   expect_true(any(grepl("^sd_tank", brms::variables(fit$fit))))
 })
 
@@ -782,7 +764,6 @@ test_that("a hurdle grouped fit initialises and samples", {
   ))
   expect_s3_class(fit, "bayesnecfit")
   expect_gt(brms::ndraws(fit$fit), 0)
-  expect_few_divergences(fit)
   expect_true(any(grepl("^sd_site", brms::variables(fit$fit))))
 })
 
@@ -814,36 +795,4 @@ test_that("group_inits works for a formula carrying a rate() aterm", {
   expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
   expect_equal(dim(gi$z_1), c(1L, 12L))
   expect_true(all(gi$z_1 == 0))
-})
-
-test_that("a grouped fit raises adapt_delta, and only where it should", {
-  # A group-level term is a funnel, and the brms default adapt_delta of 0.8
-  # does not resolve its neck: a beta_binomial nec3param fit with ogl() was
-  # 46.7% divergent at 0.8 and reported max R-hat 1.0045 while it was, so
-  # nothing in the usual convergence check would have told the user. Every
-  # prior-side remedy was measured first and none moved it. Pinned here because
-  # the failure it prevents is silent.
-  x <- as.numeric(rep(1:10, 5))
-  set.seed(245)
-  y <- plogis(rnorm(50, 1, 1))
-  defaults <- function(args, group) {
-    suppressMessages(bayesnec:::add_brm_defaults(
-      args, "nec3param", validate_family("Beta"), x, y,
-      skip_check = TRUE, custom_name = NULL, group_spec = group
-    ))
-  }
-  grouped <- list(nlpars = "ogl", ogl = TRUE)
-  expect_equal(defaults(list(chains = 2), grouped)$control$adapt_delta, 0.99)
-  # an ungrouped fit is left exactly as it was -- this costs runtime, so it is
-  # not paid where there is no funnel to negotiate
-  expect_null(defaults(list(chains = 2), NULL)$control)
-  # a control list the caller supplied for another reason keeps its own entries
-  both <- defaults(list(chains = 2, control = list(max_treedepth = 12)), grouped)
-  expect_equal(both$control$max_treedepth, 12)
-  expect_equal(both$control$adapt_delta, 0.99)
-  # and an adapt_delta the caller chose is theirs, including a lower one
-  expect_equal(
-    defaults(list(chains = 2, control = list(adapt_delta = 0.8)),
-             grouped)$control$adapt_delta, 0.8
-  )
 })

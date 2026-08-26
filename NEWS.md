@@ -153,23 +153,11 @@
   carries class `"b"` and so survived the initial-value search's class filter,
   and the name check then rejected the whole set, which had left the defect with
   no workaround. `get_priors()` reports `sd` rows, so a grouped model's priors
-  can be inspected and amended like any other.
-
-  A grouped fit also now sets `adapt_delta = 0.99`, where previously it took the
-  `brms` default of `0.8`. A group-level standard deviation and the offsets it
-  scales are only jointly identified, and `0.8` does not resolve the neck of
-  that funnel: a `beta_binomial` `nec3param` fit with `ogl()` was **46.7%
-  divergent** at `0.8` against 9.0% at `0.99`, at `bnec()`'s own `iter` and
-  `warmup`. Maximum R-hat was 1.004 in both cases, so nothing in the usual
-  convergence check reported the problem, and running ten times longer did not
-  help. Raised only where a group-level term is present, since it costs
-  runtime, and an `adapt_delta` the user set is left alone. Note this is a
-  mitigation rather than a cure: a group-level deviation cannot be bounded the
-  way the curve's own parameters are, so a grouped fit does not inherit the
-  guarantee that `top`, `bot` and `nec` stay within range, and a few percent of
-  divergences typically remain. `vignette("example3")` gives the measured
-  numbers and the two levers — fixing the `ogl` intercept at `constant(0)`, and
-  preferring `pgl()` or `(par | group)` over `ogl()`. See #245.
+  can be inspected and amended like any other. Note that a group-level deviation
+  cannot be bounded the way the curve's own parameters are, so a grouped fit
+  does not inherit the guarantee that `top`, `bot` and `nec` stay within range;
+  `vignette("example3")` describes what this means in practice and when
+  `adapt_delta` is still needed. See #245.
 
 - `sample_priors(plot = NA)` returns the sampled values, as documented. The
   argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is

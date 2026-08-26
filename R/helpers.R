@@ -746,32 +746,6 @@ add_brm_defaults <- function(
   if (!("warmup" %in% names(brm_args))) {
     brm_args$warmup <- floor(brm_args$iter / 5) * 4
   }
-  # A group-level term puts the sampler on a funnel -- the group-level standard
-  # deviation and the offsets it scales are only jointly identified, and the
-  # neck needs a smaller step than the brms default adapt_delta of 0.8 finds.
-  # This is not a tuning preference. On a beta_binomial nec3param fit with
-  # ogl(), at bayesnec's own iter and warmup, 46.7% of post-warmup transitions
-  # were divergent at 0.8 against 9.0% at 0.99 -- while max R-hat was 1.004
-  # either way, so the usual convergence check reports a healthy fit over a
-  # posterior that is missing the neck of its own funnel. Nor is it a matter of
-  # running longer: the same fit is 52% divergent at iter = 800, so ten times
-  # the warmup buys nothing on its own. Note 9.0% is a mitigation and not a
-  # cure -- a grouped fit on a bounded family still has to be checked, and
-  # vignette("example3") says so. Every prior-side remedy was measured
-  # and rejected first -- constant(0) on the ogl intercept, a tenfold tighter
-  # intercept prior, and a tenfold tighter sd prior all landed within
-  # 320-415/800 of the 415 the defaults give, because the geometry is a step
-  # size problem rather than a prior one. Raised only where a group-level term
-  # is present, since it costs runtime, and adapt_delta alone is set, so a
-  # caller's own max_treedepth or an explicit adapt_delta both survive. See
-  # #245.
-  if (!is.null(group_spec)) {
-    ctrl <- if ("control" %in% names(brm_args)) brm_args$control else list()
-    if (!("adapt_delta" %in% names(ctrl))) {
-      ctrl$adapt_delta <- 0.99
-      brm_args$control <- ctrl
-    }
-  }
   build_defaults <- function() {
     define_prior(
       model,
