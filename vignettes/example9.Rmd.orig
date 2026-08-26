@@ -46,14 +46,15 @@ The workflow is:
 5. Exclude what fails, and re-inspect the weights.
 6. Report.
 
-Steps 3 to 5 are treated in most detail. `vignette("example2")` notes that
-there is little harm in leaving a poorly *shaped* model in the set with low
-weight, which is true, but non-convergence is a different failure. Whether
-removing a non-converged model changes the reported estimate cannot be known
-before the screen is run: it depends on how much weight the failing models
-carry, and on whether those models predict something different from the ones
-retained. Three datasets are worked below, and the screen has a different
-outcome on each.
+A prior check belongs between steps 2 and 3; `vignette("example3")` covers
+`check_priors()` and the construction of the defaults, and this vignette does
+not repeat it.
+
+`vignette("example2")` notes that there is little harm in leaving a poorly
+*shaped* model in the set with low weight, which is true, but non-convergence is
+a different failure. Three datasets are worked below, and the screen has a
+different outcome on each. Steps 4 and 6 follow the same procedure for all
+three, and are shown in full only for the first.
 
 The threshold estimates themselves --- *NEC*, *NSEC*, ECx, and the
 model-averaged *N(S)EC* reported when a set mixes both kinds --- are defined in
@@ -74,11 +75,11 @@ data(nassarius)
 head(nassarius)
 ```
 
-The `record` column matters here. Deaths in this experiment were not written
-down as zeros: they appear as a sentinel value, a blank replicate, or a tank or
-dose missing from the file altogether, and `?nassarius` describes how each was
-reinstated. For contaminant A **every** zero-survival record is reinstated
-rather than measured.
+The `record` column matters here. Deaths in this experiment were not recorded
+as zeros: they appear as a sentinel value, a blank replicate, or a tank or dose
+missing from the file altogether, and `?nassarius` describes how each was
+reinstated. For contaminant A every zero-survival record is reinstated rather
+than measured.
 
 ```{r provenance}
 a <- nassarius[nassarius$contaminant == "A", ]
@@ -121,10 +122,14 @@ model in it to an assumption the data do not support.
 The screen requires one model rather than the whole set.
 
 ```{r screen, results = "hide"}
-screen <- bnec(suc | trials(tot) ~ crf(dose, model = "nec4param"),
+screen <- bnec(suc | trials(tot) ~ crf(dose, model = "nec3param"),
                data = surv, family = binomial(link = "identity"),
-               iter = 2e3, chains = 2, seed = 17)
+               iter = 5e3, chains = 3, seed = 17)
 ```
+
+The identity link is not a user choice. `bnec()` forces it on every family so
+that `top`, `bot` and `nec` stay on the response scale --- see
+`vignette("example1")`.
 
 ```{r screen-disp}
 dispersion(screen, summary = TRUE)
@@ -133,12 +138,9 @@ dispersion(screen, summary = TRUE)
 `dispersion()` returns, for each posterior draw, the ratio of the observed to
 the simulated sum of squared Pearson residuals, summarised here to a median and
 an equal-tailed 95% interval. The statistic centres near 1 when the family's
-variance assumption holds. It is a posterior predictive quantity, so the
-observed residuals are taken against a fit estimated from those same
-observations: it is mildly conservative, biased a little below 1 even under a
-correct model. Because a posterior is returned rather than a point, the decision
-is read from the **interval**, which states how strong the evidence of a
-departure from 1 is.
+variance assumption holds. Because a posterior is returned rather than a point,
+the decision is read from the **interval** rather than from the point estimate,
+which carries no information about how well determined the ratio is.
 
 ```{r family-choice}
 disp <- dispersion(screen, summary = TRUE)
@@ -150,30 +152,44 @@ The interval runs from `r round(disp[["Q2.5"]], 2)` to
 `r round(disp[["Q97.5"]], 2)`. It includes 1, so the screen provides no evidence
 against the binomial variance assumption and the analysis proceeds under
 `binomial`. Had the lower bound exceeded 1, `beta_binomial` would be the choice.
-The point estimate is `r round(disp[["Estimate"]], 2)`. Judging that number
-against a fixed cutoff would base the decision on a quantity whose uncertainty
-the screen has just measured, and `r nrow(surv)` tanks across
-`r length(unique(surv$dose))` doses do not determine the ratio precisely. The
-conservatism noted above runs the same way: a rule that requires the lower bound
-to exceed 1 will retain the simpler family in a marginal case.
+The point estimate is `r round(disp[["Estimate"]], 2)`: thresholding that number
+would decide the family on a quantity the screen has just shown to be poorly
+determined, since `r nrow(surv)` tanks across
+`r length(unique(surv$dose))` doses do not pin the ratio down.
 
-Two properties of `dispersion()` are worth knowing before the value is quoted.
-It is defined only for `poisson` and `binomial`, the two families whose variance
-is fixed by the mean, and returns an empty vector otherwise --- the correct
-answer rather than an error, since a family carrying a free dispersion parameter
-poses no over-dispersion question. And it simulates from the posterior, so it
-takes a `seed` argument, defaulting to 10; the two calls above agree because
-both use it.
+**How much this screen can detect.** Each draw compares one observed residual
+sum against a single simulated replicate, so the width of the interval is
+dominated by replicate-to-replicate simulation noise rather than by uncertainty
+about a dispersion parameter. At this design an interval of this width is close
+to what a correctly specified binomial produces on its own, which means the
+`Q2.5 > 1` rule fires only on gross over-dispersion. It is the right shape of
+rule --- a threshold on the point estimate answers a question the data cannot
+support --- but it is a blunt one, and a screen that returns `binomial` is
+better read as *not having detected* over-dispersion than as evidence of its
+absence.
 
-This screen is model-conditional. It reads dispersion from one shape, and a
+`dispersion()` is defined only for `poisson` and `binomial`, the two families
+whose variance is fixed by the mean, and returns an empty vector otherwise.
+`vignette("example1")` reads over-dispersion on both, and works the
+`binomial` to `beta_binomial` and `poisson` to `negbinomial` switches that this
+dataset does not require.
+
+The screen is model-conditional: it reads dispersion from one shape, and a
 dispersion ratio cannot separate over-dispersion from a shape that fits badly.
-Step 4 returns to that point with a local check.
-`vignette("example1")` also reads over-dispersion on these families, and works
-the `binomial` to `beta_binomial` and `poisson` to `negbinomial` switches that
-this dataset does not require.
+The screening fit must therefore pass the same sampler checks as the analysis
+fits before its verdict is used --- these are the diagnostics of step 3, brought
+forward.
 
-`bnec()` forces `link = "identity"` on every family so that `top`, `bot` and
-`nec` stay on the response scale --- see `vignette("example1")`.
+```{r screen-sampling}
+check_sampling(screen)
+```
+
+`nec3param` rather than `nec4param` for exactly that reason. On these data
+`nec4param` does not sample adequately at any setting tried, including 10,000
+iterations at `adapt_delta = 0.99`, and step 3 drops it from the analysis set
+below. A screen read off a fit that has not converged is not evidence about
+anything, and the three-parameter form gives the same verdict from a fit that
+passes.
 
 # 2. Fitting the candidate set
 
@@ -227,21 +243,22 @@ Models that fail to fit are recorded rather than silently discarded:
 failed_models(fit)
 ```
 
-A retry needs the priors as well as the model name. `amend(add = )` rebuilds
-priors from `prior_type`, which is not inherited from the original fit, so a
-bare retry reproduces the original failure; pass the retained prior instead, as
-`?failed_models` shows:
+The priors and initial values the failed attempt was given are retained because
+they are built inside `bnec()` and are otherwise unrecoverable. A retry with
+those priors unchanged reproduces the failure; they are the starting point for
+an adjustment, as `?failed_models` sets out:
 
 ```{r retry, eval = FALSE}
 f <- failed_models(fit)$ecxwb1
+f$prior                                   # the priors that failed
 bnec(suc | trials(tot) ~ crf(dose, model = "ecxwb1"), data = surv,
-     family = fam, prior = f$prior)
+     family = fam, prior = adjusted_prior)
 ```
 
 # 3. Sampler diagnostics
 
-The first question is whether the sampler worked, not whether the model fits,
-which is step 4.
+The first question is whether the sampler worked. Whether the model fits is
+step 4.
 
 `check_sampling()` reports per candidate model, so the whole set is screened in
 one call rather than model by model.
@@ -257,9 +274,10 @@ transitions.
 All three cutoffs are arguments. The Rhat default of 1.01 and the ESS default of
 400 follow published recommendations [@Vehtari2021]; **the divergence default of
 10 does not**. Stan's own guidance is that *any* divergence means the sampler
-failed to explore the posterior. Ten is pragmatic, from practice with these
-non-linear models, which routinely produce a small number of divergent
-transitions near a parameter boundary. 1.01 is the `bayesnec` default
+failed to explore the posterior. The default of ten is a package convention
+rather than a published recommendation: these non-linear models commonly
+produce a small number of divergent transitions near a parameter boundary, and
+`?check_sampling` says the same. The value 1.01 is the `bayesnec` default
 throughout: `rhat()`, `summary()` and `check_sampling()` agree on it.
 
 Read `min_ess` rather than `min_ess_ratio` when deciding. The 400 is an absolute
@@ -282,7 +300,8 @@ check_chains(pull_out(fit, model = worst$model[which.max(worst$max_rhat)]))
 # 4. Fit diagnostics
 
 Rhat says the sampler explored the posterior. It says nothing about whether the
-model fits. Two checks answer different questions.
+model fits. Two checks answer different questions: `pp_check()` overall, and
+`check_fit()` within concentration groups.
 
 `pp_check()` asks whether data simulated from the fitted model resemble the data
 observed, overall. The response is a bounded count, so `type = "bars"` is the
@@ -294,8 +313,8 @@ pp_check(pull_out(fit, model = "nec4param"), type = "bars")
 ```
 
 `check_fit()` tests something narrower: whether the model reproduces the
-observed **variability** and the observed **level** *locally*, within each
-concentration group, with the control flagged.
+observed variability and the observed level *locally*, within each concentration
+group, with the control flagged.
 
 For a `bayesmanecfit` it returns every group of every candidate model, which is
 more than can be read at once. Two views are useful. The first is the control
@@ -313,13 +332,19 @@ to one tenth of the smallest positive value: a `Gamma`-distributed predictor
 cannot take the value zero. The substitution is the same idea as the response
 substitution described later for a `Beta` response, applied to the other axis.
 
-**This table is the reason the screen in step 1 was model-conditional.** The
-observed control spread is about twice what a `binomial` simulates, for every
-candidate, and in the same direction as the point estimate of
-`r round(disp[["Estimate"]], 2)` that the global screen lacked the power to act
-on. That is exactly the case §1 anticipated, and it is the argument for
-`beta_binomial` that the global interval could not make. A reader reporting this
-analysis should say that the two disagree and which was acted on.
+**The flagged column is `ppp_mean`, and the discrepancy is one of location.**
+The fitted control mean is 5.75 against an observed 5.25, because the groups
+immediately above the control are all at complete survival and pull `top` up.
+That single fact produces both the high `ppp_mean` and the low `ppp_sd`.
+
+The `sd_ratio` of 1.9 is not evidence of over-dispersion. `sim_sd` is the
+*median* over draws of a residual standard deviation computed from four
+replicates, and that statistic is coarse and discrete: simulating a correctly
+specified binomial at the fitted control mean reproduces `sd_ratio` near 1.9 and
+`ppp_sd` near 0.08 with no extra-binomial variation present at all. A ratio
+computed against the median of a lumpy discrete statistic is not a dispersion
+test, and reading one from it would be the same error as reading the family off
+a point estimate in step 1.
 
 The second view is the full table for a single model, read when one candidate is
 in question:
@@ -330,16 +355,18 @@ check_fit(pull_out(fit, model = "nec4param"))
 
 Two columns need care on a binomial response with few replicates.
 
-- `sd_ratio` is `obs_sd / sim_sd`. A group in which every animal survived, or
-  none did, has no within-group variability, so the observed residual standard
-  deviation is exactly zero. The ratio is therefore `Inf` where the data show
-  spread and the model simulates none, 0 where the model simulates spread and
-  the data show none, and `NaN` where neither does. Read `obs_sd` and `sim_sd`
-  directly wherever that happens.
-- The posterior predictive p-value is `mean(sim >= obs)`, which counts ties on
-  one side. On integer counts with three or four replicates per group, `1.000`
-  most often means the simulated statistic tied with an observed zero rather
-  than that the group is misfitted.
+- `sd_ratio` is `obs_sd` divided by the *median* simulated residual standard
+  deviation. With three or four replicates that median is often exactly zero,
+  which is what produces `Inf`, and exactly zero observed spread produces 0,
+  and both together `NaN`. A zero median does not mean the model simulates no
+  spread: at the second row `ppp_sd` is near 0.5, so about half the draws
+  simulated more spread than was observed. Read `ppp_sd` and the plot rather
+  than the ratio.
+- The posterior predictive p-value is `mean(sim >= obs)`. A value of 1.000
+  arises where the observed statistic sits at the floor of its range --- an
+  observed standard deviation of zero, or an observed mean of zero at the
+  highest dose --- so every simulated value equals or exceeds it. That marks a
+  statistic with no room to move, not a misfitted group.
 
 ```{r exmp9-checkfit-plot}
 plot(check_fit(pull_out(fit, model = "nec4param")))
@@ -353,15 +380,9 @@ Location and scale are separate panels because they fail independently. A model
 can reproduce every group's mean while simulating far too much spread, which is
 the discrepancy this check is designed to detect.
 
-This is local by necessity. A global dispersion statistic averages over the
-curve and can report no discrepancy while the model simulates far more
-variability than the data show in the control region, which is the region
-*NSEC* is derived from. The per-group table is what makes that visible, as it
-did above.
-
 # 5. Exclusion and its effect on the estimates
 
-```{r before}
+```{r before, message = TRUE}
 weights_before <- fit$mod_stats[, c("model", "wi")]
 weights_before[order(-weights_before$wi), ]
 nec_before <- nec(fit)
@@ -381,7 +402,7 @@ not reproducible.
 
 It screens on the **sampler only**. A poor `check_fit()` is a modelling result
 rather than a reason the fit is unusable, and dropping on it silently would hide
-what step 4 exists to show. Both are reported, and only one of them is acted on.
+what step 4 exists to show.
 
 If every candidate fails, `screen_models()` stops with an error listing the
 reasons rather than returning a meaningless average, which signals a return to
@@ -393,7 +414,10 @@ property of the data, which is why only some candidates raise them.
 `dispersion()` builds its Pearson denominator from each model's *fitted* mean,
 so a candidate whose fitted mean reaches 0 or 1 has no denominator and the
 statistic is undefined. The `NA` dispersion rows in the `summary()` output below
-are the visible consequence, and they mark candidates pinned against a boundary.
+are the visible consequence. They fall on the two highest-weighted survivors,
+which between them carry most of the screened weight, so this is a
+specification signal rather than a printing curiosity: the global screen of
+step 1 cannot be run at all on the models that dominate the reported estimate.
 
 ```{r after}
 weights_after <- fit_screened$mod_stats[, c("model", "wi")]
@@ -402,7 +426,7 @@ nec_after <- nec(fit_screened)
 rbind(before = nec_before, after = nec_after)
 ```
 
-Two consequences follow. They are commonly conflated.
+Two consequences follow, and they are distinct.
 
 **Dropping a model does not rescale the weights of the models that remain.**
 `amend()` recomputes them over the reduced set. `bayesnec` weights by pseudo-BMA
@@ -421,45 +445,50 @@ data.frame(model = weights_after$model,
 
 The two columns would be identical if dropping a model renormalised what was
 left. The bootstrap is itself stochastic, so part of the gap between them is
-Monte Carlo rather than systematic, and the ordering of the survivors can in
-principle change as well as their magnitude. The weights of a screened set have
+Monte Carlo noise in the weight calculation rather than a systematic difference,
+and the ordering of the retained models can in principle change as well as their
+weights. The weights of a screened set have
 to be read from the screened fit.
 
 **Weight redistribution and movement of the estimate are separate.** An excluded
 model shifts the estimate only to the extent that its predictions differed from
-those of the models retained: removing weight is not the same as removing
-information.
+those of the models retained.
 
-Reading that shift needs a noise floor. The model-averaged posterior is a
-*resample*, drawn in proportion to the weights, and it is re-realised whenever
-the set changes --- so two estimates differ a little even when nothing
-substantive has.
+Interpreting that shift requires a reference scale for the estimator's own
+variability. The model-averaged posterior is a *resample*, drawn in proportion
+to the weights and re-realised whenever the set changes, so two estimates differ
+slightly even when nothing substantive has changed.
 
 ```{r shift}
+# The averaged posterior is a resample, so the median carries Monte Carlo
+# variability of its own. Bootstrapping it gives the scale of that variability;
+# the compared quantity is a difference of two realisations, hence the sqrt(2).
+noise <- function(x) {
+  d <- nec(x, posterior = TRUE)
+  sqrt(2) * sd(replicate(200, median(sample(d, length(d), replace = TRUE))))
+}
 dropped <- setdiff(weights_before$model, weights_after$model)
 dropped_wi <- sum(weights_before$wi[weights_before$model %in% dropped])
-draws <- nec(fit, posterior = TRUE)
-mc_se <- sd(replicate(200, median(sample(draws, length(draws),
-                                         replace = TRUE))))
 c(models_dropped = length(dropped),
   weight_dropped = round(dropped_wi, 3),
   shift = round(nec_after[["Q50"]] - nec_before[["Q50"]], 4),
-  mc_se = round(mc_se, 4))
+  noise = round(noise(fit), 4))
 ```
 
-The excluded models carried `r round(100 * dropped_wi)`% of the weight, and the
-median moved by far less than the resampling noise in the estimator. On this
-dataset the screen removed half the model weight without changing the reported
-estimate, and neither half of that could have been predicted from the other.
+The bootstrap resamples the pooled draws rather than reproducing the package's
+stratified draw exactly, so it is an approximation to the realisation noise
+rather than a measurement of it. It is close enough to settle the question here:
+the excluded models carried `r round(100 * dropped_wi)`% of the weight, and the
+median moved by a small fraction of that scale. The screen removed half the
+model weight without changing the reported estimate.
 
 ```{r exmp9-plot-after}
 autoplot(fit_screened)
 ```
 
 Two of the retained models carry one divergent transition each. Under the
-standard quoted in step 3 they are not clean, and the threshold used here
-tolerates them. That is precisely the decision the reporting step exists to make
-explicit.
+standard quoted in step 3 they are not clean; the threshold used here tolerates
+them, which is the kind of decision the reporting step exists to make explicit.
 
 # 6. Reporting
 
@@ -478,6 +507,11 @@ What to state in a methods section:
 - **which models were excluded and why**, with the weights before and after, so
   that a reader can see what the screen did rather than accept it without
   evidence;
+- **the estimate settings**, which determine the numbers as much as the model
+  set does: `sig_val`, which sets the *NSEC* reference from the control
+  posterior and defaults to 0.01; `type` for `ecx()`, defaulting to
+  `"absolute"`; and any `xform` used to return an estimate to the measured
+  scale;
 - **the estimates with their credible intervals**, and the weights of the
   retained models.
 
@@ -485,17 +519,15 @@ What to state in a methods section:
 summary(fit_screened)
 ```
 
-`summary()` reports the model-averaged *N(S)EC*. ECx values are the other
-commonly required endpoint, and they are read from the same screened set:
+`summary()` reports the model-averaged *N(S)EC*: the set mixes threshold and
+smooth equations, so the averaged estimate is a mixture of *NEC* and *NSEC*
+draws and should not be reported as a *NEC*. ECx values are the other commonly
+required endpoint, read from the same screened set:
 
 ```{r report-ecx}
 ecx(fit_screened, ecx_val = 10)
 ecx(fit_screened, ecx_val = 50)
 ```
-
-Priors are the one part of the workflow this vignette does not work through.
-`vignette("example3")` covers `check_priors()` and the construction of the
-defaults, and a prior check belongs between steps 2 and 3 in a real analysis.
 
 # A continuous response
 
@@ -512,9 +544,9 @@ series that spends several concentrations at a boundary is then being modelled
 through that substitution rather than as recorded. `simazine` spans 0.16--0.71
 and reaches neither boundary. Several of the other herbicides in this dataset
 do: `irgarol` records ten zeros, eight of its twelve replicates at the highest
-concentration. Read the response before choosing the family. Where zeros are
-part of the process rather than a recording floor, see `vignette("example6")`,
-which covers the families that model them explicitly.
+concentration, so the family for these data depends on inspecting the response
+first. Where zeros are part of the process rather than a recording floor, see
+`vignette("example6")`, which covers the families that model them explicitly.
 
 ```{r herbicide, results = "hide"}
 data(herbicide)
@@ -553,44 +585,46 @@ cf_b <- check_fit(fit_b)
 cf_b[cf_b$control, ]
 ```
 
-This table contains the case step 4 described and the binomial response could
-not show. `ecxexp` reproduces the control mean to within about a tenth while
-simulating several times the observed control spread: the mean is right and the
-variability is not. Its weight is negligible, which is the reassuring direction;
-`?check_fit` records the opposite case, where a model holds high weight on the
-strength of the bulk of the curve while fitting the control badly.
+This table shows the discrepancy `check_fit()` exists to detect, and one a
+binomial response with three replicates cannot exhibit. `ecxexp` reproduces the
+control mean to within about a tenth while simulating several times the observed
+control spread: the location is right and the scale is not. Its weight is
+negligible, so the discrepancy does not propagate into the averaged estimate.
+`?check_fit` records the opposite case, in which a model carries high weight
+because it fits the bulk of the curve while fitting the control badly.
 
 ```{r herbicide-screen, message = TRUE}
 fit_b_screened <- screen_models(fit_b)
 ```
+
+The predictor was logged in the formula, so the threshold is returned on that
+scale. `nec()`, `nsec()` and `ecx()` all take an `xform` argument to put it back
+on the measured one, and a reported concentration should be the back-transformed
+value: 1.45 is silently plausible as a raw concentration in a series running
+from 0.1 to 300.
 
 ```{r herbicide-shift}
 wb_before <- fit_b$mod_stats[, c("model", "wi")]
 wb_after <- fit_b_screened$mod_stats[, c("model", "wi")]
 dropped_b <- setdiff(wb_before$model, wb_after$model)
 dropped_wi_b <- sum(wb_before$wi[wb_before$model %in% dropped_b])
-draws_b <- nec(fit_b, posterior = TRUE)
-mc_se_b <- sd(replicate(200, median(sample(draws_b, length(draws_b),
-                                           replace = TRUE))))
-nec_b <- rbind(before = nec(fit_b), after = nec(fit_b_screened))
+nec_b <- rbind(before = nec(fit_b, xform = exp),
+               after = nec(fit_b_screened, xform = exp))
 nec_b
 c(models_dropped = length(dropped_b),
   weight_dropped = round(dropped_wi_b, 3),
-  shift = round(nec_b["after", "Q50"] - nec_b["before", "Q50"], 4),
-  mc_se = round(mc_se_b, 4))
+  shift_pct = round(100 * (nec_b["after", "Q50"] /
+                             nec_b["before", "Q50"] - 1), 2))
 ```
 
 The excluded model carries `r round(100 * dropped_wi_b)`% of the weight, less
-than in the `nassarius` case, and here the median does move: by about
-`r round(abs(nec_b["after", "Q50"] - nec_b["before", "Q50"]) / mc_se_b, 1)`
-times the resampling noise, in the protective direction. Read against the
-credible interval, which spans more than two units, the movement is still a
-fraction of a percent of the reported uncertainty. That is the honest summary of
-all three cases: the screen must be run and its effect reported, and on these
-data the effect on the point estimate is small. A large movement is not
-something to expect, and not something to assume the absence of either.
+than in the `nassarius` case, and here the median does move, in the protective
+direction, by about
+`r abs(round(100 * (nec_b["after", "Q50"] / nec_b["before", "Q50"] - 1), 1))`%
+of the estimate. Set against a credible interval spanning nearly an order of
+magnitude, that shift is small.
 
-# A screen that removes nothing
+# A set that passes unchanged
 
 `diuron` gives the third outcome.
 
@@ -607,14 +641,15 @@ fit_c_screened <- screen_models(fit_c)
 ```
 
 No candidate fails at these thresholds, and `screen_models()` returns the set
-unchanged. One model carries divergent transitions below the tolerated ten,
-which the reporting step should state rather than describing the set as clean
-without qualification. A screen that removes nothing is a result to report: the
-methods statement is that it was applied at stated thresholds and removed
-nothing, which is a stronger claim than silence about whether it was applied at
-all.
+unchanged. One model carries four divergent transitions, below the tolerated
+ten. That outcome is itself a result to report: the methods statement is that
+the screen was applied at stated thresholds and removed nothing, which is a
+stronger claim than silence about whether it was applied at all.
 
-Steps 4 and 6 follow the same procedure for all three datasets and are shown in
-full only for `nassarius`.
+Across the three datasets the screen removed half the model weight and moved
+nothing, removed a tenth and moved the estimate by about a percent, and removed
+nothing at all. Which of those a given analysis produces is not predictable from
+the weights, and the reportable result is the screen and its effect rather than
+a movement assumed in advance.
 
 # References
