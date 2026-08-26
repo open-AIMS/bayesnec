@@ -16,8 +16,12 @@
 #' @return A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
 #' n-long vector containing the dispersion metric, where n is the number of post
 #' warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If
-#' TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
-#' (mean, median, 95% highest density intervals) of the dispersion metric.
+#' TRUE, a named vector of length 3 --- \code{Estimate}, \code{Q2.5} and
+#' \code{Q97.5} --- holding the median of the dispersion metric and an
+#' equal-tailed 95% interval. Returns an empty vector for any family other than
+#' \code{poisson} or \code{binomial}, whose variance is fixed by the mean: a
+#' family carrying a free dispersion parameter poses no over-dispersion
+#' question.
 #'
 #' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
 #' @importFrom chk chk_lgl
