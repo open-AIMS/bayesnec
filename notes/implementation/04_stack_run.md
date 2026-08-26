@@ -195,6 +195,7 @@ So the rule is about *sequence*, not nesting:
   tell.
 
 Waiting and launching are two calls.
+
 ## Checking whether a suite is still alive
 
 The R process for `devtools::test()` has this command line:
@@ -208,7 +209,6 @@ running perfectly well.
 
 Cross-check with the log size before concluding anything: a complete run is
 ~34.7 KB. A log that is short *and* growing is a slow run, not a dead one.
-
 ## Check Rd links before pushing roxygen changes
 
 `devtools::test()` never builds the Rd files, so a broken `\link{}` target is

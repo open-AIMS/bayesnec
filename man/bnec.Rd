@@ -240,7 +240,8 @@ fraction, need no divisor at all.
 
 \bold{Two-block (hurdle and zero-inflated) families}
 
-The families "hurdle_gamma" and "zero_inflated_beta" fit data where exposure
+The families "hurdle_gamma", "zero_inflated_beta", "hurdle_poisson" and
+"hurdle_negbinomial" fit data where exposure
 both produces zero responses -- individuals that died, colonies that failed
 -- and suppresses the response of those that did not. Zeros in the response
 denote the former, and the fit gains a second parameter block giving the
@@ -250,6 +251,23 @@ block carries the same names with a prefix (\code{hutop}, \code{hunec} for
 "hurdle_gamma"; \code{zitop}, \code{zinec} for "zero_inflated_beta" --
 \pkg{brms} names the block \code{hu} in one case and \code{zi} in the
 other).
+
+Use "hurdle_poisson" or "hurdle_negbinomial" where the non-zero response is
+a count and the zeros are \emph{observed} to be structural --- the individual
+died, the replicate failed. \pkg{brms} writes the positive part
+zero-truncated, so the mu block estimates the mean of the surviving counts
+rather than the mean of counts conditioned on being non-zero. These are the
+count analogues of "hurdle_gamma", and they are what to reach for instead of
+\code{\link{bnec_hurdle}} with a count growth family, which cannot express
+that truncation.
+
+Note the contrast with "zero_inflated_poisson" and
+"zero_inflated_negbinomial", which are \emph{not} routed through the
+two-block machinery. There the zeros are latent: a zero could have come from
+either component, so the zero-probability and the mean are weakly separated
+exactly where the mean is small, which is the high-concentration end that
+determines the \emph{NEC}. A threshold fitted to that probability would
+describe a class nobody observed.
 
 Use "hurdle_gamma" where the non-zero response is positive and unbounded
 above (growth increments, biomass) and "zero_inflated_beta" where it is a

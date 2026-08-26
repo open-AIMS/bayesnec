@@ -1,5 +1,96 @@
 # bayesnec 2.2.0
 
+- New vignette, `vignette("example9")` — *A complete analysis workflow* — running
+  a single analysis from data to reportable estimate: family choice from a
+  dispersion screen, fitting, sampler diagnostics per candidate model, fit
+  diagnostics via `pp_check()` and `check_fit()`, exclusion of models that fail
+  the screen, and reporting. It covers the two steps the other vignettes state
+  but do not demonstrate — choosing the family from the data, and removing a
+  model from the set and seeing what that does to the answer.
+
+  The family screen reads the `dispersion()` posterior against its null value of
+  1 rather than thresholding the point estimate, which is the package's existing
+  convention and the only coherent reading of a statistic returned with an
+  interval. The exclusion step is worked on three datasets because the outcome
+  differs between them: `nassarius` drops half the model weight and the
+  model-averaged *N(S)EC* does not move, `simazine` drops far less weight and it
+  does, and `diuron` has nothing to drop. Weight redistribution and movement of
+  the estimate are separate consequences, and neither is predictable before the
+  screen is run — which is the argument for the step being obligatory. The
+  screening itself uses `check_sampling()` and `screen_models()` rather than
+  hand-rolled code, which is what those helpers exist for. See #219.
+
+- A control lack-of-fit is now surfaced rather than waiting to be looked for:
+  once at the end of `bnec()`, and as a line in `summary()` alongside the
+  convergence verdict. Both threshold on the **ratio** of observed to simulated,
+  not on the posterior predictive p-value. That is deliberate and measured: on
+  two independently fitted parameterisations of the same data the simulated
+  control mean overshot the observed by ~19%, reproducing across fits, while
+  both p-values sat at about 0.82 and neither came near flagging. A p-value
+  threshold would stay silent on exactly the case the check exists to catch.
+  `nsec()` reads its reference from the control, so this is the region most
+  likely to move a reported no-effect concentration. See #148.
+
+- New `check_fit()`, reporting per group of the predictor the observed location
+  and scale of the response against what the fitted model simulates, with a
+  posterior predictive p-value for each and the control group flagged. It sits
+  alongside `check_chains()`, which checks the sampler, and `check_priors()`,
+  which checks the priors: this checks the fit against the data.
+
+  It is deliberately **local**. `dispersion()` reports one global statistic, and
+  for any family with a free dispersion parameter that parameter absorbs exactly
+  the discrepancy the global statistic measures — on the packaged
+  `manec_example` the global Pearson ratio is a healthy 1.011 [0.71, 1.44] while
+  the same fit simulates about 26% more variability than the data show in the
+  control region. That matters because `nsec()` sets its reference from the
+  posterior of the control mean, so mis-stating control variability moves a
+  reported no-effect concentration, and nothing previously reported it.
+
+  The scale statistic is computed on residuals, not raw values: within a group
+  the raw standard deviation mixes residual variability with the slope of the
+  curve across that group, which would make every steep region look
+  overdispersed. Grouping prefers genuine replication and falls back to binning
+  with a warning. For a `bayesmanecfit` the per-candidate-model rows are
+  reported with their stacking weights, because weights come from a global
+  `elpd` and a candidate can hold high weight while fitting the control badly.
+  For the mixture families the observed and simulated proportion of zeros is
+  reported too — the question those families exist to answer, which nothing
+  else reported. \code{plot()} shows the same table graphically: per group, the
+  observed statistic against the 95% span of what the fit simulates, in
+  separate location and scale panels with the control drawn apart. See #148,
+  which also closes #56.
+
+- New `pp_check()` methods for `bayesnecfit`, `bayesmanecfit` and
+  `bayesnechurdlefit`, so posterior predictive checks no longer require
+  unwrapping the underlying `brmsfit`. `pp_check(x, type = "loo_pit_overlay")`
+  gives a LOO-PIT check — the Bayesian counterpart of a uniform quantile
+  residual — using the `loo` criterion `bnec()` already adds, so it needs no
+  extra step and no new dependency. See #148 and #56.
+
+- `hurdle_poisson` and `hurdle_negbinomial` are now available as two-block
+  families, the count analogues of `hurdle_gamma`. Use them where the non-zero
+  response is a count and the zeros are *observed* to be structural — the
+  individual died, the replicate failed. `brms` writes the positive part
+  zero-truncated, so the mean block estimates the mean of the surviving counts
+  rather than the mean of counts conditioned on being non-zero, and both blocks
+  carry an interpretable concentration-response curve. This is deliberately not
+  the same decision as for `zero_inflated_poisson` and
+  `zero_inflated_negbinomial`, which stay on the single-block path: there the
+  zeros are latent, so the zero-probability and the mean are weakly separated
+  exactly where the mean is small — the high-concentration end that determines
+  the *NEC*. See #209.
+
+- **Behaviour change:** `bnec_hurdle()` now refuses `poisson` and `negbinomial`
+  as the growth family, on the automatically selected path as well as a supplied
+  one. It fits the growth component to the non-zero rows with an *untruncated*
+  count family, which estimates `mu / (1 - exp(-mu))` rather than `mu`; the bias
+  is negligible for large means and grows as the mean falls towards zero, which
+  is the high-concentration end the *NEC* and ECx are read off. For
+  `hurdle_gamma` the same construction is exact, because a Gamma has no mass at
+  zero, which is why this only surfaced once counts were in scope. The separate
+  fits cannot express the truncation, so the error points at
+  `bnec(family = "hurdle_poisson")`, which is correct by construction. See #209.
+
 - New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
   independently within each level of a factor and model-averaging within each
   level. This is the first support for a factor covariate, and it answers the

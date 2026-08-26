@@ -218,6 +218,49 @@ article swept for non-validated aterms: none.
    plus `is.na()` for any optional `bnec_pop` entry.
 2. An assertion compared an integer response against `as.numeric()`.
 
+## Item 6 — #209, hurdle_poisson and hurdle_negbinomial
+
+Branch `issue-209-hurdle-counts`, cut from `issue-136-rate-aterm`.
+Tier **2.2.0**. Version 2.1.3.12 -> 2.1.3.13.
+**PR: https://github.com/open-AIMS/bayesnec/pull/225**.
+
+Full suite **1570 pass / 0 fail / 11 warn**, +24 on the branch below. Verified
+on a real `hurdle_poisson` fit: NEC 3.049 [2.536, 3.607] against a true 3, both
+parameter blocks present, `ecx()` working on each via `dpar`.
+
+**The issue's two halves needed opposite treatments.** The joint families need
+no truncation work — brms writes the zero-truncated positive part itself. The
+`bnec_hurdle()` untruncated-likelihood defect cannot be fixed the same way: it
+would need a `trunc()` aterm, and #136 (directly below in the stack) had just
+made unvalidated aterms an error. Validating `trunc()` publicly is well beyond
+what #209 sanctions, so `bnec_hurdle()` refuses count growth families and points
+at the path that is correct by construction. **Flagged for RF as a judgement
+call.**
+
+**Two behaviour changes, both deliberate**, and one of them reverses a #104
+test that asserted a plain poisson growth family IS accepted. That was correct
+when written (no zero-truncated count family existed) and its own neighbouring
+comment names #209 as the fix. The test now asserts the refusal with the
+reasoning written into it.
+
+**A third registry the issue does not mention:** `mod_fams` in
+`data-raw/sysdata.R` is the allow-list `validate_family()` checks, separate from
+`hurdle_fams` and `hurdle_mu_fams`. Without it the families are rejected as "not
+currently implemented".
+
+---
+
+# 2.2.0 TIER: 2 of 3 done
+
+#136 (PR 224), #209 (PR 225). Remaining: #148, the largest item in the tier.
+
+## Item 7 — #148, check_fit() and pp_check()
+
+Branch `issue-148-check-fit`, cut from `issue-209-hurdle-counts`.
+Tier **2.2.0**. Version 2.1.3.13 -> 2.1.3.14.
+**PR: https://github.com/open-AIMS/bayesnec/pull/226**. Closes #148 and #56.
+
+Full suite **1608 pass / 0 fail / 11 warn**, +38 on the branch below.
 ---
 
 ## Item 7 — #148 parts A/B/C, decisions (b) and (d): `check_fit()` and `pp_check()`
@@ -263,6 +306,37 @@ threshold is on the ratio and not the `ppp`. Now the documented default.
 **Reproduces the finding the issue rests on**: on `manec_example` the control
 group's `sd_ratio` is 0.796 -- the model simulates ~26% more variability than
 the data show -- while the global `dispersion()` statistic reads 1.011
+[0.71, 1.44]. The scoping comment measured ~27% by hand. Pinned as a test,
+because it is the one assertion that would catch an implementation that looks
+right but is not actually local.
+
+All of RF's decisions implemented: part B in scope with control lack-of-fit;
+ggplot2 only, no bayesplot; replication preferred with warned binning fallback;
+#56 folded in via LOO-PIT, no DHARMa; both a numeric table and (via pp_check)
+plots; mixture families need nothing special.
+
+**Decision (d), the combined hurdle check, is deliberately NOT implemented** --
+the scoping comment left it open and said not to let it hold up the rest.
+Flagged in the PR.
+
+**Two implementation bugs found by running against manec_example rather than
+by reasoning:**
+
+1. New S3 generics need `devtools::document()` before `load_all()` can dispatch
+   them. This is the first stack item to add one, so the first where document()
+   is load-bearing for the code to run at all rather than just for man/.
+2. `ndraws` had to be clamped to what the fit holds. brms **errors** rather than
+   truncating, and manec_example carries 100 draws, so the default of 1000 would
+   have failed on the package's own example object.
+
+---
+
+# 2.2.0 TIER COMPLETE
+
+#136 (PR 224), #209 (PR 225), #148 (PR 226).
+
+Seven PRs open: #220 #221 #222 #223 (2.1.4) and #224 #225 #226 (2.2.0).
+Remaining: items 8 and 9, the 2.3.0 tier -- #33 stage 1 and the #6/#33 vignette.
 [0.71, 1.44]. Pinned as a test, because it is the one assertion that would catch
 an implementation that looks right but is not actually local.
 
