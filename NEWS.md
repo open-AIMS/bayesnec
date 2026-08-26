@@ -224,6 +224,40 @@
   Edit the `.Rmd.orig`, note in the pull request that the rendered output is
   stale, and rebuild at release. See #190.
 
+- Group-level terms now work with a bounded family. `ogl()`, `pgl()` and
+  `(par | group)` add parameters that `get_priors()` never described, so a
+  group-level standard deviation fell through to the `brms` default,
+  `student_t(3, 0, 2.5)`. Under the identity link `bnec()` uses there is no
+  inverse link to return an offset of that scale to the response range, so on a
+  Beta, binomial or bernoulli response the mean started outside its own support
+  and the fit could not initialise at all. A group-level standard deviation is
+  now given one tenth of the observed range of the scale its parameter lives on
+  — the response range for `top`, `bot` and `ogl`, the predictor range for `nec`
+  and `ec50`, and 0.5 for `beta`, `slope`, `d` and `f`, which are estimated on a
+  log scale — keeping the shape of the `brms` default and changing only its
+  scale. `prior_type = "regularizing"` halves every one of those scales;
+  previously it had no effect here, because it narrows only `top` and `bot` and
+  there was no `sd` row in the set to narrow. The `ogl` intercept is given a
+  zero-centred prior of its own, because it is an offset on the whole curve and
+  is otherwise confounded with `top` and `bot`. Supplying a group-level prior
+  directly also works now: the `ogl` offset carries class `"b"` and so survived
+  the initial-value search's class filter, and the name check then rejected the
+  whole set, which had left the defect with no workaround. `get_priors()`
+  reports `sd` rows, so a grouped model's priors can be inspected and amended
+  like any other.
+
+  A group-level deviation cannot be constrained the way the curve's own
+  parameters are, so a grouped fit does not inherit the property that `top`,
+  `bot` and `nec` remain within range. Where the response distribution restricts
+  the range of the mean — every family except Gaussian, under an identity link —
+  `bnec()` now sets `adapt_delta = 0.99`, and leaves an `adapt_delta` the caller
+  supplied unchanged. **A grouped fit on such a family should always be checked
+  for divergent transitions**: the proportion depends strongly on the number of
+  groups and the size of the group-level effect, measured rates range from below
+  one per cent to more than forty per cent, and `adapt_delta` reduces the rate
+  without removing it. This is a property of adding an unconstrained deviation
+  to a constrained mean rather than of the priors; see #257. See #245.
+
 - `sample_priors(plot = NA)` returns the sampled values, as documented. The
   argument check tested `!plot %in% c("ggplot", "base")`, and `NA %in% ...` is
   `FALSE`, so the one value documented to return the draws was the one value
