@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.22</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.23</span>
       </span>
     </div>
 
@@ -217,6 +217,65 @@ scaling. See the <strong>Model details</strong> vignette or
 available in <code>bayesnec</code> and their specific formulation.</p>
 </div>
 <div class="section level3">
+<h3 id="priors-for-group-level-parameters">Priors for group-level parameters<a class="anchor" aria-label="anchor" href="#priors-for-group-level-parameters"></a>
+</h3>
+<p>A group-level term—<code>ogl()</code>, <code>pgl()</code>, or
+<code>(par | group)</code>, see <code><a href="../reference/bayesnecformula.html">?bayesnecformula</a></code> for the
+syntax—adds a standard deviation for each parameter it applies to, and
+<code>ogl()</code> adds an offset parameter as well. These are given
+priors on the same three-way split as the parameters above: a
+group-level standard deviation is given <code>student_t(3, 0, s)</code>,
+where <em>s</em> is one tenth of the observed range of the scale its
+parameter lives on. That is the response range for <strong>top</strong>,
+<strong>bot</strong> and <strong>ogl</strong>, the predictor range for
+<strong>nec</strong> and <strong>ec50</strong>, and <code>0.5</code> for
+<strong>beta</strong>, <strong>slope</strong>, <strong>d</strong> and
+<strong>f</strong>, which are estimated on a log scale and take
+<code>normal(0, 5)</code> of their own. The
+<code>student_t(3, 0, .)</code> shape is the <code>brms</code> default
+for this class; only its scale, which is not otherwise derived from the
+data, is changed. The <strong>ogl</strong> offset itself is given a
+zero-centred <code>normal</code> prior on the response scale, because it
+enters as an offset on the whole curve and is therefore confounded with
+<strong>top</strong> and <strong>bot</strong> unless it is centred.</p>
+<p>Note that <em>s</em> is derived from the observed data, not from the
+spread of the parameter’s own prior. The two are not the same, and the
+difference is deliberate: <strong>top</strong> on a Gaussian response
+has a prior standard deviation of <code>2.5</code> times that of the
+response, which is a reasonable statement of ignorance about a
+<em>level</em> and a poor one about <em>deviation around</em> that
+level. For <strong>nec</strong> and <strong>ec50</strong> the
+distinction does not arise, since those priors are already truncated to
+the observed predictor range. Under <code>student_t(3, 0, s)</code>
+there is a prior probability of about <code>0.39</code> that the
+group-level standard deviation exceeds <em>s</em>, so this is a weakly
+informative prior rather than a tight one.</p>
+<p>There is one property of the default priors that a grouped fit does
+not inherit. Every prior described above constrains its parameter to the
+region in which the model is defined—<code>beta(5, 2)</code> on
+<code>0</code> to <code>1</code>, a lower bound of <code>0</code> for
+the count and Gamma families, <strong>nec</strong> truncated to the
+predictor range—and this is what allows <code>bayesnec</code> to fit on
+the <code>"identity"</code> link and keep <strong>top</strong>,
+<strong>bot</strong> and <strong>nec</strong> directly interpretable. A
+group-level deviation cannot be constrained in the same way, because
+<code>brms</code> declares it unconstrained. Where the response
+distribution restricts the range of the mean—every family except
+Gaussian, under an identity link—a proposal that carries the mean
+outside that range is rejected by Stan and counted as a divergent
+transition. <strong>A grouped fit on such a family should therefore
+always be checked for divergent transitions.</strong> The proportion
+observed depends strongly on the number of groups and on the size of the
+group-level effect, and measured rates range from below one per cent to
+more than forty per cent. <code><a href="../reference/bnec.html">bnec()</a></code> sets
+<code>control = list(adapt_delta = 0.99)</code> for these fits, which
+reduces the rate substantially and does not remove it; an
+<code>adapt_delta</code> supplied by the user is left unchanged. This is
+a property of adding an unconstrained deviation to a constrained mean
+rather than of the priors above; see issue #257 for the proposed change
+that removes it.</p>
+</div>
+<div class="section level3">
 <h3 id="selecting-the-default-prior-set">Selecting the default prior set<a class="anchor" aria-label="anchor" href="#selecting-the-default-prior-set"></a>
 </h3>
 <p>The priors described above are the default
@@ -224,10 +283,10 @@ available in <code>bayesnec</code> and their specific formulation.</p>
 to truly uninformative. From version 2.1.3.2 <code>bayesnec</code> also
 offers a narrower, more <code>"regularizing"</code> set, selected
 through the <code>prior_type</code> argument of <code>bnec</code> (and
-<code>amend</code>). The two sets differ <strong>only</strong> in the
-response-scaled <strong>top</strong> and <strong>bot</strong>
-parameters; the predictor-scaled and fixed priors described above are
-identical for both.</p>
+<code>amend</code>). The two sets differ in the response-scaled
+<strong>top</strong> and <strong>bot</strong> parameters, and in the
+group-level parameters described above; the predictor-scaled and fixed
+priors are identical for both.</p>
 <p>For the <code>"regularizing"</code> set the no-effect
 <strong>top</strong> parameter is centred on the <em>upper extreme</em>
 of the response data, which for the monotonically decreasing
@@ -251,6 +310,12 @@ respectively.</li>
 <code>beta(5, 2)</code> and <code>beta(2, 5)</code>), pushing more
 density towards the upper and lower ends of the <code>0</code> to
 <code>1</code> range.</li>
+<li>Group-level standard deviations, and the <strong>ogl</strong>
+offset, take half the scale of the <code>"uninformative"</code> set.
+This is roughly the same degree of narrowing the response-scaled priors
+receive above, and it exists because a user selecting the regularizing
+set for a grouped fit is usually doing so <em>because</em> of the
+grouping.</li>
 </ul>
 <p>These tighter priors can improve convergence and guard against
 implausible fits when the data are sparse or noisy, at the cost of
