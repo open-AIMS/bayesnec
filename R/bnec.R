@@ -184,11 +184,20 @@
 #' bnec(..., family = hurdle_gamma())
 #' }
 #'
-#' Writing a link argument is what makes it yours, and it is then honoured:
+#' Writing a link argument is what makes it yours, and it is then honoured.
+#' A link written positionally counts, since \code{link} is the first argument
+#' of every family constructor, and so does the second block of a two-block
+#' family:
 #'
 #' \preformatted{
 #' bnec(..., family = Beta(link = "logit"))
+#' bnec(..., family = Beta("logit"))
+#' bnec(..., family = hurdle_gamma(link_hu = "logit"))
 #' }
+#'
+#' \code{link_phi} and \code{link_shape} are not part of this: they are
+#' dispersion links, no curve is fitted on them, and writing one says nothing
+#' about the scale \code{top}, \code{bot} and \code{nec} are reported on.
 #'
 #' Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
 #' link is refused with an error naming the family. Note that \code{log} and
@@ -514,10 +523,16 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # The link is bayesnec's to assign unless the caller chose one, and telling
   # those apart needs the expression rather than the evaluated family, since
   # Beta() and Beta(link = "logit") produce identical objects. mf holds the
-  # dots unevaluated. See #256.
-  brm_args$family <- retrieve_valid_family(
-    brm_args, bdat, link_source = family_link_source(mf$`...`$family)
-  )
+  # dots unevaluated. Resolved on its own line rather than inside the argument
+  # list so that parent.frame() is the caller's frame and not whichever frame
+  # happens to force the promise. See #256.
+  link_source <- family_link_source(mf$`...`$family, env = parent.frame())
+  brm_args$family <- retrieve_valid_family(brm_args, bdat,
+                                           link_source = link_source)
+  # The marker validate_family() uses to stay idempotent is private, and the
+  # family object is stored in the brmsfit, so it is removed before brms sees
+  # it rather than serialised into every saved fit.
+  attr(brm_args$family, "bayesnec_validated") <- NULL
   # Emitted here rather than from check_data() so that it fires once per bnec()
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.

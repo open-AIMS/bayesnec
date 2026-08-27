@@ -144,9 +144,11 @@
   Naming a family and nothing more now leaves the link to `bayesnec`, so
   `"Beta"`, `Beta`, `Beta()` and `hurdle_gamma()` all fit on the identity link.
   Writing a link argument makes it yours and it is honoured, as in
-  `Beta(link = "logit")`. Only `identity`, `log` and `logit` are fitted on; any
-  other link is refused with an error naming the family, where previously
-  `inverse`, `probit`, `cloglog`, `sqrt` and the rest were accepted silently.
+  `Beta(link = "logit")`, `Beta("logit")` or `hurdle_gamma(link_hu = "logit")`;
+  `link_phi` and `link_shape` are dispersion links and say nothing about the
+  mean. Only `identity`, `log` and `logit` are fitted on; any other link is
+  refused with an error naming the family, where previously `inverse`,
+  `probit`, `cloglog`, `sqrt` and the rest were accepted silently.
 
   A family held in a variable is the one case intent cannot be read from, since
   `Beta()` and `Beta(link = "logit")` produce identical objects. The object's
@@ -157,7 +159,9 @@
   assigned, where before it errored because `link_hu` defaults to logit. And
   `family = "beta"` now works — the tag `brms` reports for that family, which
   previously gave `unused argument (link = "identity")` because `get("beta")`
-  resolves to `base::beta()`. **If you have code passing a constructed family
+  resolves to `base::beta()`. A string naming any other function, such as
+  `family = "t"`, now says the family is not implemented rather than giving the
+  same `unused argument` error. **If you have code passing a constructed family
   and relying on its default link, add the link explicitly.** See #256.
 
 - Internal: a single statement of the interval the response distribution allows

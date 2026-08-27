@@ -231,11 +231,20 @@ bnec(..., family = Beta())
 bnec(..., family = hurdle_gamma())
 }
 
-Writing a link argument is what makes it yours, and it is then honoured:
+Writing a link argument is what makes it yours, and it is then honoured.
+A link written positionally counts, since \code{link} is the first argument
+of every family constructor, and so does the second block of a two-block
+family:
 
 \preformatted{
 bnec(..., family = Beta(link = "logit"))
+bnec(..., family = Beta("logit"))
+bnec(..., family = hurdle_gamma(link_hu = "logit"))
 }
+
+\code{link_phi} and \code{link_shape} are not part of this: they are
+dispersion links, no curve is fitted on them, and writing one says nothing
+about the scale \code{top}, \code{bot} and \code{nec} are reported on.
 
 Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
 link is refused with an error naming the family. Note that \code{log} and

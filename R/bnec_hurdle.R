@@ -139,7 +139,8 @@
 bnec_hurdle <- function(formula, data, model_survival = NULL,
                         family_growth = NULL, ...) {
   # Captured before anything can rebind it; see family_link_source() and #256.
-  growth_link_source <- family_link_source(substitute(family_growth))
+  growth_link_source <- family_link_source(substitute(family_growth),
+                                           env = parent.frame())
   formula <- bayesnecformula(formula)
   y_var <- hurdle_response_var(formula)
   aterms <- check_hurdle_aterms(formula)

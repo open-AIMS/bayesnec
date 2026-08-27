@@ -66,7 +66,7 @@
 #' @export
 bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # Captured before anything can rebind it; see family_link_source() and #256.
-  link_source <- family_link_source(substitute(family))
+  link_source <- family_link_source(substitute(family), env = parent.frame())
   if (!is.character(group_var) || length(group_var) != 1) {
     stop("`group_var` must be a single column name.", call. = FALSE)
   }

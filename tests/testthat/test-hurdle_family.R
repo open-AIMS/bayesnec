@@ -91,8 +91,15 @@ test_that("validate_family rejects a non-identity link_hu the caller chose", {
                                link_source = "chosen"),
     "link_hu"
   )
+  # The reachable form: link_hu written and nothing else. family_link_source()
+  # reads it as chosen, so the guard fires rather than the link being rewritten.
   expect_error(
-    bayesnec:::validate_family(brms::hurdle_gamma(), link_source = "chosen"),
+    bayesnec:::validate_family(
+      brms::hurdle_gamma(link_hu = "logit"),
+      link_source = bayesnec:::family_link_source(
+        quote(hurdle_gamma(link_hu = "logit"))
+      )
+    ),
     "link_hu"
   )
 })

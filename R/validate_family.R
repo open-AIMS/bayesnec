@@ -2,6 +2,9 @@
 #'
 #' @param expr The \strong{unevaluated} expression a caller supplied as
 #' \code{family}, from \code{substitute()} or \code{match.call()}.
+#' @param env The \code{\link[base]{environment}} the expression came from,
+#' used only to resolve the constructor so that a call can be matched against
+#' its formals.
 #'
 #' @details \code{\link{bnec}} fits every parameter on the identity link so
 #' that \code{top}, \code{bot} and \code{nec} stay on the response scale, and
@@ -13,7 +16,8 @@
 #' \itemize{
 #'   \item \code{"Beta"}, \code{Beta}, \code{Beta()} --- \code{"none"}. A
 #'     family was named and nothing more.
-#'   \item \code{Beta(link = "logit")} --- \code{"chosen"}.
+#'   \item \code{Beta(link = "logit")}, \code{Beta("logit")},
+#'     \code{hurdle_gamma(link_hu = "logit")} --- \code{"chosen"}.
 #'   \item a symbol holding a family object, as in
 #'     \code{fam <- Beta(link = "logit"); bnec(family = fam)} ---
 #'     \code{"symbol"}. Not knowable from the expression, so the object's own
@@ -28,7 +32,7 @@
 #' @return A \code{\link[base]{character}} string.
 #'
 #' @noRd
-family_link_source <- function(expr) {
+family_link_source <- function(expr, env = parent.frame()) {
   if (missing(expr) || is.null(expr)) {
     return("none")
   }
@@ -38,10 +42,49 @@ family_link_source <- function(expr) {
   if (is.name(expr)) {
     return("symbol")
   }
-  if (is.call(expr) && "link" %in% names(as.list(expr))) {
-    return("chosen")
+  if (is.call(expr)) {
+    # `link` is the first formal of every family constructor, so `Beta("logit")`
+    # and `binomial("probit")` state a link as plainly as the named form does.
+    # The call is matched against the constructor's own formals before its
+    # argument names are read, so that a positional or partially matched link
+    # is not read as naming a family and nothing more. Resolving the
+    # constructor can fail (it need not be on the search path here), and the
+    # raw names are the fallback.
+    args <- as.list(expr)[-1]
+    ctor <- tryCatch(eval(expr[[1]], envir = env), error = function(e) NULL)
+    if (is.function(ctor)) {
+      matched <- tryCatch(as.list(match.call(ctor, expr))[-1],
+                          error = function(e) NULL)
+      if (!is.null(matched)) {
+        args <- matched
+      }
+    }
+    if (any(names(args) %in% mean_link_args())) {
+      return("chosen")
+    }
   }
   "none"
+}
+
+#' Constructor arguments that state a link bayesnec fits a curve on
+#'
+#' @details \code{link} is the mean. \code{link_hu} and \code{link_zi} are the
+#' second block of a two-block family, which \code{\link{bnec}} writes as
+#' \code{1 - <probability>} and so also fits a curve expression on. Writing any
+#' of these is a statement about a scale \code{top}, \code{bot} and \code{nec}
+#' are reported on.
+#'
+#' \code{link_phi} and \code{link_shape} are deliberately excluded: they are
+#' dispersion links, bayesnec puts no curve on them, and reading one as a
+#' choice of \emph{mean} link would reintroduce exactly the silent
+#' misspecification #256 removes --- \code{Beta(link_phi = "log")} would be
+#' fitted on beta's default logit.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+mean_link_args <- function() {
+  c("link", "link_hu", "link_zi")
 }
 
 #' Links bayesnec will fit on
@@ -83,7 +126,12 @@ supported_links <- function() {
 #' @noRd
 bnec_default_family <- function(fam) {
   ctor <- if (fam %in% names(mod_fams)) unname(mod_fams[[fam]]) else fam
-  if (!exists(ctor, mode = "function")) {
+  # Membership is checked before get(): `exists(ctor, mode = "function")` alone
+  # admits any string naming any function, so validate_family("t") reached
+  # do.call() and failed with `unused argument (link = "identity")` rather than
+  # saying the family is not implemented -- the same error validate_family()
+  # used to give for "beta".
+  if (!ctor %in% mod_fams || !exists(ctor, mode = "function")) {
     stop("You have specified family as ", fam, ", which is not currently",
          " implemented. bnec only allows: ", paste0(mod_fams, collapse = ", "),
          ".", call. = FALSE)
@@ -118,6 +166,13 @@ bnec_default_family <- function(fam) {
 #'
 #' @noRd
 validate_family <- function(family, link_source = "none") {
+  # Idempotent. bnec_group() and bnec_hurdle() validate the family and then
+  # pass the object on to bnec(), where the expression is the symbol holding it
+  # and the link would be read a second time -- announcing, once per group
+  # level, a link the caller had already chosen and advising them to drop it.
+  if (isTRUE(attr(family, "bayesnec_validated"))) {
+    return(family)
+  }
   if (is.character(family)) {
     family <- bnec_default_family(family)
   } else if (inherits(family, "function")) {
@@ -165,5 +220,6 @@ validate_family <- function(family, link_source = "none") {
          " implemented. bnec only allows: ", paste0(mod_fams, collapse = ", "),
          ".")
   }
+  attr(family, "bayesnec_validated") <- TRUE
   family
 }
