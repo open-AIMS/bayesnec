@@ -133,6 +133,56 @@
   Edit the `.Rmd.orig`, note in the pull request that the rendered output is
   stale, and rebuild at release. See #190.
 
+- Internal: a single statement of the interval the response distribution allows
+  the mean to occupy, and of what each model's mean can produce.
+  `mu_support()` returns that interval as a property of the response
+  distribution — `(-Inf, Inf)` for gaussian, `(0, 1)` for the proportion
+  families and `(0, Inf)` for the count and Gamma families, with a `dpar`
+  argument for the second block of a two-block family, whose `hu` or `zi`
+  probability is on `(0, 1)` whatever its `mu` block is. `mu_is_constrained()`
+  adds the link, and asks family and link **together**: `brms` applies the
+  inverse link before the likelihood, so what decides it is whether the range of
+  that inverse lies inside the support. `Beta(link = "log")` is the case that
+  shows neither decides it alone — `exp()` is positive but unbounded above, so
+  on a 0–1 response it can still hand the likelihood an invalid mean, under a
+  link that is perfectly safe for every count family.
+
+  `model_mu_ranges()` records, for each of the 23 models, whether its mean can
+  fall below zero, whether it can exceed one through a term carrying no
+  coefficient, whether it decays onto zero, and whether it saturates at one.
+  These are two different questions and the flags are not interchangeable.
+  Support asks whether the mean can leave the interval the likelihood defines;
+  appropriateness asks whether the shape is meaningful for the response at all.
+  `nechormepwr01` is excluded from the count and Gamma families on
+  appropriateness — its hormetic term saturates at exactly 1, so for a mean
+  above 1 it expresses a decline where hormesis is intended — and a
+  support-only rule would have wrongly reinstated it.
+
+  `check_models()` is unchanged and keeps its own gates. A new test asserts they
+  agree with the table for all twelve families in `mod_fams`, so the two cannot
+  drift apart as `?models` and `check_models()` did in #170. A later change
+  makes the gates derive from the table, where any difference is then a decision
+  rather than a regression. See #256.
+
+- The `adapt_delta = 0.99` that a grouped fit receives is now decided by whether
+  the link's inverse maps into the response distribution's support, rather than
+  by the family tag and a list of two links. Two corrections follow, both
+  affecting grouped fits only. Over the 87 family and link combinations
+  `validate_family()` accepts — every family in `mod_fams` against every link it
+  constructs, with `link_hu` and `link_zi` at the identity `bnec()` requires:
+
+  - **4 combinations now receive it and did not before**:
+    `binomial(link = "log")`, `bernoulli(link = "log")`, `Beta(link = "log")`
+    and `zero_inflated_beta(link = "log")`. This is the defect above — a log
+    link does not keep a 0–1 bounded mean in range — so these were previously
+    sampling without the mitigation.
+  - **42 no longer receive it**, across `probit`, `probit_approx`, `cloglog`,
+    `cauchit`, `softit`, `sqrt`, `softplus` and `squareplus`. The inverse of
+    each maps into the support, so no proposal can reach an invalid mean and the
+    raise was costing gradient evaluations with nothing to prevent.
+
+  Ungrouped fits are unaffected in every case. See #256.
+
 - Group-level terms now work with a bounded family. `ogl()`, `pgl()` and
   `(par | group)` add parameters that `get_priors()` never described, so a
   group-level standard deviation fell through to the `brms` default,

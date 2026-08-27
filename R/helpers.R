@@ -765,8 +765,10 @@ add_brm_defaults <- function(
   #
   # Gated on the support of mu rather than on the presence of a group-level term:
   # a gaussian response is unconstrained and shows 0% divergent at 0.8 with the
-  # identical curve and grouping, and under a log or logit link mu is the linear
-  # predictor and is likewise unconstrained. Raised only where it is needed,
+  # identical curve and grouping. The link matters too, but not because mu is
+  # the linear predictor under a non-identity link -- brms applies the inverse
+  # link before the likelihood, so what decides it is whether that inverse maps
+  # into the support. See mu_is_constrained(). Raised only where it is needed,
   # because it costs roughly fourteen times the gradient evaluations per
   # iteration. #257 proposes the parameterisation change that removes the need
   # for it. See #245.

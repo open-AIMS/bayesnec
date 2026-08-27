@@ -609,11 +609,15 @@ test_that("sd_prior_scales reads the scale out of a generated prior", {
   expect_equal(bayesnec:::sd_prior_scales(mixed), c(0.09, 0.5, 2))
 })
 
+# mu_support() and mu_is_constrained() are tested directly in
+# test-mu_support.R; what is tested here is the gate that consumes them.
 test_that("the adapt_delta raise is gated on the support of mu", {
   # An unconstrained mean has no boundary for a group-level offset to cross, so
   # a grouped gaussian fit is left at the brms default; every other family under
-  # an identity link restricts mu and gets the raise. Under a log or logit link
-  # mu is the linear predictor and is unconstrained whatever the family. See
+  # an identity link restricts mu and gets the raise. A non-identity link is
+  # decided by whether the range of its inverse lies inside that support, which
+  # is not the same as "any link other than identity is safe": Beta(link =
+  # "log") is not, because exp() is unbounded above. See mu_is_constrained(),
   # #245 and #256.
   x <- as.numeric(rep(1:10, each = 5))
   set.seed(245)
@@ -654,20 +658,6 @@ test_that("the adapt_delta raise is gated on the support of mu", {
     validate_family("Beta"), x, y, skip_check = TRUE, custom_name = NULL,
     group_spec = grouped))
   expect_equal(own$control$adapt_delta, 0.8)
-})
-
-test_that("mu_is_constrained answers on family and link together", {
-  f <- bayesnec:::mu_is_constrained
-  expect_true(f(validate_family("Beta")))
-  expect_true(f(validate_family("beta_binomial")))
-  expect_true(f(validate_family("Gamma")))
-  expect_true(f(validate_family("poisson")))
-  expect_true(f(validate_family("hurdle_gamma")))
-  expect_false(f(validate_family("gaussian")))
-  # the link is asked as well as the family
-  expect_false(f(gaussian(link = "log")))
-  expect_false(f(Beta(link = "logit")))
-  expect_false(f(NULL))
 })
 
 test_that("a constant ogl intercept gets no initial value", {
