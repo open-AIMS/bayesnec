@@ -133,6 +133,33 @@
   Edit the `.Rmd.orig`, note in the pull request that the rendered output is
   stale, and rebuild at release. See #190.
 
+- **`bnec()` now assigns the link unless you choose one.** Which link a fit used
+  previously depended on how the family was written, and the difference was
+  silent: `family = "Beta"` gave the identity link, while `family = Beta` and
+  `family = Beta()` gave **logit**, and `family = Gamma()` gave **inverse**. In
+  those cases the curve was fitted to a transform of the mean while `top`, `bot`
+  and `nec` were reported as though they were on the response scale, which is
+  the property the identity link exists to preserve.
+
+  Naming a family and nothing more now leaves the link to `bayesnec`, so
+  `"Beta"`, `Beta`, `Beta()` and `hurdle_gamma()` all fit on the identity link.
+  Writing a link argument makes it yours and it is honoured, as in
+  `Beta(link = "logit")`. Only `identity`, `log` and `logit` are fitted on; any
+  other link is refused with an error naming the family, where previously
+  `inverse`, `probit`, `cloglog`, `sqrt` and the rest were accepted silently.
+
+  A family held in a variable is the one case intent cannot be read from, since
+  `Beta()` and `Beta(link = "logit")` produce identical objects. The object's
+  link is honoured and a message says which was taken.
+
+  Two consequences worth noting. A hurdle or zero-inflated family named without
+  a link, such as `family = hurdle_gamma()`, now works: both its links are
+  assigned, where before it errored because `link_hu` defaults to logit. And
+  `family = "beta"` now works — the tag `brms` reports for that family, which
+  previously gave `unused argument (link = "identity")` because `get("beta")`
+  resolves to `base::beta()`. **If you have code passing a constructed family
+  and relying on its default link, add the link explicitly.** See #256.
+
 - Internal: a single statement of the interval the response distribution allows
   the mean to occupy, and of what each model's mean can produce.
   `mu_support()` returns that interval as a property of the response

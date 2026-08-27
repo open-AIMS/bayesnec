@@ -82,16 +82,34 @@ test_that("validate_family sets identity links for the character form", {
   expect_equal(fam$link_hu, "identity")
 })
 
-test_that("validate_family rejects a non-identity link_hu", {
+test_that("validate_family rejects a non-identity link_hu the caller chose", {
   # hu is written as `1 - survival` on the link scale, so a logit link_hu
-  # would silently pass that through inv_logit.
+  # would silently pass that through inv_logit. Where the caller chose a link
+  # the object is honoured, so the guard still has to fire.
   expect_error(
-    bayesnec:::validate_family(brms::hurdle_gamma(link = "identity")),
+    bayesnec:::validate_family(brms::hurdle_gamma(link = "identity"),
+                               link_source = "chosen"),
     "link_hu"
   )
   expect_error(
-    bayesnec:::validate_family(brms::hurdle_gamma()), "link_hu"
+    bayesnec:::validate_family(brms::hurdle_gamma(), link_source = "chosen"),
+    "link_hu"
   )
+})
+
+test_that("a hurdle family named without a link gets both links assigned", {
+  # Previously `family = hurdle_gamma()` errored, because link_hu defaults to
+  # logit and the guard above fired on a link the user had not chosen. Naming
+  # the family now leaves both links to bayesnec, which is the whole point of
+  # #256: the caller named a family and nothing more.
+  fam <- bayesnec:::validate_family(brms::hurdle_gamma())
+  expect_equal(fam$family, "hurdle_gamma")
+  expect_equal(fam$link, "identity")
+  expect_equal(fam$link_hu, "identity")
+
+  zib <- bayesnec:::validate_family(brms::zero_inflated_beta())
+  expect_equal(zib$link, "identity")
+  expect_equal(zib$link_zi, "identity")
 })
 
 test_that("check_data preserves zeros for a hurdle family", {
@@ -274,7 +292,8 @@ test_that("validate_family sets both identity links for zero_inflated_beta", {
 test_that("validate_family names the right link argument in its error", {
   # the guard must reference link_zi, not link_hu, for this family
   expect_error(
-    bayesnec:::validate_family(brms::zero_inflated_beta(link = "identity")),
+    bayesnec:::validate_family(brms::zero_inflated_beta(link = "identity"),
+                               link_source = "chosen"),
     "link_zi"
   )
 })

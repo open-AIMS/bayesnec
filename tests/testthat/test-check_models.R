@@ -1,9 +1,9 @@
 test_that("properly drops zero bounded models for logit and log links", {
-  beta_family_logit <- validate_family(Beta(link="logit"))
-  binomial_family_logit <- validate_family(binomial(link = "logit"))
-  poisson_family_log <- validate_family(poisson(link = "log"))
-  negbinomial_family_log <- validate_family(negbinomial(link = "log"))
-  gamma_family_log <- validate_family(Gamma(link = "log"))
+  beta_family_logit <- validate_family(Beta(link="logit"), link_source = "chosen")
+  binomial_family_logit <- validate_family(binomial(link = "logit"), link_source = "chosen")
+  poisson_family_log <- validate_family(poisson(link = "log"), link_source = "chosen")
+  negbinomial_family_log <- validate_family(negbinomial(link = "log"), link_source = "chosen")
+  gamma_family_log <- validate_family(Gamma(link = "log"), link_source = "chosen")
   gaussian_family_default <- validate_family("gaussian")
   
   expect_equal(check_models(c("nec3param", "nec4param", "ecxexp"),
@@ -19,17 +19,17 @@ test_that("properly drops zero bounded models for logit and log links", {
   })
 
 test_that("when all models dropped an error is returned", {
-  beta_family_logit <- validate_family(Beta(link = "logit"))
+  beta_family_logit <- validate_family(Beta(link = "logit"), link_source = "chosen")
   expect_error(check_models(c("nec3param", "ecxexp"), beta_family_logit))
 })
 
 test_that(paste0("properly drops lin models for identity link for",
                  " anything but Gaussian"), {
-  beta_family_identity <- validate_family(Beta(link = "identity"))
-  binomial_family_identity <- validate_family(binomial(link = "identity"))
-  poisson_family_identity <- validate_family(poisson(link = "identity"))
-  negbin_family_identity <- validate_family(negbinomial(link = "identity"))
-  gamma_family_identity <- validate_family(Gamma(link = "identity"))
+  beta_family_identity <- validate_family(Beta(link = "identity"), link_source = "chosen")
+  binomial_family_identity <- validate_family(binomial(link = "identity"), link_source = "chosen")
+  poisson_family_identity <- validate_family(poisson(link = "identity"), link_source = "chosen")
+  negbin_family_identity <- validate_family(negbinomial(link = "identity"), link_source = "chosen")
+  gamma_family_identity <- validate_family(Gamma(link = "identity"), link_source = "chosen")
   
   expect_error(check_models(c("neclin", "neclinhorme", "ecxlin"),
                    beta_family_identity))
@@ -64,16 +64,16 @@ test_that("models() and check_models() agree for every response range", {
                           families = list(validate_family("gaussian"))),
     "c(0, 1)" = list(
       range = c(0, 1),
-      families = list(validate_family(Beta(link = "identity")),
-                      validate_family(binomial(link = "identity")),
-                      validate_family(beta_binomial(link = "identity")),
-                      validate_family(bernoulli(link = "identity")))
+      families = list(validate_family(Beta(link = "identity"), link_source = "chosen"),
+                      validate_family(binomial(link = "identity"), link_source = "chosen"),
+                      validate_family(beta_binomial(link = "identity"), link_source = "chosen"),
+                      validate_family(bernoulli(link = "identity"), link_source = "chosen"))
     ),
     "c(0, Inf)" = list(
       range = c(0, Inf),
-      families = list(validate_family(Gamma(link = "identity")),
-                      validate_family(poisson(link = "identity")),
-                      validate_family(negbinomial(link = "identity")))
+      families = list(validate_family(Gamma(link = "identity"), link_source = "chosen"),
+                      validate_family(poisson(link = "identity"), link_source = "chosen"),
+                      validate_family(negbinomial(link = "identity"), link_source = "chosen"))
     )
   )
   for (lab in names(ranges)) {

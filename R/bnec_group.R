@@ -65,6 +65,8 @@
 #'
 #' @export
 bnec_group <- function(formula, data, group_var, family = NULL, ...) {
+  # Captured before anything can rebind it; see family_link_source() and #256.
+  link_source <- family_link_source(substitute(family))
   if (!is.character(group_var) || length(group_var) != 1) {
     stop("`group_var` must be a single column name.", call. = FALSE)
   }
@@ -120,7 +122,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
     message("Family chosen once from the whole response: ", family,
             ". Pass `family` to override.")
   }
-  family <- validate_family(family)
+  family <- validate_family(family, link_source = link_source)
   # The crossed weights are an outer product of the per-level weight vectors,
   # and that identity holds for pseudo-BMA only, so the method is checked in
   # crossed_group_weights() rather than merely documented -- multiplying

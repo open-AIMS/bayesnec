@@ -212,6 +212,49 @@ model using the "negbinomial" family.
 Other families can be considered as required, please raise an
 \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
 development site if your required family is not currently available.
+}
+\section{The link}{
+
+
+\code{\link{bnec}} fits on the \strong{identity} link, which is what keeps
+\code{top}, \code{bot} and \code{nec} on the scale of the response and
+directly interpretable, and is what the JSS article describes.
+
+\strong{The link is assigned by bayesnec unless you choose one.} Naming a
+family and nothing more leaves it to bayesnec, so all of the following fit on
+the identity link:
+
+\preformatted{
+bnec(..., family = "Beta")
+bnec(..., family = Beta)
+bnec(..., family = Beta())
+bnec(..., family = hurdle_gamma())
+}
+
+Writing a link argument is what makes it yours, and it is then honoured:
+
+\preformatted{
+bnec(..., family = Beta(link = "logit"))
+}
+
+Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
+link is refused with an error naming the family. Note that \code{log} and
+\code{logit} exclude the zero-bounded equations, since a mean decaying onto
+zero cannot produce the negative values those link scales require --- see
+\code{\link{models}}.
+
+A family held in a variable is a case bayesnec cannot read intent from, since
+\code{Beta()} and \code{Beta(link = "logit")} produce identical objects. The
+object's own link is honoured and a message says which link was taken.
+
+\strong{This changed in version 2.1.3.25.} Before it, the link depended on
+how the family was written and the difference was silent:
+\code{family = "Beta"} gave identity, while \code{family = Beta} and
+\code{family = Beta()} gave \strong{logit} and \code{family = Gamma()} gave
+\strong{inverse}. In those cases the curve was fitted to a transform of the
+mean while \code{top}, \code{bot} and \code{nec} were reported as though
+they were on the response scale. If you have code passing a constructed
+family and relying on its default link, add the link explicitly.
 
 \bold{Supply the raw response, not one normalised to the control}
 
@@ -395,9 +438,7 @@ function of the fitted mean (\code{disp("power")}). See
 carry one, and what the exponent implies for each.
 
 A variance function of the fitted mean requires the mean to be modelled on
-its natural scale. \code{\link{bnec}} uses an identity link whenever it
-selects the family itself; where a family is supplied explicitly its link
-should be too, as in \code{Gamma(link = "identity")}.
+its natural scale, which is the identity link \code{\link{bnec}} fits on.
 
 Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
 dispersion sub-model changes the credible intervals of the toxicity
@@ -437,6 +478,7 @@ and does not allow them back in as is the case with e.g. \code{stats::lm} and
 data prior to fitting because if you so wish that should facilitate merging
 predictions back onto your original dataset.
 }
+
 \examples{
 \dontrun{
 library(bayesnec)

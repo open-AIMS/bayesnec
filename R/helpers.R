@@ -618,15 +618,17 @@ expand_model_set <- function(model) {
 }
 
 #' @noRd
-retrieve_valid_family <- function(named_list, data) {
+retrieve_valid_family <- function(named_list, data, link_source = "none") {
   if (!"family" %in% names(named_list)) {
     y <- retrieve_var(data, "y_var", error = TRUE)
     tr <- retrieve_var(data, "trials_var")
     family <- set_distribution(y, support_integer = TRUE, trials = tr)
+    # Chosen by bayesnec, so the link is bayesnec's to assign too.
+    link_source <- "none"
   } else {
     family <- named_list$family
   }
-  validate_family(family)
+  validate_family(family, link_source = link_source)
 }
 
 #' @noRd
