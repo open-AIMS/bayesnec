@@ -157,7 +157,8 @@
   intent cannot be read from, since `Beta()` and `Beta(link = "logit")` produce
   identical objects: one held in a variable, one read back off a fit with
   `fit$family`, or one passed through `do.call()`. The object's links are
-  honoured and a message says which mean link was taken.
+  honoured, and where the mean link is not the identity a message says which
+  one was taken.
 
   Two consequences worth noting. A hurdle or zero-inflated family named without
   a link, such as `family = hurdle_gamma()`, now works: both its links are

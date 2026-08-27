@@ -253,3 +253,89 @@ test_that("each entry point reads the link from the expression it was given", {
     "bayesnec fits on the"
   ) |> suppressMessages()
 })
+
+test_that("the constructor is resolved in function mode", {
+  # eval() is value lookup; R resolves the callee of a call in function mode.
+  # With plain eval(), an unrelated `Beta <- 0.5` in the caller's workspace made
+  # `family = Beta()` unreadable, so the object's own logit link was honoured --
+  # the misspecification #256 removes, reached without a link being written.
+  f <- bayesnec:::family_link_source
+  e <- new.env(parent = globalenv())
+  expect_equal(f(quote(Beta()), env = e), "none")
+  assign("Beta", 0.5, envir = e)
+  assign("Gamma", 3, envir = e)
+  expect_equal(f(quote(Beta()), env = e), "none")
+  expect_equal(f(quote(Gamma(link = "log")), env = e), "link")
+  # end to end, where the shadowed name turned identity priors into logit ones
+  set.seed(256)
+  d <- data.frame(x = rep(seq(0, 4, length.out = 10), 3))
+  d$y <- pmin(pmax(0.8 * exp(-exp(-0.5) * pmax(d$x - 2, 0)) +
+                     rnorm(30, 0, 0.05), 0.02), 0.98)
+  local({
+    Beta <- 0.5
+    expect_equal(
+      get_priors(y ~ crf(x, "nec3param"), data = d,
+                 family = brms::Beta())$prior[
+                   get_priors(y ~ crf(x, "nec3param"), data = d,
+                              family = brms::Beta())$nlpar == "top"],
+      "beta(5, 2)"
+    )
+  })
+})
+
+test_that("a family carrying the tag brms reports is keyed correctly", {
+  # brms rebuilds a supplied family and reports `gamma` where stats::Gamma
+  # reports `Gamma`. mod_fams, check_models and mu_support key on `Gamma`, so a
+  # family read back off a fitted object arrived under a tag nothing
+  # recognised: refused outright, and check_models kept all 23 equations rather
+  # than the 19 valid on the identity link.
+  v <- bayesnec:::validate_family
+  expect_equal(v("gamma")$family, "Gamma")
+  expect_equal(v("gamma")$link, "identity")
+  off_a_fit <- brms:::validate_family(Gamma(link = "identity"))
+  expect_equal(off_a_fit$family, "gamma")
+  canonical <- v(off_a_fit, link_source = "symbol")
+  expect_equal(canonical$family, "Gamma")
+  expect_equal(canonical$link, "identity")
+  expect_equal(length(check_models(models()$all, canonical)),
+               length(check_models(models()$all, v("Gamma")))) |>
+    suppressMessages()
+  # a link the object carries survives the rebuild under the canonical tag
+  logit_off_a_fit <- brms:::validate_family(Gamma(link = "log"))
+  expect_message(kept <- v(logit_off_a_fit, link_source = "symbol"), "log")
+  expect_equal(kept$family, "Gamma")
+  expect_equal(kept$link, "log")
+})
+
+test_that("a dispersion link survives alongside an assigned second block", {
+  # The two interact: link_shape is carried through while link_hu / link_zi is
+  # assigned. Neither must disturb the other.
+  v <- bayesnec:::validate_family
+  f <- bayesnec:::family_link_source
+  hg <- v(brms::hurdle_gamma(link_shape = "identity"),
+          link_source = f(quote(hurdle_gamma(link_shape = "identity"))))
+  expect_equal(hg$link, "identity")
+  expect_equal(hg$link_hu, "identity")
+  expect_equal(hg$link_shape, "identity")
+  zinb <- v(brms::zero_inflated_negbinomial(link_shape = "identity"),
+            link_source = f(quote(
+              zero_inflated_negbinomial(link_shape = "identity")
+            )))
+  expect_equal(zinb$link, "identity")
+  expect_equal(zinb$link_shape, "identity")
+  # zi is held constant for the count families, so the link there is read but
+  # no curve is carried on it
+  zip <- v(brms::zero_inflated_poisson(link_zi = "identity"),
+           link_source = f(quote(zero_inflated_poisson(link_zi = "identity"))))
+  expect_equal(zip$link, "identity")
+  expect_equal(zip$link_zi, "identity")
+})
+
+test_that("the idempotence marker is private to bayesnec", {
+  # It must not be serialised into a brmsfit or into a returned fit object.
+  v <- bayesnec:::validate_family
+  fam <- v("Beta")
+  expect_true(isTRUE(attr(fam, "bayesnec_validated")))
+  expect_null(attr(bayesnec:::unmark_family(fam), "bayesnec_validated"))
+  expect_equal(bayesnec:::unmark_family(fam)$link, "identity")
+})

@@ -213,8 +213,8 @@
 #' A family that does not reach \code{\link{bnec}} written as a constructor
 #' call --- one held in a variable, one read back off a fitted object with
 #' \code{fit$family}, or one passed through \code{do.call} --- is a case
-#' intent cannot be read from at all. The object's own links are honoured and a
-#' message says which mean link was taken.
+#' intent cannot be read from at all. The object's own links are honoured, and
+#' where the mean link is not the identity a message says which one was taken.
 #'
 #' Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
 #' link is refused with an error naming the family. Note that \code{log} and
