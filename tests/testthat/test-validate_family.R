@@ -13,10 +13,8 @@ test_that("family_link_source reads the expression, not the object", {
   expect_equal(f(quote(brms::Beta())), "none")
   expect_equal(f(NULL), "none")
   # a link chosen
-  expect_equal(f(quote(Beta(link = "logit"))), "chosen")
-  expect_equal(f(quote(binomial(link = "identity"))), "chosen")
-  expect_equal(f(quote(hurdle_gamma(link = "log", link_hu = "identity"))),
-               "chosen")
+  expect_equal(f(quote(Beta(link = "logit"))), "link")
+  expect_equal(f(quote(binomial(link = "identity"))), "link")
   # a symbol: either the constructor or a variable holding an object, and the
   # expression cannot tell which. validate_family() has the value.
   expect_equal(f(quote(Beta)), "symbol")
@@ -110,10 +108,10 @@ test_that("a link written positionally is a link the caller chose", {
   # named arguments gave the two opposite outcomes -- one refused, one silently
   # refitted on identity, which is the substitution #256 exists to remove.
   f <- bayesnec:::family_link_source
-  expect_equal(f(quote(Beta("logit"))), "chosen")
-  expect_equal(f(quote(binomial("probit"))), "chosen")
-  expect_equal(f(quote(stats::binomial("probit"))), "chosen")
-  expect_equal(f(quote(Gamma("log"))), "chosen")
+  expect_equal(f(quote(Beta("logit"))), "link")
+  expect_equal(f(quote(binomial("probit"))), "link")
+  expect_equal(f(quote(stats::binomial("probit"))), "link")
+  expect_equal(f(quote(Gamma("log"))), "link")
   expect_error(
     bayesnec:::validate_family(binomial("probit"),
                                link_source = f(quote(binomial("probit")))),
@@ -127,8 +125,11 @@ test_that("a link on the second block is a link the caller chose", {
   # Without this the guard in validate_family() could not fire for the form a
   # caller would actually write to set one.
   f <- bayesnec:::family_link_source
-  expect_equal(f(quote(hurdle_gamma(link_hu = "logit"))), "chosen")
-  expect_equal(f(quote(zero_inflated_beta(link_zi = "logit"))), "chosen")
+  expect_equal(f(quote(hurdle_gamma(link_hu = "logit"))), "link_hu")
+  expect_equal(f(quote(zero_inflated_beta(link_zi = "logit"))), "link_zi")
+  # each block separately, so the one the caller left alone is still assigned
+  expect_equal(f(quote(hurdle_gamma(link = "log", link_hu = "identity"))),
+               c("link", "link_hu"))
   expect_error(
     bayesnec:::validate_family(
       brms::hurdle_gamma(link_hu = "logit"),
@@ -148,6 +149,62 @@ test_that("a dispersion link is not a statement about the mean link", {
   fam <- bayesnec:::validate_family(Beta(link_phi = "log"),
                                     link_source = "none")
   expect_equal(fam$link, "identity")
+})
+
+test_that("a dispersion link the caller wrote is carried through, not reset", {
+  # The mean link is bayesnec's to assign; the dispersion link is nobody's to
+  # reassign. Rebuilding the family on the identity link must not quietly
+  # return link_phi or link_shape to the family's own default, because a disp()
+  # sub-model is then fitted on a link scale the caller did not ask for.
+  v <- bayesnec:::validate_family
+  f <- bayesnec:::family_link_source
+  b <- v(Beta(link_phi = "identity"),
+         link_source = f(quote(Beta(link_phi = "identity"))))
+  expect_equal(b$link, "identity")
+  expect_equal(b$link_phi, "identity")
+  nb <- v(brms::negbinomial(link_shape = "identity"),
+          link_source = f(quote(negbinomial(link_shape = "identity"))))
+  expect_equal(nb$link, "identity")
+  expect_equal(nb$link_shape, "identity")
+  # the default is still the default when nothing was written
+  expect_equal(v(Beta(), link_source = "none")$link_phi, "log")
+})
+
+test_that("a family that is not written as a constructor call is honoured", {
+  # do.call() inlines the evaluated family into the call it builds, and
+  # fit$family is how a family is read back off a fitted object. Neither can be
+  # read for intent, so both are treated as a variable holding a family:
+  # honoured, with a message, rather than having the link replaced in silence.
+  f <- bayesnec:::family_link_source
+  expect_equal(f(quote(fit$family)), "symbol")
+  expect_equal(f(quote(do.call(Beta, list(link = "logit")))), "symbol")
+  expect_equal(f(Gamma(link = "inverse")), "symbol")
+  d <- data.frame(x = rep(1:4, each = 5), y = rep(c(1, 2, 3, 0), 5))
+  g <- y ~ crf(x, "nec3param")
+  expect_error(
+    do.call(get_priors, list(g, data = d, family = Gamma(link = "inverse"))),
+    "bayesnec fits on the"
+  )
+})
+
+test_that("the idempotence marker cannot carry an unsupported link", {
+  # Only the rebuild and the message are skipped for an already validated
+  # family. The checks still run, so an object carrying the marker -- one taken
+  # off a returned fit, say -- cannot be edited into an unsupported link and
+  # passed back.
+  v <- bayesnec:::validate_family
+  tampered <- v("Beta")
+  tampered$link <- "probit"
+  expect_error(v(tampered, link_source = "symbol"), "bayesnec fits on the")
+})
+
+test_that("a function that is not a family constructor is refused clearly", {
+  # bnec(family = mean) reached the constructor call and failed with that
+  # function's own argument error.
+  v <- bayesnec:::validate_family
+  expect_error(v(mean, link_source = "symbol"), "does not")
+  expect_error(v(sum, link_source = "symbol"), "does not")
+  expect_error(v(length, link_source = "symbol"), "does not")
 })
 
 test_that("a string naming some other function is not read as a family", {

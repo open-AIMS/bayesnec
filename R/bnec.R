@@ -186,28 +186,41 @@
 #'
 #' Writing a link argument is what makes it yours, and it is then honoured.
 #' A link written positionally counts, since \code{link} is the first argument
-#' of every family constructor, and so does the second block of a two-block
-#' family:
+#' of every family constructor:
 #'
 #' \preformatted{
 #' bnec(..., family = Beta(link = "logit"))
 #' bnec(..., family = Beta("logit"))
-#' bnec(..., family = hurdle_gamma(link_hu = "logit"))
 #' }
 #'
-#' \code{link_phi} and \code{link_shape} are not part of this: they are
+#' This is read one link at a time. A two-block family has a link on each
+#' block, and writing one says nothing about the other, so the block you leave
+#' alone is still bayesnec's to assign:
+#'
+#' \preformatted{
+#' bnec(..., family = hurdle_gamma(link = "log"))
+#'   # log on the mean, identity on hu
+#' bnec(..., family = hurdle_gamma(link_hu = "logit"))
+#'   # identity on the mean, and refused: hu must be fitted on identity
+#' }
+#'
+#' \code{link_phi} and \code{link_shape} are outside this altogether. They are
 #' dispersion links, no curve is fitted on them, and writing one says nothing
 #' about the scale \code{top}, \code{bot} and \code{nec} are reported on.
+#' Whatever you write there is carried through unchanged; whatever you do not
+#' keeps the family's own default.
+#'
+#' A family that does not reach \code{\link{bnec}} written as a constructor
+#' call --- one held in a variable, one read back off a fitted object with
+#' \code{fit$family}, or one passed through \code{do.call} --- is a case
+#' intent cannot be read from at all. The object's own links are honoured and a
+#' message says which mean link was taken.
 #'
 #' Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
 #' link is refused with an error naming the family. Note that \code{log} and
 #' \code{logit} exclude the zero-bounded equations, since a mean decaying onto
 #' zero cannot produce the negative values those link scales require --- see
 #' \code{\link{models}}.
-#'
-#' A family held in a variable is a case bayesnec cannot read intent from, since
-#' \code{Beta()} and \code{Beta(link = "logit")} produce identical objects. The
-#' object's own link is honoured and a message says which link was taken.
 #'
 #' \strong{This changed in version 2.1.3.25.} Before it, the link depended on
 #' how the family was written and the difference was silent:
@@ -530,9 +543,9 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   brm_args$family <- retrieve_valid_family(brm_args, bdat,
                                            link_source = link_source)
   # The marker validate_family() uses to stay idempotent is private, and the
-  # family object is stored in the brmsfit, so it is removed before brms sees
+  # family object is stored in the brmsfit, so it is dropped before brms sees
   # it rather than serialised into every saved fit.
-  attr(brm_args$family, "bayesnec_validated") <- NULL
+  brm_args$family <- unmark_family(brm_args$family)
   # Emitted here rather than from check_data() so that it fires once per bnec()
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.

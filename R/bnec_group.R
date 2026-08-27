@@ -152,7 +152,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
                       family = family, ...)
   }
   out <- list(fits = fits, group_var = group_var, levels = levs,
-              formula = formula, data = data, family = family,
+              formula = formula, data = data, family = unmark_family(family),
               n = as.integer(counts[levs]), weights_method = wt_method)
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }

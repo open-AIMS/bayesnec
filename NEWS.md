@@ -144,15 +144,20 @@
   Naming a family and nothing more now leaves the link to `bayesnec`, so
   `"Beta"`, `Beta`, `Beta()` and `hurdle_gamma()` all fit on the identity link.
   Writing a link argument makes it yours and it is honoured, as in
-  `Beta(link = "logit")`, `Beta("logit")` or `hurdle_gamma(link_hu = "logit")`;
-  `link_phi` and `link_shape` are dispersion links and say nothing about the
-  mean. Only `identity`, `log` and `logit` are fitted on; any other link is
-  refused with an error naming the family, where previously `inverse`,
-  `probit`, `cloglog`, `sqrt` and the rest were accepted silently.
+  `Beta(link = "logit")` or `Beta("logit")`. This is read one link at a time:
+  in a two-block family, `hurdle_gamma(link = "log")` leaves `link_hu` to
+  `bayesnec`, and `hurdle_gamma(link_hu = ...)` leaves the mean link to
+  `bayesnec`. `link_phi` and `link_shape` are dispersion links, are outside the
+  rule, and are carried through unchanged. Only `identity`, `log` and `logit`
+  are fitted on; any other link is refused with an error naming the family,
+  where previously `inverse`, `probit`, `cloglog`, `sqrt` and the rest were
+  accepted silently.
 
-  A family held in a variable is the one case intent cannot be read from, since
-  `Beta()` and `Beta(link = "logit")` produce identical objects. The object's
-  link is honoured and a message says which was taken.
+  A family that does not arrive written as a constructor call is the case
+  intent cannot be read from, since `Beta()` and `Beta(link = "logit")` produce
+  identical objects: one held in a variable, one read back off a fit with
+  `fit$family`, or one passed through `do.call()`. The object's links are
+  honoured and a message says which mean link was taken.
 
   Two consequences worth noting. A hurdle or zero-inflated family named without
   a link, such as `family = hurdle_gamma()`, now works: both its links are
