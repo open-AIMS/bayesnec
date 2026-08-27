@@ -297,9 +297,9 @@
 #' for a component. \code{\link{nec}} returns the combined threshold, which for
 #' threshold models on both blocks is the smaller of the two.
 #'
-#' These families must be specified as \code{family = "hurdle_gamma"} or
-#' \code{family = "zero_inflated_beta"}, or with both links set explicitly as
-#' \code{hurdle_gamma(link = "identity", link_hu = "identity")} and
+#' Naming these families is enough --- \code{family = "hurdle_gamma"},
+#' \code{hurdle_gamma()}, \code{family = "zero_inflated_beta"} --- since
+#' bayesnec assigns the link on both blocks; see \strong{The link} and
 #' \code{zero_inflated_beta(link = "identity", link_zi = "identity")}
 #' respectively. bayesnec keeps
 #' every parameter on the natural response scale, and the hurdle block is
@@ -543,8 +543,15 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # Beta() and Beta(link = "logit") produce identical objects. mf holds the
   # dots unevaluated. Resolved on its own line rather than inside the argument
   # list so that parent.frame() is the caller's frame and not whichever frame
-  # happens to force the promise. See #256.
-  link_source <- family_link_source(mf$`...`$family, env = parent.frame())
+  # happens to force the promise.
+  #
+  # substitute() rather than mf, because match.call() records a `...` forwarded
+  # from a wrapper as the placeholder `..1`, which reads as a symbol and left
+  # `wrapper(family = Beta())` fitting on logit where `bnec(family = Beta())`
+  # fits on identity. substitute() follows the promise to the expression the
+  # caller wrote, through any depth of forwarding. See #256.
+  link_source <- family_link_source(substitute(list(...))[-1]$family,
+                                    env = parent.frame())
   brm_args$family <- retrieve_valid_family(brm_args, bdat,
                                            link_source = link_source)
   # The marker validate_family() uses to stay idempotent is private, and the

@@ -143,9 +143,10 @@ check_disp_spec <- function(spec, family, response = NULL) {
     # A variance function of the fitted mean is built by substituting the
     # model's own curve expression into the form. That expression is the linear
     # predictor on the LINK scale, so it is the mean only under an identity
-    # link. bnec() assigns identity unless the caller wrote a link argument
-    # (#256), so this fires only where one was written, and the failure it
-    # refuses is silent: under Gamma's inverse link the block computes
+    # link. bnec() assigns identity unless the caller wrote a link argument, or
+    # supplied a family it could not read intent from (#256), so this fires on
+    # those two routes. The failure it refuses is silent: under an inverse link
+    # the block computes
     # log(1/mu) = -log(mu) and the slope is estimated with the wrong sign,
     # converging cleanly and excluding zero. Refuse rather than fit that.
     link <- if (inherits(family, "family")) family$link else "identity"

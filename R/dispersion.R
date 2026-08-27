@@ -59,7 +59,8 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   if (fam %in% allowed_fams) {
     # The link is taken from the fit rather than left at the family default.
     # get("poisson")() is a log link and get("binomial")() a logit one, but
-    # bnec() forces link = "identity", so posterior_linpred() below is already
+    # The fit is on link = "identity" -- assigned by bnec() unless the caller
+  # wrote a link -- so posterior_linpred() below is already
     # on the response scale and linkinv() would transform it a second time. For
     # a Poisson that means exp() of a mean of ~90, giving variance weights of
     # ~1e39; they do not cancel out of the ratio, because rowSums() weights the

@@ -110,7 +110,8 @@ define_prior <- function(model, family, predictor, response,
     # bot. Put on the link scale of the mu family before it is measured, so
     # that this branch and the one below both take the scale from the quantity
     # the offsets are actually added to rather than differing over a step that
-    # is a no-op only for as long as bnec() forces the identity link.
+    # is a no-op only for as long as the fit is on the identity link, which is
+  # what bnec() assigns unless the caller wrote a link argument (#256).
     mu_family <- hurdle_mu_family(family)
     mu_response <- response_link_scale(
       split_hurdle_response(predictor, response)$mu$y, mu_family
@@ -403,7 +404,7 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' @details Without this, no prior is generated for a group-level standard
 #' deviation and it falls through to the \pkg{brms} default,
 #' \code{student_t(3, 0, 2.5)}. On a bounded response under the identity link
-#' \code{\link{bnec}} forces, an offset drawn at that scale puts the mean
+#' \code{\link{bnec}} assigns, an offset drawn at that scale puts the mean
 #' outside its support, where the likelihood is undefined. There is no inverse
 #' link to rescue it -- that is the trade \code{\link{bnec}} makes so that
 #' \code{top}, \code{bot} and \code{nec} stay directly interpretable -- so

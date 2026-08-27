@@ -244,7 +244,18 @@ bnec_default_family <- function(fam, keep = list()) {
   # What the caller wrote, and the dispersion links, override the assignment.
   takeable <- names(keep) %in% names(formals(ctor_fn))
   args[names(keep)[takeable]] <- keep[takeable]
-  if (all(takeable)) {
+  # A link the constructor cannot take but which is only the family's own
+  # default is nothing to carry: kept_links() reports every link present on the
+  # object, written or not, so brmsfamily("Gamma", link = "identity") arrives
+  # holding link_shape = "log" without the caller having asked for it.
+  spare <- keep[!takeable]
+  if (length(spare) > 0) {
+    stock <- do.call(brmsfamily, list(family = fam))
+    spare <- spare[!vapply(names(spare),
+                           function(nm) identical(spare[[nm]], stock[[nm]]),
+                           logical(1))]
+  }
+  if (length(spare) == 0) {
     return(do.call(ctor_fn, args))
   }
   # mod_fams maps gaussian and Gamma to the stats constructors, which take only
@@ -254,7 +265,7 @@ bnec_default_family <- function(fam, keep = list()) {
   # would silently return a disp() sub-model to the log scale, which is the
   # substitution this function exists to prevent, so the brms constructor is
   # used for those.
-  out <- do.call(brmsfamily, c(list(family = fam), args, keep[!takeable]))
+  out <- do.call(brmsfamily, c(list(family = fam), args, spare))
   if (!out$family %in% names(mod_fams)) {
     # brmsfamily reports `gamma` where mod_fams, check_models and mu_support
     # key on `Gamma`, and the tag cannot simply be rewritten: brms dispatches
@@ -262,8 +273,8 @@ bnec_default_family <- function(fam, keep = list()) {
     # Refused rather than returned under a tag that would silently keep the
     # linear-decay equations in the model set. This is what a family carrying
     # link_shape reached before #256 as well, by a different route.
-    stop("bayesnec cannot carry ",
-         paste(names(keep)[!takeable], collapse = ", "), " on the ", fam,
+    stop("bayesnec cannot carry ", paste(names(spare), collapse = ", "),
+         " on the ", fam,
          " family. Model dispersion with disp(~x) in the formula instead,",
          " which is valid under any link. See ?bayesnecformula.",
          call. = FALSE)

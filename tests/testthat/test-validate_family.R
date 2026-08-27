@@ -292,7 +292,7 @@ test_that("a family carrying the tag brms reports is keyed correctly", {
   v <- bayesnec:::validate_family
   expect_equal(v("gamma")$family, "Gamma")
   expect_equal(v("gamma")$link, "identity")
-  off_a_fit <- brms:::validate_family(Gamma(link = "identity"))
+  off_a_fit <- brms::brmsfamily("gamma", link = "identity")
   expect_equal(off_a_fit$family, "gamma")
   canonical <- v(off_a_fit, link_source = "symbol")
   expect_equal(canonical$family, "Gamma")
@@ -301,7 +301,7 @@ test_that("a family carrying the tag brms reports is keyed correctly", {
                length(check_models(models()$all, v("Gamma")))) |>
     suppressMessages()
   # a link the object carries survives the rebuild under the canonical tag
-  logit_off_a_fit <- brms:::validate_family(Gamma(link = "log"))
+  logit_off_a_fit <- brms::brmsfamily("gamma", link = "log")
   expect_message(kept <- v(logit_off_a_fit, link_source = "symbol"), "log")
   expect_equal(kept$family, "Gamma")
   expect_equal(kept$link, "log")
@@ -375,5 +375,25 @@ test_that("an unimplemented family is named before its link is", {
     bayesnec:::validate_family(brms::student(link = "inverse"),
                                link_source = "symbol"),
     "not currently implemented"
+  )
+})
+
+test_that("a family forwarded through dots is read from the caller's expression", {
+  # match.call(expand.dots = FALSE) records a `...` forwarded from a wrapper as
+  # the placeholder `..1`, which reads as a symbol: wrapper(family = Beta())
+  # then fitted on logit where bnec(family = Beta()) fits on identity, and
+  # wrapper(family = Gamma()) errored on the inverse link. substitute() follows
+  # the promise to the expression the caller actually wrote.
+  d <- data.frame(x = rep(1:4, each = 5), y = rep(c(1, 2, 3, 0), 5))
+  f <- y ~ crf(x, "nec3param")
+  wrap <- function(...) bnec(f, data = d, ...)
+  twice <- function(...) wrap(...)
+  # a refused link still errors through the wrapper: the expression is read
+  expect_error(wrap(family = Gamma(link = "inverse")), "bayesnec fits on the")
+  expect_error(twice(family = Gamma(link = "inverse")), "bayesnec fits on the")
+  # and a family named with no link is not announced as one taken from an
+  # object, which is what the symbol reading did
+  expect_no_message(
+    try(wrap(family = brms::Beta()), silent = TRUE)
   )
 })

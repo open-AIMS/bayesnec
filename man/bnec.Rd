@@ -274,9 +274,9 @@ default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
 for a component. \code{\link{nec}} returns the combined threshold, which for
 threshold models on both blocks is the smaller of the two.
 
-These families must be specified as \code{family = "hurdle_gamma"} or
-\code{family = "zero_inflated_beta"}, or with both links set explicitly as
-\code{hurdle_gamma(link = "identity", link_hu = "identity")} and
+Naming these families is enough --- \code{family = "hurdle_gamma"},
+\code{hurdle_gamma()}, \code{family = "zero_inflated_beta"} --- since
+bayesnec assigns the link on both blocks; see \strong{The link} and
 \code{zero_inflated_beta(link = "identity", link_zi = "identity")}
 respectively. bayesnec keeps
 every parameter on the natural response scale, and the hurdle block is
