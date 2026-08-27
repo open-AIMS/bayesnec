@@ -188,7 +188,7 @@ We can use this to obtain first a set of *NEC* only models from the existing set
 exp_5_nec <- pull_out(exp_5, model = "nec")
 ```
 
-In this case, because we have already fitted `"decline"` models, we can ignore the message regarding the missing *NEC* models---these are all models that are not appropriate for a `Beta` family with an `identity` link function, or allow hormesis, which we did not consider in this example.
+In this case, because we have already fitted `"decline"` models, we can ignore the message regarding the missing *NEC* models---these are all models that are not appropriate for the family and link `bnec` selected for these data, or allow hormesis, which we did not consider in this example.
 
 Now we have two model sets, an *NEC* set, and a mixed *NEC* and *ECx* set. Of course, before we use this model set for any inference, we would need to check the chain mixing and `acf` plot for each of the input models. For the "all" set, the model with the highest weight is **nec4param**. 
 

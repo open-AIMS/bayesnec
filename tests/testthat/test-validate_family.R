@@ -339,3 +339,41 @@ test_that("the idempotence marker is private to bayesnec", {
   expect_null(attr(bayesnec:::unmark_family(fam), "bayesnec_validated"))
   expect_equal(bayesnec:::unmark_family(fam)$link, "identity")
 })
+
+test_that("a dispersion link survives on a family built by stats, or is refused", {
+  # mod_fams maps gaussian and Gamma to the stats constructors, which take only
+  # `link`. Filtering the rebuild's arguments to what the constructor accepts
+  # dropped link_sigma and link_shape, silently returning a disp() sub-model to
+  # the log scale -- the substitution #256 removes. Setting the field on the
+  # object afterwards does not work: brms rebuilds the family and reads the
+  # link off its own constructor.
+  v <- bayesnec:::validate_family
+  g <- v(brms::brmsfamily("gaussian", link = "identity",
+                          link_sigma = "identity"),
+         link_source = "link")
+  expect_equal(g$family, "gaussian")
+  expect_equal(g$link, "identity")
+  expect_equal(g$link_sigma, "identity")
+  # and the tag stays one the rest of bayesnec keys on
+  expect_equal(length(check_models(models()$all, g)),
+               length(check_models(models()$all, v("gaussian")))) |>
+    suppressMessages()
+  # Gamma cannot carry one: brmsfamily reports the tag `gamma`, which
+  # check_models does not key on, and rewriting the tag breaks brms dispatch.
+  # Refused rather than dropped.
+  expect_error(
+    v(brms::brmsfamily("Gamma", link = "identity", link_shape = "identity"),
+      link_source = "link"),
+    "cannot carry"
+  )
+})
+
+test_that("an unimplemented family is named before its link is", {
+  # For a family bayesnec does not implement at all, naming the link it was
+  # given is the less useful of the two errors.
+  expect_error(
+    bayesnec:::validate_family(brms::student(link = "inverse"),
+                               link_source = "symbol"),
+    "not currently implemented"
+  )
+})

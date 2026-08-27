@@ -204,11 +204,14 @@
 #'   # identity on the mean, and refused: hu must be fitted on identity
 #' }
 #'
-#' \code{link_phi} and \code{link_shape} are outside this altogether. They are
-#' dispersion links, no curve is fitted on them, and writing one says nothing
-#' about the scale \code{top}, \code{bot} and \code{nec} are reported on.
-#' Whatever you write there is carried through unchanged; whatever you do not
-#' keeps the family's own default.
+#' The dispersion links --- \code{link_phi}, \code{link_shape},
+#' \code{link_sigma} --- are outside this altogether. No curve is fitted on
+#' them and writing one says nothing about the scale \code{top}, \code{bot}
+#' and \code{nec} are reported on, so whatever you write there is carried
+#' through unchanged and whatever you do not keeps the family's own default.
+#' The one exception is \code{Gamma}, whose dispersion link \code{bayesnec}
+#' cannot carry; write \code{disp(~x)} in the formula instead, which is valid
+#' under any link.
 #'
 #' A family that does not reach \code{\link{bnec}} written as a constructor
 #' call --- one held in a variable, one read back off a fitted object with
@@ -230,6 +233,8 @@
 #' mean while \code{top}, \code{bot} and \code{nec} were reported as though
 #' they were on the response scale. If you have code passing a constructed
 #' family and relying on its default link, add the link explicitly.
+#'
+#' @details
 #'
 #' \bold{Supply the raw response, not one normalised to the control}
 #'

@@ -147,8 +147,9 @@
   `Beta(link = "logit")` or `Beta("logit")`. This is read one link at a time:
   in a two-block family, `hurdle_gamma(link = "log")` leaves `link_hu` to
   `bayesnec`, and `hurdle_gamma(link_hu = ...)` leaves the mean link to
-  `bayesnec`. `link_phi` and `link_shape` are dispersion links, are outside the
-  rule, and are carried through unchanged. Only `identity`, `log` and `logit`
+  `bayesnec`. The dispersion links `link_phi`, `link_shape` and `link_sigma`
+  are outside the rule and are carried through unchanged, except on `Gamma`,
+  where one is refused rather than silently dropped. Only `identity`, `log` and `logit`
   are fitted on; any other link is refused with an error naming the family,
   where previously `inverse`, `probit`, `cloglog`, `sqrt` and the rest were
   accepted silently.

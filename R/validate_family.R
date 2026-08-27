@@ -14,8 +14,9 @@
 #' objects and mean different things.
 #'
 #' \itemize{
-#'   \item \code{"Beta"}, \code{Beta}, \code{Beta()} --- \code{"none"}. A
-#'     family was named and nothing more.
+#'   \item \code{"Beta"} and \code{Beta()} --- \code{"none"}. A family was
+#'     named and nothing more. \code{Beta} on its own is a symbol, so it is
+#'     \code{"symbol"} here and separated below.
 #'   \item \code{Beta(link = "logit")}, \code{Beta("logit")} ---
 #'     \code{"link"}. \code{hurdle_gamma(link_hu = "logit")} ---
 #'     \code{"link_hu"}. The names are returned rather than a single flag,
@@ -117,10 +118,12 @@ chosen_link_args <- function(link_source) {
 #' @param link_source The output of \code{\link{family_link_source}}.
 #'
 #' @details Two sets. The links the caller wrote, which are theirs. And the
-#' dispersion links --- \code{link_phi}, \code{link_shape} --- which are
-#' nobody's to reassign: bayesnec fits no curve on them, does not read them,
-#' and rebuilding the family without them would silently return a dispersion
-#' sub-model to the family's default link scale.
+#' dispersion links --- \code{link_phi}, \code{link_shape},
+#' \code{link_sigma} --- which are nobody's to reassign: bayesnec fits no
+#' curve on them, does not read them, and rebuilding the family without them
+#' would silently return a dispersion sub-model to the family's default link
+#' scale. Where one cannot be carried, \code{\link{bnec_default_family}}
+#' refuses rather than drops it.
 #'
 #' @return A named \code{\link[base]{list}}.
 #'
@@ -217,6 +220,8 @@ canonical_fam_tag <- function(fam) {
 #'
 #' @return An object of class \code{\link[stats]{family}}.
 #'
+#' @importFrom brms brmsfamily
+#'
 #' @noRd
 bnec_default_family <- function(fam, keep = list()) {
   fam <- canonical_fam_tag(fam)
@@ -237,11 +242,33 @@ bnec_default_family <- function(fam, keep = list()) {
     args[[paste0("link_", hurdle_dpar(fam))]] <- "identity"
   }
   # What the caller wrote, and the dispersion links, override the assignment.
-  # Restricted to arguments the constructor actually takes, so that a field
-  # carried by a family object cannot become an unused-argument error.
-  keep <- keep[names(keep) %in% names(formals(ctor_fn))]
-  args[names(keep)] <- keep
-  do.call(ctor_fn, args)
+  takeable <- names(keep) %in% names(formals(ctor_fn))
+  args[names(keep)[takeable]] <- keep[takeable]
+  if (all(takeable)) {
+    return(do.call(ctor_fn, args))
+  }
+  # mod_fams maps gaussian and Gamma to the stats constructors, which take only
+  # `link`, so a dispersion link the caller wrote cannot be passed to them.
+  # Setting the field on the object afterwards does not work either: brms
+  # rebuilds the family and reads the link off its own constructor. Dropping it
+  # would silently return a disp() sub-model to the log scale, which is the
+  # substitution this function exists to prevent, so the brms constructor is
+  # used for those.
+  out <- do.call(brmsfamily, c(list(family = fam), args, keep[!takeable]))
+  if (!out$family %in% names(mod_fams)) {
+    # brmsfamily reports `gamma` where mod_fams, check_models and mu_support
+    # key on `Gamma`, and the tag cannot simply be rewritten: brms dispatches
+    # on it for a brmsfamily object, where a stats family is converted first.
+    # Refused rather than returned under a tag that would silently keep the
+    # linear-decay equations in the model set. This is what a family carrying
+    # link_shape reached before #256 as well, by a different route.
+    stop("bayesnec cannot carry ",
+         paste(names(keep)[!takeable], collapse = ", "), " on the ", fam,
+         " family. Model dispersion with disp(~x) in the formula instead,",
+         " which is valid under any link. See ?bayesnecformula.",
+         call. = FALSE)
+  }
+  out
 }
 
 #' Remove the marker validate_family() uses to stay idempotent
@@ -320,6 +347,22 @@ validate_family <- function(family, link_source = "none") {
     stop("Argument \"family\" either is not an actual family, ",
          "or is of incorrect class.")
   }
+  # A family carrying a tag only brms uses is rebuilt under the canonical one,
+  # keeping every link it holds, so it is the same family under the name the
+  # rest of bayesnec keys on. This is the case ?bnec names: reading the family
+  # off a fitted object and passing it back.
+  if (!family$family %in% names(mod_fams) &&
+        !identical(canonical_fam_tag(family$family), family$family)) {
+    family <- bnec_default_family(family$family,
+                                  keep = kept_links(family, "chosen"))
+  }
+  # Ordered before the link check: for a family bayesnec does not implement at
+  # all, naming the link it was given is the less useful of the two errors.
+  if (!family$family %in% names(mod_fams)) {
+    stop("You have specified family as ", family$family, ", which is not",
+         " currently implemented. bnec only allows: ",
+         paste0(mod_fams, collapse = ", "), ".", call. = FALSE)
+  }
   if (!family$link %in% supported_links()) {
     stop("bayesnec fits on the ", paste(supported_links(), collapse = ", "),
          " links, but you supplied \"", family$link, "\" for the ",
@@ -332,15 +375,6 @@ validate_family <- function(family, link_source = "none") {
     message("Fitting on the \"", family$link, "\" link, taken from the family",
             " object supplied. bayesnec assigns the identity link where it",
             " chooses one; pass family = \"", family$family, "\" for that.")
-  }
-  # A family carrying a tag only brms uses is rebuilt under the canonical one,
-  # keeping every link it holds, so it is the same family under the name the
-  # rest of bayesnec keys on. This is the case ?bnec names: reading the family
-  # off a fitted object and passing it back.
-  if (!family$family %in% names(mod_fams) &&
-        !identical(canonical_fam_tag(family$family), family$family)) {
-    family <- bnec_default_family(family$family,
-                                  keep = kept_links(family, "chosen"))
   }
   fam_tag <- family$family
   if (is_hurdle_family(fam_tag)) {
@@ -355,11 +389,6 @@ validate_family <- function(family, link_source = "none") {
            " or ", fam_tag, "(link = \"identity\", ", link_arg,
            " = \"identity\").", call. = FALSE)
     }
-  }
-  if (!fam_tag %in% names(mod_fams)) {
-    stop("You have specified family as ", fam_tag, ", which is not currently",
-         " implemented. bnec only allows: ", paste0(mod_fams, collapse = ", "),
-         ".")
   }
   attr(family, "bayesnec_validated") <- TRUE
   family

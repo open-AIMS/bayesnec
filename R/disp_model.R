@@ -153,7 +153,7 @@ check_disp_spec <- function(spec, family, response = NULL) {
       stop("A variance function of the fitted mean needs the mean modelled on",
            " its natural scale, but family ", fam_tag, " was supplied with a \"",
            link, "\" link. Pass ", fam_tag, "(link = \"identity\"), or name",
-           " the family without a link, as in family = \"", fam_tag, "\",",
+           " the family without a link, as in family = \"", fam_tag, "\".",
            " To model dispersion on the predictor instead, pass a formula,",
            " e.g. disp(~x), which is valid under any link. See",
            " ?bayesnecformula", call. = FALSE)
