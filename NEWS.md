@@ -68,6 +68,17 @@
   crf(log(concentration), ...), data = herbicide)` reproduces it on packaged
   data.
 
+  The converse direction changes a fit that previously ran without error. A
+  transformation on the *response* no longer suppresses the correction to the
+  *predictor*, so a bare predictor column containing an exact zero is now
+  shifted to `min(x[x > 0]) / 10` in the data the fit sees, where before the
+  shift reached the priors only. The two now agree; on `dev` the `nec` prior was
+  bounded below by the shifted value while the data still carried the zero, so
+  observations sat below the prior's own lower bound. Any family reaches this,
+  not only the ones with a boundary conflict, and the shift is not always small
+  — a control recorded as zero among concentrations of 100, 200 and 400 becomes
+  10. A fit of that shape refitted under this version will move.
+
   Where the *transformed* variable is itself the one on the boundary, the
   correction cannot be carried through at all, because `brm()` re-evaluates the
   transformation from the recorded column. For a response, that is now an error
@@ -78,14 +89,16 @@
   boundary artefact on the recorded scale — `log(1)` is zero for a concentration
   of one — and no family constrains the support of a predictor. One consequence
   is visible in the priors: for a transformed predictor carrying a zero, the
-  `nec` prior is now built from the recorded predictor range rather than the
-  corrected one, which on a `sqrt()` predictor containing a zero moves its lower
-  bound from `0.1` to `0`.
+  `nec` prior is now built from the transformed predictor as it stands rather
+  than from a corrected copy of it, which on a `sqrt()` predictor containing a
+  zero moves its lower bound from `0.1` to `0`.
 
-  The new error reaches `get_priors()` as well, which runs the same check: a
-  formula it would previously have returned a prior table for now raises the
-  error, if the response is transformed inline and sits on a boundary the
-  family excludes. The table it returned described a fit that could not be run.
+  The new error reaches `get_priors()` and `update()` as well, both of which
+  run the same check: a formula `get_priors()` would previously have returned a
+  prior table for now raises the error, and so does `update(fit, newdata = )`
+  where the new data lands the transformed response on the boundary, if the
+  response is transformed inline and sits on a boundary the family excludes.
+  The table `get_priors()` returned described a fit that could not be run.
 
 - The write-back above now matches rows by name rather than assigning
   wholesale, so a data frame carrying an `NA` in any population variable no
