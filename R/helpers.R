@@ -936,27 +936,46 @@ extract_formula <- function(x) {
 
 #' @noRd
 #' @importFrom stats model.frame
-has_family_changed <- function(x, data, ...) {
-  brm_args <- list(...)
+has_family_changed <- function(x, data, family = NULL) {
+  # A named argument rather than `...`: update.bnecfit() passed the family
+  # positionally, so names(list(...)) was NULL, "family" %in% names() was
+  # FALSE in retrieve_valid_family(), and the family was re-derived from the
+  # data. The guard then compared the data-derived family against the fitted
+  # one and could not detect a family change at all. See #256.
+  brm_args <- if (is.null(family)) list() else list(family = family)
   for (i in seq_along(x)) {
     formula <- extract_formula(x[[i]])
     bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
     model <- get_model_from_formula(formula)
-    family <- retrieve_valid_family(brm_args, bdat)
-    model <- check_models(model, family, bdat)
-    checked_df <- check_data(data = bdat, family = family, model = model)
+    # Named fam, not family: reassigning the argument inside its own loop
+    # would leave the second iteration reading the validated object rather
+    # than what the caller supplied.
+    fam <- retrieve_valid_family(brm_args, bdat)
+    model <- check_models(model, fam, bdat)
+    checked_df <- check_data(data = bdat, family = fam, model = model)
   }
-  out <- all.equal(
-    checked_df$family,
-    x[[1]]$fit$family,
-    check.attributes = FALSE,
-    check.environment = FALSE
-  )
-  if (is.logical(out)) {
-    FALSE
-  } else {
-    TRUE
-  }
+  !identical(family_signature(checked_df$family),
+             family_signature(x[[1]]$fit$family))
+}
+
+#' The tag and the links, which is what "a different family" means here
+#'
+#' @param family A \code{\link[stats]{family}}.
+#'
+#' @details The whole object cannot be compared. \pkg{brms} stores a
+#' \code{brmsfamily} in the fit, while \code{mod_fams} builds gaussian,
+#' Gamma, binomial and poisson from \pkg{stats}, so the two carry different
+#' components and different closures: \code{all.equal} reported a change for a
+#' family identical to the one fitted, and \code{update(fit, family =
+#' "gaussian")} on a gaussian fit asked for \code{force_fit = TRUE}.
+#'
+#' @return A named \code{\link[base]{character}} vector.
+#'
+#' @noRd
+family_signature <- function(family) {
+  links <- family[grepl("^link", names(family))]
+  links <- unlist(links[vapply(links, is.character, logical(1))])
+  c(family = family$family, links[order(names(links))])
 }
 
 #' @noRd
