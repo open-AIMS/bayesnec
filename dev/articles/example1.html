@@ -246,13 +246,18 @@ on a log scale and is usually best modelled there:</p>
 <span><span class="co">#&gt;   1.72   0.58</span></span></code></pre></div>
 <p>Any simple transformation may be written directly inside
 <code>crf</code>, as <code>crf(log(x), model = "nec4param")</code>. Two
-consequences follow. Zero concentrations cannot be logged, so a control
-recorded as <code>0</code> needs an offset first — <code>bayesnec</code>
-uses <code>min(x[x &gt; 0]) / 10</code> when it has to make that
-substitution itself on the raw axis. And the toxicity estimates are then
-returned on the transformed scale, so <code>nec</code>, <code>ecx</code>
-and <code>nsec</code> need back-transforming, with <code>xform</code>
-doing the same job for plots:</p>
+consequences follow. The transformation is evaluated before
+<code>bayesnec</code> inspects the predictor, so a control concentration
+recorded as <code>0</code> arrives at the data check as
+<code>log(0)</code> and the fit stops, reporting a predictor that is not
+finite. <code>bayesnec</code> substitutes
+<code>min(x[x &gt; 0]) / 10</code> for a zero on the recorded axis, but
+only where the predictor is passed as a bare column; with the logarithm
+written inline the offset has to be added to the data first. And the
+toxicity estimates are then returned on the transformed scale, so
+<code>nec</code>, <code>ecx</code> and <code>nsec</code> need
+back-transforming, with <code>xform</code> doing the same job for
+plots:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
