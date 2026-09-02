@@ -82,16 +82,66 @@ test_that("validate_family sets identity links for the character form", {
   expect_equal(fam$link_hu, "identity")
 })
 
-test_that("validate_family rejects a non-identity link_hu", {
+test_that("validate_family rejects a non-identity link_hu the caller chose", {
   # hu is written as `1 - survival` on the link scale, so a logit link_hu
-  # would silently pass that through inv_logit.
+  # would silently pass that through inv_logit. Where the caller wrote link_hu
+  # the object is honoured, so the guard still has to fire. Both reachable
+  # forms: link_hu on its own, and link_hu alongside a mean link.
+  src <- bayesnec:::family_link_source
   expect_error(
-    bayesnec:::validate_family(brms::hurdle_gamma(link = "identity")),
+    bayesnec:::validate_family(
+      brms::hurdle_gamma(link_hu = "logit"),
+      link_source = src(quote(hurdle_gamma(link_hu = "logit")))
+    ),
     "link_hu"
   )
   expect_error(
-    bayesnec:::validate_family(brms::hurdle_gamma()), "link_hu"
+    bayesnec:::validate_family(
+      brms::hurdle_gamma(link = "identity", link_hu = "logit"),
+      link_source = src(quote(
+        hurdle_gamma(link = "identity", link_hu = "logit")
+      ))
+    ),
+    "link_hu"
   )
+})
+
+test_that("a link is read per block, not for the family as a whole", {
+  # Writing link_hu says nothing about the mean, and writing link says nothing
+  # about hu. A single flag for the whole family left the block the caller did
+  # not write at the brms default: hurdle_gamma(link_hu = "identity") fitted
+  # the mean on log, which is the silent substitution #256 removes.
+  v <- bayesnec:::validate_family
+  src <- bayesnec:::family_link_source
+  hu <- v(brms::hurdle_gamma(link_hu = "identity"),
+          link_source = src(quote(hurdle_gamma(link_hu = "identity"))))
+  expect_equal(hu$link, "identity")
+  expect_equal(hu$link_hu, "identity")
+  # and the converse: link written, link_hu left to bayesnec. This errored
+  # before, on a link_hu default the caller had not chosen.
+  mu <- v(brms::hurdle_gamma(link = "identity"),
+          link_source = src(quote(hurdle_gamma(link = "identity"))))
+  expect_equal(mu$link, "identity")
+  expect_equal(mu$link_hu, "identity")
+  zi <- v(brms::zero_inflated_beta(link_zi = "identity"),
+          link_source = src(quote(zero_inflated_beta(link_zi = "identity"))))
+  expect_equal(zi$link, "identity")
+  expect_equal(zi$link_zi, "identity")
+})
+
+test_that("a hurdle family named without a link gets both links assigned", {
+  # Previously `family = hurdle_gamma()` errored, because link_hu defaults to
+  # logit and the guard above fired on a link the user had not chosen. Naming
+  # the family now leaves both links to bayesnec, which is the whole point of
+  # #256: the caller named a family and nothing more.
+  fam <- bayesnec:::validate_family(brms::hurdle_gamma())
+  expect_equal(fam$family, "hurdle_gamma")
+  expect_equal(fam$link, "identity")
+  expect_equal(fam$link_hu, "identity")
+
+  zib <- bayesnec:::validate_family(brms::zero_inflated_beta())
+  expect_equal(zib$link, "identity")
+  expect_equal(zib$link_zi, "identity")
 })
 
 test_that("check_data preserves zeros for a hurdle family", {
@@ -274,7 +324,8 @@ test_that("validate_family sets both identity links for zero_inflated_beta", {
 test_that("validate_family names the right link argument in its error", {
   # the guard must reference link_zi, not link_hu, for this family
   expect_error(
-    bayesnec:::validate_family(brms::zero_inflated_beta(link = "identity")),
+    bayesnec:::validate_family(brms::zero_inflated_beta(link = "identity"),
+                               link_source = "chosen"),
     "link_zi"
   )
 })

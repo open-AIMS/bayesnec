@@ -133,6 +133,62 @@
   Edit the `.Rmd.orig`, note in the pull request that the rendered output is
   stale, and rebuild at release. See #190.
 
+- **`bnec()` now assigns the link unless you choose one.** Which link a fit used
+  previously depended on how the family was written, and the difference was
+  silent: `family = "Beta"` gave the identity link, while `family = Beta` and
+  `family = Beta()` gave **logit**, and `family = Gamma()` gave **inverse**. In
+  those cases the curve was fitted to a transform of the mean while `top`, `bot`
+  and `nec` were reported as though they were on the response scale, which is
+  the property the identity link exists to preserve.
+
+  Naming a family and nothing more now leaves the link to `bayesnec`, so
+  `"Beta"`, `Beta`, `Beta()` and `hurdle_gamma()` all fit on the identity link.
+  Writing a link argument makes it yours and it is honoured, as in
+  `Beta(link = "logit")` or `Beta("logit")`. This is read one link at a time:
+  in a two-block family, `hurdle_gamma(link = "log")` leaves `link_hu` to
+  `bayesnec`, and `hurdle_gamma(link_hu = ...)` leaves the mean link to
+  `bayesnec`. The dispersion links `link_phi`, `link_shape` and `link_sigma`
+  are outside the rule and are carried through unchanged, except on `Gamma`,
+  where one is refused rather than silently dropped. Only `identity`, `log` and `logit`
+  are fitted on; any other link is refused with an error naming the family,
+  where previously `inverse`, `probit`, `cloglog`, `sqrt` and the rest were
+  accepted silently.
+
+  A family that does not arrive written as a constructor call is the case
+  intent cannot be read from, since `Beta()` and `Beta(link = "logit")` produce
+  identical objects: one held in a variable, one read back off a fit with
+  `fit$family`, or one passed through `do.call()`. The object's links are
+  honoured, and where the mean link is not the identity a message says which
+  one was taken.
+
+  Two consequences worth noting. A hurdle or zero-inflated family named without
+  a link, such as `family = hurdle_gamma()`, now works: both its links are
+  assigned, where before it errored because `link_hu` defaults to logit. And
+  `family = "beta"` now works — the tag `brms` reports for that family, which
+  previously gave `unused argument (link = "identity")` because `get("beta")`
+  resolves to `base::beta()`. A string naming any other function, such as
+  `family = "t"`, now says the family is not implemented rather than giving the
+  same `unused argument` error. **If you have code passing a constructed family
+  and relying on its default link, add the link explicitly.** See #256.
+
+- **`update()` on a fitted object now reads the family the same way.** A family
+  passed to `update()` was forwarded to `brms` untouched, so
+  `update(fit, family = Beta(), force_fit = TRUE)` refitted on **logit** where
+  `bnec(family = Beta())` fits on the identity link, and an unsupported link
+  such as `Beta(link = "probit")` was accepted without comment. The link is now
+  assigned or honoured exactly as in `bnec()`, an unsupported link is refused
+  before any model is refitted, and the validated family is the one `brms`
+  receives.
+
+  The guard that asks whether the family has changed also works for the first
+  time. It was given the family positionally, so it never saw it and compared
+  the family derived from the data against the fitted one instead; and it
+  compared the whole family object, which never matched, because `brms` stores
+  a `brmsfamily` in the fit while `gaussian` and `Gamma` are built from
+  `stats`. It now compares the family tag and its links. In practice
+  `update(fit, family = "gaussian")` on a gaussian fit no longer asks for
+  `force_fit = TRUE`, while a genuine change of family or link does. See #256.
+
 - Internal: a single statement of the interval the response distribution allows
   the mean to occupy, and of what each model's mean can produce.
   `mu_support()` returns that interval as a property of the response
