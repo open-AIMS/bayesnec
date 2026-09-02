@@ -476,6 +476,13 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.
   check_normalisation(bdat)
+  # Raised here for the same reason: check_data() runs once per model, so a
+  # model set would print the conflict for each of its members and then end on
+  # the generic all-models-failed advice, with the cause many screens up. The
+  # conflict is a property of the data and the formula, so one statement of it
+  # is the whole story. check_data() keeps the check as a backstop for
+  # get_priors() and for a direct fit_bayesnec() call.
+  check_inline_boundary(bdat, brm_args$family)
   model <- check_models(model, brm_args$family, bdat)
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)

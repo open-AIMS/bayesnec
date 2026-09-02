@@ -109,14 +109,14 @@ check_data <- function(data, family, model) {
   bnec_pop_vars <- attr(data, "bnec_pop")
   y_pos <- which(names(bnec_pop_vars) == "y_var")
   x_pos <- which(names(bnec_pop_vars) == "x_var")
-  # Whether the response or the predictor reaches the model frame through a
-  # transformation written inline, as crf(log(x)) does. This decides what the
-  # boundary corrections below are allowed to do. brm() is handed the user's
-  # own data frame and re-evaluates the transformation from the recorded
-  # column, so a correction made here to a transformed variable cannot reach
-  # the fit; before #258 it was computed, reported to the user, and then
-  # silently discarded.
-  y_transformed <- pop_var_is_transformed(data, "y_var")
+  # Whether the predictor reaches the model frame through a transformation
+  # written inline, as crf(log(x)) does. This decides what the boundary
+  # corrections below are allowed to do. brm() is handed the user's own data
+  # frame and re-evaluates the transformation from the recorded column, so a
+  # correction made here to a transformed variable cannot reach the fit; before
+  # #258 it was computed, reported to the user, and then silently discarded.
+  # The response case is fatal rather than silent and is checked separately, by
+  # check_inline_boundary() below.
   x_transformed <- pop_var_is_transformed(data, "x_var")
   if (!is.numeric(x)) {
     x_flag <- names(data)[x_pos]
@@ -160,6 +160,10 @@ check_data <- function(data, family, model) {
   if (fam_tag %in% c("beta", "zero_inflated_beta")) {
     check_cens_support(y, cens, bound = 1, direction = 1L, fam_tag = fam_tag)
   }
+  # Runs here as a backstop for get_priors() and for a direct fit_bayesnec()
+  # call. bnec() runs it once for the whole call, before the model loop, so that
+  # a model set stops once rather than repeating the message per model.
+  check_inline_boundary(data, family)
   # A transformed predictor is left alone rather than rejected. A zero on the
   # transformed scale is not evidence of a boundary artefact on the recorded
   # scale -- log(1) is zero for a concentration of one -- so shifting it would
@@ -180,14 +184,6 @@ check_data <- function(data, family, model) {
   # "hurdle_gamma" rather than "Gamma" in that case, so the condition below
   # already excludes it; the guard is explicit so it survives refactoring.
   if (any(to_shift) & fam_tag == "Gamma" & !is_hurdle_family(fam_tag)) {
-    if (y_transformed) {
-      stop_inline_boundary(names(data)[y_pos], fam_tag, bound = 0,
-                           hint = paste0(" If those zeros are meaningful --",
-                                         " for example individuals that died",
-                                         " -- consider family =",
-                                         " hurdle_gamma() instead, which",
-                                         " models them explicitly."))
-    }
     min_val <- min(y[y > 0])
     data[to_shift, y_pos] <- y[to_shift] + (min_val / 10)
     message("Your response contains zeros, which a Gamma distribution cannot",
@@ -204,9 +200,6 @@ check_data <- function(data, family, model) {
     data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)
   }
   if (any(to_shift) & fam_tag == "beta") {
-    if (y_transformed) {
-      stop_inline_boundary(names(data)[y_pos], fam_tag, bound = 0)
-    }
     min_val <- min(y[y > 0])
     data[to_shift, y_pos] <- y[to_shift] + (min_val / 10)
   }
@@ -218,9 +211,6 @@ check_data <- function(data, family, model) {
   # right-censored one is exempt, as a left-censored zero is above.
   to_drop <- y == 1 & !is_censored(cens)
   if (any(to_drop) & (fam_tag == "beta" || fam_tag == "zero_inflated_beta")) {
-    if (y_transformed) {
-      stop_inline_boundary(names(data)[y_pos], fam_tag, bound = 1)
-    }
     data[to_drop, y_pos] <- y[to_drop] - 0.001
   }
   mod_dat <- data.frame(x = data[[x_pos]], y = data[[y_pos]],
@@ -246,6 +236,52 @@ check_data <- function(data, family, model) {
     mod_dat$denom <- rate_var
   }
   list(mod_dat = mod_dat, family = family)
+}
+
+#' Refuse a formula whose transformed response sits on a boundary its family
+#' excludes
+#'
+#' A property of the data and the formula together, fixed for a whole
+#' \code{\link{bnec}} call, so it is checked once there rather than once per
+#' model. \code{\link{check_normalisation}} is hoisted out of
+#' \code{\link{check_data}} for the same reason: a model set would otherwise
+#' repeat the diagnostic for each of its members and end on the generic
+#' all-models-failed advice, with the cause many screens further up.
+#'
+#' The conditions mirror the corrections in \code{\link{check_data}} exactly,
+#' censoring exemptions included, because a value this refuses is precisely one
+#' that would otherwise have been corrected.
+#'
+#' @noRd
+check_inline_boundary <- function(data, family) {
+  if (!pop_var_is_transformed(data, "y_var")) {
+    return(invisible(NULL))
+  }
+  y <- try(retrieve_var(data, "y_var", error = TRUE), silent = TRUE)
+  if (inherits(y, "try-error")) {
+    return(invisible(NULL))
+  }
+  fam_tag <- if (inherits(family, "family")) family$family else family
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  expr <- names(data)[which(names(bnec_pop_vars) == "y_var")]
+  cens <- retrieve_cens(data)
+  at_zero <- any(y == 0 & !is_censored(cens))
+  at_one <- any(y == 1 & !is_censored(cens))
+  if (at_zero & fam_tag == "Gamma" & !is_hurdle_family(fam_tag)) {
+    stop_inline_boundary(expr, fam_tag, bound = 0,
+                         hint = paste0(" If those zeros are meaningful -- for",
+                                       " example individuals that died --",
+                                       " consider family = hurdle_gamma()",
+                                       " instead, which models them",
+                                       " explicitly."))
+  }
+  if (at_zero & fam_tag == "beta") {
+    stop_inline_boundary(expr, fam_tag, bound = 0)
+  }
+  if (at_one & (fam_tag == "beta" || fam_tag == "zero_inflated_beta")) {
+    stop_inline_boundary(expr, fam_tag, bound = 1)
+  }
+  invisible(NULL)
 }
 
 #' Reject a boundary value on a response transformed inside the formula

@@ -181,10 +181,11 @@ test_that("fit_bayesnec() hands brm() the repaired predictor", {
   expect_equal(min(seen$x), 0.1)
 })
 
-test_that("fit_bayesnec() carries the trials column through unchanged", {
-  # check_data() never corrects trials, so the assertion is that the write-back
-  # returns the column as it was -- including where the model frame has dropped
-  # an incomplete case, which is where a wholesale assignment would misalign it.
+test_that("a binomial fit reaches brm() with its trials column untouched", {
+  # There is no trials write-back, because check_data() never corrects trials.
+  # The assertion is that the column arrives as recorded even where the model
+  # frame has dropped an incomplete case, which is where the write-back this
+  # replaced would have failed outright.
   d <- data.frame(x = rep(c(1, 10, 100), each = 4),
                   y = as.integer(rep(c(9, 5, 1), each = 4)),
                   n = as.integer(rep(10, 12)))
@@ -194,4 +195,27 @@ test_that("fit_bayesnec() carries the trials column through unchanged", {
   expect_identical(seen$n, d$n)
   expect_equal(nrow(seen), nrow(d))
   expect_true(is.na(seen$y[2]))
+})
+
+test_that("a model set stops once on the conflict, not once per model", {
+  # check_data() runs per model, so leaving the check there alone printed the
+  # paragraph for every member of the set and then ended on the generic
+  # all-models-failed advice, with the cause many screens up. bnec() raises it
+  # before the model loop instead.
+  d <- gamma_boundary_data()
+  d$y[d$y == 0] <- 1
+  msgs <- character(0)
+  err <- tryCatch(
+    withCallingHandlers(
+      bnec(log(y) ~ crf(x, model = "decline"), data = d,
+           family = Gamma(link = "identity")),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    ),
+    error = function(e) conditionMessage(e)
+  )
+  expect_match(err, "a transformation written inside the model formula")
+  expect_false(any(grepl("None of the models fit successfully", msgs)))
 })

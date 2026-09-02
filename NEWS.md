@@ -68,14 +68,19 @@
   crf(log(concentration), ...), data = herbicide)` reproduces it on packaged
   data.
 
-  Where the *transformed* variable is itself the one on the boundary the
+  Where the *transformed* variable is itself the one on the boundary, the
   correction cannot be carried through at all, because `brm()` re-evaluates the
-  transformation from the recorded column. For a response that is now an error
-  naming the conflict and the remedy, in place of a `brms` failure. For a
-  predictor the value is left where it is: a zero on the transformed scale is
-  not evidence of a boundary artefact on the recorded scale — `log(1)` is zero
-  for a concentration of one — and no family constrains the support of a
-  predictor.
+  transformation from the recorded column. For a response, that is now an error
+  naming the conflict and the remedy, in place of a `brms` failure; it is raised
+  once per `bnec()` call rather than once per model, so a model set stops with
+  the cause rather than repeating it for every member. For a predictor the value
+  is left where it is: a zero on the transformed scale is not evidence of a
+  boundary artefact on the recorded scale — `log(1)` is zero for a concentration
+  of one — and no family constrains the support of a predictor. One consequence
+  is visible in the priors: for a transformed predictor carrying a zero, the
+  `nec` prior is now built from the recorded predictor range rather than the
+  corrected one, which on a `sqrt()` predictor containing a zero moves its lower
+  bound from `0.1` to `0`.
 
   The new error reaches `get_priors()` as well, which runs the same check: a
   formula it would previously have returned a prior table for now raises the

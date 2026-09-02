@@ -47,9 +47,12 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     # at all, so anything it did change can be written back.
     data <- write_back_checks(data, bdat, "y_var", y)
     data <- write_back_checks(data, bdat, "x_var", x)
-    if (family$family == "binomial" || family$family == "beta_binomial") {
-      data <- write_back_checks(data, bdat, "trials_var", tr)
-    }
+    # There is no trials write-back. check_data() never corrects the trials
+    # variable -- for a binomial family it reads the column straight back off
+    # the model frame -- so writing it back is a no-op on every input, and one
+    # that would misfire on `trials(n * 2)`, where clean_aterms() maps the
+    # model frame column back to `n` and the doubled values would be written
+    # into the user's `n`. The write-back it replaces had both properties.
   }
   custom_name <- check_custom_name(family)
   if (family$family == "binomial" || family$family == "beta_binomial") {
