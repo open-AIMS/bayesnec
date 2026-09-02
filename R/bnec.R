@@ -167,6 +167,75 @@
 #' \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
 #' development site if your required family is not currently available.
 #'
+#' @section The link:
+#'
+#' \code{\link{bnec}} fits on the \strong{identity} link, which is what keeps
+#' \code{top}, \code{bot} and \code{nec} on the scale of the response and
+#' directly interpretable, and is what the JSS article describes.
+#'
+#' \strong{The link is assigned by bayesnec unless you choose one.} Naming a
+#' family and nothing more leaves it to bayesnec, so all of the following fit on
+#' the identity link:
+#'
+#' \preformatted{
+#' bnec(..., family = "Beta")
+#' bnec(..., family = Beta)
+#' bnec(..., family = Beta())
+#' bnec(..., family = hurdle_gamma())
+#' }
+#'
+#' Writing a link argument is what makes it yours, and it is then honoured.
+#' A link written positionally counts, since \code{link} is the first argument
+#' of every family constructor:
+#'
+#' \preformatted{
+#' bnec(..., family = Beta(link = "logit"))
+#' bnec(..., family = Beta("logit"))
+#' }
+#'
+#' This is read one link at a time. A two-block family has a link on each
+#' block, and writing one says nothing about the other, so the block you leave
+#' alone is still bayesnec's to assign:
+#'
+#' \preformatted{
+#' bnec(..., family = hurdle_gamma(link = "log"))
+#'   # log on the mean, identity on hu
+#' bnec(..., family = hurdle_gamma(link_hu = "logit"))
+#'   # identity on the mean, and refused: hu must be fitted on identity
+#' }
+#'
+#' The dispersion links --- \code{link_phi}, \code{link_shape},
+#' \code{link_sigma} --- are outside this altogether. No curve is fitted on
+#' them and writing one says nothing about the scale \code{top}, \code{bot}
+#' and \code{nec} are reported on, so whatever you write there is carried
+#' through unchanged and whatever you do not keeps the family's own default.
+#' The one exception is \code{Gamma}, whose dispersion link \code{bayesnec}
+#' cannot carry; write \code{disp(~x)} in the formula instead, which is valid
+#' under any link.
+#'
+#' A family that does not reach \code{\link{bnec}} written as a constructor
+#' call --- one held in a variable, one read back off a fitted object with
+#' \code{fit$family}, or one passed through \code{do.call} --- is a case
+#' intent cannot be read from at all. The object's own links are honoured, and
+#' where the mean link is not the identity a message says which one was taken.
+#'
+#' Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
+#' link is refused with an error naming the family. Note that \code{log} and
+#' \code{logit} exclude the zero-bounded equations, since a mean decaying onto
+#' zero cannot produce the negative values those link scales require --- see
+#' \code{\link{models}}.
+#'
+#' \strong{This changed in version 2.1.3.25.} Before it, the link depended on
+#' how the family was written and the difference was silent:
+#' \code{family = "Beta"} gave identity, while \code{family = Beta} and
+#' \code{family = Beta()} gave \strong{logit} and \code{family = Gamma()} gave
+#' \strong{inverse}. In those cases the curve was fitted to a transform of the
+#' mean while \code{top}, \code{bot} and \code{nec} were reported as though
+#' they were on the response scale. If you have code passing a constructed
+#' family and relying on its default link, add the link explicitly.
+#'
+#' @details
+#'
 #' \bold{Supply the raw response, not one normalised to the control}
 #'
 #' \code{\link{bnec}} expects the response as measured. Do not convert it to
@@ -228,9 +297,9 @@
 #' for a component. \code{\link{nec}} returns the combined threshold, which for
 #' threshold models on both blocks is the smaller of the two.
 #'
-#' These families must be specified as \code{family = "hurdle_gamma"} or
-#' \code{family = "zero_inflated_beta"}, or with both links set explicitly as
-#' \code{hurdle_gamma(link = "identity", link_hu = "identity")} and
+#' Naming these families is enough --- \code{family = "hurdle_gamma"},
+#' \code{hurdle_gamma()}, \code{family = "zero_inflated_beta"} --- since
+#' bayesnec assigns the link on both blocks; see \strong{The link} and
 #' \code{zero_inflated_beta(link = "identity", link_zi = "identity")}
 #' respectively. bayesnec keeps
 #' every parameter on the natural response scale, and the hurdle block is
@@ -349,9 +418,7 @@
 #' carry one, and what the exponent implies for each.
 #'
 #' A variance function of the fitted mean requires the mean to be modelled on
-#' its natural scale. \code{\link{bnec}} uses an identity link whenever it
-#' selects the family itself; where a family is supplied explicitly its link
-#' should be too, as in \code{Gamma(link = "identity")}.
+#' its natural scale, which is the identity link \code{\link{bnec}} fits on.
 #'
 #' Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
 #' dispersion sub-model changes the credible intervals of the toxicity
@@ -471,7 +538,26 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (!is.null(prior)) {
     brm_args$prior <- prior
   }
-  brm_args$family <- retrieve_valid_family(brm_args, bdat)
+  # The link is bayesnec's to assign unless the caller chose one, and telling
+  # those apart needs the expression rather than the evaluated family, since
+  # Beta() and Beta(link = "logit") produce identical objects. mf holds the
+  # dots unevaluated. Resolved on its own line rather than inside the argument
+  # list so that parent.frame() is the caller's frame and not whichever frame
+  # happens to force the promise.
+  #
+  # substitute() rather than mf, because match.call() records a `...` forwarded
+  # from a wrapper as the placeholder `..1`, which reads as a symbol and left
+  # `wrapper(family = Beta())` fitting on logit where `bnec(family = Beta())`
+  # fits on identity. substitute() follows the promise to the expression the
+  # caller wrote, through any depth of forwarding. See #256.
+  link_source <- family_link_source(substitute(list(...))[-1]$family,
+                                    env = parent.frame())
+  brm_args$family <- retrieve_valid_family(brm_args, bdat,
+                                           link_source = link_source)
+  # The marker validate_family() uses to stay idempotent is private, and the
+  # family object is stored in the brmsfit, so it is dropped before brms sees
+  # it rather than serialised into every saved fit.
+  brm_args$family <- unmark_family(brm_args$family)
   # Emitted here rather than from check_data() so that it fires once per bnec()
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.

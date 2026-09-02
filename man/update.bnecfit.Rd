@@ -66,6 +66,15 @@ if multiple models are returned, also an object of class
 Update an object of class \code{\link{bnecfit}} as fitted by function
 \code{\link{bnec}}.
 }
+\details{
+A \code{family} passed through \code{...} is read exactly as
+\code{\link{bnec}} reads it: the link is assigned by \pkg{bayesnec} unless
+the caller writes one, an unsupported link is refused before any model is
+refitted, and the validated family is the one \pkg{brms} receives. See the
+\emph{The link} section of \code{\link{bnec}}. Supplying a family that
+differs from the fitted one requires \code{force_fit = TRUE}, because the
+priors carried over from the original fit were built for the original family.
+}
 \examples{
 \dontrun{
 library(bayesnec)

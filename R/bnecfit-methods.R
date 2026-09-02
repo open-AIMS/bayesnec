@@ -88,6 +88,14 @@ c.bnecfit <- function(x, ...) {
 #' Update an object of class \code{\link{bnecfit}} as fitted by function
 #' \code{\link{bnec}}.
 #'
+#' @details A \code{family} passed through \code{...} is read exactly as
+#' \code{\link{bnec}} reads it: the link is assigned by \pkg{bayesnec} unless
+#' the caller writes one, an unsupported link is refused before any model is
+#' refitted, and the validated family is the one \pkg{brms} receives. See the
+#' \emph{The link} section of \code{\link{bnec}}. Supplying a family that
+#' differs from the fitted one requires \code{force_fit = TRUE}, because the
+#' priors carried over from the original fit were built for the original family.
+#'
 #' @inheritParams bnec
 #'
 #' @param object An object of class \code{\link{bnecfit}} as fitted by function
@@ -135,6 +143,19 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   }
   object <- recover_prebayesnecfit(object)
   dot_args <- list(...)
+  # The family is validated at this entry point rather than forwarded untouched
+  # to brms::update(). Beta() and Beta(link = "logit") produce identical family
+  # objects, so the only place the caller's intent can be read is the
+  # unevaluated expression, and only the function it was written in can see it.
+  # substitute() rather than match.call(): a `...` forwarded from
+  # update.bayesnechurdlefit() is recorded by match.call() as the placeholder
+  # `..1`. See family_link_source() and #256.
+  if ("family" %in% names(dot_args)) {
+    link_source <- family_link_source(substitute(list(...))[-1]$family,
+                                      env = parent.frame())
+    dot_args$family <- validate_family(dot_args$family,
+                                       link_source = link_source)
+  }
   simdat <- extract_simdat(object[[1]])
   if ("chains" %in% names(dot_args)) {
     if (dot_args$chains < simdat$chains) {
@@ -167,10 +188,22 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
               "  scratch via function `bnec`.")
     }
   }
+  # The marker validate_family() uses to stay idempotent is bayesnec's own and
+  # the family is stored in the brmsfit, so it is dropped before brms sees it.
+  if ("family" %in% names(dot_args)) {
+    dot_args$family <- unmark_family(dot_args$family)
+  }
   for (i in seq_along(object)) {
-    object[[i]]$fit <- try(update(object[[i]]$fit, formula. = NULL,
-                                  newdata = newdata, recompile = recompile,
-                                  ...), silent = FALSE)
+    fit_i <- object[[i]]$fit
+    # Assembled as a call rather than forwarded through `...`, because the
+    # family brms must receive is the validated one and `...` cannot be
+    # rewritten. do.call() would work but would inline newdata as a value, and
+    # brms deparses that argument's expression into the data_name attribute it
+    # prints -- so newdata is kept as a symbol here.
+    upd_call <- as.call(c(quote(update), quote(fit_i),
+                          list(formula. = NULL, newdata = quote(newdata),
+                               recompile = quote(recompile)), dot_args))
+    object[[i]]$fit <- try(eval(upd_call), silent = FALSE)
     if (inherits(object[[i]]$fit, "try-error")) {
       class(object[[i]]) <- "somethingwentwrong"
     }

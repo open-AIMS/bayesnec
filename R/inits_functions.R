@@ -404,7 +404,7 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
 #' \code{exp(uniform(-2, 2))}, between 0.135 and 7.39; the offset is
 #' \code{sd * z} under the non-centred parameterisation \pkg{brms} uses, with
 #' \code{z} initialised in the same range. On a response bounded in (0, 1)
-#' under the identity link \code{\link{bnec}} forces, that puts the mean
+#' under the identity link \code{\link{bnec}} assigns, that puts the mean
 #' outside its support before sampling begins, and no prior can prevent it.
 #'
 #' The \code{ogl} intercept is the same problem in a simpler form: it is a
