@@ -77,6 +77,11 @@
   for a concentration of one — and no family constrains the support of a
   predictor.
 
+  The new error reaches `get_priors()` as well, which runs the same check: a
+  formula it would previously have returned a prior table for now raises the
+  error, if the response is transformed inline and sits on a boundary the
+  family excludes. The table it returned described a fit that could not be run.
+
 - The write-back above now matches rows by name rather than assigning
   wholesale, so a data frame carrying an `NA` in any population variable no
   longer fails with "replacement has *n* rows, data has *m*". The model frame

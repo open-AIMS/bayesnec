@@ -5,11 +5,10 @@
 # variable -- discarded every correction, and brm() then failed naming the
 # condition the package had just reported it had repaired.
 #
-# The assertions below run check_data() and write_back_checks() in the order
-# fit_bayesnec() runs them, which is the whole of the decision under test.
-# fit_bayesnec() itself is not driven, because everything it does after the
-# write-back -- building priors, drawing initial values -- is stochastic and
-# slow, and none of it bears on which values reach brm().
+# Two levels of assertion are made. fit_data() drives fit_bayesnec() itself with
+# brm() mocked, which is what proves the write-back reaches the fit; brm_data()
+# runs check_data() and write_back_checks() in the order fit_bayesnec() calls
+# them, which is cheap enough to cover the boundary cases exhaustively.
 
 gamma_boundary_data <- function() {
   d <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5))
@@ -17,9 +16,32 @@ gamma_boundary_data <- function() {
   d
 }
 
-# The data frame brm() would be given: the user's own data frame carrying
-# whatever check_data() repaired. fit_bayesnec() hands brm() exactly this
-# object.
+# The data frame brm() is actually given. brm() is mocked rather than run: the
+# assertion is about the object it receives and not about anything the sampler
+# does with it. `init` is supplied so that add_brm_defaults() skips the
+# initial-value search, which is stochastic and can take minutes (#266), and
+# are_chains_correct() is mocked because the fake fit has no chains to count.
+fit_data <- function(formula, data, family, brm_args = list()) {
+  seen <- new.env(parent = emptyenv())
+  local_mocked_bindings(
+    brm = function(formula, data, ...) {
+      seen$data <- data
+      structure(list(), class = "brmsfit")
+    },
+    are_chains_correct = function(...) TRUE,
+    .package = "bayesnec"
+  )
+  suppressMessages(suppressWarnings(
+    bayesnec:::fit_bayesnec(
+      formula = bnf(formula), data = data, model = "nec3param",
+      brm_args = c(list(family = family, init = list(list()), chains = 1,
+                        iter = 10), brm_args))
+  ))
+  seen$data
+}
+
+# The same object, reached without driving fit_bayesnec(). Used for the cases
+# that only exercise check_data() and the write-back.
 brm_data <- function(formula, data, family) {
   bdat <- model.frame(bnf(formula), data = data)
   checked <- suppressMessages(bayesnec:::check_data(bdat, family, "nec3param"))
@@ -138,4 +160,38 @@ test_that("pop_var_is_transformed answers per variable", {
   expect_false(bayesnec:::pop_var_is_transformed(bdat, "trials_var"))
   # a variable the formula does not carry is not transformed either
   expect_false(bayesnec:::pop_var_is_transformed(bdat, "rate_var"))
+})
+
+test_that("fit_bayesnec() hands brm() the repaired response", {
+  # The integration point: the three write_back_checks() calls in
+  # fit_bayesnec(). Removing the y_var call makes this fail and leaves every
+  # check_data()-level assertion above passing.
+  d <- gamma_boundary_data()
+  seen <- fit_data(y ~ crf(log(x), model = "nec3param"), d,
+                   Gamma(link = "identity"))
+  expect_equal(min(seen$y), 0.3)
+  expect_identical(seen$x, d$x)
+})
+
+test_that("fit_bayesnec() hands brm() the repaired predictor", {
+  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
+                  y = rep(c(8, 6, 3, 1), each = 5))
+  seen <- fit_data(y ~ crf(x, model = "nec3param"), d,
+                   Gamma(link = "identity"))
+  expect_equal(min(seen$x), 0.1)
+})
+
+test_that("fit_bayesnec() carries the trials column through unchanged", {
+  # check_data() never corrects trials, so the assertion is that the write-back
+  # returns the column as it was -- including where the model frame has dropped
+  # an incomplete case, which is where a wholesale assignment would misalign it.
+  d <- data.frame(x = rep(c(1, 10, 100), each = 4),
+                  y = as.integer(rep(c(9, 5, 1), each = 4)),
+                  n = as.integer(rep(10, 12)))
+  d$y[2] <- NA
+  seen <- fit_data(y | trials(n) ~ crf(log(x), model = "nec3param"), d,
+                   binomial(link = "identity"))
+  expect_identical(seen$n, d$n)
+  expect_equal(nrow(seen), nrow(d))
+  expect_true(is.na(seen$y[2]))
 })

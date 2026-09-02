@@ -196,6 +196,9 @@ check_data <- function(data, family, model) {
             " meaningful -- for example individuals that died -- consider",
             " family = hurdle_gamma() instead, which models them explicitly.")
   }
+  # This branch and the max(x) == 1 one below are unreachable:
+  # set_distribution() returns "Beta", not "beta". Left as they are, guard
+  # included, so that whichever way #265 resolves it is one change and not two.
   if (min(x) == 0 & x_type == "beta" & !x_transformed) {
     min_val <- min(x[x > 0])
     data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)
@@ -255,6 +258,7 @@ check_data <- function(data, family, model) {
 #' repaired. Raising the conflict here names the variable and gives a remedy.
 #'
 #' @param expr The response as written in the formula, e.g. \code{"log(y)"}.
+#' @param fam_tag The family name, as \code{family$family} gives it.
 #' @param bound The boundary the family excludes, 0 or 1.
 #' @param hint Optional further advice appended to the message.
 #'
