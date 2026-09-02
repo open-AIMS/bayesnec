@@ -167,7 +167,7 @@ check_data <- function(data, family, model) {
   # A transformed predictor is left alone rather than rejected. A zero on the
   # transformed scale is not evidence of a boundary artefact on the recorded
   # scale -- log(1) is zero for a concentration of one -- so shifting it would
-  # move a legitimate value, and the shift could not reach the fit in any case.
+  # replace a legitimate value, and the shift could not reach the fit either.
   # The predictor shift is not needed for the fit itself: no family constrains
   # the support of a predictor.
   if (min(x) == 0 & x_type == "Gamma" & !x_transformed) {
@@ -246,7 +246,7 @@ check_data <- function(data, family, model) {
 #' model. \code{\link{check_normalisation}} is hoisted out of
 #' \code{\link{check_data}} for the same reason: a model set would otherwise
 #' repeat the diagnostic for each of its members and end on the generic
-#' all-models-failed advice, with the cause many screens further up.
+#' all-models-failed advice, long after the cause.
 #'
 #' The conditions mirror the corrections in \code{\link{check_data}} exactly,
 #' censoring exemptions included, because a value this refuses is precisely one

@@ -202,7 +202,7 @@ test_that("a binomial fit reaches brm() with its trials column untouched", {
 test_that("a model set stops once on the conflict, not once per model", {
   # check_data() runs per model, so leaving the check there alone printed the
   # paragraph for every member of the set and then ended on the generic
-  # all-models-failed advice, with the cause many screens up. bnec() raises it
+  # all-models-failed advice, long after the cause. bnec() raises it
   # before the model loop instead.
   d <- gamma_boundary_data()
   d$y[d$y == 0] <- 1

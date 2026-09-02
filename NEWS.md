@@ -57,7 +57,8 @@
 
 - A boundary correction is no longer discarded when a transformation is written
   inline in `crf()`. `check_data()` shifts a response off a boundary its family
-  cannot represent — a zero under `Gamma` or `beta`, a one under `beta` — and
+  cannot represent — a zero under `Gamma` or `beta`, a one under `beta` or
+  `zero_inflated_beta` — and
   the shift reached `brm()` only where no population variable was transformed
   inside the formula. The guard was all-or-nothing, so `crf(log(concentration))`
   discarded a shift applied to the *response*: the correction was computed,
@@ -72,13 +73,16 @@
   transformation on the *response* no longer suppresses the correction to the
   *predictor*, so a bare predictor column containing an exact zero is now
   shifted to `min(x[x > 0]) / 10` in the data the fit sees, where before the
-  shift reached the priors only. The two now agree; on `dev` the `nec` prior was
-  bounded below by the shifted value while the data still carried the zero, so
-  observations sat below the prior's own lower bound. Any family reaches this,
-  not only the ones with a boundary conflict, and the shift is not always small
-  — a control recorded as zero among concentrations of 100, 200 and 400 becomes
-  10. A fit of that shape refitted under this version will give different
-  estimates.
+  shift reached the priors only. The two now agree; previously the `nec` prior
+  was bounded below by the shifted value while the data still carried the zero,
+  so observations sat below the prior's own lower bound. The response family
+  does not matter — this is not confined to the families with a boundary
+  conflict — but the predictor does: the shift fires only where the predictor is
+  continuous, non-negative and spans values above one, which is what
+  `set_distribution()` calls `Gamma`. A predictor lying entirely within 0 and 1
+  is untouched, then and now. The shift is not always small: a control recorded
+  as zero among concentrations of 100, 200 and 400 becomes 10. A fit of that
+  shape refitted under this version gives different estimates.
 
   Where the *transformed* variable is itself the one on the boundary, the
   correction cannot be carried through at all, because `brm()` re-evaluates the
@@ -91,15 +95,17 @@
   of one — and no family constrains the support of a predictor. One consequence
   is visible in the priors: for a transformed predictor carrying a zero, the
   `nec` prior is now built from the transformed predictor as it stands rather
-  than from a corrected copy of it, which on a `sqrt()` predictor containing a
-  zero changes its lower bound from `0.1` to `0`.
+  than from a corrected copy of it, so its lower bound is zero rather than one
+  tenth of the smallest positive transformed value. On
+  `crf(sqrt(x))` with `x` taking 0, 1, 10 and 100, that bound is `0` where it
+  was `0.1`.
 
-  The new error reaches `get_priors()` and `update()` as well, both of which
-  run the same check: a formula `get_priors()` would previously have returned a
-  prior table for now raises the error, and so does `update(fit, newdata = )`
-  where the new data lands the transformed response on the boundary, if the
-  response is transformed inline and sits on a boundary the family excludes.
-  The table `get_priors()` returned described a fit that could not be run.
+  The new error reaches two exported functions that run the same check.
+  `get_priors()` now raises it for a formula whose inline-transformed response
+  sits on a boundary the family excludes, where it previously returned a prior
+  table describing a fit that could not be run. `update()` raises it whenever it
+  tests for a change of family — when new data is supplied, or a family is —
+  and the response of the data being tested lands on such a boundary.
 
 - The write-back above now matches rows by name rather than assigning
   wholesale, so a data frame carrying an `NA` in any population variable no

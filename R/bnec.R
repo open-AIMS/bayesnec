@@ -564,9 +564,9 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   check_normalisation(bdat)
   # Raised here for the same reason: check_data() runs once per model, so a
   # model set would print the conflict for each of its members and then end on
-  # the generic all-models-failed advice, with the cause many screens up. The
-  # conflict is a property of the data and the formula, so one statement of it
-  # is the whole story. check_data() keeps the check as a backstop for
+  # the generic all-models-failed advice, long after the cause. The conflict is
+  # a property of the data and the formula together, fixed for the whole call,
+  # so it needs stating once. check_data() keeps the check as a backstop for
   # get_priors() and for a direct fit_bayesnec() call.
   #
   # One consequence of raising it here: it now precedes check_cens_support(),

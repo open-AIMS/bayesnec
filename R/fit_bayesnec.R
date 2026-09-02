@@ -53,8 +53,8 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     # back is a no-op. Where the aterm carries arithmetic it is worse than a
     # no-op: clean_aterms() maps `trials(n * 2)` back to `n`, so the doubled
     # values were written into the user's `n` and brm() then evaluated
-    # `trials(n * 2)` against them, fitting every observation to four times the
-    # recorded trials. The write-back this replaces did both.
+    # `trials(n * 2)` against them -- a recorded 10 fitted as 40. The
+    # write-back this replaces did both.
   }
   custom_name <- check_custom_name(family)
   if (family$family == "binomial" || family$family == "beta_binomial") {
