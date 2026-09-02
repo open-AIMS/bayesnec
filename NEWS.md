@@ -77,7 +77,8 @@
   observations sat below the prior's own lower bound. Any family reaches this,
   not only the ones with a boundary conflict, and the shift is not always small
   — a control recorded as zero among concentrations of 100, 200 and 400 becomes
-  10. A fit of that shape refitted under this version will move.
+  10. A fit of that shape refitted under this version will give different
+  estimates.
 
   Where the *transformed* variable is itself the one on the boundary, the
   correction cannot be carried through at all, because `brm()` re-evaluates the
@@ -91,7 +92,7 @@
   is visible in the priors: for a transformed predictor carrying a zero, the
   `nec` prior is now built from the transformed predictor as it stands rather
   than from a corrected copy of it, which on a `sqrt()` predictor containing a
-  zero moves its lower bound from `0.1` to `0`.
+  zero changes its lower bound from `0.1` to `0`.
 
   The new error reaches `get_priors()` and `update()` as well, both of which
   run the same check: a formula `get_priors()` would previously have returned a
