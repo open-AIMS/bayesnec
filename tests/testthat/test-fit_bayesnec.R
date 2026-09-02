@@ -5,10 +5,12 @@
 # variable -- discarded every correction, and brm() then failed naming the
 # condition the package had just reported it had repaired.
 #
-# Two levels of assertion are made. fit_data() drives fit_bayesnec() itself with
-# brm() mocked, which is what proves the write-back reaches the fit; brm_data()
-# runs check_data() and write_back_checks() in the order fit_bayesnec() calls
-# them, which is cheap enough to cover the boundary cases exhaustively.
+# Three levels of assertion are made. fit_data() drives fit_bayesnec() itself
+# with brm() mocked, which is what proves the write-back reaches the fit; one
+# case drives bnec() over a model set, which is where the conflict is raised;
+# and brm_data() runs check_data() and write_back_checks() in the order
+# fit_bayesnec() calls them, which is cheap enough to cover the boundary cases
+# exhaustively.
 
 gamma_boundary_data <- function() {
   d <- data.frame(x = rep(c(0.1, 1, 10, 100), each = 5))
@@ -163,9 +165,9 @@ test_that("pop_var_is_transformed answers per variable", {
 })
 
 test_that("fit_bayesnec() hands brm() the repaired response", {
-  # The integration point: the three write_back_checks() calls in
-  # fit_bayesnec(). Removing the y_var call makes this fail and leaves every
-  # check_data()-level assertion above passing.
+  # The integration point: the write_back_checks() calls in fit_bayesnec().
+  # Removing the y_var call makes this fail and leaves every check_data()-level
+  # assertion above passing.
   d <- gamma_boundary_data()
   seen <- fit_data(y ~ crf(log(x), model = "nec3param"), d,
                    Gamma(link = "identity"))
@@ -217,5 +219,20 @@ test_that("a model set stops once on the conflict, not once per model", {
     error = function(e) conditionMessage(e)
   )
   expect_match(err, "a transformation written inside the model formula")
-  expect_false(any(grepl("None of the models fit successfully", msgs)))
+  # The all-models-failed paragraph is raised by stop(), not message(), so it
+  # has to be asserted on the error rather than on what was collected above.
+  expect_false(grepl("None of the models fit successfully", err))
+  expect_length(msgs, 0)
+})
+
+test_that("an arithmetic trials term is not written over", {
+  # clean_aterms() maps `trials(n * 2)` back to `n`, so the write-back this
+  # change removes overwrote the user's `n` with the doubled values, and brm()
+  # then evaluated `trials(n * 2)` against those: a recorded 10 became 40.
+  d <- data.frame(x = rep(c(1, 10, 100, 1000), each = 4),
+                  y = as.integer(rep(c(18, 12, 6, 2), each = 4)),
+                  n = as.integer(rep(10, 16)))
+  seen <- fit_data(y | trials(n * 2) ~ crf(x, model = "nec3param"), d,
+                   binomial(link = "identity"))
+  expect_identical(seen$n, d$n)
 })

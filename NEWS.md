@@ -93,6 +93,14 @@
   drops incomplete cases, so it is shorter than the data frame `brm()` is given
   wherever one is present.
 
+- `trials()` carrying arithmetic — `y | trials(n * 2) ~ crf(x, ...)` — no longer
+  fits every observation against the wrong number of trials. The trials column
+  was written back into the user's data before `brm()` saw it, and the aterm
+  matches the bare column name, so `n` was overwritten with `n * 2` and `brm()`
+  then evaluated `trials(n * 2)` against *that*: a recorded 10 became 40. The
+  write-back is removed; `check_data()` never corrects the trials variable, so
+  it had nothing to carry.
+
 # bayesnec 2.1.4
 
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the

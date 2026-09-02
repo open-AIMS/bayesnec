@@ -482,6 +482,13 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # conflict is a property of the data and the formula, so one statement of it
   # is the whole story. check_data() keeps the check as a backstop for
   # get_priors() and for a direct fit_bayesnec() call.
+  #
+  # One consequence of raising it here: it now precedes check_cens_support(),
+  # which check_data() runs before its own nudges. A response that is both
+  # transformed onto a boundary and censored there therefore reports the
+  # transformation conflict from bnec() and the censoring conflict from
+  # get_priors(). Both are true and both must be resolved, so the order does
+  # not change what the user has to do.
   check_inline_boundary(bdat, brm_args$family)
   model <- check_models(model, brm_args$family, bdat)
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
