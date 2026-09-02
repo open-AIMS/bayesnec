@@ -562,6 +562,20 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.
   check_normalisation(bdat)
+  # Raised here for the same reason: check_data() runs once per model, so a
+  # model set would print the conflict for each of its members and then end on
+  # the generic all-models-failed advice, long after the cause. The conflict is
+  # a property of the data and the formula together, fixed for the whole call,
+  # so it needs stating once. check_data() keeps the check as a backstop for
+  # get_priors() and for a direct fit_bayesnec() call.
+  #
+  # One consequence of raising it here: it now precedes check_cens_support(),
+  # which check_data() runs before its own nudges. A response that is both
+  # transformed onto a boundary and censored there therefore reports the
+  # transformation conflict from bnec() and the censoring conflict from
+  # get_priors(). Both are true and both must be resolved, so the order does
+  # not change what the user has to do.
+  check_inline_boundary(bdat, brm_args$family)
   model <- check_models(model, brm_args$family, bdat)
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)

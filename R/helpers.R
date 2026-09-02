@@ -1001,6 +1001,33 @@ find_transformations <- function(data) {
   unname(bnec_pop_vars[!bnec_pop_vars %in% names(data)])
 }
 
+#' Is one population variable written into the formula as a transformation?
+#'
+#' \code{\link{find_transformations}} answers this for the formula as a whole,
+#' which is too coarse wherever the answer decides what happens to a single
+#' variable: \code{crf(log(x))} would then suppress a correction applied to the
+#' response as well (#258).
+#'
+#' The comparison is positional -- the model frame column at the variable's
+#' position in \code{bnec_pop} against the variable's own name -- because that
+#' is how \code{\link{retrieve_var}} and every other consumer of
+#' \code{bnec_pop} finds a variable, so the two cannot disagree about which
+#' column is meant. A name-membership test would also call \code{y} transformed
+#' in \code{y ~ crf(log(y))}, where only the predictor is.
+#'
+#' @noRd
+pop_var_is_transformed <- function(data, var) {
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  v_pos <- which(names(bnec_pop_vars) == var)
+  if (length(v_pos) != 1 || v_pos > length(data)) {
+    return(FALSE)
+  }
+  # trials(n) and the other brms aterms wrap a variable without transforming
+  # it, so they are stripped before the comparison, as find_transformations()
+  # does.
+  !identical(names(clean_aterms(data))[v_pos], bnec_pop_vars[[v_pos]])
+}
+
 #' @noRd
 cleaned_brms_summary <- function(brmsfit) {
   brmssummary <- summary(brmsfit, robust = TRUE)

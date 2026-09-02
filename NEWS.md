@@ -55,6 +55,72 @@
   level-aware post-processing inside the toxicity estimators, which is the code
   the `toxval` migration moves. See #33.
 
+- A boundary correction is no longer discarded when a transformation is written
+  inline in `crf()`. `check_data()` shifts a response off a boundary its family
+  cannot represent — a zero under `Gamma` or `beta`, a one under `beta` or
+  `zero_inflated_beta` — and
+  the shift reached `brm()` only where no population variable was transformed
+  inside the formula. The guard was all-or-nothing, so `crf(log(concentration))`
+  discarded a shift applied to the *response*: the correction was computed,
+  reported to the user, and then dropped, and the fit failed with a `brms` error
+  naming the condition the package had reported it had repaired. The decision is
+  now made one variable at a time, so a transformation on the predictor no
+  longer affects the response. Reported as #258; `bnec(fvfm ~
+  crf(log(concentration), ...), data = herbicide)` reproduces it on packaged
+  data.
+
+  The converse direction changes a fit that previously ran without error. A
+  transformation on the *response* no longer suppresses the correction to the
+  *predictor*, so a bare predictor column containing an exact zero is now
+  shifted to `min(x[x > 0]) / 10` in the data the fit sees, where before the
+  shift reached the priors only. The two now agree; previously the `nec` prior
+  was bounded below by the shifted value while the data still carried the zero,
+  so observations sat below the prior's own lower bound. The response family
+  does not matter — this is not confined to the families with a boundary
+  conflict — but the predictor does: the shift fires only where the predictor is
+  continuous, non-negative and spans values above one, which is what
+  `set_distribution()` calls `Gamma`. A predictor lying entirely within 0 and 1
+  is untouched, then and now. The shift is not always small: a control recorded
+  as zero among concentrations of 100, 200 and 400 becomes 10. A fit of that
+  shape refitted under this version gives different estimates.
+
+  Where the *transformed* variable is itself the one on the boundary, the
+  correction cannot be carried through at all, because `brm()` re-evaluates the
+  transformation from the recorded column. For a response, that is now an error
+  naming the conflict and the remedy, in place of a `brms` failure; it is raised
+  once per `bnec()` call rather than once per model, so a model set stops with
+  the cause rather than repeating it for every member. For a predictor the value
+  is left where it is: a zero on the transformed scale is not evidence of a
+  boundary artefact on the recorded scale — `log(1)` is zero for a concentration
+  of one — and no family constrains the support of a predictor. One consequence
+  is visible in the priors: for a transformed predictor carrying a zero, the
+  `nec` prior is now built from the transformed predictor as it stands rather
+  than from a corrected copy of it, so its lower bound is zero rather than one
+  tenth of the smallest positive transformed value. On
+  `crf(sqrt(x))` with `x` taking 0, 1, 10 and 100, that bound is `0` where it
+  was `0.1`.
+
+  The new error reaches two exported functions that run the same check.
+  `get_priors()` now raises it for a formula whose inline-transformed response
+  sits on a boundary the family excludes, where it previously returned a prior
+  table describing a fit that could not be run. `update()` raises it whenever it
+  tests for a change of family — when new data is supplied, or a family is —
+  and the response of the data being tested lands on such a boundary.
+
+- The write-back above now matches rows by name rather than assigning
+  wholesale, so a data frame carrying an `NA` in any population variable no
+  longer fails with "replacement has *n* rows, data has *m*". The model frame
+  drops incomplete cases, so it is shorter than the data frame `brm()` is given
+  wherever one is present.
+
+- `trials()` carrying arithmetic — `y | trials(n * 2) ~ crf(x, ...)` — no longer
+  fits every observation against the wrong number of trials. The trials column
+  was written back into the user's data before `brm()` saw it, and the aterm
+  matches the bare column name, so `n` was overwritten with `n * 2` and `brm()`
+  then evaluated `trials(n * 2)` against *that*: a recorded 10 became 40. The
+  write-back is removed; `check_data()` never corrects the trials variable, so
+  it had nothing to carry.
+
 # bayesnec 2.1.4
 
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the
