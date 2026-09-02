@@ -55,6 +55,34 @@
   level-aware post-processing inside the toxicity estimators, which is the code
   the `toxval` migration moves. See #33.
 
+- A boundary correction is no longer discarded when a transformation is written
+  inline in `crf()`. `check_data()` shifts a response off a boundary its family
+  cannot represent — a zero under `Gamma` or `beta`, a one under `beta` — and
+  the shift reached `brm()` only where no population variable was transformed
+  inside the formula. The guard was all-or-nothing, so `crf(log(concentration))`
+  discarded a shift applied to the *response*: the correction was computed,
+  reported to the user, and then dropped, and the fit failed with a `brms` error
+  naming the condition the package had reported it had repaired. The decision is
+  now made one variable at a time, so a transformation on the predictor no
+  longer affects the response. Reported as #258; `bnec(fvfm ~
+  crf(log(concentration), ...), data = herbicide)` reproduces it on packaged
+  data.
+
+  Where the *transformed* variable is itself the one on the boundary the
+  correction cannot be carried through at all, because `brm()` re-evaluates the
+  transformation from the recorded column. For a response that is now an error
+  naming the conflict and the remedy, in place of a `brms` failure. For a
+  predictor the value is left where it is: a zero on the transformed scale is
+  not evidence of a boundary artefact on the recorded scale — `log(1)` is zero
+  for a concentration of one — and no family constrains the support of a
+  predictor.
+
+- The write-back above now matches rows by name rather than assigning
+  wholesale, so a data frame carrying an `NA` in any population variable no
+  longer fails with "replacement has *n* rows, data has *m*". The model frame
+  drops incomplete cases, so it is shorter than the data frame `brm()` is given
+  wherever one is present.
+
 # bayesnec 2.1.4
 
 - `extraDistr` is declared in `Suggests`. `brms` requires it for the

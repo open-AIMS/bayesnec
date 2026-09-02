@@ -37,19 +37,18 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     family <- checked_df$family
     custom_name <- check_custom_name(family)
     brm_args$family <- family
-    trans_vars <- find_transformations(bdat)
-    # if no transformations are applied via formula (including on trials),
-    # use the output of check_data
-    if (length(trans_vars) == 0) {
-      bnec_pop_vars <- attr(bdat, "bnec_pop")
-      y_var <- bnec_pop_vars[[which(names(bnec_pop_vars) == "y_var")]]
-      data[, y_var] <- y
-      x_var <- bnec_pop_vars[[which(names(bnec_pop_vars) == "x_var")]]
-      data[, x_var] <- x
-      if (family$family == "binomial" || family$family == "beta_binomial") {
-        t_var <- bnec_pop_vars[[which(names(bnec_pop_vars) == "trials_var")]]
-        data[, t_var] <- tr
-      }
+    # The corrections check_data() makes have to reach the data frame brm() is
+    # given, and whether they can is a property of one variable at a time. The
+    # guard here used to be all-or-nothing -- an inline transformation on any
+    # population variable suppressed the write-back for all of them -- so a
+    # log() on the predictor discarded a shift applied to the response and
+    # brm() then failed naming a condition the package had reported it had
+    # repaired (#258). check_data() no longer corrects a transformed variable
+    # at all, so anything it did change can be written back.
+    data <- write_back_checks(data, bdat, "y_var", y)
+    data <- write_back_checks(data, bdat, "x_var", x)
+    if (family$family == "binomial" || family$family == "beta_binomial") {
+      data <- write_back_checks(data, bdat, "trials_var", tr)
     }
   }
   custom_name <- check_custom_name(family)
@@ -154,4 +153,32 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
   out <- list(fit = fit, model = model, init = all_args$init,
               bayesnecformula = formula)
   allot_class(out, "prebayesnecfit")
+}
+
+#' Write a correction from \code{\link{check_data}} back into the fitted data
+#'
+#' Returns \code{data} unchanged where the variable is written into the formula
+#' as a transformation: the correction was computed on the transformed scale,
+#' which is not the scale of the column \code{brm()} would re-evaluate it from.
+#' \code{\link{check_data}} does not correct such a variable, so there is
+#' nothing to lose by skipping it.
+#'
+#' The rows are matched by name rather than assigned wholesale. The model frame
+#' drops incomplete cases, so it is shorter than \code{data} wherever any
+#' population variable carries an NA, and a wholesale assignment fails there
+#' with "replacement has n rows, data has m".
+#'
+#' @noRd
+write_back_checks <- function(data, bdat, var, values) {
+  if (pop_var_is_transformed(bdat, var)) {
+    return(data)
+  }
+  bnec_pop_vars <- attr(bdat, "bnec_pop")
+  v_pos <- which(names(bnec_pop_vars) == var)
+  if (length(v_pos) != 1) {
+    return(data)
+  }
+  rows <- match(rownames(bdat), rownames(data))
+  data[rows, bnec_pop_vars[[v_pos]]] <- values
+  data
 }
