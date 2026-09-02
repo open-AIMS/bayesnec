@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.24</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.25</span>
       </span>
     </div>
 
@@ -418,9 +418,9 @@ from the existing set.</p>
 <code class="sourceCode R"><span><span class="va">exp_5_nec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pull_out.html">pull_out</a></span><span class="op">(</span><span class="va">exp_5</span>, model <span class="op">=</span> <span class="st">"nec"</span><span class="op">)</span></span></code></pre></div>
 <p>In this case, because we have already fitted <code>"decline"</code>
 models, we can ignore the message regarding the missing <em>NEC</em>
-models—these are all models that are not appropriate for a
-<code>Beta</code> family with a <code>logit</code> link function, or
-allow hormesis, which we did not consider in this example.</p>
+models—these are all models that are not appropriate for the family and
+link <code>bnec</code> selected for these data, or allow hormesis, which
+we did not consider in this example.</p>
 <p>Now we have two model sets, an <em>NEC</em> set, and a mixed
 <em>NEC</em> and <em>ECx</em> set. Of course, before we use this model
 set for any inference, we would need to check the chain mixing and

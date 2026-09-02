@@ -18,7 +18,7 @@ bnec."><meta property="og:image" content="https://open-aims.github.io/bayesnec/l
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.24</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.25</span>
       </span>
     </div>
 
@@ -163,6 +163,16 @@ not provided by the user, <code><a href="bnec.html">bnec</a></code> will set the
 returned, then also an object of class <code><a href="bayesnecfit-class.html">bayesnecfit</a></code>; otherwise,
 if multiple models are returned, also an object of class
 <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p>
+    </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>A <code>family</code> passed through <code>...</code> is read exactly as
+<code><a href="bnec.html">bnec</a></code> reads it: the link is assigned by <span class="pkg">bayesnec</span> unless
+the caller writes one, an unsupported link is refused before any model is
+refitted, and the validated family is the one <span class="pkg">brms</span> receives. See the
+<em>The link</em> section of <code><a href="bnec.html">bnec</a></code>. Supplying a family that
+differs from the fitted one requires <code>force_fit = TRUE</code>, because the
+priors carried over from the original fit were built for the original family.</p>
     </div>
 
     <div id="ref-examples">
