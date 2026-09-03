@@ -50,7 +50,7 @@ transformed_response_fit <- function(fit, model) {
 }
 
 # The same fixture for a model set. Both plotting paths read the formula off
-# mod_fits[[1]] alone (R/plot.R:258, R/autoplot.R:346), so that is the only
+# mod_fits[[1]] alone (R/plot.R:258, R/autoplot.R:347), so that is the only
 # element that has to change.
 transformed_response_manec <- function(manec) {
   mod <- names(manec$mod_fits)[1]

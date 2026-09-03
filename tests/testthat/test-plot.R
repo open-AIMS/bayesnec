@@ -15,7 +15,7 @@
 # on the PREDICTOR axis -- but the nec and ec10 annotations are transformed
 # unconditionally at R/plot.R:130-131, outside that guard. The two halves of
 # the figure are therefore drawn on different scales, and the abline() at
-# R/plot.R:179 lands off the end of the axis. Both halves are asserted below,
+# R/plot.R:180 lands off the end of the axis. Both halves are asserted below,
 # because a fix that corrects either one alone leaves the figure wrong.
 #
 # The issue records that this could only be read from source. It is reproduced
@@ -103,7 +103,7 @@ test_that("the nec annotation is drawn off the end of the axis", {
   # that added this file originally described as xform being "silently
   # skipped". It is not skipped. R/plot.R:130-131 apply it to nec and ec10
   # unconditionally, outside the guard, so with a transformed response the
-  # abline() at R/plot.R:179 is drawn at the transformed NEC on an axis left
+  # abline() at R/plot.R:180 is drawn at the transformed NEC on an axis left
   # untransformed, and the line is not on the figure at all.
   #
   # abline() is intercepted rather than the value recomputed here: what has to

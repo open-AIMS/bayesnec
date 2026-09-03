@@ -283,8 +283,8 @@ test_that("has_family_changed reports a correction it then discards", {
   # has_family_changed() takes d by value and cannot alter it.
   #
   # INVERT THIS TEST WHEN #274 IS FIXED: either the message is no longer
-  # emitted from this route, or the return carries the corrected data frame and
-  # is no longer a bare logical.
+  # emitted from this route, or the return includes the corrected data frame
+  # and is no longer a bare logical.
   skip_on_cran()
   f <- nec4param
   d <- f$fit$data

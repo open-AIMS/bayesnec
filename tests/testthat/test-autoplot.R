@@ -131,8 +131,9 @@ test_that("the nec annotation is transformed while the axis is not", {
   # R/autoplot.R:313-318 pass xform to bind_nec() and to ecx() unconditionally,
   # outside the guard, so the annotation column and the curve column come back
   # on scales that differ by whatever xform does. Measured on nec4param with
-  # xform = x * 100: max(x_e) is 3.22 with and without xform, while nec_vals
-  # changes from 1.46 to 146.
+  # xform = x * 100: max(x_e) is 3.22 with and without xform, while the largest
+  # nec_vals -- the upper bound, which is what the assertion below reads --
+  # changes from 1.53 to 152.8.
   #
   # INVERT THIS TEST WHEN #268 IS FIXED: the two columns must then agree,
   # whichever scale the fix settles on. A fix that changes only the guard, or
