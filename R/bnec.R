@@ -449,14 +449,16 @@
 #' for it. That substitution is removed: it was applied without notice, it was
 #' never reversed in the estimates it changed, and its size depended on the
 #' lowest non-zero concentration tested rather than on the data. A fit whose
-#' predictor includes an exact zero gives different estimates from version
-#' 2.2.0 onwards.
+#' predictor includes an exact zero gives different estimates than it did under
+#' earlier versions.
 #'
 #' A zero concentration does still restrict what may be written inside
-#' \code{crf()} and \code{disp()}. \code{brm()} evaluates such a
-#' transformation from the recorded column, so \code{crf(log(x))} reaches the
-#' data check as \code{-Inf} and the fit stops. Add the offset of your choice
-#' to the data first.
+#' \code{crf()} and \code{disp()}, because both are evaluated from the recorded
+#' column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
+#' \code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
+#' evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
+#' the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
+#' name that column in the formula.
 #'
 #' \bold{NAs are thrown away}
 #' 

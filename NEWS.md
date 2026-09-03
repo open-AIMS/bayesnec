@@ -94,8 +94,8 @@
   in the estimates it changed (#93), and its size depended on the design rather
   than on the data, so the same control was fitted at a different value
   depending on the lowest non-zero concentration tested. The predictor now
-  reaches `brm()`, and `nec()`, `ecx()` and `nsec()` now report, on the scale
-  the user recorded. See #269.
+  reaches `brm()` on the scale the user recorded, and `nec()`, `ecx()` and
+  `nsec()` report on that scale too. See #269.
 
   The corresponding corrections for a predictor bounded on 0 and 1 are removed
   with it. Those were unreachable — `check_data()` tested for `"beta"` where
@@ -107,7 +107,7 @@
   predictor written inside a `disp()` sub-model — `disp(~log(x))` — was
   evaluated against the substituted value, so a zero concentration reached Stan
   as `log(min(x[x > 0]) / 10)`. It now reaches Stan as `-Inf`, `brms` warns
-  "Found infinite values in the data", and initialisation fails. Add the offset
+  "Found infinite values in the data", and the fit does not run. Add the offset
   of your choice to the data and name that column in the `disp` formula. Nothing
   validates a `disp` formula for finiteness before `brm()` sees it, which is
   raised separately as #271.

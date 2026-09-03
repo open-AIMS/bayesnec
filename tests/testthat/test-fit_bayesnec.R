@@ -99,12 +99,10 @@ test_that("the write-back still reaches brm() with no transformation at all", {
   gam <- Gamma(link = "identity")
   out <- brm_data(y ~ crf(x, model = "nec3param"), gamma_boundary_data(), gam)
   expect_equal(min(out$y), 0.3)
-  # The predictor is never corrected, so a zero control reaches brm() as
-  # recorded whether or not the response beside it was corrected (#269).
-  d0 <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
-                   y = rep(c(8, 6, 3, 1), each = 5))
-  out0 <- brm_data(y ~ crf(x, model = "nec3param"), d0, gam)
-  expect_identical(out0$x, d0$x)
+  # The predictor is not asserted here. brm_data() applies the response
+  # write-back alone, so its x column is the input column whatever check_data()
+  # did; the predictor is covered by the two cases below, which read
+  # check_data() and fit_bayesnec() directly.
 })
 
 test_that("the write-back aligns rows when incomplete cases were dropped", {
@@ -208,6 +206,19 @@ test_that("fit_bayesnec() hands brm() the predictor as recorded", {
   seen <- fit_data(y ~ crf(x, model = "nec3param"), d,
                    Gamma(link = "identity"))
   expect_identical(seen$x, d$x)
+})
+
+test_that("a disp() sub-model is built from the predictor as recorded", {
+  # The behaviour change #269 records for disp(~log(x)): the sub-model is
+  # evaluated by brm() from the column it is handed, which now holds the zero.
+  # Asserted on the data frame rather than by fitting, because the failure is
+  # Stan's and the assertion here is about what brms is given.
+  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
+                  y = rep(c(8, 6, 3, 1), each = 5))
+  seen <- fit_data(y ~ crf(x, model = "nec3param") + disp(~log(x)), d,
+                   Gamma(link = "identity"))
+  expect_identical(seen$x, d$x)
+  expect_true(any(!is.finite(log(seen$x))))
 })
 
 test_that("a binomial fit reaches brm() with its trials column untouched", {

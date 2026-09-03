@@ -264,7 +264,7 @@ check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
   out <- check_fit_table(x$fit, y, grp, ndraws, seed,
                          is_hurdle_family(x$fit$family))
   # The control is the lowest predictor value, which is the package's own
-  # convention (check_data()) and is the column nsec() reads its reference from.
+  # convention -- it is the reference nsec() reads from, in nsec_fct().
   ctrl <- levels(grp)[which.min(tapply(predictor, grp, min))]
   out$control <- out$group == ctrl
   attr(out, "model") <- x$model
