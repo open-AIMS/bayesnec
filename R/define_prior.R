@@ -86,6 +86,7 @@ positive_scale <- function(response, probs) {
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
 #' @importFrom stats sd
+#' @importFrom stats median
 #'
 #' @noRd
 define_prior <- function(model, family, predictor, response,
@@ -239,11 +240,34 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = "beta(1, 5)",
                  beta = "beta(1, 5)")
   }
+  # The rate of the nec/ec50 gamma prior is set from the median of the distinct
+  # predictor values, not from the median of the observation vector. A prior
+  # scale should describe the concentrations that were tested, not how many
+  # replicates each of them received. Where more than half the observations sit
+  # at a zero control the observation median is zero and 1 / (0 / 2) made the
+  # prior string "gamma(5, Inf)"; the distinct-value median cannot be zero
+  # while the predictor reaches above one, which is the condition under which
+  # this entry is selected. The two agree for a balanced design, and the
+  # distinct series is what survival_by_x() already primes the hu block of a
+  # hurdle or zero-inflated fit from, so the two blocks of one fit no longer
+  # disagree about the scale of their shared predictor purely because of
+  # replication -- previously by a factor of three on an unbalanced design. They
+  # can still differ for a substantive reason: the mu block is primed from the
+  # non-zero subset, so a concentration at which every response is zero is
+  # absent from its series, which is the right answer for a block fitted only to
+  # survivors. See #269.
+  #
+  # unique() collapses replicates only where their recorded values are
+  # bit-identical, so this reads the series as it was entered. A nominal series
+  # typed as constants collapses; one computed per replicate, as a dilution
+  # factor applied row by row, may not, in which case the median is the
+  # observation median again and the prior is the one earlier versions built.
+  # That is acceptable because the prior is weakly informative either way, and
+  # the alternative -- rounding before comparing -- would need a tolerance with
+  # no defensible value on an arbitrary concentration scale.
+  x_med <- median(unique(predictor))
   x_prs <- c(Beta = "beta(2, 2)",
-             Gamma = paste0("gamma(5, ",
-                            1 / (quantile(predictor,
-                                          probs = 0.5) / 2),
-                            ")"),
+             Gamma = paste0("gamma(5, ", 1 / (x_med / 2), ")"),
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),

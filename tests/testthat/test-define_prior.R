@@ -565,3 +565,44 @@ test_that("a degenerate scale is not narrowed by prior_type", {
   ))
   expect_equal(pr$prior, "student_t(3, 0, 0.5)")
 })
+
+# #269: the nec/ec50 gamma rate is taken from the distinct predictor values
+# rather than from the observation vector, so that it describes the
+# concentration series and not the replication of it.
+
+test_that("the nec prior rate is finite when most observations are controls", {
+  # More than half the observations at a zero control made the observation
+  # median zero, and 1 / (0 / 2) put "gamma(5, Inf)" into the prior table. The
+  # rate is stated as a value rather than recomputed, so that the test says
+  # what the prior should be and not how define_prior() arrives at it: the
+  # distinct values are 0, 5, 15, 45, 135, 200, 300, whose median is 45.
+  x <- c(rep(0, 12), 5, 15, 45, 135, 200, 300)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  expect_equal(pr$prior[pr$nlpar == "nec"], "gamma(5, 0.0444444444444444)")
+})
+
+test_that("the nec prior scale ignores replication, not just zeros", {
+  # The rate is taken from the concentration series, so an unbalanced design
+  # gets a different prior from the one earlier versions built whether or not a
+  # zero is present. Distinct values 0.5, 1, 3, 10, 30, 100 have median 6.5,
+  # against an observation median of 10.
+  x <- c(0.5, rep(1, 3), rep(3, 6), rep(10, 8), rep(30, 2), 100)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  expect_equal(pr$prior[pr$nlpar == "nec"], "gamma(5, 0.307692307692308)")
+})
+
+test_that("the nec prior is unchanged for a balanced design", {
+  # The distinct-value median and the observation median agree wherever every
+  # concentration has the same number of replicates, so no existing fit of that
+  # shape gets a different prior.
+  x <- rep(c(0, 5, 15, 45, 135), each = 6)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  expect_equal(pr$prior[pr$nlpar == "nec"],
+               paste0("gamma(5, ", 1 / (quantile(x, 0.5) / 2), ")"))
+})

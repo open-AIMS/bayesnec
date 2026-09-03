@@ -443,11 +443,22 @@
 #'
 #' \bold{Additional technical notes}
 #'
-#' As some concentration-response data will use zero concentration
-#' which can cause numerical estimation issues, a small offset is added (1 /
-#' 10th of the next lowest value) to zero values of concentration where
-#' \code{x_var} are distributed on a continuous scale from 0 to infinity, or
-#' are bounded to 0, or 1.
+#' A zero concentration is fitted as recorded. No family constrains the values
+#' a predictor may take, so a control needs no offset, and earlier versions of
+#' \pkg{bayesnec} substituted one tenth of the smallest positive concentration
+#' for it. That substitution is removed: it was applied without notice, it was
+#' never reversed in the estimates it changed, and its size depended on the
+#' lowest non-zero concentration tested rather than on the data. A fit whose
+#' predictor includes an exact zero gives different estimates than it did under
+#' earlier versions.
+#'
+#' A zero concentration does still restrict what may be written inside
+#' \code{crf()} and \code{disp()}, because both are evaluated from the recorded
+#' column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
+#' \code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
+#' evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
+#' the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
+#' name that column in the formula.
 #'
 #' \bold{NAs are thrown away}
 #' 

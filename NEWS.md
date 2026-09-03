@@ -69,36 +69,12 @@
   crf(log(concentration), ...), data = herbicide)` reproduces it on packaged
   data.
 
-  The converse direction changes a fit that previously ran without error. A
-  transformation on the *response* no longer suppresses the correction to the
-  *predictor*, so a bare predictor column containing an exact zero is now
-  shifted to `min(x[x > 0]) / 10` in the data the fit sees, where before the
-  shift reached the priors only. The two now agree; previously the `nec` prior
-  was bounded below by the shifted value while the data still carried the zero,
-  so observations sat below the prior's own lower bound. The response family
-  does not matter — this is not confined to the families with a boundary
-  conflict — but the predictor does: the shift fires only where the predictor is
-  continuous, non-negative and spans values above one, which is what
-  `set_distribution()` calls `Gamma`. A predictor lying entirely within 0 and 1
-  is untouched, then and now. The shift is not always small: a control recorded
-  as zero among concentrations of 100, 200 and 400 becomes 10. A fit of that
-  shape refitted under this version gives different estimates.
-
-  Where the *transformed* variable is itself the one on the boundary, the
+  Where the *transformed* response is itself the one on the boundary, the
   correction cannot be carried through at all, because `brm()` re-evaluates the
-  transformation from the recorded column. For a response, that is now an error
-  naming the conflict and the remedy, in place of a `brms` failure; it is raised
-  once per `bnec()` call rather than once per model, so a model set stops with
-  the cause rather than repeating it for every member. For a predictor the value
-  is left where it is: a zero on the transformed scale is not evidence of a
-  boundary artefact on the recorded scale — `log(1)` is zero for a concentration
-  of one — and no family constrains the support of a predictor. One consequence
-  is visible in the priors: for a transformed predictor carrying a zero, the
-  `nec` prior is now built from the transformed predictor as it stands rather
-  than from a corrected copy of it, so its lower bound is zero rather than one
-  tenth of the smallest positive transformed value. On
-  `crf(sqrt(x))` with `x` taking 0, 1, 10 and 100, that bound is `0` where it
-  was `0.1`.
+  transformation from the recorded column. That is now an error naming the
+  conflict and the remedy, in place of a `brms` failure; it is raised once per
+  `bnec()` call rather than once per model, so a model set stops with the cause
+  rather than repeating it for every member.
 
   The new error reaches two exported functions that run the same check.
   `get_priors()` now raises it for a formula whose inline-transformed response
@@ -107,7 +83,92 @@
   tests for a change of family — when new data is supplied, or a family is —
   and the response of the data being tested lands on such a boundary.
 
-- The write-back above now matches rows by name rather than assigning
+- **A zero in the predictor is no longer corrected.** `check_data()` replaced a
+  zero concentration with `min(x[x > 0]) / 10` before the data reached `brm()`,
+  and a fit whose predictor includes an exact zero therefore gives different
+  estimates under this version. No family constrains the values a predictor may
+  take, so no correction was ever required: `nec3param` and `ecxsigm` fitted to
+  a predictor of 0, 5, 15, 45 and 135 converge with zero divergent transitions
+  either way, and agree to within a third of the width of their credible
+  intervals. The correction was applied without notice, it was never reversed
+  in the estimates it changed (#93), and its size depended on the design rather
+  than on the data, so the same control was fitted at a different value
+  depending on the lowest non-zero concentration tested. The predictor now
+  reaches `brm()` on the scale the user recorded, and `nec()`, `ecx()` and
+  `nsec()` report on that scale too. See #269.
+
+  The corresponding corrections for a predictor bounded on 0 and 1 are removed
+  with it. Those were unreachable — `check_data()` tested for `"beta"` where
+  `set_distribution()` returns `"Beta"` — so no released version applied them
+  and nothing changes for such a predictor. Reported as #265, closed by removal
+  rather than by repair.
+
+  One class of fit that ran under earlier versions now stops. A logarithm of the
+  predictor written inside a `disp()` sub-model — `disp(~log(x))` — was
+  evaluated against the substituted value, so a zero concentration reached Stan
+  as `log(min(x[x > 0]) / 10)`. It now reaches Stan as `-Inf`, `brms` warns
+  "Found infinite values in the data", and the fit does not run. Add the offset
+  of your choice to the data and name that column in the `disp` formula. Nothing
+  validates a `disp` formula for finiteness before `brm()` sees it, which is
+  raised separately as #271.
+
+- **The `nec` and `ec50` prior scale is taken from the concentration series,
+  not from the observation vector.** The rate of the `gamma` prior those two
+  parameters receive was built from `quantile(predictor, 0.5)`, which is
+  weighted by how many replicates each concentration received. **Any design with
+  unequal replication gets a different `nec` and `ec50` prior under this
+  version, whether or not the predictor includes a zero.** On a strictly
+  positive predictor of 0.5, 1, 3, 10, 30 and 100 replicated 1, 3, 6, 8, 2 and 1
+  times, the prior changes from `gamma(5, 0.2)` to `gamma(5, 0.3077)`, a change
+  in its mean from 25 to 16.25 on a predictor running to 100. The rate is now
+  built from the median of the *distinct* predictor values, which is the same
+  quantity for a balanced design.
+
+  The zero case is where the change is largest. Twelve controls beside
+  concentrations of 5, 15, 45, 135, 200 and 300 gave `gamma(5, 4)` under earlier
+  versions, a prior mean for `nec` of 1.25 on a predictor running to 300, and
+  give `gamma(5, 0.0444)` here, a prior mean of 112.5. Nothing errored and
+  nothing was reported: more than half the observations sat at the control, the
+  predictor correction had replaced those zeros with 0.5 before the median was
+  taken, and the median of the corrected observations was 0.5. The same
+  calculation on the recorded predictor returns `gamma(5, Inf)`, which is not a
+  prior at all, so removing the correction on its own would have exposed a
+  failure rather than a degenerate prior. The distinct-value median cannot be
+  zero for any predictor this entry applies to. See #269.
+
+  A second consequence of taking the median of the distinct values: the two
+  blocks of a hurdle or zero-inflated fit no longer disagree about the scale of
+  their shared predictor purely because of replication. The `hu` block was
+  already primed from `sort(unique(predictor))`, by `survival_by_x()`, so on an
+  unbalanced design the `mu` block and the `hu` block previously received
+  different rates for the same concentrations — `gamma(5, 0.4)` against
+  `gamma(5, 0.1333)` on a design of eight controls and four replicates each at
+  5, 15, 45 and 135. Both are `gamma(5, 0.1333)` here. They can still differ for
+  a substantive reason: the `mu` block is primed from the non-zero subset of the
+  response, so a concentration at which every response is zero is absent from its
+  series. On the same design with complete mortality at 135, the `mu` block gets
+  `gamma(5, 0.2)` against `gamma(5, 0.1333)` for the `hu` block. That is the
+  intended behaviour — the `mu` block is fitted only to the survivors — and it is
+  the ordinary shape of a dataset a hurdle family is chosen for.
+
+- A fit whose data was corrected under an earlier version can no longer be
+  combined with a new fit of the same data. `c()` and `+` on `bnecfit` objects
+  compare the stored data frames exactly, so a fit whose control was recorded at
+  `min(x[x > 0]) / 10` and one whose control is the zero the user recorded are
+  refused with "Dataset values differ across fits". This reaches any fit with a
+  zero in the predictor, and any fit to which the response boundary shift above
+  applied; a fit whose data neither correction touched is unaffected. Refit both,
+  or use `amend()`, which refits from the data frame already stored and so keeps
+  an older set consistent in its *data*.
+
+  It does not keep it consistent in its *priors*. `amend()` builds a default
+  prior for each model it adds, so a model added under this version to a set
+  fitted under an earlier one is given the new `nec` and `ec50` rate while the
+  models already in the set retain the old one. That applies to every prior this
+  release changes, not only to the predictor-scaled ones. Where the comparison
+  between models matters, refit the whole set.
+
+- The response write-back now matches rows by name rather than assigning
   wholesale, so a data frame carrying an `NA` in any population variable no
   longer fails with "replacement has *n* rows, data has *m*". The model frame
   drops incomplete cases, so it is shorter than the data frame `brm()` is given

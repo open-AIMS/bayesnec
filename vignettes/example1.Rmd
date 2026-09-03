@@ -90,13 +90,16 @@ round(c(linear = spacing_cv(conc), log = spacing_cv(log(conc))), 2)
 #>   1.72   0.58
 ```
 
-Any simple transformation may be written directly inside `crf`, as `crf(log(x), model = "nec4param")`. Two consequences follow. The transformation is evaluated before `bayesnec` inspects the predictor, so a control concentration recorded as `0` arrives at the data check as `log(0)` and the fit stops, reporting a predictor that is not finite. `bayesnec` substitutes `min(x[x > 0]) / 10` for a zero on the recorded axis, but only where the predictor is passed as a bare column; with the logarithm written inline the offset has to be added to the data first. And the toxicity estimates are then returned on the transformed scale, so `nec`, `ecx` and `nsec` need back-transforming, with `xform` doing the same job for plots:
+Any simple transformation may be written directly inside `crf`, as `crf(log(x), model = "nec4param")`. Two consequences follow. The transformation is evaluated before `bayesnec` inspects the predictor, so a control concentration recorded as `0` arrives at the data check as `log(0)` and the fit stops, reporting a predictor that is not finite. `bayesnec` does not correct a zero on the predictor axis, on either the recorded or the transformed scale: a concentration of zero is an ordinary control, and no response distribution constrains the values a predictor may take. An offset for a logarithm is therefore the user's to choose and to add to the data first. And the toxicity estimates are then returned on the transformed scale, so `nec`, `ecx` and `nsec` need back-transforming, with `xform` doing the same job for plots:
 
 
 ``` r
 ecx(exp_2, xform = function(x) exp(x) - 1)
 autoplot(exp_2, xform = function(x) exp(x) - 1)
 ```
+
+A transformation written inside `disp` rather than `crf` fails differently, and less clearly. A `disp` formula is evaluated by `brms` rather than by `bayesnec`, so nothing checks it: with `disp(~log(x))` a zero concentration reaches Stan as `-Inf`, with a warning about infinite values in the data and no mention of the term responsible. The remedy is the same --- add the offset to the data and name that column.
+
 
 One caution on the inline form as the package currently stands. A transformation whose argument is a bare variable, such as `log(x)` or `sqrt(x)`, is handled correctly throughout. Where the argument contains arithmetic of its own, such as `log(x + 1)`, `nec` is still reported on the transformed scale but `ecx` and `nsec` are not: they are back-transformed as though the offset were absent, and so are slightly in error. Pre-computing the transformation into its own column and passing it as a bare variable avoids this entirely:
 

@@ -46,15 +46,13 @@ fit_bayesnec <- function(formula, data, model = NA, brm_args,
     # repaired (#258). check_data() no longer corrects a transformed variable
     # at all, so anything it did change can be written back.
     data <- write_back_checks(data, bdat, "y_var", y)
-    data <- write_back_checks(data, bdat, "x_var", x)
-    # There is no trials write-back. check_data() never corrects the trials
-    # variable -- for a binomial family it reads the column straight back off
-    # the model frame -- so where the aterm names a bare column, writing it
-    # back is a no-op. Where the aterm carries arithmetic it is worse than a
-    # no-op: clean_aterms() maps `trials(n * 2)` back to `n`, so the doubled
+    # The response is the only variable written back. check_data() corrects
+    # neither the predictor (#269) nor the trials variable, so a write-back for
+    # either could only restate what the column already holds, or damage it. The
+    # all-variable write-back that these per-variable calls replaced did damage
+    # the trials column: clean_aterms() maps `trials(n * 2)` back to `n`, so the doubled
     # values were written into the user's `n` and brm() then evaluated
-    # `trials(n * 2)` against them -- a recorded 10 fitted as 40. The
-    # write-back this replaces did both.
+    # `trials(n * 2)` against them -- a recorded 10 fitted as 40.
   }
   custom_name <- check_custom_name(family)
   if (family$family == "binomial" || family$family == "beta_binomial") {
