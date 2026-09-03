@@ -137,22 +137,36 @@
   zero for any predictor this entry applies to. See #269.
 
   A second consequence of taking the median of the distinct values: the two
-  blocks of a hurdle or zero-inflated fit now agree about the scale of their
-  shared predictor. The `hu` block was already primed from
-  `sort(unique(predictor))`, by `survival_by_x()`, so on an unbalanced design the
-  `mu` block and the `hu` block previously received different rates for the same
-  concentrations — `gamma(5, 0.4)` against `gamma(5, 0.1333)` on a design of
-  eight controls and four replicates each at 5, 15, 45 and 135. Both are
-  `gamma(5, 0.1333)` here.
+  blocks of a hurdle or zero-inflated fit no longer disagree about the scale of
+  their shared predictor purely because of replication. The `hu` block was
+  already primed from `sort(unique(predictor))`, by `survival_by_x()`, so on an
+  unbalanced design the `mu` block and the `hu` block previously received
+  different rates for the same concentrations — `gamma(5, 0.4)` against
+  `gamma(5, 0.1333)` on a design of eight controls and four replicates each at
+  5, 15, 45 and 135. Both are `gamma(5, 0.1333)` here. They can still differ for
+  a substantive reason: the `mu` block is primed from the non-zero subset of the
+  response, so a concentration at which every response is zero is absent from its
+  series. On the same design with complete mortality at 135, the `mu` block gets
+  `gamma(5, 0.2)` against `gamma(5, 0.1333)` for the `hu` block. That is the
+  intended behaviour — the `mu` block is fitted only to the survivors — and it is
+  the ordinary shape of a dataset a hurdle family is chosen for.
 
-- A fit stored under an earlier version can no longer be combined with a new
-  fit of the same data. `c()` and `+` on `bnecfit` objects compare the stored
-  data frames exactly, so a fit whose control was recorded at
+- A fit whose data was corrected under an earlier version can no longer be
+  combined with a new fit of the same data. `c()` and `+` on `bnecfit` objects
+  compare the stored data frames exactly, so a fit whose control was recorded at
   `min(x[x > 0]) / 10` and one whose control is the zero the user recorded are
-  refused with "Dataset values differ across fits". Refit both, or use `amend()`,
-  which refits from the data frame already stored and leaves an older set
-  internally consistent. The same applies to a response corrected under the
-  boundary shift above.
+  refused with "Dataset values differ across fits". This reaches any fit with a
+  zero in the predictor, and any fit to which the response boundary shift above
+  applied; a fit whose data neither correction touched is unaffected. Refit both,
+  or use `amend()`, which refits from the data frame already stored and so keeps
+  an older set consistent in its *data*.
+
+  It does not keep it consistent in its *priors*. `amend()` builds a default
+  prior for each model it adds, so a model added under this version to a set
+  fitted under an earlier one is given the new `nec` and `ec50` rate while the
+  models already in the set retain the old one. That applies to every prior this
+  release changes, not only to the predictor-scaled ones. Where the comparison
+  between models matters, refit the whole set.
 
 - The response write-back now matches rows by name rather than assigning
   wholesale, so a data frame carrying an `NA` in any population variable no

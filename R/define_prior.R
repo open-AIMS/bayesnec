@@ -249,9 +249,13 @@ define_prior <- function(model, family, predictor, response,
   # while the predictor reaches above one, which is the condition under which
   # this entry is selected. The two agree for a balanced design, and the
   # distinct series is what survival_by_x() already primes the hu block of a
-  # hurdle or zero-inflated fit from, so this makes the two blocks of one fit
-  # agree about the scale of their shared predictor rather than disagreeing by a
-  # factor of three on an unbalanced design. See #269.
+  # hurdle or zero-inflated fit from, so the two blocks of one fit no longer
+  # disagree about the scale of their shared predictor purely because of
+  # replication -- previously by a factor of three on an unbalanced design. They
+  # can still differ for a substantive reason: the mu block is primed from the
+  # non-zero subset, so a concentration at which every response is zero is
+  # absent from its series, which is the right answer for a block fitted only to
+  # survivors. See #269.
   #
   # unique() collapses replicates only where their recorded values are
   # bit-identical, so this reads the series as it was entered. A nominal series
