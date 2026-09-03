@@ -138,13 +138,14 @@ check_data <- function(data, family, model) {
   # where the two meet the nudge would silently move the bound the user declared.
   # NULL when the formula carried no cens() term, in which case nothing changes.
   cens <- retrieve_cens(data)
-  # Called for its errors, not its value. The predictor carries no likelihood,
-  # so nothing here needs to know which distribution describes it; what this
-  # call still does is reject an integer predictor, which reaches this point
-  # unchallenged because is.numeric() is TRUE for an integer and retrieve_var()
-  # preserves the type. The error is raised inside set_distribution() when
-  # silence_x_msgs is FALSE. See #269.
-  invisible(set_distribution(x, silence_y_msgs = TRUE, silence_x_msgs = FALSE))
+  # Called for its errors, not its value: nothing here needs to know which
+  # distribution describes the predictor, but this call rejects an integer one,
+  # which reaches this point unchallenged because is.numeric() is TRUE for an
+  # integer and retrieve_var() preserves the type. define_prior() makes the same
+  # call and would raise the same error, so deleting this one would relocate the
+  # error rather than remove it -- but it belongs here, in the documented data
+  # check, rather than inside prior construction. See #269.
+  set_distribution(x, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
   # Families whose support is open at a boundary cannot express a censored
   # observation sitting exactly on it: the censored likelihood contribution is
   # F(0) = 0 on the left and 1 - F(1) = 0 on the right, so Stan sees log(0) and
@@ -161,14 +162,12 @@ check_data <- function(data, family, model) {
   # call. bnec() runs it once for the whole call, before the model loop, so that
   # a model set stops once rather than repeating the message per model.
   check_inline_boundary(data, family)
-  # The predictor is corrected nowhere in this function, and the corrections
-  # below concern the response alone. A predictor carries no likelihood, so no
-  # family constrains its support; a zero concentration is an ordinary control
-  # and reaches brm() as recorded. The corrections that used to sit here were
-  # written by symmetry with the response ones rather than for a reason of
-  # their own, they were applied silently, and they were never undone in the
-  # estimates they changed (#93). See #269 for the measurements, and
-  # define_prior() for the one calculation that had depended on them.
+  # The corrections below concern the response alone. No family constrains the
+  # values a predictor may take, so a zero concentration is an ordinary control
+  # and reaches brm() as recorded; the predictor corrections that used to sit
+  # here were written by symmetry with these rather than for a reason of their
+  # own. See #269.
+
   # Which zeros are a boundary artefact to be nudged. A censored row is exempt
   # for the same reason a hurdle zero is: the value there is a declared bound,
   # not an artefact, and moving it would restate the bound the user chose.

@@ -85,14 +85,14 @@
 
 - **A zero in the predictor is no longer corrected.** `check_data()` replaced a
   zero concentration with `min(x[x > 0]) / 10` before the data reached `brm()`,
-  and a fit whose predictor carries an exact zero therefore gives different
-  estimates under this version. A predictor carries no likelihood, so no family
-  constrains its support and no correction was ever required: `nec3param` and
-  `ecxsigm` fitted to a predictor of 0, 5, 15, 45 and 135 converge with zero
-  divergent transitions either way, and agree to within a third of the width of
-  their credible intervals. The correction was applied silently, it was never
-  undone in the estimates it changed (#93), and its size depended on the design
-  rather than on the data, so the same control was fitted at a different value
+  and a fit whose predictor includes an exact zero therefore gives different
+  estimates under this version. No family constrains the values a predictor may
+  take, so no correction was ever required: `nec3param` and `ecxsigm` fitted to
+  a predictor of 0, 5, 15, 45 and 135 converge with zero divergent transitions
+  either way, and agree to within a third of the width of their credible
+  intervals. The correction was applied without notice, it was never reversed
+  in the estimates it changed (#93), and its size depended on the design rather
+  than on the data, so the same control was fitted at a different value
   depending on the lowest non-zero concentration tested. The predictor now
   reaches `brm()`, and `nec()`, `ecx()` and `nsec()` now report, on the scale
   the user recorded. See #269.
@@ -103,19 +103,34 @@
   and nothing changes for such a predictor. Reported as #265, closed by removal
   rather than by repair.
 
+  One class of fit that ran under earlier versions now stops. A logarithm of the
+  predictor written inside a `disp()` sub-model — `disp(~log(x))` — was
+  evaluated against the substituted value, so a zero concentration reached Stan
+  as `log(min(x[x > 0]) / 10)`. It now reaches Stan as `-Inf`, `brms` warns
+  "Found infinite values in the data", and initialisation fails. Add the offset
+  of your choice to the data and name that column in the `disp` formula. Nothing
+  validates a `disp` formula for finiteness before `brm()` sees it, which is
+  raised separately as #271.
+
 - **The `nec` and `ec50` prior scale is taken from the concentration series,
   not from the observation vector.** The rate of the `gamma` prior those two
   parameters receive was built from `quantile(predictor, 0.5)`, which is
-  weighted by how many replicates each concentration carried. Where more than
-  half the observations sat at a zero control the median was zero and the prior
-  string became `gamma(5, Inf)`, which is not a prior at all; the predictor
-  correction removed above had been masking it. The rate is now built from the
-  median of the *distinct* predictor values, which is the same quantity for a
-  balanced design and cannot be zero for any predictor the entry applies to. A
-  design with unequal replication across concentrations gets a different `nec`
-  and `ec50` prior under this version: twelve controls beside concentrations of
-  5, 15, 45, 135, 200 and 300 give `gamma(5, 0.0444)` where the calculation
-  previously failed. See #269.
+  weighted by how many replicates each concentration received. **Any design with
+  unequal replication gets a different `nec` and `ec50` prior under this
+  version, whether or not the predictor includes a zero.** On a strictly
+  positive predictor of 0.5, 1, 3, 10, 30 and 100 replicated 1, 3, 6, 8, 2 and 1
+  times, the prior changes from `gamma(5, 0.2)` to `gamma(5, 0.3077)`, a change
+  in its mean from 25 to 16.25 on a predictor running to 100. The rate is now
+  built from the median of the *distinct* predictor values, which is the same
+  quantity for a balanced design.
+
+  The zero case is the one that failed outright rather than merely differing.
+  Where more than half the observations sat at a zero control the median was
+  zero and the prior string became `gamma(5, Inf)`, which is not a prior at all;
+  the predictor correction removed above had been masking it. Twelve controls
+  beside concentrations of 5, 15, 45, 135, 200 and 300 now give
+  `gamma(5, 0.0444)` where the calculation previously failed. The distinct-value
+  median cannot be zero for any predictor this entry applies to. See #269.
 
 - The response write-back now matches rows by name rather than assigning
   wholesale, so a data frame carrying an `NA` in any population variable no

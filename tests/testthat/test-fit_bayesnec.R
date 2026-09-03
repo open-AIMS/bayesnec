@@ -153,19 +153,22 @@ test_that("check_data() leaves the predictor alone, transformed or not", {
   expect_identical(checked_x(y ~ crf(sqrt(x), model = "nec3param")), sqrt(d$x))
 })
 
-test_that("a 0-1 bounded predictor reaches brm() with its bounds intact", {
+test_that("a 0-1 bounded predictor keeps both of its bounds", {
   # The corrections #265 records as unreachable are removed rather than
   # repaired, so a proportion predictor keeps both a zero and a one (#269).
   d <- data.frame(x = rep(c(0, 0.25, 0.5, 1), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
-  seen <- fit_data(y ~ crf(x, model = "nec3param"), d,
-                   Gamma(link = "identity"))
-  expect_identical(seen$x, d$x)
+  bdat <- model.frame(bnf(y ~ crf(x, model = "nec3param")), data = d)
+  checked <- bayesnec:::check_data(bdat, Gamma(link = "identity"), "nec3param")
+  expect_identical(checked$mod_dat$x, d$x)
 })
 
-test_that("an integer predictor is still refused", {
-  # check_data() no longer reads a distribution off the predictor, but the
-  # set_distribution() call is kept for this error, which nothing else raises.
+test_that("an integer predictor is still refused by check_data()", {
+  # check_data() no longer reads a distribution off the predictor, so the
+  # set_distribution() call it keeps looks unused. It is not: this is where the
+  # integer predictor is refused. define_prior() would raise the same error, so
+  # deleting the call relocates it into prior construction rather than removing
+  # it, which is why the assertion is made of check_data() specifically.
   d <- data.frame(x = rep(c(0L, 1L, 10L, 100L), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   bdat <- model.frame(bnf(y ~ crf(x, model = "nec3param")), data = d)

@@ -47,7 +47,6 @@
 #' @return A \code{\link[base]{numeric}} vector of length 1, strictly positive.
 #'
 #' @importFrom stats quantile
-#' @importFrom stats median
 #'
 #' @noRd
 positive_scale <- function(response, probs) {
@@ -250,6 +249,15 @@ define_prior <- function(model, family, predictor, response,
   # this entry is selected. The two agree for a balanced design, and the
   # distinct series is the same anchor the group-level scales already use
   # (diff(range(predictor)) / 10, documented below). See #269.
+  #
+  # unique() collapses replicates only where their recorded values are
+  # bit-identical, so this reads the series as it was entered. A nominal series
+  # typed as constants collapses; one computed per replicate, as a dilution
+  # factor applied row by row, may not, in which case the median is the
+  # observation median again and the prior is the one earlier versions built.
+  # That is acceptable because the prior is weakly informative either way, and
+  # the alternative -- rounding before comparing -- would need a tolerance with
+  # no defensible value on an arbitrary concentration scale.
   x_med <- median(unique(predictor))
   x_prs <- c(Beta = "beta(2, 2)",
              Gamma = paste0("gamma(5, ", 1 / (x_med / 2), ")"),
