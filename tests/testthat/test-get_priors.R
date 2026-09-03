@@ -298,3 +298,17 @@ test_that("a brms default on sd is still dropped", {
   out <- bayesnec:::usable_prior(pr)
   expect_false("sd" %in% out$class)
 })
+
+test_that("nec is truncated at the recorded predictor range", {
+  # The bound a user sees. Earlier versions returned lb = 0.1, because the zero
+  # had been replaced before the prior was built; a zero control is a legitimate
+  # lower bound, since gamma(5, r) has zero density at zero (#269).
+  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
+                  y = rep(c(8, 6, 3, 1), each = 5))
+  pr <- suppressMessages(
+    get_priors(y ~ crf(x, model = "nec3param"), data = d,
+               family = Gamma(link = "identity"))
+  )
+  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
+  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
+})

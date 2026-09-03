@@ -26,11 +26,12 @@ gamma_boundary_data <- function() {
 # does with it. `init` is supplied so that add_brm_defaults() skips the
 # initial-value search, which is stochastic and can take minutes (#266), and
 # are_chains_correct() is mocked because the fake fit has no chains to count.
-fit_data <- function(formula, data, family, brm_args = list()) {
+fit_call <- function(formula, data, family, brm_args = list()) {
   seen <- new.env(parent = emptyenv())
   local_mocked_bindings(
     brm = function(formula, data, ...) {
       seen$data <- data
+      seen$formula <- formula
       structure(list(), class = "brmsfit")
     },
     are_chains_correct = function(...) TRUE,
@@ -42,7 +43,12 @@ fit_data <- function(formula, data, family, brm_args = list()) {
       brm_args = c(list(family = family, init = list(list()), chains = 1,
                         iter = 10), brm_args))
   ))
-  seen$data
+  seen
+}
+
+# The data frame alone, which is what most of the cases below assert on.
+fit_data <- function(formula, data, family, brm_args = list()) {
+  fit_call(formula, data, family, brm_args)$data
 }
 
 # The same object, reached without driving fit_bayesnec(). Used for the cases
@@ -215,10 +221,15 @@ test_that("a disp() sub-model is built from the predictor as recorded", {
   # Stan's and the assertion here is about what brms is given.
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
-  seen <- fit_data(y ~ crf(x, model = "nec3param") + disp(~log(x)), d,
+  seen <- fit_call(y ~ crf(x, model = "nec3param") + disp(~log(x)), d,
                    Gamma(link = "identity"))
-  expect_identical(seen$x, d$x)
-  expect_true(any(!is.finite(log(seen$x))))
+  # Both halves are asserted: that the sub-model is present as written, and
+  # that the column it will be evaluated against still holds the zero. The
+  # second alone would pass with the disp term dropped.
+  expect_true(any(grepl("shape ~ log(x)",
+                        vapply(seen$formula$pforms, deparse1, character(1)),
+                        fixed = TRUE)))
+  expect_identical(seen$data$x, d$x)
 })
 
 test_that("a binomial fit reaches brm() with its trials column untouched", {

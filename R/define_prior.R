@@ -86,6 +86,7 @@ positive_scale <- function(response, probs) {
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
 #' @importFrom stats sd
+#' @importFrom stats median
 #'
 #' @noRd
 define_prior <- function(model, family, predictor, response,
@@ -247,8 +248,10 @@ define_prior <- function(model, family, predictor, response,
   # prior string "gamma(5, Inf)"; the distinct-value median cannot be zero
   # while the predictor reaches above one, which is the condition under which
   # this entry is selected. The two agree for a balanced design, and the
-  # distinct series is the same anchor the group-level scales already use
-  # (diff(range(predictor)) / 10, documented below). See #269.
+  # distinct series is what survival_by_x() already primes the hu block of a
+  # hurdle or zero-inflated fit from, so this makes the two blocks of one fit
+  # agree about the scale of their shared predictor rather than disagreeing by a
+  # factor of three on an unbalanced design. See #269.
   #
   # unique() collapses replicates only where their recorded values are
   # bit-identical, so this reads the series as it was entered. A nominal series

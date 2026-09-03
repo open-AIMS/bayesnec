@@ -606,17 +606,3 @@ test_that("the nec prior is unchanged for a balanced design", {
   expect_equal(pr$prior[pr$nlpar == "nec"],
                paste0("gamma(5, ", 1 / (quantile(x, 0.5) / 2), ")"))
 })
-
-test_that("get_priors() truncates nec at the recorded predictor range", {
-  # The bound users see. On dev this returned lb = 0.1, because the zero had
-  # been replaced before the prior was built; a zero control is a legitimate
-  # lower bound, since gamma(5, r) has zero density at zero (#269).
-  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
-                  y = rep(c(8, 6, 3, 1), each = 5))
-  pr <- suppressMessages(
-    get_priors(y ~ crf(x, model = "nec3param"), data = d,
-               family = Gamma(link = "identity"))
-  )
-  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
-  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
-})

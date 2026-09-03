@@ -124,13 +124,35 @@
   built from the median of the *distinct* predictor values, which is the same
   quantity for a balanced design.
 
-  The zero case is the one that failed outright rather than merely differing.
-  Where more than half the observations sat at a zero control the median was
-  zero and the prior string became `gamma(5, Inf)`, which is not a prior at all;
-  the predictor correction removed above had been masking it. Twelve controls
-  beside concentrations of 5, 15, 45, 135, 200 and 300 now give
-  `gamma(5, 0.0444)` where the calculation previously failed. The distinct-value
-  median cannot be zero for any predictor this entry applies to. See #269.
+  The zero case is where the change is largest. Twelve controls beside
+  concentrations of 5, 15, 45, 135, 200 and 300 gave `gamma(5, 4)` under earlier
+  versions, a prior mean for `nec` of 1.25 on a predictor running to 300, and
+  give `gamma(5, 0.0444)` here, a prior mean of 112.5. Nothing errored and
+  nothing was reported: more than half the observations sat at the control, the
+  predictor correction had replaced those zeros with 0.5 before the median was
+  taken, and the median of the corrected observations was 0.5. The same
+  calculation on the recorded predictor returns `gamma(5, Inf)`, which is not a
+  prior at all, so removing the correction on its own would have exposed a
+  failure rather than a degenerate prior. The distinct-value median cannot be
+  zero for any predictor this entry applies to. See #269.
+
+  A second consequence of taking the median of the distinct values: the two
+  blocks of a hurdle or zero-inflated fit now agree about the scale of their
+  shared predictor. The `hu` block was already primed from
+  `sort(unique(predictor))`, by `survival_by_x()`, so on an unbalanced design the
+  `mu` block and the `hu` block previously received different rates for the same
+  concentrations — `gamma(5, 0.4)` against `gamma(5, 0.1333)` on a design of
+  eight controls and four replicates each at 5, 15, 45 and 135. Both are
+  `gamma(5, 0.1333)` here.
+
+- A fit stored under an earlier version can no longer be combined with a new
+  fit of the same data. `c()` and `+` on `bnecfit` objects compare the stored
+  data frames exactly, so a fit whose control was recorded at
+  `min(x[x > 0]) / 10` and one whose control is the zero the user recorded are
+  refused with "Dataset values differ across fits". Refit both, or use `amend()`,
+  which refits from the data frame already stored and leaves an older set
+  internally consistent. The same applies to a response corrected under the
+  boundary shift above.
 
 - The response write-back now matches rows by name rather than assigning
   wholesale, so a data frame carrying an `NA` in any population variable no
