@@ -12,6 +12,8 @@
 #
 # What is deliberately NOT duplicated here, and where it lives:
 #   the write-back into brm()'s data frame  tests/testthat/test-fit_bayesnec.R
+#   the integer predictor guard             tests/testthat/test-fit_bayesnec.R
+#   pop_var_is_transformed()                tests/testthat/test-fit_bayesnec.R
 #   the censoring exemptions                tests/testthat/test-cens.R
 #   zeros preserved for a hurdle family     tests/testthat/test-hurdle_family.R
 #   check_normalisation()                   tests/testthat/test-check_normalisation.R
@@ -89,13 +91,6 @@ test_that("a hormesis model is exempt from the decline warning", {
   d$y <- rev(d$y)
   expect_no_warning(cd_run(y ~ crf(x, model = "nechorme"), d, gaussian(),
                            model = "nechorme"))
-})
-
-test_that("an integer predictor is refused from the data check", {
-  d <- cd_data_zero()
-  d$x <- as.integer(d$x * 10)
-  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
-               "does not currently support integer concentration")
 })
 
 
@@ -275,23 +270,32 @@ test_that("get_priors builds its priors from the corrected response", {
 
 test_that("has_family_changed reports a correction it then discards", {
   # PINS THE #274 DEFECT. update() with newdata runs check_data() through
-  # has_family_changed(), which keeps only the family and drops the corrected
-  # data frame, so the user is told their data was repaired and the fit then
-  # fails on the condition that was reported repaired -- the #258 symptom on a
-  # route #258 did not cover.
+  # has_family_changed() (R/bnecfit-methods.R:171), which keeps only the family
+  # and drops the corrected data frame, so the user is told their data was
+  # repaired and the fit then fails on the condition that was reported
+  # repaired -- the #258 symptom on a route #258 did not cover.
   #
-  # INVERT THIS TEST WHEN #274 IS FIXED: the message should no longer be
-  # emitted from this route, or the correction should reach the caller.
+  # Two assertions, both of which can fail. The first is that the message is
+  # emitted from this route at all. The second is that the whole of what comes
+  # back is a length-one logical, which is what makes the correction
+  # unreachable by the caller: there is nowhere for the repaired data frame to
+  # go. Asserting the state of the local d instead would be a tautology --
+  # has_family_changed() takes d by value and cannot alter it.
+  #
+  # INVERT THIS TEST WHEN #274 IS FIXED: either the message is no longer
+  # emitted from this route, or the return carries the corrected data frame and
+  # is no longer a bare logical.
   skip_on_cran()
-  data(manec_example, package = "bayesnec")
-  f <- suppressMessages(pull_out(manec_example, model = "nec4param"))
+  f <- nec4param
   d <- f$fit$data
   d$y <- abs(d$y)
   d$y[1:3] <- 0
+  res <- NULL
   msgs <- capture.output(
-    invisible(has_family_changed(list(f), d, Gamma(link = "identity"))),
+    res <- has_family_changed(list(f), d, Gamma(link = "identity")),
     type = "message"
   )
   expect_true(any(grepl("shifted", msgs)))
-  expect_identical(sum(d$y == 0), 3L)
+  expect_type(res, "logical")
+  expect_length(res, 1)
 })

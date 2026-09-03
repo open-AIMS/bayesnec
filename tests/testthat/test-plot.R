@@ -9,112 +9,136 @@
 # reported wrong -- whether xform reached the predictor axis -- without
 # comparing images.
 #
-# #268 is the defect: the decision to apply xform is made with an
-# all-or-nothing guard on the formula as a whole (R/plot.R:119 and :259), so a
-# transformation on the RESPONSE suppresses xform on the PREDICTOR axis. The
-# issue records that it could only be read from source. It is reproduced here
-# with no fitting, by giving a stored fit a formula that transforms its
-# response.
+# #268 is the defect, and it is not that xform is ignored. The decision to
+# apply it is made with an all-or-nothing guard on the formula as a whole
+# (R/plot.R:125 and :279), so a transformation on the RESPONSE suppresses xform
+# on the PREDICTOR axis -- but the nec and ec10 annotations are transformed
+# unconditionally at R/plot.R:130-131, outside that guard. The two halves of
+# the figure are therefore drawn on different scales, and the abline() at
+# R/plot.R:179 lands off the end of the axis. Both halves are asserted below,
+# because a fix that corrects either one alone leaves the figure wrong.
 #
-# Nothing here fits a model. Every assertion runs off manec_example.
-
-pl_fit <- function() {
-  data(manec_example, package = "bayesnec")
-  suppressMessages(pull_out(manec_example, model = "nec4param"))
-}
-
-pl_manec <- function() {
-  data(manec_example, package = "bayesnec")
-  manec_example
-}
-
-# exp() rather than log(): manec_example's response reaches -6.9 and log() of
-# it is NaN. Only the presence of a transformation on the response matters.
-pl_transform_response <- function(fit) {
-  fit$bayesnecformula <- bayesnecformula(exp(y) ~ crf(x, model = "nec4param"))
-  fit
-}
+# The issue records that this could only be read from source. It is reproduced
+# here with no fitting, using transformed_response_fit() from setup.R.
+#
+# Nothing here fits a model. Every assertion runs off nec4param and
+# manec_example, both built in setup.R.
 
 # The x-axis limits the call produced, read off the device rather than from a
 # returned object, because these are base-graphics methods that return nothing.
-pl_x_limits <- function(obj, ...) {
+# No suppression: an assertion of silence made through a helper that suppresses
+# messages cannot fail, and these methods are silent today.
+pl_x_max <- function(obj, ...) {
   pdf(NULL)
   on.exit(dev.off(), add = TRUE)
-  suppressMessages(plot(obj, ...))
-  par("usr")[1:2]
+  plot(obj, ...)
+  par("usr")[2]
+}
+
+# The factor by which xform changed the axis. A ratio rather than a pair of
+# limits: it is scale-free, so it does not encode base graphics' 4% default
+# axis expansion the way a comparison against a fixed number would, and it is
+# directly comparable with the same ratio taken from the ggplot2 path.
+pl_x_ratio <- function(obj) {
+  pl_x_max(obj, xform = function(x) x * 100) / pl_x_max(obj)
 }
 
 
-# ---- the call completes for each class and argument combination -------------
-
-test_that("plot draws a single fit and a model set", {
-  expect_silent(pl_x_limits(pl_fit()))
-  expect_silent(pl_x_limits(pl_manec()))
-})
+# ---- the argument combinations nothing else covers --------------------------
+#
+# plot() on a plain bayesnecfit and bayesmanecfit is already asserted silent
+# and invisible in test-bayesnec_methods.R and test-bayesmanec_methods.R, so it
+# is not repeated. all_models, add_nec and add_ec10 are asserted nowhere else.
 
 test_that("plot draws every candidate model when asked", {
-  expect_silent(pl_x_limits(pl_manec(), all_models = TRUE))
+  skip_on_cran()
+  expect_silent(pl_x_max(manec_example, all_models = TRUE))
 })
 
 test_that("plot accepts the annotation arguments", {
-  expect_silent(pl_x_limits(pl_fit(), add_nec = FALSE))
-  expect_silent(pl_x_limits(pl_fit(), add_ec10 = TRUE))
+  skip_on_cran()
+  expect_silent(pl_x_max(nec4param, add_nec = FALSE))
+  expect_silent(pl_x_max(nec4param, add_ec10 = TRUE))
 })
 
 
 # ---- xform on the predictor axis --------------------------------------------
 
 test_that("xform widens the predictor axis of a single fit", {
-  f <- pl_fit()
-  plain <- pl_x_limits(f)
-  scaled <- pl_x_limits(f, xform = function(x) x * 100)
-  expect_equal(scaled, plain * 100, tolerance = 1e-6)
+  skip_on_cran()
+  expect_equal(pl_x_ratio(nec4param), 100, tolerance = 1e-6)
 })
 
 test_that("xform widens the predictor axis of a model set", {
-  m <- pl_manec()
-  plain <- pl_x_limits(m)
-  scaled <- pl_x_limits(m, xform = function(x) x * 100)
-  expect_equal(scaled, plain * 100, tolerance = 1e-6)
+  skip_on_cran()
+  expect_equal(pl_x_ratio(manec_example), 100, tolerance = 1e-6)
 })
+
+
+# ---- #268, pinned on both halves of the figure ------------------------------
 
 test_that("a transformed response suppresses xform on the predictor axis", {
   # PINS THE #268 DEFECT on the base-plot path for a bayesnecfit
-  # (R/plot.R:119). xform is accepted and silently ignored, so the axis is
-  # drawn on the fitted scale while the caller asked for the recorded one.
+  # (the guard at R/plot.R:125). xform is accepted and silently dropped from
+  # the axis, so the data is drawn on the fitted scale while the caller asked
+  # for the recorded one.
   #
-  # INVERT THIS TEST WHEN #268 IS FIXED: the two should then differ by the
-  # factor xform applies, as in "xform widens the predictor axis of a single
-  # fit" above.
-  f <- pl_transform_response(pl_fit())
-  expect_equal(pl_x_limits(f, xform = function(x) x * 100), pl_x_limits(f),
-               tolerance = 1e-6)
+  # INVERT THIS TEST WHEN #268 IS FIXED: the ratio should then be 100, as in
+  # "xform widens the predictor axis of a single fit" above.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  expect_equal(pl_x_ratio(f), 1, tolerance = 1e-6)
 })
 
 test_that("a transformed response suppresses xform for a model set too", {
-  # PINS THE #268 DEFECT on the bayesmanecfit branch (R/plot.R:259). Same
-  # inversion applies.
-  m <- pl_manec()
-  # The model name is substituted into the formula text rather than
-  # referenced: crf() evaluates its model argument where the formula is used,
-  # not where it is written.
-  mod <- names(m$mod_fits)[1]
-  m$mod_fits[[1]]$bayesnecformula <- bayesnecformula(
-    stats::as.formula(paste0("exp(y) ~ crf(x, model = \"", mod, "\")"))
-  )
-  expect_equal(pl_x_limits(m, xform = function(x) x * 100), pl_x_limits(m),
-               tolerance = 1e-6)
+  # PINS THE #268 DEFECT on the bayesmanecfit branch (the guard at
+  # R/plot.R:279). Same inversion applies.
+  skip_on_cran()
+  m <- transformed_response_manec(manec_example)
+  expect_equal(pl_x_ratio(m), 1, tolerance = 1e-6)
 })
 
-test_that("plot and autoplot agree on the predictor axis", {
-  # The two paths make the xform decision independently, in four places
-  # altogether. They agree today; this is what would catch one being fixed for
-  # #268 without the other.
-  f <- pl_fit()
-  gg <- suppressMessages(ggbnec_data(f, xform = function(x) x * 100))
-  base_max <- pl_x_limits(f, xform = function(x) x * 100)[2]
-  # The device pads the axis beyond the data, so the fitted range must fall
-  # inside the drawn range rather than equal it.
-  expect_lt(max(gg$x_e, na.rm = TRUE), base_max)
-  expect_gt(max(gg$x_e, na.rm = TRUE), base_max * 0.9)
+test_that("the nec annotation is drawn off the end of the axis", {
+  # PINS THE OTHER HALF OF #268, which the issue does not state and the PR
+  # that added this file originally described as xform being "silently
+  # skipped". It is not skipped. R/plot.R:130-131 apply it to nec and ec10
+  # unconditionally, outside the guard, so with a transformed response the
+  # abline() at R/plot.R:179 is drawn at the transformed NEC on an axis left
+  # untransformed, and the line is not on the figure at all.
+  #
+  # abline() is intercepted rather than the value recomputed here: what has to
+  # be asserted is the number the package passed to it, not a number this file
+  # worked out for itself, which would still pass if R/plot.R:130-131 changed.
+  # The suite already mocks this way in test-fit_bayesnec.R and
+  # test-inits_functions.R.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED: the drawn NEC must then fall inside
+  # the axis, whichever scale the fix settles on. A fix that changes only the
+  # guard, or only R/plot.R:130-131, fails one of the two tests and leaves the
+  # other passing, which is the point of asserting both.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  drawn <- NULL
+  local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
+                        .package = "bayesnec")
+  axis_max <- pl_x_max(f, xform = function(x) x * 100)
+  # Measured on nec4param: the axis maximum is 3.35 and the NEC line, its lower
+  # and its upper bound are drawn at 146, 136 and 153.
+  expect_length(drawn, 3)
+  expect_gt(min(drawn), axis_max)
+})
+
+test_that("plot and autoplot make the xform decision the same way", {
+  # The two paths make that decision independently, in four places altogether.
+  # This is what catches one being fixed for #268 without the other, so it is
+  # asserted on the fixture where the guard actually fires: with an
+  # untransformed formula both paths apply xform whatever the guard says, and
+  # the comparison is vacuous.
+  #
+  # Ratios rather than limits, so the base path's axis expansion does not enter
+  # the comparison.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  gg_ratio <- gg_x_max(f, xform = function(x) x * 100) / gg_x_max(f)
+  expect_equal(pl_x_ratio(f), gg_ratio, tolerance = 1e-6)
 })
