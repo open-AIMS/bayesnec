@@ -47,6 +47,7 @@
 #' @return A \code{\link[base]{numeric}} vector of length 1, strictly positive.
 #'
 #' @importFrom stats quantile
+#' @importFrom stats median
 #'
 #' @noRd
 positive_scale <- function(response, probs) {
@@ -239,11 +240,19 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = "beta(1, 5)",
                  beta = "beta(1, 5)")
   }
+  # The rate of the nec/ec50 gamma prior is set from the median of the distinct
+  # predictor values, not from the median of the observation vector. A prior
+  # scale should describe the concentrations that were tested, not how many
+  # replicates each of them received. Where more than half the observations sit
+  # at a zero control the observation median is zero and 1 / (0 / 2) made the
+  # prior string "gamma(5, Inf)"; the distinct-value median cannot be zero
+  # while the predictor reaches above one, which is the condition under which
+  # this entry is selected. The two agree for a balanced design, and the
+  # distinct series is the same anchor the group-level scales already use
+  # (diff(range(predictor)) / 10, documented below). See #269.
+  x_med <- median(unique(predictor))
   x_prs <- c(Beta = "beta(2, 2)",
-             Gamma = paste0("gamma(5, ",
-                            1 / (quantile(predictor,
-                                          probs = 0.5) / 2),
-                            ")"),
+             Gamma = paste0("gamma(5, ", 1 / (x_med / 2), ")"),
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),

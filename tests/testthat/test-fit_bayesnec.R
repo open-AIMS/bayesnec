@@ -1,9 +1,12 @@
-# #258: check_data() corrects a response or predictor sitting on a boundary
-# its family cannot represent, and fit_bayesnec() writes that correction into
-# the data frame brm() is handed. The write-back was decided for the formula as
-# a whole, so a transformation written inline in crf() -- on any population
-# variable -- discarded every correction, and brm() then failed naming the
-# condition the package had just reported it had repaired.
+# #258: check_data() corrects a response sitting on a boundary its family
+# cannot represent, and fit_bayesnec() writes that correction into the data
+# frame brm() is handed. The write-back was decided for the formula as a whole,
+# so a transformation written inline in crf() -- on any population variable --
+# discarded every correction, and brm() then failed naming the condition the
+# package had just reported it had repaired.
+#
+# #269: the predictor is no longer corrected at all, so the assertions here
+# about the predictor are that it reaches brm() exactly as recorded.
 #
 # Three levels of assertion are made. fit_data() drives fit_bayesnec() itself
 # with brm() mocked, which is what proves the write-back reaches the fit; one
@@ -47,8 +50,7 @@ fit_data <- function(formula, data, family, brm_args = list()) {
 brm_data <- function(formula, data, family) {
   bdat <- model.frame(bnf(formula), data = data)
   checked <- suppressMessages(bayesnec:::check_data(bdat, family, "nec3param"))
-  data <- bayesnec:::write_back_checks(data, bdat, "y_var", checked$mod_dat$y)
-  bayesnec:::write_back_checks(data, bdat, "x_var", checked$mod_dat$x)
+  bayesnec:::write_back_checks(data, bdat, "y_var", checked$mod_dat$y)
 }
 
 test_that("a Gamma zero is repaired when the predictor is transformed inline", {
@@ -97,11 +99,12 @@ test_that("the write-back still reaches brm() with no transformation at all", {
   gam <- Gamma(link = "identity")
   out <- brm_data(y ~ crf(x, model = "nec3param"), gamma_boundary_data(), gam)
   expect_equal(min(out$y), 0.3)
-  # the predictor zero shift is unchanged where the predictor is a bare column
+  # The predictor is never corrected, so a zero control reaches brm() as
+  # recorded whether or not the response beside it was corrected (#269).
   d0 <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                    y = rep(c(8, 6, 3, 1), each = 5))
   out0 <- brm_data(y ~ crf(x, model = "nec3param"), d0, gam)
-  expect_equal(min(out0$x), 0.1)
+  expect_identical(out0$x, d0$x)
 })
 
 test_that("the write-back aligns rows when incomplete cases were dropped", {
@@ -136,18 +139,39 @@ test_that("a boundary value on a transformed response is refused, not reported",
                "a transformation written inside the model formula")
 })
 
-test_that("a zero on a transformed predictor is left where it is", {
+test_that("check_data() leaves the predictor alone, transformed or not", {
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
-  min_x <- function(formula) {
+  checked_x <- function(formula) {
     bdat <- model.frame(bnf(formula), data = d)
-    min(bayesnec:::check_data(bdat, Gamma(link = "identity"), "nec3param")$mod_dat$x)
+    bayesnec:::check_data(bdat, Gamma(link = "identity"),
+                          "nec3param")$mod_dat$x
   }
-  # sqrt(0) is zero, but so is log(1): a zero on the transformed scale is not
-  # evidence of a boundary artefact on the recorded scale, and the shift could
-  # not reach the fit in any case.
-  expect_equal(min_x(y ~ crf(sqrt(x), model = "nec3param")), 0)
-  expect_equal(min_x(y ~ crf(x, model = "nec3param")), 0.1)
+  # A zero control is an ordinary observation: no family constrains the support
+  # of a predictor, so there is nothing for check_data() to repair (#269).
+  expect_identical(checked_x(y ~ crf(x, model = "nec3param")), d$x)
+  expect_identical(checked_x(y ~ crf(sqrt(x), model = "nec3param")), sqrt(d$x))
+})
+
+test_that("a 0-1 bounded predictor reaches brm() with its bounds intact", {
+  # The corrections #265 records as unreachable are removed rather than
+  # repaired, so a proportion predictor keeps both a zero and a one (#269).
+  d <- data.frame(x = rep(c(0, 0.25, 0.5, 1), each = 5),
+                  y = rep(c(8, 6, 3, 1), each = 5))
+  seen <- fit_data(y ~ crf(x, model = "nec3param"), d,
+                   Gamma(link = "identity"))
+  expect_identical(seen$x, d$x)
+})
+
+test_that("an integer predictor is still refused", {
+  # check_data() no longer reads a distribution off the predictor, but the
+  # set_distribution() call is kept for this error, which nothing else raises.
+  d <- data.frame(x = rep(c(0L, 1L, 10L, 100L), each = 5),
+                  y = rep(c(8, 6, 3, 1), each = 5))
+  bdat <- model.frame(bnf(y ~ crf(x, model = "nec3param")), data = d)
+  expect_error(bayesnec:::check_data(bdat, Gamma(link = "identity"),
+                                     "nec3param"),
+               "does not currently support integer concentration")
 })
 
 test_that("pop_var_is_transformed answers per variable", {
@@ -175,12 +199,12 @@ test_that("fit_bayesnec() hands brm() the repaired response", {
   expect_identical(seen$x, d$x)
 })
 
-test_that("fit_bayesnec() hands brm() the repaired predictor", {
+test_that("fit_bayesnec() hands brm() the predictor as recorded", {
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   seen <- fit_data(y ~ crf(x, model = "nec3param"), d,
                    Gamma(link = "identity"))
-  expect_equal(min(seen$x), 0.1)
+  expect_identical(seen$x, d$x)
 })
 
 test_that("a binomial fit reaches brm() with its trials column untouched", {

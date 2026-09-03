@@ -109,15 +109,6 @@ check_data <- function(data, family, model) {
   bnec_pop_vars <- attr(data, "bnec_pop")
   y_pos <- which(names(bnec_pop_vars) == "y_var")
   x_pos <- which(names(bnec_pop_vars) == "x_var")
-  # Whether the predictor reaches the model frame through a transformation
-  # written inline, as crf(log(x)) does. This decides what the boundary
-  # corrections below are allowed to do. brm() is handed the user's own data
-  # frame and re-evaluates the transformation from the recorded column, so a
-  # correction made here to a transformed variable cannot reach the fit; before
-  # #258 it was computed, reported to the user, and then silently discarded.
-  # The response case is fatal rather than silent and is checked separately, by
-  # check_inline_boundary() below.
-  x_transformed <- pop_var_is_transformed(data, "x_var")
   if (!is.numeric(x)) {
     x_flag <- names(data)[x_pos]
     stop(paste0("Your indicated predictor column \"", x_flag,
@@ -147,7 +138,13 @@ check_data <- function(data, family, model) {
   # where the two meet the nudge would silently move the bound the user declared.
   # NULL when the formula carried no cens() term, in which case nothing changes.
   cens <- retrieve_cens(data)
-  x_type <- set_distribution(x, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
+  # Called for its errors, not its value. The predictor carries no likelihood,
+  # so nothing here needs to know which distribution describes it; what this
+  # call still does is reject an integer predictor, which reaches this point
+  # unchallenged because is.numeric() is TRUE for an integer and retrieve_var()
+  # preserves the type. The error is raised inside set_distribution() when
+  # silence_x_msgs is FALSE. See #269.
+  invisible(set_distribution(x, silence_y_msgs = TRUE, silence_x_msgs = FALSE))
   # Families whose support is open at a boundary cannot express a censored
   # observation sitting exactly on it: the censored likelihood contribution is
   # F(0) = 0 on the left and 1 - F(1) = 0 on the right, so Stan sees log(0) and
@@ -164,16 +161,14 @@ check_data <- function(data, family, model) {
   # call. bnec() runs it once for the whole call, before the model loop, so that
   # a model set stops once rather than repeating the message per model.
   check_inline_boundary(data, family)
-  # A transformed predictor is left alone rather than rejected. A zero on the
-  # transformed scale is not evidence of a boundary artefact on the recorded
-  # scale -- log(1) is zero for a concentration of one -- so shifting it would
-  # replace a legitimate value, and the shift could not reach the fit either.
-  # The predictor shift is not needed for the fit itself: no family constrains
-  # the support of a predictor.
-  if (min(x) == 0 & x_type == "Gamma" & !x_transformed) {
-    min_val <- min(x[x > 0])
-    data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)
-  }
+  # The predictor is corrected nowhere in this function, and the corrections
+  # below concern the response alone. A predictor carries no likelihood, so no
+  # family constrains its support; a zero concentration is an ordinary control
+  # and reaches brm() as recorded. The corrections that used to sit here were
+  # written by symmetry with the response ones rather than for a reason of
+  # their own, they were applied silently, and they were never undone in the
+  # estimates they changed (#93). See #269 for the measurements, and
+  # define_prior() for the one calculation that had depended on them.
   # Which zeros are a boundary artefact to be nudged. A censored row is exempt
   # for the same reason a hurdle zero is: the value there is a declared bound,
   # not an artefact, and moving it would restate the bound the user chose.
@@ -192,19 +187,9 @@ check_data <- function(data, family, model) {
             " meaningful -- for example individuals that died -- consider",
             " family = hurdle_gamma() instead, which models them explicitly.")
   }
-  # This branch and the max(x) == 1 one below are unreachable:
-  # set_distribution() returns "Beta", not "beta". Left as they are, guard
-  # included, so that whichever way #265 resolves it is one change and not two.
-  if (min(x) == 0 & x_type == "beta" & !x_transformed) {
-    min_val <- min(x[x > 0])
-    data[x == 0, x_pos] <- x[x == 0] + (min_val / 10)
-  }
   if (any(to_shift) & fam_tag == "beta") {
     min_val <- min(y[y > 0])
     data[to_shift, y_pos] <- y[to_shift] + (min_val / 10)
-  }
-  if (max(x) == 1 & x_type == "beta" & !x_transformed) {
-    data[x == 1, x_pos] <- x[x == 1] - 0.001
   }
   # A zero-inflated Beta keeps its zeros -- they are the signal -- but ones are
   # still outside Beta's open (0, 1) support and must be nudged as usual. A

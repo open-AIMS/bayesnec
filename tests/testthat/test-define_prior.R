@@ -565,3 +565,42 @@ test_that("a degenerate scale is not narrowed by prior_type", {
   ))
   expect_equal(pr$prior, "student_t(3, 0, 0.5)")
 })
+
+# #269: the nec/ec50 gamma rate is taken from the distinct predictor values
+# rather than from the observation vector, so that it describes the
+# concentration series and not the replication of it.
+
+test_that("the nec prior rate is finite when most observations are controls", {
+  # More than half the observations at a zero control made the observation
+  # median zero, and 1 / (0 / 2) put "gamma(5, Inf)" into the prior table.
+  x <- c(rep(0, 12), 5, 15, 45, 135, 200, 300)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  nec_pr <- pr$prior[pr$nlpar == "nec"]
+  expect_equal(nec_pr, paste0("gamma(5, ", 1 / (median(unique(x)) / 2), ")"))
+  expect_true(is.finite(as.numeric(sub(".*, (.*)\\)", "\\1", nec_pr))))
+})
+
+test_that("the nec prior is unchanged for a balanced design", {
+  # The distinct-value median and the observation median agree wherever every
+  # concentration carries the same number of replicates, so no existing fit of
+  # that shape gets a different prior.
+  x <- rep(c(0, 5, 15, 45, 135), each = 6)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  expect_equal(pr$prior[pr$nlpar == "nec"],
+               paste0("gamma(5, ", 1 / (quantile(x, 0.5) / 2), ")"))
+})
+
+test_that("the nec prior is truncated at the recorded predictor range", {
+  # A zero control is a legitimate lower bound: gamma(5, r) has zero density at
+  # zero, so lb = 0 is a proper truncation and needs no offset.
+  x <- rep(c(0, 5, 15, 45, 135), each = 6)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
+  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 135)
+})
