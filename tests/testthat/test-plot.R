@@ -48,17 +48,44 @@ pl_x_ratio <- function(obj) {
 #
 # plot() on a plain bayesnecfit and bayesmanecfit is already asserted silent
 # and invisible in test-bayesnec_methods.R and test-bayesmanec_methods.R, so it
-# is not repeated. all_models, add_nec and add_ec10 are asserted nowhere else.
+# is not repeated. all_models, add_nec and add_ec10 are asserted nowhere else,
+# and each is asserted here on what it changes rather than on the call
+# completing, which any value of the argument would satisfy.
 
-test_that("plot draws every candidate model when asked", {
+test_that("all_models draws a panel per candidate, named", {
+  # Asserting only that the call is silent would pass just as well with
+  # all_models = FALSE, and so would not detect the argument being ignored.
+  # R/plot.R:253 labels each panel with the model name, and that legend() call
+  # is reached only from the all_models loop, so the names it is given are
+  # evidence of which candidates were drawn.
   skip_on_cran()
-  expect_silent(pl_x_max(manec_example, all_models = TRUE))
+  labels <- character()
+  local_mocked_bindings(
+    legend = function(..., legend = NULL) labels <<- c(labels, as.character(legend)),
+    .package = "bayesnec"
+  )
+  pl_x_max(manec_example, all_models = TRUE)
+  expect_true(all(names(manec_example$mod_fits) %in% labels))
+  # And not otherwise: the model-average plot draws one panel and names none.
+  labels <- character()
+  pl_x_max(manec_example, all_models = FALSE)
+  expect_false(any(names(manec_example$mod_fits) %in% labels))
 })
 
-test_that("plot accepts the annotation arguments", {
+test_that("add_nec and add_ec10 decide what is annotated", {
+  # Same reasoning: silence is not evidence that either argument was read.
+  # The three branches at R/plot.R:179-192 are mutually exclusive, so counting
+  # the abline() calls says which one was taken.
   skip_on_cran()
-  expect_silent(pl_x_max(nec4param, add_nec = FALSE))
-  expect_silent(pl_x_max(nec4param, add_ec10 = TRUE))
+  drawn <- list()
+  local_mocked_bindings(
+    abline = function(v = NULL, ...) drawn[[length(drawn) + 1L]] <<- v,
+    .package = "bayesnec"
+  )
+  pl_x_max(nec4param, add_nec = FALSE)
+  expect_length(drawn, 0)
+  pl_x_max(nec4param, add_nec = TRUE, add_ec10 = TRUE)
+  expect_length(drawn, 2)
 })
 
 

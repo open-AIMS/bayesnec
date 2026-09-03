@@ -48,6 +48,10 @@ transformed_response_fit <- function(fit, model) {
   )
   fit
 }
+# NB: the returned object states a formula its stored fit was not fitted with.
+# That is safe for the plotting paths, which read the formula only to decide
+# whether a variable was transformed, and it is not safe for reading posterior
+# quantities off the fit. Do not reuse it for anything else.
 
 # The same fixture for a model set. Both plotting paths read the formula off
 # mod_fits[[1]] alone (R/plot.R:258, R/autoplot.R:347), so that is the only

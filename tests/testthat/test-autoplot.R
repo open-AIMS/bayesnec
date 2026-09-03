@@ -139,12 +139,13 @@ test_that("the nec annotation is transformed while the axis is not", {
   # whichever scale the fix settles on. A fix that changes only the guard, or
   # only these lines, fails one of the two tests and leaves the other passing,
   # which is the point of asserting both.
+  #
+  # The axis half of the contrast is asserted in the sibling test above and is
+  # not repeated here; this asserts the annotation alone.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
   plain <- suppressMessages(ggbnec_data(f))
   scaled <- suppressMessages(ggbnec_data(f, xform = function(x) x * 100))
-  expect_equal(max(scaled$x_e, na.rm = TRUE), max(plain$x_e, na.rm = TRUE),
-               tolerance = 1e-8)
   expect_equal(max(scaled$nec_vals, na.rm = TRUE),
                max(plain$nec_vals, na.rm = TRUE) * 100, tolerance = 1e-8)
 })
