@@ -250,17 +250,26 @@ consequences follow. The transformation is evaluated before
 <code>bayesnec</code> inspects the predictor, so a control concentration
 recorded as <code>0</code> arrives at the data check as
 <code>log(0)</code> and the fit stops, reporting a predictor that is not
-finite. <code>bayesnec</code> substitutes
-<code>min(x[x &gt; 0]) / 10</code> for a zero on the recorded axis, but
-only where the predictor is passed as a bare column; with the logarithm
-written inline the offset has to be added to the data first. And the
-toxicity estimates are then returned on the transformed scale, so
+finite. <code>bayesnec</code> does not correct a zero on the predictor
+axis, on either the recorded or the transformed scale: a concentration
+of zero is an ordinary control, and no response distribution constrains
+the values a predictor may take. An offset for a logarithm is therefore
+the user’s to choose and to add to the data first. And the toxicity
+estimates are then returned on the transformed scale, so
 <code>nec</code>, <code>ecx</code> and <code>nsec</code> need
 back-transforming, with <code>xform</code> doing the same job for
 plots:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ecx.html">ecx</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/autoplot.html">autoplot</a></span><span class="op">(</span><span class="va">exp_2</span>, xform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<p>A transformation written inside <code>disp</code> rather than
+<code>crf</code> fails differently, and less clearly. A
+<code>disp</code> formula is evaluated by <code>brms</code> rather than
+by <code>bayesnec</code>, so nothing checks it: with
+<code>disp(~log(x))</code> a zero concentration reaches Stan as
+<code>-Inf</code>, with a warning about infinite values in the data and
+no mention of the term responsible. The remedy is the same — add the
+offset to the data and name that column.</p>
 <p>One caution on the inline form as the package currently stands. A
 transformation whose argument is a bare variable, such as
 <code>log(x)</code> or <code>sqrt(x)</code>, is handled correctly

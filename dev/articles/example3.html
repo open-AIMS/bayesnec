@@ -189,14 +189,24 @@ concentrations in the experiment were sufficient to cover the full range
 of the response outcomes. The priors used reflect the characteristics of
 the observed data that are used to guess the appropriate distribution.
 If the predictor data are bounded to <code>0</code> and
-<code>&gt;1</code>, a <code>Gamma</code> prior is used, with maximum
-density (mean, see above) at the median value of the predictor, and a
-shape parameter of 5. If the predictor data are bounded to
-<code>0</code> and <code>1</code> a <code>beta(2, 2)</code> prior is
-used. For predictor data ranging from <code>+Inf</code> to
-<code>-Inf</code> a <code>normal</code> prior is used, with a mean set
-at the median of the predictor values and a standard deviation of 10
-times the standard deviation of the predictor values.</p>
+<code>&gt;1</code>, a <code>Gamma</code> prior is used, with a shape
+parameter of 5 and a rate of <code>2 / m</code>, where <em>m</em> is the
+median of the <em>distinct</em> predictor values. That places the mean
+of the untruncated prior at <code>2.5 * m</code> and its maximum density
+at <code>2 * m</code>. The prior is then truncated to the observed
+predictor range, and for some designs the maximum density falls on or
+beyond the upper bound. For a series spaced evenly from zero,
+<code>2 * m</code> is the largest concentration tested, so the truncated
+prior rises across the whole range it permits. The distinct values are
+used rather than the observations themselves so that the prior describes
+the series of concentrations that was tested and not how many replicates
+each of them received; the two are the same wherever replication is
+balanced. If the predictor data are bounded to <code>0</code> and
+<code>1</code> a <code>beta(2, 2)</code> prior is used. For predictor
+data ranging from <code>+Inf</code> to <code>-Inf</code> a
+<code>normal</code> prior is used, with a mean set at the median of the
+predictor values and a standard deviation of 10 times the standard
+deviation of the predictor values.</p>
 </div>
 <div class="section level3">
 <h3 id="priors-for-other-parameters">Priors for other parameters<a class="anchor" aria-label="anchor" href="#priors-for-other-parameters"></a>
