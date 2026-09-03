@@ -97,7 +97,7 @@ Ordered so that the test file for a path precedes the fixes on it.
 
 | # | item | what | size | status |
 |---|---|---|---|---|
-| A1 | `test-check_data.R`, `test-plot.R`, `test-autoplot.R` | the three missing test files | M | **PR #276 open** |
+| A1 | #277 | the three missing test files | M | **PR #276 open** |
 | A2 | #274 | `update()` with `newdata` discards the correction it reports | S | ready |
 | A3 | #268 | `xform` skipped on the predictor axis when the response is transformed | S | ready; A1 pins the reproduction |
 | A4 | #271 | no `disp()` sub-model is checked for finiteness before `brm()` | M | ready |
@@ -118,8 +118,8 @@ repeating.
 
 ## What A1 found while being written
 
-Recorded here because they have no issue yet and are too small to warrant one
-each. Raise them as one issue when A1 merges.
+Recorded on #277 and here, because they have no issue of their own and are too
+small to warrant one each. Raise them as one issue when A1 merges.
 
 - **Two branches of `check_data()` cannot be reached.** The non-numeric
   predictor branch (`:112-118`) is preceded by `retrieve_var(error = TRUE)` at
