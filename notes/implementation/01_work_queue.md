@@ -1,529 +1,226 @@
-# Work queue — the pre-migration stack
+# Work queue — coverage first
 
-Read `00_protocol.md` first, then `03_decisions.md`. The run instructions are in
-`04_stack_run.md`.
+Read `00_protocol.md` first, then `03_decisions.md`.
 
-**Refreshed 2026-08-21, second pass.** The goal has changed: get as much as
-possible onto CRAN *before* the toxval migration, rather than parking work until
-after it. Every item below has been checked against the files the migration
-moves, and RF has settled the decisions that were blocking them.
+**Rebuilt 2026-09-03.** The queue that stood here was written on 2026-08-25 for
+a stack of nine issues that has since merged, and it was organised around a
+CRAN release gate that no longer applies. Two decisions changed it:
 
-**This queue was rebuilt after a triage error.** The first pass read issue
-*bodies* only, via `gh issue view --json body`, and never the comments. Several
-issues listed as "needs a design decision" had in fact been fully scoped in
-comment threads — #148, #136, #139, #33 and #6 among them. Everything below is
-based on bodies **and** comments. If you extend this queue, read both.
+- **The release date is flexible** (RF, 2026-09-03), and the toxval migration
+  is not blocked by it. So there is no release gate to order the work around,
+  and `06_review_run.md`'s phase 4 is no longer the destination.
+- **The work is ordered by test coverage of the paths that keep producing
+  defects**, not by issue number, not by release tier, and not by the order in
+  which issues happen to be reported.
 
----
-
-# The stack
-
-Branches stack: each is cut from the one above it, and its PR targets the one
-above it. See `00_protocol.md`. Order is least-risky first, so a stall late in
-the run still leaves a clean, mergeable run of PRs at the bottom.
-
-**Status column refreshed 2026-08-25.** Every PR in this stack targets `dev`,
-not the default branch, so `Closes #n` never fires on merge and the issues have
-to be closed by hand. Do that as each one merges. Status here is the truth as of
-`dev` at `879ab53f`; the tracker was reconciled against it on 2026-08-25.
-
-| # | issue | what | size | tier | status |
-|---|---|---|---|---|---|
-| 0 | #79, #212, #166 | close, no PR | — | — | **done** — all three closed |
-| 1 | #215 | publish `dev` vignettes from CI | S | 2.1.4 | **merged** #220 · issue closed |
-| 2 | #139 | document the `drc` NEC equivalence | S | 2.1.4 | **merged** #221 · issue closed |
-| 3 | #210 | `define_prior()` collapse on many zeros | S | 2.1.4 | **merged** #222 · issue closed |
-| 4 | #207 | dispersion priors; fill incomplete prior sets | M | 2.1.4 | **merged** #223 · issue closed |
-| 5 | #136 | `rate()` aterm for Poisson / negbinomial | M | 2.1.4 | **merged** #224 (also #247) · both closed |
-| 6 | #209 | `hurdle_poisson`, `hurdle_negbinomial` | M–L | 2.1.4 (on hold) | **PR #225 open, blocked** on a `brms` bug — see #249 |
-| 7 | #148 | `check_fit()`, `pp_check()` methods, LOO-PIT | L | 2.1.4 | **merged** #226 (A/B/C + b + d) and #240 (Part D) · issue closed |
-| 8 | #33 | factor covariate, stage 1 | XL | 2.2.0 | **stage 1 merged** #227 · issue **stays open** for stage 2 |
-| 9 | #6 + #33 | the grouping vignette | L | 2.2.0 | **PR #228 open** · #6 and #33 both held open by it |
-| — | #190 | full `precompile.R` | L | **attended, per release** | **outstanding** — the release gate; #248 rides on it |
-
-**Two merged branches must not be deleted.** `issue-136-rate-aterm` is the base of
-PR #225 and `issue-148-check-fit` is the base of PR #238; deleting a merged base
-closes the PR stacked on it and it cannot be reopened until the branch is
-restored. Both are still on the remote. Everything else in this stack can be
-deleted as it merges.
+The rest of this file states why that ordering was chosen, and what is in it.
 
 ---
 
-## 0. Close three issues — no branch, no PR
+# Why coverage is the ordering
 
-Do this first; it costs minutes and shrinks the tracker.
+Nineteen issues were opened between 2026-08-24 and 2026-09-03 and six were
+closed. The question that ordering had to answer is whether that is a
+pre-existing defect population being surfaced, or work generating its own work.
+It was measured rather than argued, on 2026-09-03, against `origin/master`
+(2.1.3.1, the current CRAN release):
 
-- **#79** — checked on `dev` 2026-08-21 and it no longer reproduces. The reprex,
-  translated from the retired `model()` syntax to `crf()` and run at
-  `iter = 200, warmup = 100, chains = 2, seed = 1`, **fitted successfully at
-  `trials = 500`**, response proportions 0.200 / 0.200 / 0.074 / 0.014 / 0.002
-  and zeros thereafter. Re-run once at the issue's own default `iter`, then close
-  with the evidence. If it *does* fail at full `iter`, stop and requeue it rather
-  than forcing a close.
-  Record either way: the fit took several minutes on ten data points, consistent
-  with `make_good_inits()` retrying many times before succeeding. The symptom is
-  gone; the cause may only be softened.
-- **#212** — close. RF, 2026-08-21: the issue's own *Note on motivation* says
-  this is design consistency rather than a measured performance fix, and names
-  `add_ecx = TRUE` and `plot(all_models = TRUE)` as the likelier causes of slow
-  plotting. Not worth the four output changes it would force.
-- **#166** — close as a duplicate of **toxval#29**.
-
----
-
-## 1. #215 — publish `dev` vignettes from CI
-
-**Why first.** The only item that touches no R code at all, so it cannot conflict
-with anything above or below it, and it can be merged independently if the rest
-slips.
-
-**Scope.** `.github/workflows/pkgdown.yaml` triggers on `master` only — verified,
-as do `test-coverage.yaml` and `readme-renderer.yaml`. Publish `master` to the
-released articles as now, and `dev` to a distinct URL prefix (`articles/dev/`) so
-the two cannot be confused. Build vignettes on PRs if that is possible without a
-prohibitive cache miss.
-
-**Protocol exemption.** RF lifted the `.github/` prohibition **for this issue
-only** (2026-08-21). Do not treat it as general.
-
-**Done when** a push to `dev` publishes rendered articles at a separate prefix
-and `master` output is unchanged.
-
-**Hazards.** `precompile.R` re-knits **every** `.Rmd.orig` and needs the full
-fitting stack plus `NOT_CRAN=true` — without that env var every chunk is silently
-skipped and the build produces **empty** vignettes. Figures are written to the
-working directory and moved into `vignettes/` by `precompile.R`, so the job needs
-that step or the images 404. Cache compiled Stan models across runs.
-
-**Also do here:** rename the `# bayesnec 2.1.3.7` heading in `NEWS.md` to
-`# bayesnec 2.1.4`. That is the release this stack's bug-fix tier becomes.
-
----
-
-## 2. #139 — document the `drc` NEC equivalence
-
-**Documentation only.** Option A, per RF 2026-08-21. The scoping comment
-establishes, numerically rather than by eye, that `drc`'s `NEC.4` and `NEC.3` are
-**exactly** `nec4param` and `nec3param` — max absolute difference `0`, not
-"small" — and that the two-component formula quoted in the issue body appears
-only in `drc`'s Rd, not in the code `drc` fits.
-
-Add the equivalence table to `?models` and `vignettes/example2b.Rmd.orig`,
-including that `b = exp(beta)` in our parameterisation, that ours is positive by
-construction, and that `drc`'s `b < 0` region is a threshold followed by
-unbounded growth which we deliberately cannot represent.
-
-**Say explicitly that `NEC.2` has no `bayesnec` equivalent by choice**, pointing
-at #84, closed as won't-implement: the motivating case is control-normalised
-data, which `check_normalisation()` now warns about (#173), and the legitimate
-structural case is served by a `constant()` or informative prior on `top`.
-
-**Done when** a `drc` user can read the table and map their fit onto ours.
-
-**Not in scope.** Option B (`nec2param`) is off the table on the #84 grounds.
-Option C (the Pires et al. 2002 two-component model) stays open and needs someone
-to read *Environmetrics* 13:15–27 to establish whether it is a real model or an
-Rd artefact — **do not implement it**, and do not close #139 in a way that buries
-it. Raise it as its own issue if closing.
-
-**Hazard.** #170 rewrote the adjacent `example2b` paragraph. Read it before
-editing so the two do not contradict each other. Editing `.Rmd.orig` is fine;
-**do not run `precompile.R`** — the rendered `.Rmd` stays stale until #190.
-
----
-
-## 3. #210 — `define_prior()` collapses when the response has many zeros
-
-**Scope.** `R/define_prior.R` only. `top` and `bot` are built from quantiles of
-the raw response; where a large share of it is exactly zero those quantiles are
-zero and the gamma priors collapse onto the fudge term. Three failures, all with
-reproducers in the issue: `bot` pinned near zero once 25% of the response is zero
-(`:64`); `prior_type = "regularizing"` worse and unconditional because it uses
-`quantile(response, 0)` (`:92`); and the literal prior string `gamma(2, Inf)`
-past 75% zeros (`:61`).
-
-Guard against a zero or non-finite quantile: where a quantile used to set a gamma
-rate is zero, fall back to a scale derived from the positive part of the
-response.
-
-**Done when** the priors stay finite and sensibly centred at 30%, 50% and 80%
-zeros, with a test asserting each.
-
-**Hazard.** `define_hurdle_prior()` sidesteps this by computing the mu-block
-priors from the non-zero subset. That is **not** transferable to the
-zero-inflated count families — conditioning on the non-zeros biases `mu` upward,
-the same truncation argument as #209. Use the guard.
-
-**Why here.** Not new in #104, but #104 made it the normal case rather than an
-accident, and #209 later in this stack adds two more families that land in it.
-
----
-
-## 4. #207 — dispersion priors, and prior sets that are missing rows
-
-**Part 1 — a supplied dispersion prior is rejected.** `make_inits()`
-(`R/inits_functions.R`) tests exact set equality between the prior's parameter
-names and the curve's arguments, so any row naming `sigma`, `shape` or `phi`
-kills the call. Filter the supplied prior to the model's own `class == "b"` rows
-before the name check; pass the whole prior, dispersion row included, to `brm()`;
-supply no initial value for it; drop the `class == "b"` filter in
-`usable_prior()` (`R/get_priors.R`) so the row round trips. `add_brm_defaults()`
-already does exactly this filtering for `disp()` parameters via `disp_pars()`.
-
-**Part 2 — RF's Q1 answer, and a correction to the premise.**
-
-RF's reading was that automatic prior building is lost when `disp()` is used.
-**Checked on `dev` (9ef03b85): it is not.** `get_priors()` on a `disp("power")`
-formula returns `c0 ~ normal(-1.515, 2)` and `c1 ~ normal(0, 2)` — the
-`define_disp_prior()` machinery works, and every parameter gets a bayesnec prior:
-
-```
-prior                          nlpar   source
-normal(0, 5)                   beta    user
-normal(0.9329..., 0.5495...)   top     user
-normal(0.3833..., 0.5495...)   bot     user
-gamma(5, 2.2831...)            nec     user
-normal(-1.515, 2)              c0      user
-normal(0, 2)                   c1      user
-```
-
-The automatic priors are lost **only when the user supplies an incomplete prior
-set**, which `validate_priors()` then accepts wholesale — so the missing
-parameters fall through to `brms`'s flat defaults with no warning.
-
-RF's stated principle decides the open question directly: *bayesnec is proactive
-about weakly informative priors because flat priors are rarely useful in
-non-linear modelling.* An error would refuse the user's partial set and produce
-no fit; **filling the gaps from bayesnec's own defaults and warning about it is
-the behaviour that principle asks for.** So:
-
-> **Q1 answered: warn and fill from bayesnec defaults.** Never leave a parameter
-> on a `brms` flat prior because the user's supplied set did not mention it. The
-> warning must name every parameter that was filled.
-
-**Done when** a dispersion prior supplied through `bnec(prior = )` reaches the fit
-and round trips through `get_priors()`; a prior set missing rows fits with
-bayesnec defaults for the missing ones and a warning naming them; tests cover
-both, plus the case where the user's partial set overrides a default bayesnec
-would otherwise have generated.
-
-**Hazard.** *Generating a default dispersion prior* remains out of scope — it
-would change every existing fit. This is about accepting a supplied one, and
-about not silently discarding defaults for rows the user omitted.
-
-**Flag for RF at review**, since it is a behaviour change: a fit that previously
-ran on flat priors will now run on bayesnec priors and give different numbers.
-That is the intended fix, but it is not a silent one. Say so in the PR.
-
----
-
-## 5. #136 — `rate()` aterm for Poisson and negative binomial
-
-> **MERGED, PR #224 — read that PR. #136 and #247 closed.** Tier is 2.1.4, not
-> the 2.2.0 below. Nothing outstanding. Original scope kept for the record.
-
-Fully scoped in the issue comments; **RF settled both open calls on 2026-08-21**:
-refuse `rate()` on the zero-inflated count families with a clear message, and make
-unrecognised aterms an **error** rather than a message.
-
-**Scope.** `rate()` is currently half-supported and fails late: `check_formula()`
-emits a generic message, `brm()` fits fine, and `bnec()` then errors in
-`posterior_epred()` at `R/expand_classes.R:46` because the prediction grid has no
-denominator column. There is a quieter defect upstream — `get_priors()` derives
-`top` from raw counts rather than `y / ex`, giving a prior mean of ~61 against a
-true `top` of 20.
-
-Because `bnec()` forces `link = "identity"`, `brms` writes the denominator
-multiplicatively on the response scale, so `mu` *is* the rate and
-`top`/`bot`/`nec` stay interpretable as counts per unit exposure. `offset` is the
-wrong tool under an identity link — drop that half of the original request.
-
-The implementation is enumerated in the scoping comment: a `rate` branch in
-`split_calls()` following the **`cens()`** precedent, `simplify_formula()` slots,
-the denominator set to 1 in `bnec_newdata.R:57` and `expand_classes.R:44`,
-`y / denom` in `get_priors.R:165` and `amend.R:253`, plus the plot paths.
-
-**Hazards, both named in the comment.**
-
-- `retrieve_var()` indexes the model frame **by position** in `bnec_pop`, so the
-  term order in `short_form` and the order of the `pop_vars` name vector must stay
-  in lockstep. The comment at `R/bayesnecformula.R:569-573` says why.
-- `dispersion()` (`R/dispersion.R:69`) is **not** a copy-paste of the binomial
-  branch. For Poisson the analogue is exact; for negative binomial it is not,
-  because `brms` scales the shape too, so the count-scale variance is
-  `mu_c + mu_c^2 / (shape * denom)`. Work it through rather than assuming
-  symmetry.
-
-**Making unrecognised aterms an error is a user-visible breaking change.** File it
-under 2.2.0, give it its own `NEWS.md` bullet rather than burying it in the
-`rate()` entry, and check the vignettes and tests for any formula that would now
-error.
-
----
-
-## 6. #209 — `hurdle_poisson` and `hurdle_negbinomial`
-
-> **ON HOLD.** PR #225 open, blocked on a `brms` bug — read **#249**. Its base
-> branch `issue-136-rate-aterm` has merged; **do not delete it** or #225 closes
-> irrecoverably.
-
-**Scope.** The count analogues of `hurdle_gamma`. Add both to `hurdle_fams` and
-`hurdle_mu_fams` in `data-raw/sysdata.R`, extend the `switch()` in
-`hurdle_mu_family()` (`R/hurdle_family.R`), and admit them through
-`check_models()` and `bnec_hurdle()`. Rebuild `R/sysdata.rda`.
-
-**This also carries a correctness fix.** `bnec_hurdle()` currently fits the growth
-component with an **untruncated** count family on `data[y > 0, ]`. For
-`hurdle_gamma` that is exact — the Gamma has no mass at zero. For counts it is
-not: fitting `Poisson(mu)` to data conditioned on `y > 0` estimates
-`mu / (1 - exp(-mu))`. The bias grows as `mu` falls towards zero, which is the
-high-concentration end where the *NEC* and ECx are read off. Fix it and say so —
-it is a wrong answer today, not a missing feature.
-
-**Verified clear of toxval.** `is_hurdle_family()` and `hurdle_dpar()` are
-table-driven off `hurdle_fams`, so `ecx()` and `nsec()` pick the new families up
-with no code change. The only contact is the roxygen family list at
-`R/ecx.R:25-26` and `R/nsec.R:18-19` — a one-line doc touch in a migrating file.
-Acceptable; note it in the PR so the migration carries it.
-
-**Hazard.** Do not reuse D4's reasoning in reverse. D4 says zero-inflated counts
-are a genuine mixture and must not get a second block. That argument does not
-apply to a hurdle on counts: where the zeros are *observed* to be structural the
-likelihood factorises exactly and both blocks carry an interpretable curve. Say
-which of the two you are building and why.
-
----
-
-## 7. #148 — `check_fit()`, `pp_check()` methods, LOO-PIT, and Part D
-
-> **CORRECTED 2026-08-23.** The entry that stood here was wrong in four ways and
-> everything downstream inherited them — PR #226 was built to it, and the phase 2
-> review validated #226 against *this file* rather than against the issue. Read
-> **`notes/tasks/148-model-fit-diagnostics.md`** — the authoritative spec, written
-> at scoping time and referenced from the issue thread — before doing anything
-> here. It is 23 KB and covers Parts A–D, the settled decisions, the hazards and
-> a definition of done. **Neither the previous queue entry nor the phase 2 review
-> consulted it.**
->
-> What was wrong:
->
-> 1. **"Three parts"** — there are **four**. Part D (sampler diagnostics and
->    screening) was folded into #148 deliberately, with a stated rationale.
-> 2. **"Decision (d) RF flagged but did not answer"** — RF answered it *in*, in
->    the Final decisions table, and then **prototyped it** in a later comment.
-> 3. **Decision (b) was omitted entirely** — a message at the end of `bnec()`
->    **and** a line in `summary()`, thresholding on the ratio.
-> 4. **The `example2` doc fix that rides on (b)** was not mentioned.
-
-**Read the spec file first.** What follows is a map of it, not a substitute.
-
-**Four parts, not three.**
-
-- **A — `pp_check()` methods.** Dispatch for the three classes; `brms` is in
-  `Depends` so `importFrom(brms, pp_check)` adds nothing. `bayesnechurdlefit`
-  returns one result per component, following `dispersion()`.
-- **B — `check_fit()`, the substance.** Per concentration group, observed against
-  model-simulated **location and scale**, a posterior predictive p-value, control
-  row flagged. Named `check_fit()`, sitting alongside `check_chains()` (sampler)
-  and `check_priors()` (priors). **Deliver both a numeric table and a plot.**
-- **C — LOO-PIT** through the part A methods.
-- **D — sampler diagnostics and screening.** *The independent half.* D1 a
-  per-model sampler diagnostic table (Rhat, divergences, ESS); D2 the ESS
-  decision — settled as *report the absolute, threshold at 400*; D3 the screening
-  helper, `check_sampling()` plus a thin wrapper that applies thresholds and
-  **messages what it dropped and why**; D4 an `amend(drop = )` guard.
-
-  **Part D depends on nothing else.** It needs no `loo` and does not depend on
-  PR #217, where A and B both do — the spec says it "can be built and merged
-  first, on its own". That makes it the natural separate PR.
-
-**The four decisions, all settled.**
-
-| | |
+| issue | present in `origin/master` |
 |---|---|
-| (a) | `check_fit()` — one function covering both statistics |
-| (b) | a message at the end of `bnec()` **and** a line in `summary()` |
-| (c) | keep `dispersion()` as well |
-| (d) | **combined hurdle simulation IN** — and prototyped on the issue |
+| #256 identity forced only for a character string | `R/validate_family.R:14-15` |
+| #258 write-back decided per formula | `R/fit_bayesnec.R:36` |
+| #265 `x_type == "beta"` unreachable | `R/check_data.R:55`, `:63` |
+| #266 `n_trials = 1e4` | `R/inits_functions.R:101` |
+| #267 `has_family_changed()` called positionally | `R/bnecfit-methods.R:150` |
+| #268 all-or-nothing `xform` guard | 2 sites in `plot.R`, 2 in `autoplot.R` |
+| #269 predictor zero shift | `R/check_data.R:48`, `:56` |
+| #272 integer branch with no `else` | `R/set_distribution.R:48` |
+| #244 no `constant()` handling | absent from `R/inits_functions.R` |
 
-**(b)'s threshold question is also settled:** threshold on the **ratio**, with
-the `ppp` reported alongside. A `ppp` threshold stayed silent on both test fits,
-and silence reads as a pass.
+Nine of nine. One issue in the whole run was caused by the run's own work:
+**#271**, which #270 records as becoming reachable when the predictor
+substitution was removed. Everything else predates the work by between two and
+six years; `check_data.R` dates from `89a15d03`, 2020-05-25.
 
-**(d) is already written.** The issue thread carries a working six-line
-prototype and its result. The one thing to get right is `newdata = d` rather than
-the growth fit's own data — the growth component is fitted on survivors only, so
-it must be predicted onto the full exposed set for the product to line up with
-the observed response.
+**The code producing the defects is the code with no test file.** `check_data.R`
+had none in either version, and it is the origin of #258, #265, #269, #271 and
+#274. `plot.R` and `autoplot.R` had none, and they are #268, #160 and #161.
+Where a test file was written, discovery stopped:
 
-**A doc error rides on (b).** `vignettes/example2.Rmd.orig:102` claims the
-summary warns about divergent transitions. It does not: `print.manecsummary`
-warns on Rhat only (`R/print.R:136`), at a hard-coded 1.05, while the same
-vignette recommends 1.01. Part D makes the claim true rather than requiring it to
-be deleted.
-
-**The two findings that shape B**, both verified on `manec_example`: a global
-dispersion statistic cannot see the problem, because a free dispersion parameter
-absorbs exactly what it measures (global Pearson ratio 1.011 [0.71, 1.44] while
-the control region is badly mis-stated) — so the diagnostic must be **local**;
-and the scale statistic must be **residual-based**, since a raw within-group SD
-mixes residual variability with the slope of the curve across the group.
-
-**Per-candidate-model rows for a `bayesmanecfit`**, and the **zero fraction** for
-the four mixture families.
-
-**Vignette.** Author the `.Rmd.orig`; it does not render until #190.
-
-**Status — COMPLETE. #148 closed 2026-08-25**, with the evidence in the closing
-comment on the issue. All four parts are on `dev`: PR #226 (A/B/C, decisions (b)
-and (d)) and PR #240 (Part D).
-
-Two things ride on it and are **not** done: the rendered `example2` still shows
-the 1.05 Rhat default (**#248**, under #190), and **PR #238 (#219) still needs
-rewriting** — it hand-rolls a screen that `screen_models()` now provides. #238's
-base branch `issue-148-check-fit` has merged; **do not delete it** while #238 is
-open.
-
----
-
-## 8. #33 — factor covariate, stage 1 only
-
-> **STAGE 1 MERGED, PR #227 — read that PR and the comment on #33.** `#33 stays
-> open`: stage 2 is still toxval-gated and the vignette at item 9 is still a PR.
-
-Feasibility assessed in the issue comment; RF cleared it for the stack on
-2026-08-21. **Stage 1 only.**
-
-**Stage 1 — in scope.** Fit each factor level independently, model-averaged within
-level; read crossed model weights off the per-level weights; expose a
-`bayesnecgroupfit` class with `print` / `nec` / `ecx` / `plot` dispatching per
-level. Structurally this is the existing `bnec_hurdle()` / `crossed_weights()`
-pattern renamed: levels partition the data disjointly and share no parameters, so
-`elpd` is additive, and under pseudo-BMA — the package default at
-`R/helpers.R:538` — the crossed weights are the outer product of the per-level
-vectors.
-
-Report both readings of the crossed table: the **unrestricted maximum**, which
-answers this issue's premise that the functional form may change across levels;
-and the **diagonal** maximum `w_m ∝ Π_g w_{g,m}`, which asks which single equation
-best describes every level and which the package cannot answer today. A pooled fit
-ignoring the factor is scored on the same observations, so "does the factor matter
-at all" falls out of the same arithmetic.
-
-**Stage 2 — out of scope, toxval-gated.** The joint dummy-coded refit lands in
-`nec()` / `nsec()` / `bnec_newdata()` / `predict()`, which is the territory the
-migration moves. The assessment says so explicitly. Do not start it.
-
-**Hazards.**
-
-- With 23 models the crossed array is `23^G`. Store per-level weight vectors and
-  compute cells on demand; never materialise it.
-- The stacking caveat at `R/bayesnechurdlefit-class.R:245-250` applies unchanged:
-  stacking optimises a different objective whose solution is not an outer product.
-  Carry the caveat across rather than restating it wrongly.
-- **Family must be chosen once from the whole response and passed down.**
-  `set_distribution()` applied per subset could otherwise select different families
-  at different levels, making the levels incomparable.
-- Per-level dispersion is what separate fits give you. Do not quietly introduce a
-  shared one.
-
-**Stop condition specific to this issue.** If stage 1 turns out to require changing
-`nec()`, `nsec()`, `ecx()` or `bnec_newdata()` beyond adding a level-aware wrapper
-around them, **stop and report** — that means the stage boundary is in the wrong
-place, which is a finding worth more than a partial implementation.
-
----
-
-## 9. #6 + #33 — the grouping vignette
-
-> **PR #228 open**, and unblocked — #33 stage 1 is on `dev`. #6 and #33 are both
-> held open by this PR; #6 has no other outstanding work.
-
-**One vignette covering both**, per RF on both issues (2026-08-21): they are two
-ways of dealing with data grouping and belong together. Cut this branch from #33's,
-since it demonstrates #33's output.
-
-**#6 is otherwise complete.** The capability landed in v2.0 and is current:
-`ogl(group)`, `pgl(group)` and `(par | group)` in a `bayesnecformula`, validated by
-`check_formula()`, translated by `make_brmsformula()`, with coverage across six
-test files. The old `random` / `random_vars` arguments are deprecated. The **only**
-thing holding #6 open is this vignette.
-
-**Content, from the #6 comment.**
-
-- all three group-level term types on a real fit, and when each is right —
-  `ogl()` for a shifting response level, `pgl()` where grouping plausibly affects
-  the whole curve, `(par | group)` where there is prior reason to expect a specific
-  parameter to vary;
-- what the terms do to the fitted curve and to the `nec`/`ecx` estimates, relative
-  to the same fit without them;
-- prior specification for the group-level standard deviations, since the defaults
-  are not tailored to these terms, and `check_formula(..., run_par_checks = TRUE)`;
-- the diagnostics that matter and the **failure modes** — hierarchical structure on
-  non-linear parameters is easy to specify and hard to identify, so be honest about
-  when a group-level term is not supported by the data;
-- the #33 route alongside it, as the other way to handle grouping;
-- a dataset with genuine grouping structure.
-
-**Source material.** RF points at
-[open-AIMS/cr_modelling_training](https://github.com/open-AIMS/cr_modelling_training),
-particularly `vignettes/8Factor_covariates_and_groupings.Rmd`. Read it before
-authoring; it may supply both the worked examples and a dataset.
-
-The caution already in the JSS paper — that hierarchical effects in a non-linear
-setting are non-trivial and need careful thought about structure and priors —
-should carry into the vignette rather than being asserted and left there.
-
-**Do not run `precompile.R`.** Author the `.Rmd.orig`; it renders under #190.
-**Do not touch `vignettes/example7*`** — #193 is another session's.
-
----
-
-## #190 — full `precompile.R`, attended, once per release
-
-RF, 2026-08-21: *"do this immediately before the CRAN submission, so all vignette
-changes and anything that might change vignette numbers is completed."*
-
-**A consequence that needs a decision at review time.** If 2.1.4 ships to CRAN
-before 2.2.0, `precompile.R` has to run **twice** — once before each submission.
-Under the revised tiers (2026-08-25) #136 and #148 sit *inside* 2.1.4, so the
-only vignette content crossing the boundary is the #6/#33 grouping vignette —
-but that is still a second full run. It takes hours and needs the full fitting stack. The alternatives
-are to accept the double cost, or to hold the CRAN submission until 2.2.0 is ready
-and precompile once.
-
-Everything merged in this stack changes vignette numbers: #216 changed every
-model-averaged value; #210 and #207 change priors and therefore fits; #139, #148
-and item 9 add or edit vignette prose.
-
-**Not for the unattended run.** Needs `NOT_CRAN=true`, network access at authoring
-time, and hours of machine that the simulation study currently owns.
-
----
-
-# Deferred — toxval, unchanged
-
-| | |
+| file | `expect_` calls, master → dev |
 |---|---|
-| #120 | changes `predict`/`plot`/`autoplot` for `bayesmanecfit`; toxval registers the same methods. D5 stands. |
-| #93 | the `check_data()` shift correction applies to `ecx`/`nsec` too; doing half strands the other half. |
-| #160 | *NEC* mis-plotted when a function is called for `x`; likely shared post-processing with #196. |
-| #161 | probably #195 or #196, in which case it is toxval's. |
-| #206 | **RF chose option 3** — add the zero-bounded models to the default Gaussian set — but **deferred to after the migration**, with a significant version bump and a NEWS entry when it lands. Options 2–4 all need the `R/ecx.R:161` absolute-ECx guard resolved, and that coupling disappears with the migration. |
+| `test-validate_family.R` | 0 → 99 (did not exist) |
+| `test-inits_functions.R` | 0 → 114 (did not exist) |
+| `test-fit_bayesnec.R` | 0 → 34 (did not exist) |
+| `test-define_prior.R` | 33 → 103 |
 
-Out of scope entirely: #39, #44, #166, #195, #196 — see `02_deferred.md`. #193 is
-another session's.
+Suite-wide the assertion density per line of `R/` has roughly doubled, from
+0.052 (380 assertions, 7,338 lines) to 0.101 (1,678 assertions, 16,586 lines).
+
+**The consequence for ordering.** A defect found by a user report is one
+defect; a test file written over the path that produced it is the whole
+population on that path. So the queue puts the test file before the fixes it
+will inform, and expects each test file to open two to three further issues
+rather than treating that as a failure.
+
+**The one instance of genuine re-work, and why it is not the pattern.**
+`define_prior()`'s zero guard was written three times in eight days: #210 wrote
+it, #229 found it errored for families that never use the guarded quantiles,
+#232 found it was a step function on a continuous collapse. Nothing has touched
+that guard since 2026-08-22. The cause was diagnosed at the time — #210's tests
+asserted only that the prior rate was finite and positive, so every row of the
+broken sweep passed them — and the review question that came out of it, *do the
+tests constrain the thing that matters or the thing that is easy to assert*, has
+held since.
 
 ---
 
-# Open, not in this stack
+# 0. Blocking everything — #275
 
-| | why |
+**`R-CMD-check` is red on `dev` and the cause is the workflow, not the package.**
+The **Use Cmdstan to Fix** step force-installs `StanHeaders` from whichever
+repository answers, and when `mc-stan.org` is unreachable it installs 2.39.1
+over the 2.32.10 `pak` matched to `rstan` 2.32.7. Seventeen tests then fail with
+`invalid connection` from `brm()`, identically on `dev` and on any branch.
+
+Nothing else in this queue can be verified while the matrix cannot distinguish a
+real regression from this one, and the failure is intermittent by construction —
+the same commit passes or fails depending on whether the index answers. **Do
+this first.** `.github/` is open for #275 only, on the same narrow exemption
+#215 and #230 had.
+
+---
+
+# Tier A — coverage of the paths that keep producing defects
+
+Ordered so that the test file for a path precedes the fixes on it.
+
+| # | item | what | size | status |
+|---|---|---|---|---|
+| A1 | `test-check_data.R`, `test-plot.R`, `test-autoplot.R` | the three missing test files | M | **PR #276 open** |
+| A2 | #274 | `update()` with `newdata` discards the correction it reports | S | ready |
+| A3 | #268 | `xform` skipped on the predictor axis when the response is transformed | S | ready; A1 pins the reproduction |
+| A4 | #271 | no `disp()` sub-model is checked for finiteness before `brm()` | M | ready |
+| A5 | #272 | `set_distribution()` returns `NULL` for a negative integer response | S | ready |
+| A6 | #266 | `make_good_inits()` spends 561 s before falling back | M | ready |
+
+**A1 is the gate on A2 and A3 and nothing else.** A2 and A3 are both pinned as
+current behaviour by the test file, with the assertion to invert named in a
+comment, so the fix is a one-line inversion plus the code change rather than a
+new reproduction.
+
+**A4 and A5 are independent** and can be taken in either order.
+
+**A6 is a performance defect, not a correctness one.** It is in this tier
+because it is on the same path and because #79 measured the same mechanism at
+1050 s and closed it as *not reproducible*, which is the outcome to avoid
+repeating.
+
+## What A1 found while being written
+
+Recorded here because they have no issue yet and are too small to warrant one
+each. Raise them as one issue when A1 merges.
+
+- **Two branches of `check_data()` cannot be reached.** The non-numeric
+  predictor branch (`:112-118`) is preceded by `retrieve_var(error = TRUE)` at
+  `:108`, which raises first with a different message; the numeric group-level
+  branch (`:203-209`) is preceded by `model.frame()`, which refuses first. Both
+  are the shape of #265 — a condition written, never fired, unnoticed.
+- **`NA` and `NaN` are dropped rather than refused.** The finiteness guard sees
+  only what `model.frame()` passes it, and incomplete cases are removed first.
+  `Inf` reaches the guard and is refused; `NA` and `NaN` are removed silently
+  and the fit proceeds on fewer rows than the user supplied.
+- **`ggbnec_data(x, nec = FALSE)` does nothing.** The argument is `add_nec`;
+  `autoplot()` takes `nec` and forwards it. `ggbnec_data()` is exported and
+  documented separately, so the obvious transfer of the argument name is
+  absorbed by `...` and the annotation is still returned.
+
+---
+
+# Tier B — decisions that are RF's, not the session's
+
+Each is a legitimate change whose *correct statistical behaviour* is the
+undetermined part, which `00_protocol.md` makes a stop-and-ask. None is blocked
+on anything in tier A.
+
+| # | the decision |
 |---|---|
-| #218 | the three unseeded permutations. Documentation-and-constraint outcome, not a code fix — see the issue. Cheap; add to a later stack. |
-| #184 | `future_apply`. **Attended, and blocked on the machine.** RF has had trouble with `future_apply` on WSL and wants a testing pass with the findings posted as a comment before any implementation. Must wait until the simulation study finishes — it is the same resource. |
-| #139 option C | the Pires et al. (2002) two-component model, conditional on reading *Environmetrics* 13:15–27. |
-| ~~#148 decision (d)~~ | **done** — shipped in PR #226. |
-| #245 | group-level terms with bounded families. PR #250 open, another session's. |
-| #249 | the factorised count hurdle, blocked on `brms`. Holds #209 / PR #225. |
-| #248, #190 | the release precompile and the stale `example2` Rhat text it fixes. |
+| #273 | the default `nec`/`ec50` gamma prior peaks at `2m`, not at `m`. Two candidate corrections are on the issue and the choice needs a measurement, not an argument. Worst on the linearly spaced designs this field uses |
+| #93 | narrowed by #270. The predictor half is removed; what remains is whether the two silent response corrections should speak, and whether substitutions should be recorded on the fit. Two resolutions are on the issue |
+| #262 | report `P(dispersion > 1)`, and state that `beta_binomial` does not address under-dispersion |
+| #261 | record which equations `bnec()` excluded, and report the candidate set as fitted |
+| #257 | **unblocked.** It depends on #256, which closed on 2026-09-02 via #259 and #260. Not previously in any queue |
+| #206 | **re-check whether it is still deferred.** Its own comment records that #170 is discharged and that #256 settles the link policy it needed. `02_deferred.md` defers it on a coupling that may no longer bind |
+
+---
+
+# Tier C — the vignette pull requests
+
+**Kept open deliberately.** RF, 2026-09-03: reviewing them and their related
+issues is what has raised the defects, and they should not be closed until the
+software has stabilised. They are also the only end-to-end exercise of the
+fitting stack that exists — #242 removed `--ignore-vignettes`, but CI checks the
+rendered markdown in about sixteen seconds and re-fits nothing.
+
+| PR | issue | note |
+|---|---|---|
+| #228 | #6, #33 | the grouping vignette |
+| #238 | #219 | the workflow vignette; still needs rewriting onto `screen_models()` |
+| #243 | #193 | example7, another session's |
+| #225 | #209 | `CONFLICTING`, blocked on `brms` via #249 |
+
+**The example8 diagnosis in `06_review_run.md` is wrong and should not be acted
+on.** That file records both halves of example8 failing on 2026-08-24 and
+concludes the cause is the data, leaving an open decision about importing
+datasets from `cr_modelling_training`. Two package defects fixed since then
+explain both halves:
+
+- `bnec_group(fvfm ~ crf(log(concentration), "decline"), herbicide, ...)` failed
+  with *None of the models fit successfully*. That is #258's reproduction — an
+  inline `log()` on the predictor discarded the boundary correction on the
+  response, and ametryn, irgarol and hexazinone all contain exact zeros in
+  `fvfm`. Fixed by #264 on 2026-09-02.
+- `bnec(suc | trials(tot) ~ crf(dose, "nec3param") + ogl(tank), ...)` failed with
+  *Failed to fit model nec3param*. That is #245 — a binomial response with an
+  `ogl()` term got no group-level prior, so the mean started outside its support.
+  Fixed by #250 on 2026-08-26.
+
+**Re-run example8 against current `dev` before deciding anything about
+datasets.** The separate objection that the `nassarius` contaminant levels sit
+on non-overlapping dose grids, one with three doses, is a data judgement that
+neither fix addresses and stands on its own.
+
+**The rebase overhead is the price of having no integration test.** The cheapest
+reduction is to precompile one vignette per merge to `dev` rather than the whole
+set at release; #251's fan-out already makes that possible.
+
+---
+
+# Tier D — the release, whenever it is cut
+
+Not a gate on anything above it any more.
+
+| # | what |
+|---|---|
+| #190 | the full `precompile.R`. Attended, once, immediately before submission |
+| #248 | the rendered `example2` still documents the 1.05 Rhat default; rides on #190 |
+
+`DESCRIPTION` `Version` is a running dev counter, 2.1.3.25 today, incremented by
+one in the fourth component per PR. **RF sets the release version.** The `NEWS.md`
+tier headings are `# bayesnec 2.2.0` for everything current; the 2.1.4 tier
+closed when the stack merged.
+
+---
+
+# Not in this queue
+
+| # | why |
+|---|---|
+| #255 | the toxval migration tracker. Attended, spans two repos, ordering constraint in D8 |
+| #249 | the factorised count hurdle, blocked on `brms`. Holds #209 and PR #225 |
+| #218 | unseeded permutation in `compare_posterior()`. Documentation-and-constraint outcome; cheap, add to a later pass |
+| #184 | `future_apply`. Attended: RF wants a testing pass posted as a comment before any implementation |
+| #245 | **merged and needs closing by hand.** PR #250 states `Closes #245` but targeted `dev`, so the keyword never fired |
+| #265, #269 | **merged and need closing by hand.** PR #270 states `Closes` for both, same reason |
+| #39, #44, #166, #195, #196 | toxval's. See `02_deferred.md` |
+| #120, #160, #161, #206, #93 | see `02_deferred.md`; #206 and #93 are also in tier B |
