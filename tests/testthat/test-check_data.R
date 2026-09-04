@@ -275,8 +275,10 @@ test_that("get_priors builds its priors from the corrected response", {
   pr_shifted <- get_priors(y ~ crf(x, model = "nec3param"), data = d_shifted,
                            family = Gamma(link = "identity"))
   expect_s3_class(pr, "brmsprior")
+  # The prior column alone. nlpar is decided by the model and the family, not
+  # by the five shifted values, so comparing it passes under the mutation this
+  # block exists to catch and asserts nothing the prior comparison does not.
   expect_identical(pr$prior, pr_shifted$prior)
-  expect_identical(pr$nlpar, pr_shifted$nlpar)
 })
 
 test_that("has_family_changed reports a correction it then discards", {

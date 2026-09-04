@@ -78,8 +78,8 @@ test_that("add_nec and add_ec10 decide what is annotated", {
   # Same reasoning: silence is not evidence that either argument was read.
   # The three branches at R/plot.R:179-192 are mutually exclusive, so the
   # abline() calls are counted AND their values identified. Counting alone does
-  # not discriminate: one call is drawn whether the branch taken is the nec or
-  # the ec10, so swapping R/plot.R:190 to draw ec10 in the nec branch would
+  # not discriminate: one call is drawn whether the branch taken is the nec at
+  # R/plot.R:180 or the ec10 at :185, so drawing ec10 from the nec branch would
   # pass a count-only assertion.
   skip_on_cran()
   drawn <- list()
@@ -94,13 +94,16 @@ test_that("add_nec and add_ec10 decide what is annotated", {
   pl_x_max(nec4param, add_nec = TRUE)
   expect_length(drawn, 1)
   expect_equal(unname(drawn[[1]]), unname(nec4param$ne), tolerance = 1e-8)
-  # The ec10 alone. manec_example is gaussian, so R/plot.R:114-115 takes the
-  # relative branch (R/plot.R:114-115); the value is not asserted here beyond
-  # its being a different one, because ecx() is under test in test-ecx.R.
+  # The ec10 alone. nec4param is gaussian, so R/plot.R:114-115 takes the
+  # relative branch. The value is not asserted here beyond its being a
+  # different one, because ecx() is under test in test-ecx.R.
   pl_x_max(nec4param, add_nec = FALSE, add_ec10 = TRUE)
   expect_length(drawn, 2)
   expect_false(isTRUE(all.equal(unname(drawn[[2]]), unname(nec4param$ne))))
-  # Both, in the documented order: the nec in red, then the ec10 in orange.
+  # Both, in the order R/plot.R:189-191 draws them: the nec in red, then the
+  # ec10 in orange. The second call must repeat the ec10 of the previous block;
+  # ecx() on a bayesnecfit reads stored draws with no resampling, so the value
+  # is deterministic across the two plot() calls.
   pl_x_max(nec4param, add_nec = TRUE, add_ec10 = TRUE)
   expect_length(drawn, 4)
   expect_equal(unname(drawn[[3]]), unname(nec4param$ne), tolerance = 1e-8)
