@@ -128,6 +128,27 @@ test_that("a numeric group-level column errors from model.frame, not check_data"
 })
 
 
+test_that("check_custom_name is called and its result discarded", {
+  # R/check_data.R:211 assigns custom_name <- check_custom_name(family) and
+  # nothing reads it; custom_name occurs once in the file. check_custom_name()
+  # is pure (R/helpers.R:18-24), so the call has no effect at all. The same
+  # dead assignment is at R/plot.R:93, R/plot.R:263 and R/autoplot.R:178.
+  #
+  # Asserted by making the call return a value nothing could sensibly use and
+  # showing the result is unchanged, which pins the discard rather than the
+  # call. This is the third site of its kind in check_data(), after the two
+  # unreachable branches above, and it has no issue either.
+  d <- cd_data_zero()
+  plain <- cd_run(y ~ crf(x, model = "nec3param"), d, gaussian())
+  local_mocked_bindings(
+    check_custom_name = function(...) "a value no caller reads",
+    .package = "bayesnec"
+  )
+  expect_identical(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
+                   plain)
+})
+
+
 # ---- the response boundary corrections --------------------------------------
 #
 # The arithmetic and the messaging are asserted separately, because they do not

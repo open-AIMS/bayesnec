@@ -76,7 +76,7 @@ test_that("all_models draws a panel per candidate, named", {
 
 test_that("add_nec and add_ec10 decide what is annotated", {
   # Same reasoning: silence is not evidence that either argument was read.
-  # The three branches at R/plot.R:179-192 are mutually exclusive, so the
+  # The three branches at R/plot.R:179-195 are mutually exclusive, so the
   # abline() calls are counted AND their values identified. Counting alone does
   # not discriminate: one call is drawn whether the branch taken is the nec at
   # R/plot.R:180 or the ec10 at :185, so drawing ec10 from the nec branch would
@@ -116,17 +116,23 @@ test_that("add_nec and add_ec10 decide what is annotated", {
 # The same shape as the two dead branches this branch pins in check_data(): a
 # condition written, never fired. Neither has an issue yet.
 
-test_that("the lxform branch in plot() cannot be reached", {
+test_that("the lxform branch in plot() cannot be reached, on either class", {
   # R/plot.R:152-157 and :304-309 compose an axis call for the case where
-  # lxform is not a function. R/plot.R:80-82 has already stopped on that input,
-  # and lxform is not reassigned between them, so the condition at :152 is
-  # always FALSE and the else at :164 always runs. The consequence is that
-  # axis(side = 1) and axis(side = 1, at = signif(xticks, 2)) are dead, and
-  # xticks is therefore always applied through the else branch instead.
+  # lxform is not a function. Each is preceded by a guard that has already
+  # stopped on that input -- R/plot.R:80-82 for a bayesnecfit and :222-224 for
+  # a bayesmanecfit -- and lxform is not reassigned between them, so both
+  # conditions are always FALSE and the else at :164 and :316 always runs. The
+  # consequence is that axis(side = 1) and axis(side = 1, at = signif(xticks,
+  # 2)) are dead at both sites, and xticks is always applied through the else.
+  #
+  # Both classes are asserted. Pinning one and not the other is how the
+  # bayesmanecfit half of #268 escaped notice for six review rounds.
   #
   # Pinned as current behaviour, not asserted to be correct.
   skip_on_cran()
   expect_error(pl_x_max(nec4param, lxform = "not a function"),
+               "lxform must be a function")
+  expect_error(pl_x_max(manec_example, lxform = "not a function"),
                "lxform must be a function")
   calls <- list()
   local_mocked_bindings(
@@ -135,8 +141,15 @@ test_that("the lxform branch in plot() cannot be reached", {
   )
   pl_x_max(nec4param)
   pl_x_max(nec4param, xticks = c(0, 1, 2, 3))
+  pl_x_max(manec_example)
+  pl_x_max(manec_example, xticks = c(0, 1, 2, 3))
+  # The count first. all() of an empty list is TRUE, so without this the
+  # assertion below would also pass if axis() were never called at all -- which
+  # is a reachable state, since xaxt = "n" is set at R/plot.R:145 and the axis
+  # is drawn only by these calls.
+  expect_length(calls, 4)
   # Every call comes from the else branch, which always supplies at and labels.
-  # A reachable :153 or :155 would produce a call with neither.
+  # A reachable :153, :155, :306 or :308 would produce a call with neither.
   expect_true(all(vapply(calls, function(nm) all(c("at", "labels") %in% nm),
                          logical(1))))
 })
@@ -150,6 +163,11 @@ test_that("position_legend refuses the numeric vector its documentation names", 
   skip_on_cran()
   expect_error(pl_x_max(nec4param, position_legend = c(0.5, 0.5)),
                "legend positions must be one of")
+  # R/plot.R:232-235 is the same guard for a bayesmanecfit, with the same
+  # inversion and a differently worded message. Asserted so that the issue this
+  # becomes states both call sites.
+  expect_error(pl_x_max(manec_example, position_legend = c(0.5, 0.5)),
+               "Legend positions must be one of")
   # And the arguments to match() are the wrong way round -- the vector of valid
   # keywords is matched into the user's value rather than the reverse -- so a
   # value containing one valid keyword passes the guard however much else is in
@@ -269,6 +287,26 @@ test_that("the ec10 annotation is drawn off the axis as well", {
                         .package = "bayesnec")
   axis_max <- pl_x_max(f, add_nec = FALSE, add_ec10 = TRUE,
                        xform = function(x) x * 100)
+  expect_length(drawn, 3)
+  expect_gt(min(drawn), axis_max)
+})
+
+test_that("the model set draws its ec10 annotation off the axis too", {
+  # The fourth and last of the annotation sites: R/plot.R:284 transforms ec10
+  # on the bayesmanecfit branch, outside the guard at :279. Adding the
+  # single-fit ec10 pin alone left this one unobserved, which is the third time
+  # in this review that a bayesmanecfit site was missed after its bayesnecfit
+  # twin was covered.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with its siblings above.
+  skip_on_cran()
+  m <- transformed_response_manec(manec_example)
+  drawn <- NULL
+  local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
+                        .package = "bayesnec")
+  axis_max <- suppressWarnings(
+    pl_x_max(m, add_nec = FALSE, add_ec10 = TRUE, xform = function(x) x * 100)
+  )
   expect_length(drawn, 3)
   expect_gt(min(drawn), axis_max)
 })

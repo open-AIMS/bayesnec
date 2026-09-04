@@ -1,7 +1,10 @@
 # autoplot() and ggbnec_data() had no test file of their own in any release.
-# The eleven plot-related lines scattered through test-bayesnec_methods.R,
-# test-bayesmanec_methods.R and test-expand_classes.R assert that a ggplot
-# comes back, and nothing else -- in particular xform, which exists so that a
+# Nine plot-related lines are scattered through test-bayesnec_methods.R,
+# test-bayesmanec_methods.R and test-expand_classes.R, and only one of them,
+# test-expand_classes.R:323, concerns autoplot() at all: it asserts that a
+# ggplot comes back, and nothing else. The other eight assert that base plot()
+# returns NULL invisibly and silently, which is test-plot.R's subject. In
+# particular xform, which exists so that a
 # fit on a transformed predictor can be drawn on the recorded scale, has never
 # been asserted anywhere on the plotting path. It is asserted only on the
 # estimators, in test-ecx.R, test-nec.R, test-nsec.R, test-ecnsec.R and
@@ -188,6 +191,21 @@ test_that("the ecx annotation is transformed while the curve is not", {
   f <- transformed_response_fit(nec4param, "nec4param")
   plain <- suppressMessages(ggbnec_data(f, add_ecx = TRUE))
   scaled <- suppressMessages(ggbnec_data(f, add_ecx = TRUE,
+                                         xform = function(x) x * 100))
+  expect_equal(max(scaled$ecx_vals, na.rm = TRUE),
+               max(plain$ecx_vals, na.rm = TRUE) * 100, tolerance = 1e-8)
+})
+
+
+test_that("the model set returns its ecx annotation on the other scale too", {
+  # R/autoplot.R:360 passes xform to ecx() on the bayesmanecfit branch, outside
+  # the guard at :352. The single-fit pin above does not observe it.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with its siblings above.
+  skip_on_cran()
+  m <- transformed_response_manec(manec_example)
+  plain <- suppressMessages(ggbnec_data(m, add_ecx = TRUE))
+  scaled <- suppressMessages(ggbnec_data(m, add_ecx = TRUE,
                                          xform = function(x) x * 100))
   expect_equal(max(scaled$ecx_vals, na.rm = TRUE),
                max(plain$ecx_vals, na.rm = TRUE) * 100, tolerance = 1e-8)
