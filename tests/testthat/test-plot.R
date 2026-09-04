@@ -52,6 +52,37 @@ pl_x_ratio <- function(obj) {
 # and each is asserted here on what it changes rather than on the call
 # completing, which any value of the argument would satisfy.
 
+test_that("add_nec and add_ec10 decide what is annotated for a model set too", {
+  # R/plot.R:331-346 repeats the three-branch structure of :179-195 for a
+  # bayesmanecfit, and until this block was added nothing observed which
+  # annotation each branch drew: changing R/plot.R:337 to draw nec in the ec10
+  # branch -- the model-set analogue of the mutation the bayesnecfit block
+  # below names -- passed every assertion in this branch. The combined branch
+  # at :341-343 was executed by nothing.
+  #
+  # This was the fourth occasion in review on which a bayesmanecfit site was
+  # found uncovered after its bayesnecfit twin was covered.
+  skip_on_cran()
+  drawn <- list()
+  local_mocked_bindings(
+    abline = function(v = NULL, ...) drawn[[length(drawn) + 1L]] <<- v,
+    .package = "bayesnec"
+  )
+  suppressWarnings(pl_x_max(manec_example, add_nec = FALSE))
+  expect_length(drawn, 0)
+  suppressWarnings(pl_x_max(manec_example, add_nec = TRUE))
+  expect_length(drawn, 1)
+  expect_equal(unname(drawn[[1]]), unname(manec_example$w_ne), tolerance = 1e-8)
+  suppressWarnings(pl_x_max(manec_example, add_nec = FALSE, add_ec10 = TRUE))
+  expect_length(drawn, 2)
+  expect_false(isTRUE(all.equal(unname(drawn[[2]]),
+                                unname(manec_example$w_ne))))
+  suppressWarnings(pl_x_max(manec_example, add_nec = TRUE, add_ec10 = TRUE))
+  expect_length(drawn, 4)
+  expect_equal(unname(drawn[[3]]), unname(manec_example$w_ne), tolerance = 1e-8)
+  expect_equal(unname(drawn[[4]]), unname(drawn[[2]]), tolerance = 1e-8)
+})
+
 test_that("all_models draws a panel per candidate, named", {
   # Asserting only that the call is silent would pass just as well with
   # all_models = FALSE, and so would not detect the argument being ignored.
@@ -149,7 +180,10 @@ test_that("the lxform branch in plot() cannot be reached, on either class", {
   # is drawn only by these calls.
   expect_length(calls, 4)
   # Every call comes from the else branch, which always supplies at and labels.
-  # A reachable :153, :155, :306 or :308 would produce a call with neither.
+  # The dead calls are at R/plot.R:154 and :156 and R/plot.R:306 and :308. A
+  # reachable :154 or :306 would produce a call with neither name; a reachable
+  # :156 or :308 would produce one with at but no labels. Requiring both names
+  # excludes all four.
   expect_true(all(vapply(calls, function(nm) all(c("at", "labels") %in% nm),
                          logical(1))))
 })

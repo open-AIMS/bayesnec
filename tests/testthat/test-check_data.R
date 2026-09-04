@@ -128,7 +128,7 @@ test_that("a numeric group-level column errors from model.frame, not check_data"
 })
 
 
-test_that("check_custom_name is called and its result discarded", {
+test_that("the check_custom_name result is discarded", {
   # R/check_data.R:211 assigns custom_name <- check_custom_name(family) and
   # nothing reads it; custom_name occurs once in the file. check_custom_name()
   # is pure (R/helpers.R:18-24), so the call has no effect at all. The same
