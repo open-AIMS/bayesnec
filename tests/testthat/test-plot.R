@@ -111,6 +111,59 @@ test_that("add_nec and add_ec10 decide what is annotated", {
 })
 
 
+# ---- two guards in plot() that nothing can reach ----------------------------
+#
+# The same shape as the two dead branches this branch pins in check_data(): a
+# condition written, never fired. Neither has an issue yet.
+
+test_that("the lxform branch in plot() cannot be reached", {
+  # R/plot.R:152-157 and :304-309 compose an axis call for the case where
+  # lxform is not a function. R/plot.R:80-82 has already stopped on that input,
+  # and lxform is not reassigned between them, so the condition at :152 is
+  # always FALSE and the else at :164 always runs. The consequence is that
+  # axis(side = 1) and axis(side = 1, at = signif(xticks, 2)) are dead, and
+  # xticks is therefore always applied through the else branch instead.
+  #
+  # Pinned as current behaviour, not asserted to be correct.
+  skip_on_cran()
+  expect_error(pl_x_max(nec4param, lxform = "not a function"),
+               "lxform must be a function")
+  calls <- list()
+  local_mocked_bindings(
+    axis = function(...) calls[[length(calls) + 1L]] <<- names(list(...)),
+    .package = "bayesnec"
+  )
+  pl_x_max(nec4param)
+  pl_x_max(nec4param, xticks = c(0, 1, 2, 3))
+  # Every call comes from the else branch, which always supplies at and labels.
+  # A reachable :153 or :155 would produce a call with neither.
+  expect_true(all(vapply(calls, function(nm) all(c("at", "labels") %in% nm),
+                         logical(1))))
+})
+
+test_that("position_legend refuses the numeric vector its documentation names", {
+  # R/plot.R:42-43 documents position_legend as "a numeric vector indicating
+  # the location of the NEC or EC10 legend, as per a call to legend". The guard
+  # at :89-91 accepts only the eight keyword strings, so the documented form is
+  # refused. Pinned as current behaviour: the guard and the documentation
+  # disagree and neither is asserted anywhere else.
+  skip_on_cran()
+  expect_error(pl_x_max(nec4param, position_legend = c(0.5, 0.5)),
+               "legend positions must be one of")
+  # And the arguments to match() are the wrong way round -- the vector of valid
+  # keywords is matched into the user's value rather than the reverse -- so a
+  # value containing one valid keyword passes the guard however much else is in
+  # it, and fails later inside legend() with a message that names neither the
+  # argument nor the valid values. Same shape as #265: a condition that does not
+  # test what it reads as testing.
+  msg <- tryCatch(pl_x_max(nec4param,
+                           position_legend = c("topright", "bogus")),
+                  error = conditionMessage)
+  expect_match(msg, "'arg' must be of length 1")
+  expect_false(grepl("legend positions must be one of", msg))
+})
+
+
 # ---- xform on the predictor axis --------------------------------------------
 
 test_that("xform widens the predictor axis of a single fit", {
@@ -195,6 +248,27 @@ test_that("the model set draws its nec annotation off the axis too", {
   local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
                         .package = "bayesnec")
   axis_max <- pl_x_max(m, xform = function(x) x * 100)
+  expect_length(drawn, 3)
+  expect_gt(min(drawn), axis_max)
+})
+
+test_that("the ec10 annotation is drawn off the axis as well", {
+  # The other annotation. R/plot.R:130 transforms ec10 outside the guard,
+  # exactly as :131 does nec, and until this assertion was added the ec10 half
+  # of the claim made at the top of this file was not read: gating ec10 alone
+  # left every assertion in the branch passing.
+  #
+  # Measured on nec4param with xform = x * 100: the axis maximum is 3.35 and
+  # the EC10 is drawn beyond it.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with its siblings above.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  drawn <- NULL
+  local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
+                        .package = "bayesnec")
+  axis_max <- pl_x_max(f, add_nec = FALSE, add_ec10 = TRUE,
+                       xform = function(x) x * 100)
   expect_length(drawn, 3)
   expect_gt(min(drawn), axis_max)
 })

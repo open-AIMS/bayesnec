@@ -171,6 +171,29 @@ test_that("the model set returns its nec annotation on the other scale too", {
 })
 
 
+test_that("the ecx annotation is transformed while the curve is not", {
+  # The other annotation. R/autoplot.R:316 passes xform to ecx() outside the
+  # guard, exactly as :313 does to bind_nec(), and until this assertion was
+  # added the ecx half of the claim made at the top of this file was not read:
+  # gating ecx() alone left every assertion in the branch passing.
+  #
+  # add_ecx is asserted nowhere else in the suite either, so this is also the
+  # only observer of R/autoplot.R:315-318 and of bind_ecx().
+  #
+  # Measured on nec4param with xform = x * 100: max(x_e) is 3.22 with and
+  # without xform, while the largest ecx_vals changes from 1.56 to 156.4.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with its siblings above.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  plain <- suppressMessages(ggbnec_data(f, add_ecx = TRUE))
+  scaled <- suppressMessages(ggbnec_data(f, add_ecx = TRUE,
+                                         xform = function(x) x * 100))
+  expect_equal(max(scaled$ecx_vals, na.rm = TRUE),
+               max(plain$ecx_vals, na.rm = TRUE) * 100, tolerance = 1e-8)
+})
+
+
 # ---- autoplot itself --------------------------------------------------------
 
 test_that("autoplot returns a ggplot for both fit classes", {
