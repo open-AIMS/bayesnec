@@ -15,7 +15,7 @@
 # on the PREDICTOR axis -- but the nec and ec10 annotations are transformed
 # unconditionally at R/plot.R:130-131, outside that guard. The two halves of
 # the figure are therefore drawn on different scales, and the abline() at
-# R/plot.R:180 lands off the end of the axis. Both halves are asserted below,
+# R/plot.R:180 is drawn beyond the axis limit. Both halves are asserted below,
 # because a fix that corrects either one alone leaves the figure wrong.
 #
 # The issue records that this could only be read from source. It is reproduced
@@ -66,7 +66,9 @@ test_that("all_models draws a panel per candidate, named", {
   )
   pl_x_max(manec_example, all_models = TRUE)
   expect_true(all(names(manec_example$mod_fits) %in% labels))
-  # And not otherwise: the model-average plot draws one panel and names none.
+  # And not otherwise. The model-average plot does call legend(), at
+  # R/plot.R:333, but with the estimate string rather than a model name, so no
+  # candidate name appears.
   labels <- character()
   pl_x_max(manec_example, all_models = FALSE)
   expect_false(any(names(manec_example$mod_fits) %in% labels))
@@ -74,18 +76,35 @@ test_that("all_models draws a panel per candidate, named", {
 
 test_that("add_nec and add_ec10 decide what is annotated", {
   # Same reasoning: silence is not evidence that either argument was read.
-  # The three branches at R/plot.R:179-192 are mutually exclusive, so counting
-  # the abline() calls says which one was taken.
+  # The three branches at R/plot.R:179-192 are mutually exclusive, so the
+  # abline() calls are counted AND their values identified. Counting alone does
+  # not discriminate: one call is drawn whether the branch taken is the nec or
+  # the ec10, so swapping R/plot.R:190 to draw ec10 in the nec branch would
+  # pass a count-only assertion.
   skip_on_cran()
   drawn <- list()
   local_mocked_bindings(
     abline = function(v = NULL, ...) drawn[[length(drawn) + 1L]] <<- v,
     .package = "bayesnec"
   )
+  # Neither annotation: no vertical line at all.
   pl_x_max(nec4param, add_nec = FALSE)
   expect_length(drawn, 0)
-  pl_x_max(nec4param, add_nec = TRUE, add_ec10 = TRUE)
+  # The nec alone, drawn at the NEC estimate and its two bounds.
+  pl_x_max(nec4param, add_nec = TRUE)
+  expect_length(drawn, 1)
+  expect_equal(unname(drawn[[1]]), unname(nec4param$ne), tolerance = 1e-8)
+  # The ec10 alone. manec_example is gaussian, so R/plot.R:114-115 takes the
+  # relative branch (R/plot.R:114-115); the value is not asserted here beyond
+  # its being a different one, because ecx() is under test in test-ecx.R.
+  pl_x_max(nec4param, add_nec = FALSE, add_ec10 = TRUE)
   expect_length(drawn, 2)
+  expect_false(isTRUE(all.equal(unname(drawn[[2]]), unname(nec4param$ne))))
+  # Both, in the documented order: the nec in red, then the ec10 in orange.
+  pl_x_max(nec4param, add_nec = TRUE, add_ec10 = TRUE)
+  expect_length(drawn, 4)
+  expect_equal(unname(drawn[[3]]), unname(nec4param$ne), tolerance = 1e-8)
+  expect_equal(unname(drawn[[4]]), unname(drawn[[2]]), tolerance = 1e-8)
 })
 
 

@@ -256,16 +256,27 @@ test_that("is_censored returns a scalar FALSE that recycles", {
 
 test_that("get_priors builds its priors from the corrected response", {
   # R/get_priors.R:163. The Gamma zero shift must reach the prior, or top and
-  # bot are derived from a response the fit will never see.
+  # nec are derived from a response the fit will never see.
+  #
+  # Asserted by equality against the same data with the shift applied by hand,
+  # which is the only form of the assertion that discriminates. A finiteness
+  # check does not: the prior is finite either way. Measured, the top prior is
+  # gamma(2, 0.3077) from the corrected response and gamma(2, 0.25) from the
+  # uncorrected one, so the two frames differ if and only if the correction is
+  # bypassed.
   d <- cd_data_zero()
+  d_shifted <- d
+  # min(y[y > 0]) is 3, so check_data() shifts the zeros to 0.3.
+  d_shifted$y[d_shifted$y == 0] <- 0.3
   pr <- suppressMessages(
     get_priors(y ~ crf(x, model = "nec3param"), data = d,
                family = Gamma(link = "identity"))
   )
+  pr_shifted <- get_priors(y ~ crf(x, model = "nec3param"), data = d_shifted,
+                           family = Gamma(link = "identity"))
   expect_s3_class(pr, "brmsprior")
-  expect_true(all(is.finite(as.numeric(
-    gsub(".*\\(|,.*|\\)", "", pr$prior[pr$nlpar == "bot"])
-  ))))
+  expect_identical(pr$prior, pr_shifted$prior)
+  expect_identical(pr$nlpar, pr_shifted$nlpar)
 })
 
 test_that("has_family_changed reports a correction it then discards", {

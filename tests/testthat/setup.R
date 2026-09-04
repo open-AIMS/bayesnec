@@ -53,9 +53,12 @@ transformed_response_fit <- function(fit, model) {
 # whether a variable was transformed, and it is not safe for reading posterior
 # quantities off the fit. Do not reuse it for anything else.
 
-# The same fixture for a model set. Both plotting paths read the formula off
+# The same fixture for a model set. On the model-average branch, which is the
+# one the pinning tests use, both plotting paths read the formula off
 # mod_fits[[1]] alone (R/plot.R:258, R/autoplot.R:347), so that is the only
-# element that has to change.
+# element that has to change. Not so with all_models = TRUE: plot() then draws
+# each candidate through plot.bayesnecfit, which reads that candidate's own
+# formula at R/plot.R:118. Do not use this fixture on that branch.
 transformed_response_manec <- function(manec) {
   mod <- names(manec$mod_fits)[1]
   manec$mod_fits[[1]] <- transformed_response_fit(manec$mod_fits[[1]], mod)
