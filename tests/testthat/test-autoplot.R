@@ -151,6 +151,26 @@ test_that("the nec annotation is transformed while the axis is not", {
 })
 
 
+test_that("the model set returns its nec annotation on the other scale too", {
+  # The bayesmanecfit branch has the same split: R/autoplot.R:352 guards the
+  # curve and R/autoplot.R:357 passes xform to bind_nec() unconditionally.
+  # Asserted separately from the bayesnecfit case above for the same reason:
+  # correcting one pair of lines and not the other is the half-fix this file
+  # exists to catch.
+  #
+  # Measured on manec_example with xform = x * 100: max(x_e) is 3.22 with and
+  # without xform, while the largest nec_vals changes from 1.53 to 152.7.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with the sibling above it.
+  skip_on_cran()
+  m <- transformed_response_manec(manec_example)
+  plain <- suppressMessages(ggbnec_data(m))
+  scaled <- suppressMessages(ggbnec_data(m, xform = function(x) x * 100))
+  expect_equal(max(scaled$nec_vals, na.rm = TRUE),
+               max(plain$nec_vals, na.rm = TRUE) * 100, tolerance = 1e-8)
+})
+
+
 # ---- autoplot itself --------------------------------------------------------
 
 test_that("autoplot returns a ggplot for both fit classes", {

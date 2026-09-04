@@ -4,9 +4,9 @@
 #
 # The base-graphics paths cannot be inspected by reading a returned object, so
 # the assertions here read the device instead: plotting to a null pdf() device
-# and reading par("usr") gives the x-axis limits the call actually produced.
+# and reading par("usr") gives the x-axis limits the call produced.
 # That is enough to assert the one thing about these paths that has been
-# reported wrong -- whether xform reached the predictor axis -- without
+# reported wrong, whether xform reached the predictor axis, without
 # comparing images.
 #
 # #268 is the defect, and it is not that xform is ignored. The decision to
@@ -177,12 +177,35 @@ test_that("the nec annotation is drawn off the end of the axis", {
   expect_gt(min(drawn), axis_max)
 })
 
+test_that("the model set draws its nec annotation off the axis too", {
+  # The bayesmanecfit branch has the same split: R/plot.R:279 guards the axis
+  # and R/plot.R:283 transforms the weighted nec unconditionally. Asserted
+  # separately from the bayesnecfit case above because it is a separate pair of
+  # lines -- correcting one pair and not the other is exactly the half-fix this
+  # file exists to catch, and until this assertion was added the model-set
+  # annotation was the one site of the four that nothing observed.
+  #
+  # Measured on manec_example with xform = x * 100: the axis maximum is 3.35
+  # and the weighted NEC and its bounds are drawn at 145, 74.9 and 152.7.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with the sibling above it.
+  skip_on_cran()
+  m <- transformed_response_manec(manec_example)
+  drawn <- NULL
+  local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
+                        .package = "bayesnec")
+  axis_max <- pl_x_max(m, xform = function(x) x * 100)
+  expect_length(drawn, 3)
+  expect_gt(min(drawn), axis_max)
+})
+
 test_that("plot and autoplot make the xform decision the same way", {
-  # The two paths make that decision independently, in four places altogether.
-  # This is what catches one being fixed for #268 without the other, so it is
-  # asserted on the fixture where the guard actually fires: with an
-  # untransformed formula both paths apply xform whatever the guard says, and
-  # the comparison is vacuous.
+  # The two paths make that decision independently. Today this assertion is
+  # implied by the two axis pins above -- both ratios are pinned to 1
+  # separately, so it cannot fail unless one of those fails first -- and it is
+  # kept for what happens after #268 is fixed. Those two pins are then inverted
+  # to 100 or deleted; this one is not, and it goes on requiring the two paths
+  # to agree whatever scale the fix settles on.
   #
   # Ratios rather than limits, so the base path's axis expansion does not enter
   # the comparison.

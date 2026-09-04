@@ -131,7 +131,7 @@ test_that("a numeric group-level column errors from model.frame, not check_data"
 # ---- the response boundary corrections --------------------------------------
 #
 # The arithmetic and the messaging are asserted separately, because they do not
-# agree: one of the three corrections speaks and two are silent. That asymmetry
+# agree: one of the three corrections is announced and two are not. That asymmetry
 # is what #93 was reopened on, so it is pinned here as a value rather than left
 # as a claim in an issue comment.
 
