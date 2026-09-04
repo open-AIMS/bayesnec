@@ -41,6 +41,13 @@ test_that("ggbnec_data returns the same frame shape for a model set", {
   skip_on_cran()
   d <- suppressMessages(ggbnec_data(manec_example))
   expect_true(all(c("x_e", "y_e", "y_ci", "x_r", "y_r") %in% names(d)))
+  # add_nec on the model-set branch, R/autoplot.R:356. Asserted here rather
+  # than in a block of its own so the frame above is computed once: making that
+  # condition unconditional failed nothing until this line was added, while its
+  # bayesnecfit twin at :312 was already observed.
+  expect_true("nec_vals" %in% names(d))
+  without <- suppressMessages(ggbnec_data(manec_example, add_nec = FALSE))
+  expect_false("nec_vals" %in% names(without))
 })
 
 test_that("the nec annotation is present by default and suppressible", {
@@ -73,8 +80,16 @@ test_that("xform is applied to the predictor axis of a single fit", {
 
 test_that("xform is applied to the predictor axis of a model set", {
   skip_on_cran()
-  expect_equal(gg_x_max(manec_example, xform = function(x) x * 100),
-               gg_x_max(manec_example) * 100, tolerance = 1e-8)
+  plain <- suppressMessages(ggbnec_data(manec_example))
+  scaled <- suppressMessages(ggbnec_data(manec_example,
+                                         xform = function(x) x * 100))
+  expect_equal(max(scaled$x_e, na.rm = TRUE),
+               max(plain$x_e, na.rm = TRUE) * 100, tolerance = 1e-8)
+  # And the raw data column, R/autoplot.R:354. Dropping x_r from that mutate()
+  # failed nothing until this line was added, while its bayesnecfit twin at
+  # :310 was already observed.
+  expect_equal(max(scaled$x_r, na.rm = TRUE),
+               max(plain$x_r, na.rm = TRUE) * 100, tolerance = 1e-8)
 })
 
 test_that("xform reaches the raw data as well as the fitted curve", {

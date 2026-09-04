@@ -213,6 +213,14 @@ test_that("position_legend refuses the numeric vector its documentation names", 
                   error = conditionMessage)
   expect_match(msg, "'arg' must be of length 1")
   expect_false(grepl("legend positions must be one of", msg))
+  # Both halves on both classes. Asserting the refusal on both and the
+  # inversion on one is how the earlier bayesmanecfit gaps in this file arose:
+  # repairing R/plot.R:232 alone left every assertion here passing.
+  msg_m <- tryCatch(pl_x_max(manec_example,
+                             position_legend = c("topright", "bogus")),
+                    error = conditionMessage)
+  expect_match(msg_m, "'arg' must be of length 1")
+  expect_false(grepl("Legend positions must be one of", msg_m))
 })
 
 
