@@ -1,0 +1,370 @@
+# plot() for the bayesnec classes had no test file of its own in any release.
+# What coverage existed asserted that the call did not error; nothing asserted
+# what was drawn.
+#
+# The base-graphics paths cannot be inspected by reading a returned object, so
+# the assertions here read the device instead: plotting to a null pdf() device
+# and reading par("usr") gives the x-axis limits the call produced.
+# That is enough to assert the one thing about these paths that has been
+# reported wrong, whether xform reached the predictor axis, without
+# comparing images.
+#
+# #268 is the defect, and it is not that xform is ignored. The decision to
+# apply it is made with an all-or-nothing guard on the formula as a whole
+# (R/plot.R:125 and :279), so a transformation on the RESPONSE suppresses xform
+# on the PREDICTOR axis -- but the nec and ec10 annotations are transformed
+# unconditionally at R/plot.R:130-131, outside that guard. The two halves of
+# the figure are therefore drawn on different scales, and the abline() at
+# R/plot.R:180 is drawn beyond the axis limit. Both halves are asserted below,
+# because a fix that corrects either one alone leaves the figure wrong.
+#
+# The issue records that this could only be read from source. It is reproduced
+# here with no fitting, using transformed_response_fit() from setup.R.
+#
+# Nothing here fits a model. Every assertion runs off nec4param and
+# manec_example, both built in setup.R.
+
+# The x-axis limits the call produced, read off the device rather than from a
+# returned object, because these are base-graphics methods that return nothing.
+# No suppression: an assertion of silence made through a helper that suppresses
+# messages cannot fail, and these methods are silent today.
+pl_x_max <- function(obj, ...) {
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
+  plot(obj, ...)
+  par("usr")[2]
+}
+
+# The factor by which xform changed the axis. A ratio rather than a pair of
+# limits: it is scale-free, so it does not encode base graphics' 4% default
+# axis expansion the way a comparison against a fixed number would, and it is
+# directly comparable with the same ratio taken from the ggplot2 path.
+pl_x_ratio <- function(obj) {
+  pl_x_max(obj, xform = function(x) x * 100) / pl_x_max(obj)
+}
+
+
+# ---- the argument combinations nothing else covers --------------------------
+#
+# plot() on a plain bayesnecfit and bayesmanecfit is already asserted silent
+# and invisible in test-bayesnec_methods.R and test-bayesmanec_methods.R, so it
+# is not repeated. all_models, add_nec and add_ec10 are asserted nowhere else,
+# and each is asserted here on what it changes rather than on the call
+# completing, which any value of the argument would satisfy.
+
+test_that("add_nec and add_ec10 decide what is annotated for a model set too", {
+  # R/plot.R:331-346 repeats the three-branch structure of :179-195 for a
+  # bayesmanecfit, and until this block was added nothing observed which
+  # annotation each branch drew: changing R/plot.R:337 to draw nec in the ec10
+  # branch -- the model-set analogue of the mutation the bayesnecfit block
+  # below names -- passed every assertion in this branch. The combined branch
+  # at :341-343 was executed by nothing.
+  #
+  # This was the fourth occasion in review on which a bayesmanecfit site was
+  # found uncovered after its bayesnecfit twin was covered.
+  skip_on_cran()
+  drawn <- list()
+  local_mocked_bindings(
+    abline = function(v = NULL, ...) drawn[[length(drawn) + 1L]] <<- v,
+    .package = "bayesnec"
+  )
+  suppressWarnings(pl_x_max(manec_example, add_nec = FALSE))
+  expect_length(drawn, 0)
+  suppressWarnings(pl_x_max(manec_example, add_nec = TRUE))
+  expect_length(drawn, 1)
+  expect_equal(unname(drawn[[1]]), unname(manec_example$w_ne), tolerance = 1e-8)
+  suppressWarnings(pl_x_max(manec_example, add_nec = FALSE, add_ec10 = TRUE))
+  expect_length(drawn, 2)
+  expect_false(isTRUE(all.equal(unname(drawn[[2]]),
+                                unname(manec_example$w_ne))))
+  suppressWarnings(pl_x_max(manec_example, add_nec = TRUE, add_ec10 = TRUE))
+  expect_length(drawn, 4)
+  expect_equal(unname(drawn[[3]]), unname(manec_example$w_ne), tolerance = 1e-8)
+  expect_equal(unname(drawn[[4]]), unname(drawn[[2]]), tolerance = 1e-8)
+})
+
+test_that("all_models draws a panel per candidate, named", {
+  # Asserting only that the call is silent would pass just as well with
+  # all_models = FALSE, and so would not detect the argument being ignored.
+  # R/plot.R:253 labels each panel with the model name, and that legend() call
+  # is reached only from the all_models loop, so the names it is given are
+  # evidence of which candidates were drawn.
+  skip_on_cran()
+  labels <- character()
+  local_mocked_bindings(
+    legend = function(..., legend = NULL) labels <<- c(labels, as.character(legend)),
+    .package = "bayesnec"
+  )
+  pl_x_max(manec_example, all_models = TRUE)
+  expect_true(all(names(manec_example$mod_fits) %in% labels))
+  # And not otherwise. The model-average plot does call legend(), at
+  # R/plot.R:333, but with the estimate string rather than a model name, so no
+  # candidate name appears.
+  labels <- character()
+  pl_x_max(manec_example, all_models = FALSE)
+  expect_false(any(names(manec_example$mod_fits) %in% labels))
+})
+
+test_that("add_nec and add_ec10 decide what is annotated", {
+  # Same reasoning: silence is not evidence that either argument was read.
+  # The three branches at R/plot.R:179-195 are mutually exclusive, so the
+  # abline() calls are counted AND their values identified. Counting alone does
+  # not discriminate: one call is drawn whether the branch taken is the nec at
+  # R/plot.R:180 or the ec10 at :185, so drawing ec10 from the nec branch would
+  # pass a count-only assertion.
+  skip_on_cran()
+  drawn <- list()
+  local_mocked_bindings(
+    abline = function(v = NULL, ...) drawn[[length(drawn) + 1L]] <<- v,
+    .package = "bayesnec"
+  )
+  # Neither annotation: no vertical line at all.
+  pl_x_max(nec4param, add_nec = FALSE)
+  expect_length(drawn, 0)
+  # The nec alone, drawn at the NEC estimate and its two bounds.
+  pl_x_max(nec4param, add_nec = TRUE)
+  expect_length(drawn, 1)
+  expect_equal(unname(drawn[[1]]), unname(nec4param$ne), tolerance = 1e-8)
+  # The ec10 alone. nec4param is gaussian, so R/plot.R:114-115 takes the
+  # relative branch. The value is not asserted here beyond its being a
+  # different one, because ecx() is under test in test-ecx.R.
+  pl_x_max(nec4param, add_nec = FALSE, add_ec10 = TRUE)
+  expect_length(drawn, 2)
+  expect_false(isTRUE(all.equal(unname(drawn[[2]]), unname(nec4param$ne))))
+  # Both, in the order R/plot.R:189-191 draws them: the nec in red, then the
+  # ec10 in orange. The second call must repeat the ec10 of the previous block;
+  # ecx() on a bayesnecfit reads stored draws with no resampling, so the value
+  # is deterministic across the two plot() calls.
+  pl_x_max(nec4param, add_nec = TRUE, add_ec10 = TRUE)
+  expect_length(drawn, 4)
+  expect_equal(unname(drawn[[3]]), unname(nec4param$ne), tolerance = 1e-8)
+  expect_equal(unname(drawn[[4]]), unname(drawn[[2]]), tolerance = 1e-8)
+})
+
+
+# ---- two guards in plot() that nothing can reach ----------------------------
+#
+# The same shape as the two dead branches this branch pins in check_data(): a
+# condition written, never fired. Neither has an issue yet.
+
+test_that("the lxform branch in plot() cannot be reached, on either class", {
+  # R/plot.R:152-157 and :304-309 compose an axis call for the case where
+  # lxform is not a function. Each is preceded by a guard that has already
+  # stopped on that input -- R/plot.R:80-82 for a bayesnecfit and :222-224 for
+  # a bayesmanecfit -- and lxform is not reassigned between them, so both
+  # conditions are always FALSE and the else at :164 and :316 always runs. The
+  # consequence is that axis(side = 1) and axis(side = 1, at = signif(xticks,
+  # 2)) are dead at both sites, and xticks is always applied through the else.
+  #
+  # Both classes are asserted. Pinning one and not the other is how the
+  # bayesmanecfit half of #268 escaped notice for six review rounds.
+  #
+  # Pinned as current behaviour, not asserted to be correct.
+  skip_on_cran()
+  expect_error(pl_x_max(nec4param, lxform = "not a function"),
+               "lxform must be a function")
+  expect_error(pl_x_max(manec_example, lxform = "not a function"),
+               "lxform must be a function")
+  calls <- list()
+  local_mocked_bindings(
+    axis = function(...) calls[[length(calls) + 1L]] <<- names(list(...)),
+    .package = "bayesnec"
+  )
+  pl_x_max(nec4param)
+  pl_x_max(nec4param, xticks = c(0, 1, 2, 3))
+  pl_x_max(manec_example)
+  pl_x_max(manec_example, xticks = c(0, 1, 2, 3))
+  # The count first. all() of an empty list is TRUE, so without this the
+  # assertion below would also pass if axis() were never called at all -- which
+  # is a reachable state, since xaxt = "n" is set at R/plot.R:145 and the axis
+  # is drawn only by these calls.
+  expect_length(calls, 4)
+  # Every call comes from the else branch, which always supplies at and labels.
+  # The dead calls are at R/plot.R:154 and :156 and R/plot.R:306 and :308. A
+  # reachable :154 or :306 would produce a call with neither name; a reachable
+  # :156 or :308 would produce one with at but no labels. Requiring both names
+  # excludes all four.
+  expect_true(all(vapply(calls, function(nm) all(c("at", "labels") %in% nm),
+                         logical(1))))
+})
+
+test_that("position_legend refuses the numeric vector its documentation names", {
+  # R/plot.R:42-43 documents position_legend as "a numeric vector indicating
+  # the location of the NEC or EC10 legend, as per a call to legend". The guard
+  # at :89-91 accepts only the eight keyword strings, so the documented form is
+  # refused. Pinned as current behaviour: the guard and the documentation
+  # disagree and neither is asserted anywhere else.
+  skip_on_cran()
+  expect_error(pl_x_max(nec4param, position_legend = c(0.5, 0.5)),
+               "legend positions must be one of")
+  # R/plot.R:232-235 is the same guard for a bayesmanecfit, with the same
+  # inversion and a differently worded message. Asserted so that the issue this
+  # becomes states both call sites.
+  expect_error(pl_x_max(manec_example, position_legend = c(0.5, 0.5)),
+               "Legend positions must be one of")
+  # And the arguments to match() are the wrong way round -- the vector of valid
+  # keywords is matched into the user's value rather than the reverse -- so a
+  # value containing one valid keyword passes the guard however much else is in
+  # it, and fails later inside legend() with a message that names neither the
+  # argument nor the valid values. Same shape as #265: a condition that does not
+  # test what it reads as testing.
+  msg <- tryCatch(pl_x_max(nec4param,
+                           position_legend = c("topright", "bogus")),
+                  error = conditionMessage)
+  expect_match(msg, "'arg' must be of length 1")
+  expect_false(grepl("legend positions must be one of", msg))
+  # Both halves on both classes. Asserting the refusal on both and the
+  # inversion on one is how the earlier bayesmanecfit gaps in this file arose:
+  # repairing R/plot.R:232 alone left every assertion here passing.
+  msg_m <- tryCatch(pl_x_max(manec_example,
+                             position_legend = c("topright", "bogus")),
+                    error = conditionMessage)
+  expect_match(msg_m, "'arg' must be of length 1")
+  expect_false(grepl("Legend positions must be one of", msg_m))
+})
+
+
+# ---- xform on the predictor axis --------------------------------------------
+
+test_that("xform widens the predictor axis of a single fit", {
+  skip_on_cran()
+  expect_equal(pl_x_ratio(nec4param), 100, tolerance = 1e-6)
+})
+
+test_that("xform widens the predictor axis of a model set", {
+  skip_on_cran()
+  expect_equal(pl_x_ratio(manec_example), 100, tolerance = 1e-6)
+})
+
+
+# ---- #268, pinned on both halves of the figure ------------------------------
+
+test_that("a transformed response suppresses xform on the predictor axis", {
+  # PINS THE #268 DEFECT on the base-plot path for a bayesnecfit
+  # (the guard at R/plot.R:125). xform is accepted and silently dropped from
+  # the axis, so the data is drawn on the fitted scale while the caller asked
+  # for the recorded one.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED: the ratio should then be 100, as in
+  # "xform widens the predictor axis of a single fit" above.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  expect_equal(pl_x_ratio(f), 1, tolerance = 1e-6)
+})
+
+test_that("a transformed response suppresses xform for a model set too", {
+  # PINS THE #268 DEFECT on the bayesmanecfit branch (the guard at
+  # R/plot.R:279). Same inversion applies.
+  skip_on_cran()
+  m <- transformed_response_manec(manec_example)
+  expect_equal(pl_x_ratio(m), 1, tolerance = 1e-6)
+})
+
+test_that("the nec annotation is drawn off the end of the axis", {
+  # PINS THE OTHER HALF OF #268, which the issue does not state and the PR
+  # that added this file originally described as xform being "silently
+  # skipped". It is not skipped. R/plot.R:130-131 apply it to nec and ec10
+  # unconditionally, outside the guard, so with a transformed response the
+  # abline() at R/plot.R:180 is drawn at the transformed NEC on an axis left
+  # untransformed, and the line is not on the figure at all.
+  #
+  # abline() is intercepted rather than the value recomputed here: what has to
+  # be asserted is the number the package passed to it, not a number this file
+  # worked out for itself, which would still pass if R/plot.R:130-131 changed.
+  # The suite already mocks this way in test-fit_bayesnec.R and
+  # test-inits_functions.R.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED: the drawn NEC must then fall inside
+  # the axis, whichever scale the fix settles on. A fix that changes only the
+  # guard, or only R/plot.R:130-131, fails one of the two tests and leaves the
+  # other passing, which is the point of asserting both.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  drawn <- NULL
+  local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
+                        .package = "bayesnec")
+  axis_max <- pl_x_max(f, xform = function(x) x * 100)
+  # Measured on nec4param: the axis maximum is 3.35 and the NEC line, its lower
+  # and its upper bound are drawn at 146, 136 and 153.
+  expect_length(drawn, 3)
+  expect_gt(min(drawn), axis_max)
+})
+
+test_that("the model set draws its nec annotation off the axis too", {
+  # The bayesmanecfit branch has the same split: R/plot.R:279 guards the axis
+  # and R/plot.R:283 transforms the weighted nec unconditionally. Asserted
+  # separately from the bayesnecfit case above because it is a separate pair of
+  # lines -- correcting one pair and not the other is exactly the half-fix this
+  # file exists to catch, and until this assertion was added the model-set
+  # annotation was the one site of the four that nothing observed.
+  #
+  # Measured on manec_example with xform = x * 100: the axis maximum is 3.35
+  # and the weighted NEC and its bounds are drawn at 145, 74.9 and 152.7.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with the sibling above it.
+  skip_on_cran()
+  m <- transformed_response_manec(manec_example)
+  drawn <- NULL
+  local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
+                        .package = "bayesnec")
+  axis_max <- pl_x_max(m, xform = function(x) x * 100)
+  expect_length(drawn, 3)
+  expect_gt(min(drawn), axis_max)
+})
+
+test_that("the ec10 annotation is drawn off the axis as well", {
+  # The other annotation. R/plot.R:130 transforms ec10 outside the guard,
+  # exactly as :131 does nec, and until this assertion was added the ec10 half
+  # of the claim made at the top of this file was not read: gating ec10 alone
+  # left every assertion in the branch passing.
+  #
+  # Measured on nec4param with xform = x * 100: the axis maximum is 3.35 and
+  # the EC10 is drawn beyond it.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with its siblings above.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  drawn <- NULL
+  local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
+                        .package = "bayesnec")
+  axis_max <- pl_x_max(f, add_nec = FALSE, add_ec10 = TRUE,
+                       xform = function(x) x * 100)
+  expect_length(drawn, 3)
+  expect_gt(min(drawn), axis_max)
+})
+
+test_that("the model set draws its ec10 annotation off the axis too", {
+  # The fourth and last of the annotation sites: R/plot.R:284 transforms ec10
+  # on the bayesmanecfit branch, outside the guard at :279. Adding the
+  # single-fit ec10 pin alone left this one unobserved, which is the third time
+  # in this review that a bayesmanecfit site was missed after its bayesnecfit
+  # twin was covered.
+  #
+  # INVERT THIS TEST WHEN #268 IS FIXED, with its siblings above.
+  skip_on_cran()
+  m <- transformed_response_manec(manec_example)
+  drawn <- NULL
+  local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
+                        .package = "bayesnec")
+  axis_max <- suppressWarnings(
+    pl_x_max(m, add_nec = FALSE, add_ec10 = TRUE, xform = function(x) x * 100)
+  )
+  expect_length(drawn, 3)
+  expect_gt(min(drawn), axis_max)
+})
+
+test_that("plot and autoplot make the xform decision the same way", {
+  # The two paths make that decision independently. Today this assertion is
+  # implied by the two axis pins above -- both ratios are pinned to 1
+  # separately, so it cannot fail unless one of those fails first -- and it is
+  # kept for what happens after #268 is fixed. Those two pins are then inverted
+  # to 100 or deleted; this one is not, and it goes on requiring the two paths
+  # to agree whatever scale the fix settles on.
+  #
+  # Ratios rather than limits, so the base path's axis expansion does not enter
+  # the comparison.
+  skip_on_cran()
+  f <- transformed_response_fit(nec4param, "nec4param")
+  gg_ratio <- gg_x_max(f, xform = function(x) x * 100) / gg_x_max(f)
+  expect_equal(pl_x_ratio(f), gg_ratio, tolerance = 1e-6)
+})
