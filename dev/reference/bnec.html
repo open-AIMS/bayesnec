@@ -116,7 +116,13 @@ R formula or an actual <code><a href="https://rdrr.io/r/stats/formula.html" clas
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></code> containing the data to use with
-the <code>formula</code>.</p></dd>
+the <code>formula</code>. Every variable the <code>formula</code> names must be
+complete: a row with an <code>NA</code> or <code>NaN</code> in any of them is refused
+rather than removed, so that the fit is never run on a smaller sample than
+was supplied without the user having chosen that. An <code>Inf</code> in the
+predictor or the response is refused as well. Apply
+<code><a href="https://rdrr.io/r/stats/na.fail.html" class="external-link">na.omit</a></code> before calling <code>bnec</code> where those rows
+are to be discarded.</p></dd>
 
 
 <dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>
@@ -509,13 +515,23 @@ column. <code>crf(log(x))</code> reaches <span class="pkg">bayesnec</span>'s own
 evaluated by <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> instead, which <span class="pkg">bayesnec</span> does not check, so
 the <code>-Inf</code> reaches Stan. Add the offset of your choice to the data and
 name that column in the formula.</p>
-<p><b>NAs are thrown away</b></p>
-<p>Stan's default behaviour is to fail when the input data contains NAs. For
-that reason <span class="pkg">brms</span> excludes any NAs from input data prior to fitting,
-and does not allow them back in as is the case with e.g. <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">stats::lm</a></code> and
-<code>na.action = exclude</code>. So we advise that you exclude any NAs in your
-data prior to fitting because if you so wish that should facilitate merging
-predictions back onto your original dataset.</p>
+<p><b>Missing values</b></p>
+<p>A row with an <code>NA</code> or <code>NaN</code> in any variable the <code>formula</code>
+names is refused rather than removed, and so is an <code>Inf</code> in the
+predictor or the response. The error for a missing value reports how many
+rows held one and which they were, by row name; the error for a non-finite
+value names the column.</p>
+<p><code><a href="https://rdrr.io/r/stats/model.frame.html" class="external-link">model.frame</a></code> drops incomplete cases before
+<span class="pkg">bayesnec</span> is given the data, so until version 2.2.0 an <code>NA</code> left
+the fit running on fewer rows than were supplied with nothing said, while an
+<code>Inf</code> was refused. Both are now refused, so that the sample the
+estimates are derived from is the user's decision and is visible in the
+script.</p>
+<p>Apply <code><a href="https://rdrr.io/r/stats/na.fail.html" class="external-link">na.omit</a></code> to the data frame before calling
+<code>bnec</code> where those rows are to be discarded. The frame that results is
+the one the fit is derived from, so predictions align with it row for row:
+<span class="pkg">brms</span> excludes NAs prior to fitting and does not pad the predictions
+back out, as <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">stats::lm</a></code> does with <code>na.action = na.exclude</code>.</p>
     </div>
     <div id="the-link">
     <h2>The link</h2>

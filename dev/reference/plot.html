@@ -146,8 +146,14 @@ estimated NEC value and 95% credible intervals should be added to the plot.</p><
 
 
 <dt id="arg-position-legend">position_legend<a class="anchor" aria-label="anchor" href="#arg-position-legend"></a></dt>
-<dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector indicating the
-location of the NEC or EC10 legend, as per a call to legend.</p></dd>
+<dd><p>Where to draw the NEC or EC10 legend, in either the
+keyword form or the coordinate form <code><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></code> accepts:
+a single keyword out of <code>"left"</code>, <code>"topleft"</code>, <code>"top"</code>,
+<code>"topright"</code>, <code>"right"</code>, <code>"bottomright"</code>,
+<code>"bottom"</code> and <code>"bottomleft"</code>, or a <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code>
+vector of length two giving the x and y coordinates of the legend in user
+units. <code>legend</code>'s ninth keyword, <code>"center"</code>, is not accepted;
+give the coordinates instead.</p></dd>
 
 
 <dt id="arg-add-ec-">add_ec10<a class="anchor" aria-label="anchor" href="#arg-add-ec-"></a></dt>
