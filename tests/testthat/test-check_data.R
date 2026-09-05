@@ -29,6 +29,10 @@ cd_run <- function(formula, data, family, model = "nec3param") {
   check_data(cd_bdat(formula, data), family, model)
 }
 
+# The missing-value refusal, as a regex, so the count and the rows can be
+# asserted around it without repeating the fixed part.
+cd_missing_msg <- "row\\(s\\) with missing values \\(NA or NaN\\), at row\\(s\\)"
+
 # The messages check_data() emits, as a character vector. Several corrections
 # are silent, and asserting the absence of a message is half of what this file
 # is for, so the helper returns them rather than swallowing them.
@@ -66,17 +70,61 @@ test_that("a non-finite response is refused, naming the response", {
                "response column contains values that are not finite")
 })
 
-test_that("an NA or NaN row is dropped by model.frame, not caught by the check", {
-  # The finiteness guard sees only what model.frame() passes it, and
-  # model.frame() drops incomplete cases first. So Inf reaches the guard and is
-  # refused, while NA and NaN are removed silently and the fit proceeds on
-  # fewer rows than the user supplied. Pinned because the two behave
-  # differently and neither is announced; it is the same class of gap as #271,
-  # where a disp() sub-model is not checked for finiteness at all.
+test_that("an NA or NaN row is refused, and the row is named", {
+  # model.frame() removes incomplete cases before check_data() is given the
+  # data, so until #278 an NA or NaN left the fit running on fewer rows than
+  # were supplied with nothing said, while Inf was refused. Both are now
+  # refused. The rows model.frame() removed are read off the na.action
+  # attribute, which is the only remaining evidence that they existed, so the
+  # message can name them.
   d <- cd_data_zero()
   d$y[1] <- NaN
-  res <- cd_run(y ~ crf(x, model = "nec3param"), d, gaussian())
-  expect_identical(nrow(res$mod_dat), nrow(d) - 1L)
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
+               paste("1", cd_missing_msg, "1"))
+  # NA in the predictor is refused on the same route, and more than one row is
+  # counted and named rather than only the first.
+  d2 <- cd_data_zero()
+  d2$x[c(2, 7)] <- NA
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d2, gaussian()),
+               paste("2", cd_missing_msg, "2, 7"))
+  # The remedy is named, since the user has to act on it: dropping the rows is
+  # no longer done for them.
+  msg <- tryCatch(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
+                  error = conditionMessage)
+  expect_match(msg, "remove or impute those rows")
+  # And no function is named, because three of them reach this check: bnec()
+  # and bnec_group() before they fit anything, and get_priors() per model.
+  expect_false(grepl("The function bnec", msg))
+})
+
+test_that("the rows are reported by name, not by position", {
+  # names(attr(data, "na.action")) holds the row names and its values hold the
+  # positions. The name is what the user sees in their own data frame, and
+  # where bnec() has been handed a subset -- one level of a bnec_group() call
+  # -- a position indexes the subset and names no row of the data supplied.
+  d <- cd_data_zero()
+  rownames(d) <- paste0("s", seq_len(nrow(d)) + 100L)
+  d$y[3] <- NA
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
+               paste("1", cd_missing_msg, "s103"))
+})
+
+test_that("an NA reaching the guard directly is named by column", {
+  # The na.action attribute is absent when the user has set
+  # options(na.action = "na.pass"), so the finiteness guard is the only thing
+  # that sees the missing value. It reads is.finite() elementwise rather than
+  # is.finite(mean(x)) so that this case is refused too, naming which of the
+  # two columns holds it.
+  old <- options(na.action = "na.pass")
+  on.exit(options(old), add = TRUE)
+  d <- cd_data_zero()
+  d$x[1] <- NA
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
+               "predictor column contains values that are not finite")
+  d2 <- cd_data_zero()
+  d2$y[1] <- NaN
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d2, gaussian()),
+               "response column contains values that are not finite")
 })
 
 test_that("a response that increases with the predictor warns", {
@@ -94,58 +142,48 @@ test_that("a hormesis model is exempt from the decline warning", {
 })
 
 
-# ---- two guards in check_data() that nothing can reach -----------------------
+# ---- the two guards check_data() no longer duplicates -----------------------
 #
-# Both branches below are written in check_data() and neither can fire, because
-# an earlier call raises first on the same input. They are pinned rather than
-# removed: a test that names the reachable error is what tells the next reader
-# that the branch underneath it is dead, and #265 is the precedent for a
-# condition that was written, never fired, and went unnoticed for five years.
+# check_data() used to compose its own message for each of the two inputs
+# below, and neither branch could fire: an earlier call raised first on the same
+# input. Both were removed in #278. The tests remain, asserting the error that
+# does fire, so that a reader who reinstates either branch is told what already
+# refuses the input.
 
-test_that("a character predictor errors from retrieve_var, not check_data", {
+test_that("a character predictor errors from retrieve_var", {
   d <- cd_data_zero()
   d$x <- as.character(d$x)
-  # check_data():112-118 composes "Your indicated predictor column ... requires
-  # the predictor column to be numeric". retrieve_var(error = TRUE) at :108
-  # raises first, so that message can never be produced.
   msg <- tryCatch(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
                   error = conditionMessage)
   expect_match(msg, "is not numeric")
-  expect_false(grepl("indicated predictor column", msg))
 })
 
-test_that("a numeric group-level column errors from model.frame, not check_data", {
+test_that("a numeric group-level column errors from model.frame", {
   d <- cd_data_zero()
   d$grp <- rep(1:2, 10)
-  # check_data():203-209 composes "Your group-level column(s) ... must be either
-  # a character or a factor". model.frame() refuses first, so that message can
-  # never be produced either.
   msg <- tryCatch(cd_run(y ~ crf(x, model = "nec3param") + ogl(grp), d,
                          gaussian()),
                   error = conditionMessage)
   expect_match(msg, "Group-level variables cannot be numeric")
-  expect_false(grepl("must be either a character or a factor", msg))
 })
 
 
-test_that("the check_custom_name result is discarded", {
-  # R/check_data.R:211 assigns custom_name <- check_custom_name(family) and
-  # nothing reads it; custom_name occurs once in the file. check_custom_name()
-  # is pure (R/helpers.R:18-24), so the call has no effect at all. The same
-  # dead assignment is at R/plot.R:93, R/plot.R:263 and R/autoplot.R:178.
+test_that("check_data does not call check_custom_name", {
+  # check_data() used to assign custom_name <- check_custom_name(family) and
+  # read it nowhere. check_custom_name() is pure, so the call had no effect and
+  # was removed in #278, along with the same dead assignment at three further
+  # sites in plot() and prep_raw_data().
   #
-  # Asserted by making the call return a value nothing could sensibly use and
-  # showing the result is unchanged, which pins the discard rather than the
-  # call. This is the third site of its kind in check_data(), after the two
-  # unreachable branches above, and it has no issue either.
+  # Asserted by making the call raise. A discarded result cannot be observed
+  # from the return value -- which is why the assignment survived -- so the
+  # absence of the call is what is asserted instead.
   d <- cd_data_zero()
-  plain <- cd_run(y ~ crf(x, model = "nec3param"), d, gaussian())
   local_mocked_bindings(
-    check_custom_name = function(...) "a value no caller reads",
+    check_custom_name = function(...) stop("check_custom_name was called"),
     .package = "bayesnec"
   )
-  expect_identical(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
-                   plain)
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
+               NA)
 })
 
 

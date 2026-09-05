@@ -70,6 +70,20 @@ test_that("ggbnec_data takes add_nec, and absorbs nec = FALSE into dots", {
 })
 
 
+test_that("a non-function xform is refused the same way on both classes", {
+  # The bayesnecfit method guarded xform and the bayesmanecfit method did not,
+  # so the same user error gave "xform must be a function." for one class and
+  # "could not find function \"xform\"" -- raised from inside mutate(), naming
+  # neither the argument nor what it should have been -- for the other. The
+  # guard was added to the model-set method in #278.
+  skip_on_cran()
+  expect_error(ggbnec_data(nec4param, xform = "no"),
+               "xform must be a function")
+  expect_error(ggbnec_data(manec_example, xform = "no"),
+               "xform must be a function")
+})
+
+
 # ---- xform on the predictor axis --------------------------------------------
 
 test_that("xform is applied to the predictor axis of a single fit", {

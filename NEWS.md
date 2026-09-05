@@ -169,10 +169,11 @@
   between models matters, refit the whole set.
 
 - The response write-back now matches rows by name rather than assigning
-  wholesale, so a data frame carrying an `NA` in any population variable no
-  longer fails with "replacement has *n* rows, data has *m*". The model frame
-  drops incomplete cases, so it is shorter than the data frame `brm()` is given
-  wherever one is present.
+  wholesale, so it is correct for a data frame whose row names are not `1:n`
+  and cannot fail with "replacement has *n* rows, data has *m*". A missing
+  value in any variable the formula names, which is the other way the model
+  frame comes back shorter than the data frame `brm()` is given, is refused
+  outright as of the entry below rather than accommodated by the write-back.
 
 - `trials()` carrying arithmetic — `y | trials(n * 2) ~ crf(x, ...)` — no longer
   fits every observation against the wrong number of trials. The trials column
@@ -181,6 +182,49 @@
   then evaluated `trials(n * 2)` against *that*: a recorded 10 became 40. The
   write-back is removed; `check_data()` never corrects the trials variable, so
   it had nothing to carry.
+
+- A row with a missing value in any variable the formula names is refused
+  rather than left for `stats::model.frame()` to remove. The model frame drops
+  incomplete cases before the finiteness guard in `check_data()` is reached, so
+  `Inf` was refused while `NA` and `NaN` were removed silently: twenty rows
+  supplied, nineteen fitted, nothing said. The error reports how many rows held
+  a missing value and which they were, by row name. Where those rows are
+  genuinely to be discarded, apply `na.omit()` to the data frame before calling
+  `bnec()`, so that the sample the estimates are derived from is the user's
+  decision and is visible in the script.
+
+  The check runs in `bnec()` before any model is fitted, and in `bnec_group()`
+  before the first level is, so a model set states the refusal once and a
+  grouped fit states it before it samples anything. It is retained in
+  `check_data()` for the two routes that do not come through `bnec()`:
+  `get_priors()` and `amend()`. The finiteness guard also reads `is.finite()`
+  elementwise rather than on the mean, so a missing value that reaches it
+  through `options(na.action = "na.pass")` is refused as well, naming the
+  column (#278).
+
+- `position_legend` in `plot()` accepts the numeric form its documentation has
+  always named. Both the keyword form and the coordinate form
+  `graphics::legend()` takes are now valid: one of the eight position keywords
+  the previous guard listed, or a numeric vector of length two giving the x and
+  y coordinates. The guard it replaces also tested
+  `match(legend_positions, position_legend)`, matching the valid keywords into
+  the user's value rather than the reverse, so `c("topright", "bogus")` passed
+  it and failed inside `legend()` with `'arg' must be of length 1`, which names
+  neither the argument nor the valid values. Both `plot()` methods now use one
+  guard with one message (#278).
+
+- `ggbnec_data()` validates `xform` for a `bayesmanecfit` as it already did for
+  a `bayesnecfit`. `ggbnec_data(x, xform = "no")` failed with
+  `could not find function "xform"` for a model set where a single fit reported
+  `xform must be a function.` (#278).
+
+- Four unreachable guards removed, with no change in behaviour. The predictor
+  and group-level type checks in `check_data()` composed a longer message than
+  `retrieve_var()` and `check_formula()`, which refuse the same input first and
+  say the same thing; the `lxform` branch in each `plot()` method is preceded
+  by a guard that has already stopped on that input. Four
+  `check_custom_name()` calls whose result nothing read are removed alongside
+  them (#278).
 
 # bayesnec 2.1.4
 

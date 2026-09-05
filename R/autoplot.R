@@ -175,7 +175,6 @@ prep_raw_data <- function(brms_fit, bayesnecformula) {
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   family <- brms_fit$family
-  custom_name <- check_custom_name(family)
   rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
   if (family$family == "binomial" | family$family == "beta_binomial") {
     trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
@@ -338,6 +337,12 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                       xform = identity, ...) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
+  # Matching the bayesnecfit method. Without it a non-function xform reached
+  # mutate() and failed with "could not find function \"xform\"", which names
+  # neither the argument nor what it should have been. See #278.
+  if (!inherits(xform, "function")) {
+    stop("xform must be a function.")
+  }
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),

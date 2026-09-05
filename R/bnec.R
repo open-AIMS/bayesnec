@@ -7,7 +7,13 @@
 #' R formula or an actual \code{\link[stats]{formula}} object. See
 #' \code{\link{bayesnecformula}} and \code{\link{check_formula}}.
 #' @param data A \code{\link[base]{data.frame}} containing the data to use with
-#' the \code{formula}.
+#' the \code{formula}. Every variable the \code{formula} names must be
+#' complete: a row with an \code{NA} or \code{NaN} in any of them is refused
+#' rather than removed, so that the fit is never run on a smaller sample than
+#' was supplied without the user having chosen that. An \code{Inf} in the
+#' predictor or the response is refused as well. Apply
+#' \code{\link[stats]{na.omit}} before calling \code{bnec} where those rows
+#' are to be discarded.
 #' @param x_range A range of predictor values over which to consider extracting
 #' ECx.
 #' @param resolution The length of the predictor vector used for posterior
@@ -460,14 +466,26 @@
 #' the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
 #' name that column in the formula.
 #'
-#' \bold{NAs are thrown away}
-#' 
-#' Stan's default behaviour is to fail when the input data contains NAs. For
-#' that reason \pkg{brms} excludes any NAs from input data prior to fitting,
-#' and does not allow them back in as is the case with e.g. \code{stats::lm} and
-#' \code{na.action = exclude}. So we advise that you exclude any NAs in your
-#' data prior to fitting because if you so wish that should facilitate merging
-#' predictions back onto your original dataset.
+#' \bold{Missing values}
+#'
+#' A row with an \code{NA} or \code{NaN} in any variable the \code{formula}
+#' names is refused rather than removed, and so is an \code{Inf} in the
+#' predictor or the response. The error for a missing value reports how many
+#' rows held one and which they were, by row name; the error for a non-finite
+#' value names the column.
+#'
+#' \code{\link[stats]{model.frame}} drops incomplete cases before
+#' \pkg{bayesnec} is given the data, so until version 2.2.0 an \code{NA} left
+#' the fit running on fewer rows than were supplied with nothing said, while an
+#' \code{Inf} was refused. Both are now refused, so that the sample the
+#' estimates are derived from is the user's decision and is visible in the
+#' script.
+#'
+#' Apply \code{\link[stats]{na.omit}} to the data frame before calling
+#' \code{bnec} where those rows are to be discarded. The frame that results is
+#' the one the fit is derived from, so predictions align with it row for row:
+#' \pkg{brms} excludes NAs prior to fitting and does not pad the predictions
+#' back out, as \code{stats::lm} does with \code{na.action = na.exclude}.
 #'
 #' @return If argument model is a single string, then an object of class
 #' \code{\link{bayesnecfit}}; if many strings or a set,
@@ -540,6 +558,17 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   }
   formula <- bayesnecformula(formula)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
+  # Raised here rather than left to check_data(), which runs once per model
+  # inside fit_bayesnec(). bnec() wraps that call in try() for a model set, so
+  # from there the refusal was printed once per model and the call then ended
+  # on the generic all-models-failed advice, which names neither the missing
+  # values nor the remedy. The same reasoning as check_normalisation() and
+  # check_inline_boundary() below, and it applies more strongly: the default
+  # model argument is a set. Placed immediately after the model frame is built
+  # so that nothing downstream, the family choice included, is decided from a
+  # smaller sample than was supplied. check_data() keeps the check for the
+  # routes that do not come through here. See #278.
+  check_complete_cases(bdat)
   model <- get_model_from_formula(formula)
   brm_args <- list(...)
   # `prior` is an explicit argument (rather than relying on `...`) so that a

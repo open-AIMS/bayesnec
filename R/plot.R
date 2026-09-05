@@ -39,8 +39,14 @@ NULL
 #' estimated NEC value and 95% credible intervals should be added to the plot.
 #' @param add_ec10 A \code{\link[base]{logical}} value indicating if an
 #' estimated EC10 value and 95% credible intervals should be added to the plot.
-#' @param position_legend A \code{\link[base]{numeric}} vector indicating the
-#' location of the NEC or EC10 legend, as per a call to legend.
+#' @param position_legend Where to draw the NEC or EC10 legend, in either the
+#' keyword form or the coordinate form \code{\link[graphics]{legend}} accepts:
+#' a single keyword out of \code{"left"}, \code{"topleft"}, \code{"top"},
+#' \code{"topright"}, \code{"right"}, \code{"bottomright"},
+#' \code{"bottom"} and \code{"bottomleft"}, or a \code{\link[base]{numeric}}
+#' vector of length two giving the x and y coordinates of the legend in user
+#' units. \code{legend}'s ninth keyword, \code{"center"}, is not accepted;
+#' give the coordinates instead.
 #' @param xform A function to be applied as a transformation of the x data.
 #' @param lxform A function to be applied as a transformation only to axis
 #' labels and the annotated NEC / EC10 values.
@@ -84,13 +90,8 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   chk_lgl(jitter_y)
   chk_character(ylab)
   chk_character(xlab)
-  legend_positions <- c("left", "topleft", "top", "topright", 
-                        "right", "bottomright", "bottom","bottomleft")
-  if (length(na.omit(match(legend_positions, position_legend)))==0) {
-    stop(paste("legend positions must be one of ", paste0(legend_positions, collapse = ", " )))
-  }
+  legend_pos <- check_position_legend(position_legend)
   family <- x$fit$family$family
-  custom_name <- check_custom_name(x$fit$family)
   mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
@@ -149,28 +150,18 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     rownames() |>
     suppressWarnings() |>
     suppressMessages()
-  if (!inherits(lxform, "function")) {
-    if (length(xticks) == 1) {
-      axis(side = 1)
-    } else {
-      axis(side = 1, at = signif(xticks, 2))
-    }
-    legend_nec <- paste(nec_tag, ": ", signif(nec["Estimate"], 2),
-                        " (", signif(nec["Q2.5"], 2), "-",
-                        signif(nec["Q97.5"], 2), ")", sep = "")
-    legend_ec10 <- paste("EC10: ", signif(ec10[1], 2),
-                         " (", signif(ec10[2], 2), "-",
-                         signif(ec10[3], 2), ")", sep = "")
-  } else {
-    x_labs <- signif(lxform(x_ticks), 2)
-    axis(side = 1, at = x_ticks, labels = x_labs)
-    legend_nec <- paste(nec_tag, ": ", signif(lxform(nec["Estimate"]), 2),
-                        " (", signif(lxform(nec["Q2.5"]), 2), "-",
-                        signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
-    legend_ec10 <- paste("EC10: ", signif(lxform(ec10[1]), 2),
-                         " (", signif(lxform(ec10[2]), 2), "-",
-                         signif(lxform(ec10[3]), 2), ")", sep = "")
-  }
+  # lxform is guaranteed to be a function here, refused at the head of the
+  # method if it is not, so there is no branch for the case where it is not. One
+  # stood here until #278 and could never run. With the default
+  # lxform = identity these are the recorded values.
+  x_labs <- signif(lxform(x_ticks), 2)
+  axis(side = 1, at = x_ticks, labels = x_labs)
+  legend_nec <- paste(nec_tag, ": ", signif(lxform(nec["Estimate"]), 2),
+                      " (", signif(lxform(nec["Q2.5"]), 2), "-",
+                      signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
+  legend_ec10 <- paste("EC10: ", signif(lxform(ec10[1]), 2),
+                       " (", signif(lxform(ec10[2]), 2), "-",
+                       signif(lxform(ec10[3]), 2), ")", sep = "")
   if (CI) {
     lines(x_vec, x$pred_vals$data$Q97.5, lty = 2)
     lines(x_vec, x$pred_vals$data$Q2.5, lty = 2)
@@ -178,18 +169,18 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   lines(x_vec, x$pred_vals$data$Estimate)
   if (add_nec & !add_ec10) {
     abline(v = nec, col = "red", lty = c(1, 3, 3))
-    legend(position_legend, bty = "n",
+    legend(legend_pos$x, legend_pos$y, bty = "n",
            legend = legend_nec, lty = 1, col = "red")
   }
   if (add_ec10 & !add_nec) {
     abline(v = ec10, col = "red", lty = c(1, 3, 3))
-    legend(position_legend, bty = "n",
+    legend(legend_pos$x, legend_pos$y, bty = "n",
            legend = legend_ec10, lty = 1, col = "red")
   }
   if (add_ec10 & add_nec) {
     abline(v = nec, col = "red", lty = c(1, 3, 3))
     abline(v = ec10, col = "orange", lty = c(1, 3, 3))
-    legend(position_legend, bty = "n",
+    legend(legend_pos$x, legend_pos$y, bty = "n",
            legend = c(legend_nec, legend_ec10),
            lty = 1, col = c("red", "orange"))
   }
@@ -227,12 +218,7 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
   chk_character(ylab)
   chk_character(xlab)
   chk_lgl(all_models)
-  legend_positions <- c("left", "topleft", "top", "topright", 
-          "right", "bottomright", "bottom","bottomleft")
-  if (length(na.omit(match(legend_positions, position_legend))) == 0) {
-    stop("Legend positions must be one of ",
-         paste0(legend_positions, collapse = ", " ), ".")
-  }
+  legend_pos <- check_position_legend(position_legend)
   if (all_models) {
     oldpar <- par(no.readonly = TRUE)
     on.exit(par(oldpar))
@@ -260,7 +246,6 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     y_var <- attr(bdat, "bnec_pop")[["y_var"]]
     x_var <- attr(bdat, "bnec_pop")[["x_var"]]
     family <- universal$fit$family$family
-    custom_name <- check_custom_name(universal$fit$family)
     if (family == "binomial" | family == "beta_binomial") {
       trials_var <- attr(bdat, "bnec_pop")[["trials_var"]]
       y_dat <- mod_dat[[y_var]] / mod_dat[[trials_var]]
@@ -301,28 +286,15 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
       rownames() |>
       suppressWarnings() |>
       suppressMessages()
-    if (!inherits(lxform, "function")) {
-      if (length(xticks) == 1) {
-        axis(side = 1)
-      } else {
-        axis(side = 1, at = signif(xticks, 2))
-      }
-      legend_nec <- paste(nec_tag, ": ", signif(nec["Estimate"], 2),
-                          " (", signif(nec["Q2.5"], 2), "-",
-                          signif(nec["Q97.5"], 2), ")", sep = "")
-      legend_ec10 <- paste("EC10: ", signif(ec10[1], 2),
-                           " (", signif(ec10[2], 2), "-",
-                           signif(ec10[3], 2), ")", sep = "")
-    } else {
-      x_labs <- signif(lxform(x_ticks), 2)
-      axis(side = 1, at = x_ticks, labels = x_labs)
-      legend_nec <- paste(nec_tag, ": ", signif(lxform(nec["Estimate"]), 2),
-                          " (", signif(lxform(nec["Q2.5"]), 2), "-",
-                          signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
-      legend_ec10 <- paste("EC10: ", signif(lxform(ec10[1]), 2),
-                           " (", signif(lxform(ec10[2]), 2), "-",
-                           signif(lxform(ec10[3]), 2), ")", sep = "")
-    }
+    # No lxform branch, for the reason given at the bayesnecfit site above.
+    x_labs <- signif(lxform(x_ticks), 2)
+    axis(side = 1, at = x_ticks, labels = x_labs)
+    legend_nec <- paste(nec_tag, ": ", signif(lxform(nec["Estimate"]), 2),
+                        " (", signif(lxform(nec["Q2.5"]), 2), "-",
+                        signif(lxform(nec["Q97.5"]), 2), ")", sep = "")
+    legend_ec10 <- paste("EC10: ", signif(lxform(ec10[1]), 2),
+                         " (", signif(lxform(ec10[2]), 2), "-",
+                         signif(lxform(ec10[3]), 2), ")", sep = "")
     if (CI) {
       lines(x_vec, x$w_pred_vals$data$Q97.5, lty = 2)
       lines(x_vec, x$w_pred_vals$data$Q2.5, lty = 2)
@@ -330,20 +302,63 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     lines(x_vec, x$w_pred_vals$data$Estimate)
     if (add_nec & !add_ec10) {
       abline(v = nec, col = "red", lty = c(1, 3, 3))
-      legend(position_legend, bty = "n",
+      legend(legend_pos$x, legend_pos$y, bty = "n",
              legend = legend_nec, lty = 1, col = "red")
     }
     if (add_ec10 & !add_nec) {
       abline(v = ec10, col = "red", lty = c(1, 3, 3))
-      legend(position_legend, bty = "n",
+      legend(legend_pos$x, legend_pos$y, bty = "n",
              legend = legend_ec10, lty = 1, col = "red")
     }
     if (add_ec10 & add_nec) {
       abline(v = nec, col = "red", lty = c(1, 3, 3))
       abline(v = ec10, col = "orange", lty = c(1, 3, 3))
-      legend(position_legend, bty = "n",
+      legend(legend_pos$x, legend_pos$y, bty = "n",
              legend = c(legend_nec, legend_ec10),
              lty = 1, col = c("red", "orange"))
     }
   }
+}
+
+#' Validate and normalise the position_legend argument of the plot methods
+#'
+#' @param position_legend Either a single keyword out of the eight listed in
+#' \code{?plot}, or a \code{\link[base]{numeric}} vector of length two giving
+#' the x and y coordinates of the legend.
+#'
+#' @details Both forms are accepted because \code{legend} accepts both, and the
+#' documentation of \code{position_legend} named the numeric one while the guard
+#' this replaces refused it. The keyword set is the eight that guard listed,
+#' which is \code{legend}'s nine less \code{"center"}; widening it is a
+#' separate decision from resolving the conflict. That guard read
+#' \code{match(legend_positions, position_legend)}, which matches the valid
+#' keywords into the user's value rather than the reverse, so any value holding
+#' one valid keyword passed however much else was in it and failed later inside
+#' \code{legend()} with a message naming neither the argument nor the valid
+#' values. See #278.
+#'
+#' Returned as a list rather than passed through unchanged because
+#' \code{legend()} reads a length-two numeric \code{x} with \code{y = NULL} as
+#' the two corners of a rectangle, not as a point, so the pair has to be split
+#' across \code{x} and \code{y} at the call site.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{x} and \code{y},
+#' suitable as the first two arguments of \code{\link[graphics]{legend}}.
+#'
+#' @noRd
+check_position_legend <- function(position_legend) {
+  legend_positions <- c("left", "topleft", "top", "topright", "right",
+                        "bottomright", "bottom", "bottomleft")
+  if (is.numeric(position_legend) && length(position_legend) == 2 &&
+        all(is.finite(position_legend))) {
+    return(list(x = position_legend[1], y = position_legend[2]))
+  }
+  if (is.character(position_legend) && length(position_legend) == 1 &&
+        position_legend %in% legend_positions) {
+    return(list(x = position_legend, y = NULL))
+  }
+  stop("position_legend must be one of ",
+       paste0("\"", legend_positions, "\"", collapse = ", "),
+       ", or a numeric vector of length two giving the x and y coordinates of",
+       " the legend.", call. = FALSE)
 }

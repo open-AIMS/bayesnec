@@ -88,6 +88,43 @@ check_normalisation <- function(data) {
   invisible(NULL)
 }
 
+#' Refuse a model frame from which incomplete cases were removed
+#'
+#' \code{stats::model.frame()} drops an incomplete case before \pkg{bayesnec}
+#' sees the data, so an \code{NA} or \code{NaN} never reached the finiteness
+#' guard in \code{\link{check_data}} and the fit ran on fewer rows than were
+#' supplied with nothing said. Refused rather than announced: \code{Inf} is
+#' refused already, and the sample the estimates are derived from is not
+#' something the package should change silently.
+#'
+#' The rows removed are recorded on the model frame by
+#' \code{\link[stats]{na.omit}}, which is the only remaining evidence that
+#' they existed. They are reported by row name rather than by position: a name
+#' is what the user sees in their own data frame, and where the model frame was
+#' built from a subset --- one level of a \code{\link{bnec_group}} call --- a
+#' position indexes the subset and names no row of the data that was supplied.
+#'
+#' @param data A model frame, as returned by the \code{\link{model.frame}}
+#' method for a \code{\link{bayesnecformula}}.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_complete_cases <- function(data) {
+  dropped <- attr(data, "na.action")
+  if (is.null(dropped)) {
+    return(invisible(NULL))
+  }
+  rows <- names(dropped)
+  if (is.null(rows)) {
+    rows <- as.character(unname(dropped))
+  }
+  stop("Your data contains ", length(dropped), " row(s) with missing values",
+       " (NA or NaN), at row(s) ", paste0(rows, collapse = ", "),
+       ". Every variable the formula names must be complete; remove or impute",
+       " those rows before fitting.", call. = FALSE)
+}
+
 #' check_data
 #'
 #' Check data input for a Bayesian NEC model fit
@@ -109,19 +146,20 @@ check_data <- function(data, family, model) {
   bnec_pop_vars <- attr(data, "bnec_pop")
   y_pos <- which(names(bnec_pop_vars) == "y_var")
   x_pos <- which(names(bnec_pop_vars) == "x_var")
-  if (!is.numeric(x)) {
-    x_flag <- names(data)[x_pos]
-    stop(paste0("Your indicated predictor column \"", x_flag,
-                "\" contains data that is class ", class(x),
-                ". The function bnec requires the predictor",
-                " column to be numeric."))
-  }
-  test_x <- mean(x)
-  test_y <- mean(y)
-  if (!is.finite(test_x)) {
+  # Kept here for the routes that do not come through bnec(): get_priors(),
+  # which checks each model of the set in turn, and amend(), which refits from
+  # the data frame an existing fit stores. bnec() and bnec_group() run it
+  # before any model is fitted, for the reason given at those call sites.
+  # See #278.
+  check_complete_cases(data)
+  # is.finite() elementwise rather than on the mean, so that a column reaching
+  # this point with NA still present -- a user with options(na.action =
+  # "na.pass"), for which check_complete_cases() sees nothing -- is named as
+  # well.
+  if (!all(is.finite(x))) {
     stop("Your predictor column contains values that are not finite.")
   }
-  if (!is.finite(test_y)) {
+  if (!all(is.finite(y))) {
     stop("Your response column contains values that are not finite.")
   }
   resp_check <- mean(y[which(x < mean(x))]) <
@@ -199,16 +237,6 @@ check_data <- function(data, family, model) {
   }
   mod_dat <- data.frame(x = data[[x_pos]], y = data[[y_pos]],
                         trials = nrow(data))
-  bnec_group_vars <- attr(data, "bnec_group")
-  if (any(!is.na(bnec_group_vars))) {
-    are_numeric <- sapply(data[, bnec_group_vars, drop = FALSE], is.numeric)
-    if (any(are_numeric)) {
-      to_flag <- paste0(names(are_numeric)[are_numeric], collapse = "; ")
-      stop("Your group-level column(s): ", to_flag, "; must be either a",
-           " character or a factor.")
-    }
-  }
-  custom_name <- check_custom_name(family)
   if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
     mod_dat$trials <- retrieve_var(data, "trials_var", error = TRUE)
   }
