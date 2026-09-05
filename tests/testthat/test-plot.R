@@ -142,24 +142,16 @@ test_that("add_nec and add_ec10 decide what is annotated", {
 })
 
 
-# ---- two guards in plot() that nothing can reach ----------------------------
-#
-# The same shape as the two dead branches this branch pins in check_data(): a
-# condition written, never fired. Neither has an issue yet.
+# ---- the axis and the argument guards ---------------------------------------
 
-test_that("the lxform branch in plot() cannot be reached, on either class", {
-  # R/plot.R:152-157 and :304-309 compose an axis call for the case where
-  # lxform is not a function. Each is preceded by a guard that has already
-  # stopped on that input -- R/plot.R:80-82 for a bayesnecfit and :222-224 for
-  # a bayesmanecfit -- and lxform is not reassigned between them, so both
-  # conditions are always FALSE and the else at :164 and :316 always runs. The
-  # consequence is that axis(side = 1) and axis(side = 1, at = signif(xticks,
-  # 2)) are dead at both sites, and xticks is always applied through the else.
+test_that("the axis is always drawn with at and labels, on either class", {
+  # plot() used to branch on lxform not being a function, and neither branch
+  # could run: the guard at the head of each method has already stopped on that
+  # input and lxform is not reassigned between them. Both branches were removed
+  # in #278, leaving one axis call per method.
   #
   # Both classes are asserted. Pinning one and not the other is how the
   # bayesmanecfit half of #268 escaped notice for six review rounds.
-  #
-  # Pinned as current behaviour, not asserted to be correct.
   skip_on_cran()
   expect_error(pl_x_max(nec4param, lxform = "not a function"),
                "lxform must be a function")
@@ -176,51 +168,70 @@ test_that("the lxform branch in plot() cannot be reached, on either class", {
   pl_x_max(manec_example, xticks = c(0, 1, 2, 3))
   # The count first. all() of an empty list is TRUE, so without this the
   # assertion below would also pass if axis() were never called at all -- which
-  # is a reachable state, since xaxt = "n" is set at R/plot.R:145 and the axis
-  # is drawn only by these calls.
+  # is a reachable state, since xaxt = "n" is set before the axis is drawn and
+  # these calls are the only thing that draws it.
   expect_length(calls, 4)
-  # Every call comes from the else branch, which always supplies at and labels.
-  # The dead calls are at R/plot.R:154 and :156 and R/plot.R:306 and :308. A
-  # reachable :154 or :306 would produce a call with neither name; a reachable
-  # :156 or :308 would produce one with at but no labels. Requiring both names
-  # excludes all four.
+  # The surviving call always supplies at and labels. A reinstated
+  # axis(side = 1) would produce a call with neither name; a reinstated
+  # axis(side = 1, at = signif(xticks, 2)) would produce one with at but no
+  # labels. Requiring both names excludes both.
   expect_true(all(vapply(calls, function(nm) all(c("at", "labels") %in% nm),
                          logical(1))))
 })
 
-test_that("position_legend refuses the numeric vector its documentation names", {
-  # R/plot.R:42-43 documents position_legend as "a numeric vector indicating
-  # the location of the NEC or EC10 legend, as per a call to legend". The guard
-  # at :89-91 accepts only the eight keyword strings, so the documented form is
-  # refused. Pinned as current behaviour: the guard and the documentation
-  # disagree and neither is asserted anywhere else.
+test_that("position_legend accepts both forms legend() accepts", {
+  # position_legend was documented as "a numeric vector indicating the location
+  # of the NEC or EC10 legend, as per a call to legend" and its guard accepted
+  # only the eight keyword strings, so the documented form was refused. #278
+  # resolved the conflict in favour of the documentation: both forms are
+  # accepted, as legend() accepts both.
+  #
+  # A length-2 numeric cannot be passed to legend() as its x alone -- with
+  # y = NULL it reads as the two corners of a rectangle -- so the pair is split
+  # across x and y. Asserted on what legend() was given rather than on the
+  # device, since the legend position does not change par("usr").
   skip_on_cran()
-  expect_error(pl_x_max(nec4param, position_legend = c(0.5, 0.5)),
-               "legend positions must be one of")
-  # R/plot.R:232-235 is the same guard for a bayesmanecfit, with the same
-  # inversion and a differently worded message. Asserted so that the issue this
-  # becomes states both call sites.
-  expect_error(pl_x_max(manec_example, position_legend = c(0.5, 0.5)),
-               "Legend positions must be one of")
-  # And the arguments to match() are the wrong way round -- the vector of valid
-  # keywords is matched into the user's value rather than the reverse -- so a
-  # value containing one valid keyword passes the guard however much else is in
-  # it, and fails later inside legend() with a message that names neither the
-  # argument nor the valid values. Same shape as #265: a condition that does not
-  # test what it reads as testing.
-  msg <- tryCatch(pl_x_max(nec4param,
-                           position_legend = c("topright", "bogus")),
-                  error = conditionMessage)
-  expect_match(msg, "'arg' must be of length 1")
-  expect_false(grepl("legend positions must be one of", msg))
+  seen <- list()
+  local_mocked_bindings(
+    legend = function(x, y = NULL, ...) {
+      seen[[length(seen) + 1L]] <<- list(x = x, y = y)
+      invisible(NULL)
+    },
+    .package = "bayesnec"
+  )
+  pl_x_max(nec4param, position_legend = c(0.5, 0.25))
+  pl_x_max(manec_example, position_legend = c(0.5, 0.25))
+  pl_x_max(nec4param, position_legend = "bottomleft")
+  expect_length(seen, 3)
+  expect_identical(seen[[1]], list(x = 0.5, y = 0.25))
+  expect_identical(seen[[2]], list(x = 0.5, y = 0.25))
+  expect_identical(seen[[3]], list(x = "bottomleft", y = NULL))
+})
+
+test_that("position_legend refuses what legend() cannot use, either class", {
+  # The arguments to match() used to be the wrong way round -- the vector of
+  # valid keywords was matched into the user's value rather than the reverse --
+  # so a value holding one valid keyword passed however much else was in it,
+  # and failed later inside legend() with "'arg' must be of length 1", naming
+  # neither the argument nor the valid values. Same shape as #265: a condition
+  # that does not test what it reads as testing.
+  #
   # Both halves on both classes. Asserting the refusal on both and the
   # inversion on one is how the earlier bayesmanecfit gaps in this file arose:
-  # repairing R/plot.R:232 alone left every assertion here passing.
-  msg_m <- tryCatch(pl_x_max(manec_example,
-                             position_legend = c("topright", "bogus")),
+  # repairing one call site alone left every assertion here passing.
+  skip_on_cran()
+  for (obj in list(nec4param, manec_example)) {
+    msg <- tryCatch(pl_x_max(obj, position_legend = c("topright", "bogus")),
                     error = conditionMessage)
-  expect_match(msg_m, "'arg' must be of length 1")
-  expect_false(grepl("Legend positions must be one of", msg_m))
+    expect_match(msg, "position_legend must be one of")
+    expect_false(grepl("'arg' must be of length 1", msg))
+    # An unknown keyword on its own, and a numeric of the wrong length: the two
+    # forms are each refused by the message that names both.
+    expect_error(pl_x_max(obj, position_legend = "bogus"),
+                 "position_legend must be one of")
+    expect_error(pl_x_max(obj, position_legend = c(0.5, 0.5, 0.5)),
+                 "position_legend must be one of")
+  }
 })
 
 

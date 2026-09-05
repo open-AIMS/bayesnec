@@ -111,13 +111,20 @@ test_that("the write-back still reaches brm() with no transformation at all", {
   # check_data() and fit_bayesnec() directly.
 })
 
-test_that("the write-back aligns rows when incomplete cases were dropped", {
+test_that("an incomplete case is refused before the write-back", {
+  # This case used to reach the write-back: model.frame() dropped the row, the
+  # write-back matched the remainder by name, and the fit proceeded on one row
+  # fewer than was supplied without saying so. check_data() refuses it as of
+  # #278, so the write-back is never asked to align around a missing row.
+  #
+  # The row-name matching the write-back does is still asserted, by the case
+  # below that gives the data frame names other than 1:n. It is what makes the
+  # write-back correct rather than what makes it survive a dropped row.
   d <- gamma_boundary_data()
   d$y[2] <- NA
-  out <- brm_data(y ~ crf(x, model = "nec3param"), d, Gamma(link = "identity"))
-  expect_equal(nrow(out), nrow(d))
-  expect_true(is.na(out$y[2]))
-  expect_equal(min(out$y, na.rm = TRUE), 0.3)
+  expect_error(brm_data(y ~ crf(x, model = "nec3param"), d,
+                        Gamma(link = "identity")),
+               "1 row\\(s\\) with missing values")
 })
 
 test_that("the write-back finds the right rows when row names are not 1:n", {
@@ -234,18 +241,33 @@ test_that("a disp() sub-model is built from the predictor as recorded", {
 
 test_that("a binomial fit reaches brm() with its trials column untouched", {
   # There is no trials write-back, because check_data() never corrects trials.
-  # The assertion is that the column arrives as recorded even where the model
-  # frame has dropped an incomplete case, which is where the write-back this
-  # replaced would have failed outright.
+  # The assertion is that the column arrives exactly as recorded, which is what
+  # the all-variable write-back this replaced did not do: it mapped the aterm
+  # back to the bare column name and overwrote it.
   d <- data.frame(x = rep(c(1, 10, 100), each = 4),
                   y = as.integer(rep(c(9, 5, 1), each = 4)),
                   n = as.integer(rep(10, 12)))
-  d$y[2] <- NA
   seen <- fit_data(y | trials(n) ~ crf(log(x), model = "nec3param"), d,
                    binomial(link = "identity"))
   expect_identical(seen$n, d$n)
   expect_equal(nrow(seen), nrow(d))
-  expect_true(is.na(seen$y[2]))
+  expect_identical(seen$y, d$y)
+})
+
+test_that("an incomplete case is refused for a binomial fit too", {
+  # The trials aterm and the response are both population variables, so an NA
+  # in either is dropped by model.frame() and refused by check_data(). Asserted
+  # on the trials column, which the response case above does not cover. See
+  # #278.
+  d <- data.frame(x = rep(c(1, 10, 100), each = 4),
+                  y = as.integer(rep(c(9, 5, 1), each = 4)),
+                  n = as.integer(rep(10, 12)))
+  d$n[3] <- NA
+  expect_error(
+    fit_data(y | trials(n) ~ crf(log(x), model = "nec3param"), d,
+             binomial(link = "identity")),
+    "1 row\\(s\\) with missing values"
+  )
 })
 
 test_that("a model set stops once on the conflict, not once per model", {

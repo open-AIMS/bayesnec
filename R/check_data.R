@@ -109,19 +109,27 @@ check_data <- function(data, family, model) {
   bnec_pop_vars <- attr(data, "bnec_pop")
   y_pos <- which(names(bnec_pop_vars) == "y_var")
   x_pos <- which(names(bnec_pop_vars) == "x_var")
-  if (!is.numeric(x)) {
-    x_flag <- names(data)[x_pos]
-    stop(paste0("Your indicated predictor column \"", x_flag,
-                "\" contains data that is class ", class(x),
-                ". The function bnec requires the predictor",
-                " column to be numeric."))
+  # model.frame() removes incomplete cases before check_data() is given the
+  # data, so an NA or NaN never reached the finiteness guard below and the fit
+  # ran on fewer rows than were supplied with nothing said. Refused rather than
+  # announced: Inf is refused here already, and the sample the estimates are
+  # derived from is not something the package should change silently. The rows
+  # removed are recorded on the model frame by na.omit(), which is the only
+  # remaining evidence that they existed. See #278.
+  dropped <- attr(data, "na.action")
+  if (!is.null(dropped)) {
+    stop("Your data contains ", length(dropped), " row(s) with missing values",
+         " (NA or NaN), at row(s) ", paste0(unname(dropped), collapse = ", "),
+         ". The function bnec requires complete cases; remove or impute those",
+         " rows before fitting.")
   }
-  test_x <- mean(x)
-  test_y <- mean(y)
-  if (!is.finite(test_x)) {
+  # is.finite() elementwise rather than on the mean, so that a column reaching
+  # this point with NA still present -- a user with options(na.action =
+  # "na.pass"), for which the guard above sees nothing -- is named as well.
+  if (!all(is.finite(x))) {
     stop("Your predictor column contains values that are not finite.")
   }
-  if (!is.finite(test_y)) {
+  if (!all(is.finite(y))) {
     stop("Your response column contains values that are not finite.")
   }
   resp_check <- mean(y[which(x < mean(x))]) <
@@ -199,16 +207,6 @@ check_data <- function(data, family, model) {
   }
   mod_dat <- data.frame(x = data[[x_pos]], y = data[[y_pos]],
                         trials = nrow(data))
-  bnec_group_vars <- attr(data, "bnec_group")
-  if (any(!is.na(bnec_group_vars))) {
-    are_numeric <- sapply(data[, bnec_group_vars, drop = FALSE], is.numeric)
-    if (any(are_numeric)) {
-      to_flag <- paste0(names(are_numeric)[are_numeric], collapse = "; ")
-      stop("Your group-level column(s): ", to_flag, "; must be either a",
-           " character or a factor.")
-    }
-  }
-  custom_name <- check_custom_name(family)
   if (fam_tag == "binomial" || fam_tag == "beta_binomial") {
     mod_dat$trials <- retrieve_var(data, "trials_var", error = TRUE)
   }

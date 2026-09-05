@@ -7,7 +7,12 @@
 #' R formula or an actual \code{\link[stats]{formula}} object. See
 #' \code{\link{bayesnecformula}} and \code{\link{check_formula}}.
 #' @param data A \code{\link[base]{data.frame}} containing the data to use with
-#' the \code{formula}.
+#' the \code{formula}. Every variable the \code{formula} names must be
+#' complete: a row with an \code{NA}, \code{NaN} or \code{Inf} in any of them
+#' is refused rather than removed, so that the fit is never run on a smaller
+#' sample than was supplied without the user having chosen that. Apply
+#' \code{\link[stats]{na.omit}} before calling \code{bnec} where those rows
+#' are to be discarded.
 #' @param x_range A range of predictor values over which to consider extracting
 #' ECx.
 #' @param resolution The length of the predictor vector used for posterior
