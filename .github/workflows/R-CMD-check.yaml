@@ -15,7 +15,7 @@ jobs:
       matrix:
         config:
           - {os: macOS-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release', rtools-version: '42'}
+          - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           # - {os: ubuntu-latest,   r: 'oldrel-1'}
@@ -46,10 +46,18 @@ jobs:
             stan-dev/cmdstanr
             RcppEigen
 
+      # Configures the Rtools toolchain on Windows. It does NOT install
+      # StanHeaders or rstan: `setup-r-dependencies` has already installed a
+      # matched pair through pak, and reinstalling either one over that pair is
+      # what caused #275. The two `install.packages()` calls removed here passed
+      # `repos = c("https://mc-stan.org/r-packages/", getOption("repos"))`, which
+      # is a fallback list rather than a preference, so an unreachable mc-stan
+      # index silently installed CRAN StanHeaders 2.39.1 over the 2.32.10 that
+      # matches rstan 2.32.7 and every brm() call then failed to compile. They
+      # were added in 7c52e186 (2022-11-01) to obtain a preview rstan for R 4.2;
+      # CRAN rstan supports current R, so the preview build is no longer needed.
       - name: Use Cmdstan to Fix
         run: |
-          install.packages("StanHeaders", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
-          install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
