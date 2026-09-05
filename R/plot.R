@@ -39,12 +39,14 @@ NULL
 #' estimated NEC value and 95% credible intervals should be added to the plot.
 #' @param add_ec10 A \code{\link[base]{logical}} value indicating if an
 #' estimated EC10 value and 95% credible intervals should be added to the plot.
-#' @param position_legend Where to draw the NEC or EC10 legend, in either of
-#' the two forms \code{\link[graphics]{legend}} accepts: a single keyword out
-#' of \code{"left"}, \code{"topleft"}, \code{"top"}, \code{"topright"},
-#' \code{"right"}, \code{"bottomright"}, \code{"bottom"} and
-#' \code{"bottomleft"}, or a \code{\link[base]{numeric}} vector of length two
-#' giving the x and y coordinates of the legend in user units.
+#' @param position_legend Where to draw the NEC or EC10 legend, in either the
+#' keyword form or the coordinate form \code{\link[graphics]{legend}} accepts:
+#' a single keyword out of \code{"left"}, \code{"topleft"}, \code{"top"},
+#' \code{"topright"}, \code{"right"}, \code{"bottomright"},
+#' \code{"bottom"} and \code{"bottomleft"}, or a \code{\link[base]{numeric}}
+#' vector of length two giving the x and y coordinates of the legend in user
+#' units. \code{legend}'s ninth keyword, \code{"center"}, is not accepted;
+#' give the coordinates instead.
 #' @param xform A function to be applied as a transformation of the x data.
 #' @param lxform A function to be applied as a transformation only to axis
 #' labels and the annotated NEC / EC10 values.
@@ -320,13 +322,15 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
 
 #' Validate and normalise the position_legend argument of the plot methods
 #'
-#' @param position_legend Either a single keyword out of the eight
-#' \code{\link[graphics]{legend}} accepts, or a \code{\link[base]{numeric}}
-#' vector of length two giving the x and y coordinates of the legend.
+#' @param position_legend Either a single keyword out of the eight listed in
+#' \code{?plot}, or a \code{\link[base]{numeric}} vector of length two giving
+#' the x and y coordinates of the legend.
 #'
 #' @details Both forms are accepted because \code{legend} accepts both, and the
 #' documentation of \code{position_legend} named the numeric one while the guard
-#' this replaces refused it. That guard read
+#' this replaces refused it. The keyword set is the eight that guard listed,
+#' which is \code{legend}'s nine less \code{"center"}; widening it is a
+#' separate decision from resolving the conflict. That guard read
 #' \code{match(legend_positions, position_legend)}, which matches the valid
 #' keywords into the user's value rather than the reverse, so any value holding
 #' one valid keyword passed however much else was in it and failed later inside

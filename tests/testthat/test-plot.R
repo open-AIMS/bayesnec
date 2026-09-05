@@ -231,6 +231,11 @@ test_that("position_legend refuses what legend() cannot use, either class", {
                  "position_legend must be one of")
     expect_error(pl_x_max(obj, position_legend = c(0.5, 0.5, 0.5)),
                  "position_legend must be one of")
+    # "center" is legend()'s ninth keyword and was not among the eight the
+    # guard this replaces listed. Pinned because ?plot now names the exclusion,
+    # so widening the set later is a decision rather than an oversight.
+    expect_error(pl_x_max(obj, position_legend = "center"),
+                 "position_legend must be one of")
   }
 })
 

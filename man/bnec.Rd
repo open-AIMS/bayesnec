@@ -31,9 +31,10 @@ R formula or an actual \code{\link[stats]{formula}} object. See
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use with
 the \code{formula}. Every variable the \code{formula} names must be
-complete: a row with an \code{NA}, \code{NaN} or \code{Inf} in any of them
-is refused rather than removed, so that the fit is never run on a smaller
-sample than was supplied without the user having chosen that. Apply
+complete: a row with an \code{NA} or \code{NaN} in any of them is refused
+rather than removed, so that the fit is never run on a smaller sample than
+was supplied without the user having chosen that. An \code{Inf} in the
+predictor or the response is refused as well. Apply
 \code{\link[stats]{na.omit}} before calling \code{bnec} where those rows
 are to be discarded.}
 
@@ -442,14 +443,26 @@ evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
 the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
 name that column in the formula.
 
-\bold{NAs are thrown away}
+\bold{Missing values}
 
-Stan's default behaviour is to fail when the input data contains NAs. For
-that reason \pkg{brms} excludes any NAs from input data prior to fitting,
-and does not allow them back in as is the case with e.g. \code{stats::lm} and
-\code{na.action = exclude}. So we advise that you exclude any NAs in your
-data prior to fitting because if you so wish that should facilitate merging
-predictions back onto your original dataset.
+A row with an \code{NA} or \code{NaN} in any variable the \code{formula}
+names is refused rather than removed, and so is an \code{Inf} in the
+predictor or the response. The error for a missing value reports how many
+rows held one and which they were, by row name; the error for a non-finite
+value names the column.
+
+\code{\link[stats]{model.frame}} drops incomplete cases before
+\pkg{bayesnec} is given the data, so until version 2.2.0 an \code{NA} left
+the fit running on fewer rows than were supplied with nothing said, while an
+\code{Inf} was refused. Both are now refused, so that the sample the
+estimates are derived from is the user's decision and is visible in the
+script.
+
+Apply \code{\link[stats]{na.omit}} to the data frame before calling
+\code{bnec} where those rows are to be discarded. The frame that results is
+the one the fit is derived from, so predictions align with it row for row:
+\pkg{brms} excludes NAs prior to fitting and does not pad the predictions
+back out, as \code{stats::lm} does with \code{na.action = na.exclude}.
 }
 \section{The link}{
 

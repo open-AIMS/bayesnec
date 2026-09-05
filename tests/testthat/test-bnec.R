@@ -14,6 +14,40 @@ test_that("user-supplied `prior` is not captured by partial matching to `prior_t
                "argument \"data\" is missing")
 })
 
+test_that("a model set states the missing-value refusal once, from bnec()", {
+  # check_data() runs once per model inside fit_bayesnec(), and bnec() wraps
+  # that call in try() for a model set, so a refusal raised from there was
+  # printed once per model and the call then ended on the generic
+  # all-models-failed advice, which names neither the missing values nor the
+  # remedy. The default model argument is a set, so that is the common path.
+  # The check is raised in bnec() instead, immediately after the model frame is
+  # built. See #278.
+  d <- nec_data
+  d$y[3] <- NA
+  msg <- tryCatch(bnec(y ~ crf(x, model = c("nec3param", "nec4param")),
+                       data = d, family = Beta(link = "identity")),
+                  error = conditionMessage)
+  expect_match(msg, "1 row\\(s\\) with missing values")
+  expect_false(grepl("None of the models fit successfully", msg))
+})
+
+test_that("the refusal precedes the family choice, so nothing is read off a subset", {
+  # Placed immediately after the model frame is built rather than beside
+  # check_normalisation(), so that nothing downstream, retrieve_valid_family()
+  # included, is decided from a smaller sample than was supplied. Asserted by
+  # the absence of the family-selection message, which is the only observable
+  # thing that runs between the two positions on this input. See #278.
+  d <- nec_data
+  d$y[3] <- NA
+  msgs <- capture.output(
+    msg <- tryCatch(bnec(y ~ crf(x, model = "nec3param"), data = d),
+                    error = conditionMessage),
+    type = "message"
+  )
+  expect_match(msg, "1 row\\(s\\) with missing values")
+  expect_length(msgs, 0)
+})
+
 test_that("Check models inappropriate for negative x are dropped", {
   # The family is given explicitly because nec_data's response is 0-1 bounded,
   # for which nechorme4pwr is now excluded up front (#177) -- the negative-x

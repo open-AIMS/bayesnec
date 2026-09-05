@@ -113,9 +113,17 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
          " concentration-response model in its own right, so it needs enough",
          " data to support one.", call. = FALSE)
   }
+  # Refused before the loop, not left to the bnec() call for the level that
+  # holds it. Each level is a complete fit, so a missing value in level k would
+  # otherwise be reached only after levels 1 to k-1 had sampled -- measured on
+  # two levels of twelve, level "a" compiled and sampled to completion before
+  # level "b" raised. The whole data frame is checked here, so the rows are
+  # named as the user recorded them rather than by their position within a
+  # subset. See #278.
+  mod_dat <- model.frame(formula, data = data)
+  check_complete_cases(mod_dat)
   # Chosen once, from the whole response, for the reason in Details.
   if (is.null(family)) {
-    mod_dat <- model.frame(formula, data = data)
     y <- retrieve_var(mod_dat, "y_var", error = TRUE)
     tr <- retrieve_var(mod_dat, "trials_var")
     family <- set_distribution(y, support_integer = TRUE, trials = tr)

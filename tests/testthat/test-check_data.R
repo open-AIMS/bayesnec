@@ -29,6 +29,10 @@ cd_run <- function(formula, data, family, model = "nec3param") {
   check_data(cd_bdat(formula, data), family, model)
 }
 
+# The missing-value refusal, as a regex, so the count and the rows can be
+# asserted around it without repeating the fixed part.
+cd_missing_msg <- "row\\(s\\) with missing values \\(NA or NaN\\), at row\\(s\\)"
+
 # The messages check_data() emits, as a character vector. Several corrections
 # are silent, and asserting the absence of a message is half of what this file
 # is for, so the helper returns them rather than swallowing them.
@@ -75,20 +79,34 @@ test_that("an NA or NaN row is refused, and the row is named", {
   # message can name them.
   d <- cd_data_zero()
   d$y[1] <- NaN
-  missing_msg <- "row\\(s\\) with missing values \\(NA or NaN\\), at row\\(s\\)"
   expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
-               paste("1", missing_msg, "1"))
+               paste("1", cd_missing_msg, "1"))
   # NA in the predictor is refused on the same route, and more than one row is
   # counted and named rather than only the first.
   d2 <- cd_data_zero()
   d2$x[c(2, 7)] <- NA
   expect_error(cd_run(y ~ crf(x, model = "nec3param"), d2, gaussian()),
-               paste("2", missing_msg, "2, 7"))
+               paste("2", cd_missing_msg, "2, 7"))
   # The remedy is named, since the user has to act on it: dropping the rows is
   # no longer done for them.
   msg <- tryCatch(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
                   error = conditionMessage)
   expect_match(msg, "remove or impute those rows")
+  # And no function is named, because three of them reach this check: bnec()
+  # and bnec_group() before they fit anything, and get_priors() per model.
+  expect_false(grepl("The function bnec", msg))
+})
+
+test_that("the rows are reported by name, not by position", {
+  # names(attr(data, "na.action")) holds the row names and its values hold the
+  # positions. The name is what the user sees in their own data frame, and
+  # where bnec() has been handed a subset -- one level of a bnec_group() call
+  # -- a position indexes the subset and names no row of the data supplied.
+  d <- cd_data_zero()
+  rownames(d) <- paste0("s", seq_len(nrow(d)) + 100L)
+  d$y[3] <- NA
+  expect_error(cd_run(y ~ crf(x, model = "nec3param"), d, gaussian()),
+               paste("1", cd_missing_msg, "s103"))
 })
 
 test_that("an NA reaching the guard directly is named by column", {

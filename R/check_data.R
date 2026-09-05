@@ -88,6 +88,43 @@ check_normalisation <- function(data) {
   invisible(NULL)
 }
 
+#' Refuse a model frame from which incomplete cases were removed
+#'
+#' \code{stats::model.frame()} drops an incomplete case before \pkg{bayesnec}
+#' sees the data, so an \code{NA} or \code{NaN} never reached the finiteness
+#' guard in \code{\link{check_data}} and the fit ran on fewer rows than were
+#' supplied with nothing said. Refused rather than announced: \code{Inf} is
+#' refused already, and the sample the estimates are derived from is not
+#' something the package should change silently.
+#'
+#' The rows removed are recorded on the model frame by
+#' \code{\link[stats]{na.omit}}, which is the only remaining evidence that
+#' they existed. They are reported by row name rather than by position: a name
+#' is what the user sees in their own data frame, and where the model frame was
+#' built from a subset --- one level of a \code{\link{bnec_group}} call --- a
+#' position indexes the subset and names no row of the data that was supplied.
+#'
+#' @param data A model frame, as returned by the \code{\link{model.frame}}
+#' method for a \code{\link{bayesnecformula}}.
+#'
+#' @return \code{NULL}, invisibly. Called for its error.
+#'
+#' @noRd
+check_complete_cases <- function(data) {
+  dropped <- attr(data, "na.action")
+  if (is.null(dropped)) {
+    return(invisible(NULL))
+  }
+  rows <- names(dropped)
+  if (is.null(rows)) {
+    rows <- as.character(unname(dropped))
+  }
+  stop("Your data contains ", length(dropped), " row(s) with missing values",
+       " (NA or NaN), at row(s) ", paste0(rows, collapse = ", "),
+       ". Every variable the formula names must be complete; remove or impute",
+       " those rows before fitting.", call. = FALSE)
+}
+
 #' check_data
 #'
 #' Check data input for a Bayesian NEC model fit
@@ -109,23 +146,16 @@ check_data <- function(data, family, model) {
   bnec_pop_vars <- attr(data, "bnec_pop")
   y_pos <- which(names(bnec_pop_vars) == "y_var")
   x_pos <- which(names(bnec_pop_vars) == "x_var")
-  # model.frame() removes incomplete cases before check_data() is given the
-  # data, so an NA or NaN never reached the finiteness guard below and the fit
-  # ran on fewer rows than were supplied with nothing said. Refused rather than
-  # announced: Inf is refused here already, and the sample the estimates are
-  # derived from is not something the package should change silently. The rows
-  # removed are recorded on the model frame by na.omit(), which is the only
-  # remaining evidence that they existed. See #278.
-  dropped <- attr(data, "na.action")
-  if (!is.null(dropped)) {
-    stop("Your data contains ", length(dropped), " row(s) with missing values",
-         " (NA or NaN), at row(s) ", paste0(unname(dropped), collapse = ", "),
-         ". The function bnec requires complete cases; remove or impute those",
-         " rows before fitting.")
-  }
+  # Kept here for the routes that do not come through bnec(): get_priors(),
+  # which checks each model of the set in turn, and amend(), which refits from
+  # the data frame an existing fit stores. bnec() and bnec_group() run it
+  # before any model is fitted, for the reason given at those call sites.
+  # See #278.
+  check_complete_cases(data)
   # is.finite() elementwise rather than on the mean, so that a column reaching
   # this point with NA still present -- a user with options(na.action =
-  # "na.pass"), for which the guard above sees nothing -- is named as well.
+  # "na.pass"), for which check_complete_cases() sees nothing -- is named as
+  # well.
   if (!all(is.finite(x))) {
     stop("Your predictor column contains values that are not finite.")
   }
