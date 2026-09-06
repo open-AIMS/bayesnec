@@ -70,7 +70,14 @@ unscaled_power_message <- function(drop_model, fam_tag) {
 #' necessary for \code{\link{fit_bayesnec}}.
 #'
 #' @noRd
-check_models <- function(model, family, data) {
+check_models <- function(model, family, data, record = FALSE) {
+  # The exclusions are recorded as well as messaged, but only when the caller
+  # asks. The record is attached as an attribute, and several callers pass this
+  # function's return straight on -- check_model_survival(), get_priors(),
+  # amend(), check_update_data() -- where an attribute nobody expects makes the
+  # value compare unequal to the plain character vector it used to be. bnec()
+  # is the only consumer that wants the record, so it is the only one that asks.
+  #
   # The exclusions are recorded as well as messaged. bnec() decides which of
   # the requested equations it will not attempt, tells the user once by
   # message(), and used to discard the decision, so the composition of the
@@ -241,7 +248,9 @@ check_models <- function(model, family, data) {
     stop("The model(s): ", to_flag, "; is not a valid",
          " model entry. Please check ?bnec for valid model calls.")
   }
-  attr(model, "excluded") <- excluded
+  if (record) {
+    attr(model, "excluded") <- excluded
+  }
   model
 }
 

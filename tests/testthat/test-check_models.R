@@ -6,16 +6,14 @@ test_that("properly drops zero bounded models for logit and log links", {
   gamma_family_log <- validate_family(Gamma(link = "log"), link_source = "chosen")
   gaussian_family_default <- validate_family("gaussian")
   
-  # ignore_attr: check_models() attaches an "excluded" record for
-  # bnec_record(); these assertions are about the set it returns. See #261.
   expect_equal(check_models(c("nec3param", "nec4param", "ecxexp"),
-                   beta_family_logit), "nec4param", ignore_attr = TRUE)
+                   beta_family_logit), "nec4param")
   expect_equal(check_models(c("nec3param", "ecx4param", "ecxexp"),
-                   beta_family_logit), "ecx4param", ignore_attr = TRUE)
+                   beta_family_logit), "ecx4param")
   expect_equal(check_models(c("nec3param", "ecx4param", "ecxexp"),
-                   poisson_family_log), "ecx4param", ignore_attr = TRUE)
+                   poisson_family_log), "ecx4param")
   expect_equal(check_models(c("nec3param", "ecx4param", "ecxexp"),
-                   beta_family_logit),  "ecx4param", ignore_attr = TRUE)
+                   beta_family_logit),  "ecx4param")
 
   
   })
@@ -46,7 +44,7 @@ test_that(paste0("properly drops lin models for identity link for",
   gaussian_family_default <- validate_family("gaussian")
   expect_equal(check_models(c("neclin", "neclinhorme", "ecxlin"),
                             gaussian_family_default),
-               c("neclin", "neclinhorme", "ecxlin"), ignore_attr = TRUE)
+               c("neclin", "neclinhorme", "ecxlin"))
 })
 
 test_that("keeps zero bounded models for the gaussian family (#206)", {
@@ -58,7 +56,7 @@ test_that("keeps zero bounded models for the gaussian family (#206)", {
   gaussian_family_default <- validate_family("gaussian")
   expect_equal(check_models(c("nec3param", "nec4param", "ecxexp"),
                             gaussian_family_default),
-               c("nec3param", "nec4param", "ecxexp"), ignore_attr = TRUE)
+               c("nec3param", "nec4param", "ecxexp"))
   # A single zero-bounded equation named explicitly used to be an error,
   # because the set emptied.
   expect_equal(check_models("nec3param", gaussian_family_default), "nec3param",
@@ -123,7 +121,8 @@ test_that("check_models records which equations it excluded, and why (#261)", {
   # a knitted document or a suppressMessages() call does not keep.
   beta_identity <- validate_family(Beta(link = "identity"),
                                    link_source = "chosen")
-  kept <- suppressMessages(check_models(mod_groups$all, beta_identity))
+  kept <- suppressMessages(check_models(mod_groups$all, beta_identity,
+                                       record = TRUE))
   rec <- attr(kept, "excluded")
   expect_s3_class(rec, "data.frame")
   expect_named(rec, c("model", "reason"))
@@ -141,7 +140,7 @@ test_that("an empty exclusion record is still a data frame", {
   # nrow() and rbind() conditional.
   gaussian_identity <- validate_family("gaussian")
   kept <- suppressMessages(check_models(c("nec4param", "ecx4param"),
-                                        gaussian_identity))
+                                        gaussian_identity, record = TRUE))
   rec <- attr(kept, "excluded")
   expect_s3_class(rec, "data.frame")
   expect_equal(nrow(rec), 0)
