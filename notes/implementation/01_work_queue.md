@@ -40,17 +40,35 @@ release to CRAN is still not a gate on anything here.
 
 # Status, 2026-09-06
 
-| batch | issues | state |
-|---|---|---|
-| 0 | housekeeping | **done.** #275, #277, #278 closed |
-| 1 | #195, #196, #39, #206, #268, #160, #161 | **PR #281 open** against `dev` |
-| 2 | #274, #271, #272, #266, #93, #262, #261, #218 | **PR #282 open** against batch 1 |
-| 3 | #273 | measured twice; the choice is on the second measurement |
-| 4 | #257 | implemented on `batch-4-group-scale`, measurement running |
-| 5 | the vignettes | #243's CI verified and its follow-up opened as #283; #238 and #228 not started |
-| 6 | #190, #248 | not started, and gated on batches 1 to 5 |
+**Four pull requests, stacked, covering seventeen issues.** Each targets the one
+below it, so GitHub retargets each to `dev` as its predecessor merges and they
+can be merged straight down.
 
-The worktrees are `/mnt/c/Rworking/bayesnec-b1`, `-b2` and `-b4`.
+| batch | PR | targets | closes |
+|---|---|---|---|
+| 1 | **#281** | `dev` | #195, #196, #39, #206, #268, #160, #161 |
+| 2 | **#282** | batch 1 | #274, #271, #272, #266, #93, #262, #261, #218 |
+| 4 | **#284** | batch 2 | #257 |
+| 3 | **#283 pending** | batch 4 | #273 |
+
+Batch 3 is last in the stack rather than third, because its measurement had to
+finish before it could be written; the numbering follows the queue below, not
+the merge order.
+
+**Two decisions are RF's and are recorded on the issues rather than taken here.**
+#273's measurement does not produce a clean winner between the two candidate
+priors --- correcting the geometry buys precision and costs accuracy where the
+true *NEC* sits high in the range --- so the comment on that issue states the
+trade-off, recommends `shape 5, rate 4/m`, and names the one-line alternative.
+The branch implements the recommendation. #285 was opened for
+`mod_groups$decline`, which is not a blocker.
+
+**Worktrees:** `/mnt/c/Rworking/bayesnec-b1`, `-b2`, `-b3`, `-b4`.
+
+**Still to do, and gated on the four merging:** batch 5, the vignettes, and
+batch 6, the precompile. #243's CI is verified green and its follow-up is opened
+as #283; #238's review needs re-checking against #260 before it is applied; #228
+is blocked on a question that batch 4 may settle.
 
 ---
 
