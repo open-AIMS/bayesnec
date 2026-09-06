@@ -188,9 +188,7 @@ previous session time, and should be read before starting.
 |---|---|
 | #255 | the toxval migration tracker. Deferred by decision 1, not cancelled. D11 records what changed |
 | #44 | hypothesis method for *NEC*/*NSEC*/*ECx* exceedance. A new API rather than a fix, and larger than the run. Tracked as toxval#41 |
-| — | nothing further; #39 moved into batch 1, since D15 ruling 3 requires it |
 | #120 | replacing `all_models`. D5 requires that no existing user script breaks; `test-plot.R` and `test-autoplot.R` now make that detectable, so the precondition is met, but it is behaviour change rather than a fix |
 | #209, #249, PR #225 | the factorised count hurdle, blocked on `brms` upstream. `issue-136-rate-aterm` is PR #225's base and **must not be deleted** |
 | #184 | `future_apply`. Attended: RF wants a testing pass posted as a comment before any implementation |
-| #218 | unseeded permutation in `compare_posterior()`. Documentation-and-constraint outcome; cheap, add to a later pass |
 | #27 | zero-truncated gaussian. The body is empty, and a title is not a specification |
