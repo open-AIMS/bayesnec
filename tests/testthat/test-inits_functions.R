@@ -871,26 +871,27 @@ test_that("the initial-value search is bounded by time as well as attempts", {
   expect_equal(formals(make_good_inits)$n_trials, 1e3)
 })
 
-test_that("an impossible search falls back within the time budget", {
-  # A response the priors cannot reach, so the search cannot succeed and the
-  # bound is what ends it. Asserted on elapsed time rather than on attempts,
-  # because time is the quantity the caller pays.
+test_that("an impossible search falls back on the budget, not the cap", {
+  # A response the priors cannot reach, so the search cannot succeed and one of
+  # the two bounds is what ends it. max_seconds = 0 makes the elapsed check fire
+  # on the first pass, so the assertion is on the mechanism rather than on a
+  # wall-clock reading: a timing assertion is load-sensitive, and this suite
+  # runs alongside other R processes.
   skip_on_cran()
   priors <- brms::prior_string("normal(1e6, 1)", nlpar = "top") +
     brms::prior_string("normal(1e6, 1)", nlpar = "beta") +
     brms::prior_string("normal(1e6, 1)", nlpar = "nec")
-  started <- Sys.time()
-  out <- expect_message(
-    make_good_inits("nec3param", x = c(1, 5, 20, 100), y = c(0.9, 0.6, 0.3, 0.1),
-                    priors = priors, chains = 2, max_seconds = 2),
-    "failed to find initial values"
+  msg <- capture.output(
+    out <- make_good_inits("nec3param", x = c(1, 5, 20, 100),
+                           y = c(0.9, 0.6, 0.3, 0.1), priors = priors,
+                           chains = 2, max_seconds = 0),
+    type = "message"
   )
-  # A coarse bound, not a benchmark: it guards against the 561-second
-  # behaviour #266 measured, and has to survive a loaded machine, so it is set
-  # far above max_seconds rather than close to it.
-  elapsed <- as.numeric(Sys.time() - started, units = "secs")
-  expect_lt(elapsed, 120)
-  # The fallback is Stan's own random initialisation.
+  # One attempt, because the budget was already spent. Before #266 this call
+  # would have run the full ten thousand.
+  expect_match(paste(msg, collapse = " "), "after 1 attempts")
+  # The fallback is Stan's own random initialisation, which is what the search
+  # was competing against all along.
   expect_equal(out, list(random = "random"))
 })
 
