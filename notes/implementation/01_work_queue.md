@@ -38,11 +38,28 @@ release to CRAN is still not a gate on anything here.
 
 ---
 
+# Status, 2026-09-06
+
+| batch | issues | state |
+|---|---|---|
+| 0 | housekeeping | **done.** #275, #277, #278 closed |
+| 1 | #195, #196, #39, #206, #268, #160, #161 | **PR #281 open** against `dev` |
+| 2 | #274, #271, #272, #266, #93, #262, #261, #218 | **PR #282 open** against batch 1 |
+| 3 | #273 | measured twice; the choice is on the second measurement |
+| 4 | #257 | implemented on `batch-4-group-scale`, measurement running |
+| 5 | the vignettes | #243's CI verified and its follow-up opened as #283; #238 and #228 not started |
+| 6 | #190, #248 | not started, and gated on batches 1 to 5 |
+
+The worktrees are `/mnt/c/Rworking/bayesnec-b1`, `-b2` and `-b4`.
+
+---
+
 # 0. Housekeeping — do first, it takes minutes
 
-- **Close #275, #277 and #278 by hand.** All three merged; every PR here targets
-  `dev` rather than the default branch, so `Closes #n` does not fire. This is the
-  sixth occurrence of that pattern.
+- ~~Close #275, #277 and #278 by hand.~~ **Done 2026-09-06.** All three had
+  merged; every PR here targets `dev` rather than the default branch, so
+  `Closes #n` does not fire. That was the sixth occurrence of the pattern, and
+  #281 and #282 will need the same treatment.
 - **Prune the stale worktrees.** Twenty-two are registered and most are on
   branches that have merged. `00_protocol.md` names the ones that must not be
   touched; the rest are removable with `git worktree remove`. This matters
