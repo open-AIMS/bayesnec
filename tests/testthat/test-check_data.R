@@ -476,3 +476,19 @@ test_that("a hurdle family keeps its zeros and reports no substitution", {
   cens <- c(rep(0, 12), rep(-1, 6))
   expect_null(substitution_record(y, cens, validate_family("Gamma")))
 })
+
+
+test_that("a data column named after a generated term is refused (#257)", {
+  # brms resolves formula terms against the user's data first, so a column
+  # named bnecmu or ogl would be used in place of the term bayesnec generates
+  # and the fit would silently be a different model.
+  d <- data.frame(x = rep(c(1, 10), each = 5), y = rep(c(0.8, 0.2), each = 5))
+  expect_null(check_reserved_names(d))
+  d$bnecmu <- 1
+  expect_error(check_reserved_names(d), "bnecmu")
+  expect_error(check_reserved_names(d), "silently be a different model")
+  d$ogl <- 1
+  expect_error(check_reserved_names(d), "ogl")
+  # Both are named at once rather than one per call.
+  expect_error(check_reserved_names(d), "bnecmu.*ogl")
+})

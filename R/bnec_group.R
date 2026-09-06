@@ -126,6 +126,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # fits each level with bnec() in sequence, so a refusal reached at level k
   # arrives only after levels 1 to k-1 have compiled and sampled. See #271.
   check_disp_finite(formula, data)
+  check_reserved_names(data)
   # The response substitutions are not reported here. bnec_group() fits each
   # level on its own subset, so the values substituted differ between levels
   # and the per-level bnec() call is where the report belongs. See #93.
