@@ -49,11 +49,11 @@ can be merged straight down.
 | 1 | **#281** | `dev` | #195, #196, #39, #206, #268, #160, #161 |
 | 2 | **#282** | batch 1 | #274, #271, #272, #266, #93, #262, #261, #218 |
 | 4 | **#284** | batch 2 | #257 |
-| 3 | **#283 pending** | batch 4 | #273 |
+| 3 | **#286** | batch 4 | #273 |
 
 Batch 3 is last in the stack rather than third, because its measurement had to
 finish before it could be written; the numbering follows the queue below, not
-the merge order.
+the merge order. Merge order is therefore **#281, #282, #284, #286**.
 
 **Two decisions are RF's and are recorded on the issues rather than taken here.**
 #273's measurement does not produce a clean winner between the two candidate
@@ -67,7 +67,9 @@ The branch implements the recommendation. #285 was opened for
 
 **Still to do, and gated on the four merging:** batch 5, the vignettes, and
 batch 6, the precompile. #243's CI is verified green and its follow-up is opened
-as #283; #238's review needs re-checking against #260 before it is applied; #228
+as #283. #238's review has been re-checked against #260 and **one of its items
+has expired**: its correction about the identity link would now introduce the
+error it was written to remove, and the PR records which items still stand. #228
 is blocked on a question that batch 4 may settle.
 
 ---
