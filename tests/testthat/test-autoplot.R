@@ -133,28 +133,26 @@ test_that("find_transformations reports the response for this fixture", {
   expect_identical(find_transformations(bdat), "y")
 })
 
-test_that("a transformed response suppresses xform on the predictor axis", {
-  # PINS THE #268 DEFECT on the autoplot path for a bayesnecfit (the guard at
-  # R/autoplot.R:308). xform is accepted and silently dropped from the axis,
-  # so the curve comes back on the fitted scale while the caller asked for the
-  # recorded one. The estimates nec() and ecx() return are unaffected; this is
-  # the plot alone.
+test_that("a transformed response no longer suppresses xform (#268)", {
+  # INVERTED. The guard was the length of find_transformations(), which answers
+  # for the formula as a whole, so a transformation on the response suppressed
+  # xform on a predictor nobody had transformed.
   #
-  # INVERT THIS TEST WHEN #268 IS FIXED: the two should then differ by the
-  # factor xform applies, as in "xform is applied to the predictor axis of a
-  # single fit" above.
+  # INVERTED: the guard is now per-variable, so the two differ by the factor
+  # xform applies, as in "xform is applied to the predictor axis of a single
+  # fit" above.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
-  expect_equal(gg_x_max(f, xform = function(x) x * 100), gg_x_max(f),
+  expect_equal(gg_x_max(f, xform = function(x) x * 100), gg_x_max(f) * 100,
                tolerance = 1e-8)
 })
 
-test_that("a transformed response suppresses xform for a model set too", {
-  # PINS THE #268 DEFECT on the bayesmanecfit branch (the guard at
-  # R/autoplot.R:352). Same inversion applies.
+test_that("a transformed response no longer suppresses xform for a set", {
+  # INVERTED with its sibling above. The bayesmanecfit branch had the same
+  # guard and the same defect.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
-  expect_equal(gg_x_max(m, xform = function(x) x * 100), gg_x_max(m),
+  expect_equal(gg_x_max(m, xform = function(x) x * 100), gg_x_max(m) * 100,
                tolerance = 1e-8)
 })
 

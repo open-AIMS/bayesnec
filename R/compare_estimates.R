@@ -32,7 +32,7 @@
 #'
 #' @export
 compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
-                              type = "absolute", hormesis_def = "control",
+                              type = "absolute",
                               sig_val = 0.01, resolution = 100, x_range = NA) {
   if ((comparison %in% c("nec", "n(s)ec", "ecx", "nsec")) == FALSE) {
     stop("comparison must be one of nec, n(s)ec, ecx or nsec.")
@@ -41,10 +41,6 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
     stop("type must be one of \"relative\", \"absolute\" (the default) or",
          "\"direct\". Please see ?ecx for more details.")
-  }
-  if ((hormesis_def %in% c("max", "control")) == FALSE) {
-    stop("type must be one of 'max' or 'control' (the default). 
-         Please see ?ecx for more details.")
   }
   chk_numeric(sig_val)
   chk_numeric(resolution)
@@ -62,11 +58,11 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   if (comparison == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, resolution = resolution,
                              posterior = TRUE, type = type,
-                             hormesis_def = hormesis_def, x_range = x_range)
+                             x_range = x_range)
   }
   if (comparison == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, resolution = resolution,
-                             posterior = TRUE, hormesis_def = hormesis_def,
+                             posterior = TRUE,
                              x_range = x_range)
   }
   names(posterior_list) <- names(x)

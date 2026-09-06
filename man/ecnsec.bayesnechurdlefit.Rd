@@ -10,7 +10,6 @@
   nsec,
   resolution = 10,
   x_range = NA,
-  hormesis_def = "control",
   type = "absolute",
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
@@ -30,10 +29,8 @@ large values will make the NSEC estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values}
-
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
+"absolute" (the default), "relative" or "range". See Details.}
 
 \item{xform}{A function to apply to the returned estimated NSEC concentration
 values prior to estimating the percentage effect.}

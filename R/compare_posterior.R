@@ -28,7 +28,6 @@
 #' Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
 #' model is estimated at a percent decline from the control.
 #' 
-#' For \code{hormesis_def}, if "max", then ECx or NSEC values -- i.e.,
 #' depending on argument \code{comparison} -- are calculated
 #' as a decline from the maximum estimates (i.e. the peak at NEC);
 #' if "control", then ECx or NSEC values are calculated relative to the
@@ -77,7 +76,6 @@ compare_posterior <- function(x, ...) {
 #' @export
 compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
                                       type = "absolute",
-                                      hormesis_def = "control",
                                       sig_val = 0.01, resolution,
                                       x_range = NA, make_newdata = TRUE,
                                       ...) {
@@ -92,7 +90,7 @@ compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
       resolution <- 500
     }
     out <- compare_estimates(x = x, comparison = comparison, ecx_val = ecx_val,
-                             type = type, hormesis_def = hormesis_def,
+                             type = type,
                              sig_val = sig_val, resolution = resolution,
                              x_range = x_range)
   } else {

@@ -62,14 +62,18 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    out <- apply(post, 1, nsec_fct, reference = reference, x_vec = pred_data$x)
-    x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
-    x_call <- str2lang(eval(parse(text = x_str)))
-    if (inherits(x_call, "call")) {
-      x_call[[2]] <- str2lang("out")
-      out <- eval(x_call)
+    out <- vapply(seq_len(nrow(post)), function(i) {
+      crossing_x(post[i, ], reference, pred_data$x)
+    }, numeric(1))
+    n_missing <- sum(is.na(out))
+    if (n_missing > 0) {
+      message("The fitted curve does not fall to the control's ", sig_val,
+              " quantile within the predictor range for ", n_missing, " of ",
+              length(out), " draws. Those draws are excluded from the NSEC ",
+              "summary, which is therefore censored above the highest ",
+              "concentration tested.")
     }
-    out
+    sub_x_transformation(out, formula)
   }
   if (mod_class == "ecx") {
     ne_posterior <- nsec_off_curve(get_pred_posterior())

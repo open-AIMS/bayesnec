@@ -10,7 +10,6 @@ ecx(
   resolution = 1000,
   posterior = FALSE,
   type = "absolute",
-  hormesis_def = "control",
   x_range = NA,
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
@@ -22,8 +21,11 @@ ecx(
 \item{object}{An object of class \code{\link{bayesnecfit}} or
 \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value
-between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
+\item{ecx_val}{The desired percentage effect value, defaults to 10. Any
+value above 0 is accepted for every \code{type} except "direct", where it
+is a response value rather than a percentage. Values above 100 are
+meaningful under "absolute" for a response that can go negative --- see
+Details.}
 
 \item{resolution}{The number of unique x values over which to find ECx --
 large values will make the ECx estimate more precise.}
@@ -33,10 +35,7 @@ posterior sample of calculated ECx values should be returned instead of
 just the median and 95 credible intervals.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
-of "max" or "control". See Details.}
+"absolute" (the default), "relative", "range" or "direct". See Details.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -66,19 +65,44 @@ Extracts the predicted ECx value as desired from an object of class
 \code{\link{bayesnecfit}} or \code{\link{bayesnecfit}}.
 }
 \details{
-\code{type} "relative" is calculated as the percentage decrease
-from the maximum predicted value of the response (top) to the minimum
-predicted value of the response. Type "absolute" (the default) is
-calculated as the percentage decrease from the maximum value of the
-response (top) to 0. Type "direct"
-provides a direct estimate of the x value for a given y.
-Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
-model is estimated at a percent decline from the control.
+\bold{Every ECx is measured from the control.} The control is the
+predicted mean at the lowest concentration in the supplied predictor, taken
+per posterior draw. \code{type} names what the percentage is measured
+\emph{towards}:
 
-For \code{hormesis_def}, if "max", then ECx values are calculated as a
-decline from the maximum estimates (i.e. the peak at NEC);
-if "control", then ECx values are calculated relative to the control, which
-is assumed to be the lowest observed concentration.
+\itemize{
+\item \code{"absolute"} (the default) --- control to 0.
+\item \code{"relative"} --- control to the equation's theoretical
+asymptote, the \code{bot} parameter where the equation has one and 0
+otherwise. Refused where the equation has no \code{bot} and the family
+is unbounded below, because there is then no finite denominator.
+\item \code{"range"} --- control to the lowest response the curve
+predicts over the predictor range.
+\item \code{"direct"} --- \code{ecx_val} is a response value rather than
+a percentage, and the x value at which the curve reaches it is returned.
+}
+
+\code{"range"} is what \code{"relative"} computed in versions up to
+2.1.3, except that the span was taken from the maximum of the predicted
+curve rather than from the control. The two differ only for a curve whose
+maximum is not at the lowest concentration, which in practice means a
+hormetic one.
+
+Measuring from the control rather than from the maximum of the predicted
+curve is what makes an ECx well defined for a hormesis equation: the target
+response lies below the control, the rising limb lies above it, so the
+curve crosses the target exactly once. The \code{hormesis_def} argument
+selected between those two references and has been removed; the control is
+now always the reference.
+
+\code{"absolute"} measures towards 0 even for a family whose support is
+unbounded below. This follows OECD TG 201, whose percent inhibition
+rearranges to the same reference and which permits a value above 100 per
+cent rather than truncating it, so \code{ecx_val} is not capped at 100.
+
+Where the curve does not reach the target anywhere in the predictor range
+the ECx is not identified and \code{NA} is returned, with a warning
+reporting how many draws were affected.
 
 Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 \code{\link{compare_fitted}} do not require the same level of flexibility

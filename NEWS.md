@@ -1,5 +1,98 @@
 # bayesnec 2.2.0
 
+## Breaking changes to ECx, NSEC and ECNSEC
+
+- **Every ECx, NSEC and ECNSEC is now measured from the control** --- the
+  predicted mean at the lowest concentration in the supplied predictor, taken
+  per posterior draw. `ecx()` measured from the maximum of the predicted curve
+  instead. The two are the same point for a monotonic decreasing curve and
+  differ for a hormetic one, where the maximum is the peak at the *NEC*, so
+  every ECx reported for a hormesis equation changes. `nsec()` was already
+  anchored on the control except for a `hormesis_def == "max"` branch, which is
+  removed, so the two estimators now agree by construction (#195).
+
+- **`type` is a four-value vocabulary.** `"absolute"` (the default) measures
+  control to 0; `"relative"` measures control to the equation's theoretical
+  asymptote, the `bot` parameter where the equation has one and 0 otherwise;
+  `"range"` measures control to the lowest response the curve predicts; and
+  `"direct"` takes a response value. **`"range"` is what `"relative"` computed
+  up to 2.1.3**, and supplying `type = "relative"` explicitly now warns, naming
+  `"range"`, because the two are different quantities. `"relative"` is refused
+  where the bound is infinite --- an equation with no `bot` under a family
+  unbounded below --- because there is then no denominator (#195).
+
+- **`hormesis_def` is removed** from `ecx()`, `nsec()`, `ecnsec()`,
+  `compare_estimates()`, `compare_posterior()` and `average_estimates()`. With
+  the control always the reference it selects nothing. Its documented `"max"`
+  behaviour was what `ecx()` did unconditionally, while its `ecx()` consumer had
+  been commented out for several releases, so the argument was inert there and
+  live in `nsec()`. A call still passing it is refused by name rather than
+  absorbed by `...` (#195).
+
+- **`ecnsec()` now inverts the `ecx()` reference construction under the same
+  `type`**, and takes `type = "absolute"` by default. It was computed by three
+  different formulas, one per `nsec()` method, which agreed only for a monotonic
+  decreasing curve and measured the effect against the fitted range rather than
+  against the control. Reported ECNSEC values change and are generally smaller.
+  `type = "direct"` is refused, having no percentage to report.
+
+- **A target the curve never reaches within the predictor range returns `NA`,
+  with a warning naming how many draws were affected.** Both estimators
+  previously returned the grid point whose prediction was nearest the target,
+  which for a curve that never declines to the target is the *lowest*
+  concentration in the series --- the furthest possible value from the truth,
+  reported as an ECx with nothing said. The crossing is now found by
+  interpolation between the bracketing grid points rather than snapped to the
+  nearer of them (#39).
+
+- **`ecx_val` is no longer capped at 99.** Any value above 0 is accepted. Under
+  `"absolute"` the reference is 0, so a value above 100 names a target below
+  zero, which is a real measurement on a response that can go negative and is
+  what OECD TG 201 reports rather than truncating at 100 per cent.
+
+## Bug fixes
+
+- `ecx()` and `nsec()` discarded any arithmetic inside an inline `crf()`
+  transformation when putting the estimate back on the fitted scale. The
+  substitution replaced the parsed call's first argument slot, so
+  `crf(log(x + 1))` was inverted as `log(x)` and the `+ 1` was dropped. Nothing
+  errored and the value returned was plausible. Measured on a `nec4param` fit to
+  `nec_data` with `crf(log(raw_x + 1))`: EC10 was 1.372 where the same model
+  fitted through a pre-computed `log(x + 1)` column gave 1.598, a 14 per cent
+  error on the fitted scale and a concentration of 2.94 against 3.94 once
+  back-transformed. The same defect was present at three further sites --- the
+  stored *NEC* or *NSEC* written by `expand_nec()` at fit time, and both hurdle
+  methods --- so it reached every fit using an inline transformation with
+  arithmetic, not only explicit `ecx()` calls. `vignette("example1")` fits
+  `crf(log(raw_x + 1))` and reports an ECx from it (#196).
+
+- `plot()` and `autoplot()` decided whether to apply `xform` to the predictor
+  axis from a guard that answered for the formula as a whole, so a
+  transformation on the *response* suppressed `xform` on the *predictor* axis
+  and the axis was drawn on the fitted scale while the caller had asked for the
+  recorded one. The guard is now per-variable, as `fit_bayesnec()`'s became in
+  2.1.4 (#268).
+
+- The *NEC* and EC10 annotations on `plot()` and `autoplot()` were drawn at
+  their own value on an axis drawn on a different scale whenever the formula
+  transformed the predictor, so the annotation did not correspond to the curve
+  beneath it and could fall outside the axis entirely. Estimates and axis are
+  now put on one scale: with the caller's `xform` where one was supplied, and
+  otherwise by inverting numerically on the prediction grid, so the default case
+  is correct without the caller having to know an inverse was needed (#160,
+  #161).
+
+- Zero-bounded equations --- `nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`,
+  `ecxwb2p3`, `ecxll3` --- are no longer dropped when `family = gaussian()`.
+  The exclusion conflated the range of the mean function with the support of the
+  likelihood: a gaussian likelihood evaluates `y - mu` and never tests the sign
+  of `y`, so a mean function asymptoting to zero with gaussian error is
+  internally consistent. It prevented the curve shape OECD TG 201 and Ritz,
+  Gerhard & Streibig (2026) both recommend for algal growth-rate data from being
+  fitted at all, `nec3param` included, and a user naming a single zero-bounded
+  equation explicitly got an error rather than a message. Model weights now make
+  that judgement. The separate `log`/`logit` link exclusion is unchanged (#206).
+
 - New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
   independently within each level of a factor and model-averaging within each
   level. This is the first support for a factor covariate, and it answers the

@@ -43,7 +43,7 @@
 #' @export
 average_estimates <- function(x, estimate = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
-                              hormesis_def = "control", sig_val = 0.01,
+                              sig_val = 0.01,
                               resolution = 1000, x_range = NA, xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   if (!is.list(x) | is.null(names(x))) {
@@ -54,7 +54,6 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   }
   chk_lgl(posterior)
   chk_character(type)
-  chk_character(hormesis_def)
   chk_numeric(ecx_val)
   chk_numeric(sig_val)
   chk_numeric(resolution)
@@ -71,12 +70,12 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   if (estimate == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, resolution = resolution,
                              posterior = TRUE, type = type,
-                             hormesis_def = hormesis_def, x_range = x_range,
+                             x_range = x_range,
                              xform = xform)
   }
   if (estimate == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, resolution = resolution,
-                             posterior = TRUE, hormesis_def = hormesis_def,
+                             posterior = TRUE,
                              x_range = x_range, xform = xform)
   }
   names(posterior_list) <- names(x)

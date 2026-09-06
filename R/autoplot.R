@@ -302,17 +302,19 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                      x_r = NA, y_r = NA)
   r_df <- prep_raw_data(brms_fit, x$bayesnecformula)
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
-  trans_vars <- find_transformations(bdat)
   out <- rbind(e_df, r_df)
-  if (length(trans_vars) == 0) {
+  if (!pop_var_is_transformed(bdat, "x_var")) {
     out <- out |>
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
+  x_grid_raw <- x$pred_vals$data$x
   if (add_nec) {
-    out <- bind_nec(out, x$ne, xform = xform)
+    out <- bind_nec(out, to_axis_scale(x$ne, bdat, x$bayesnecformula,
+                                       x_grid_raw, xform))
   }
   if (add_ecx) {
-    ecx_vals <- ecx(x, xform = xform, ...)
+    ecx_vals <- to_axis_scale(ecx(x, ...), bdat, x$bayesnecformula,
+                              x_grid_raw, xform)
     out <- bind_ecx(out, ecx_vals)
   }
   out
@@ -352,17 +354,20 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   bdat <- model.frame(x$mod_fits[[1]]$bayesnecformula, 
                       data = x$mod_fits[[1]]$fit$data, 
                       run_par_checks = TRUE)
-  trans_vars <- find_transformations(bdat) 
+  manec_formula <- x$mod_fits[[1]]$bayesnecformula
+  x_grid_raw <- x$w_pred_vals$data$x
   out <- rbind(e_df, r_df)
-  if (length(trans_vars) == 0) {
+  if (!pop_var_is_transformed(bdat, "x_var")) {
     out <- out |>
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
   if (add_nec) {
-    out <- bind_nec(out, x$w_ne, xform = xform)
+    out <- bind_nec(out, to_axis_scale(x$w_ne, bdat, manec_formula,
+                                       x_grid_raw, xform))
   }
   if (add_ecx) {
-    ecx_vals <- ecx(x, xform = xform, ...)
+    ecx_vals <- to_axis_scale(ecx(x, ...), bdat, manec_formula,
+                              x_grid_raw, xform)
     out <- bind_ecx(out, ecx_vals)
   }
   out

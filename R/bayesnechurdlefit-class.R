@@ -131,6 +131,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   which = "combined", ...) {
   check_component_arg(list(...), object)
+  check_removed_args(list(...))
   chk_logical(posterior)
   which <- hurdle_check_which(which)
   if (!inherits(xform, "function")) {
@@ -186,18 +187,25 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
 #' @export
 ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 1000,
                                   posterior = FALSE, type = "absolute",
-                                  hormesis_def = "control", x_range = NA,
-                                  xform = identity,
+                                  x_range = NA, xform = identity,
                                   prob_vals = c(0.5, 0.025, 0.975),
                                   which = "combined", ...) {
   check_component_arg(list(...), object)
+  check_removed_args(list(...))
   chk_numeric(ecx_val)
   chk_numeric(resolution)
   chk_logical(posterior)
   which <- hurdle_check_which(which)
-  if (!type %in% c("relative", "absolute", "direct")) {
-    stop("type must be one of 'relative', 'absolute' (the default) or",
-         " 'direct'. Please see ?ecx for more details.")
+  type <- validate_ecx_type(type, match.call())
+  if (identical(type, "relative")) {
+    # A two-block fit has no single bot parameter to measure towards: the
+    # combined endpoint is mu * (1 - hu) and its asymptote is a product of two
+    # equations rather than a fitted quantity. "range" measures towards the
+    # lowest predicted response and is defined here; "absolute" measures
+    # towards 0. See D15 ruling 6.
+    stop("type = \"relative\" is not defined for a hurdle fit, whose ",
+         "asymptote is not a single fitted parameter. Use ",
+         "type = \"absolute\" or type = \"range\".", call. = FALSE)
   }
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
@@ -205,17 +213,11 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 1000,
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]
-  ecx_fct <- get(paste0("ecx_x_", type))
-  out <- apply(p_samples, 1, ecx_fct, ecx_val, preds$x)
-  # Back-transform through any function applied to x inside crf(), matching
-  # the behaviour of ecx.bayesnecfit.
-  x_str <- grep("crf(", labels(terms(object$formula)), fixed = TRUE,
-                value = TRUE)
-  x_call <- str2lang(eval(parse(text = x_str)))
-  if (inherits(x_call, "call")) {
-    x_call[[2]] <- str2lang("out")
-    out <- eval(x_call)
-  }
+  control <- p_samples[, 1]
+  out <- ecx_from_posterior(p_samples, preds$x, ecx_val, type, control,
+                            NA_real_)
+  # Put the estimate back on the fitted scale, matching ecx.bayesnecfit.
+  out <- sub_x_transformation(out, object$formula)
   if (inherits(xform, "function")) {
     out <- xform(out)
   }

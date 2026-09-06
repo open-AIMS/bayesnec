@@ -242,11 +242,12 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
 #'
 #' @export
 nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
-                                   x_range = NA, hormesis_def = "control",
+                                   x_range = NA,
                                    xform = identity,
                                    prob_vals = c(0.5, 0.025, 0.975), ...,
                                    posterior = FALSE, which = "combined") {
   check_component_arg(list(...), object)
+  check_removed_args(list(...))
   chk_logical(posterior)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
@@ -255,8 +256,9 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
                                   x_range = x_range)
   p_samples <- preds[[hurdle_check_which(which)]]
   reference <- quantile(p_samples[, 1], sig_val)
-  out <- apply(p_samples, 1, nsec_fct, reference = reference,
-               x_vec = preds$x)
+  out <- vapply(seq_len(nrow(p_samples)), function(i) {
+    crossing_x(p_samples[i, ], reference, preds$x)
+  }, numeric(1))
   out <- hurdle_xform_x(object, out)
   if (inherits(xform, "function")) {
     out <- xform(out)
@@ -280,14 +282,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
 #'
 #' @noRd
 hurdle_xform_x <- function(object, out) {
-  x_str <- grep("crf(", labels(terms(object$formula)), fixed = TRUE,
-                value = TRUE)
-  x_call <- str2lang(eval(parse(text = x_str)))
-  if (inherits(x_call, "call")) {
-    x_call[[2]] <- str2lang("out")
-    out <- eval(x_call)
-  }
-  out
+  sub_x_transformation(out, object$formula)
 }
 
 # ---------------------------------------------------------------------------
@@ -918,7 +913,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #'
 #' @export
 ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 10,
-                                     x_range = NA, hormesis_def = "control",
+                                     x_range = NA,
                                      type = "absolute", xform = identity,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
                                      posterior = FALSE, which = "combined") {
