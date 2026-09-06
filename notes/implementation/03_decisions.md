@@ -213,3 +213,74 @@ it, and RF reviews and merges down the stack. Parallel worktrees were considered
 and rejected for the reason already recorded — tier B's five items are all in
 `R/ecx.R`, `R/nsec.R` and the plotting path, so a fan-out would produce mutually
 conflicting pull requests.
+
+## D15 — The ECx reference, and the `type` vocabulary in `bayesnec`
+
+RF, 2026-09-06. Eight rulings, taken together because they are one definition.
+They align `bayesnec` with toxval T8, T9 and T10, which are stated in full in
+`/mnt/c/Rworking/toxval/REFACTOR-claude.md` §3.9 and §3.10 and summarised in
+that repository's `notes/implementation/02_decisions.md`.
+
+**The governing ruling.** *Any ECx value is measured relative to the control
+predicted mean, taken as the predicted response at the lowest concentration in
+the supplied predictor.* `bnec()` fits decreasing curves only, so the increasing
+forms in toxval T9 do not arise here; hormesis remains in scope and is the case
+the ruling decides.
+
+**What the code does now, and why that is the defect.** `ecx_x_absolute()`
+(`R/ecx.R:331`) uses `max(y_d)` as the reference and `ecx_x_relative()`
+(`R/ecx.R:319`) uses `max(y_d)` as the top of the span. For a monotonic
+decreasing curve the maximum of the predicted curve is the control, so the two
+agree. For a hormetic curve the maximum is the peak at the *NEC*, so every
+reported ECx is measured from the peak rather than from the control. That is the
+behaviour `hormesis_def = "max"` describes, applied unconditionally and without
+the `modify_posterior()` call that would have implemented the alternative.
+`nsec()` is anchored on the control already (`R/nsec.R:155`,
+`quantile(p_samples[, 1], sig_val)`) except for a live `hormesis_def == "max"`
+branch at `:167`. The two estimators therefore disagree on hormetic curves, which
+is the inconsistency the ruling removes.
+
+| | ruling |
+|---|---|
+| 1 | **Four `type` values, matching toxval T9.** `absolute` (default), control → 0; `relative`, control → the equation's theoretical asymptote; `range`, control → the lowest response the curve predicts over the predictor range; `direct`, a supplied response value. `range` is what `relative` computes today |
+| 2 | **The control is read at the lowest observed predictor value**, not at the lowest point of the prediction grid. Supplying `x_range` therefore does not change any reported estimate |
+| 3 | **A target the curve never reaches within the predictor range returns `NA` with a warning.** Today the nearest grid point is returned, which for a curve that never declines to the target can report the control concentration itself as the ECx |
+| 4 | **`hormesis_def` is removed** from `ecx()`, `nsec()` and `ecnsec()`, as in toxval T10. Its `ecx()` consumer is already commented out and it selects nothing once the control is the reference |
+| 5 | **`ecnsec` follows toxval T8**: it inverts the `ecx` reference construction under the same `type` and defaults to `absolute`. One formula replaces the three that stand in `R/nsec.R:157`, `R/nsec.R:363` and `R/ecnsec.R:131` |
+| 6 | **`relative` is refused where the bound is infinite** — an equation with no `bot` fitted with a family that has no lower bound. Error for a single fit; drop with a warning, name the equations and renormalise the weights for a model-averaged one |
+| 7 | **`absolute` uses 0 on an unbounded family deliberately**, following OECD TG 201, so the `gaussian`-without-`bot` refusal at `R/ecx.R:161` is removed and `ecx_val` stays uncapped |
+| 8 | **`type = "relative"` warns when supplied explicitly**, naming `range`, because its meaning changes and 2.1.3 is released. A plain `warning()` rather than `lifecycle::deprecate_warn()`, so no dependency is added |
+
+**Consequences to state in `NEWS.md` rather than let arrive as side effects.**
+Every ECx from a hormesis equation changes. Every `ecnsec` changes and generally
+becomes smaller. `type = "relative"` returns a different quantity. `NA` appears
+in results that previously always returned a number. `example1` reports ECx
+values computed through the #196 back-transform and changes for that reason as
+well.
+
+**Recorded on the matching toxval issues as each lands**, per D11: #196 to
+toxval#19, #195 to toxval#8 and toxval#12, #39 to toxval#40, and the `ecnsec`
+alignment to toxval#49.
+
+## D16 — Three further rulings taken with D15
+
+RF, 2026-09-06.
+
+**#206 — the `gaussian` exclusion is removed entirely.** The six zero-bounded
+equations become available under `gaussian()` with an identity link, which is the
+curve shape OECD TG 201 and Ritz, Gerhard & Streibig (2026) both recommend for
+algal growth-rate data. The issue measures that they fit cleanly and that model
+weights reject them when wrong. The separate `log`/`logit` link exclusion at
+`R/check_models.R:20` is untouched — it is reachable and it is correct.
+
+**#273 — measure both candidate priors, then choose.** Refit reference datasets
+under shape 5 with rate `4/m` and under shape 2 with rate `2/m`, and report the
+change in the `nec` posterior for a linearly spaced design and for a dataset with
+few concentrations. The issue's definition of done requires the measurement; the
+choice is made on it and recorded here.
+
+**#93 — the two remaining response corrections message once and are recorded on
+the fit.** Once per `bnec()` call rather than once per model, stating what was
+substituted and how many rows, and stored on the fitted object so a user
+comparing `bayesnec` against another engine can recover what was altered. The
+`bnec()`-not-`check_data()` placement rule in `R/bnec.R` applies.
