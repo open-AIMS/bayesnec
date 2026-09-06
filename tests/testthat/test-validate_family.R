@@ -392,8 +392,12 @@ test_that("a family forwarded through dots is read from the caller's expression"
   expect_error(wrap(family = Gamma(link = "inverse")), "bayesnec fits on the")
   expect_error(twice(family = Gamma(link = "inverse")), "bayesnec fits on the")
   # and a family named with no link is not announced as one taken from an
-  # object, which is what the symbol reading did
-  expect_no_message(
-    try(wrap(family = brms::Beta()), silent = TRUE)
+  # object, which is what the symbol reading did. Asserted against that
+  # message specifically rather than against silence: this response contains
+  # zeros, so under Beta the boundary substitution now reports itself, which
+  # it did not when the beta nudges were silent. See #93.
+  msgs <- capture.output(
+    try(wrap(family = brms::Beta()), silent = TRUE), type = "message"
   )
+  expect_false(any(grepl("taken from the family", msgs)))
 })
