@@ -50,14 +50,29 @@ test_that("get_priors builds priors from a formula and data without fitting", {
                   "brmsprior")
 })
 
+test_that("nec3param under gaussian now returns priors (#206)", {
+  # The exclusion this replaces refused every zero-bounded equation for a
+  # gaussian response, so the package's namesake equation could not be fitted
+  # to the growth-rate data OECD TG 201 recommends it for.
+  out <- suppressMessages(
+    get_priors(y ~ crf(x, "nec3param"), data = nec_data, family = gaussian())
+  )
+  expect_s3_class(out, "brmsprior")
+  expect_setequal(out$nlpar[nzchar(out$nlpar)], c("top", "beta", "nec"))
+})
+
 test_that("get_priors rejects what it cannot build priors from", {
   expect_error(get_priors(y ~ crf(x, "nec4param")), "`data` is required")
   expect_error(get_priors(1:3), "fitted by bnec")
   expect_error(get_priors(list()), "fitted by bnec")
-  # A model invalid for the family is dropped, as it is at fit time.
+  # A model invalid for the family is dropped, as it is at fit time. nec3param
+  # under gaussian is no longer one: #206 removed that exclusion, so this uses
+  # a case the rule still covers -- a zero-bounded equation under a log link,
+  # where the mean cannot produce the negative values the linear predictor
+  # needs.
   expect_error(
     get_priors(y ~ crf(x, "nec3param"), data = nec_data,
-               family = gaussian()) |> suppressMessages(),
+               family = gaussian(link = "log")) |> suppressMessages(),
     "None of the model"
   )
 })
