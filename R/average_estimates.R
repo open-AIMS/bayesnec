@@ -40,6 +40,24 @@
 #' average_estimates(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 #' }
 #'
+#' @section Reproducibility:
+#' The draws of each posterior are paired by an independent random permutation,
+#' so \code{prob_diff} and the difference intervals change between identical
+#' calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
+#' result. This is a Monte Carlo approximation to the difference of two
+#' \bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
+#' pairs.
+#'
+#' @section The independence assumption:
+#' The pairing is valid only where the posteriors being compared come from
+#' \bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+#' of each comes from the same sweep of the sampler --- and permuting them
+#' destroys that pairing, which discards the correlation between the levels and
+#' widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
+#' and a real difference is under-detected, which is the wrong direction to err
+#' in. A within-fit contrast needs draw-wise differencing and must not be routed
+#' through this function. See #218 and #33.
+#'
 #' @export
 average_estimates <- function(x, estimate = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
@@ -81,7 +99,12 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))
   r_posterior_list <- lapply(posterior_list, FUN = function(m, n_samples) {
-    m[sample(seq_len(n_samples), replace = FALSE)]
+    # A random subset of a longer posterior, not its first n_samples draws.
+    # sample(seq_len(n_samples)) permuted only the head of the vector, so where
+    # components had unequal draw counts the tail of the longer one was never
+    # used -- systematic rather than random thinning. Harmless when the counts
+    # are equal, which is the normal case. See #218.
+    m[sample(seq_along(m), n_samples, replace = FALSE)]
   }, n_samples = n_samples)
   posterior_data <- do.call("cbind", r_posterior_list) |>
       data.frame()

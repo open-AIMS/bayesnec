@@ -71,12 +71,30 @@ unscaled_power_message <- function(drop_model, fam_tag) {
 #'
 #' @noRd
 check_models <- function(model, family, data) {
+  # The exclusions are recorded as well as messaged. bnec() decides which of
+  # the requested equations it will not attempt, tells the user once by
+  # message(), and used to discard the decision, so the composition of the
+  # candidate set could not be recovered from the fit -- only from console
+  # output, which a knitted document or a suppressMessages() call does not
+  # keep. The set as requested, the set as fitted, and the reason for the
+  # difference are what a methods section has to state. See #261.
+  excluded <- data.frame(model = character(), reason = character(),
+                         stringsAsFactors = FALSE)
+  note_drop <- function(dropped, reason) {
+    if (length(dropped) > 0) {
+      excluded <<- rbind(excluded,
+                         data.frame(model = dropped, reason = reason,
+                                    stringsAsFactors = FALSE))
+    }
+    invisible(NULL)
+  }
   fam_tag <- family$family
   link_tag <- family$link
   if (link_tag %in% c("logit", "log")) {
     use_model <-  model[!model %in% mod_groups$zero_bounded]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("zero-bounded, and not valid under a", link_tag, "link"))
       message(paste("Dropping the model(s)",
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
@@ -94,6 +112,7 @@ check_models <- function(model, family, data) {
     use_model <- model[!model %in% bounded_linear_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("decays by subtraction, so its mean is unbounded below for", fam_tag, "with an identity link"))
       message(paste("Dropping the model(s)",
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
@@ -103,6 +122,7 @@ check_models <- function(model, family, data) {
     use_model <- model[!model %in% bounded_power_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("unscaled power term, unbounded for", fam_tag))
       message(unscaled_power_message(drop_model, fam_tag))
     }
     if (length(use_model) == 0) {
@@ -127,6 +147,7 @@ check_models <- function(model, family, data) {
     use_model <- model[!model %in% drop_always]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("not valid for the second block of a", fam_tag, "fit"))
       message(paste("Dropping the model(s)",
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
@@ -141,6 +162,7 @@ check_models <- function(model, family, data) {
     use_model <- model[!model %in% bounded_power_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("unscaled power term, unbounded for the zero-probability block"))
       message(unscaled_power_message(drop_model, fam_tag))
     }
     if (length(use_model) == 0) {
@@ -162,6 +184,7 @@ check_models <- function(model, family, data) {
                                       "ecxlin", "nechormepwr01")]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("not valid for", fam_tag, "with an identity link"))
       message(paste("Dropping the model", paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
                     fam_tag, "with identity link."))
@@ -202,6 +225,9 @@ check_models <- function(model, family, data) {
       drop_models <- setdiff(model, use_models)
       model <- use_models
       if (length(drop_models) > 0) {
+        note_drop(drop_models, paste("raises the predictor to a fractional",
+                                     "power, which is undefined for negative",
+                                     "predictor values"))
         message(
           paste("Dropping the model(s)", paste0(drop_models, collapse = ", "),
                 "as they are not valid for data with negative predictor (x)",
@@ -215,6 +241,7 @@ check_models <- function(model, family, data) {
     stop("The model(s): ", to_flag, "; is not a valid",
          " model entry. Please check ?bnec for valid model calls.")
   }
+  attr(model, "excluded") <- excluded
   model
 }
 

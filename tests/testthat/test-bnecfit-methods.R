@@ -50,20 +50,20 @@ test_that("family_signature compares the tag and the links, not the object", {
                      names(bayesnec:::family_signature(gaussian()))))
 })
 
-test_that("has_family_changed reads the family it is given", {
+test_that("check_update_data reads the family it is given", {
   o <- recover_prebayesnecfit(manec_example)
   dat <- o[[1]]$fit$data
   # Collected by `...` and passed positionally, the family never reached
   # retrieve_valid_family(), so the guard could not detect a family change at
   # all -- it only ever compared the data-derived family. See #256.
-  expect_false(bayesnec:::has_family_changed(o, dat, validate_family("gaussian")))
-  expect_true(bayesnec:::has_family_changed(o, dat, validate_family("Beta")))
+  expect_false(bayesnec:::check_update_data(o, dat, validate_family("gaussian"))$changed_family)
+  expect_true(bayesnec:::check_update_data(o, dat, validate_family("Beta"))$changed_family)
 })
 
-test_that("has_family_changed still derives the family from new data", {
+test_that("check_update_data still derives the family from new data", {
   o <- recover_prebayesnecfit(manec_example)
-  expect_false(bayesnec:::has_family_changed(o, o[[1]]$fit$data))
-  expect_true(bayesnec:::has_family_changed(o, nec_data))
+  expect_false(bayesnec:::check_update_data(o, o[[1]]$fit$data)$changed_family)
+  expect_true(bayesnec:::check_update_data(o, nec_data)$changed_family)
 })
 
 test_that("update refuses an unsupported link before refitting", {

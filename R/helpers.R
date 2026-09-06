@@ -927,7 +927,7 @@ extract_formula <- function(x) {
 
 #' @noRd
 #' @importFrom stats model.frame
-has_family_changed <- function(x, data, family = NULL) {
+check_update_data <- function(x, data, family = NULL) {
   # A named argument rather than `...`: update.bnecfit() passed the family
   # positionally, so names(list(...)) was NULL, "family" %in% names() was
   # FALSE in retrieve_valid_family(), and the family was re-derived from the
@@ -944,9 +944,30 @@ has_family_changed <- function(x, data, family = NULL) {
     fam <- retrieve_valid_family(brm_args, bdat)
     model <- check_models(model, fam, bdat)
     checked_df <- check_data(data = bdat, family = fam, model = model)
+    # The corrections check_data() reports have to reach the data frame brms
+    # is given. This function used to read checked_df$family and discard the
+    # rest, so update(newdata = ) told the user their response had been shifted
+    # off a boundary and then passed the raw newdata to brms::update(), which
+    # failed naming the condition that had just been reported repaired. That is
+    # #258's failure mode on a route #258 did not cover, because the write-back
+    # that fixed it lives in fit_bayesnec() and this path does not go through
+    # it. See #274.
+    #
+    # Written back inside the loop so a model set converges on one corrected
+    # frame: every member shares the same response, and check_data() is
+    # deterministic given the family, so the correction each iteration computes
+    # is the same one.
+    data <- write_back_checks(data, bdat, "y_var", checked_df$mod_dat$y)
   }
-  !identical(family_signature(checked_df$family),
-             family_signature(x[[1]]$fit$family))
+  # Reported once, outside the loop, for the reason given in check_data(): the
+  # substitution is a property of the data and the family and does not need
+  # restating per model. See #93.
+  report_substitutions(checked_df$substitutions)
+  list(
+    changed_family = !identical(family_signature(checked_df$family),
+                                family_signature(x[[1]]$fit$family)),
+    data = data
+  )
 }
 
 #' The tag and the links, which is what "a different family" means here

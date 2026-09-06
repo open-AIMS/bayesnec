@@ -127,7 +127,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   od <- dispersion(object, summary = TRUE)
   if (length(od) == 0) {
-    od <- c(NA, NA, NA)
+    od <- c(Estimate = NA, Q2.5 = NA, Q97.5 = NA, `P(>1)` = NA)
   }
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
@@ -294,8 +294,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")
-  colnames(disp) <- c("dispersion_Estimate",
-                      "dispersion_Q2.5", "dispersion_Q97.5")
+  colnames(disp) <- c("dispersion_Estimate", "dispersion_Q2.5",
+                      "dispersion_Q97.5", "dispersion_P_over_1")
   mod_stats <- data.frame(model = success_models)
   mod_stats$waic <- sapply(object, extract_waic_estimate)
   loo_mw_args <- c(list(x = lapply(object, extract_loo)), loo_w_controls)

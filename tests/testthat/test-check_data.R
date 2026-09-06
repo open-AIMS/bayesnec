@@ -202,8 +202,15 @@ test_that("a Gamma zero is shifted by one tenth of the smallest non-zero value",
 })
 
 test_that("the Gamma zero shift is reported, and names the remedy", {
-  msg <- paste(cd_messages(y ~ crf(x, model = "nec3param"), cd_data_zero(),
-                           Gamma(link = "identity")), collapse = " ")
+  # The report moved out of check_data() and into report_substitutions(), which
+  # the user-facing entry points call once per call rather than once per model.
+  # check_data() is silent; the message and its remedy are unchanged. See #93.
+  expect_length(cd_messages(y ~ crf(x, model = "nec3param"), cd_data_zero(),
+                            Gamma(link = "identity")), 0)
+  rec <- cd_run(y ~ crf(x, model = "nec3param"), cd_data_zero(),
+                Gamma(link = "identity"))$substitutions
+  msg <- paste(capture.output(report_substitutions(rec), type = "message"),
+               collapse = " ")
   expect_match(msg, "shifted to 0\\.3")
   expect_match(msg, "hurdle_gamma")
 })
@@ -223,11 +230,20 @@ test_that("a beta one is reduced by exactly 0.001", {
   expect_false(any(res$mod_dat$y == 1))
 })
 
-test_that("both beta corrections are silent, unlike the Gamma one", {
-  # Pins the #93 measurement. If either correction is given a message, this
-  # assertion fails and #93 is the issue to read before changing it.
+test_that("all three corrections are reported, none from check_data (#93)", {
+  # INVERTED. This pinned the #93 measurement that the two beta corrections
+  # were silent while the Gamma one messaged. All three are now reported, and
+  # none of them from check_data(), which runs once per model and would repeat
+  # the message for every member of a model set.
   expect_length(cd_messages(y ~ crf(x, model = "nec3param"),
                             cd_data_bounded(), Beta(link = "identity")), 0)
+  rec <- cd_run(y ~ crf(x, model = "nec3param"), cd_data_bounded(),
+                Beta(link = "identity"))$substitutions
+  expect_equal(nrow(rec), 2)
+  msgs <- capture.output(report_substitutions(rec), type = "message")
+  expect_length(msgs, 2)
+  expect_match(paste(msgs, collapse = " "), "at 0,")
+  expect_match(paste(msgs, collapse = " "), "at 1,")
 })
 
 test_that("zero_inflated_beta keeps its zeros and loses its ones", {
@@ -269,9 +285,12 @@ test_that("a 0-1 bounded predictor keeps both of its bounds", {
 
 # ---- the shape of what is returned ------------------------------------------
 
-test_that("check_data returns mod_dat and the family, and nothing else", {
+test_that("check_data returns mod_dat, the family and the substitutions", {
   res <- cd_run(y ~ crf(x, model = "nec3param"), cd_data_zero(), gaussian())
-  expect_named(res, c("mod_dat", "family"))
+  # substitutions joined the return with #93: the corrections check_data()
+  # makes have to be recoverable by the caller, which reports them once and
+  # stores them on the fit.
+  expect_named(res, c("mod_dat", "family", "substitutions"))
   expect_named(res$mod_dat, c("x", "y", "trials"))
   expect_s3_class(res$family, "family")
 })
@@ -340,23 +359,15 @@ test_that("get_priors builds its priors from the corrected response", {
   expect_identical(pr$prior, pr_shifted$prior)
 })
 
-test_that("has_family_changed reports a correction it then discards", {
-  # PINS THE #274 DEFECT. update() with newdata runs check_data() through
-  # has_family_changed() (R/bnecfit-methods.R:171), which keeps only the family
-  # and drops the corrected data frame, so the user is told their data was
-  # repaired and the fit then fails on the condition that was reported
-  # repaired -- the #258 symptom on a route #258 did not cover.
+test_that("the update route writes back the correction it reports (#274)", {
+  # INVERTED. This pinned the #274 defect: update() with newdata ran
+  # check_data() through has_family_changed(), which kept only the family and
+  # dropped the corrected data frame, so the user was told their data had been
+  # repaired and the fit then failed on the condition reported repaired -- the
+  # #258 symptom on a route #258 did not cover.
   #
-  # Two assertions, both of which can fail. The first is that the message is
-  # emitted from this route at all. The second is that the whole of what comes
-  # back is a length-one logical, which is what makes the correction
-  # unreachable by the caller: there is nowhere for the repaired data frame to
-  # go. Asserting the state of the local d instead would be a tautology --
-  # has_family_changed() takes d by value and cannot alter it.
-  #
-  # INVERT THIS TEST WHEN #274 IS FIXED: either the message is no longer
-  # emitted from this route, or the return includes the corrected data frame
-  # and is no longer a bare logical.
+  # The return is no longer a bare logical: it carries the corrected frame,
+  # which is what makes the correction reachable by the caller.
   skip_on_cran()
   f <- nec4param
   d <- f$fit$data
@@ -364,10 +375,104 @@ test_that("has_family_changed reports a correction it then discards", {
   d$y[1:3] <- 0
   res <- NULL
   msgs <- capture.output(
-    res <- has_family_changed(list(f), d, Gamma(link = "identity")),
+    res <- check_update_data(list(f), d, Gamma(link = "identity")),
     type = "message"
   )
   expect_true(any(grepl("shifted", msgs)))
-  expect_type(res, "logical")
-  expect_length(res, 1)
+  expect_type(res, "list")
+  expect_named(res, c("changed_family", "data"))
+  expect_type(res$changed_family, "logical")
+  # The zeros the message says were shifted are shifted in the frame returned.
+  expect_equal(sum(d$y == 0), 3)
+  expect_equal(sum(res$data$y == 0), 0)
+  expect_true(all(res$data$y > 0))
+  # Every other row is untouched.
+  expect_equal(res$data$y[-(1:3)], d$y[-(1:3)])
+})
+
+
+# ---- #271, the dispersion sub-model finiteness check -------------------------
+
+test_that("a disp() sub-model that is not finite is refused, naming the term", {
+  # check_data() tests the predictor and the response for finiteness, but it
+  # inspects only the population variables crf() declares. A disp(~...) term is
+  # an arbitrary brms formula whose variables are deliberately kept out of the
+  # model frame, so nothing tested it and an infinite value reached Stan: the
+  # fit did not run, reporting a brms warning about the data in general with
+  # nothing naming the term responsible. See #271.
+  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
+                  y = rep(c(8, 6, 3, 1), each = 5))
+  expect_error(
+    check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~log(x))), d),
+    "log\\(x\\)"
+  )
+  expect_error(
+    check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~log(x))), d),
+    "not finite"
+  )
+  # Not confined to zeros: any expression that is not finite on the recorded
+  # data reaches Stan the same way.
+  expect_error(
+    check_disp_finite(
+      bnf(y ~ crf(x, model = "nec3param") + disp(~I(1 / (x - 1)))), d
+    ),
+    "not finite"
+  )
+})
+
+test_that("a finite disp() sub-model, a variance function and no disp pass", {
+  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
+                  y = rep(c(8, 6, 3, 1), each = 5))
+  expect_null(
+    check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~x)), d)
+  )
+  # Route B names a variance function rather than a formula, so there is no
+  # expression to evaluate.
+  expect_null(
+    check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp("power")), d)
+  )
+  expect_null(check_disp_finite(bnf(y ~ crf(x, model = "nec3param")), d))
+  # The same term on data without the zero is fine, which is what makes this a
+  # data-and-formula check rather than a rule about log().
+  d2 <- d
+  d2$x[d2$x == 0] <- 0.5
+  expect_null(
+    check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~log(x))), d2)
+  )
+})
+
+# ---- #93, the response substitutions are reported and recorded ---------------
+
+test_that("both boundary nudges are reported, with counts", {
+  # Two of the three were silent, so a user comparing bayesnec against another
+  # engine had no way to see that the data had been altered. See #93 and D16.
+  y <- c(rep(0.9, 6), rep(0.6, 6), rep(0.2, 6), rep(0, 3), rep(0.05, 3))
+  rec <- substitution_record(y, NULL, validate_family("Beta"))
+  expect_s3_class(rec, "data.frame")
+  expect_equal(nrow(rec), 1)
+  expect_equal(rec$n_rows, 3)
+  expect_equal(rec$from, 0)
+  expect_message(report_substitutions(rec), "3 value\\(s\\) at 0,")
+
+  y1 <- y
+  y1[1:2] <- 1
+  rec1 <- substitution_record(y1, NULL, validate_family("Beta"))
+  expect_equal(nrow(rec1), 2)
+  expect_equal(rec1$n_rows, c(3, 2))
+  expect_message(report_substitutions(rec1), "at 1,")
+
+  # Nothing on a boundary, nothing to report.
+  expect_null(substitution_record(c(0.2, 0.5, 0.8), NULL,
+                                  validate_family("Beta")))
+  expect_silent(report_substitutions(NULL))
+})
+
+test_that("a hurdle family keeps its zeros and reports no substitution", {
+  # The zeros are the hurdle signal, not a boundary artefact.
+  y <- c(rep(3, 6), rep(2, 6), rep(0, 6))
+  expect_null(substitution_record(y, NULL, validate_family("hurdle_gamma")))
+  # And a censored zero is exempt for the same reason: the value is a declared
+  # bound, not an artefact.
+  cens <- c(rep(0, 12), rep(-1, 6))
+  expect_null(substitution_record(y, cens, validate_family("Gamma")))
 })

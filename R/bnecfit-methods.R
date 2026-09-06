@@ -168,7 +168,17 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   }
   if (!is.null(newdata) || "family" %in% names(dot_args)) {
     data_to_check <- if (is.null(newdata)) object[[1]]$fit$data else newdata
-    changed_family <- has_family_changed(object, data_to_check, dot_args$family)
+    checked <- check_update_data(object, data_to_check, dot_args$family)
+    changed_family <- checked$changed_family
+    # The corrected frame replaces the caller's newdata, so a boundary shift
+    # check_data() reported is the one brms::update() is given. Without this
+    # the message was emitted and the correction thrown away. Only assigned
+    # when newdata was supplied: with newdata NULL the frame checked is the
+    # stored fit's own data and brms::update() must go on receiving NULL, which
+    # is what tells it to reuse that data rather than treat it as new. See #274.
+    if (!is.null(newdata)) {
+      newdata <- checked$data
+    }
   } else {
     changed_family <- FALSE
   }

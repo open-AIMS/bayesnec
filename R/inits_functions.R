@@ -278,6 +278,9 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
 #'
 #' @param x A \code{\link[base]{numeric}} vector containing the x predictor.
 #' @param y A \code{\link[base]{numeric}} vector containing the y response.
+#' @param max_seconds A \code{\link[base]{numeric}} value, the wall-clock
+#' budget for the search. Whichever of this and \code{n_trials} is reached
+#' first ends it.
 #' @param n_trials A \code{\link[base]{numeric}} vector indicating
 #' how many attempts the function should run before giving up.
 #' @param seed seed number for reproducible random number generation. Defaults
@@ -288,7 +291,8 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
-make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
+make_good_inits <- function(model, x, y, n_trials = 1e3, seed = NULL,
+                            max_seconds = 10, ...) {
   limits <- range(y, na.rm = TRUE)
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
@@ -300,8 +304,20 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
   inits <- make_inits(model, fct_args, ...)
   init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
   are_good <- all(sapply(init_ranges, check_init_predictions, limits))
+  # Bounded by elapsed time as well as by attempts, because time is the
+  # quantity the caller is paying and an attempt is not a fixed amount of it.
+  # The cap was 1e4 attempts and nothing else: measured on a twenty-row dataset
+  # that ran for 561 seconds for a single model, per model, with no output
+  # while it ran, so a user could not tell a long search from a hang. The
+  # outcome after exhausting it is Stan's own random initialisation, which is
+  # available at the first attempt, so the whole of that time bought nothing.
+  # A search that has not succeeded in ten seconds of drawing has a prior and a
+  # response that do not overlap, and more draws from the same prior do not
+  # change that. See #266.
+  started <- Sys.time()
+  timed_out <- FALSE
   n_t <- 1
-  while (!are_good && n_t <= n_trials) {
+  while (!are_good && n_t <= n_trials && !timed_out) {
     inits <- make_inits(model, fct_args, ...)
     init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
     are_good <- all(sapply(init_ranges, check_init_predictions, limits))
@@ -315,11 +331,18 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
       are_good <- all(sapply(init_ranges, check_init_predictions, limits))
     }
     n_t <- n_t + 1
+    # Checked once per attempt rather than per inner redraw: Sys.time() is
+    # cheap relative to an attempt, and the bound only has to be approximate.
+    timed_out <- as.numeric(Sys.time() - started, units = "secs") > max_seconds
   }
   if (!are_good) {
+    elapsed <- as.numeric(Sys.time() - started, units = "secs")
     message("bayesnec failed to find initial values within the",
-            " range of the response. Using Stan's default",
-            " initialisation process.")
+            " range of the response for the ", model, " model after ", n_t - 1,
+            " attempts and ", signif(elapsed, 2), " seconds. Using Stan's",
+            " default initialisation process. This usually means the priors",
+            " and the response do not overlap; get_priors() reports the priors",
+            " in use.")
     list(random = "random")
   } else {
     inits

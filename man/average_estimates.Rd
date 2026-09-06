@@ -74,6 +74,28 @@ already based on a re-scaling of the x (concentration) axis, it is important
 to pass an appropriate xform argument to ensure these are back transformed
 before the the geometric mean calculation is applied.
 }
+\section{Reproducibility}{
+
+The draws of each posterior are paired by an independent random permutation,
+so \code{prob_diff} and the difference intervals change between identical
+calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
+result. This is a Monte Carlo approximation to the difference of two
+\bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
+pairs.
+}
+
+\section{The independence assumption}{
+
+The pairing is valid only where the posteriors being compared come from
+\bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+of each comes from the same sweep of the sampler --- and permuting them
+destroys that pairing, which discards the correlation between the levels and
+widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
+and a real difference is under-detected, which is the wrong direction to err
+in. A within-fit contrast needs draw-wise differencing and must not be routed
+through this function. See #218 and #33.
+}
+
 \examples{
 \dontrun{
 library(brms)

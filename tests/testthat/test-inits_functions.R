@@ -857,3 +857,54 @@ test_that("group_inits works for a formula carrying a rate() aterm", {
   expect_equal(dim(gi$z_1), c(1L, 12L))
   expect_true(all(gi$z_1 == 0))
 })
+
+
+test_that("the initial-value search is bounded by time as well as attempts", {
+  # The cap was 1e4 attempts and nothing else. Measured on a twenty-row dataset
+  # that ran 561 seconds for a single model, per model, with no output while it
+  # ran, and the outcome after exhausting it is Stan's own random
+  # initialisation, which is available at the first attempt. See #266.
+  expect_true("max_seconds" %in% names(formals(make_good_inits)))
+  expect_equal(formals(make_good_inits)$max_seconds, 10)
+  # The attempt cap came down with it: 1e4 is not a bound anyone would choose
+  # knowing what an attempt costs.
+  expect_equal(formals(make_good_inits)$n_trials, 1e3)
+})
+
+test_that("an impossible search falls back within the time budget", {
+  # A response the priors cannot reach, so the search cannot succeed and the
+  # bound is what ends it. Asserted on elapsed time rather than on attempts,
+  # because time is the quantity the caller pays.
+  skip_on_cran()
+  priors <- brms::prior_string("normal(1e6, 1)", nlpar = "top") +
+    brms::prior_string("normal(1e6, 1)", nlpar = "beta") +
+    brms::prior_string("normal(1e6, 1)", nlpar = "nec")
+  started <- Sys.time()
+  out <- expect_message(
+    make_good_inits("nec3param", x = c(1, 5, 20, 100), y = c(0.9, 0.6, 0.3, 0.1),
+                    priors = priors, chains = 2, max_seconds = 2),
+    "failed to find initial values"
+  )
+  elapsed <- as.numeric(Sys.time() - started, units = "secs")
+  expect_lt(elapsed, 30)
+  # The fallback is Stan's own random initialisation.
+  expect_equal(out, list(random = "random"))
+})
+
+test_that("the fallback message says how many attempts and how long", {
+  # The user saw "Finding initial values ..." and then nothing for as long as
+  # the search lasted, so a long search could not be told from a hang.
+  skip_on_cran()
+  priors <- brms::prior_string("normal(1e6, 1)", nlpar = "top") +
+    brms::prior_string("normal(1e6, 1)", nlpar = "beta") +
+    brms::prior_string("normal(1e6, 1)", nlpar = "nec")
+  msg <- capture.output(
+    make_good_inits("nec3param", x = c(1, 5, 20, 100), y = c(0.9, 0.6, 0.3, 0.1),
+                    priors = priors, chains = 2, max_seconds = 1),
+    type = "message"
+  )
+  msg <- paste(msg, collapse = " ")
+  expect_match(msg, "attempts")
+  expect_match(msg, "seconds")
+  expect_match(msg, "nec3param")
+})

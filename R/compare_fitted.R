@@ -41,6 +41,24 @@
 #' compare_fitted(list("nec" = ecx4param, "ecx" = nec4param))
 #' }
 #'
+#' @section Reproducibility:
+#' The draws of each posterior are paired by an independent random permutation,
+#' so \code{prob_diff} and the difference intervals change between identical
+#' calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
+#' result. This is a Monte Carlo approximation to the difference of two
+#' \bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
+#' pairs.
+#'
+#' @section The independence assumption:
+#' The pairing is valid only where the posteriors being compared come from
+#' \bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+#' of each comes from the same sweep of the sampler --- and permuting them
+#' destroys that pairing, which discards the correlation between the levels and
+#' widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
+#' and a real difference is under-detected, which is the wrong direction to err
+#' in. A within-fit contrast needs draw-wise differencing and must not be routed
+#' through this function. See #218 and #33.
+#'
 #' @export
 compare_fitted <- function(x, resolution = 50, x_range = NA,
                            make_newdata = TRUE, ...) {
@@ -64,7 +82,9 @@ compare_fitted <- function(x, resolution = 50, x_range = NA,
   }
   n_samples <- min(sapply(posterior_list, nrow))
   r_posterior_list <- lapply(posterior_list, function(m, n_samples) {
-    m[sample(seq_len(n_samples), replace = FALSE), ]
+    # A random subset of a longer posterior, not its first n_samples rows.
+    # See #218.
+    m[sample(seq_len(nrow(m)), n_samples, replace = FALSE), ]
   }, n_samples = n_samples)
   posterior_data <- posterior_list |>
       lapply(summarise_posterior, x_vec = x_vec) |>

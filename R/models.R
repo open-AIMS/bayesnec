@@ -149,9 +149,12 @@ models <- function(object) {
     # bounded response, which bnec() fits happily, and kept nechormepwr01 for a
     # zero-bounded one, which bnec() drops. Asking the same function the fitting
     # path asks is what stops that happening again. See #170.
-    use_mods <- suppressMessages(
+    # as.character() strips the "excluded" attribute check_models() attaches
+    # for bnec_record(). It is metadata about a fitting call, and models() is
+    # answering a question about the equations alone. See #261.
+    use_mods <- as.character(suppressMessages(
       check_models(mod_groups$all, range_to_family(object))
-    )
+    ))
   } else {
     stop("Argument `object` must be a bayesnecfit or bayesmanecfit, one of the",
          " model group names (", paste0("\"", names(mod_groups), "\"",
