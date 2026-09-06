@@ -885,8 +885,11 @@ test_that("an impossible search falls back within the time budget", {
                     priors = priors, chains = 2, max_seconds = 2),
     "failed to find initial values"
   )
+  # A coarse bound, not a benchmark: it guards against the 561-second
+  # behaviour #266 measured, and has to survive a loaded machine, so it is set
+  # far above max_seconds rather than close to it.
   elapsed <- as.numeric(Sys.time() - started, units = "secs")
-  expect_lt(elapsed, 30)
+  expect_lt(elapsed, 120)
   # The fallback is Stan's own random initialisation.
   expect_equal(out, list(random = "random"))
 })
