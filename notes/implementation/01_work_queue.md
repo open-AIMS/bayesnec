@@ -51,100 +51,93 @@ release to CRAN is still not a gate on anything here.
 
 ---
 
-# Tier A — the remaining coverage work
+# The batches
 
-Unchanged from the 2026-09-03 queue except that A1 has merged. A1 wrote the test
-files that pin A2 and A3 as current behaviour, with the assertion to invert named
-in a comment, so each of those is a one-line inversion plus the code change.
+**Rebuilt as four batches on 2026-09-06** (RF: as few pull requests as possible,
+worked unattended). The tiers that stood here are unchanged in content; what
+changes is that issues sharing a subsystem are fixed in one branch and one pull
+request rather than one each. Each pull request body is sectioned by issue, so
+review is still per-issue.
 
-| # | item | what | size |
-|---|---|---|---|
-| A2 | #274 | `update()` with `newdata` reports a boundary correction and then discards it | S |
-| A3 | #268 | `xform` skipped on the predictor axis when the response is transformed | S |
-| A4 | #271 | no `disp()` sub-model is checked for finiteness before `brm()` sees it | M |
-| A5 | #272 | `set_distribution()` returns `NULL` for an integer vector with negative values | S |
-| A6 | #266 | `make_good_inits()` spends up to 561 s on one model before falling back | M |
+The batches **stack**, per `00_protocol.md` and D14: batch 2 is cut from batch 1
+and so on. If a batch stalls, cut the next from the last good branch and record
+the skip in `05_run_log.md`.
 
-A4 and A5 are independent and can be taken in either order. A6 is a performance
-defect rather than a correctness one; it is here because #79 measured the same
-mechanism at 1050 s and closed it as *not reproducible*, which is the outcome to
-avoid repeating.
+## Batch 1 — the estimate and the curve it is read from
 
----
+**Closes #195, #196, #39, #206, #160, #161, #268.** Files: `R/ecx.R`,
+`R/nsec.R`, `R/ecnsec.R`, `R/check_models.R`, `R/plot.R`, `R/autoplot.R`,
+`R/helpers.R`.
 
-# Tier B — the estimators
+One theme: what a reported estimate is measured against, and whether the
+predictor transformation is inverted correctly on the way out. D15 and D16 state
+the eight rulings; this batch implements them.
 
-**These are in scope for the first time.** They were deferred on the grounds that
-`R/ecx.R`, `R/nsec.R` and `R/ecnsec.R` are moving to `toxval` and fixing them
-here would be work discarded. Decision 1 reverses that: the migration has not
-started, the training course needs correct estimates within days, and the
-corrected code relocates with the files when the migration runs.
-
-**B1 comes first because it changes a published number.** `example1.Rmd.orig:253`
-fits `resp ~ crf(log(raw_x + 1), model = "nec4param")` and line 109 calls
-`ecx(exp_2, xform = function(x) exp(x) - 1)` on it. That is the exact
-reproduction in #196: the internal back-transform substitutes into the first
-argument slot of the parsed call, so `log(raw_x + 1)` is inverted as
-`log(raw_x)` and the `+ 1` is discarded. The introductory vignette therefore
-reports an ECx from a back-transform that drops a term, and the course would
-teach it. `example6` uses a pre-computed `log_dose` column and is unaffected;
-`example1` is the only vignette using an inline transformation with arithmetic.
-
-| # | item | what | size |
-|---|---|---|---|
-| B1 | #196 | inline `crf()` arithmetic discarded when back-transforming, in both `R/ecx.R:198-201` and `R/nsec.R:173-175` | S |
-| B2 | #160 | *NEC* mis-plotted when a function is called for `x`. `test-autoplot.R` now exists, which is the instrument the 2026-09-03 deferral said was the precondition | M |
-| B3 | #161 | post-processing failure on a case-study dataset. `02_deferred.md` records it as probably #195 or #196; B1 and B4 determine whether anything is left | S once B1 and B4 land |
-| B4 | #195 | `hormesis_def` is inert in `ecx()` — its only consumer is commented out; the documented default is not the effective default; one documented sentence is implemented three ways | M |
-| B5 | #206 | zero-bounded models excluded for `gaussian`. Re-check the coupling first: it was deferred on `R/ecx.R:161` refusing `type = "absolute"` for a Gaussian response with no `bot`, and on #170, which closed on 2026-08-17 | M |
-
-**B2 and B3 may collapse into B1.** Both are suspected to share its root cause
-and neither has been settled, because until 2026-09-03 there was no test over the
-plotting path that would settle one. Take B1 first, then re-run each reproduction
-before writing any further fix.
-
-**B5 carries a premise that has changed.** The issue argues from
-`validate_family()` forcing the identity link only for a character string, so
-that `gaussian` as a bare symbol takes its own default. #256 changed that: PR
-#260 assigns the identity link unless the caller wrote a `link` argument, so a
-bare symbol now gets identity too. The half of #206's argument that survives is
-that `gaussian(link = "log")` is still honoured and `R/check_models.R:20` is
-still reachable. Re-establish the reproduction against current `dev` before
-implementing.
-
-**Record each fix on the matching `toxval` issue as it lands**, so the migration
-re-lands the corrected code rather than the version `toxval` forked. The
-correspondences are #196 to toxval#19, #195 to toxval#8 and toxval#12, and #39 to
-toxval#40.
-
----
-
-# Tier C — decisions that are RF's, not the session's
-
-Each is a legitimate change whose correct statistical behaviour is the
-undetermined part, which `00_protocol.md` makes a stop-and-ask. None is blocked
-on anything in tiers A or B.
-
-| # | the decision |
+| # | what |
 |---|---|
-| #273 | the default `nec` and `ec50` gamma prior peaks at twice the median predictor, so on a linearly spaced series its mode sits on the upper truncation bound. Two candidate corrections are on the issue; the choice needs a measurement. Worst on the linearly spaced designs this field uses, so it is the one most likely to affect a course exercise |
-| #257 | apply group-level deviations on a scale where the mean cannot leave its support. Unblocked by #256. **Also the likeliest explanation for PR #228's divergences**, so taking it may settle decision 2 |
+| #196 | inline `crf()` arithmetic discarded when back-transforming, in `R/ecx.R:198-201` and `R/nsec.R:173-175`. Substitute into the whole argument expression, not its first slot |
+| #195 | the reference becomes the control per D15; `hormesis_def` is removed; the four `type` values are implemented; the documented default is made the effective default |
+| #39 | root-finding for the crossing rather than the nearest grid point. Required by D15 ruling 3, which cannot report `NA` reliably off a nearest-point search |
+| #206 | remove the `gaussian` exclusion of the zero-bounded equations, and the `R/ecx.R:161` absolute-ECx refusal that was its other half |
+| #160 | *NEC* mis-plotted when a function is called for `x`. Re-check after #196; the plotting path applies the same substitution |
+| #161 | post-processing failure on a case-study dataset. Re-check after #195 and #196 |
+| #268 | `xform` skipped on the predictor axis when the response is transformed |
+
+**Take #196 first within the batch.** It is the smallest change, it is the one
+that alters a published vignette number, and #160 and #161 are both suspected to
+share its cause — settle them against the fixed version before writing anything
+further.
+
+**`ecnsec` is realigned here too**, per D15 ruling 5. It has no `bayesnec` issue
+of its own; it is toxval#49, and the alignment is recorded there.
+
+## Batch 2 — what `bnec()` checks, and what it reports
+
+**Closes #274, #271, #272, #266, #93, #262, #261, #218.** Files:
+`R/check_data.R`, `R/bnec.R`, `R/set_distribution.R`, `R/inits_functions.R`,
+`R/bnecfit-methods.R`, `R/summary.R`, `R/print.R`, `R/compare_posterior.R`.
+
+| # | what |
+|---|---|
+| #274 | `update()` with `newdata` reports a boundary correction and then discards it |
+| #271 | no `disp()` sub-model is checked for finiteness before `brm()` sees it |
+| #272 | `set_distribution()` returns `NULL` for an integer vector with negative values |
+| #266 | `make_good_inits()` spends up to 561 s on one model before falling back |
+| #93 | the two remaining silent response corrections message once and are recorded on the fit, per D16 |
 | #262 | report the posterior probability of over-dispersion, and state that `beta_binomial` does not address under-dispersion |
 | #261 | record which equations `bnec()` excluded, and report the candidate set as fitted |
-| #93 | narrowed by #270. What remains is whether the two silent response corrections should speak, and whether substitutions should be recorded on the fit. Two resolutions are on the issue |
+| #218 | `compare_posterior()` pairs draws by unseeded permutation. Documentation and a constraint, not a code fix |
+
+**#93 and #261 are one change seen from two sides** — both are about `bnec()`
+recording what it did to the input before fitting — and #206 in batch 1 changes
+what #261 has to report, since the `gaussian` exclusion goes away.
+
+## Batch 3 — the default `nec` and `ec50` prior
+
+**Closes #273.** Its own batch because D16 requires a measurement before the
+choice, and because the change affects every default fit. The measurement is a
+refit of reference datasets under both candidates, reported on the issue before
+the code changes.
+
+## Batch 4 — group-level deviations on a constrained scale
+
+**Closes #257.** Its own batch, and last, because it is the one candidate
+explanation not yet refuted for PR #228's 2000/2000 divergences under `ogl()`
+for the binomial families. Taking it may settle batch 5c without a vignette
+decision being needed at all.
 
 ---
 
-# Tier D — the vignettes
+# Batch 5 — the vignettes
 
 All three are finalised in this run. The ordering is decision 2: the two that are
 close go first, and the one blocked on a scientific question goes last.
 
 | order | PR | issue | state, and what remains |
 |---|---|---|---|
-| D1 | #243 | #193 | example7. Reported mergeable at `0a8b5d35` with `dev` merged in. Three open items: CI has never been seen green on the branch, a follow-up issue was scoped and never opened, and the 14,700-word length was flagged for a judgement never made |
-| D2 | #238 | #219 | example9. A full review is on the PR and unactioned. It needs restructuring so `screen_models()` sits with the sampler diagnostics, and `summary(fit)` shown after the candidate set is fitted. **Two of its errors of fact have expired** — see below |
-| D3 | #228 | #6, #33 | the grouping vignette. Blocked on a scientific question, not on code |
+| 5a | #243 | #193 | example7. Reported mergeable at `0a8b5d35` with `dev` merged in. Three open items: CI has never been seen green on the branch, a follow-up issue was scoped and never opened, and the 14,700-word length was flagged for a judgement never made |
+| 5b | #238 | #219 | example9. A full review is on the PR and unactioned. It needs restructuring so `screen_models()` sits with the sampler diagnostics, and `summary(fit)` shown after the candidate set is fitted. **Two of its errors of fact have expired** — see below |
+| 5c | #228 | #6, #33 | the grouping vignette. Blocked on a scientific question, not on code |
 
 **Re-check the #238 review before acting on it.** It was written before #260
 merged. Its statement that `bnec()` does not force the identity link, and that
@@ -165,16 +158,16 @@ work for bounded families generally and this is evidence that the claim holds fo
 `Beta` and not for the binomial families.
 
 **Open it as its own issue rather than continuing to hold it on the PR**, and
-take #257 before deciding anything: a group-level deviation applied on a scale
+take batch 4 (#257) before deciding anything: a group-level deviation applied on a scale
 where the mean can leave its support is the mechanism that would produce exactly
 this signature on a binomial response near the ceiling, and it is the one
 explanation not yet tested.
 
 ---
 
-# Tier E — the precompile
+# Batch 6 — the precompile
 
-Runs once, after tier D. Decision 3.
+Runs once, after batch 5. Decision 3.
 
 | # | what |
 |---|---|
@@ -195,7 +188,7 @@ previous session time, and should be read before starting.
 |---|---|
 | #255 | the toxval migration tracker. Deferred by decision 1, not cancelled. D11 records what changed |
 | #44 | hypothesis method for *NEC*/*NSEC*/*ECx* exceedance. A new API rather than a fix, and larger than the run. Tracked as toxval#41 |
-| #39 | `uniroot.all` for `ecx()` and `nsec()`. It requires the `type` reference semantics to be pinned down first, which is B4, and it is an enhancement rather than a defect. Take it after B4 if the run has room |
+| — | nothing further; #39 moved into batch 1, since D15 ruling 3 requires it |
 | #120 | replacing `all_models`. D5 requires that no existing user script breaks; `test-plot.R` and `test-autoplot.R` now make that detectable, so the precondition is met, but it is behaviour change rather than a fix |
 | #209, #249, PR #225 | the factorised count hurdle, blocked on `brms` upstream. `issue-136-rate-aterm` is PR #225's base and **must not be deleted** |
 | #184 | `future_apply`. Attended: RF wants a testing pass posted as a comment before any implementation |
