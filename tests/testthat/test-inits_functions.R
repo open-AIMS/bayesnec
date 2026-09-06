@@ -628,7 +628,13 @@ test_that("the adapt_delta raise is gated on the support of mu", {
       skip_check = TRUE, custom_name = NULL, group_spec = group
     ))
   }
-  grouped <- list(nlpars = "ogl", ogl = TRUE)
+  # A pgl-shaped spec, deliberately: #257 applies the deviation
+  # multiplicatively for an ogl term, which removes the excursion the raise
+  # exists to mitigate and so removes the raise with it. A deviation placed on
+  # individual curve parameters is not transformed, so it is the case where the
+  # mu-support gate this test is about is still the thing deciding. The
+  # ogl-and-transform interaction is asserted separately in test-check_priors.R.
+  grouped <- list(nlpars = c("top", "beta", "nec"), ogl = FALSE)
 
   # constrained mean, grouped: raised
   expect_equal(defaults(validate_family("Beta"), grouped)$control$adapt_delta,
@@ -641,6 +647,10 @@ test_that("the adapt_delta raise is gated on the support of mu", {
   expect_null(defaults(validate_family("gaussian"), grouped)$control)
   expect_null(defaults(gaussian(link = "log"), grouped)$control)
   expect_null(defaults(Beta(link = "logit"), grouped)$control)
+  # and the ogl case, which #257 transforms, is not raised at all
+  expect_null(
+    defaults(validate_family("Beta"), list(nlpars = "ogl", ogl = TRUE))$control
+  )
   # constrained mean, ungrouped: left alone, since there is no unconstrained
   # deviation to carry the mean out of range
   expect_null(defaults(validate_family("Beta"), NULL)$control)
