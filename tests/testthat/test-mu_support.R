@@ -301,10 +301,16 @@ test_that("check_models' gates agree with the model range table", {
   expect_setequal(dropped(gaussian(link = "log")),
                   tab$model[tab$zero_asymptote])
 
-  # appropriateness: the Gaussian exclusion. Keyed on the family irrespective
-  # of link, and the subject of #206; asserted here as current behaviour, not
-  # endorsed.
-  expect_setequal(dropped(validate_family("gaussian")),
+  # INVERTED with #206. The gaussian exclusion was keyed on the family
+  # irrespective of link and dropped every zero-asymptote equation; it was
+  # asserted here as current behaviour and explicitly not endorsed. It is
+  # removed: the exclusion conflated the range of the mean function with the
+  # support of the likelihood, and a gaussian likelihood evaluates y - mu and
+  # never tests the sign of y. Nothing is dropped for gaussian now.
+  expect_length(dropped(validate_family("gaussian")), 0)
+  # The link exclusion above is a different condition and still applies, which
+  # is what stops this reading as "gaussian drops nothing ever".
+  expect_setequal(dropped(gaussian(link = "log")),
                   tab$model[tab$zero_asymptote])
 
   # the two-block families apply both blocks' restrictions at once, which is
