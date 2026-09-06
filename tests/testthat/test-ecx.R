@@ -238,3 +238,27 @@ test_that("the ecx reference is the control, not the maximum of the curve", {
   from_max <- ecx_from_posterior(p, x_vec, 10, "absolute", c(15, 15), NA_real_)
   expect_true(all(from_max < x_vec[which.max(curve)]))
 })
+
+
+test_that("the relative rename warns once for a set, not once per equation", {
+  # sample_ecx() calls ecx() once per equation with type passed explicitly, so
+  # without the option guard a model-averaged call warned once for the set and
+  # once more for every equation in it. See D15 ruling 8.
+  skip_on_cran()
+  count_renames <- function(expr) {
+    n <- 0
+    withCallingHandlers(invisible(expr), warning = function(w) {
+      if (grepl("now measures", conditionMessage(w))) n <<- n + 1
+      invokeRestart("muffleWarning")
+    })
+    n
+  }
+  expect_equal(
+    count_renames(ecx(manec_example, type = "relative", resolution = 50)), 1
+  )
+  expect_equal(
+    count_renames(ecx(nec4param, type = "relative", resolution = 50)), 1
+  )
+  # The option is restored, so a later call in the same session still warns.
+  expect_null(getOption("bayesnec.relative_warned"))
+})

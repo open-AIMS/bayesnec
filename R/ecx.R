@@ -294,6 +294,12 @@ ecx.bayesmanecfit <- function(object, ecx_val = 10, resolution = 1000,
     stop("prob_vals must include central, lower and upper quantiles,",
          " in that order")
   }
+  # The rename warning belongs to the call, not to each member of the set.
+  # sample_ecx() below calls ecx() once per equation with type passed
+  # explicitly, so without this a model-averaged ecx(type = "relative") warned
+  # once for the set and once more for every equation in it. See D15 ruling 8.
+  warned <- options(bayesnec.relative_warned = TRUE)
+  on.exit(options(warned), add = TRUE)
   sample_size <- object$sample_size
   # The same weighted index every other quantity on this object uses, rather
   # than a fresh unseeded sample() here. Without it a model-averaged ECx was a
