@@ -15,7 +15,7 @@ jobs:
       matrix:
         config:
           - {os: macOS-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release', rtools-version: '42'}
+          - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
           # - {os: ubuntu-latest,   r: 'oldrel-1'}
@@ -46,10 +46,48 @@ jobs:
             stan-dev/cmdstanr
             RcppEigen
 
+      # Pins StanHeaders on Windows. CRAN rstan 2.32.7 declares
+      # `StanHeaders (>= 2.32.0)` with no upper bound, so pak correctly resolves
+      # to StanHeaders 2.39.1 (published 2026-09-02); rstan 2.32.7 then cannot
+      # compile a model on Windows, and every brm() call fails with
+      # "invalid connection". See #275. macOS and Ubuntu pass with that same
+      # pair, so the pin is applied only where the failure occurs and the other
+      # three jobs keep checking against current CRAN.
+      #
+      # The dated snapshot serves StanHeaders 2.32.10 -- the last 2.32 release,
+      # and the version installed by the most recent green Windows run
+      # (dev bc5f7d00, 2026-09-02 04:55 UTC, before 2.39.1 was published at
+      # 12:10 UTC that day). Remove this step once CRAN rstan is released
+      # against StanHeaders 2.39 or later.
+      #
+      # The version is asserted rather than assumed: install.packages() only
+      # warns when a repository is unreachable, so without the check an
+      # unreachable snapshot would leave 2.39.1 in place and reproduce #275
+      # after a 30-minute test run instead of failing here with a named cause.
+      - name: Pin StanHeaders to a version rstan can compile against
+        if: runner.os == 'Windows'
+        run: |
+          install.packages("StanHeaders", repos = "https://packagemanager.posit.co/cran/2026-09-02")
+          sh <- packageVersion("StanHeaders")
+          rs <- packageVersion("rstan")
+          if (!grepl("^2[.]32[.]", sh)) {
+            stop("StanHeaders ", sh, " is installed but 2.32.x is required to ",
+                 "match rstan ", rs, "; see #275")
+          }
+          cat("StanHeaders", format(sh), "with rstan", format(rs), "\n")
+        shell: Rscript {0}
+
+      # Configures the Rtools toolchain on Windows. It no longer installs
+      # StanHeaders or rstan from https://mc-stan.org/r-packages/. Those two
+      # `install.packages()` calls were added in 7c52e186 (2022-11-01) to obtain
+      # a preview rstan for R 4.2; CRAN rstan supports current R, and neither
+      # `rstantools` nor `cmdstanr` is a dependency of this package, so the
+      # preview build is no longer needed. They also passed the mc-stan index
+      # and `getOption("repos")` together, which is a fallback list rather than
+      # a preference, so an unreachable index installed from CRAN without
+      # erroring -- a second, intermittent source of the same version skew.
       - name: Use Cmdstan to Fix
         run: |
-          install.packages("StanHeaders", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
-          install.packages("rstan", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
