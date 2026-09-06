@@ -329,3 +329,101 @@ model_mu_ranges <- function() {
   rownames(out) <- NULL
   out
 }
+
+#' Which scale a group-level deviation on the whole curve should be applied on
+#'
+#' @details A group-level term adds an offset that \pkg{brms} declares
+#' unconstrained. Under the identity link \code{\link{bnec}} uses, the mean it
+#' is added to is often not unconstrained, and every leapfrog step that carries
+#' \code{mu} outside the likelihood's support is rejected by Stan and counted as
+#' a divergence. Applying the deviation on a transformed scale makes those
+#' excursions impossible by construction, without changing what \code{top},
+#' \code{bot}, \code{nec} and \code{beta} mean: the deviation is zero-centred,
+#' and \code{m * exp(0)} is \code{m}. See #257.
+#'
+#' Two gates, and both must pass.
+#'
+#' \strong{Is a transform needed?} \code{\link{mu_is_constrained}} says the
+#' likelihood constrains \code{mu} and the link cannot keep it inside. Under a
+#' \code{log} or \code{logit} link the offset is already on the linear predictor
+#' and there is nothing to do.
+#'
+#' \strong{Is a transform applicable?} \code{\link{model_mu_ranges}} says the
+#' mean is provably strictly inside the interval, so \code{log} or
+#' \code{logit} of it is defined. This is a blocker rather than a caveat for
+#' three groups of equations: \code{neclin}, \code{neclinhorme} and
+#' \code{ecxlin} are unbounded below, so \code{log} of the mean is \code{NaN};
+#' \code{nechormepwr} and \code{nechorme4pwr} can exceed 1, so \code{logit} is
+#' \code{NaN}; and \code{nechormepwr01} saturates at exactly 1, where
+#' \code{logit} is \code{Inf}. Those keep the additive offset and the raised
+#' \code{adapt_delta} permanently.
+#'
+#' @param model A \code{\link[base]{character}} string naming one equation.
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @return \code{"logit"}, \code{"log"}, or \code{"none"}.
+#'
+#' @seealso \code{\link{mu_is_constrained}}, \code{\link{model_mu_ranges}}
+#'
+#' @noRd
+ogl_transform_kind <- function(model, family) {
+  if (is.null(family) || is.null(model) || length(model) != 1) {
+    return("none")
+  }
+  if (!mu_is_constrained(family)) {
+    return("none")
+  }
+  ranges <- model_mu_ranges()
+  row <- ranges[ranges$model == model, , drop = FALSE]
+  if (nrow(row) != 1) {
+    return("none")
+  }
+  # Unbounded below rules out both transforms: neither log nor logit of a
+  # negative mean is defined.
+  if (isTRUE(row$below_zero)) {
+    return("none")
+  }
+  support <- mu_support(family)
+  if (identical(support, c(0, 1))) {
+    # Anything that can reach or pass 1 rules out logit.
+    if (isTRUE(row$unscaled_excess) || isTRUE(row$ceiling_at_one)) {
+      return("none")
+    }
+    return("logit")
+  }
+  if (identical(support, c(0, Inf))) {
+    return("log")
+  }
+  "none"
+}
+
+#' The collapsed transform for a group-level deviation on the whole curve
+#'
+#' @details Written in collapsed form, never as the literal
+#' \code{inv_logit(logit(m) + o)} sandwich. \code{logit(m)} underflows to
+#' \code{-Inf} once the decay term exceeds about 709, and
+#' \code{inv_logit(-Inf + o)} is exactly 0, which fails the likelihood's
+#' positivity check just as surely as \code{mu > 1} does. The collapsed forms
+#' are stable as \code{m -> 0}, which is the region occupied by the tail of a
+#' declining curve such as \code{nec3param}. See #257.
+#'
+#' \code{logit}: \code{mu = m e^o / (1 - m + m e^o)}, which is
+#' \code{odds(mu) = odds(m) e^o}.
+#'
+#' \code{log}: \code{mu = m e^o}.
+#'
+#' @param kind \code{"logit"} or \code{"log"}.
+#' @param m A \code{\link[base]{character}} string naming the curve term.
+#' @param o A \code{\link[base]{character}} string naming the deviation term.
+#'
+#' @return A \code{\link[base]{character}} string.
+#' @noRd
+ogl_transform_expr <- function(kind, m = "bnecmu", o = "ogl") {
+  switch(
+    kind,
+    logit = paste0(m, " * exp(", o, ") / (1 - ", m, " + ", m,
+                   " * exp(", o, "))"),
+    log = paste0(m, " * exp(", o, ")"),
+    stop("kind must be \"logit\" or \"log\".", call. = FALSE)
+  )
+}

@@ -527,8 +527,33 @@ define_group_prior <- function(group_spec, predictor, response,
   }
   s_y <- safe_scale(response)
   s_x <- safe_scale(predictor)
+  # Where the ogl deviation is applied multiplicatively (#257), it is on the
+  # log or log-odds scale rather than on the response scale, so the response
+  # scale s_y is not the right width for it. These are delta-method conversions
+  # of the same rule, evaluated at the mean of the response:
+  #
+  #   s_log   = s_y / mean(y)             a group-level coefficient of variation
+  #   s_logit = s_y / (m * (1 - m))
+  #
+  # Both are evaluated at a single point and the Jacobian varies along the
+  # curve -- at m = 0.9 the logit Jacobian is 11.1 and at m = 0.5 it is 4 -- so
+  # this is a conversion of the existing convention onto the new scale, not an
+  # exact reparameterisation of the same prior.
+  m_y <- mean(response, na.rm = TRUE)
+  s_ogl <- switch(
+    if (is.null(group_spec$ogl_transform)) "none" else group_spec$ogl_transform,
+    log = if (is.finite(m_y) && m_y > 0) s_y / m_y else s_y,
+    logit = if (is.finite(m_y) && m_y > 0 && m_y < 1) {
+      s_y / (m_y * (1 - m_y))
+    } else {
+      s_y
+    },
+    s_y
+  )
   scale_for <- function(par) {
-    if (par %in% c("top", "bot", "ogl")) {
+    if (par == "ogl") {
+      s_ogl
+    } else if (par %in% c("top", "bot")) {
       s_y
     } else if (par %in% c("nec", "ec50")) {
       s_x
@@ -543,7 +568,7 @@ define_group_prior <- function(group_spec, predictor, response,
     out <- if (is.null(out)) pr else out + pr
   }
   if (isTRUE(group_spec$ogl)) {
-    out <- out + prior_string(paste0("normal(0, ", signif(s_y, 4), ")"),
+    out <- out + prior_string(paste0("normal(0, ", signif(s_ogl, 4), ")"),
                               nlpar = "ogl")
   }
   out

@@ -398,3 +398,104 @@ test_that("the slope and beta observations hold over the admissible equations", 
   expect_setequal(models()$all[!vapply(models()$all, has_par, logical(1), "beta")],
                   c("neclin", "ecxlin"))
 })
+
+
+# ---- #257, the scale a group-level deviation is applied on -------------------
+
+test_that("ogl_transform_kind picks the scale from the family's support", {
+  # Gate 1: the likelihood constrains mu and the link cannot keep it inside.
+  expect_equal(ogl_transform_kind("nec3param", validate_family("Beta")),
+               "logit")
+  expect_equal(ogl_transform_kind("nec3param", validate_family("binomial")),
+               "logit")
+  expect_equal(
+    ogl_transform_kind("nec3param", validate_family("beta_binomial")), "logit"
+  )
+  expect_equal(ogl_transform_kind("nec3param", validate_family("Gamma")),
+               "log")
+  expect_equal(ogl_transform_kind("nec3param", validate_family("poisson")),
+               "log")
+  # gaussian is unconstrained, so there is nothing to protect against and the
+  # additive offset is kept. #245 measured 0% divergent for exactly this case.
+  expect_equal(ogl_transform_kind("nec3param", validate_family("gaussian")),
+               "none")
+  # A link that already maps into the support does the same job.
+  expect_equal(
+    ogl_transform_kind("nec3param",
+                       validate_family(Beta(link = "logit"),
+                                       link_source = "chosen")),
+    "none"
+  )
+})
+
+test_that("ogl_transform_kind refuses the equations the transform is undefined for", {
+  # Gate 2, and it is a blocker rather than a caveat. These keep the additive
+  # offset and the raised adapt_delta permanently.
+  beta <- validate_family("Beta")
+  # Unbounded below: log and logit of a negative mean are both NaN.
+  for (m in c("neclin", "neclinhorme", "ecxlin")) {
+    expect_equal(ogl_transform_kind(m, beta), "none")
+    expect_equal(ogl_transform_kind(m, validate_family("Gamma")), "none")
+  }
+  # Can exceed 1: logit is NaN. vignette("example2b") documents nechormepwr as
+  # able to produce predictions greater than 1.
+  expect_equal(ogl_transform_kind("nechormepwr", beta), "none")
+  expect_equal(ogl_transform_kind("nechorme4pwr", beta), "none")
+  # Saturates at exactly 1, where logit is Inf.
+  expect_equal(ogl_transform_kind("nechormepwr01", beta), "none")
+  # Scaled hormesis is bounded by top and is admissible.
+  expect_equal(ogl_transform_kind("nechorme", beta), "logit")
+  expect_equal(ogl_transform_kind("nechorme4", beta), "logit")
+  # A bot fixed at 0 is not a problem: the mean is still strictly inside.
+  expect_equal(ogl_transform_kind("ecxwb1p3", beta), "logit")
+  # Degenerate input.
+  expect_equal(ogl_transform_kind("nec3param", NULL), "none")
+  expect_equal(ogl_transform_kind("notamodel", beta), "none")
+  expect_equal(ogl_transform_kind(character(0), beta), "none")
+})
+
+test_that("the transform is collapsed, and is the identity at zero deviation", {
+  # Never the literal inv_logit(logit(m) + o) sandwich: logit(m) underflows to
+  # -Inf once the decay term exceeds about 709, and inv_logit(-Inf + o) is
+  # exactly 0, which fails the likelihood's positivity check as surely as
+  # mu > 1 does. The collapsed forms are stable as m -> 0.
+  expect_false(grepl("logit", ogl_transform_expr("logit")))
+  expect_false(grepl("log\\(", ogl_transform_expr("log")))
+  expect_error(ogl_transform_expr("nonsense"))
+
+  ev <- function(kind, m, o) {
+    eval(str2lang(ogl_transform_expr(kind, "m", "o")), list(m = m, o = o))
+  }
+  # A zero-centred deviation leaves the curve alone, which is what makes top,
+  # bot, nec and beta keep their meanings.
+  expect_equal(ev("logit", 0.7, 0), 0.7)
+  expect_equal(ev("log", 3.2, 0), 3.2)
+  # The mean stays strictly inside its support across everything the prior
+  # makes reachable. The ogl prior is normal(0, s) with s of order 0.5 for a
+  # proportion, so +/- 20 is about forty standard deviations.
+  for (o in c(-20, -5, -1, 1, 5, 20)) {
+    expect_gt(ev("logit", 0.7, o), 0)
+    expect_lt(ev("logit", 0.7, o), 1)
+    expect_gt(ev("log", 3.2, o), 0)
+    expect_true(is.finite(ev("log", 3.2, o)))
+  }
+  # In exact arithmetic the logit form cannot reach 1 for any finite deviation.
+  # In double precision it rounds to 1 once (1 - m) / (m * exp(o)) falls below
+  # 2^-53, which for m = 0.7 is about o = 36 -- seventy standard deviations of
+  # the prior. Asserted rather than claimed, so the limit of the guarantee is
+  # recorded rather than implied away.
+  expect_lt(ev("logit", 0.7, 35), 1)
+  expect_equal(ev("logit", 0.7, 40), 1)
+  # The log form overflows to Inf only beyond exp()'s own range.
+  expect_true(is.finite(ev("log", 3.2, 700)))
+  expect_false(is.finite(ev("log", 3.2, 710)))
+  # Stable in the tail of a declining curve, which is the region that broke the
+  # sandwich form.
+  expect_gt(ev("logit", 1e-300, 5), 0)
+  expect_true(is.finite(ev("logit", 1e-300, 5)))
+  # It is the odds that scale: odds(mu) = odds(m) * exp(o).
+  m <- 0.4
+  o <- 0.8
+  expect_equal((ev("logit", m, o) / (1 - ev("logit", m, o))),
+               (m / (1 - m)) * exp(o))
+})

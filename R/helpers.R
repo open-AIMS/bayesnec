@@ -765,11 +765,34 @@ add_brm_defaults <- function(
   # because it costs roughly fourteen times the gradient evaluations per
   # iteration. #257 proposes the parameterisation change that removes the need
   # for it. See #245.
-  if (!is.null(group_spec) && mu_is_constrained(family)) {
+  #
+  # #257 landed the parameterisation change for the ogl case, so the raise is
+  # now conditional on the group structure actually still needing it. An ogl
+  # term whose deviation is applied multiplicatively cannot carry mu out of its
+  # support at all, so the mitigation has nothing left to mitigate and costs
+  # roughly fourteen times the gradient evaluations for it. Everything else --
+  # a pgl term, an explicit (par | group) term, and any equation the transform
+  # is not defined for -- keeps needing it, permanently.
+  ogl_is_transformed <- isTRUE(group_spec$ogl) &&
+    !identical(ogl_transform_kind(model, family), "none")
+  only_ogl <- ogl_is_transformed &&
+    identical(sort(unique(group_spec$nlpars)), "ogl")
+  if (!is.null(group_spec) && mu_is_constrained(family) && !only_ogl) {
     ctrl <- if ("control" %in% names(brm_args)) brm_args$control else list()
     if (!("adapt_delta" %in% names(ctrl))) {
       ctrl$adapt_delta <- 0.99
       brm_args$control <- ctrl
+    }
+  }
+  # The prior scale for the ogl intercept and its group-level standard
+  # deviation depends on which scale the deviation is applied on, so the kind
+  # is decided here, where family and group_spec are both in hand, and carried
+  # into define_prior() on group_spec.
+  if (!is.null(group_spec)) {
+    group_spec$ogl_transform <- if (isTRUE(group_spec$ogl)) {
+      ogl_transform_kind(model, family)
+    } else {
+      "none"
     }
   }
   build_defaults <- function() {
