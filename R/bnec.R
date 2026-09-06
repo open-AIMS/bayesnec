@@ -624,13 +624,18 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # not change what the user has to do.
   check_inline_boundary(bdat, brm_args$family)
   requested_models <- model
-  model <- check_models(model, brm_args$family, bdat)
+  model <- check_models(model, brm_args$family, bdat, record = TRUE)
   excluded_models <- attr(model, "excluded")
   # Reported once here rather than from check_data(), which runs once per
   # model. Computed from the same model frame and family the loop will use, so
   # what is reported is what will be done. See #93 and D16.
+  # retrieve_cens(), not retrieve_var(bdat, "cens_var"): a censoring indicator
+  # is often a character vector ("none", "left", "right"), and retrieve_var()
+  # refuses a non-numeric column. This is how check_data() reads it, and
+  # reading it any other way made a censored hurdle fit error before it
+  # started. See #93.
   substitutions <- substitution_record(
-    retrieve_var(bdat, "y_var", error = TRUE), retrieve_var(bdat, "cens_var"),
+    retrieve_var(bdat, "y_var", error = TRUE), retrieve_cens(bdat),
     brm_args$family
   )
   report_substitutions(substitutions)
