@@ -81,6 +81,9 @@ in a single worktree.
 
 ## D10 — Sequencing against the toxval migration
 
+**Step 3 is superseded by D11 (2026-09-06):** the estimator bug fixes are made in
+`bayesnec` and the migration is deferred. The rest of this entry stands.
+
 The queue is split so that **no Tier 1 item edits a file the migration moves.**
 That was checked, not assumed: the migration deletes `R/ecx.R` and `R/nsec.R`
 from `bayesnec` and relocates `predict.bayesnecfit` / `predict.bayesmanecfit`,
@@ -130,3 +133,83 @@ Return a `brmsprior` for a single model and a named list of `brmsprior` objects
 for a model set, in both cases directly usable as the `prior =` argument.
 Document that the two entry points answer different questions and can disagree
 once a user has overridden a prior.
+
+## D11 — The estimator fixes are made in `bayesnec`, and the migration is deferred
+
+RF, 2026-09-06. **This supersedes D10's step 3.** `ecx()`, `nsec()` and
+`ecnsec()` still migrate to `toxval`, and #255 remains the tracker, but the
+migration is not run in this pass and it no longer defers a fix to an estimator.
+#195, #196, #160, #161 and #206 are tier B of `01_work_queue.md`.
+
+**What changed.** D10 was written when the migration was the next structural
+piece of work. It has not started: toxval#39 is open with no commits against it,
+and its own prerequisite toxval#45, CRAN readiness, is also open. Meanwhile a
+training course is to be written against `dev` within days, so the estimators are
+about to be taught from.
+
+**Why fixing here is not work discarded.** The migration relocates files. A
+corrected `R/ecx.R` relocates exactly as an uncorrected one does, and the
+correction is then in toxval's history rather than being re-derived there. What
+the deferral was avoiding is editing a file that is about to be deleted; what it
+was producing instead is a known-wrong result shipped for as long as the
+migration takes.
+
+**The measurement that settled it.** `example1.Rmd.orig:253` fits
+`resp ~ crf(log(raw_x + 1), model = "nec4param")` and `:109` calls `ecx()` on
+that fit. #196's back-transform substitutes into the first argument slot of the
+parsed call, so the inverse applied is `log(raw_x)` and the `+ 1` is discarded.
+The package's introductory vignette therefore reports an ECx computed from a
+back-transform that drops a term. `example1` is the only vignette using an inline
+transformation with arithmetic; `example6` uses a pre-computed `log_dose` column.
+
+**What D10 keeps.** Its ordering constraint on the structural move stands, and
+D8's constraint that `bayesnec` cannot declare `Imports: toxval` before toxval is
+installable is unchanged. Only the position of the bug fixes changes.
+
+**The obligation this creates.** Each tier B fix is recorded on the matching
+toxval issue as it lands — #196 to toxval#19, #195 to toxval#8 and toxval#12, #39
+to toxval#40 — so the migration re-lands the corrected version rather than the
+one toxval forked.
+
+## D12 — All three vignettes are finalised, and #228 goes last
+
+RF, 2026-09-06. **This supersedes the 2026-09-03 decision to keep the vignette
+pull requests open until the software stabilised.** The training course teaches
+from the vignettes, so they are a deliverable of this run rather than an
+instrument of it.
+
+The ordering is by what blocks each one, not by issue number:
+
+1. **PR #243**, example7 — reported mergeable; what remains is verification.
+2. **PR #238**, example9 — a full review is on the PR, unactioned. Two of its
+   errors of fact expired when #260 merged and must be re-checked before the
+   review is applied.
+3. **PR #228**, the grouping vignette — blocked on a scientific question about
+   family choice and on 2000/2000 divergences under `ogl()` for the binomial
+   families.
+
+**#228's blocker is raised as its own issue** rather than held on the PR, because
+it is material to #250's claim that group-level terms work for bounded families
+generally, and that claim outlives this vignette. **Take #257 first**: applying a
+group-level deviation on a scale where the mean cannot leave its support is the
+one candidate explanation not yet refuted, and it would produce this signature on
+a binomial response near the ceiling.
+
+## D13 — The precompile runs once, after the vignettes
+
+RF, 2026-09-06. #190 and #248 are tier E, and they run after tier D rather than
+before a CRAN submission. The trigger changed: the rendered vignettes have to be
+current because the training course reads them, not because a submission is due.
+
+One ordering constraint follows from D11. B1 changes the ECx values reported in
+`example1`, so `example1` cannot be re-rendered before B1 lands or it is rendered
+twice.
+
+## D14 — The run is autonomous and stacked
+
+RF, 2026-09-06. `00_protocol.md` stands unchanged: one worktree, one branch per
+issue cut from the previous issue's branch, each PR targeting the branch below
+it, and RF reviews and merges down the stack. Parallel worktrees were considered
+and rejected for the reason already recorded — tier B's five items are all in
+`R/ecx.R`, `R/nsec.R` and the plotting path, so a fan-out would produce mutually
+conflicting pull requests.

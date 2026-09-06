@@ -1,214 +1,191 @@
-# Work queue — coverage first
+# Work queue — the training-course run
 
 Read `00_protocol.md` first, then `03_decisions.md`.
 
-**Rebuilt 2026-09-03.** The queue that stood here was written on 2026-08-25 for
-a stack of nine issues that has since merged, and it was organised around a
-CRAN release gate that no longer applies. Two decisions changed it:
+**Rebuilt 2026-09-06.** The queue that stood here was written on 2026-09-03 and
+ordered the work by test coverage of the paths producing defects. That ordering
+was correct and most of its tier A has merged. Four decisions taken by RF on
+2026-09-06 change what follows it, so the file is rebuilt rather than amended.
 
-- **The release date is flexible** (RF, 2026-09-03), and the toxval migration
-  is not blocked by it. So there is no release gate to order the work around,
-  and `06_review_run.md`'s phase 4 is no longer the destination.
-- **The work is ordered by test coverage of the paths that keep producing
-  defects**, not by issue number, not by release tier, and not by the order in
-  which issues happen to be reported.
+## The goal this queue serves
 
-The rest of this file states why that ordering was chosen, and what is in it.
+A training course is to be written against the development version of
+`bayesnec`. That fixes an end state the previous queue did not have: `dev` must
+be installable, its estimators must return correct values, and its vignettes
+must be finalised and re-rendered, because the course teaches from them. The
+release to CRAN is still not a gate on anything here.
 
----
+## The four decisions
 
-# Why coverage is the ordering
-
-Nineteen issues were opened between 2026-08-24 and 2026-09-03 and six were
-closed. The question that ordering had to answer is whether that is a
-pre-existing defect population being surfaced, or work generating its own work.
-It was measured rather than argued, on 2026-09-03, against `origin/master`
-(2.1.3.1, the current CRAN release):
-
-| issue | present in `origin/master` |
+| | decision |
 |---|---|
-| #256 identity forced only for a character string | `R/validate_family.R:14-15` |
-| #258 write-back decided per formula | `R/fit_bayesnec.R:36` |
-| #265 `x_type == "beta"` unreachable | `R/check_data.R:55`, `:63` |
-| #266 `n_trials = 1e4` | `R/inits_functions.R:101` |
-| #267 `has_family_changed()` called positionally | `R/bnecfit-methods.R:150` |
-| #268 all-or-nothing `xform` guard | 2 sites in `plot.R`, 2 in `autoplot.R` |
-| #269 predictor zero shift | `R/check_data.R:48`, `:56` |
-| #272 integer branch with no `else` | `R/set_distribution.R:48` |
-| #244 no `constant()` handling | absent from `R/inits_functions.R` |
+| 1 | **`ecx()`, `nsec()` and `ecnsec()` are fixed in `bayesnec` now.** The migration to `toxval` is deferred, not cancelled. See D11 |
+| 2 | **PR #228 is deferred within this run, not dropped.** PRs #243 and #238 are finalised first; #228 follows once the divergence question is settled. See D12 |
+| 3 | **The full precompile runs once, after all three vignettes are settled.** See D13 |
+| 4 | **The run is autonomous and stacked**, on the terms already in `00_protocol.md` |
 
-Nine of nine. One issue in the whole run was caused by the run's own work:
-**#271**, which #270 records as becoming reachable when the predictor
-substitution was removed. Everything else predates the work by between two and
-six years; `check_data.R` dates from `89a15d03`, 2020-05-25.
+## What changed since 2026-09-03
 
-**The code producing the defects is the code with no test file.** `check_data.R`
-had none in either version, and it is the origin of #258, #265, #269, #271 and
-#274. `plot.R` and `autoplot.R` had none, and they are #268, #160 and #161.
-Where a test file was written, discovery stopped:
-
-| file | `expect_` calls, master → dev |
+| | |
 |---|---|
-| `test-validate_family.R` | 0 → 99 (did not exist) |
-| `test-inits_functions.R` | 0 → 114 (did not exist) |
-| `test-fit_bayesnec.R` | 0 → 34 (did not exist) |
-| `test-define_prior.R` | 33 → 103 |
+| #275 | fixed by PR #280. `R-CMD-check` is green on `dev` for the first time in the run. Nothing in this queue is blocked on the matrix any more |
+| #277 | tier A item A1, merged as PR #276. `test-check_data.R`, `test-plot.R` and `test-autoplot.R` exist |
+| #278 | merged as PR #279. The three argument behaviours and four dead guards A1 found |
+| #245, #265, #269 | closed |
 
-Suite-wide the assertion density per line of `R/` has roughly doubled, from
-0.052 (380 assertions, 7,338 lines) to 0.101 (1,678 assertions, 16,586 lines).
-
-**The consequence for ordering.** A defect found by a user report is one
-defect; a test file written over the path that produced it is the whole
-population on that path. So the queue puts the test file before the fixes it
-will inform, and expects each test file to open two to three further issues
-rather than treating that as a failure.
-
-**The one instance of genuine re-work, and why it is not the pattern.**
-`define_prior()`'s zero guard was written three times in eight days: #210 wrote
-it, #229 found it errored for families that never use the guarded quantiles,
-#232 found it was a step function on a continuous collapse. Nothing has touched
-that guard since 2026-08-22. The cause was diagnosed at the time — #210's tests
-asserted only that the prior rate was finite and positive, so every row of the
-broken sweep passed them — and the review question that came out of it, *do the
-tests constrain the thing that matters or the thing that is easy to assert*, has
-held since.
+`dev` is at 2.1.3.26. `NEWS.md` headings are `# bayesnec 2.2.0` and
+`# bayesnec 2.1.4`; new entries go under 2.2.0.
 
 ---
 
-# 0. Blocking everything — #275
+# 0. Housekeeping — do first, it takes minutes
 
-**`R-CMD-check` is red on `dev` and the cause is the workflow, not the package.**
-The **Use Cmdstan to Fix** step force-installs `StanHeaders` from whichever
-repository answers, and when `mc-stan.org` is unreachable it installs 2.39.1
-over the 2.32.10 `pak` matched to `rstan` 2.32.7. Seventeen tests then fail with
-`invalid connection` from `brm()`, identically on `dev` and on any branch.
-
-Nothing else in this queue can be verified while the matrix cannot distinguish a
-real regression from this one, and the failure is intermittent by construction —
-the same commit passes or fails depending on whether the index answers. **Do
-this first.** `.github/` is open for #275 only, on the same narrow exemption
-#215 and #230 had.
+- **Close #275, #277 and #278 by hand.** All three merged; every PR here targets
+  `dev` rather than the default branch, so `Closes #n` does not fire. This is the
+  sixth occurrence of that pattern.
+- **Prune the stale worktrees.** Twenty-two are registered and most are on
+  branches that have merged. `00_protocol.md` names the ones that must not be
+  touched; the rest are removable with `git worktree remove`. This matters
+  because a stale worktree holds a branch checked out, and a branch held by a
+  worktree cannot be checked out again.
 
 ---
 
-# Tier A — coverage of the paths that keep producing defects
+# Tier A — the remaining coverage work
 
-Ordered so that the test file for a path precedes the fixes on it.
+Unchanged from the 2026-09-03 queue except that A1 has merged. A1 wrote the test
+files that pin A2 and A3 as current behaviour, with the assertion to invert named
+in a comment, so each of those is a one-line inversion plus the code change.
 
-| # | item | what | size | status |
-|---|---|---|---|---|
-| A1 | #277 | the three missing test files | M | **PR #276 open** |
-| A2 | #274 | `update()` with `newdata` discards the correction it reports | S | ready |
-| A3 | #268 | `xform` skipped on the predictor axis when the response is transformed | S | ready; A1 pins the reproduction |
-| A4 | #271 | no `disp()` sub-model is checked for finiteness before `brm()` | M | ready |
-| A5 | #272 | `set_distribution()` returns `NULL` for a negative integer response | S | ready |
-| A6 | #266 | `make_good_inits()` spends 561 s before falling back | M | ready |
+| # | item | what | size |
+|---|---|---|---|
+| A2 | #274 | `update()` with `newdata` reports a boundary correction and then discards it | S |
+| A3 | #268 | `xform` skipped on the predictor axis when the response is transformed | S |
+| A4 | #271 | no `disp()` sub-model is checked for finiteness before `brm()` sees it | M |
+| A5 | #272 | `set_distribution()` returns `NULL` for an integer vector with negative values | S |
+| A6 | #266 | `make_good_inits()` spends up to 561 s on one model before falling back | M |
 
-**A1 is the gate on A2 and A3 and nothing else.** A2 and A3 are both pinned as
-current behaviour by the test file, with the assertion to invert named in a
-comment, so the fix is a one-line inversion plus the code change rather than a
-new reproduction.
-
-**A4 and A5 are independent** and can be taken in either order.
-
-**A6 is a performance defect, not a correctness one.** It is in this tier
-because it is on the same path and because #79 measured the same mechanism at
-1050 s and closed it as *not reproducible*, which is the outcome to avoid
-repeating.
-
-## What A1 found while being written
-
-Recorded on #277 and here, because they have no issue of their own and are too
-small to warrant one each. Raise them as one issue when A1 merges.
-
-- **Two branches of `check_data()` cannot be reached.** The non-numeric
-  predictor branch (`:112-118`) is preceded by `retrieve_var(error = TRUE)` at
-  `:108`, which raises first with a different message; the numeric group-level
-  branch (`:203-209`) is preceded by `model.frame()`, which refuses first. Both
-  are the shape of #265 — a condition written, never fired, unnoticed.
-- **`NA` and `NaN` are dropped rather than refused.** The finiteness guard sees
-  only what `model.frame()` passes it, and incomplete cases are removed first.
-  `Inf` reaches the guard and is refused; `NA` and `NaN` are removed silently
-  and the fit proceeds on fewer rows than the user supplied.
-- **`ggbnec_data(x, nec = FALSE)` does nothing.** The argument is `add_nec`;
-  `autoplot()` takes `nec` and forwards it. `ggbnec_data()` is exported and
-  documented separately, so the obvious transfer of the argument name is
-  absorbed by `...` and the annotation is still returned.
+A4 and A5 are independent and can be taken in either order. A6 is a performance
+defect rather than a correctness one; it is here because #79 measured the same
+mechanism at 1050 s and closed it as *not reproducible*, which is the outcome to
+avoid repeating.
 
 ---
 
-# Tier B — decisions that are RF's, not the session's
+# Tier B — the estimators
 
-Each is a legitimate change whose *correct statistical behaviour* is the
+**These are in scope for the first time.** They were deferred on the grounds that
+`R/ecx.R`, `R/nsec.R` and `R/ecnsec.R` are moving to `toxval` and fixing them
+here would be work discarded. Decision 1 reverses that: the migration has not
+started, the training course needs correct estimates within days, and the
+corrected code relocates with the files when the migration runs.
+
+**B1 comes first because it changes a published number.** `example1.Rmd.orig:253`
+fits `resp ~ crf(log(raw_x + 1), model = "nec4param")` and line 109 calls
+`ecx(exp_2, xform = function(x) exp(x) - 1)` on it. That is the exact
+reproduction in #196: the internal back-transform substitutes into the first
+argument slot of the parsed call, so `log(raw_x + 1)` is inverted as
+`log(raw_x)` and the `+ 1` is discarded. The introductory vignette therefore
+reports an ECx from a back-transform that drops a term, and the course would
+teach it. `example6` uses a pre-computed `log_dose` column and is unaffected;
+`example1` is the only vignette using an inline transformation with arithmetic.
+
+| # | item | what | size |
+|---|---|---|---|
+| B1 | #196 | inline `crf()` arithmetic discarded when back-transforming, in both `R/ecx.R:198-201` and `R/nsec.R:173-175` | S |
+| B2 | #160 | *NEC* mis-plotted when a function is called for `x`. `test-autoplot.R` now exists, which is the instrument the 2026-09-03 deferral said was the precondition | M |
+| B3 | #161 | post-processing failure on a case-study dataset. `02_deferred.md` records it as probably #195 or #196; B1 and B4 determine whether anything is left | S once B1 and B4 land |
+| B4 | #195 | `hormesis_def` is inert in `ecx()` — its only consumer is commented out; the documented default is not the effective default; one documented sentence is implemented three ways | M |
+| B5 | #206 | zero-bounded models excluded for `gaussian`. Re-check the coupling first: it was deferred on `R/ecx.R:161` refusing `type = "absolute"` for a Gaussian response with no `bot`, and on #170, which closed on 2026-08-17 | M |
+
+**B2 and B3 may collapse into B1.** Both are suspected to share its root cause
+and neither has been settled, because until 2026-09-03 there was no test over the
+plotting path that would settle one. Take B1 first, then re-run each reproduction
+before writing any further fix.
+
+**B5 carries a premise that has changed.** The issue argues from
+`validate_family()` forcing the identity link only for a character string, so
+that `gaussian` as a bare symbol takes its own default. #256 changed that: PR
+#260 assigns the identity link unless the caller wrote a `link` argument, so a
+bare symbol now gets identity too. The half of #206's argument that survives is
+that `gaussian(link = "log")` is still honoured and `R/check_models.R:20` is
+still reachable. Re-establish the reproduction against current `dev` before
+implementing.
+
+**Record each fix on the matching `toxval` issue as it lands**, so the migration
+re-lands the corrected code rather than the version `toxval` forked. The
+correspondences are #196 to toxval#19, #195 to toxval#8 and toxval#12, and #39 to
+toxval#40.
+
+---
+
+# Tier C — decisions that are RF's, not the session's
+
+Each is a legitimate change whose correct statistical behaviour is the
 undetermined part, which `00_protocol.md` makes a stop-and-ask. None is blocked
-on anything in tier A.
+on anything in tiers A or B.
 
 | # | the decision |
 |---|---|
-| #273 | the default `nec`/`ec50` gamma prior peaks at `2m`, not at `m`. Two candidate corrections are on the issue and the choice needs a measurement, not an argument. Worst on the linearly spaced designs this field uses |
-| #93 | narrowed by #270. The predictor half is removed; what remains is whether the two silent response corrections should speak, and whether substitutions should be recorded on the fit. Two resolutions are on the issue |
-| #262 | report `P(dispersion > 1)`, and state that `beta_binomial` does not address under-dispersion |
+| #273 | the default `nec` and `ec50` gamma prior peaks at twice the median predictor, so on a linearly spaced series its mode sits on the upper truncation bound. Two candidate corrections are on the issue; the choice needs a measurement. Worst on the linearly spaced designs this field uses, so it is the one most likely to affect a course exercise |
+| #257 | apply group-level deviations on a scale where the mean cannot leave its support. Unblocked by #256. **Also the likeliest explanation for PR #228's divergences**, so taking it may settle decision 2 |
+| #262 | report the posterior probability of over-dispersion, and state that `beta_binomial` does not address under-dispersion |
 | #261 | record which equations `bnec()` excluded, and report the candidate set as fitted |
-| #257 | **unblocked.** It depends on #256, which closed on 2026-09-02 via #259 and #260. Not previously in any queue |
-| #206 | **re-check whether it is still deferred.** Its own comment records that #170 is discharged and that #256 settles the link policy it needed. `02_deferred.md` defers it on a coupling that may no longer bind |
+| #93 | narrowed by #270. What remains is whether the two silent response corrections should speak, and whether substitutions should be recorded on the fit. Two resolutions are on the issue |
 
 ---
 
-# Tier C — the vignette pull requests
+# Tier D — the vignettes
 
-**Kept open deliberately.** RF, 2026-09-03: reviewing them and their related
-issues is what has raised the defects, and they should not be closed until the
-software has stabilised. They are also the only end-to-end exercise of the
-fitting stack that exists — #242 removed `--ignore-vignettes`, but CI checks the
-rendered markdown in about sixteen seconds and re-fits nothing.
+All three are finalised in this run. The ordering is decision 2: the two that are
+close go first, and the one blocked on a scientific question goes last.
 
-| PR | issue | note |
-|---|---|---|
-| #228 | #6, #33 | the grouping vignette |
-| #238 | #219 | the workflow vignette; still needs rewriting onto `screen_models()` |
-| #243 | #193 | example7, another session's |
-| #225 | #209 | `CONFLICTING`, blocked on `brms` via #249 |
+| order | PR | issue | state, and what remains |
+|---|---|---|---|
+| D1 | #243 | #193 | example7. Reported mergeable at `0a8b5d35` with `dev` merged in. Three open items: CI has never been seen green on the branch, a follow-up issue was scoped and never opened, and the 14,700-word length was flagged for a judgement never made |
+| D2 | #238 | #219 | example9. A full review is on the PR and unactioned. It needs restructuring so `screen_models()` sits with the sampler diagnostics, and `summary(fit)` shown after the candidate set is fitted. **Two of its errors of fact have expired** — see below |
+| D3 | #228 | #6, #33 | the grouping vignette. Blocked on a scientific question, not on code |
 
-**The example8 diagnosis in `06_review_run.md` is wrong and should not be acted
-on.** That file records both halves of example8 failing on 2026-08-24 and
-concludes the cause is the data, leaving an open decision about importing
-datasets from `cr_modelling_training`. Two package defects fixed since then
-explain both halves:
+**Re-check the #238 review before acting on it.** It was written before #260
+merged. Its statement that `bnec()` does not force the identity link, and that
+`family = binomial` takes logit, described `dev` at the time and does not
+describe `dev` now: the link is assigned unless the caller wrote a `link`
+argument. Its other findings — the untransformed dose justification refuted by
+`example6`, and `summary()` already reporting per-model dispersion — are
+unaffected. Note that the review's closing observation that `CLAUDE.md` §11 is
+wrong as written still stands and is now wrong for the opposite reason.
 
-- `bnec_group(fvfm ~ crf(log(concentration), "decline"), herbicide, ...)` failed
-  with *None of the models fit successfully*. That is #258's reproduction — an
-  inline `log()` on the predictor discarded the boundary correction on the
-  response, and ametryn, irgarol and hexazinone all contain exact zeros in
-  `fvfm`. Fixed by #264 on 2026-09-02.
-- `bnec(suc | trials(tot) ~ crf(dose, "nec3param") + ogl(tank), ...)` failed with
-  *Failed to fit model nec3param*. That is #245 — a binomial response with an
-  `ogl()` term got no group-level prior, so the mean started outside its support.
-  Fixed by #250 on 2026-08-26.
+**What blocks #228.** The dataset has 72.7% of observations on a boundary, so
+`Beta` requires nudging three-quarters of the data and is hard to defend, while
+`binomial` and `beta_binomial` — the families the source paper used — give
+2000/2000 divergences and R-hat 2.7 as soon as `ogl(chamber)` is added. Three
+explanations were proposed and all three refuted by test; the record is on the
+PR. It is material beyond the vignette, because PR #250 claims group-level terms
+work for bounded families generally and this is evidence that the claim holds for
+`Beta` and not for the binomial families.
 
-**Re-run example8 against current `dev` before deciding anything about
-datasets.** The separate objection that the `nassarius` contaminant levels sit
-on non-overlapping dose grids, one with three doses, is a data judgement that
-neither fix addresses and stands on its own.
-
-**The rebase overhead is the price of having no integration test.** The cheapest
-reduction is to precompile one vignette per merge to `dev` rather than the whole
-set at release; #251's fan-out already makes that possible.
+**Open it as its own issue rather than continuing to hold it on the PR**, and
+take #257 before deciding anything: a group-level deviation applied on a scale
+where the mean can leave its support is the mechanism that would produce exactly
+this signature on a binomial response near the ceiling, and it is the one
+explanation not yet tested.
 
 ---
 
-# Tier D — the release, whenever it is cut
+# Tier E — the precompile
 
-Not a gate on anything above it any more.
+Runs once, after tier D. Decision 3.
 
 | # | what |
 |---|---|
-| #190 | the full `precompile.R`. Attended, once, immediately before submission |
+| #190 | the full `precompile.R`. Attended. The #251/#252 fan-out makes it a matrix rather than one serial run |
 | #248 | the rendered `example2` still documents the 1.05 Rhat default; rides on #190 |
 
-`DESCRIPTION` `Version` is a running dev counter, 2.1.3.25 today, incremented by
-one in the fourth component per PR. **RF sets the release version.** The `NEWS.md`
-tier headings are `# bayesnec 2.2.0` for everything current; the 2.1.4 tier
-closed when the stack merged.
+Two constraints on the run. The rendered `example1` changes if B1 lands, because
+its ECx values are computed from the defective back-transform. And `example7`
+alone takes about 137 minutes locally and about 2 h 56 m in CI, inside the
+350-minute ceiling — PR #243's handoff note records the two traps that cost a
+previous session time, and should be read before starting.
 
 ---
 
@@ -216,11 +193,11 @@ closed when the stack merged.
 
 | # | why |
 |---|---|
-| #255 | the toxval migration tracker. Attended, spans two repos, ordering constraint in D8 |
-| #249 | the factorised count hurdle, blocked on `brms`. Holds #209 and PR #225 |
-| #218 | unseeded permutation in `compare_posterior()`. Documentation-and-constraint outcome; cheap, add to a later pass |
+| #255 | the toxval migration tracker. Deferred by decision 1, not cancelled. D11 records what changed |
+| #44 | hypothesis method for *NEC*/*NSEC*/*ECx* exceedance. A new API rather than a fix, and larger than the run. Tracked as toxval#41 |
+| #39 | `uniroot.all` for `ecx()` and `nsec()`. It requires the `type` reference semantics to be pinned down first, which is B4, and it is an enhancement rather than a defect. Take it after B4 if the run has room |
+| #120 | replacing `all_models`. D5 requires that no existing user script breaks; `test-plot.R` and `test-autoplot.R` now make that detectable, so the precondition is met, but it is behaviour change rather than a fix |
+| #209, #249, PR #225 | the factorised count hurdle, blocked on `brms` upstream. `issue-136-rate-aterm` is PR #225's base and **must not be deleted** |
 | #184 | `future_apply`. Attended: RF wants a testing pass posted as a comment before any implementation |
-| #245 | **merged and needs closing by hand.** PR #250 states `Closes #245` but targeted `dev`, so the keyword never fired |
-| #265, #269 | **merged and need closing by hand.** PR #270 states `Closes` for both, same reason |
-| #39, #44, #166, #195, #196 | toxval's. See `02_deferred.md` |
-| #120, #160, #161, #206, #93 | see `02_deferred.md`; #206 and #93 are also in tier B |
+| #218 | unseeded permutation in `compare_posterior()`. Documentation-and-constraint outcome; cheap, add to a later pass |
+| #27 | zero-truncated gaussian. The body is empty, and a title is not a specification |
