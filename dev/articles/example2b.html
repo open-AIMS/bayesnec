@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.26</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.29</span>
       </span>
     </div>
 
@@ -280,32 +280,35 @@ approach will place the greatest weight for the outcome that best fits
 the supplied data. This approach will yield <em>EC<sub>x</sub></em>
 estimates that are the most representative of the underlying
 relationship in the dataset.</p>
-<p>There is ambiguity in the definition of <em>EC<sub>x</sub></em>
-estimates from hormesis models—these allow an initial increase in the
+<p>Every <em>EC<sub>x</sub></em> is measured from the control—the
+predicted mean at the lowest concentration in the supplied predictor,
+taken per posterior draw—and the <code>type</code> argument names what
+the percentage is measured <em>towards</em>. For
+<code>type = "absolute"</code> (the default) the target is 0. For
+<code>type = "relative"</code> it is the equation’s theoretical
+asymptote: the <code>bot</code> parameter where the equation has one,
+and 0 otherwise; it is refused where the equation has no
+<code>bot</code> and the family is unbounded below, because there is
+then no finite denominator. For <code>type = "range"</code> it is the
+lowest response the curve predicts over the predictor range. For
+<code>type = "direct"</code>, <code>ecx_val</code> is a response value
+rather than a percentage and the concentration at which the curve
+reaches it is returned.</p>
+<p>Measuring from the control is what makes an <em>EC<sub>x</sub></em>
+well defined for a hormesis model—these allow an initial increase in the
 response <span class="citation">(see Mattson 2008)</span> and include
-models with the character string <code>horme</code> in their name—as
-well as those that have no natural lower bound on the scale of the
-response (models with the string <strong>lin</strong> in their name, in
-the case of Gaussian response data). For this reason the
-<code>ecx</code> function has arguments <code>hormesis_def</code> and
-<code>type</code>, both character vectors indicating the desired
-behaviour. For <code>hormesis_def = "max"</code>,
-<em>EC<sub>x</sub></em> values are calculated as a decline from the
-maximum estimates (i.e., the peak at
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mtext mathvariant="normal">NEC</mtext></mrow><annotation encoding="application/x-tex">\eta = \text{NEC}</annotation></semantics></math>);
-and <code>hormesis_def = "control"</code> (the default) indicates that
-<em>EC<sub>x</sub></em> values should be calculated relative to the
-control, which is assumed to be the lowest observed concentration. For
-<code>type = "relative"</code> <em>EC<sub>x</sub></em> is calculated as
-the percentage decrease from the maximum predicted value of the response
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mtext mathvariant="normal">top</mtext></mrow><annotation encoding="application/x-tex">\tau = \text{top}</annotation></semantics></math>)
-to the minimum predicted value of the response (i.e., <em>relative</em>
-to the observed data). For <code>type = "absolute"</code> (the default)
-<em>EC<sub>x</sub></em> is calculated as the percentage decrease from
-the maximum value of the response
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>τ</mi><mo>=</mo><mtext mathvariant="normal">top</mtext></mrow><annotation encoding="application/x-tex">\tau = \text{top}</annotation></semantics></math>)
-to 0. For <code>type = "direct"</code>, a direct interpolation of the
-response on the predictor is obtained.</p>
+models with the character string <code>horme</code> in their name. The
+target lies below the control and the rising limb lies above it, so the
+curve crosses the target exactly once. Up to <code>bayesnec</code> 2.1.3
+the reference was the maximum of the predicted curve, which for a
+hormesis model is the peak at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>η</mi><mo>=</mo><mtext mathvariant="normal">NEC</mtext></mrow><annotation encoding="application/x-tex">\eta = \text{NEC}</annotation></semantics></math>,
+and a <code>hormesis_def</code> argument was documented as selecting
+between the two. That argument has been removed and the control is now
+always the reference. <code>type = "range"</code> is what
+<code>type = "relative"</code> computed up to 2.1.3, except that the
+span was taken from the maximum of the predicted curve rather than from
+the control.</p>
 </div>
 <div class="section level2">
 <h2 id="model-suitability-for-response-types">Model suitability for response types<a class="anchor" aria-label="anchor" href="#model-suitability-for-response-types"></a>
