@@ -90,10 +90,18 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
   diff_data_out <- bind_rows(diff_list, .id = "comparison") |>
     pivot_longer(everything(), names_to = "comparison", values_to = "diff") |>
     data.frame()
+  # na.rm because a difference is NA wherever either estimate is, and an ECx or
+  # NSEC is NA for any draw whose curve does not reach the target (#39). Without
+  # it a single censored draw in either posterior made prob NA for the whole
+  # comparison -- and silently, because the probability is the headline output
+  # and NA is a value rather than an error. The probability is therefore over
+  # the draw pairs in which both estimates are identified; the draws that are
+  # not have already been reported by the ecx() or nsec() call that built the
+  # posterior. The comparison itself is unchanged where nothing is censored.
   prob_diff <- lapply(diff_list, function(m) {
     m[m > 0] <- 1
     m[m <= 0] <- 0
-    data.frame(prob = mean(m))
+    data.frame(prob = mean(m, na.rm = TRUE))
   })
   prob_diff_out <- bind_rows(prob_diff, .id = "comparison") |>
     data.frame()

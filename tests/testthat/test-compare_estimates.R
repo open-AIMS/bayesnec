@@ -51,3 +51,23 @@ test_that("average_estimates validates type on the same vocabulary", {
                            resolution = 50)
   expect_equal(length(out), 3)
 })
+
+
+# ---- #39, a censored draw must not void the comparison -----------------------
+
+test_that("prob_diff is computed over the identified draws", {
+  # A difference is NA wherever either estimate is, and an ECx or NSEC is NA for
+  # a draw whose curve never reaches the target. Without na.rm a single censored
+  # draw made prob NA for the whole comparison -- silently, because prob is the
+  # headline output and NA is a value rather than an error.
+  skip_on_cran()
+  x <- list(a = ecx4param, b = nec4param)
+  out <- suppressWarnings(
+    compare_estimates(x, comparison = "nsec", resolution = 50)
+  )
+  expect_false(anyNA(out$prob_diff$prob))
+  expect_true(all(out$prob_diff$prob >= 0 & out$prob_diff$prob <= 1))
+  # The posteriors this was computed from do contain censored draws, so the
+  # assertion above is testing the path it is meant to.
+  expect_true(any(vapply(out$posterior_list, anyNA, logical(1))))
+})

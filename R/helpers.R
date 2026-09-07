@@ -1487,7 +1487,16 @@ to_axis_scale <- function(values, bdat, formula, x_grid_raw,
   if (sum(keep) < 2) {
     return(values)
   }
-  out <- rep(NA_real_, length(values))
+  # Built from `values` rather than as a fresh rep(NA_real_, ...), so that the
+  # attributes ecx() sets travel with the estimate. bind_ecx() reads
+  # attr(ecx_vals, "ecx_val") and assigns it into a data frame, so a stripped
+  # vector made autoplot(x, add_ecx = TRUE) fail with "replacement has length
+  # zero". The two branches above return xform(values), and R's arithmetic
+  # keeps attributes, so only this branch lost them -- which made the failure
+  # specific to an inline-transformed predictor with xform left at its default,
+  # the shape vignette("example1") uses.
+  out <- values
+  out[] <- NA_real_
   finite_v <- is.finite(values)
   out[finite_v] <- approx(x = fitted_grid[keep], y = x_grid_raw[keep],
                           xout = values[finite_v], rule = 2)$y

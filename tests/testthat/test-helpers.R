@@ -278,3 +278,20 @@ test_that("plot_ecx asks for range under gaussian and the default otherwise", {
   expect_equal(plot_ecx(nec4param, "gaussian", list(type = "absolute")),
                ecx(nec4param, type = "absolute"))
 })
+
+
+test_that("to_axis_scale carries the estimate's attributes through", {
+  raw <- seq(1, 100, length.out = 100)
+  f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
+  b_log <- stats::model.frame(f_log, data = data.frame(x = raw, y = runif(100)))
+  v <- structure(log(c(50, 40, 60)), ecx_val = 10, toxicity_estimate = "ecx")
+  # The numerical-inverse branch. bind_ecx() reads attr(., "ecx_val") and
+  # assigns it into a data frame, so a stripped vector is an error there rather
+  # than a missing label.
+  out <- to_axis_scale(v, b_log, f_log, raw)
+  expect_equal(attr(out, "ecx_val"), 10)
+  expect_equal(attr(out, "toxicity_estimate"), "ecx")
+  expect_equal(as.numeric(out), c(50, 40, 60), tolerance = 1e-3)
+  # An unidentified draw stays NA rather than being interpolated to an endpoint.
+  expect_true(is.na(to_axis_scale(c(log(50), NA), b_log, f_log, raw)[2]))
+})

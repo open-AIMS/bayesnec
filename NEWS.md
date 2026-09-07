@@ -93,6 +93,21 @@
   is correct without the caller having to know an inverse was needed (#160,
   #161).
 
+- `autoplot(x, ecx = TRUE)` no longer fails for a fit whose formula transforms
+  the predictor inline, such as `crf(log(raw_x + 1))`, when `xform` is left at
+  its default. Putting the estimate on the axis scale by inverting numerically
+  on the prediction grid returned a vector stripped of the `ecx_val` attribute
+  that labels the annotation, and the call ended in "replacement has length
+  zero". Supplying an `xform` took a different branch and was unaffected, which
+  is why the failure was specific to the default (#160, #161).
+
+- `compare_estimates()` and `compare_posterior()` no longer report
+  `prob = NA` for a comparison in which any draw is censored. The pairwise
+  probability is computed over the draw pairs where both estimates are
+  identified; a single unreached draw in either posterior previously voided the
+  whole comparison, and silently, the probability being a value rather than an
+  error (#39).
+
 - `plot()` and `autoplot()` annotate the same EC10 for a gaussian fit. `plot()`
   asked for `type = "relative"` under its 2.1.3 meaning, the control-to-minimum
   span, while `autoplot()` took the `ecx()` default, so the same fit was
