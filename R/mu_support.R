@@ -185,6 +185,17 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #'   \item \code{below_zero}: the mean is unbounded below, because a linear
 #'     term is subtracted from it with nothing to stop it. \code{neclin},
 #'     \code{neclinhorme} and \code{ecxlin}.
+#'   \item \code{can_exceed_one}: the mean can exceed 1 for \emph{some}
+#'     setting of the parameters, whether or not the fit can shrink the term
+#'     responsible. Strictly weaker than admissibility and strictly stronger
+#'     than \code{unscaled_excess}: it holds for all six hormesis equations
+#'     with an additive or multiplicative excess term, not only the two whose
+#'     excess carries no coefficient. Nothing consumes it for
+#'     \code{\link{check_models}}, which is right --- an equation whose excess
+#'     the fit can shrink is still admissible. It is consumed by #257, which
+#'     needs the mean to be provably \emph{strictly} inside (0, 1) before it
+#'     may take a logit of it, and for which "the fit can shrink it" is not
+#'     good enough.
 #'   \item \code{unscaled_excess}: the mean can exceed 1 through a term
 #'     carrying \strong{no coefficient}, so the fit cannot shrink it.
 #'     \code{nechormepwr} and \code{nechorme4pwr}, whose hormesis term is
@@ -286,13 +297,13 @@ model_mu_ranges <- function() {
   spec <- list(
     nec3param     = list(),
     nec4param     = list(),
-    nechorme      = list(),
-    nechorme4     = list(),
+    nechorme      = list(can_exceed_one = TRUE),
+    nechorme4     = list(can_exceed_one = TRUE),
     necsigm       = list(),
     neclin        = list(below_zero = TRUE),
     neclinhorme   = list(below_zero = TRUE),
-    nechormepwr   = list(unscaled_excess = TRUE),
-    nechorme4pwr  = list(unscaled_excess = TRUE),
+    nechormepwr   = list(unscaled_excess = TRUE, can_exceed_one = TRUE),
+    nechorme4pwr  = list(unscaled_excess = TRUE, can_exceed_one = TRUE),
     nechormepwr01 = list(ceiling_at_one = TRUE),
     ecxlin        = list(below_zero = TRUE),
     ecxexp        = list(),
@@ -305,14 +316,15 @@ model_mu_ranges <- function() {
     ecxll5        = list(),
     ecxll4        = list(),
     ecxll3        = list(),
-    ecxhormebc4   = list(),
-    ecxhormebc5   = list()
+    ecxhormebc4   = list(can_exceed_one = TRUE),
+    ecxhormebc5   = list(can_exceed_one = TRUE)
   )
   flag <- function(x, nm) isTRUE(x[[nm]])
   out <- data.frame(
     model = names(spec),
     below_zero = vapply(spec, flag, logical(1), "below_zero"),
     unscaled_excess = vapply(spec, flag, logical(1), "unscaled_excess"),
+    can_exceed_one = vapply(spec, flag, logical(1), "can_exceed_one"),
     ceiling_at_one = vapply(spec, flag, logical(1), "ceiling_at_one"),
     stringsAsFactors = FALSE
   )
@@ -385,8 +397,16 @@ ogl_transform_kind <- function(model, family) {
   }
   support <- mu_support(family)
   if (identical(support, c(0, 1))) {
-    # Anything that can reach or pass 1 rules out logit.
-    if (isTRUE(row$unscaled_excess) || isTRUE(row$ceiling_at_one)) {
+    # Anything that can reach or pass 1 rules out logit, and "can" means for
+    # any setting of the parameters -- not merely for settings the fit cannot
+    # shrink. unscaled_excess is the narrower property, and gating on it
+    # admitted nechorme, nechorme4, ecxhormebc4 and ecxhormebc5, whose mean can
+    # exceed 1 through exp(slope) * x. The collapsed form has a pole at
+    # o = log((m - 1) / m) once m > 1 and changes sign across it -- at m = 1.5
+    # it returns 8.1e4 at o = -1.0986 and -720 at o = -1.1 -- and those fits
+    # would also have lost the adapt_delta raise on the false premise that the
+    # mean cannot leave its support.
+    if (isTRUE(row$can_exceed_one) || isTRUE(row$ceiling_at_one)) {
       return("none")
     }
     return("logit")

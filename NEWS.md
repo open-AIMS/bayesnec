@@ -43,6 +43,13 @@
   Jacobian varies along the curve, so this is a conversion of the convention onto
   the new scale rather than an exact reparameterisation of the same prior.
 
+  **`ogl` and `bnecmu` are now refused as data column names.** The transform
+  introduces `bnecmu` as an intermediate term and \pkg{brms} resolves formula
+  terms against the user's data frame first, so a column of either name would be
+  used in place of the generated term and the fit would silently be a different
+  model. A data frame carrying either name that fitted under 2.1.x now stops
+  with an error naming the column, before any model is compiled.
+
   **Not in this change:** `pgl()` and explicit `(par | group)` terms, which place
   a deviation on an individual curve parameter rather than on the mean and need
   the same idea one level down.
