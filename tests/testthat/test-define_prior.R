@@ -614,12 +614,19 @@ test_that("the nec and ec50 gamma prior peaks at the median predictor (#273)", {
   # series 2m is close to the maximum, so the truncated prior rose
   # monotonically across the whole range it permitted and pulled the estimate
   # towards the highest concentration tested. At 4/m the mode is m, which is
-  # what ?bnec and vignette("example3") describe.
-  rate_of <- function(x) {
+  # what ?bnec and vignette("example3") describe, and what makes it consistent
+  # with the other two entries of x_prs, which peak at a central measure of the
+  # predictor.
+  #
+  # The response family below is arbitrary: x_prs is indexed on x_type, which is
+  # set_distribution(predictor, ...), so a non-negative predictor takes the
+  # gamma entry whatever the response is. The entry is labelled "Gamma" for the
+  # predictor's distribution, not for a response family, which is easy to read
+  # the other way round. Asserted directly in the next test.
+  rate_of <- function(x, family = Beta(link = "identity")) {
     d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
     pr <- suppressMessages(
-      get_priors(y ~ crf(x, model = "nec3param"), data = d,
-                 family = Beta(link = "identity"))
+      get_priors(y ~ crf(x, model = "nec3param"), data = d, family = family)
     )
     as.numeric(sub(".*gamma\\(5, ([0-9.e+-]+)\\).*", "\\1",
                    pr$prior[pr$nlpar == "nec"]))
@@ -640,4 +647,30 @@ test_that("the nec and ec50 gamma prior peaks at the median predictor (#273)", {
   # mode was already inside the range there; the correction still moves it.
   x_log <- rep(c(0.1, 1, 10, 100, 1000), each = 6)
   expect_equal((5 - 1) / rate_of(x_log), median(unique(x_log)))
+})
+
+test_that("the nec prior is chosen from the predictor, not the response", {
+  # x_prs is indexed on set_distribution(predictor, ...), so its "Gamma" entry
+  # names a non-negative predictor rather than a Gamma response. The labels
+  # reuse family names for predictor types, which reads as though the response
+  # family selects the prior; it does not, and every family below returns the
+  # same one on the same predictor.
+  x <- rep(c(0, 25, 50, 75, 100), each = 6)
+  nec_prior <- function(family, y) {
+    pr <- suppressMessages(
+      get_priors(y ~ crf(x, model = "nec3param"),
+                 data = data.frame(x = x, y = y), family = family)
+    )
+    pr$prior[pr$nlpar == "nec"]
+  }
+  target <- paste0("gamma(5, ", 1 / (median(unique(x)) / 4), ")")
+  expect_equal(nec_prior(Beta(link = "identity"),
+                         rep(c(0.9, 0.8, 0.5, 0.2, 0.05), each = 6)), target)
+  expect_equal(nec_prior(Gamma(link = "identity"),
+                         rep(c(9, 8, 5, 2, 1), each = 6)), target)
+  expect_equal(nec_prior(gaussian(),
+                         rep(c(9, 8, 5, 2, -1), each = 6)), target)
+  expect_equal(nec_prior(poisson(link = "identity"),
+                         as.integer(rep(c(90, 80, 50, 20, 5), each = 6))),
+               target)
 })

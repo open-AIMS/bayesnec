@@ -275,14 +275,14 @@ define_prior <- function(model, family, predictor, response,
   # a protective estimate. At rate 4/m the maximum density is at m and the mean
   # at 1.25m, which is what ?bnec and vignette("example3") already describe.
   #
-  # Measured on #273 before choosing: doses 0, 5, 10, 20, 40, 80 with the true
-  # nec at 5, 20 and 55, this narrows the 95% interval at every position -- most
-  # at nec = 55, from a width of 35.0 to 17.7 -- and reduces the bias at 5 and
-  # 20 while increasing it at 55, where the old prior's upward pull happened to
-  # help. The alternative considered and not taken was gamma(2, 2/m), whose mean
-  # rather than mode is m; it is intermediate on both bias and width, and is a
-  # one-line change if the consistency with the response-scaled priors, which
-  # use mean = q, is judged worth more than agreement with the documentation.
+  # Chosen for consistency rather than from a fit. The other two entries of
+  # x_prs place their maximum density at a central measure of the predictor --
+  # beta(2, 2) at the centre of the unit interval, normal(median(x), ...) at the
+  # median -- so the gamma entry should peak at m. The alternative considered
+  # and not taken was gamma(2, 2/m), whose mean rather than mode is m: its
+  # maximum density is at m/2, which matches neither the documentation nor the
+  # convention the other two entries follow, both being specified by where the
+  # density peaks rather than by where its mean falls. See #273.
   x_prs <- c(Beta = "beta(2, 2)",
              Gamma = paste0("gamma(5, ", 1 / (x_med / 4), ")"),
              gaussian = paste0("normal(",

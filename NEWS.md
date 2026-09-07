@@ -12,14 +12,17 @@
   protective estimate. `4/m` is also what `?bnec` and `vignette("example3")`
   already described the prior as doing (#273).
 
-  **This changes every default fit** whose predictor is non-zero positive, which
-  is the `Gamma` branch of the predictor-scaled priors, and it applies to
-  `ec50` as well as to `nec`. Measured on doses 0, 5, 10, 20, 40, 80 with the
-  true *NEC* at 5, 20 and 55: the 95% interval narrows at every position, most at
-  *NEC* = 55 where the width falls from 35.0 to 17.7; the bias falls at 5 and 20
-  and rises at 55, where the old prior's upward pull happened to help. The
-  measurement, the alternative considered, and the reason for the choice are
-  recorded on #273.
+  The other two entries of `x_prs` place their maximum density at a central
+  measure of the predictor --- `beta(2, 2)` at the centre of the unit interval,
+  `normal(median(x), ...)` at the median --- so the gamma entry was the only one
+  of the three that did not, and the only one that did not do what it was
+  documented to do.
+
+  **This changes every default fit** whose predictor is non-negative, which is
+  the `Gamma` branch of the predictor-scaled priors, and it applies to `ec50` as
+  well as to `nec`, since both read the same entry. The alternative considered
+  and not taken was `gamma(2, 2/m)`, whose mean rather than mode is *m*; the
+  reasoning is recorded on #273.
 
 ## Sampler behaviour
 
