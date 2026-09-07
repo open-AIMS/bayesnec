@@ -71,3 +71,43 @@ test_that("the absolute ecnsec agrees with the ecx definition", {
               resolution = 500)
   expect_equal(as.numeric(back[1]), target_x, tolerance = 0.05)
 })
+
+
+# ---- a model set under every type --------------------------------------------
+
+# ecx_asymptote() read object$fit, which a bayesmanecfit does not have, so
+# ecnsec(<set>, type = "relative") failed inside posterior with "Don't know how
+# to transform an object of class 'NULL'" -- a message naming neither the
+# argument nor the class. "absolute" and "range" worked on the same object, so
+# the failure was in the asymptote alone.
+
+test_that("ecnsec answers a model set under every percentage type", {
+  skip_on_cran()
+  out <- lapply(c("absolute", "relative", "range"), function(ty) {
+    suppressWarnings(
+      ecnsec(manec_example, nsec = 1.5, resolution = 50, type = ty)
+    )
+  })
+  for (o in out) {
+    expect_equal(length(o), 3)
+    expect_false(anyNA(o))
+  }
+  names(out) <- c("absolute", "relative", "range")
+  # The types order as their denominators do. manec_example's equations both
+  # carry a bot well below the observed response, so the control-to-bot span is
+  # the widest and the same decline is the smallest percentage of it.
+  expect_lt(out$relative[1], out$range[1])
+  expect_lt(out$range[1], out$absolute[1])
+})
+
+test_that("the model-averaged asymptote is one value per averaged draw", {
+  skip_on_cran()
+  a <- manec_asymptote(manec_example)
+  # Stacked in the same order and thinned by the same index as the
+  # model-averaged posterior, so the two pair row for row.
+  expect_equal(length(a),
+               nrow(posterior_epred(manec_example,
+                                    newdata = bnec_newdata(manec_example,
+                                                           resolution = 5),
+                                    re_formula = NA)))
+})

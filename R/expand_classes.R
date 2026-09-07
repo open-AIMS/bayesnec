@@ -67,16 +67,31 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     }, numeric(1))
     n_missing <- sum(is.na(out))
     if (n_missing > 0) {
-      message("The fitted curve does not fall to the control's ", sig_val,
-              " quantile within the predictor range for ", n_missing, " of ",
-              length(out), " draws. Those draws are excluded from the NSEC ",
-              "summary, which is therefore censored above the highest ",
-              "concentration tested.")
+      # Names the equation. bnec() calls this once per model, so on the default
+      # 23-model set an unnamed message says only that something somewhere is
+      # censored, which is not enough to act on.
+      message("The fitted ", object$model, " curve does not fall to the ",
+              "control's ", sig_val, " quantile within the predictor range ",
+              "for ", n_missing, " of ", length(out), " draws. Those draws ",
+              "are excluded from the NSEC summary, which is therefore ",
+              "censored above the highest concentration tested.")
     }
     sub_x_transformation(out, formula)
   }
+  # Memoised alongside get_pred_posterior(). A smooth block on a hurdle fit
+  # reaches this twice on the same posterior -- once for the response block and
+  # once for the combined endpoint -- and crossing_x() is a root search per
+  # draw, so the second pass is measurable where the nearest-grid-point search
+  # it replaced was not.
+  ne_off_curve <- NULL
+  get_ne_off_curve <- function() {
+    if (is.null(ne_off_curve)) {
+      ne_off_curve <<- nsec_off_curve(get_pred_posterior())
+    }
+    ne_off_curve
+  }
   if (mod_class == "ecx") {
-    ne_posterior <- nsec_off_curve(get_pred_posterior())
+    ne_posterior <- get_ne_off_curve()
     extracted_params$ne <- estimates_summary(ne_posterior)
   } else {
     ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
@@ -111,7 +126,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       # curve itself rather than combined from the parts. When only one block
       # is smooth this is an N(S)EC in the sense of Fisher et al. (2023): a
       # threshold on one process and a significant-effect point on the other.
-      combined_ne <- nsec_off_curve(get_pred_posterior())
+      combined_ne <- get_ne_off_curve()
       ne_lab <- if (mod_class == "ecx" && hu_class == "ecx") {
         "NSEC"
       } else {

@@ -38,10 +38,17 @@ compare_estimates <- function(x, comparison = "n(s)ec", ecx_val = 10,
     stop("comparison must be one of nec, n(s)ec, ecx or nsec.")
   }
   chk_numeric(ecx_val)
-  if ((type %in% c("relative", "absolute", "direct")) == FALSE) {
-    stop("type must be one of \"relative\", \"absolute\" (the default) or",
-         "\"direct\". Please see ?ecx for more details.")
-  }
+  # The same validator ecx() uses, rather than a second copy of the vocabulary.
+  # The copy that stood here still listed the 2.1.3 three-value set, so it
+  # refused type = "range" -- which is the name the rename warning gives users
+  # for the behaviour they had, making the migration it names impossible from
+  # here and from compare_posterior(), which forwards to this function.
+  type <- validate_ecx_type(type, match.call())
+  # Warned once for the call rather than once per fit in x: the ecx() calls
+  # below name type explicitly, so each would otherwise repeat the message.
+  # Same reasoning as ecx.bayesmanecfit. See D15 ruling 8.
+  warned <- options(bayesnec.relative_warned = TRUE)
+  on.exit(options(warned), add = TRUE)
   chk_numeric(sig_val)
   chk_numeric(resolution)
   if (is.na(x_range[1])) {

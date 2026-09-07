@@ -9,7 +9,11 @@
   differ for a hormetic one, where the maximum is the peak at the *NEC*, so
   every ECx reported for a hormesis equation changes. `nsec()` was already
   anchored on the control except for a `hormesis_def == "max"` branch, which is
-  removed, so the two estimators now agree by construction (#195).
+  removed, so the two estimators now agree by construction (#195). The control
+  is read at the lowest *observed* concentration rather than at the first column
+  of the prediction grid, on the `bayesnechurdlefit` class as well as the
+  single-fit one, so supplying `x_range` no longer changes any reported
+  estimate.
 
 - **`type` is a four-value vocabulary.** `"absolute"` (the default) measures
   control to 0; `"relative"` measures control to the equation's theoretical
@@ -19,7 +23,11 @@
   up to 2.1.3**, and supplying `type = "relative"` explicitly now warns, naming
   `"range"`, because the two are different quantities. `"relative"` is refused
   where the bound is infinite --- an equation with no `bot` under a family
-  unbounded below --- because there is then no denominator (#195).
+  unbounded below --- because there is then no denominator (#195). The same
+  four values are accepted wherever `type` is taken: `ecx()`, `nsec()`,
+  `ecnsec()`, `compare_estimates()`, `compare_posterior()` and
+  `average_estimates()`, each validating against one shared definition, and each
+  warning about the rename once for the call rather than once per fit.
 
 - **`hormesis_def` is removed** from `ecx()`, `nsec()`, `ecnsec()`,
   `compare_estimates()`, `compare_posterior()` and `average_estimates()`. With
@@ -43,7 +51,10 @@
   concentration in the series --- the furthest possible value from the truth,
   reported as an ECx with nothing said. The crossing is now found by
   interpolation between the bracketing grid points rather than snapped to the
-  nearer of them (#39).
+  nearer of them (#39). Every function that summarises such a posterior reports
+  the censoring and excludes the affected draws, `nec()` and the
+  `bayesnechurdlefit` methods included; they previously stopped with "missing
+  values and NaN's not allowed" on a posterior the package had itself written.
 
 - **`ecx_val` is no longer capped at 99.** Any value above 0 is accepted. Under
   `"absolute"` the reference is 0, so a value above 100 names a target below
@@ -81,6 +92,22 @@
   otherwise by inverting numerically on the prediction grid, so the default case
   is correct without the caller having to know an inverse was needed (#160,
   #161).
+
+- `plot()` and `autoplot()` annotate the same EC10 for a gaussian fit. `plot()`
+  asked for `type = "relative"` under its 2.1.3 meaning, the control-to-minimum
+  span, while `autoplot()` took the `ecx()` default, so the same fit was
+  annotated with two different quantities depending on which method drew it.
+  Both now ask for `type = "range"`, which is the span `plot()` intended: 0 is
+  not a meaningful floor for a response that can go negative. Under the renamed
+  `"relative"` that line would have annotated a third quantity, warned about a
+  rename the caller had not asked for, and errored outright for a `bot`-free
+  equation, which #206 has just made fittable under gaussian.
+
+- A `crf()` term naming more than one variable, such as `crf(log(offset + x))`,
+  is refused when an estimate is put back on the fitted scale rather than
+  silently inverted on whichever variable comes first. `simplify_formula()`
+  treats every variable inside `crf()` as the predictor, so such a formula has
+  no single predictor to invert on (#196).
 
 - Zero-bounded equations --- `nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`,
   `ecxwb2p3`, `ecxll3` --- are no longer dropped when `family = gaussian()`.

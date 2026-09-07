@@ -53,3 +53,11 @@ A vector of estimates.
 Extracts ECx corresponding to an NSEC from a
 \code{\link{bayesnechurdlefit}}
 }
+\details{
+\code{type = "absolute"} (the default) and \code{"range"} are
+defined here and invert the \code{\link{ecx}} reference construction under
+the same \code{type}. \code{"relative"} is refused, as it is by
+\code{\link{ecx}} for this class: a two-block fit has no single \code{bot}
+parameter to measure towards. \code{"direct"} is refused because it names a
+response value rather than a percentage.
+}

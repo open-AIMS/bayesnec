@@ -113,7 +113,15 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     ec10 <- ecx(x)
   }
   if (add_ec10 & family == "gaussian") {
-    ec10 <- ecx(x, type = "relative")
+    # "range", not "relative". This line asked for "relative" because up to
+    # 2.1.3 that named the control-to-minimum span, which is the annotation a
+    # gaussian response wants: 0 is not a meaningful floor for a response that
+    # can go negative. "relative" now names the control-to-bot span, so keeping
+    # the old word would have silently changed the annotated value -- measured
+    # on manec_example's nec4param, EC10 1.673 against 1.581 -- warned the
+    # caller about a rename they had not asked for, and errored outright for a
+    # bot-free equation under gaussian, which #206 has just made fittable.
+    ec10 <- ecx(x, type = "range")
   }
 
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
@@ -260,7 +268,9 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
       ec10 <- ecx(x)
     }
     if (add_ec10 & family == "gaussian") {
-      ec10 <- ecx(x, type = "relative")
+      # "range" rather than "relative", for the reasons given in
+      # plot.bayesnecfit above.
+      ec10 <- ecx(x, type = "range")
     }
     x_dat <- mod_dat[[x_var]]
     x_vec <- x$w_pred_vals$data$x
