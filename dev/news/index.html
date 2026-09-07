@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.31</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.32</span>
       </span>
     </div>
 
@@ -77,6 +77,14 @@
 
     <div class="section level2">
 <h2 class="page-header" data-toc-text="2.2.0" id="bayesnec-220">bayesnec 2.2.0<a class="anchor" aria-label="anchor" href="#bayesnec-220"></a></h2>
+<div class="section level3">
+<h3 id="default-priors-2-2-0">Default priors<a class="anchor" aria-label="anchor" href="#default-priors-2-2-0"></a></h3>
+<ul><li>
+<p><strong>The <code>nec</code> and <code>ec50</code> gamma prior now peaks at the median predictor</strong>, not at twice it. The rate changes from <code>2/m</code> to <code>4/m</code>, which moves the mode of the untruncated prior from <code>2m</code> to <code>m</code> and its mean from <code>2.5m</code> to <code>1.25m</code>. On a series spaced evenly from zero, <code>2m</code> is close to the largest concentration tested, so after truncation to the predictor range the density rose monotonically across everything the prior permitted and pulled the <em>NEC</em> estimate towards the highest concentration — the wrong direction for a protective estimate. <code>4/m</code> is also what <code><a href="../reference/bnec.html">?bnec</a></code> and <code><a href="../articles/example3.html">vignette("example3")</a></code> already described the prior as doing (<a href="https://github.com/open-aims/bayesnec/issues/273" class="external-link">#273</a>).</p>
+<p>The other two entries of <code>x_prs</code> place their maximum density at a central measure of the predictor — <code>beta(2, 2)</code> at the centre of the unit interval, <code>normal(median(x), ...)</code> at the median — so the gamma entry was the only one of the three that did not, and the only one that did not do what it was documented to do.</p>
+<p><strong>This changes every default fit</strong> whose predictor is non-negative, which is the <code>Gamma</code> branch of the predictor-scaled priors, and it applies to <code>ec50</code> as well as to <code>nec</code>, since both read the same entry. The alternative considered and not taken was <code>gamma(2, 2/m)</code>, whose mean rather than mode is <em>m</em>; the reasoning is recorded on <a href="https://github.com/open-aims/bayesnec/issues/273" class="external-link">#273</a>.</p>
+</li>
+</ul></div>
 <div class="section level3">
 <h3 id="sampler-behaviour-2-2-0">Sampler behaviour<a class="anchor" aria-label="anchor" href="#sampler-behaviour-2-2-0"></a></h3>
 <ul><li>
