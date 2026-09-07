@@ -625,6 +625,14 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   requested_models <- model
   model <- check_models(model, brm_args$family, bdat, record = TRUE)
   excluded_models <- attr(model, "excluded")
+  # Stripped as soon as it has been read. The single-model branch below passes
+  # `model` straight to fit_bayesnec(), which stores it as out$model, and to
+  # expand_nec(), which forwards it to brms as model_name -- so the record rode
+  # along as an attribute on a character(1), printed with every such fit, was
+  # serialised twice, and made identical(fit$model, "nec3param") FALSE. The
+  # multi-model branch escaped it only because `model[m]` drops attributes.
+  # check_models() warns about exactly this at its record block. See #261.
+  model <- as.character(model)
   # Reported once here rather than from check_data(), which runs once per
   # model. Computed from the same model frame and family the loop will use, so
   # what is reported is what will be done. See #93 and D16.

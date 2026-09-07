@@ -156,9 +156,15 @@ check_complete_cases <- function(data) {
 #' @importFrom stats as.formula terms
 #' @noRd
 check_disp_finite <- function(formula, data) {
-  disp_spec <- try(parse_disp_term(formula), silent = TRUE)
-  if (inherits(disp_spec, "try-error") || is.null(disp_spec) ||
-        !identical(disp_spec$route, "A")) {
+  # parse_disp_term()'s own refusals -- more than one disp() term, and a term
+  # it cannot parse -- are raised from here rather than swallowed by a try().
+  # Suppressing them did not avoid the error, it deferred it to
+  # add_brm_defaults(), which runs inside the per-model try() in bnec(), so one
+  # malformed formula printed the refusal once for every member of the model
+  # set and ended on the generic all-models-failed advice. That is the pattern
+  # this check exists to remove.
+  disp_spec <- parse_disp_term(formula)
+  if (is.null(disp_spec) || !identical(disp_spec$route, "A")) {
     return(invisible(NULL))
   }
   # parse_disp_term() returns the right-hand side as an expression string
@@ -170,23 +176,48 @@ check_disp_finite <- function(formula, data) {
   }
   labels <- attr(terms(disp_formula), "term.labels")
   bad <- character(0)
+  incomplete <- character(0)
   for (label in labels) {
     values <- try(eval(str2lang(label), envir = data), silent = TRUE)
     if (inherits(values, "try-error") || !is.numeric(values)) {
       next
     }
-    if (!all(is.finite(values))) {
+    # NA and Inf are separated, and tested independently so a term with both
+    # is reported for both. They have different causes and different remedies,
+    # and check_complete_cases() cannot report the NA because it is given the
+    # model frame, which by design does not contain the dispersion sub-model's
+    # columns. Reporting a missing value as non-finite named log() of a zero
+    # as the usual cause, which is the wrong diagnosis.
+    if (anyNA(values)) {
+      incomplete <- c(incomplete, label)
+    }
+    if (!all(is.finite(values[!is.na(values)]))) {
       bad <- c(bad, label)
     }
   }
+  msgs <- character(0)
+  if (length(incomplete) > 0) {
+    msgs <- c(msgs, paste0(
+      "The dispersion sub-model term(s) ",
+      paste0("\"", incomplete, "\"", collapse = "; "),
+      " contain missing values on your data. A dispersion sub-model's",
+      " variables are deliberately kept out of the model frame, so",
+      " check_data()'s complete-cases check does not see them and brms is",
+      " handed the NA. Drop or impute those rows before fitting."
+    ))
+  }
   if (length(bad) > 0) {
-    stop("The dispersion sub-model term(s) ",
-         paste0("\"", bad, "\"", collapse = "; "),
-         " evaluate to values that are not finite on your data. A dispersion",
-         " sub-model is passed to brms unchanged, so this reaches Stan and the",
-         " fit does not run. Check the term against the columns it names --",
-         " log() of a zero and division by a zero are the usual causes.",
-         call. = FALSE)
+    msgs <- c(msgs, paste0(
+      "The dispersion sub-model term(s) ",
+      paste0("\"", bad, "\"", collapse = "; "),
+      " evaluate to values that are not finite on your data. A dispersion",
+      " sub-model is passed to brms unchanged, so this reaches Stan and the",
+      " fit does not run. Check the term against the columns it names --",
+      " log() of a zero and division by a zero are the usual causes."
+    ))
+  }
+  if (length(msgs) > 0) {
+    stop(paste(msgs, collapse = " "), call. = FALSE)
   }
   invisible(NULL)
 }
@@ -377,12 +408,22 @@ substitution_record <- function(y, cens, family) {
 #'
 #' @param record The \code{substitutions} element of \code{check_data()}'s
 #' return.
+#' @param on_fit Does this caller return a fitted object that stores the
+#' record? \code{TRUE} for \code{\link{bnec}} and \code{update()};
+#' \code{FALSE} for \code{\link{get_priors}}, which returns priors, so
+#' pointing the user at \code{?bnec_record} there would name something the
+#' call does not produce.
 #'
 #' @return \code{NULL}, invisibly. Called for the message.
 #' @noRd
-report_substitutions <- function(record) {
+report_substitutions <- function(record, on_fit = TRUE) {
   if (is.null(record) || nrow(record) == 0) {
     return(invisible(NULL))
+  }
+  where <- if (on_fit) {
+    " The substitution is recorded on the fitted object; see ?bnec_record."
+  } else {
+    " The priors below are derived from the substituted response."
   }
   for (i in seq_len(nrow(record))) {
     r <- record[i, ]
@@ -395,9 +436,7 @@ report_substitutions <- function(record) {
     }
     message("Your response contains ", r$n_rows, " value(s) at ", r$from,
             ", which cannot be fitted because ", r$reason,
-            ". They have been shifted to ", signif(r$to, 3),
-            ". The substitution is recorded on the fitted object; see",
-            " ?bnec_record.", extra)
+            ". They have been shifted to ", signif(r$to, 3), ".", where, extra)
   }
   invisible(NULL)
 }

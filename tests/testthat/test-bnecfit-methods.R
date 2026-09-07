@@ -4,26 +4,38 @@
 # refit at the brms entry point.
 
 capture_brms_update <- function(expr) {
-  # Traced rather than mocked because the point is what brms itself is handed.
-  # The tracer writes to an option: it is evaluated inside update.brmsfit(), so
-  # it cannot see anything in the test's own environment.
+  # Substituted rather than mocked or traced, because the point is what brms
+  # itself is handed. The stub writes to an option: it is dispatched to in
+  # place of update.brmsfit(), so it cannot see anything in the test's own
+  # environment.
+  #
+  # An S3 method is registered in the S3 methods table of the *generic's*
+  # namespace, so brms's update.brmsfit is reached through stats, not through
+  # brms. This used trace(..., where = asNamespace("brms")), which replaces
+  # both that entry and the brms binding, while untrace() restores only the
+  # binding: measured, after this file ran the brms binding was untraced and
+  # getS3method("update", "brmsfit") was still the tracer, so the next real
+  # update() in the session stopped with "halted by test". Writing the stub
+  # into the table directly is what registerS3method() does, and it restores
+  # exactly, so nothing survives the call.
   old <- getOption("bayesnec_test_capture")
   on.exit(options(bayesnec_test_capture = old), add = TRUE)
   options(bayesnec_test_capture = NULL)
-  suppressMessages(
-    trace("update.brmsfit", where = asNamespace("brms"), print = FALSE,
-          tracer = quote({
-            options(bayesnec_test_capture = list(
-              family = list(...)$family,
-              newdata_expr = deparse(substitute(newdata))
-            ))
-            stop("halted by test")
-          }))
-  )
-  on.exit(suppressMessages(
-    untrace("update.brmsfit", where = asNamespace("brms"))
-  ), add = TRUE)
-  # try(silent = FALSE) in the refit loop prints the tracer's stop to stderr.
+  tbl <- get(".__S3MethodsTable__.", envir = asNamespace("stats"))
+  orig_method <- get("update.brmsfit", envir = tbl)
+  stub <- function(object, formula. = NULL, newdata = NULL, recompile = NULL,
+                   ...) {
+    options(bayesnec_test_capture = list(
+      family = list(...)$family,
+      newdata_expr = deparse(substitute(newdata)),
+      newdata_null = is.null(newdata),
+      newdata_val = newdata
+    ))
+    stop("halted by test")
+  }
+  assign("update.brmsfit", stub, envir = tbl)
+  on.exit(assign("update.brmsfit", orig_method, envir = tbl), add = TRUE)
+  # try(silent = FALSE) in the refit loop prints the stub's stop to stderr.
   invisible(capture.output(
     ignored <- tryCatch(suppressMessages(expr), error = function(e) NULL),
     type = "message"
@@ -96,6 +108,42 @@ test_that("brms receives the validated family, not the one written", {
   # brms deparses this argument's expression into the data_name it prints, so
   # it has to stay a symbol rather than be inlined as a data frame.
   expect_equal(got$newdata_expr, "newdata")
+})
+
+test_that("update(family =) hands brms the corrected frame (#274)", {
+  # The second of #274's two routes. check_update_data() runs on
+  # object[[1]]$fit$data whenever a family is supplied, reports the boundary
+  # shift, and the corrected frame was then thrown away because it was
+  # substituted only when the caller had passed newdata. brms received NULL,
+  # refitted the unshifted stored data, and Stan failed on the boundary just
+  # reported repaired.
+  fit <- manec_example
+  for (i in seq_along(fit$mod_fits)) {
+    d <- fit$mod_fits[[i]]$fit$data
+    # Declining, and reaching zero at the top of the range: a response bnec
+    # accepts, and the shape in which a boundary zero actually arises.
+    d$y <- seq(0.9, 0.05, length.out = nrow(d))
+    d$y[(nrow(d) - 2):nrow(d)] <- 0
+    fit$mod_fits[[i]]$fit$data <- d
+  }
+  kept <- seq_len(nrow(fit$mod_fits[[1]]$fit$data) - 3)
+  got <- capture_brms_update(update(fit, family = Beta(), force_fit = TRUE))
+  expect_false(got$newdata_null)
+  # The three zeros the message reports are shifted in the frame brms is given.
+  expect_equal(sum(got$newdata_val$y == 0), 0)
+  expect_true(all(got$newdata_val$y > 0))
+  expect_equal(got$newdata_val$y[kept], fit$mod_fits[[1]]$fit$data$y[kept])
+  # Still a symbol, so brms deparses the data_name it prints as before.
+  expect_equal(got$newdata_expr, "newdata")
+})
+
+test_that("update(family =) leaves newdata NULL where nothing was corrected", {
+  # NULL is what tells brms to reuse the stored data rather than treat it as
+  # new, so the substitution above must not be made unconditionally.
+  got <- capture_brms_update(
+    update(manec_example, family = Beta(), force_fit = TRUE)
+  )
+  expect_true(got$newdata_null)
 })
 
 test_that("a link the caller writes is honoured on update", {

@@ -300,6 +300,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e3, seed = NULL,
   dots <- list(...)
   priors_df <- blank_bounds_to_na(as.data.frame(dots$priors))
   priors_df <- priors_df[priors_df$prior != "", ]
+  started <- Sys.time()
   set.seed(seed)
   inits <- make_inits(model, fct_args, ...)
   init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
@@ -314,8 +315,11 @@ make_good_inits <- function(model, x, y, n_trials = 1e3, seed = NULL,
   # A search that has not succeeded in ten seconds of drawing has a prior and a
   # response that do not overlap, and more draws from the same prior do not
   # change that. See #266.
-  started <- Sys.time()
   timed_out <- FALSE
+  # n_t counts the loop iterations, and one draw is made before the loop, so
+  # the number of attempts is n_t and not n_t - 1. `started` is set above the
+  # first draw for the same reason: the elapsed seconds reported have to cover
+  # the attempts reported alongside them.
   n_t <- 1
   while (!are_good && n_t <= n_trials && !timed_out) {
     inits <- make_inits(model, fct_args, ...)
@@ -338,7 +342,7 @@ make_good_inits <- function(model, x, y, n_trials = 1e3, seed = NULL,
   if (!are_good) {
     elapsed <- as.numeric(Sys.time() - started, units = "secs")
     message("bayesnec failed to find initial values within the",
-            " range of the response for the ", model, " model after ", n_t - 1,
+            " range of the response for the ", model, " model after ", n_t,
             " attempts and ", signif(elapsed, 2), " seconds. Using Stan's",
             " default initialisation process. This usually means the priors",
             " and the response do not overlap; get_priors() reports the priors",

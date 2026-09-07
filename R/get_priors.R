@@ -152,6 +152,18 @@ get_priors.formula <- function(object, data, family = NULL,
     stop("No valid models have been supplied for this data type.",
          call. = FALSE)
   }
+  # Reported once here rather than from check_data(), which the lapply() below
+  # calls once per model. This function derives every prior from the response,
+  # and check_data() can shift that response off a boundary before the prior is
+  # built, so a user reading the priors has to be told that the data they
+  # describe is not the data supplied. Moving the message out of check_data()
+  # would otherwise have made this route silent, where it previously reported
+  # the Gamma correction once per model. See #93 and D16.
+  report_substitutions(
+    substitution_record(retrieve_var(bdat, "y_var", error = TRUE),
+                        retrieve_cens(bdat), family),
+    on_fit = FALSE
+  )
   disp_spec <- parse_disp_term(object)
   out <- lapply(model, function(m) {
     single_form <- single_model_formula(object, m)

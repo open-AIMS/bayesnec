@@ -887,9 +887,10 @@ test_that("an impossible search falls back on the budget, not the cap", {
                            chains = 2, max_seconds = 0),
     type = "message"
   )
-  # One attempt, because the budget was already spent. Before #266 this call
-  # would have run the full ten thousand.
-  expect_match(paste(msg, collapse = " "), "after 1 attempts")
+  # Two attempts: the draw made before the loop, and one pass through it
+  # before the elapsed check fires. Before #266 this call would have run the
+  # full ten thousand.
+  expect_match(paste(msg, collapse = " "), "after 2 attempts")
   # The fallback is Stan's own random initialisation, which is what the search
   # was competing against all along.
   expect_equal(out, list(random = "random"))

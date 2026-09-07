@@ -53,13 +53,17 @@
 ## New
 
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
-  the candidate set as requested, the set as fitted, the equations excluded with
+  the candidate set as requested, the set attempted, the equations excluded with
   the reason for each, and any substitution made in the response. Both were
   reported by `message()` and then discarded, so neither could be recovered from
   the returned object --- only from console output, which a knitted document or
   a call wrapped in `suppressMessages()` does not keep. The set as requested,
-  the set as fitted, the reason for the difference, and what was altered in the
-  data are what a methods section has to state (#261, #93).
+  the set attempted, the reason for the difference, and what was altered in the
+  data are what a methods section has to state (#261, #93). The element is named
+  `attempted` rather than `fitted` because an equation that was attempted and
+  failed to sample appears in it and in `failed_models()`; `requested` is
+  partitioned exactly by `attempted` and `excluded$model`. The record is kept
+  through `update()`, and rebuilt by `amend()` for the set that call produced.
 
 - `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
   over-dispersion, alongside the median and the interval. It uses the whole
@@ -345,8 +349,11 @@
   said it repaired. That is #258's failure mode on a route #258 did not cover,
   because the write-back that fixed it lives in `fit_bayesnec()` and this path
   does not go through it. `has_family_changed()` is replaced by
-  `check_update_data()`, which returns the corrected frame alongside the family
-  (#274).
+  `check_update_data()`, which returns the corrected frame alongside the family.
+  Both routes into that check are covered: `update(family = )` with no
+  `newdata` reads the fit's stored data, so the corrected frame is passed there
+  too, while `newdata` stays `NULL` where nothing was corrected, which is what
+  tells `brms` to reuse the stored data (#274).
 
 - A `disp()` sub-model is now checked for finiteness before `brm()` sees it.
   `check_data()` tests the predictor and the response and names the column when
@@ -355,7 +362,9 @@
   frame. So `disp(~log(x))` on a predictor containing a zero produced a `brms`
   warning about the data in general, after which the fit did not run, with
   nothing naming the term responsible. The refusal names the term and is raised
-  from `bnec()` and `bnec_group()` before any model is fitted (#271).
+  from `bnec()` and `bnec_group()` before any model is fitted. A missing value
+  in such a term is reported as missing rather than as non-finite, since
+  `check_data()`'s complete-cases check cannot see those columns either (#271).
 
 - `set_distribution()` returned `NULL` for an integer vector containing negative
   values: the integer branch tested `min(x) >= 0` and had no `else`. Automatic
@@ -369,8 +378,11 @@
   one off the boundary for a `Beta` family --- now report what was substituted
   and how many rows. All three corrections are reported once per call from the
   user-facing entry points rather than once per model from `check_data()`, which
-  a model set repeated for every member. The substitutions are recorded on the
-  fitted object; see `bnec_record()` (#93).
+  a model set repeated for every member --- `bnec()`, `bnec_group()`,
+  `get_priors()` and `update()`. The substitutions are recorded on the fitted
+  object; see `bnec_record()`. `get_priors()` reports them because every prior
+  it returns is derived from the substituted response, and says so rather than
+  naming a fitted object it does not produce (#93).
 
 - The initial-value search is bounded by elapsed time as well as by attempts.
   The cap was ten thousand attempts and nothing else, which on a twenty-row
