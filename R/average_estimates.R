@@ -28,7 +28,7 @@
 #' model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile
-#' @importFrom chk chk_lgl chk_character chk_numeric
+#' @importFrom chk chk_lgl chk_numeric
 #'
 #' @examples
 #' \dontrun{
@@ -71,7 +71,14 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
     stop("Argument estimate must be a character vector")
   }
   chk_lgl(posterior)
-  chk_character(type)
+  # Validated against the four-value vocabulary here rather than left to the
+  # per-fit ecx() calls below, so that an invalid type is refused before any
+  # posterior is drawn, and the rename warning is issued once for the call
+  # rather than once per fit in x. Same reasoning as ecx.bayesmanecfit and
+  # compare_estimates(). See D15 ruling 8.
+  type <- validate_ecx_type(type, match.call())
+  warned <- options(bayesnec.relative_warned = TRUE)
+  on.exit(options(warned), add = TRUE)
   chk_numeric(ecx_val)
   chk_numeric(sig_val)
   chk_numeric(resolution)

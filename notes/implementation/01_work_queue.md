@@ -38,11 +38,48 @@ release to CRAN is still not a gate on anything here.
 
 ---
 
+# Status, 2026-09-06
+
+**Four pull requests, stacked, covering seventeen issues.** Each targets the one
+below it, so GitHub retargets each to `dev` as its predecessor merges and they
+can be merged straight down.
+
+| batch | PR | targets | closes |
+|---|---|---|---|
+| 1 | **#281** | `dev` | #195, #196, #39, #206, #268, #160, #161 |
+| 2 | **#282** | batch 1 | #274, #271, #272, #266, #93, #262, #261, #218 |
+| 4 | **#284** | batch 2 | #257 |
+| 3 | **#286** | batch 4 | #273 |
+
+Batch 3 is last in the stack rather than third, because its measurement had to
+finish before it could be written; the numbering follows the queue below, not
+the merge order. Merge order is therefore **#281, #282, #284, #286**.
+
+**Two decisions are RF's and are recorded on the issues rather than taken here.**
+#273's measurement does not produce a clean winner between the two candidate
+priors --- correcting the geometry buys precision and costs accuracy where the
+true *NEC* sits high in the range --- so the comment on that issue states the
+trade-off, recommends `shape 5, rate 4/m`, and names the one-line alternative.
+The branch implements the recommendation. #285 was opened for
+`mod_groups$decline`, which is not a blocker.
+
+**Worktrees:** `/mnt/c/Rworking/bayesnec-b1`, `-b2`, `-b3`, `-b4`.
+
+**Still to do, and gated on the four merging:** batch 5, the vignettes, and
+batch 6, the precompile. #243's CI is verified green and its follow-up is opened
+as #283. #238's review has been re-checked against #260 and **one of its items
+has expired**: its correction about the identity link would now introduce the
+error it was written to remove, and the PR records which items still stand. #228
+is blocked on a question that batch 4 may settle.
+
+---
+
 # 0. Housekeeping — do first, it takes minutes
 
-- **Close #275, #277 and #278 by hand.** All three merged; every PR here targets
-  `dev` rather than the default branch, so `Closes #n` does not fire. This is the
-  sixth occurrence of that pattern.
+- ~~Close #275, #277 and #278 by hand.~~ **Done 2026-09-06.** All three had
+  merged; every PR here targets `dev` rather than the default branch, so
+  `Closes #n` does not fire. That was the sixth occurrence of the pattern, and
+  #281 and #282 will need the same treatment.
 - **Prune the stale worktrees.** Twenty-two are registered and most are on
   branches that have merged. `00_protocol.md` names the ones that must not be
   touched; the rest are removable with `git worktree remove`. This matters
