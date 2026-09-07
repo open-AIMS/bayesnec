@@ -275,8 +275,25 @@ define_prior <- function(model, family, predictor, response,
   # the alternative -- rounding before comparing -- would need a tolerance with
   # no defensible value on an arbitrary concentration scale.
   x_med <- median(unique(predictor))
+  # gamma(5, 4/m), not gamma(5, 2/m). The mode of gamma(shape, rate) is
+  # (shape - 1) / rate, so at rate 2/m it was 2m -- twice the median predictor.
+  # On a linearly spaced series m is close to half the maximum, which put the
+  # mode on the upper truncation bound: after truncation the density increased
+  # monotonically across the whole tested range, so the prior pulled the nec
+  # towards the highest concentration tested, which is the wrong direction for
+  # a protective estimate. At rate 4/m the maximum density is at m and the mean
+  # at 1.25m, which is what ?bnec and vignette("example3") already describe.
+  #
+  # Chosen for consistency rather than from a fit. The other two entries of
+  # x_prs place their maximum density at a central measure of the predictor --
+  # beta(2, 2) at the centre of the unit interval, normal(median(x), ...) at the
+  # median -- so the gamma entry should peak at m. The alternative considered
+  # and not taken was gamma(2, 2/m), whose mean rather than mode is m: its
+  # maximum density is at m/2, which matches neither the documentation nor the
+  # convention the other two entries follow, both being specified by where the
+  # density peaks rather than by where its mean falls. See #273.
   x_prs <- c(Beta = "beta(2, 2)",
-             Gamma = paste0("gamma(5, ", 1 / (x_med / 2), ")"),
+             Gamma = paste0("gamma(5, ", 1 / (x_med / 4), ")"),
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),
