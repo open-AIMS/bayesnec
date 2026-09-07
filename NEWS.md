@@ -1,5 +1,29 @@
 # bayesnec 2.2.0
 
+## Default priors
+
+- **The `nec` and `ec50` gamma prior now peaks at the median predictor**, not at
+  twice it. The rate changes from `2/m` to `4/m`, which moves the mode of the
+  untruncated prior from `2m` to `m` and its mean from `2.5m` to `1.25m`. On a
+  series spaced evenly from zero, `2m` is close to the largest concentration
+  tested, so after truncation to the predictor range the density rose
+  monotonically across everything the prior permitted and pulled the *NEC*
+  estimate towards the highest concentration --- the wrong direction for a
+  protective estimate. `4/m` is also what `?bnec` and `vignette("example3")`
+  already described the prior as doing (#273).
+
+  The other two entries of `x_prs` place their maximum density at a central
+  measure of the predictor --- `beta(2, 2)` at the centre of the unit interval,
+  `normal(median(x), ...)` at the median --- so the gamma entry was the only one
+  of the three that did not, and the only one that did not do what it was
+  documented to do.
+
+  **This changes every default fit** whose predictor is non-negative, which is
+  the `Gamma` branch of the predictor-scaled priors, and it applies to `ec50` as
+  well as to `nec`, since both read the same entry. The alternative considered
+  and not taken was `gamma(2, 2/m)`, whose mean rather than mode is *m*; the
+  reasoning is recorded on #273.
+
 ## Sampler behaviour
 
 - **A group-level deviation on the whole curve, `ogl()`, is now applied
