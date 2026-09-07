@@ -238,7 +238,11 @@ do_wrapper <- function(..., fct = "cbind") {
 #' @noRd
 #' @importFrom stats median quantile
 estimates_summary <- function(x) {
-  x <- c(median(x), quantile(x, c(0.025, 0.975)))
+  # na.rm because an NSEC or ECx read off a curve is NA for any draw whose
+  # curve does not reach the target within the predictor range. Those draws
+  # used to be assigned max(x_vec), which is not an estimate of anything and
+  # dragged the summary upward without saying so. See #39 and D15 ruling 3.
+  x <- c(median(x, na.rm = TRUE), quantile(x, c(0.025, 0.975), na.rm = TRUE))
   names(x) <- c("Estimate", "Q2.5", "Q97.5")
   x
 }
@@ -342,19 +346,6 @@ clean_names <- function(x) {
   paste0("Q", gsub("%", "", names(x), fixed = TRUE))
 }
 
-#' @noRd
-modify_posterior <- function(n, object, x_vec, p_samples, hormesis_def) {
-  posterior_sample <- p_samples[n, ]
-  if (hormesis_def == "max") {
-    target <- x_vec[which.max(posterior_sample)]
-    change <- x_vec < target
-  } else if (hormesis_def == "control") {
-    target <- posterior_sample[1]
-    change <- posterior_sample >= target
-  }
-  posterior_sample[change] <- NA
-  posterior_sample
-}
 
 #' @noRd
 print_mat <- function(x, digits = 2) {
@@ -618,15 +609,17 @@ expand_model_set <- function(model) {
 }
 
 #' @noRd
-retrieve_valid_family <- function(named_list, data) {
+retrieve_valid_family <- function(named_list, data, link_source = "none") {
   if (!"family" %in% names(named_list)) {
     y <- retrieve_var(data, "y_var", error = TRUE)
     tr <- retrieve_var(data, "trials_var")
     family <- set_distribution(y, support_integer = TRUE, trials = tr)
+    # Chosen by bayesnec, so the link is bayesnec's to assign too.
+    link_source <- "none"
   } else {
     family <- named_list$family
   }
-  validate_family(family)
+  validate_family(family, link_source = link_source)
 }
 
 #' @noRd
@@ -731,7 +724,8 @@ add_brm_defaults <- function(
   custom_name,
   prior_type = "uninformative",
   model_survival = NULL,
-  disp_spec = NULL
+  disp_spec = NULL,
+  group_spec = NULL
 ) {
   if (!("chains" %in% names(brm_args))) {
     brm_args$chains <- 4
@@ -745,6 +739,62 @@ add_brm_defaults <- function(
   if (!("warmup" %in% names(brm_args))) {
     brm_args$warmup <- floor(brm_args$iter / 5) * 4
   }
+  # A group-level offset is declared unconstrained by brms, and on every family
+  # except gaussian the identity link leaves the mean it is added to constrained:
+  # (0, 1) for bernoulli, beta, binomial and beta_binomial, (0, Inf) for Gamma,
+  # poisson, negbinomial and the zero-inflated counts. Any leapfrog step that
+  # carries mu outside that range makes the likelihood throw, Stan rejects the
+  # whole trajectory, and it is counted as a divergent transition. A smaller step
+  # size overshoots the boundary less often, which is the only lever available
+  # here; no prior on the standard deviation helps, because the posterior for it
+  # is an order of magnitude smaller than the distance from the fitted mean to
+  # the boundary.
+  #
+  # Measured on nec3param with ogl(): 50.2% divergent at 0.8 against 4.9% at
+  # 0.99 for beta_binomial, and 87.3% at 0.99 for poisson where the curve's tail
+  # sits on zero. The residual is not small and is not constant -- across a sweep
+  # of group count and group-level standard deviation it ranged from 0.03% to
+  # 42.9% -- so this is a mitigation and vignette("example3") says so.
+  #
+  # Gated on the support of mu rather than on the presence of a group-level term:
+  # a gaussian response is unconstrained and shows 0% divergent at 0.8 with the
+  # identical curve and grouping. The link matters too, but not because mu is
+  # the linear predictor under a non-identity link -- brms applies the inverse
+  # link before the likelihood, so what decides it is whether that inverse maps
+  # into the support. See mu_is_constrained(). Raised only where it is needed,
+  # because it costs roughly fourteen times the gradient evaluations per
+  # iteration. #257 proposes the parameterisation change that removes the need
+  # for it. See #245.
+  #
+  # #257 landed the parameterisation change for the ogl case, so the raise is
+  # now conditional on the group structure actually still needing it. An ogl
+  # term whose deviation is applied multiplicatively cannot carry mu out of its
+  # support at all, so the mitigation has nothing left to mitigate and costs
+  # roughly fourteen times the gradient evaluations for it. Everything else --
+  # a pgl term, an explicit (par | group) term, and any equation the transform
+  # is not defined for -- keeps needing it, permanently.
+  ogl_is_transformed <- isTRUE(group_spec$ogl) &&
+    !identical(ogl_transform_kind(model, family), "none")
+  only_ogl <- ogl_is_transformed &&
+    identical(sort(unique(group_spec$nlpars)), "ogl")
+  if (!is.null(group_spec) && mu_is_constrained(family) && !only_ogl) {
+    ctrl <- if ("control" %in% names(brm_args)) brm_args$control else list()
+    if (!("adapt_delta" %in% names(ctrl))) {
+      ctrl$adapt_delta <- 0.99
+      brm_args$control <- ctrl
+    }
+  }
+  # The prior scale for the ogl intercept and its group-level standard
+  # deviation depends on which scale the deviation is applied on, so the kind
+  # is decided here, where family and group_spec are both in hand, and carried
+  # into define_prior() on group_spec.
+  if (!is.null(group_spec)) {
+    group_spec$ogl_transform <- if (isTRUE(group_spec$ogl)) {
+      ogl_transform_kind(model, family)
+    } else {
+      "none"
+    }
+  }
   build_defaults <- function() {
     define_prior(
       model,
@@ -753,7 +803,8 @@ add_brm_defaults <- function(
       response,
       prior_type = prior_type,
       model_survival = model_survival,
-      disp_spec = disp_spec
+      disp_spec = disp_spec,
+      group_spec = group_spec
     )
   }
   priors <- try(validate_priors(brm_args$prior, model), silent = TRUE)
@@ -810,6 +861,18 @@ add_brm_defaults <- function(
     if (length(disp_par_names) > 0) {
       init_priors <- init_priors[!init_priors$nlpar %in% disp_par_names, ]
     }
+    # A group-level term introduces parameters that are no part of the mean
+    # curve either, and they have to come out for the same reason. Two kinds:
+    # the standard deviations, dropped by class, which is general and needs no
+    # maintenance; and the `ogl` offset, dropped by name, because it is the one
+    # parameter a group-level term adds that carries class "b" and so survives
+    # every class filter. The `ogl` row is what made make_inits() reject the
+    # whole set -- and therefore what stopped a user supplying by hand the
+    # group-level prior that was never generated. Filtering unconditionally
+    # rather than from group_spec: `ogl` is a reserved name, so a row carrying
+    # it is always this parameter and never a curve coefficient. See #245.
+    init_priors <- init_priors[init_priors$class != "sd", ]
+    init_priors <- init_priors[init_priors$nlpar != "ogl", ]
     inits <- if (is_hurdle_family(family)) {
       # Two blocks with differently-scaled responses, primed separately then
       # merged. response_link_scale() is a no-op for hurdle_gamma under an
@@ -887,27 +950,85 @@ extract_formula <- function(x) {
 
 #' @noRd
 #' @importFrom stats model.frame
-has_family_changed <- function(x, data, ...) {
-  brm_args <- list(...)
+check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
+  # A named argument rather than `...`: update.bnecfit() passed the family
+  # positionally, so names(list(...)) was NULL, "family" %in% names() was
+  # FALSE in retrieve_valid_family(), and the family was re-derived from the
+  # data. The guard then compared the data-derived family against the fitted
+  # one and could not detect a family change at all. See #256.
+  brm_args <- if (is.null(family)) list() else list(family = family)
+  substitutions <- NULL
   for (i in seq_along(x)) {
     formula <- extract_formula(x[[i]])
     bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
     model <- get_model_from_formula(formula)
-    family <- retrieve_valid_family(brm_args, bdat)
-    model <- check_models(model, family, bdat)
-    checked_df <- check_data(data = bdat, family = family, model = model)
+    # Named fam, not family: reassigning the argument inside its own loop
+    # would leave the second iteration reading the validated object rather
+    # than what the caller supplied.
+    fam <- retrieve_valid_family(brm_args, bdat)
+    model <- check_models(model, fam, bdat)
+    checked_df <- check_data(data = bdat, family = fam, model = model)
+    # The corrections check_data() reports have to reach the data frame brms
+    # is given. This function used to read checked_df$family and discard the
+    # rest, so update(newdata = ) told the user their response had been shifted
+    # off a boundary and then passed the raw newdata to brms::update(), which
+    # failed naming the condition that had just been reported repaired. That is
+    # #258's failure mode on a route #258 did not cover, because the write-back
+    # that fixed it lives in fit_bayesnec() and this path does not go through
+    # it. See #274.
+    #
+    # Written back inside the loop so a model set converges on one corrected
+    # frame: every member shares the same response, and check_data() is
+    # deterministic given the family, so the correction each iteration computes
+    # is the same one.
+    #
+    # The record is captured on the first iteration rather than read from
+    # checked_df after the loop, and for the same reason: the write-back
+    # corrects `data` in place, so iteration 2 rebuilds bdat from a response
+    # that no longer sits on the boundary and substitution_record() returns
+    # NULL for it. Reading the last iteration's record reported nothing at all
+    # for a model set -- the object update.bnecfit() is given for any
+    # bayesmanecfit -- while reporting normally for a single model. See #93.
+    if (i == 1) {
+      substitutions <- checked_df$substitutions
+    }
+    data <- write_back_checks(data, bdat, "y_var", checked_df$mod_dat$y)
   }
-  out <- all.equal(
-    checked_df$family,
-    x[[1]]$fit$family,
-    check.attributes = FALSE,
-    check.environment = FALSE
+  # Reported once, outside the loop, for the reason given in check_data(): the
+  # substitution is a property of the data and the family and does not need
+  # restating per model. See #93.
+  # on_fit is the caller's answer to whether the object it returns will store
+  # the record. update.bnecfit() re-attaches only where the input already had
+  # one, so updating a fit saved by a version from before bnec_record() existed
+  # would otherwise print "recorded on the fitted object; see ?bnec_record" and
+  # return an object whose bnec_record() is NULL.
+  report_substitutions(substitutions, on_fit = on_fit)
+  list(
+    changed_family = !identical(family_signature(checked_df$family),
+                                family_signature(x[[1]]$fit$family)),
+    data = data,
+    substitutions = substitutions
   )
-  if (is.logical(out)) {
-    FALSE
-  } else {
-    TRUE
-  }
+}
+
+#' The tag and the links, which is what "a different family" means here
+#'
+#' @param family A \code{\link[stats]{family}}.
+#'
+#' @details The whole object cannot be compared. \pkg{brms} stores a
+#' \code{brmsfamily} in the fit, while \code{mod_fams} builds gaussian,
+#' Gamma, binomial and poisson from \pkg{stats}, so the two carry different
+#' components and different closures: \code{all.equal} reported a change for a
+#' family identical to the one fitted, and \code{update(fit, family =
+#' "gaussian")} on a gaussian fit asked for \code{force_fit = TRUE}.
+#'
+#' @return A named \code{\link[base]{character}} vector.
+#'
+#' @noRd
+family_signature <- function(family) {
+  links <- family[grepl("^link", names(family))]
+  links <- unlist(links[vapply(links, is.character, logical(1))])
+  c(family = family$family, links[order(names(links))])
 }
 
 #' @noRd
@@ -931,6 +1052,33 @@ find_transformations <- function(data) {
   # remove aterms from data name
   data <- clean_aterms(data)
   unname(bnec_pop_vars[!bnec_pop_vars %in% names(data)])
+}
+
+#' Is one population variable written into the formula as a transformation?
+#'
+#' \code{\link{find_transformations}} answers this for the formula as a whole,
+#' which is too coarse wherever the answer decides what happens to a single
+#' variable: \code{crf(log(x))} would then suppress a correction applied to the
+#' response as well (#258).
+#'
+#' The comparison is positional -- the model frame column at the variable's
+#' position in \code{bnec_pop} against the variable's own name -- because that
+#' is how \code{\link{retrieve_var}} and every other consumer of
+#' \code{bnec_pop} finds a variable, so the two cannot disagree about which
+#' column is meant. A name-membership test would also call \code{y} transformed
+#' in \code{y ~ crf(log(y))}, where only the predictor is.
+#'
+#' @noRd
+pop_var_is_transformed <- function(data, var) {
+  bnec_pop_vars <- attr(data, "bnec_pop")
+  v_pos <- which(names(bnec_pop_vars) == var)
+  if (length(v_pos) != 1 || v_pos > length(data)) {
+    return(FALSE)
+  }
+  # trials(n) and the other brms aterms wrap a variable without transforming
+  # it, so they are stripped before the comparison, as find_transformations()
+  # does.
+  !identical(names(clean_aterms(data))[v_pos], bnec_pop_vars[[v_pos]])
 }
 
 #' @noRd
@@ -1177,4 +1325,373 @@ fill_missing_priors <- function(priors, defaults, model) {
   out <- rbind(priors, add)
   rownames(out) <- NULL
   out
+}
+
+#' Put an estimate read off the prediction grid back on the fitted scale
+#'
+#' The prediction grid is built on the raw predictor column
+#' (\code{prediction_grid()}), so an x value read off it is on the raw scale
+#' while the model was fitted on the transformed one. Applying the formula's
+#' own transformation puts the estimate on the scale a pre-computed
+#' transformed column would have given, which is what makes an inline
+#' \code{crf(log(x))} and a pre-computed \code{log_x} column agree.
+#'
+#' Substitution is on the \emph{predictor variable}, not on the first argument
+#' slot of the parsed call. \code{crf(log(x + 1))} has the expression
+#' \code{x + 1} in that slot, so replacing the slot discarded the \code{+ 1}
+#' and inverted the estimate as \code{log(x)}. See #196.
+#'
+#' A \code{crf()} call naming more than one variable is refused rather than
+#' guessed at. \code{simplify_formula()} takes every variable inside
+#' \code{crf()} as the predictor --- \code{x_var <- all.vars(x_call)}, with no
+#' subsetting --- so such a formula has no single predictor to put the estimate
+#' back on the scale of. Substituting into the first would put it into
+#' \code{offset} for \code{crf(log(offset + x))}, which is the same class of
+#' silent wrong answer as #196 itself.
+#'
+#' @param value A \code{\link[base]{numeric}} vector on the raw predictor
+#' scale.
+#' @param formula A \code{\link{bayesnecformula}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector on the fitted scale.
+#'
+#' @importFrom stats terms setNames
+#' @noRd
+sub_x_transformation <- function(value, formula) {
+  x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  x_call <- str2lang(eval(parse(text = x_str)))
+  if (!inherits(x_call, "call")) {
+    return(value)
+  }
+  x_vars <- all.vars(x_call)
+  if (length(x_vars) != 1) {
+    stop("The crf() term ", deparse(x_call), " names ", length(x_vars),
+         " variables, so there is no single predictor to put the estimate ",
+         "back on the scale of. Compute the transformation into its own ",
+         "column and name that column in crf() instead.", call. = FALSE)
+  }
+  sub_list <- setNames(list(quote(.bnec_x_value)), x_vars)
+  eval(do.call("substitute", list(x_call, sub_list)),
+       list(.bnec_x_value = value))
+}
+
+#' The x value at which a curve first crosses a target response
+#'
+#' Interpolated linearly between the two grid points that bracket the
+#' crossing, rather than snapped to the nearer of them.
+#'
+#' Returns \code{NA} where the curve does not reach the target anywhere in
+#' the predictor range. The estimate is not identified there, and the nearest
+#' grid point -- what this used to return -- is the \emph{lowest} concentration
+#' in the series for a curve that never declines to the target, which is the
+#' furthest possible value from the truth rather than the closest. See #39 and
+#' D15 ruling 3.
+#'
+#' Anchoring the target on the control is what makes the first crossing the
+#' right one for a hormetic curve as well: the target is below the control, the
+#' rising limb sits above it, so the only crossing is on the descending limb.
+#'
+#' @param y A \code{\link[base]{numeric}} vector, one draw's predicted curve
+#' over \code{x_vec}.
+#' @param target A \code{\link[base]{numeric}} value, the response level
+#' sought.
+#' @param x_vec A \code{\link[base]{numeric}} vector of predictor values.
+#'
+#' @return A \code{\link[base]{numeric}} value, or \code{NA}.
+#'
+#' @importFrom modelbased zero_crossings
+#' @noRd
+crossing_x <- function(y, target, x_vec) {
+  if (all(is.na(y)) || is.na(target)) {
+    return(NA_real_)
+  }
+  val <- suppressWarnings(min(zero_crossings(y - target)))
+  if (!is.finite(val)) {
+    return(NA_real_)
+  }
+  floor_x <- x_vec[floor(val)]
+  ceiling_x <- x_vec[ceiling(val)]
+  floor_x + (val - floor(val)) * (ceiling_x - floor_x)
+}
+
+#' Does the family have a lower bound on the response?
+#'
+#' Used to decide whether \code{type = "relative"} has a finite denominator
+#' for an equation with no \code{bot} parameter. Such an equation tends to
+#' zero, so its theoretical asymptote is 0 under any family whose support is
+#' bounded below; under a family whose support is not, there is no bound and
+#' no denominator. Of the families \code{\link{bnec}} accepts, \code{gaussian}
+#' is the only one unbounded below. See D15 ruling 6.
+#'
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @return A \code{\link[base]{logical}} value.
+#' @noRd
+family_has_lower_bound <- function(family) {
+  !(family$family %in% c("gaussian", "student"))
+}
+
+#' The control posterior
+#'
+#' The predicted mean at the lowest \emph{observed} concentration, per draw.
+#'
+#' Read at the lowest observed predictor value rather than at the first column
+#' of the prediction grid, so that supplying \code{x_range} -- which moves the
+#' grid and can extend it below the data -- does not change any reported
+#' estimate. See D15 ruling 2.
+#'
+#' @param object A \code{\link{bayesnecfit}}.
+#' @param newdata The prediction grid, used as the template for the columns
+#' the grid pins (trials, rate denominators).
+#' @param epred_fun A function taking a \code{newdata} and returning the
+#' posterior expectation matrix, so that a two-block fit's \code{dpar}
+#' handling reaches the control as well as the curve.
+#' @param x_at The predictor value to read the control at. Defaults to
+#' \code{NULL}, meaning this object's own lowest observed value. A
+#' \code{\link{bayesnechurdlefit}} supplies it, because its two components are
+#' fitted to different subsets --- growth to survivors only --- and the control
+#' must be the same concentration on both sides or their product is not a
+#' prediction at any one concentration.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one control value per draw.
+#'
+#' @importFrom stats model.frame
+#' @noRd
+control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
+  grid_obj <- object
+  if (is_bayesnechurdlefit(grid_obj)) {
+    grid_obj <- grid_obj$survival
+  }
+  if (inherits(grid_obj, "bayesmanecfit")) {
+    grid_obj <- suppressMessages(pull_out(grid_obj, model = names(grid_obj$mod_fits)[1]))
+  }
+  mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
+  x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  control_nd <- newdata[1, , drop = FALSE]
+  if (is.null(x_at)) {
+    x_at <- min(grid_obj$fit$data[[x_var]])
+  }
+  control_nd[[x_var]] <- x_at
+  epred_fun(control_nd)[, 1]
+}
+
+#' The lowest observed concentration of a hurdle fit
+#'
+#' Taken from the \emph{survival} component, matching
+#' \code{hurdle_component_preds()}, which takes its predictor range from that
+#' side because the growth fit is built on survivors only and so does not see
+#' every concentration that was tested.
+#'
+#' @param object A \code{\link{bayesnechurdlefit}}.
+#'
+#' @return A \code{\link[base]{numeric}} value.
+#'
+#' @importFrom stats model.frame
+#' @noRd
+hurdle_control_x <- function(object) {
+  part <- object$survival
+  if (inherits(part, "bayesmanecfit")) {
+    part <- suppressMessages(pull_out(part, model = names(part$mod_fits)[1]))
+  }
+  mod_dat <- model.frame(part$bayesnecformula, part$fit$data)
+  min(part$fit$data[[attr(mod_dat, "bnec_pop")[["x_var"]]]])
+}
+
+#' Bring an estimate onto the scale the predictor axis is drawn on
+#'
+#' \code{nec()}, \code{ecx()} and \code{nsec()} return values on the scale the
+#' model was fitted on, while \code{plot()} and \code{autoplot()} draw the
+#' predictor axis on the scale the concentrations were recorded on -- the
+#' prediction grid is built from the raw predictor column. Where the formula
+#' transforms the predictor those are two different scales, so an annotation
+#' drawn at the estimate's own value lands in the wrong place on the axis, with
+#' nothing reported. See #160 and #161.
+#'
+#' One rule covers both cases. Where the formula does not transform the
+#' predictor the estimate is already on the recorded scale, and \code{xform}
+#' applies to it exactly as it applies to the axis. Where the formula does
+#' transform the predictor the estimate has to be inverted: with the caller's
+#' \code{xform} if one was supplied, which is what it is for, and otherwise by
+#' interpolating on the grid, whose raw and fitted values are both known. The
+#' numerical inverse is what makes the default case correct without the caller
+#' having to know that an inverse was needed.
+#'
+#' @param values A \code{\link[base]{numeric}} vector on the fitted scale.
+#' @param bdat A model frame carrying the \code{bnec_pop} attribute.
+#' @param formula A \code{\link{bayesnecformula}}.
+#' @param x_grid_raw The prediction grid's predictor values, on the recorded
+#' scale.
+#' @param xform A function supplied by the caller.
+#'
+#' @return A \code{\link[base]{numeric}} vector on the axis scale.
+#'
+#' @details \code{approx(rule = 2)} clamps an estimate outside the grid to the
+#' nearer end of it rather than returning \code{NA}. That is deliberate: the
+#' return value positions an annotation, and \code{rule = 1} would drop the
+#' annotation with nothing said, which is the failure #160 and #161 report.
+#' Drawn at the axis limit the annotation is visibly at the edge and the printed
+#' estimate beside it gives the value, so the clamp is apparent rather than
+#' silent. Every estimate here is a quantile of a posterior read off that same
+#' grid, so the case arises only where the summary is already censored.
+#'
+#' @importFrom stats approx
+#' @noRd
+to_axis_scale <- function(values, bdat, formula, x_grid_raw,
+                          xform = identity) {
+  if (!pop_var_is_transformed(bdat, "x_var")) {
+    return(xform(values))
+  }
+  if (!identical(xform, identity)) {
+    return(xform(values))
+  }
+  fitted_grid <- sub_x_transformation(x_grid_raw, formula)
+  keep <- is.finite(fitted_grid) & is.finite(x_grid_raw)
+  if (sum(keep) < 2) {
+    return(values)
+  }
+  # Built from `values` rather than as a fresh rep(NA_real_, ...), so that the
+  # attributes ecx() sets travel with the estimate. bind_ecx() reads
+  # attr(ecx_vals, "ecx_val") and assigns it into a data frame, so a stripped
+  # vector made autoplot(x, add_ecx = TRUE) fail with "replacement has length
+  # zero". The two branches above return xform(values), and R's arithmetic
+  # keeps attributes, so only this branch lost them -- which made the failure
+  # specific to an inline-transformed predictor with xform left at its default,
+  # the shape vignette("example1") uses.
+  out <- values
+  out[] <- NA_real_
+  finite_v <- is.finite(values)
+  out[finite_v] <- approx(x = fitted_grid[keep], y = x_grid_raw[keep],
+                          xout = values[finite_v], rule = 2)$y
+  out
+}
+
+#' Refuse an argument that has been removed, by name
+#'
+#' \code{hormesis_def} was removed from \code{\link{ecx}}, \code{\link{nsec}}
+#' and \code{\link{ecnsec}} when the control became the reference for every
+#' equation (D15 ruling 4). All three take \code{...}, so a call still passing
+#' it would be accepted in silence and the caller would believe they had
+#' selected a reference. Named here so the message says what happened and what
+#' replaced it, rather than "unused argument" or nothing at all.
+#'
+#' @param dots \code{list(...)} from the calling method.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_removed_args <- function(dots) {
+  if ("hormesis_def" %in% names(dots)) {
+    stop("hormesis_def has been removed. Every ECx, NSEC and ECNSEC is now ",
+         "measured from the control -- the predicted mean at the lowest ",
+         "concentration -- which is what hormesis_def = \"control\" selected. ",
+         "There is no longer an option to measure from the maximum of the ",
+         "predicted curve. Drop the argument.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+#' Report the draws whose estimate is not identified
+#'
+#' A no-effect or ECx estimate read off a fitted curve is \code{NA} for any draw
+#' whose curve does not reach the target anywhere in the predictor range (#39,
+#' D15 ruling 3). Those draws are dropped from the summary, so the summary is
+#' censored above the highest concentration in the prediction grid.
+#'
+#' \code{ecx()} and \code{nsec()} build such a posterior and warn as they do it,
+#' naming the target. The paths here read a posterior another function built ---
+#' \code{nec()} reads what \code{expand_nec()} wrote at fit time, and the
+#' \code{\link{bayesnechurdlefit}} methods summarise a vector they have just
+#' assembled --- so without this the censoring would be reported once, when the
+#' fit was constructed, and then not again by any later call that reports a
+#' number derived from it.
+#'
+#' @param values A \code{\link[base]{numeric}} vector of per-draw estimates.
+#' @param estimate A \code{\link[base]{character}} label naming the quantity.
+#'
+#' @return \code{NULL}, invisibly. Called for the warning.
+#' @noRd
+warn_censored_draws <- function(values, estimate = "estimate") {
+  n_missing <- sum(is.na(values))
+  if (n_missing > 0) {
+    # Classed, so that a method which reports its own censoring can muffle the
+    # reports of the calls it makes internally without also muffling anything
+    # else they raise. nec.bayesnechurdlefit() summarises what nec() returned
+    # for each component, so an unclassed warning would be printed once per
+    # component and once for the combination, saying the same thing three times.
+    msg <- paste0("The ", estimate, " is not identified for ", n_missing,
+                  " of ", length(values), " draws, whose curve does not reach ",
+                  "the target anywhere in the predictor range. Those draws ",
+                  "return NA and are excluded from the summary, which is ",
+                  "therefore censored above the highest concentration in the ",
+                  "prediction grid.")
+    warning(structure(class = c("bayesnec_censored", "warning", "condition"),
+                      list(message = msg, call = NULL)))
+  }
+  invisible(NULL)
+}
+
+#' Evaluate an expression, muffling only the censoring report
+#'
+#' For a method that raises its own \code{warn_censored_draws()} report about
+#' the vector it returns, and reaches that vector through calls that each raise
+#' one of their own about a part of it.
+#'
+#' @param expr An expression.
+#'
+#' @return The value of \code{expr}.
+#' @noRd
+without_censored_warning <- function(expr) {
+  withCallingHandlers(
+    expr,
+    bayesnec_censored = function(w) invokeRestart("muffleWarning")
+  )
+}
+
+#' The label a fit gives its no-effect estimate
+#'
+#' \code{expand_nec()} records whether the stored no-effect posterior is a
+#' \emph{NEC}, an \emph{NSEC} or an N(S)EC, and which it is depends on the
+#' equation and, for a two-block fit, on both blocks. Read it rather than
+#' re-deriving it, and fall back only for an object built by an earlier version
+#' that has no such slot.
+#'
+#' @param object A \code{\link{bnecfit}}.
+#'
+#' @return A \code{\link[base]{character}} value.
+#' @noRd
+ne_label <- function(object) {
+  out <- object$ne_type
+  if (is.null(out) || !is.character(out) || length(out) != 1) {
+    return("no-effect estimate")
+  }
+  out
+}
+
+#' The ECx a plotting method annotates
+#'
+#' \code{plot()} and \code{autoplot()} annotate an EC10. For a gaussian response
+#' they annotate the control-to-minimum span, \code{type = "range"}, rather than
+#' the control-to-zero one: 0 is not a meaningful floor for a response that can
+#' go negative, and an equation with no \code{bot} parameter has no finite
+#' asymptote to measure towards under that family either, so \code{"relative"}
+#' is refused for it.
+#'
+#' A \code{type} named by the caller always wins.
+#'
+#' Written once because the two methods had drifted apart: \code{plot()} asked
+#' for the span, under its 2.1.3 name, while \code{ggbnec_data()} took the
+#' \code{ecx()} default, so the same gaussian fit was annotated with two
+#' different quantities depending on which method drew it.
+#'
+#' @param object A \code{\link{bnecfit}}.
+#' @param family The response family name.
+#' @param dots The calling method's \code{list(...)}, forwarded to
+#' \code{\link{ecx}}.
+#'
+#' @return The \code{\link{ecx}} return value.
+#' @noRd
+plot_ecx <- function(object, family, dots = list()) {
+  if (!("type" %in% names(dots)) && identical(family, "gaussian")) {
+    dots$type <- "range"
+  }
+  do.call(ecx, c(list(object), dots))
 }

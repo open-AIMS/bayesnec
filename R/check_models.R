@@ -70,13 +70,38 @@ unscaled_power_message <- function(drop_model, fam_tag) {
 #' necessary for \code{\link{fit_bayesnec}}.
 #'
 #' @noRd
-check_models <- function(model, family, data) {
+check_models <- function(model, family, data, record = FALSE) {
+  # The exclusions are recorded as well as messaged, but only when the caller
+  # asks. The record is attached as an attribute, and several callers pass this
+  # function's return straight on -- check_model_survival(), get_priors(),
+  # amend(), check_update_data() -- where an attribute nobody expects makes the
+  # value compare unequal to the plain character vector it used to be. bnec()
+  # is the only consumer that wants the record, so it is the only one that asks.
+  #
+  # The exclusions are recorded as well as messaged. bnec() decides which of
+  # the requested equations it will not attempt, tells the user once by
+  # message(), and used to discard the decision, so the composition of the
+  # candidate set could not be recovered from the fit -- only from console
+  # output, which a knitted document or a suppressMessages() call does not
+  # keep. The set as requested, the set as fitted, and the reason for the
+  # difference are what a methods section has to state. See #261.
+  excluded <- data.frame(model = character(), reason = character(),
+                         stringsAsFactors = FALSE)
+  note_drop <- function(dropped, reason) {
+    if (length(dropped) > 0) {
+      excluded <<- rbind(excluded,
+                         data.frame(model = dropped, reason = reason,
+                                    stringsAsFactors = FALSE))
+    }
+    invisible(NULL)
+  }
   fam_tag <- family$family
   link_tag <- family$link
   if (link_tag %in% c("logit", "log")) {
     use_model <-  model[!model %in% mod_groups$zero_bounded]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("zero-bounded, and not valid under a", link_tag, "link"))
       message(paste("Dropping the model(s)",
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
@@ -94,6 +119,7 @@ check_models <- function(model, family, data) {
     use_model <- model[!model %in% bounded_linear_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("decays by subtraction, so its mean is unbounded below for", fam_tag, "with an identity link"))
       message(paste("Dropping the model(s)",
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
@@ -103,6 +129,7 @@ check_models <- function(model, family, data) {
     use_model <- model[!model %in% bounded_power_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("unscaled power term, unbounded for", fam_tag))
       message(unscaled_power_message(drop_model, fam_tag))
     }
     if (length(use_model) == 0) {
@@ -127,6 +154,7 @@ check_models <- function(model, family, data) {
     use_model <- model[!model %in% drop_always]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("not valid for the second block of a", fam_tag, "fit"))
       message(paste("Dropping the model(s)",
                     paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
@@ -141,6 +169,7 @@ check_models <- function(model, family, data) {
     use_model <- model[!model %in% bounded_power_drops()]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("unscaled power term, unbounded for the zero-probability block"))
       message(unscaled_power_message(drop_model, fam_tag))
     }
     if (length(use_model) == 0) {
@@ -162,6 +191,7 @@ check_models <- function(model, family, data) {
                                       "ecxlin", "nechormepwr01")]
     drop_model <- setdiff(model, use_model)
     if (length(drop_model) > 0) {
+      note_drop(drop_model, paste("not valid for", fam_tag, "with an identity link"))
       message(paste("Dropping the model", paste0(drop_model, collapse = ", "),
                     "as they are not valid in the case of a",
                     fam_tag, "with identity link."))
@@ -173,20 +203,27 @@ check_models <- function(model, family, data) {
       model <- use_model
     }
   }
-  if (fam_tag == "gaussian") {
-    use_model <-  model[!model %in% mod_groups$zero_bounded]
-    drop_model <- setdiff(model, use_model)
-    if (length(drop_model) > 0) {
-      message(paste("Dropping the model(s)",
-                    paste0(drop_model, collapse = ", "),
-                    "as they are not valid in the case of Gaussian y data."))
-    }
-    if (length(use_model) == 0) {
-      stop("None of the model(s) specified are valid for Gaussian y data.")
-    } else {
-      model <- use_model
-    }
-  }
+  # The block that stood here dropped every zero-bounded equation --
+  # nec3param, ecxexp, ecxsigm, ecxwb1p3, ecxwb2p3, ecxll3 -- whenever the
+  # family was gaussian, on the grounds that they "cannot generate predictions
+  # of negative response values". That conflates the range of the mean
+  # function with the support of the likelihood: a gaussian likelihood
+  # evaluates f(y | mu, sigma) and the data enter only through y - mu, so the
+  # sign of y is never tested. A mean function asymptoting to zero with
+  # gaussian error is internally consistent -- near the asymptote it predicts
+  # negative observations at a rate set by mu and sigma, which are ordinary
+  # negative residuals.
+  #
+  # Removed with #206. The exclusion prevented the curve shape OECD TG 201 and
+  # Ritz, Gerhard & Streibig (2026) both recommend for algal growth-rate data
+  # -- a lower asymptote fixed at zero, representing complete inhibition --
+  # from being fitted at all, nec3param, the package's namesake equation,
+  # included. #206 measured that these equations fit cleanly under gaussian
+  # and that model weights reject them where the shape is wrong, so the
+  # candidate set is the right place for that judgement rather than a
+  # pre-fit refusal. The separate link exclusion above is unaffected and still
+  # applies: it is keyed on a log or logit link, which is a different
+  # condition and a correct one.
   if (!missing(data)) {
     x <- retrieve_var(data, "x_var")
     if (contains_negative(x)) {
@@ -195,6 +232,9 @@ check_models <- function(model, family, data) {
       drop_models <- setdiff(model, use_models)
       model <- use_models
       if (length(drop_models) > 0) {
+        note_drop(drop_models, paste("raises the predictor to a fractional",
+                                     "power, which is undefined for negative",
+                                     "predictor values"))
         message(
           paste("Dropping the model(s)", paste0(drop_models, collapse = ", "),
                 "as they are not valid for data with negative predictor (x)",
@@ -207,6 +247,9 @@ check_models <- function(model, family, data) {
     to_flag <- paste0(model[!model %in% mod_groups$all], collapse = "; ")
     stop("The model(s): ", to_flag, "; is not a valid",
          " model entry. Please check ?bnec for valid model calls.")
+  }
+  if (record) {
+    attr(model, "excluded") <- excluded
   }
   model
 }

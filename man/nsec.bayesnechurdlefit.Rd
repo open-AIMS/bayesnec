@@ -9,7 +9,6 @@
   sig_val = 0.01,
   resolution = 1000,
   x_range = NA,
-  hormesis_def = "control",
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
   ...,
@@ -27,9 +26,6 @@ significance of the predicted posterior values.}
 large values will make the NSEC estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
-of "max" or "control". See Details.}
 
 \item{xform}{A function to apply to the returned estimated concentration
 values.}

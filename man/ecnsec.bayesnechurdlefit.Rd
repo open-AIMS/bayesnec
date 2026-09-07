@@ -10,7 +10,6 @@
   nsec,
   resolution = 10,
   x_range = NA,
-  hormesis_def = "control",
   type = "absolute",
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
@@ -30,10 +29,8 @@ large values will make the NSEC estimate more precise.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values}
-
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
+"absolute" (the default), "relative" or "range". See Details.}
 
 \item{xform}{A function to apply to the returned estimated NSEC concentration
 values prior to estimating the percentage effect.}
@@ -55,4 +52,12 @@ A vector of estimates.
 \description{
 Extracts ECx corresponding to an NSEC from a
 \code{\link{bayesnechurdlefit}}
+}
+\details{
+\code{type = "absolute"} (the default) and \code{"range"} are
+defined here and invert the \code{\link{ecx}} reference construction under
+the same \code{type}. \code{"relative"} is refused, as it is by
+\code{\link{ecx}} for this class: a two-block fit has no single \code{bot}
+parameter to measure towards. \code{"direct"} is refused because it names a
+response value rather than a percentage.
 }

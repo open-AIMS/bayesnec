@@ -30,7 +30,13 @@ R formula or an actual \code{\link[stats]{formula}} object. See
 \code{\link{bayesnecformula}} and \code{\link{check_formula}}.}
 
 \item{data}{A \code{\link[base]{data.frame}} containing the data to use with
-the \code{formula}.}
+the \code{formula}. Every variable the \code{formula} names must be
+complete: a row with an \code{NA} or \code{NaN} in any of them is refused
+rather than removed, so that the fit is never run on a smaller sample than
+was supplied without the user having chosen that. An \code{Inf} in the
+predictor or the response is refused as well. Apply
+\code{\link[stats]{na.omit}} before calling \code{bnec} where those rows
+are to be discarded.}
 
 \item{x_range}{A range of predictor values over which to consider extracting
 ECx.}
@@ -274,9 +280,9 @@ default; pass \code{dpar = "mu"} or \code{dpar = "hu"} to \code{\link{ecx}}
 for a component. \code{\link{nec}} returns the combined threshold, which for
 threshold models on both blocks is the smaller of the two.
 
-These families must be specified as \code{family = "hurdle_gamma"} or
-\code{family = "zero_inflated_beta"}, or with both links set explicitly as
-\code{hurdle_gamma(link = "identity", link_hu = "identity")} and
+Naming these families is enough --- \code{family = "hurdle_gamma"},
+\code{hurdle_gamma()}, \code{family = "zero_inflated_beta"} --- since
+bayesnec assigns the link on both blocks; see \strong{The link} and
 \code{zero_inflated_beta(link = "identity", link_zi = "identity")}
 respectively. bayesnec keeps
 every parameter on the natural response scale, and the hurdle block is
@@ -395,9 +401,7 @@ function of the fitted mean (\code{disp("power")}). See
 carry one, and what the exponent implies for each.
 
 A variance function of the fitted mean requires the mean to be modelled on
-its natural scale. \code{\link{bnec}} uses an identity link whenever it
-selects the family itself; where a family is supplied explicitly its link
-should be too, as in \code{Gamma(link = "identity")}.
+its natural scale, which is the identity link \code{\link{bnec}} fits on.
 
 Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
 dispersion sub-model changes the credible intervals of the toxicity
@@ -422,21 +426,113 @@ for examination using function \code{\link{pull_out}}.
 
 \bold{Additional technical notes}
 
-As some concentration-response data will use zero concentration
-which can cause numerical estimation issues, a small offset is added (1 /
-10th of the next lowest value) to zero values of concentration where
-\code{x_var} are distributed on a continuous scale from 0 to infinity, or
-are bounded to 0, or 1.
+A zero concentration is fitted as recorded. No family constrains the values
+a predictor may take, so a control needs no offset, and earlier versions of
+\pkg{bayesnec} substituted one tenth of the smallest positive concentration
+for it. That substitution is removed: it was applied without notice, it was
+never reversed in the estimates it changed, and its size depended on the
+lowest non-zero concentration tested rather than on the data. A fit whose
+predictor includes an exact zero gives different estimates than it did under
+earlier versions.
 
-\bold{NAs are thrown away}
+A zero concentration does still restrict what may be written inside
+\code{crf()} and \code{disp()}, because both are evaluated from the recorded
+column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
+\code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
+evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
+the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
+name that column in the formula.
 
-Stan's default behaviour is to fail when the input data contains NAs. For
-that reason \pkg{brms} excludes any NAs from input data prior to fitting,
-and does not allow them back in as is the case with e.g. \code{stats::lm} and
-\code{na.action = exclude}. So we advise that you exclude any NAs in your
-data prior to fitting because if you so wish that should facilitate merging
-predictions back onto your original dataset.
+\bold{Missing values}
+
+A row with an \code{NA} or \code{NaN} in any variable the \code{formula}
+names is refused rather than removed, and so is an \code{Inf} in the
+predictor or the response. The error for a missing value reports how many
+rows held one and which they were, by row name; the error for a non-finite
+value names the column.
+
+\code{\link[stats]{model.frame}} drops incomplete cases before
+\pkg{bayesnec} is given the data, so until version 2.2.0 an \code{NA} left
+the fit running on fewer rows than were supplied with nothing said, while an
+\code{Inf} was refused. Both are now refused, so that the sample the
+estimates are derived from is the user's decision and is visible in the
+script.
+
+Apply \code{\link[stats]{na.omit}} to the data frame before calling
+\code{bnec} where those rows are to be discarded. The frame that results is
+the one the fit is derived from, so predictions align with it row for row:
+\pkg{brms} excludes NAs prior to fitting and does not pad the predictions
+back out, as \code{stats::lm} does with \code{na.action = na.exclude}.
 }
+\section{The link}{
+
+
+\code{\link{bnec}} fits on the \strong{identity} link, which is what keeps
+\code{top}, \code{bot} and \code{nec} on the scale of the response and
+directly interpretable, and is what the JSS article describes.
+
+\strong{The link is assigned by bayesnec unless you choose one.} Naming a
+family and nothing more leaves it to bayesnec, so all of the following fit on
+the identity link:
+
+\preformatted{
+bnec(..., family = "Beta")
+bnec(..., family = Beta)
+bnec(..., family = Beta())
+bnec(..., family = hurdle_gamma())
+}
+
+Writing a link argument is what makes it yours, and it is then honoured.
+A link written positionally counts, since \code{link} is the first argument
+of every family constructor:
+
+\preformatted{
+bnec(..., family = Beta(link = "logit"))
+bnec(..., family = Beta("logit"))
+}
+
+This is read one link at a time. A two-block family has a link on each
+block, and writing one says nothing about the other, so the block you leave
+alone is still bayesnec's to assign:
+
+\preformatted{
+bnec(..., family = hurdle_gamma(link = "log"))
+  # log on the mean, identity on hu
+bnec(..., family = hurdle_gamma(link_hu = "logit"))
+  # identity on the mean, and refused: hu must be fitted on identity
+}
+
+The dispersion links --- \code{link_phi}, \code{link_shape},
+\code{link_sigma} --- are outside this altogether. No curve is fitted on
+them and writing one says nothing about the scale \code{top}, \code{bot}
+and \code{nec} are reported on, so whatever you write there is carried
+through unchanged and whatever you do not keeps the family's own default.
+The one exception is \code{Gamma}, whose dispersion link \code{bayesnec}
+cannot carry; write \code{disp(~x)} in the formula instead, which is valid
+under any link.
+
+A family that does not reach \code{\link{bnec}} written as a constructor
+call --- one held in a variable, one read back off a fitted object with
+\code{fit$family}, or one passed through \code{do.call} --- is a case
+intent cannot be read from at all. The object's own links are honoured, and
+where the mean link is not the identity a message says which one was taken.
+
+Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
+link is refused with an error naming the family. Note that \code{log} and
+\code{logit} exclude the zero-bounded equations, since a mean decaying onto
+zero cannot produce the negative values those link scales require --- see
+\code{\link{models}}.
+
+\strong{This changed in version 2.1.3.25.} Before it, the link depended on
+how the family was written and the difference was silent:
+\code{family = "Beta"} gave identity, while \code{family = Beta} and
+\code{family = Beta()} gave \strong{logit} and \code{family = Gamma()} gave
+\strong{inverse}. In those cases the curve was fitted to a transform of the
+mean while \code{top}, \code{bot} and \code{nec} were reported as though
+they were on the response scale. If you have code passing a constructed
+family and relying on its default link, add the link explicitly.
+}
+
 \examples{
 \dontrun{
 library(bayesnec)

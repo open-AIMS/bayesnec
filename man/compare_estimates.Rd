@@ -9,7 +9,6 @@ compare_estimates(
   comparison = "n(s)ec",
   ecx_val = 10,
   type = "absolute",
-  hormesis_def = "control",
   sig_val = 0.01,
   resolution = 100,
   x_range = NA
@@ -23,14 +22,14 @@ compare_estimates(
 \item{comparison}{The posterior predictions to compare, takes values of
 "nec", "n(s)ec", "nsec", "ecx" or "fitted".}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value
-between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
+\item{ecx_val}{The desired percentage effect value, defaults to 10. Any
+value above 0 is accepted for every \code{type} except "direct", where it
+is a response value rather than a percentage. Values above 100 are
+meaningful under "absolute" for a response that can go negative --- see
+Details.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
-of "max" or "control". See Details.}
+"absolute" (the default), "relative", "range" or "direct". See Details.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}
@@ -50,6 +49,28 @@ Extracts posterior predicted values from a list of class
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} model fits and
 compares these via bootstrap re sampling.
 }
+\section{Reproducibility}{
+
+The draws of each posterior are paired by an independent random permutation,
+so \code{prob_diff} and the difference intervals change between identical
+calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
+result. This is a Monte Carlo approximation to the difference of two
+\bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
+pairs.
+}
+
+\section{The independence assumption}{
+
+The pairing is valid only where the posteriors being compared come from
+\bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+of each comes from the same sweep of the sampler --- and permuting them
+destroys that pairing, which discards the correlation between the levels and
+widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
+and a real difference is under-detected, which is the wrong direction to err
+in. A within-fit contrast needs draw-wise differencing and must not be routed
+through this function. See #218 and #33.
+}
+
 \examples{
 \dontrun{
 library(bayesnec)

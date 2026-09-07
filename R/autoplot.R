@@ -175,7 +175,6 @@ prep_raw_data <- function(brms_fit, bayesnecformula) {
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   family <- brms_fit$family
-  custom_name <- check_custom_name(family)
   rate_var <- unname(attr(mod_dat, "bnec_pop")["rate_var"])
   if (family$family == "binomial" | family$family == "beta_binomial") {
     trials_var <- attr(mod_dat, "bnec_pop")[["trials_var"]]
@@ -303,17 +302,19 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                      x_r = NA, y_r = NA)
   r_df <- prep_raw_data(brms_fit, x$bayesnecformula)
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
-  trans_vars <- find_transformations(bdat)
   out <- rbind(e_df, r_df)
-  if (length(trans_vars) == 0) {
+  if (!pop_var_is_transformed(bdat, "x_var")) {
     out <- out |>
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
+  x_grid_raw <- x$pred_vals$data$x
   if (add_nec) {
-    out <- bind_nec(out, x$ne, xform = xform)
+    out <- bind_nec(out, to_axis_scale(x$ne, bdat, x$bayesnecformula,
+                                       x_grid_raw, xform))
   }
   if (add_ecx) {
-    ecx_vals <- ecx(x, xform = xform, ...)
+    ecx_vals <- to_axis_scale(plot_ecx(x, x$fit$family$family, list(...)),
+                              bdat, x$bayesnecformula, x_grid_raw, xform)
     out <- bind_ecx(out, ecx_vals)
   }
   out
@@ -338,6 +339,12 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                       xform = identity, ...) {
   chk_lgl(add_nec)
   chk_lgl(add_ecx)
+  # Matching the bayesnecfit method. Without it a non-function xform reached
+  # mutate() and failed with "could not find function \"xform\"", which names
+  # neither the argument nor what it should have been. See #278.
+  if (!inherits(xform, "function")) {
+    stop("xform must be a function.")
+  }
   e_df <- x$w_pred_vals$data
   e_df <- data.frame(x_e = c(e_df$x, rev(e_df$x)),
                      y_e = c(e_df$Estimate, rep(NA, nrow(e_df))),
@@ -347,17 +354,22 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
   bdat <- model.frame(x$mod_fits[[1]]$bayesnecformula, 
                       data = x$mod_fits[[1]]$fit$data, 
                       run_par_checks = TRUE)
-  trans_vars <- find_transformations(bdat) 
+  manec_formula <- x$mod_fits[[1]]$bayesnecformula
+  x_grid_raw <- x$w_pred_vals$data$x
   out <- rbind(e_df, r_df)
-  if (length(trans_vars) == 0) {
+  if (!pop_var_is_transformed(bdat, "x_var")) {
     out <- out |>
       mutate(x_e = xform(.data$x_e), x_r = xform(.data$x_r))
   }
   if (add_nec) {
-    out <- bind_nec(out, x$w_ne, xform = xform)
+    out <- bind_nec(out, to_axis_scale(x$w_ne, bdat, manec_formula,
+                                       x_grid_raw, xform))
   }
   if (add_ecx) {
-    ecx_vals <- ecx(x, xform = xform, ...)
+    ecx_vals <- to_axis_scale(
+      plot_ecx(x, x$mod_fits[[1]]$fit$family$family, list(...)),
+      bdat, manec_formula, x_grid_raw, xform
+    )
     out <- bind_ecx(out, ecx_vals)
   }
   out

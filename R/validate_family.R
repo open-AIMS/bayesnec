@@ -1,31 +1,391 @@
-#' validate_family
+#' Did the caller choose a link, or only a family?
 #'
-#' Checks if family is allowed
+#' @param expr The \strong{unevaluated} expression a caller supplied as
+#' \code{family}, from \code{substitute()} or \code{match.call()}.
+#' @param env The \code{\link[base]{environment}} the expression came from,
+#' used only to resolve the constructor so that a call can be matched against
+#' its formals.
 #'
-#' @param family A family \code{\link[base]{character}} string or a 
-#' \code{\link[stats]{family}} function.
+#' @details \code{\link{bnec}} fits every parameter on the identity link so
+#' that \code{top}, \code{bot} and \code{nec} stay on the response scale, and
+#' assigns that link itself unless the caller asked for another. Telling the two
+#' apart needs the expression rather than the evaluated object, because
+#' \code{Beta()} and \code{Beta(link = "logit")} produce identical family
+#' objects and mean different things.
+#'
+#' \itemize{
+#'   \item \code{"Beta"} and \code{Beta()} --- \code{"none"}. A family was
+#'     named and nothing more. \code{Beta} on its own is a symbol, so it is
+#'     \code{"symbol"} here and separated below.
+#'   \item \code{Beta(link = "logit")}, \code{Beta("logit")} ---
+#'     \code{"link"}. \code{hurdle_gamma(link_hu = "logit")} ---
+#'     \code{"link_hu"}. The names are returned rather than a single flag,
+#'     because writing \code{link_hu} says nothing about the mean and writing
+#'     \code{link} says nothing about \code{hu}: each block the caller left
+#'     alone is still bayesnec's to assign.
+#'   \item a symbol holding a family object, as in
+#'     \code{fam <- Beta(link = "logit"); bnec(family = fam)} ---
+#'     \code{"symbol"}. Not knowable from the expression, so the object's own
+#'     link is honoured rather than silently replaced, and
+#'     \code{\link{validate_family}} says which link it took.
+#' }
+#'
+#' A symbol holding a \emph{constructor} rather than an object, which is the
+#' plain \code{Beta} case, is separated from that by
+#' \code{\link{validate_family}}, which has the value.
+#'
+#' Anything that is not a family constructor call is \code{"symbol"} for the
+#' same reason a symbol is: the link cannot be read from it. That covers
+#' \code{do.call(bnec, list(family = Gamma(link = "log")))}, which inlines the
+#' evaluated family into the call it builds, and \code{fit$family}, which is
+#' how a family is read back off a fitted object. Silently replacing a link
+#' someone may have meant is the worse failure of the two.
+#'
+#' @return A \code{\link[base]{character}} vector: \code{"none"},
+#' \code{"symbol"}, or the link arguments the caller wrote.
+#'
+#' @noRd
+family_link_source <- function(expr, env = parent.frame()) {
+  if (missing(expr) || is.null(expr)) {
+    return("none")
+  }
+  if (is.character(expr)) {
+    return("none")
+  }
+  if (is.name(expr)) {
+    return("symbol")
+  }
+  if (!is.call(expr)) {
+    # An already-evaluated family, which is what do.call() puts in the call it
+    # builds. Not readable, so it is treated as a variable holding one.
+    return("symbol")
+  }
+  # `link` is the first formal of every family constructor, so `Beta("logit")`
+  # and `binomial("probit")` state a link as plainly as the named form does.
+  # The call is matched against the constructor's own formals before its
+  # argument names are read, so that a positional or partially matched link is
+  # not read as naming a family and nothing more.
+  # Resolved in function mode, as R resolves the callee of a call. Plain eval()
+  # is ordinary value lookup, so an unrelated `Beta <- 0.5` in the caller's
+  # workspace made `family = Beta()` unreadable, and the object's own logit link
+  # was then honoured -- the misspecification #256 removes, reached without the
+  # caller writing a link at all.
+  ctor <- if (is.name(expr[[1]])) {
+    tryCatch(get(as.character(expr[[1]]), envir = env, mode = "function"),
+             error = function(e) NULL)
+  } else {
+    tryCatch(eval(expr[[1]], envir = env), error = function(e) NULL)
+  }
+  matched <- if (is.function(ctor)) {
+    tryCatch(as.list(match.call(ctor, expr))[-1], error = function(e) NULL)
+  }
+  # Only the callee is evaluated, never the call, and a `link` formal is what
+  # separates a family constructor from an ordinary call that happens to return
+  # a family. Without that test `fit$family` and `do.call(...)` would fall
+  # through to "none" and have their link replaced.
+  if (is.null(matched) || !"link" %in% names(formals(ctor))) {
+    return("symbol")
+  }
+  chosen <- intersect(names(matched), mean_link_args())
+  if (length(chosen) > 0) {
+    chosen
+  } else {
+    "none"
+  }
+}
+
+#' The link arguments a link_source says the caller wrote
+#'
+#' @param link_source The output of \code{\link{family_link_source}}, or the
+#' shorthand \code{"chosen"} for a family whose links are all the caller's.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+chosen_link_args <- function(link_source) {
+  if (identical(link_source, "none")) {
+    return(character(0))
+  }
+  if (identical(link_source, "chosen") || identical(link_source, "symbol")) {
+    return(mean_link_args())
+  }
+  intersect(link_source, mean_link_args())
+}
+
+#' The links of a supplied family that survive the rebuild
+#'
+#' @param family An object of class \code{\link[stats]{family}}.
+#' @param link_source The output of \code{\link{family_link_source}}.
+#'
+#' @details Two sets. The links the caller wrote, which are theirs. And the
+#' dispersion links --- \code{link_phi}, \code{link_shape},
+#' \code{link_sigma} --- which are nobody's to reassign: bayesnec fits no
+#' curve on them, does not read them, and rebuilding the family without them
+#' would silently return a dispersion sub-model to the family's default link
+#' scale. Where one cannot be carried, \code{\link{bnec_default_family}}
+#' refuses rather than drops it.
+#'
+#' @return A named \code{\link[base]{list}}.
+#'
+#' @noRd
+kept_links <- function(family, link_source) {
+  present <- grep("^link", names(family), value = TRUE)
+  dispersion <- setdiff(present, c("link", mean_link_args()))
+  wanted <- intersect(present, c(dispersion, chosen_link_args(link_source)))
+  out <- unclass(family)[wanted]
+  out[vapply(out, function(x) is.character(x) && length(x) == 1, logical(1))]
+}
+
+#' Constructor arguments that state a link bayesnec fits a curve on
+#'
+#' @details \code{link} is the mean. \code{link_hu} and \code{link_zi} are the
+#' second block of a two-block family. Where \code{\link{bnec}} carries a curve
+#' on that block it writes it as \code{1 - <probability>}, which is why the
+#' link there must be the identity; for \code{zero_inflated_poisson} and
+#' \code{zero_inflated_negbinomial}, which hold \code{zi} constant, no curve is
+#' carried and the link is only read, not assigned. Either way, writing one of
+#' these names a scale a fitted parameter is reported on, which \code{link_phi}
+#' and \code{link_shape} do not.
+#'
+#' \code{link_phi} and \code{link_shape} are deliberately excluded: they are
+#' dispersion links, bayesnec puts no curve on them, and reading one as a
+#' choice of \emph{mean} link would reintroduce exactly the silent
+#' misspecification #256 removes --- \code{Beta(link_phi = "log")} would be
+#' fitted on beta's default logit.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+mean_link_args <- function() {
+  c("link", "link_hu", "link_zi")
+}
+
+#' Links bayesnec will fit on
+#'
+#' @details The identity link is what \code{\link{bnec}} assigns and what the
+#' JSS article describes. \code{log} and \code{logit} are honoured when asked
+#' for explicitly, because \code{?models} and \code{vignette("example2b")}
+#' describe them as supported and \code{\link{check_models}} has a gate for
+#' them. Every other link is refused: those are reachable at present only by
+#' accident, they put \code{top}, \code{bot} and \code{nec} on a scale the
+#' package does not document, and no part of bayesnec has been tested against
+#' them.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+supported_links <- function() {
+  c("identity", "log", "logit")
+}
+
+#' The tag bayesnec keys on, for a family brms reports under another
+#'
+#' @param fam A \code{\link[base]{character}} string naming a family.
+#'
+#' @details \code{mod_fams}, \code{check_models} and \code{mu_support} key on
+#' the constructor's own tag. \pkg{brms} rebuilds a supplied family and reports
+#' \code{gamma} where \code{stats::Gamma} reports \code{Gamma}, so a family
+#' read back off a fitted object arrives under a tag nothing downstream
+#' recognises: \code{check_models} returned all 23 equations for it rather than
+#' the 19 valid on the identity link, because the linear-decay drop is keyed on
+#' the tag. Every other family reports the same tag either way.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+canonical_fam_tag <- function(fam) {
+  aliases <- c(gamma = "Gamma")
+  if (fam %in% names(aliases)) unname(aliases[[fam]]) else fam
+}
+
+#' Rebuild a family with the links bayesnec fits on
+#'
+#' @param fam A \code{\link[base]{character}} string naming the family, either
+#' as the tag brms reports or as the constructor.
+#' @param keep A named \code{\link[base]{list}} of link arguments to carry
+#' through rather than assign, from \code{\link{kept_links}}.
+#'
+#' @details Identity on the mean, and identity again on the second block of a
+#' two-block family, whose \code{1 - <probability>} expression would otherwise
+#' be passed through an inverse link and model something else entirely.
+#'
+#' \code{mod_fams} maps the tag to the constructor, and the two differ in case
+#' for two families: the tag is \code{beta} against the constructor
+#' \code{Beta}, so \code{get("beta")} resolves to \code{base::beta()}, and
+#' \pkg{brms} reports \code{gamma} against \code{stats::Gamma} --- see
+#' \code{\link{canonical_fam_tag}}. Mapping here rather than at each call site
+#' is what makes \code{validate_family("beta")} work, which it previously did
+#' not: a user reading the family off a fitted object and passing it back got
+#' \code{unused argument (link = "identity")}.
+#'
+#' @return An object of class \code{\link[stats]{family}}.
+#'
+#' @importFrom brms brmsfamily
+#'
+#' @noRd
+bnec_default_family <- function(fam, keep = list()) {
+  fam <- canonical_fam_tag(fam)
+  ctor <- if (fam %in% names(mod_fams)) unname(mod_fams[[fam]]) else fam
+  # Membership is checked before get(): `exists(ctor, mode = "function")` alone
+  # admits any string naming any function, so validate_family("t") reached
+  # do.call() and failed with `unused argument (link = "identity")` rather than
+  # saying the family is not implemented -- the same error validate_family()
+  # used to give for "beta".
+  if (!ctor %in% mod_fams || !exists(ctor, mode = "function")) {
+    stop("You have specified family as ", fam, ", which is not currently",
+         " implemented. bnec only allows: ", paste0(mod_fams, collapse = ", "),
+         ".", call. = FALSE)
+  }
+  ctor_fn <- get(ctor, mode = "function")
+  args <- list(link = "identity")
+  if (is_hurdle_family(fam)) {
+    args[[paste0("link_", hurdle_dpar(fam))]] <- "identity"
+  }
+  # What the caller wrote, and the dispersion links, override the assignment.
+  takeable <- names(keep) %in% names(formals(ctor_fn))
+  args[names(keep)[takeable]] <- keep[takeable]
+  # A link the constructor cannot take but which is only the family's own
+  # default is nothing to carry: kept_links() reports every link present on the
+  # object, written or not, so brmsfamily("Gamma", link = "identity") arrives
+  # holding link_shape = "log" without the caller having asked for it.
+  spare <- keep[!takeable]
+  if (length(spare) > 0) {
+    stock <- do.call(brmsfamily, list(family = fam))
+    spare <- spare[!vapply(names(spare),
+                           function(nm) identical(spare[[nm]], stock[[nm]]),
+                           logical(1))]
+  }
+  if (length(spare) == 0) {
+    return(do.call(ctor_fn, args))
+  }
+  # mod_fams maps gaussian and Gamma to the stats constructors, which take only
+  # `link`, so a dispersion link the caller wrote cannot be passed to them.
+  # Setting the field on the object afterwards does not work either: brms
+  # rebuilds the family and reads the link off its own constructor. Dropping it
+  # would silently return a disp() sub-model to the log scale, which is the
+  # substitution this function exists to prevent, so the brms constructor is
+  # used for those.
+  out <- do.call(brmsfamily, c(list(family = fam), args, spare))
+  if (!out$family %in% names(mod_fams)) {
+    # brmsfamily reports `gamma` where mod_fams, check_models and mu_support
+    # key on `Gamma`, and the tag cannot simply be rewritten: brms dispatches
+    # on it for a brmsfamily object, where a stats family is converted first.
+    # Refused rather than returned under a tag that would silently keep the
+    # linear-decay equations in the model set. This is what a family carrying
+    # link_shape reached before #256 as well, by a different route.
+    stop("bayesnec cannot carry ", paste(names(spare), collapse = ", "),
+         " on the ", fam,
+         " family. Model dispersion with disp(~x) in the formula instead,",
+         " which is valid under any link. See ?bayesnecformula.",
+         call. = FALSE)
+  }
+  out
+}
+
+#' Remove the marker validate_family() uses to stay idempotent
+#'
+#' @param family An object of class \code{\link[stats]{family}}.
+#'
+#' @details The marker is private. It is dropped wherever the family leaves
+#' bayesnec --- into a \code{brmsfit}, or into a returned fit object --- so
+#' that it is never serialised into anything a user holds or compares.
 #'
 #' @return An object of class \code{\link[stats]{family}}.
 #'
 #' @noRd
-validate_family <- function(family) {
-  if (inherits(family, "function")) {
-    family <- family()
-  } else if (is.character(family)) {
-    # Hurdle families carry a second link for the hurdle probability. bayesnec
-    # keeps every parameter on the natural response scale, so both links must
-    # be set to identity, not just the one.
-    if (is_hurdle_family(family)) {
-      args <- list(link = "identity")
-      args[[paste0("link_", hurdle_dpar(family))]] <- "identity"
-      family <- do.call(get(family), args)
-    } else {
-      family <- get(family)(link = "identity")
+unmark_family <- function(family) {
+  attr(family, "bayesnec_validated") <- NULL
+  family
+}
+
+#' validate_family
+#'
+#' Checks that a family is allowed, and assigns the link bayesnec fits on
+#' unless the caller chose one.
+#'
+#' @param family A family \code{\link[base]{character}} string, a
+#' \code{\link[stats]{family}} function, or a family object.
+#' @param link_source The output of \code{\link{family_link_source}} for the
+#' expression the caller supplied. The default, \code{"none"}, assigns the
+#' identity link.
+#'
+#' @details Before this, which link a fit used depended on how the family was
+#' written, and the difference was silent. \code{"Beta"} gave identity;
+#' \code{Beta} and \code{Beta()} gave \strong{logit}; \code{Gamma()} gave
+#' \strong{inverse}. In the latter cases the curve was fitted to a transform of
+#' the mean while \code{top}, \code{bot} and \code{nec} were reported as
+#' though they were on the response scale, which is the property the identity
+#' link exists to preserve. See #256.
+#'
+#' @return An object of class \code{\link[stats]{family}}.
+#'
+#' @noRd
+validate_family <- function(family, link_source = "none") {
+  # Idempotent. bnec_group() and bnec_hurdle() validate the family and then
+  # pass the object on to bnec(), where the expression is the symbol holding it
+  # and the link would be read a second time -- announcing, once per group
+  # level, a link the caller had already chosen and advising them to drop it.
+  # Only the rebuild and the message are skipped: the checks below still run,
+  # so the marker cannot carry an unsupported link past them.
+  validated <- isTRUE(attr(family, "bayesnec_validated"))
+  if (!validated) {
+    if (is.character(family)) {
+      family <- bnec_default_family(family)
+    } else if (inherits(family, "function")) {
+      # An unevaluated constructor names a family and nothing more, so the link
+      # is bayesnec's to assign. Calling something that is not a family
+      # constructor is a family that is not implemented, not an error about
+      # that function's own arguments.
+      tag <- tryCatch(family()$family, error = function(e) NULL)
+      if (!is.character(tag) || length(tag) != 1) {
+        stop("Argument \"family\" is a function, but calling it does not",
+             " produce a family. bnec only allows: ",
+             paste0(mod_fams, collapse = ", "), ".", call. = FALSE)
+      }
+      family <- bnec_default_family(tag)
+    } else if (inherits(family, "family") &&
+               !identical(link_source, "symbol")) {
+      # An evaluated call: Beta(), Gamma(), Beta(link = "logit"),
+      # hurdle_gamma(link_hu = "logit"). Every link the caller wrote is kept
+      # and every one they did not is assigned -- per argument, because writing
+      # link_hu says nothing about the mean. The dispersion links are carried
+      # through untouched; see kept_links().
+      family <- bnec_default_family(family$family,
+                                    keep = kept_links(family, link_source))
     }
   }
   if (!inherits(family, "family")) {
     stop("Argument \"family\" either is not an actual family, ",
          "or is of incorrect class.")
+  }
+  # A family carrying a tag only brms uses is rebuilt under the canonical one,
+  # keeping every link it holds, so it is the same family under the name the
+  # rest of bayesnec keys on. This is the case ?bnec names: reading the family
+  # off a fitted object and passing it back.
+  if (!family$family %in% names(mod_fams) &&
+        !identical(canonical_fam_tag(family$family), family$family)) {
+    family <- bnec_default_family(family$family,
+                                  keep = kept_links(family, "chosen"))
+  }
+  # Ordered before the link check: for a family bayesnec does not implement at
+  # all, naming the link it was given is the less useful of the two errors.
+  if (!family$family %in% names(mod_fams)) {
+    stop("You have specified family as ", family$family, ", which is not",
+         " currently implemented. bnec only allows: ",
+         paste0(mod_fams, collapse = ", "), ".", call. = FALSE)
+  }
+  if (!family$link %in% supported_links()) {
+    stop("bayesnec fits on the ", paste(supported_links(), collapse = ", "),
+         " links, but you supplied \"", family$link, "\" for the ",
+         family$family, " family. Pass family = \"", family$family,
+         "\" to fit on the identity link, which is what bayesnec assigns and",
+         " what keeps top, bot and nec on the response scale.", call. = FALSE)
+  }
+  if (!validated && identical(link_source, "symbol") &&
+        !identical(family$link, "identity")) {
+    message("Fitting on the \"", family$link, "\" link, taken from the family",
+            " object supplied. bayesnec assigns the identity link where it",
+            " chooses one; pass family = \"", family$family, "\" for that.")
   }
   fam_tag <- family$family
   if (is_hurdle_family(fam_tag)) {
@@ -41,10 +401,6 @@ validate_family <- function(family) {
            " = \"identity\").", call. = FALSE)
     }
   }
-  if (!fam_tag %in% names(mod_fams)) {
-    stop("You have specified family as ", fam_tag, ", which is not currently",
-         " implemented. bnec only allows: ", paste0(mod_fams, collapse = ", "),
-         ".")
-  }
+  attr(family, "bayesnec_validated") <- TRUE
   family
 }

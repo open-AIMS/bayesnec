@@ -167,7 +167,8 @@
 #' but not on a bare \code{\link{make_brmsformula}(formula, data)} call, which
 #' has no family to validate and builds the formula unchecked.
 #'
-#' Because \code{\link{bnec}} forces \code{link = "identity"}, \pkg{brms}
+#' Because \code{\link{bnec}} fits on \code{link = "identity"}, which it
+#' assigns unless a link argument is written, \pkg{brms}
 #' writes the denominator multiplicatively on the response scale rather than as
 #' a log offset on the linear predictor, so the mean \emph{is} the rate and
 #' "top", "bot" and "nec" stay directly interpretable as counts per unit
@@ -644,7 +645,8 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
   brms_bf[[1]][[3]] <- str2lang(tmp)
   bnec_group_vars <- attr(data, "bnec_group")
   if (any(!is.na(bnec_group_vars))) {
-    brms_bf <- add_formula_glef(model, brms_bf, formula, data)
+    brms_bf <- add_formula_glef(model, brms_bf, formula, data,
+                                family = family)
   }
   # Hurdle families get a second, mechanically derived parameter block for the
   # hurdle probability. Added after any group-level terms so that those apply
@@ -725,7 +727,8 @@ clean_bar_glef <- function(x) {
 #' @noRd
 #' @importFrom stats terms
 #' @importFrom formula.tools rhs `rhs<-`
-add_formula_glef <- function(model, brmform, bnecform, data) {
+add_formula_glef <- function(model, brmform, bnecform, data,
+                             family = NULL) {
   crf_term <- grep("crf(", labels(terms(bnecform)), fixed = TRUE,
                    value = TRUE)
   to_eval <- paste0("update(bnecform, ~ . - ", crf_term, ")")
@@ -782,8 +785,34 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
   if (any(grepl("ogl(", split_random_call, fixed = TRUE))) {
     str_calls <- grep("ogl(", split_random_call, fixed = TRUE, value = TRUE)
     vars <- all.vars(str2lang(paste0(str_calls, collapse = " + ")))
-    tmp <- paste0("ogl + ", deparse1(brmform[[1]][[3]]))
-    brmform[[1]][[3]] <- str2lang(tmp)
+    kind <- ogl_transform_kind(model, family)
+    if (identical(kind, "none")) {
+      # The additive offset, which is what every version up to 2.1.4 emitted.
+      # Kept for a mean the likelihood does not constrain, for a non-identity
+      # link where the offset is already on the linear predictor, and for the
+      # equations whose mean can reach or pass a bound, where the transform is
+      # undefined rather than merely unnecessary. See ogl_transform_kind().
+      tmp <- paste0("ogl + ", deparse1(brmform[[1]][[3]]))
+      brmform[[1]][[3]] <- str2lang(tmp)
+    } else {
+      # The curve becomes an intermediate quantity and the deviation is applied
+      # to it multiplicatively, so mu cannot leave its support however long the
+      # leapfrog trajectory is. The deviation is zero-centred and
+      # m * exp(0) == m, so the transformed model is the current model when the
+      # deviation is zero and top, bot, nec and beta keep their meanings.
+      #
+      # Built by setting the nl and loop attributes rather than by calling
+      # brms::nlf(), which returns a list intended for bf() to unpack rather
+      # than a formula. Checked against brms 2.23.0: the two produce identical
+      # Stan code. See #257.
+      curve <- deparse1(brmform[[1]][[3]])
+      brmform[[1]][[3]] <- str2lang(ogl_transform_expr(kind))
+      curve_form <- stats::as.formula(paste("bnecmu ~", curve))
+      attr(curve_form, "nl") <- TRUE
+      attr(curve_form, "loop") <- TRUE
+      # Prepended, so the intermediate is defined before the terms that read it.
+      brmform[[2]] <- c(list(bnecmu = curve_form), brmform[[2]])
+    }
     brmform[[2]]$ogl <- ogl ~ 1
     for (j in seq_along(vars)) {
       brmform[[2]]$ogl <- str2lang(paste0(deparse1(brmform[[2]]$ogl),
@@ -791,6 +820,81 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
     }
   }
   brmform
+}
+
+#' Describe the group-level structure a bayesnecformula carries
+#'
+#' @param formula An object of class \code{\link{bayesnecformula}}.
+#' @param model A \code{\link[base]{character}} string naming a single model,
+#' needed to expand a \code{pgl} term over the parameters that model actually
+#' has.
+#'
+#' @details The counterpart of \code{\link{parse_disp_term}}, and added for the
+#' same reason. \code{\link{add_formula_glef}} already knows how to turn
+#' \code{ogl}, \code{pgl} and \code{(par | group)} into brms sub-formulas, but
+#' nothing passed that structure to \code{define_prior()}, so no prior was ever
+#' generated for the parameters those terms introduce. See #245.
+#'
+#' The parsing deliberately repeats \code{add_formula_glef()}'s rather than
+#' factoring it out: that function builds a formula and this one describes it,
+#' and the two are called from different places on different objects. Any change
+#' to the accepted term syntax has to be made in both.
+#'
+#' A \code{(par | group)} term naming a parameter the model does not have is
+#' dropped silently here. \code{add_formula_glef()} messages about it and
+#' ignores it, so generating a prior for a term that will not be in the model
+#' would put a row in the set that never reaches the fit.
+#'
+#' @return A \code{\link[base]{list}} with elements \code{nlpars}, the
+#' non-linear parameters carrying a group-level standard deviation, and
+#' \code{ogl}, whether an \code{ogl} offset parameter was added; or
+#' \code{NULL} when the formula carries no group-level term.
+#'
+#' @importFrom stats terms
+#' @importFrom formula.tools rhs
+#'
+#' @noRd
+parse_group_terms <- function(formula, model) {
+  crf_term <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
+  if (length(crf_term) == 0) {
+    return(NULL)
+  }
+  to_eval <- paste0("update(formula, ~ . - ", crf_term, ")")
+  random_call <- rhs(eval(parse(text = to_eval)))
+  random_call <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(random_call))
+  split_random_call <- strsplit(random_call, " impossiblestr ")[[1]]
+  # disp() is a variance function, not a grouping term, and has its own prior
+  # route through define_disp_prior(). Dropping it here keeps a formula that
+  # carries only a disp() term from being reported as grouped.
+  split_random_call <- split_random_call[!grepl("disp(", split_random_call,
+                                                fixed = TRUE)]
+  model_pars <- names(get(paste0("bf_", model))[[2]])
+  nlpars <- character(0)
+  has_ogl <- FALSE
+  if (any(grepl("pgl(", split_random_call, fixed = TRUE))) {
+    # pgl puts a group-level term on every parameter of the model at once.
+    nlpars <- c(nlpars, model_pars)
+  }
+  if (any(grepl("ogl(", split_random_call, fixed = TRUE))) {
+    has_ogl <- TRUE
+    nlpars <- c(nlpars, "ogl")
+  }
+  bar_calls <- grep("|", split_random_call, fixed = TRUE, value = TRUE)
+  bar_calls <- bar_calls[!grepl("pgl(", bar_calls, fixed = TRUE) &
+                           !grepl("ogl(", bar_calls, fixed = TRUE)]
+  if (length(bar_calls) > 0) {
+    split_str_calls <- lapply(bar_calls, clean_bar_glef)
+    for (i in seq_along(split_str_calls)) {
+      pars_i <- strsplit(split_str_calls[[i]][1], " \\+ ")[[1]]
+      nlpars <- c(nlpars, trimws(pars_i))
+    }
+    nlpars <- intersect(nlpars, c(model_pars, "ogl"))
+  }
+  nlpars <- unique(nlpars)
+  if (length(nlpars) == 0) {
+    return(NULL)
+  }
+  list(nlpars = nlpars, ogl = has_ogl)
 }
 
 #' @noRd

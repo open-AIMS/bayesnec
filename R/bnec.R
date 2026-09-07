@@ -7,7 +7,13 @@
 #' R formula or an actual \code{\link[stats]{formula}} object. See
 #' \code{\link{bayesnecformula}} and \code{\link{check_formula}}.
 #' @param data A \code{\link[base]{data.frame}} containing the data to use with
-#' the \code{formula}.
+#' the \code{formula}. Every variable the \code{formula} names must be
+#' complete: a row with an \code{NA} or \code{NaN} in any of them is refused
+#' rather than removed, so that the fit is never run on a smaller sample than
+#' was supplied without the user having chosen that. An \code{Inf} in the
+#' predictor or the response is refused as well. Apply
+#' \code{\link[stats]{na.omit}} before calling \code{bnec} where those rows
+#' are to be discarded.
 #' @param x_range A range of predictor values over which to consider extracting
 #' ECx.
 #' @param resolution The length of the predictor vector used for posterior
@@ -167,6 +173,75 @@
 #' \href{https://github.com/open-AIMS/bayesnec/issues}{issue} on the GitHub
 #' development site if your required family is not currently available.
 #'
+#' @section The link:
+#'
+#' \code{\link{bnec}} fits on the \strong{identity} link, which is what keeps
+#' \code{top}, \code{bot} and \code{nec} on the scale of the response and
+#' directly interpretable, and is what the JSS article describes.
+#'
+#' \strong{The link is assigned by bayesnec unless you choose one.} Naming a
+#' family and nothing more leaves it to bayesnec, so all of the following fit on
+#' the identity link:
+#'
+#' \preformatted{
+#' bnec(..., family = "Beta")
+#' bnec(..., family = Beta)
+#' bnec(..., family = Beta())
+#' bnec(..., family = hurdle_gamma())
+#' }
+#'
+#' Writing a link argument is what makes it yours, and it is then honoured.
+#' A link written positionally counts, since \code{link} is the first argument
+#' of every family constructor:
+#'
+#' \preformatted{
+#' bnec(..., family = Beta(link = "logit"))
+#' bnec(..., family = Beta("logit"))
+#' }
+#'
+#' This is read one link at a time. A two-block family has a link on each
+#' block, and writing one says nothing about the other, so the block you leave
+#' alone is still bayesnec's to assign:
+#'
+#' \preformatted{
+#' bnec(..., family = hurdle_gamma(link = "log"))
+#'   # log on the mean, identity on hu
+#' bnec(..., family = hurdle_gamma(link_hu = "logit"))
+#'   # identity on the mean, and refused: hu must be fitted on identity
+#' }
+#'
+#' The dispersion links --- \code{link_phi}, \code{link_shape},
+#' \code{link_sigma} --- are outside this altogether. No curve is fitted on
+#' them and writing one says nothing about the scale \code{top}, \code{bot}
+#' and \code{nec} are reported on, so whatever you write there is carried
+#' through unchanged and whatever you do not keeps the family's own default.
+#' The one exception is \code{Gamma}, whose dispersion link \code{bayesnec}
+#' cannot carry; write \code{disp(~x)} in the formula instead, which is valid
+#' under any link.
+#'
+#' A family that does not reach \code{\link{bnec}} written as a constructor
+#' call --- one held in a variable, one read back off a fitted object with
+#' \code{fit$family}, or one passed through \code{do.call} --- is a case
+#' intent cannot be read from at all. The object's own links are honoured, and
+#' where the mean link is not the identity a message says which one was taken.
+#'
+#' Only \code{identity}, \code{log} and \code{logit} are fitted on; any other
+#' link is refused with an error naming the family. Note that \code{log} and
+#' \code{logit} exclude the zero-bounded equations, since a mean decaying onto
+#' zero cannot produce the negative values those link scales require --- see
+#' \code{\link{models}}.
+#'
+#' \strong{This changed in version 2.1.3.25.} Before it, the link depended on
+#' how the family was written and the difference was silent:
+#' \code{family = "Beta"} gave identity, while \code{family = Beta} and
+#' \code{family = Beta()} gave \strong{logit} and \code{family = Gamma()} gave
+#' \strong{inverse}. In those cases the curve was fitted to a transform of the
+#' mean while \code{top}, \code{bot} and \code{nec} were reported as though
+#' they were on the response scale. If you have code passing a constructed
+#' family and relying on its default link, add the link explicitly.
+#'
+#' @details
+#'
 #' \bold{Supply the raw response, not one normalised to the control}
 #'
 #' \code{\link{bnec}} expects the response as measured. Do not convert it to
@@ -228,9 +303,9 @@
 #' for a component. \code{\link{nec}} returns the combined threshold, which for
 #' threshold models on both blocks is the smaller of the two.
 #'
-#' These families must be specified as \code{family = "hurdle_gamma"} or
-#' \code{family = "zero_inflated_beta"}, or with both links set explicitly as
-#' \code{hurdle_gamma(link = "identity", link_hu = "identity")} and
+#' Naming these families is enough --- \code{family = "hurdle_gamma"},
+#' \code{hurdle_gamma()}, \code{family = "zero_inflated_beta"} --- since
+#' bayesnec assigns the link on both blocks; see \strong{The link} and
 #' \code{zero_inflated_beta(link = "identity", link_zi = "identity")}
 #' respectively. bayesnec keeps
 #' every parameter on the natural response scale, and the hurdle block is
@@ -349,9 +424,7 @@
 #' carry one, and what the exponent implies for each.
 #'
 #' A variance function of the fitted mean requires the mean to be modelled on
-#' its natural scale. \code{\link{bnec}} uses an identity link whenever it
-#' selects the family itself; where a family is supplied explicitly its link
-#' should be too, as in \code{Gamma(link = "identity")}.
+#' its natural scale, which is the identity link \code{\link{bnec}} fits on.
 #'
 #' Because \code{\link{ecx}} and \code{\link{nsec}} are defined on \code{mu}, a
 #' dispersion sub-model changes the credible intervals of the toxicity
@@ -376,20 +449,43 @@
 #'
 #' \bold{Additional technical notes}
 #'
-#' As some concentration-response data will use zero concentration
-#' which can cause numerical estimation issues, a small offset is added (1 /
-#' 10th of the next lowest value) to zero values of concentration where
-#' \code{x_var} are distributed on a continuous scale from 0 to infinity, or
-#' are bounded to 0, or 1.
+#' A zero concentration is fitted as recorded. No family constrains the values
+#' a predictor may take, so a control needs no offset, and earlier versions of
+#' \pkg{bayesnec} substituted one tenth of the smallest positive concentration
+#' for it. That substitution is removed: it was applied without notice, it was
+#' never reversed in the estimates it changed, and its size depended on the
+#' lowest non-zero concentration tested rather than on the data. A fit whose
+#' predictor includes an exact zero gives different estimates than it did under
+#' earlier versions.
 #'
-#' \bold{NAs are thrown away}
-#' 
-#' Stan's default behaviour is to fail when the input data contains NAs. For
-#' that reason \pkg{brms} excludes any NAs from input data prior to fitting,
-#' and does not allow them back in as is the case with e.g. \code{stats::lm} and
-#' \code{na.action = exclude}. So we advise that you exclude any NAs in your
-#' data prior to fitting because if you so wish that should facilitate merging
-#' predictions back onto your original dataset.
+#' A zero concentration does still restrict what may be written inside
+#' \code{crf()} and \code{disp()}, because both are evaluated from the recorded
+#' column. \code{crf(log(x))} reaches \pkg{bayesnec}'s own data check as
+#' \code{-Inf} and stops there, naming the predictor. \code{disp(~log(x))} is
+#' evaluated by \code{brm()} instead, which \pkg{bayesnec} does not check, so
+#' the \code{-Inf} reaches Stan. Add the offset of your choice to the data and
+#' name that column in the formula.
+#'
+#' \bold{Missing values}
+#'
+#' A row with an \code{NA} or \code{NaN} in any variable the \code{formula}
+#' names is refused rather than removed, and so is an \code{Inf} in the
+#' predictor or the response. The error for a missing value reports how many
+#' rows held one and which they were, by row name; the error for a non-finite
+#' value names the column.
+#'
+#' \code{\link[stats]{model.frame}} drops incomplete cases before
+#' \pkg{bayesnec} is given the data, so until version 2.2.0 an \code{NA} left
+#' the fit running on fewer rows than were supplied with nothing said, while an
+#' \code{Inf} was refused. Both are now refused, so that the sample the
+#' estimates are derived from is the user's decision and is visible in the
+#' script.
+#'
+#' Apply \code{\link[stats]{na.omit}} to the data frame before calling
+#' \code{bnec} where those rows are to be discarded. The frame that results is
+#' the one the fit is derived from, so predictions align with it row for row:
+#' \pkg{brms} excludes NAs prior to fitting and does not pad the predictions
+#' back out, as \code{stats::lm} does with \code{na.action = na.exclude}.
 #'
 #' @return If argument model is a single string, then an object of class
 #' \code{\link{bayesnecfit}}; if many strings or a set,
@@ -462,6 +558,24 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   }
   formula <- bayesnecformula(formula)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
+  # Raised here rather than left to check_data(), which runs once per model
+  # inside fit_bayesnec(). bnec() wraps that call in try() for a model set, so
+  # from there the refusal was printed once per model and the call then ended
+  # on the generic all-models-failed advice, which names neither the missing
+  # values nor the remedy. The same reasoning as check_normalisation() and
+  # check_inline_boundary() below, and it applies more strongly: the default
+  # model argument is a set. Placed immediately after the model frame is built
+  # so that nothing downstream, the family choice included, is decided from a
+  # smaller sample than was supplied. check_data() keeps the check for the
+  # routes that do not come through here. See #278.
+  check_complete_cases(bdat)
+  # Checked against `data`, not `bdat`: a disp(~...) term's variables are kept
+  # out of the model frame on purpose, because brm() is handed the user's full
+  # data frame and resolves them itself. Raised here for the reason above --
+  # check_data() runs once per model, and the default model argument is a set.
+  # See #271.
+  check_disp_finite(formula, data)
+  check_reserved_names(data)
   model <- get_model_from_formula(formula)
   brm_args <- list(...)
   # `prior` is an explicit argument (rather than relying on `...`) so that a
@@ -471,12 +585,68 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   if (!is.null(prior)) {
     brm_args$prior <- prior
   }
-  brm_args$family <- retrieve_valid_family(brm_args, bdat)
+  # The link is bayesnec's to assign unless the caller chose one, and telling
+  # those apart needs the expression rather than the evaluated family, since
+  # Beta() and Beta(link = "logit") produce identical objects. mf holds the
+  # dots unevaluated. Resolved on its own line rather than inside the argument
+  # list so that parent.frame() is the caller's frame and not whichever frame
+  # happens to force the promise.
+  #
+  # substitute() rather than mf, because match.call() records a `...` forwarded
+  # from a wrapper as the placeholder `..1`, which reads as a symbol and left
+  # `wrapper(family = Beta())` fitting on logit where `bnec(family = Beta())`
+  # fits on identity. substitute() follows the promise to the expression the
+  # caller wrote, through any depth of forwarding. See #256.
+  link_source <- family_link_source(substitute(list(...))[-1]$family,
+                                    env = parent.frame())
+  brm_args$family <- retrieve_valid_family(brm_args, bdat,
+                                           link_source = link_source)
+  # The marker validate_family() uses to stay idempotent is private, and the
+  # family object is stored in the brmsfit, so it is dropped before brms sees
+  # it rather than serialised into every saved fit.
+  brm_args$family <- unmark_family(brm_args$family)
   # Emitted here rather than from check_data() so that it fires once per bnec()
   # call: check_data() runs once per model, and a model set would otherwise
   # repeat the message ten or more times.
   check_normalisation(bdat)
-  model <- check_models(model, brm_args$family, bdat)
+  # Raised here for the same reason: check_data() runs once per model, so a
+  # model set would print the conflict for each of its members and then end on
+  # the generic all-models-failed advice, long after the cause. The conflict is
+  # a property of the data and the formula together, fixed for the whole call,
+  # so it needs stating once. check_data() keeps the check as a backstop for
+  # get_priors() and for a direct fit_bayesnec() call.
+  #
+  # One consequence of raising it here: it now precedes check_cens_support(),
+  # which check_data() runs before its own nudges. A response that is both
+  # transformed onto a boundary and censored there therefore reports the
+  # transformation conflict from bnec() and the censoring conflict from
+  # get_priors(). Both are true and both must be resolved, so the order does
+  # not change what the user has to do.
+  check_inline_boundary(bdat, brm_args$family)
+  requested_models <- model
+  model <- check_models(model, brm_args$family, bdat, record = TRUE)
+  excluded_models <- attr(model, "excluded")
+  # Stripped as soon as it has been read. The single-model branch below passes
+  # `model` straight to fit_bayesnec(), which stores it as out$model, and to
+  # expand_nec(), which forwards it to brms as model_name -- so the record rode
+  # along as an attribute on a character(1), printed with every such fit, was
+  # serialised twice, and made identical(fit$model, "nec3param") FALSE. The
+  # multi-model branch escaped it only because `model[m]` drops attributes.
+  # check_models() warns about exactly this at its record block. See #261.
+  model <- as.character(model)
+  # Reported once here rather than from check_data(), which runs once per
+  # model. Computed from the same model frame and family the loop will use, so
+  # what is reported is what will be done. See #93 and D16.
+  # retrieve_cens(), not retrieve_var(bdat, "cens_var"): a censoring indicator
+  # is often a character vector ("none", "left", "right"), and retrieve_var()
+  # refuses a non-numeric column. This is how check_data() reads it, and
+  # reading it any other way made a censored hurdle fit error before it
+  # started. See #93.
+  substitutions <- substitution_record(
+    retrieve_var(bdat, "y_var", error = TRUE), retrieve_cens(bdat),
+    brm_args$family
+  )
+  report_substitutions(substitutions)
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
   if (length(model) == 0) {
@@ -518,6 +688,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     # bayesnecfit, and that is exactly the case where knowing what happened to
     # the other twenty-two matters most.
     out <- attach_failed_models(out, failed)
+    out <- attach_bnec_record(out, requested_models, model,
+                              excluded_models, substitutions)
     message_control_fit(out)
     out
   } else {
@@ -529,6 +701,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                           resolution = resolution, sig_val = sig_val,
                           loo_controls = loo_controls, model = model)
     out <- allot_class(mod_fit, c("bayesnecfit", "bnecfit"))
+    out <- attach_bnec_record(out, requested_models, model,
+                              excluded_models, substitutions)
     message_control_fit(out)
     out
   }

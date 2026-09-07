@@ -278,6 +278,10 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
 #'
 #' @param x A \code{\link[base]{numeric}} vector containing the x predictor.
 #' @param y A \code{\link[base]{numeric}} vector containing the y response.
+#' @param report_after A \code{\link[base]{numeric}} value, the number of
+#' seconds after which the search says it is still running. It does not end the
+#' search: the only bound is \code{n_trials}, so that the initial values a
+#' given seed produces do not depend on how busy the machine is.
 #' @param n_trials A \code{\link[base]{numeric}} vector indicating
 #' how many attempts the function should run before giving up.
 #' @param seed seed number for reproducible random number generation. Defaults
@@ -288,7 +292,8 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
-make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
+make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL,
+                            report_after = 20, ...) {
   limits <- range(y, na.rm = TRUE)
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
@@ -296,10 +301,33 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
   dots <- list(...)
   priors_df <- blank_bounds_to_na(as.data.frame(dots$priors))
   priors_df <- priors_df[priors_df$prior != "", ]
+  started <- Sys.time()
   set.seed(seed)
   inits <- make_inits(model, fct_args, ...)
   init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
   are_good <- all(sapply(init_ranges, check_init_predictions, limits))
+  # #266 objects that this ran 561 seconds for a single model with no output,
+  # and proposes a smaller cap on the grounds that the outcome after exhausting
+  # it -- Stan's own random initialisation -- is available at the first attempt.
+  # Measured before changing it, and that reasoning does not hold: a search that
+  # succeeds is not equivalent to one that stops early. On a twenty-row,
+  # four-dose dataset nec4param needed 250 attempts to succeed at one seed and
+  # more than 1000 at two others, while nec3param on the same data never
+  # succeeded at all. A cap of 1e3 would therefore have turned working fits into
+  # random initialisation, silently, on exactly the small designs where good
+  # initial values matter most. The cap stays at 1e4.
+  #
+  # A wall-clock bound was tried and removed. It made the number of attempts,
+  # and so the initial values, and so the fit, a function of machine load: the
+  # search needs about 3.6 s idle on one packaged case and exceeded a 10 s
+  # budget under a parallel test run on the same machine. A fit whose starting
+  # values depend on what else is running is not reproducible, and #266 asked
+  # for time not to be wasted, not for results to change.
+  #
+  # What is fixed instead is the actual complaint: a user watching a long search
+  # could not tell it from a hang. It now says so while it runs.
+  started <- Sys.time()
+  reported <- FALSE
   n_t <- 1
   while (!are_good && n_t <= n_trials) {
     inits <- make_inits(model, fct_args, ...)
@@ -315,11 +343,26 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
       are_good <- all(sapply(init_ranges, check_init_predictions, limits))
     }
     n_t <- n_t + 1
+    # Said once, the first time the search passes report_after seconds, so a
+    # long search is distinguishable from a hang without a message per attempt.
+    if (!reported &&
+          as.numeric(Sys.time() - started, units = "secs") > report_after) {
+      message("Still searching for initial values for the ", model,
+              " model (", n_t, " of ", n_trials, " attempts so far). This can",
+              " take a few minutes for a small or awkward design; the fit will",
+              " proceed on Stan's default initialisation if it does not",
+              " succeed.")
+      reported <- TRUE
+    }
   }
   if (!are_good) {
+    elapsed <- as.numeric(Sys.time() - started, units = "secs")
     message("bayesnec failed to find initial values within the",
-            " range of the response. Using Stan's default",
-            " initialisation process.")
+            " range of the response for the ", model, " model after ", n_t,
+            " attempts and ", signif(elapsed, 2), " seconds. Using Stan's",
+            " default initialisation process. This usually means the priors",
+            " and the response do not overlap; get_priors() reports the priors",
+            " in use.")
     list(random = "random")
   } else {
     inits
@@ -385,4 +428,143 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
     names(hu_i) <- sub("^b_", paste0("b_", dpar), names(hu_i))
     c(mu_inits[[i]], hu_i)
   })
+}
+
+#' Initial values for the parameters a group-level term introduces
+#'
+#' @param brms_bf The \code{\link[brms]{brmsformula}} the fit will use.
+#' @param data The \code{\link[base]{data.frame}} the fit will use.
+#' @param family A \code{\link[stats]{family}} object.
+#' @param priors The \code{\link[brms]{brmsprior}} the fit will use, read for
+#' the scale of the generated group-level standard deviations.
+#' @param ogl Whether the formula carries an \code{ogl} offset parameter.
+#'
+#' @details A prior is not enough here, and this is the part of #245 that is
+#' easy to get wrong. Stan draws its default initial values as
+#' \code{uniform(-2, 2)} on the \emph{unconstrained} scale, which it does
+#' \strong{regardless of the prior declared}. A group-level standard deviation
+#' is lower-bounded at zero, so the realised initial value is
+#' \code{exp(uniform(-2, 2))}, between 0.135 and 7.39; the offset is
+#' \code{sd * z} under the non-centred parameterisation \pkg{brms} uses, with
+#' \code{z} initialised in the same range. On a response bounded in (0, 1)
+#' under the identity link \code{\link{bnec}} assigns, that puts the mean
+#' outside its support before sampling begins, and no prior can prevent it.
+#'
+#' The \code{ogl} intercept is the same problem in a simpler form: it is a
+#' population-level parameter with no bounds, so Stan starts it anywhere in
+#' (-2, 2), which is already outside a unit-interval response.
+#'
+#' All group-level effects are therefore started at \strong{exactly zero}
+#' deviation -- \code{z = 0}, and the \code{ogl} offset at 0 -- which is a
+#' valid point for any family and any link, and is the model the fit reduces to
+#' if the grouping turns out to explain nothing.
+#'
+#' Because \code{z} is zero, the value given to \code{sd} itself does not
+#' affect whether the starting point is valid; it sets only where the sampler
+#' begins exploring. The median of the generated \code{sd} prior scales is
+#' used, so the starting scale tracks the data rather than being a constant that
+#' is tiny for one response and large for another.
+#'
+#' The indices are read from \code{\link[brms]{make_standata}} rather than
+#' reconstructed from the formula. \pkg{brms} numbers group-level terms by its
+#' own internal ordering -- a single \code{pgl} term over four parameters
+#' becomes four separately indexed terms, not one -- and guessing that ordering
+#' would be a silent source of mismatched initial values.
+#'
+#' The query is made twice where it has to be, because no single family can
+#' answer it for every fit. See the comment at the call.
+#'
+#' @return A named \code{\link[base]{list}} of initial values.
+#'
+#' @importFrom brms make_standata
+#' @importFrom stats median gaussian
+#'
+#' @noRd
+group_inits <- function(brms_bf, data, family, priors, ogl = FALSE) {
+  # The group-level dimensions M_k and N_k come from the random-effects
+  # structure alone, so the family is irrelevant to the answer -- but it is not
+  # irrelevant to whether the call succeeds, and each of the two candidates
+  # fails on a case the other handles.
+  #
+  # The fit's own family fails where the response has not yet been through
+  # check_data(): a Beta response still carrying exact zeros and ones, which is
+  # what reaches here when the formula transforms a variable, or on the amend()
+  # path where check_data() never runs at all. gaussian() fails where the
+  # formula carries a trials() aterm, because trials is not a valid aterm for
+  # gaussian -- that is every binomial and beta_binomial fit, which is the
+  # standard workflow for those families and one of the three bounded families
+  # this function exists for.
+  #
+  # So: the fit's own family first, gaussian() as the fallback. Ordered that
+  # way round because the real family is the one that describes the model, and
+  # a query answered by it needs no justification; gaussian() is the escape
+  # hatch for a response the family will not accept yet, and can only be wrong
+  # about something this function does not ask.
+  ask <- function(fam) {
+    try(suppressMessages(make_standata(brms_bf, data = data, family = fam)),
+        silent = TRUE)
+  }
+  sdata <- ask(family)
+  if (inherits(sdata, "try-error")) {
+    sdata <- ask(gaussian())
+  }
+  if (inherits(sdata, "try-error")) {
+    # Genuinely unexpected now. Warn rather than return quietly: an empty init
+    # list here is the difference between a fit that starts and one that does
+    # not, and a silent one is very hard to trace back to this line.
+    warning("Could not determine the group-level dimensions, so no initial ",
+            "values were generated for them. The fit may fail to initialise. ",
+            "See #245.", call. = FALSE)
+    return(list())
+  }
+  m_names <- grep("^M_[0-9]+$", names(sdata), value = TRUE)
+  if (length(m_names) == 0) {
+    return(list())
+  }
+  sd_scales <- sd_prior_scales(priors)
+  start_sd <- if (length(sd_scales) > 0) median(sd_scales) else 0.1
+  out <- list()
+  for (k in sort(as.integer(sub("^M_", "", m_names)))) {
+    n_terms <- sdata[[paste0("M_", k)]]
+    n_levels <- sdata[[paste0("N_", k)]]
+    out[[paste0("sd_", k)]] <- as.array(rep(start_sd, n_terms))
+    out[[paste0("z_", k)]] <- matrix(0, nrow = n_terms, ncol = n_levels)
+  }
+  if (isTRUE(ogl)) {
+    out$b_ogl <- as.array(0)
+  }
+  out
+}
+
+#' The scales of the group-level standard deviation priors in a prior set
+#'
+#' @param priors An object of class \code{\link[brms]{brmsprior}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector, possibly empty.
+#'
+#' @noRd
+sd_prior_scales <- function(priors) {
+  if (is.null(priors) || nrow(priors) == 0 || !"class" %in% names(priors)) {
+    return(numeric(0))
+  }
+  strs <- priors$prior[priors$class == "sd"]
+  strs <- strs[nzchar(strs)]
+  if (length(strs) == 0) {
+    return(numeric(0))
+  }
+  # Only read a scale from the distributions whose last argument is one. The
+  # last argument of gamma() and inv_gamma() is a rate, exponential() has a rate
+  # and no comma at all, and constant() carries a value rather than a scale --
+  # taking the last number from any of those returns a number that is not a
+  # scale, silently. A user-supplied gamma(2, 100) previously gave a starting
+  # value of 100 on a unit-interval response.
+  scale_families <- "^\\s*(student_t|normal|cauchy|lognormal|logistic)\\s*\\("
+  strs <- strs[grepl(scale_families, strs)]
+  if (length(strs) == 0) {
+    return(numeric(0))
+  }
+  vals <- suppressWarnings(
+    as.numeric(sub("^.*,\\s*([0-9.eE+-]+)\\)\\s*$", "\\1", strs))
+  )
+  vals[is.finite(vals) & vals > 0]
 }

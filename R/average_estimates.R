@@ -28,7 +28,7 @@
 #' model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile
-#' @importFrom chk chk_lgl chk_character chk_numeric
+#' @importFrom chk chk_lgl chk_numeric
 #'
 #' @examples
 #' \dontrun{
@@ -40,10 +40,28 @@
 #' average_estimates(list("nec" = ecx4param, "ecx" = nec4param), ecx_val = 50)
 #' }
 #'
+#' @section Reproducibility:
+#' The draws of each posterior are paired by an independent random permutation,
+#' so \code{prob_diff} and the difference intervals change between identical
+#' calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
+#' result. This is a Monte Carlo approximation to the difference of two
+#' \bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
+#' pairs.
+#'
+#' @section The independence assumption:
+#' The pairing is valid only where the posteriors being compared come from
+#' \bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+#' of each comes from the same sweep of the sampler --- and permuting them
+#' destroys that pairing, which discards the correlation between the levels and
+#' widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
+#' and a real difference is under-detected, which is the wrong direction to err
+#' in. A within-fit contrast needs draw-wise differencing and must not be routed
+#' through this function. See #218 and #33.
+#'
 #' @export
 average_estimates <- function(x, estimate = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
-                              hormesis_def = "control", sig_val = 0.01,
+                              sig_val = 0.01,
                               resolution = 1000, x_range = NA, xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   if (!is.list(x) | is.null(names(x))) {
@@ -53,8 +71,14 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
     stop("Argument estimate must be a character vector")
   }
   chk_lgl(posterior)
-  chk_character(type)
-  chk_character(hormesis_def)
+  # Validated against the four-value vocabulary here rather than left to the
+  # per-fit ecx() calls below, so that an invalid type is refused before any
+  # posterior is drawn, and the rename warning is issued once for the call
+  # rather than once per fit in x. Same reasoning as ecx.bayesmanecfit and
+  # compare_estimates(). See D15 ruling 8.
+  type <- validate_ecx_type(type, match.call())
+  warned <- options(bayesnec.relative_warned = TRUE)
+  on.exit(options(warned), add = TRUE)
   chk_numeric(ecx_val)
   chk_numeric(sig_val)
   chk_numeric(resolution)
@@ -71,18 +95,23 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   if (estimate == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, resolution = resolution,
                              posterior = TRUE, type = type,
-                             hormesis_def = hormesis_def, x_range = x_range,
+                             x_range = x_range,
                              xform = xform)
   }
   if (estimate == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, resolution = resolution,
-                             posterior = TRUE, hormesis_def = hormesis_def,
+                             posterior = TRUE,
                              x_range = x_range, xform = xform)
   }
   names(posterior_list) <- names(x)
   n_samples <- min(sapply(posterior_list, length))
   r_posterior_list <- lapply(posterior_list, FUN = function(m, n_samples) {
-    m[sample(seq_len(n_samples), replace = FALSE)]
+    # A random subset of a longer posterior, not its first n_samples draws.
+    # sample(seq_len(n_samples)) permuted only the head of the vector, so where
+    # components had unequal draw counts the tail of the longer one was never
+    # used -- systematic rather than random thinning. Harmless when the counts
+    # are equal, which is the normal case. See #218.
+    m[sample(seq_along(m), n_samples, replace = FALSE)]
   }, n_samples = n_samples)
   posterior_data <- do.call("cbind", r_posterior_list) |>
       data.frame()

@@ -52,8 +52,14 @@ lower bounds of the individual predicted values from all posterior samples.}
 \item{add_nec}{A \code{\link[base]{logical}} value indicating if the
 estimated NEC value and 95\% credible intervals should be added to the plot.}
 
-\item{position_legend}{A \code{\link[base]{numeric}} vector indicating the
-location of the NEC or EC10 legend, as per a call to legend.}
+\item{position_legend}{Where to draw the NEC or EC10 legend, in either the
+keyword form or the coordinate form \code{\link[graphics]{legend}} accepts:
+a single keyword out of \code{"left"}, \code{"topleft"}, \code{"top"},
+\code{"topright"}, \code{"right"}, \code{"bottomright"},
+\code{"bottom"} and \code{"bottomleft"}, or a \code{\link[base]{numeric}}
+vector of length two giving the x and y coordinates of the legend in user
+units. \code{legend}'s ninth keyword, \code{"center"}, is not accepted;
+give the coordinates instead.}
 
 \item{add_ec10}{A \code{\link[base]{logical}} value indicating if an
 estimated EC10 value and 95\% credible intervals should be added to the plot.}

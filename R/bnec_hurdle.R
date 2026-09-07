@@ -138,6 +138,9 @@
 #' @export
 bnec_hurdle <- function(formula, data, model_survival = NULL,
                         family_growth = NULL, ...) {
+  # Captured before anything can rebind it; see family_link_source() and #256.
+  growth_link_source <- family_link_source(substitute(family_growth),
+                                           env = parent.frame())
   formula <- bayesnecformula(formula)
   y_var <- hurdle_response_var(formula)
   aterms <- check_hurdle_aterms(formula)
@@ -197,7 +200,8 @@ bnec_hurdle <- function(formula, data, model_survival = NULL,
       set_distribution(y[y > 0], silence_y_msgs = TRUE)
     )
   } else {
-    family_growth <- validate_family(family_growth)
+    family_growth <- validate_family(family_growth,
+                                     link_source = growth_link_source)
     check_hurdle_growth_family(family_growth)
   }
   message("Fitting the growth component (", sum(y > 0), " survivors of ",

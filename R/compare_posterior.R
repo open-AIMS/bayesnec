@@ -19,21 +19,14 @@
 #' @inheritParams ecx
 #' @inheritParams nsec
 #'
-#' @details \code{type} "relative" is calculated as the percentage decrease
-#' from the maximum predicted value of the response (top) to the minimum
-#' predicted value of the response. Type "absolute" (the default) is
-#' calculated as the percentage decrease from the maximum value of the
-#' response (top) to 0 (or bot for a 4 parameter model fit). Type "direct"
-#' provides a direct estimate of the x value for a given y.
-#' Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
-#' model is estimated at a percent decline from the control.
-#' 
-#' For \code{hormesis_def}, if "max", then ECx or NSEC values -- i.e.,
-#' depending on argument \code{comparison} -- are calculated
-#' as a decline from the maximum estimates (i.e. the peak at NEC);
-#' if "control", then ECx or NSEC values are calculated relative to the
-#' control, which is assumed to be the lowest observed concentration.
-#' 
+#' @details \code{type} is passed to \code{\link{ecx}} and takes the same four
+#' values, all measured from the control --- the predicted mean at the lowest
+#' concentration in the supplied predictor, per posterior draw. "absolute" (the
+#' default) measures to 0, "relative" to the equation's theoretical asymptote,
+#' "range" to the lowest response the curve predicts, and "direct" takes a
+#' response value rather than a percentage. See \code{\link{ecx}} for the full
+#' definitions and for what changed at 2.2.0.
+#'
 #' The argument \code{make_newdata} is only used if
 #' \code{comparison = "fitted"}. It is relevant to those who want the package
 #' to create a data.frame from which to make predictions. This is done via
@@ -77,7 +70,6 @@ compare_posterior <- function(x, ...) {
 #' @export
 compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
                                       type = "absolute",
-                                      hormesis_def = "control",
                                       sig_val = 0.01, resolution,
                                       x_range = NA, make_newdata = TRUE,
                                       ...) {
@@ -92,7 +84,7 @@ compare_posterior.default <- function(x, comparison = "n(s)ec", ecx_val = 10,
       resolution <- 500
     }
     out <- compare_estimates(x = x, comparison = comparison, ecx_val = ecx_val,
-                             type = type, hormesis_def = hormesis_def,
+                             type = type,
                              sig_val = sig_val, resolution = resolution,
                              x_range = x_range)
   } else {

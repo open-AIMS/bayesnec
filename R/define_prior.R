@@ -86,16 +86,52 @@ positive_scale <- function(response, probs) {
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
 #' @importFrom stats sd
+#' @importFrom stats median
 #'
 #' @noRd
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
-                         model_survival = NULL, disp_spec = NULL) {
+                         model_survival = NULL, disp_spec = NULL,
+                         group_spec = NULL) {
+  # Which scale an ogl deviation is applied on decides how wide its prior
+  # should be, and it is a property of the model and the family, both of which
+  # are in scope here and are not in define_group_prior(). See #257.
+  ogl_kind <- if (isTRUE(group_spec$ogl)) {
+    ogl_transform_kind(model, family)
+  } else {
+    "none"
+  }
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
-    return(define_hurdle_prior(model, family, predictor, response,
-                               prior_type = prior_type,
-                               model_survival = model_survival))
+    hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
+                                         prior_type = prior_type,
+                                         model_survival = model_survival)
+    # A group-level term reaches the mu block only. add_formula_glef() runs
+    # before the hu sub-formulas are attached, so `ogl` and `pgl` never see
+    # them -- checked against the formula wrangle_model_formula() actually
+    # builds, not assumed. So the same priors apply here, on the same nlpar
+    # names, and the hu block needs nothing. Without this the hurdle families
+    # kept the whole of #245: they take the early return above, so group_spec
+    # was ignored for exactly the fits vignette("example8") part 3 needs.
+    # Scaled from the survivors only, which is the response the mu block is
+    # actually fitted to -- including the structural zeros would drag the scale
+    # down for the same reason define_hurdle_prior() excludes them from top and
+    # bot. Put on the link scale of the mu family before it is measured, so
+    # that this branch and the one below both take the scale from the quantity
+    # the offsets are actually added to rather than differing over a step that
+    # is a no-op only for as long as the fit is on the identity link, which is
+  # what bnec() assigns unless the caller wrote a link argument (#256).
+    mu_family <- hurdle_mu_family(family)
+    mu_response <- response_link_scale(
+      split_hurdle_response(predictor, response)$mu$y, mu_family
+    )
+    group_priors <- define_group_prior(group_spec, predictor, mu_response,
+                                       prior_type = prior_type,
+                                       ogl_transform = ogl_kind)
+    if (!is.null(group_priors)) {
+      hurdle_priors <- hurdle_priors + group_priors
+    }
+    return(hurdle_priors)
   }
   link_tag <- family$link
   custom_name <- check_custom_name(family)
@@ -213,11 +249,34 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = "beta(1, 5)",
                  beta = "beta(1, 5)")
   }
+  # The rate of the nec/ec50 gamma prior is set from the median of the distinct
+  # predictor values, not from the median of the observation vector. A prior
+  # scale should describe the concentrations that were tested, not how many
+  # replicates each of them received. Where more than half the observations sit
+  # at a zero control the observation median is zero and 1 / (0 / 2) made the
+  # prior string "gamma(5, Inf)"; the distinct-value median cannot be zero
+  # while the predictor reaches above one, which is the condition under which
+  # this entry is selected. The two agree for a balanced design, and the
+  # distinct series is what survival_by_x() already primes the hu block of a
+  # hurdle or zero-inflated fit from, so the two blocks of one fit no longer
+  # disagree about the scale of their shared predictor purely because of
+  # replication -- previously by a factor of three on an unbalanced design. They
+  # can still differ for a substantive reason: the mu block is primed from the
+  # non-zero subset, so a concentration at which every response is zero is
+  # absent from its series, which is the right answer for a block fitted only to
+  # survivors. See #269.
+  #
+  # unique() collapses replicates only where their recorded values are
+  # bit-identical, so this reads the series as it was entered. A nominal series
+  # typed as constants collapses; one computed per replicate, as a dilution
+  # factor applied row by row, may not, in which case the median is the
+  # observation median again and the prior is the one earlier versions built.
+  # That is acceptable because the prior is weakly informative either way, and
+  # the alternative -- rounding before comparing -- would need a tolerance with
+  # no defensible value on an arbitrary concentration scale.
+  x_med <- median(unique(predictor))
   x_prs <- c(Beta = "beta(2, 2)",
-             Gamma = paste0("gamma(5, ",
-                            1 / (quantile(predictor,
-                                          probs = 0.5) / 2),
-                            ")"),
+             Gamma = paste0("gamma(5, ", 1 / (x_med / 2), ")"),
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),
@@ -291,6 +350,14 @@ define_prior <- function(model, family, predictor, response,
   if (!is.null(disp_priors)) {
     priors <- priors + disp_priors
   }
+  # response is on the link scale by this point, which is what the group-level
+  # offsets are added on, so it is the right scale to take the prior from.
+  group_priors <- define_group_prior(group_spec, predictor, response,
+                                     prior_type = prior_type,
+                                     ogl_transform = ogl_kind)
+  if (!is.null(group_priors)) {
+    priors <- priors + group_priors
+  }
   priors
 }
 
@@ -354,6 +421,184 @@ define_disp_prior <- function(disp_spec, family, response) {
   out <- prior_string(unname(c0_prs[fam_tag]), nlpar = "c0")
   for (p in setdiff(vf$pars, "c0")) {
     out <- out + prior_string(slope_prior, nlpar = p)
+  }
+  out
+}
+
+#' define_group_prior
+#'
+#' Builds priors for the parameters a group-level term introduces.
+#'
+#' @param group_spec The output of \code{\link{parse_group_terms}}.
+#' @param predictor A \code{\link[base]{numeric}} vector of the predictor.
+#' @param response A \code{\link[base]{numeric}} vector of the response, on
+#' the link scale.
+#' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
+#'
+#' @details Without this, no prior is generated for a group-level standard
+#' deviation and it falls through to the \pkg{brms} default,
+#' \code{student_t(3, 0, 2.5)}. On a bounded response under the identity link
+#' \code{\link{bnec}} assigns, an offset drawn at that scale puts the mean
+#' outside its support, where the likelihood is undefined. There is no inverse
+#' link to rescue it -- that is the trade \code{\link{bnec}} makes so that
+#' \code{top}, \code{bot} and \code{nec} stay directly interpretable -- so
+#' keeping the mean in range falls entirely to the prior. See #245.
+#'
+#' \strong{The rule.} A group-level standard deviation is given one tenth of
+#' the observed range of \emph{the scale its parameter lives on}, following the
+#' same three-way split \code{\link{define_prior}} already makes for the
+#' curve's own parameters:
+#'
+#' \itemize{
+#'   \item \code{top}, \code{bot} and \code{ogl} are on the response scale:
+#'     \code{diff(range(response)) / 10}.
+#'   \item \code{nec} and \code{ec50} are on the predictor scale:
+#'     \code{diff(range(predictor)) / 10}.
+#'   \item \code{beta}, \code{slope}, \code{d} and \code{f} are
+#'     dimensionless and take \code{normal(0, 5)} of their own, so 0.5.
+#' }
+#'
+#' \strong{It is a rule about the data, not about the parameter's own prior},
+#' and the distinction is worth keeping straight because the two coincide only
+#' for the dimensionless parameters, where \code{normal(0, 5)} gives exactly
+#' 0.5. Elsewhere the realised group-level standard deviation runs between
+#' roughly a twentieth and a third of the spread of the parameter's own prior,
+#' depending on family and data -- 0.06 of it for a \code{poisson} \code{top},
+#' 0.34 for a Beta one. Tying it to the parameter's prior instead would inherit
+#' scales chosen to be deliberately diffuse: \code{top} on a gaussian response
+#' takes \code{2.5 * sd(response)}, which is a reasonable statement of
+#' ignorance about a level and a poor one about deviation around it. The
+#' observed range is the more defensible anchor, and it is the same quantity
+#' the predictor-scaled priors are already bounded by.
+#'
+#' For \code{nec} and \code{ec50} the two readings do agree, because those
+#' priors are truncated to \code{[min(predictor), max(predictor)]}, so the
+#' range \emph{is} the scale the prior spans.
+#'
+#' \code{student_t(3, 0, s)} keeps the shape and heavy tail of the \pkg{brms}
+#' default and changes only its scale, so this narrows a default that was never
+#' scale-aware rather than substituting a differently-shaped one.
+#'
+#' \strong{What the prior cannot do.} Every prior
+#' \code{\link{define_prior}} generates constrains its parameter to the region
+#' where the model is defined: \code{beta(5, 2)} on (0, 1), \code{lb = 0} for
+#' the count and Gamma families, \code{nec} truncated to the predictor range.
+#' A group-level deviation cannot be constrained that way -- \pkg{brms} declares
+#' \code{r_} unconstrained -- so a grouped fit does not inherit the property
+#' that \code{top}, \code{bot} and \code{nec} remain in range, and no choice
+#' of scale here restores it. Scaling the prior is what allows such a fit to
+#' initialise; it does not stop the sampler reaching the boundary afterwards,
+#' because the posterior for the standard deviation is an order of magnitude
+#' smaller than the distance from the fitted mean to that boundary and it is the
+#' length of the leapfrog trajectory that crosses it. Divergent transitions on a
+#' grouped fit are therefore expected wherever the response distribution
+#' restricts the range of the mean; see \code{\link{add_brm_defaults}} for the
+#' \code{adapt_delta} that mitigates them, \code{vignette("example3")} for what
+#' a user should check, and #257 for the parameterisation change that removes
+#' the cause.
+#'
+#' \strong{prior_type.} \code{"regularizing"} halves every generated scale.
+#' The two default sets differ only in the response-scaled parameters for the
+#' curve itself, but a user reaching for the narrower set on a grouped fit is
+#' usually reaching for it \emph{because} of the grouping, and leaving the one
+#' parameter that provoked the choice untouched would make the argument inert
+#' where it is most wanted. A factor of two is the same order as the narrowing
+#' the response-scaled priors get (2.5 for gaussian, 1.6 for the gamma-scaled
+#' families, 1.3 for the beta-scaled ones).
+#'
+#' The \code{ogl} \emph{intercept} gets a prior too, and needs one for a
+#' different reason. \code{ogl} enters as an offset added to the whole curve,
+#' so its population intercept is \strong{not identified}: a constant added to
+#' \code{ogl} can be taken back out of \code{top} and \code{bot} with no
+#' change to the likelihood, and \pkg{brms} leaves a non-linear
+#' population-level parameter flat by default. Centring it at zero is what makes
+#' the decomposition identified -- \code{top} and \code{bot} carry the level,
+#' and the grouping term carries deviation about it.
+#'
+#' @return An object of class \code{\link[brms]{brmsprior}}, or \code{NULL}.
+#'
+#' @importFrom brms prior_string
+#'
+#' @noRd
+define_group_prior <- function(group_spec, predictor, response,
+                               prior_type = "uninformative",
+                               ogl_transform = "none") {
+  if (is.null(group_spec) || length(group_spec$nlpars) == 0) {
+    return(NULL)
+  }
+  narrow <- if (prior_type == "regularizing") 2 else 1
+  # A response or predictor with no spread gives a scale of zero, which is not a
+  # usable prior. It is degenerate input rather than something to model around,
+  # so fall back to the dimensionless scale and let the fit fail on its own
+  # terms if it is going to. The fallback is not narrowed: it is a stand-in for
+  # a scale that could not be measured, not a measurement to be regularized.
+  safe_scale <- function(x) {
+    s <- diff(range(x)) / (10 * narrow)
+    if (!is.finite(s) || s <= 0) 0.5 else s
+  }
+  s_y <- safe_scale(response)
+  s_x <- safe_scale(predictor)
+  # Where the ogl deviation is applied multiplicatively (#257), it is on the
+  # log or log-odds scale rather than on the response scale, so the response
+  # scale s_y is not the right width for it. These are delta-method conversions
+  # of the same rule, evaluated at the mean of the response:
+  #
+  #   s_log   = s_y / mean(y)             a group-level coefficient of variation
+  #   s_logit = s_y / (m * (1 - m))
+  #
+  # Both are evaluated at a single point and the Jacobian varies along the
+  # curve -- at m = 0.9 the logit Jacobian is 11.1 and at m = 0.5 it is 4 -- so
+  # this is a conversion of the existing convention onto the new scale, not an
+  # exact reparameterisation of the same prior.
+  m_y <- mean(response, na.rm = TRUE)
+  # Taken as an argument rather than read off group_spec. It used to be set in
+  # add_brm_defaults() and nowhere else, so get_priors() and amend() -- which
+  # build group_spec straight from parse_group_terms() -- fell through to the
+  # response-scale width and disagreed with what bnec() actually fitted by a
+  # factor of four. get_priors() then misreported the prior in use, which the
+  # initial-value fallback message explicitly tells the user to trust, and
+  # amend() fitted a model into an existing set with a prior no other member
+  # had. Computed once here, from the model and family define_prior() already
+  # has, so the three callers cannot drift apart. See #257.
+  s_ogl <- switch(
+    ogl_transform,
+    # Capped. s_y does not shrink as the response mean approaches zero, so the
+    # ratio is unbounded there: on a count response with many structural zeros
+    # -- zero_inflated_poisson and zero_inflated_negbinomial are both accepted
+    # -- s_y / m_y can put several orders of magnitude on the group-level mean.
+    # The logit branch below is self-limiting because s_y shrinks as the mean
+    # approaches either bound; this one is not. The cap is a coefficient of
+    # variation of 1, which at two prior standard deviations still admits a
+    # factor of e^2 on the mean and is far wider than any group-level effect
+    # these designs carry. See #257.
+    log = if (is.finite(m_y) && m_y > 0) min(s_y / m_y, 1) else s_y,
+    logit = if (is.finite(m_y) && m_y > 0 && m_y < 1) {
+      s_y / (m_y * (1 - m_y))
+    } else {
+      s_y
+    },
+    s_y
+  )
+  scale_for <- function(par) {
+    if (par == "ogl") {
+      s_ogl
+    } else if (par %in% c("top", "bot")) {
+      s_y
+    } else if (par %in% c("nec", "ec50")) {
+      s_x
+    } else {
+      0.5 / narrow
+    }
+  }
+  out <- NULL
+  for (p in group_spec$nlpars) {
+    pr <- prior_string(paste0("student_t(3, 0, ", signif(scale_for(p), 4), ")"),
+                       class = "sd", nlpar = p)
+    out <- if (is.null(out)) pr else out + pr
+  }
+  if (isTRUE(group_spec$ogl)) {
+    out <- out + prior_string(paste0("normal(0, ", signif(s_ogl, 4), ")"),
+                              nlpar = "ogl")
   }
   out
 }
