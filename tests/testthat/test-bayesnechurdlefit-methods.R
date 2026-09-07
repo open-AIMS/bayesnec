@@ -127,3 +127,75 @@ test_that("every audited method has a bayesnechurdlefit method or a branch", {
     expect_false(any(grepl("UseMethod", deparse(get(f)))), label = f)
   }
 })
+
+
+# ---- D15 ruling 2 on the two-block class -------------------------------------
+
+# The three estimator methods took the control from p_samples[, 1], the first
+# column of the prediction grid, so x_range moved the reference and therefore
+# every estimate. hurdle_component_preds() now returns a control read at the
+# lowest observed concentration and pinned to the same concentration on both
+# sides. Asserted by mocking that function, because reproducing the defect by
+# fitting needs two brms fits and a grid extended below the data.
+
+hurdle_preds_stub <- function(control_at, curve_at_grid_start) {
+  # A declining curve on a grid whose first column is NOT the control: this is
+  # the situation an extended x_range creates. A method reading p_samples[, 1]
+  # gets curve_at_grid_start; one reading preds$control gets control_at.
+  x <- seq(1, 10, length.out = 10)
+  g <- matrix(rep(seq(curve_at_grid_start, 0.1, length.out = 10), each = 4),
+              nrow = 4)
+  function(object, resolution = 1000, x_range = NA) {
+    list(x = x, growth = g, survival = g, combined = g,
+         control = list(growth = rep(control_at, 4),
+                        survival = rep(control_at, 4),
+                        combined = rep(control_at, 4)))
+  }
+}
+
+test_that("ecx reads the control from preds$control, not the grid start", {
+  obj <- mock_hurdle()
+  # Grid starts at 2 but the control is 8. An EC50 measured from the control is
+  # reached at 4; measured from the grid start it is reached much earlier.
+  local_mocked_bindings(
+    hurdle_component_preds = hurdle_preds_stub(control_at = 8,
+                                               curve_at_grid_start = 2)
+  )
+  out <- ecx(obj, ecx_val = 50, posterior = TRUE)
+  # The target is 4, which the curve (2 down to 0.1) never reaches, so every
+  # draw is NA rather than an estimate read from the wrong reference.
+  expect_true(all(is.na(out)))
+})
+
+test_that("the estimator methods survive a censored draw", {
+  obj <- mock_hurdle()
+  local_mocked_bindings(
+    hurdle_component_preds = hurdle_preds_stub(control_at = 8,
+                                               curve_at_grid_start = 2)
+  )
+  # quantile() without na.rm stopped with "missing values and NaN's not
+  # allowed" here, on a vector the package had just built.
+  est <- suppressWarnings(ecx(obj, ecx_val = 50))
+  expect_equal(length(est), 3)
+  expect_warning(ecx(obj, ecx_val = 50), "not identified for 4 of 4 draws")
+})
+
+test_that("ecnsec honours type and refuses the two it cannot compute", {
+  obj <- mock_hurdle()
+  local_mocked_bindings(
+    hurdle_component_preds = hurdle_preds_stub(control_at = 8,
+                                               curve_at_grid_start = 2)
+  )
+  # absolute measures control to 0; range measures control to the curve's
+  # lowest predicted response, a shorter span, so the same decline is a larger
+  # percentage of it. The version this replaces returned the absolute answer
+  # whatever type was given.
+  abs_out <- ecnsec(obj, nsec = 5, type = "absolute")
+  rng_out <- ecnsec(obj, nsec = 5, type = "range")
+  expect_gt(rng_out[1], abs_out[1])
+  expect_error(ecnsec(obj, nsec = 5, type = "relative"), "not defined for a")
+  expect_error(ecnsec(obj, nsec = 5, type = "direct"), "names a response value")
+  expect_error(ecnsec(obj, nsec = 5, type = "nonsense"), "type must be one of")
+  expect_error(ecnsec(obj, nsec = 5, hormesis_def = "max"),
+               "hormesis_def has been removed")
+})

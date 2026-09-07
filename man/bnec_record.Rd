@@ -12,15 +12,27 @@ bnec_record(x)
 }
 \value{
 A \code{\link[base]{list}} with elements \code{requested} and
-\code{fitted}, both \code{\link[base]{character}} vectors of equation names;
-\code{excluded}, a \code{\link[base]{data.frame}} of the equations
+\code{attempted}, both \code{\link[base]{character}} vectors of equation
+names; \code{excluded}, a \code{\link[base]{data.frame}} of the equations
 \code{\link{bnec}} declined to attempt with the reason for each; and
 \code{substitutions}, a \code{\link[base]{data.frame}} of the changes made to
-the response, or \code{NULL} where none were made. \code{NULL} for an object
-fitted by a version that did not record it.
+the response, or \code{NULL} where none were made. \code{requested} is
+partitioned exactly by \code{attempted} and \code{excluded$model}.
+
+\code{attempted} is the set \code{\link{bnec}} tried to fit, not the set
+that sampled: an equation that was attempted and failed appears here, and
+for \code{\link{bnec}} and \code{\link{amend}} also in
+\code{\link{failed_models}}. The name was chosen over \code{fitted} for
+that reason. \code{\link[stats]{update}} does not record failures, so an
+equation whose refit failed stays in \code{attempted} and is not reported
+by \code{\link{failed_models}}.
+
+The record is kept through \code{\link[stats]{update}} and
+\code{\link{amend}}. \code{NULL} for an object fitted by a version that
+did not record it.
 }
 \description{
-Reports the candidate set as requested, the candidate set as fitted, the
+Reports the candidate set as requested, the candidate set attempted, the
 equations excluded and why, and any substitution made in the response.
 }
 \details{
@@ -31,7 +43,7 @@ represent --- a zero under \code{Gamma} or \code{Beta}, a one under
 discarded, so neither could be recovered from the returned object: only from
 console output, which a knitted document or a call wrapped in
 \code{\link[base]{suppressMessages}} does not keep. The set as requested, the
-set as fitted, the reason for the difference, and what was altered in the
+set attempted, the reason for the difference, and what was altered in the
 data are exactly what a methods section has to state.
 
 Two of the three substitutions were silent even on the console, so a user

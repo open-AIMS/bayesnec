@@ -181,17 +181,20 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 1000,
   }, numeric(1))
   n_missing <- sum(is.na(nsec_out))
   nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
+  bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
+  # xform reaches the censoring bound as well as the estimates, and the warning
+  # follows both, so that the bound is on the scale the caller reads the
+  # estimate on. See the same reordering in ecx.bayesnecfit.
+  if (inherits(xform, "function")) {
+    nsec_out <- xform(nsec_out)
+    bound <- xform(bound)
+  }
   if (n_missing > 0) {
-    # The bound is reported on the scale the estimate is returned on.
     warning("The ", object$model, " curve does not fall below the control's ",
             sig_val, " quantile anywhere in the predictor range for ",
             n_missing, " of ", length(nsec_out), " draws, which return NA. ",
-            "The NSEC is censored above ",
-            signif(sub_x_transformation(max(x_vec), object$bayesnecformula), 3),
-            ".", call. = FALSE)
-  }
-  if (inherits(xform, "function")) {
-    nsec_out <- xform(nsec_out)
+            "The NSEC is censored above ", signif(bound, 3), ".",
+            call. = FALSE)
   }
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals, na.rm = TRUE)
   names(nsec_estimate) <- clean_names(nsec_estimate)

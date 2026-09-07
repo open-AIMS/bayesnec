@@ -87,7 +87,11 @@
   differ for a hormetic one, where the maximum is the peak at the *NEC*, so
   every ECx reported for a hormesis equation changes. `nsec()` was already
   anchored on the control except for a `hormesis_def == "max"` branch, which is
-  removed, so the two estimators now agree by construction (#195).
+  removed, so the two estimators now agree by construction (#195). The control
+  is read at the lowest *observed* concentration rather than at the first column
+  of the prediction grid, on the `bayesnechurdlefit` class as well as the
+  single-fit one, so supplying `x_range` no longer changes any reported
+  estimate.
 
 - **`type` is a four-value vocabulary.** `"absolute"` (the default) measures
   control to 0; `"relative"` measures control to the equation's theoretical
@@ -97,7 +101,11 @@
   up to 2.1.3**, and supplying `type = "relative"` explicitly now warns, naming
   `"range"`, because the two are different quantities. `"relative"` is refused
   where the bound is infinite --- an equation with no `bot` under a family
-  unbounded below --- because there is then no denominator (#195).
+  unbounded below --- because there is then no denominator (#195). The same
+  four values are accepted wherever `type` is taken: `ecx()`, `nsec()`,
+  `ecnsec()`, `compare_estimates()`, `compare_posterior()` and
+  `average_estimates()`, each validating against one shared definition, and each
+  warning about the rename once for the call rather than once per fit.
 
 - **`hormesis_def` is removed** from `ecx()`, `nsec()`, `ecnsec()`,
   `compare_estimates()`, `compare_posterior()` and `average_estimates()`. With
@@ -121,7 +129,10 @@
   concentration in the series --- the furthest possible value from the truth,
   reported as an ECx with nothing said. The crossing is now found by
   interpolation between the bracketing grid points rather than snapped to the
-  nearer of them (#39).
+  nearer of them (#39). Every function that summarises such a posterior reports
+  the censoring and excludes the affected draws, `nec()` and the
+  `bayesnechurdlefit` methods included; they previously stopped with "missing
+  values and NaN's not allowed" on a posterior the package had itself written.
 
 - **`ecx_val` is no longer capped at 99.** Any value above 0 is accepted. Under
   `"absolute"` the reference is 0, so a value above 100 names a target below
@@ -131,13 +142,17 @@
 ## New
 
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
-  the candidate set as requested, the set as fitted, the equations excluded with
+  the candidate set as requested, the set attempted, the equations excluded with
   the reason for each, and any substitution made in the response. Both were
   reported by `message()` and then discarded, so neither could be recovered from
   the returned object --- only from console output, which a knitted document or
   a call wrapped in `suppressMessages()` does not keep. The set as requested,
-  the set as fitted, the reason for the difference, and what was altered in the
-  data are what a methods section has to state (#261, #93).
+  the set attempted, the reason for the difference, and what was altered in the
+  data are what a methods section has to state (#261, #93). The element is named
+  `attempted` rather than `fitted` because an equation that was attempted and
+  failed to sample appears in it and in `failed_models()`; `requested` is
+  partitioned exactly by `attempted` and `excluded$model`. The record is kept
+  through `update()`, and rebuilt by `amend()` for the set that call produced.
 
 - `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
   over-dispersion, alongside the median and the interval. It uses the whole
@@ -178,6 +193,37 @@
   otherwise by inverting numerically on the prediction grid, so the default case
   is correct without the caller having to know an inverse was needed (#160,
   #161).
+
+- `autoplot(x, ecx = TRUE)` no longer fails for a fit whose formula transforms
+  the predictor inline, such as `crf(log(raw_x + 1))`, when `xform` is left at
+  its default. Putting the estimate on the axis scale by inverting numerically
+  on the prediction grid returned a vector stripped of the `ecx_val` attribute
+  that labels the annotation, and the call ended in "replacement has length
+  zero". Supplying an `xform` took a different branch and was unaffected, which
+  is why the failure was specific to the default (#160, #161).
+
+- `compare_estimates()` and `compare_posterior()` no longer report
+  `prob = NA` for a comparison in which any draw is censored. The pairwise
+  probability is computed over the draw pairs where both estimates are
+  identified; a single unreached draw in either posterior previously voided the
+  whole comparison, and silently, the probability being a value rather than an
+  error (#39).
+
+- `plot()` and `autoplot()` annotate the same EC10 for a gaussian fit. `plot()`
+  asked for `type = "relative"` under its 2.1.3 meaning, the control-to-minimum
+  span, while `autoplot()` took the `ecx()` default, so the same fit was
+  annotated with two different quantities depending on which method drew it.
+  Both now ask for `type = "range"`, which is the span `plot()` intended: 0 is
+  not a meaningful floor for a response that can go negative. Under the renamed
+  `"relative"` that line would have annotated a third quantity, warned about a
+  rename the caller had not asked for, and errored outright for a `bot`-free
+  equation, which #206 has just made fittable under gaussian.
+
+- A `crf()` term naming more than one variable, such as `crf(log(offset + x))`,
+  is refused when an estimate is put back on the fitted scale rather than
+  silently inverted on whichever variable comes first. `simplify_formula()`
+  treats every variable inside `crf()` as the predictor, so such a formula has
+  no single predictor to invert on (#196).
 
 - Zero-bounded equations --- `nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`,
   `ecxwb2p3`, `ecxll3` --- are no longer dropped when `family = gaussian()`.
@@ -423,8 +469,11 @@
   said it repaired. That is #258's failure mode on a route #258 did not cover,
   because the write-back that fixed it lives in `fit_bayesnec()` and this path
   does not go through it. `has_family_changed()` is replaced by
-  `check_update_data()`, which returns the corrected frame alongside the family
-  (#274).
+  `check_update_data()`, which returns the corrected frame alongside the family.
+  Both routes into that check are covered: `update(family = )` with no
+  `newdata` reads the fit's stored data, so the corrected frame is passed there
+  too, while `newdata` stays `NULL` where nothing was corrected, which is what
+  tells `brms` to reuse the stored data (#274).
 
 - A `disp()` sub-model is now checked for finiteness before `brm()` sees it.
   `check_data()` tests the predictor and the response and names the column when
@@ -433,7 +482,9 @@
   frame. So `disp(~log(x))` on a predictor containing a zero produced a `brms`
   warning about the data in general, after which the fit did not run, with
   nothing naming the term responsible. The refusal names the term and is raised
-  from `bnec()` and `bnec_group()` before any model is fitted (#271).
+  from `bnec()` and `bnec_group()` before any model is fitted. A missing value
+  in such a term is reported as missing rather than as non-finite, since
+  `check_data()`'s complete-cases check cannot see those columns either (#271).
 
 - `set_distribution()` returned `NULL` for an integer vector containing negative
   values: the integer branch tested `min(x) >= 0` and had no `else`. Automatic
@@ -447,17 +498,33 @@
   one off the boundary for a `Beta` family --- now report what was substituted
   and how many rows. All three corrections are reported once per call from the
   user-facing entry points rather than once per model from `check_data()`, which
-  a model set repeated for every member. The substitutions are recorded on the
-  fitted object; see `bnec_record()` (#93).
+  a model set repeated for every member --- `bnec()`, `bnec_group()`,
+  `get_priors()` and `update()`. The substitutions are recorded on the fitted
+  object; see `bnec_record()`. `get_priors()` reports them because every prior
+  it returns is derived from the substituted response, and says so rather than
+  naming a fitted object it does not produce (#93).
 
-- The initial-value search is bounded by elapsed time as well as by attempts.
-  The cap was ten thousand attempts and nothing else, which on a twenty-row
-  dataset ran for 561 seconds for a single model, per model, with no output
-  while it ran, so a user could not tell a long search from a hang. The outcome
-  after exhausting it is Stan's own random initialisation, which is available at
-  the first attempt, so that time bought nothing. The default is now ten seconds
-  or a thousand attempts, whichever comes first, and the fallback message states
-  how many attempts were made, how long they took, and which model (#266).
+- The initial-value search reports that it is still running, rather than being
+  cut short. #266 measured 561 seconds for a single model on a twenty-row
+  dataset with no output while it ran, and proposed a smaller cap on the grounds
+  that the outcome after exhausting it --- Stan's own random initialisation ---
+  is available at the first attempt. Measured before changing it, that reasoning
+  does not hold: on a twenty-row, four-dose design `nec4param` needs 250
+  attempts to succeed at one seed and more than 1000 at two others, while
+  `nec3param` on the same data never succeeds. **A smaller cap would have turned
+  working fits into random initialisation, silently, on exactly the small
+  designs where good initial values matter most**, so the cap stays at 10,000.
+
+  What changes is the complaint itself: the search now says it is still running
+  once it passes twenty seconds, naming the model and the attempt count, so a
+  long search can be told from a hang. The fallback message reports how many
+  attempts were made and how long they took.
+
+  A wall-clock bound was tried and removed before release. It made the number of
+  attempts --- and so the initial values, and so the fit --- a function of
+  machine load: the search needs about 3.6 seconds on one packaged case when the
+  machine is idle and exceeded a ten-second budget under a parallel test run on
+  the same machine (#266).
 
 - `average_estimates()`, `compare_estimates()` and `compare_fitted()` took the
   *first* `n_samples` draws of a longer posterior and permuted those, rather
