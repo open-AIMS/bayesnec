@@ -35,9 +35,14 @@ test_that("adapt_delta is not raised for a transformed ogl term", {
   f <- bnf(y ~ crf(x, model = "nec3param") + ogl(g))
   bdat <- model.frame(f, data = d, run_par_checks = TRUE)
   gs <- parse_group_terms(f, "nec3param")
+  # init = "random" skips the initial-value search. It is not avoided for
+  # speed alone: this fixture cannot be initialised at all, so the search runs
+  # to the 1e4 cap -- 460 seconds measured -- and these assertions are about
+  # adapt_delta, not about inits. test-define_prior.R does the same thing for
+  # the same reason.
   args_for <- function(family, model = "nec3param", spec = gs) {
-    add_brm_defaults(list(), model, validate_family(family), d$x, d$y,
-                     skip_check = TRUE, custom_name = NULL,
+    add_brm_defaults(list(init = "random"), model, validate_family(family),
+                     d$x, d$y, skip_check = TRUE, custom_name = NULL,
                      group_spec = spec)$control$adapt_delta
   }
   # Transformed: no raise.
@@ -109,7 +114,7 @@ test_that("get_priors reports the ogl prior bnec() actually fits (#257)", {
   f <- y ~ crf(x, model = "nec3param") + ogl(g)
   gs <- parse_group_terms(bnf(f), "nec3param")
   fitted_pr <- suppressMessages(add_brm_defaults(
-    list(), "nec3param", validate_family("Beta"), d$x, d$y,
+    list(init = "random"), "nec3param", validate_family("Beta"), d$x, d$y,
     skip_check = TRUE, custom_name = NULL, group_spec = gs
   ))$prior
   reported <- suppressMessages(
