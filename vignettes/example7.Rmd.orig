@@ -42,8 +42,7 @@ the control without the percentage exceeding 100, several commonly used
 concentration-response models cannot generate one, and it looks anomalous on a
 plot. It is therefore common practice to remove it: by replacing the
 negative values with zero before fitting, by constraining the fitted curve so
-that its lower asymptote cannot fall below zero, by both, or — most commonly of
-all — by fitting a response distribution such as a Beta or a Gamma that has no
+that its lower asymptote cannot fall below zero, by both, or by fitting a response distribution such as a Beta or a Gamma that has no
 support below zero, so that the flooring happens as a side effect of a choice
 made for some other reason.
 
