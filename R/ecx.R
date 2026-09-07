@@ -210,18 +210,23 @@ ecx.bayesnecfit <- function(object, ecx_val = 10, resolution = 1000,
                                 asymptote)
   n_missing <- sum(is.na(ecx_out))
   ecx_out <- sub_x_transformation(ecx_out, object$bayesnecformula)
+  bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
+  # xform is applied to the censoring bound as well as to the estimates, and
+  # the warning is raised after both, so that the bound and the numbers the
+  # caller is about to read are on one scale. Reporting the bound before xform
+  # named the fitted scale beside estimates in concentrations -- on
+  # vignette("example1")'s xform = function(x) exp(x) - 1, a bound of 4.6 beside
+  # an estimate of 99.
+  if (inherits(xform, "function")) {
+    ecx_out <- xform(ecx_out)
+    bound <- xform(bound)
+  }
   if (n_missing > 0) {
-    # The bound is reported on the scale the estimate is returned on, which
-    # for an inline transformation is the fitted scale, not the raw grid.
     warning("The ", object$model, " curve does not reach the ", type,
             " ECx", ecx_val, " target anywhere in the predictor range for ",
             n_missing, " of ", length(ecx_out), " draws, which return NA. ",
-            "The estimate is censored above ",
-            signif(sub_x_transformation(max(x_vec), object$bayesnecformula), 3),
-            ".", call. = FALSE)
-  }
-  if (inherits(xform, "function")) {
-    ecx_out <- xform(ecx_out)
+            "The estimate is censored above ", signif(bound, 3), ".",
+            call. = FALSE)
   }
 
   ecx_estimate <- quantile(unlist(ecx_out), probs = prob_vals, na.rm = TRUE)
@@ -379,11 +384,21 @@ validate_ecx_type <- function(type, mc) {
 #' not, there is no bound and no denominator, so the request is refused rather
 #' than answered with a number that means nothing. See D15 ruling 6.
 #'
+#' A \code{\link{bayesmanecfit}} has no single \code{fit} to read \code{bot}
+#' from, and the quantity it needs is the model-averaged asymptote, because the
+#' curve it is the denominator for is the model-averaged curve. Assembled by
+#' \code{manec_asymptote()}. Without that branch, \code{ecnsec()} on a model set
+#' with \code{type = "relative"} failed inside \pkg{posterior} on a \code{NULL}
+#' \code{fit}, with a message naming neither the argument nor the class.
+#'
 #' @importFrom brms as_draws_df
 #' @noRd
 ecx_asymptote <- function(object, type) {
   if (!identical(type, "relative")) {
     return(NA_real_)
+  }
+  if (inherits(object, "bayesmanecfit")) {
+    return(manec_asymptote(object))
   }
   bot_draws <- as_draws_df(object$fit)[["b_bot_Intercept"]]
   if (!is.null(bot_draws)) {
@@ -399,6 +414,44 @@ ecx_asymptote <- function(object, type) {
          call. = FALSE)
   }
   0
+}
+
+#' The model-averaged theoretical asymptote
+#'
+#' Each equation's own asymptote --- its \code{bot} draws, or 0 where it has no
+#' \code{bot} --- thinned to the draws the weighting keeps and stacked in the
+#' order the model-averaged posterior stacks them.
+#'
+#' The stacking must match \code{posterior_epred.bayesmanecfit()} exactly, or
+#' element \emph{i} of the asymptote belongs to a different (equation, draw)
+#' pair than row \emph{i} of the curve it is the denominator for, and the
+#' resulting ECNSEC is a ratio of two unrelated quantities. Both use
+#' \code{names(mod_fits)} for the order and \code{pull_draw_index()} for the
+#' draws, which is what makes the pairing correct rather than coincidental.
+#' See #216.
+#'
+#' An equation that refuses \code{"relative"} --- no \code{bot} under a family
+#' unbounded below --- refuses here too, so the model set fails exactly where
+#' \code{ecx(type = "relative")} on the same set fails.
+#'
+#' @param object An object of class \code{\link{bayesmanecfit}}.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one asymptote per draw of the
+#' model-averaged posterior.
+#'
+#' @importFrom brms as_draws_df
+#' @noRd
+manec_asymptote <- function(object) {
+  model_set <- names(object$mod_fits)
+  sample_size <- min(vapply(object$mod_fits,
+                            function(x) nrow(as_draws_df(x$fit)), numeric(1)))
+  draw_index <- pull_draw_index(object, model_set, sample_size)
+  unlist(lapply(model_set, function(m) {
+    part <- suppressMessages(pull_out(object, model = m))
+    a <- ecx_asymptote(part, "relative")
+    idx <- draw_index[[m]]
+    if (length(a) == 1) rep_len(a, length(idx)) else a[idx]
+  }))
 }
 
 #' The x value at which each draw reaches its ECx target

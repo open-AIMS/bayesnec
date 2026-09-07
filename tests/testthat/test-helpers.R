@@ -250,3 +250,48 @@ test_that("to_axis_scale brings an estimate onto the axis scale", {
   expect_equal(to_axis_scale(log(50), b_log, f_log, raw, exp), 50,
                tolerance = 1e-8)
 })
+
+
+# ---- the crf() term must name one variable -----------------------------------
+
+test_that("sub_x_transformation refuses a crf() term with two variables", {
+  # simplify_formula() takes every variable inside crf() as the predictor
+  # (x_var <- all.vars(x_call), no subsetting), so such a formula has no single
+  # predictor to invert on. Taking the first would substitute into `offset` for
+  # crf(log(offset + x)) -- the same class of silent wrong answer as #196.
+  f <- bayesnecformula(y ~ crf(log(offset + x), model = "nec3param"))
+  expect_error(sub_x_transformation(100, f), "names 2 variables")
+})
+
+# ---- the annotation type a plotting method asks for --------------------------
+
+test_that("plot_ecx asks for range under gaussian and the default otherwise", {
+  skip_on_cran()
+  # plot() asked for "relative" under its 2.1.3 meaning, the control-to-minimum
+  # span; ggbnec_data() took the ecx() default. The same gaussian fit was
+  # therefore annotated with two different quantities depending on which method
+  # drew it, and after the rename plot()'s word named a third.
+  expect_equal(plot_ecx(nec4param, "gaussian"),
+               ecx(nec4param, type = "range"))
+  expect_equal(plot_ecx(nec4param, "beta"), ecx(nec4param))
+  # A type the caller named wins.
+  expect_equal(plot_ecx(nec4param, "gaussian", list(type = "absolute")),
+               ecx(nec4param, type = "absolute"))
+})
+
+
+test_that("to_axis_scale carries the estimate's attributes through", {
+  raw <- seq(1, 100, length.out = 100)
+  f_log <- bayesnecformula(y ~ crf(log(x), model = "nec3param"))
+  b_log <- stats::model.frame(f_log, data = data.frame(x = raw, y = runif(100)))
+  v <- structure(log(c(50, 40, 60)), ecx_val = 10, toxicity_estimate = "ecx")
+  # The numerical-inverse branch. bind_ecx() reads attr(., "ecx_val") and
+  # assigns it into a data frame, so a stripped vector is an error there rather
+  # than a missing label.
+  out <- to_axis_scale(v, b_log, f_log, raw)
+  expect_equal(attr(out, "ecx_val"), 10)
+  expect_equal(attr(out, "toxicity_estimate"), "ecx")
+  expect_equal(as.numeric(out), c(50, 40, 60), tolerance = 1e-3)
+  # An unidentified draw stays NA rather than being interpolated to an endpoint.
+  expect_true(is.na(to_axis_scale(c(log(50), NA), b_log, f_log, raw)[2]))
+})

@@ -273,11 +273,32 @@ algal growth-rate data. The issue measures that they fit cleanly and that model
 weights reject them when wrong. The separate `log`/`logit` link exclusion at
 `R/check_models.R:20` is untouched — it is reachable and it is correct.
 
-**#273 — measure both candidate priors, then choose.** Refit reference datasets
-under shape 5 with rate `4/m` and under shape 2 with rate `2/m`, and report the
-change in the `nec` posterior for a linearly spaced design and for a dataset with
-few concentrations. The issue's definition of done requires the measurement; the
-choice is made on it and recorded here.
+**#273 — `gamma(5, 4/m)`, chosen on consistency rather than on fits.** RF,
+2026-09-07, superseding the instruction to choose on a measurement. The three
+entries of `x_prs` are selected on the predictor's distribution, and two of them
+place their maximum density at a central measure of it: `beta(2, 2)` at the
+centre of the unit interval, `normal(median(x), ...)` at the median. The gamma
+entry should therefore peak at *m*, which `rate = 4/m` gives and `rate = 2/m`
+does not. It is also the only one of the three that did not do what `?bnec` and
+`vignette("example3")` describe.
+
+`gamma(2, 2/m)` was considered and rejected: its *mean* is *m* but its maximum
+density is at *m*/2, so it matches neither the documentation nor the convention
+the other two entries follow, both of which are specified by where the density
+peaks rather than by where its mean falls.
+
+**Refits were run and are not the basis of the decision.** They measured a
+bias-variance trade-off with no clear winner, which is not what settles a
+question about whether a default is internally consistent, and they have been
+removed from the record so that a later reader does not treat them as the
+argument. The one quantitative statement that remains is arithmetic rather than
+empirical: `(5 - 1) / (2/m)` equals `max(x)` exactly on a series spaced evenly
+from zero, so the old prior's mode sat on its own truncation bound.
+
+One thing the episode is worth keeping: `x_prs`'s entries are labelled with
+family names but are indexed on the \emph{predictor}'s distribution, so the
+`Gamma` entry is the one any non-negative predictor takes whatever the response
+family is. That is easy to read the other way round and now has its own test.
 
 **#93 — the two remaining response corrections message once and are recorded on
 the fit.** Once per `bnec()` call rather than once per model, stating what was

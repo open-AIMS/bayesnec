@@ -380,14 +380,42 @@ test_that("the update route writes back the correction it reports (#274)", {
   )
   expect_true(any(grepl("shifted", msgs)))
   expect_type(res, "list")
-  expect_named(res, c("changed_family", "data"))
+  expect_named(res, c("changed_family", "data", "substitutions"))
   expect_type(res$changed_family, "logical")
+  expect_s3_class(res$substitutions, "data.frame")
   # The zeros the message says were shifted are shifted in the frame returned.
   expect_equal(sum(d$y == 0), 3)
   expect_equal(sum(res$data$y == 0), 0)
   expect_true(all(res$data$y > 0))
   # Every other row is untouched.
   expect_equal(res$data$y[-(1:3)], d$y[-(1:3)])
+})
+
+test_that("the update route reports the substitution for a model set too", {
+  # The write-back corrects `data` inside the loop, so iteration 2 rebuilds the
+  # model frame from a response that no longer sits on the boundary and its own
+  # record is empty. Reading the last iteration's record therefore reported
+  # nothing at all for a model set -- which is what update.bnecfit() passes for
+  # any bayesmanecfit -- while reporting normally for a single model. The
+  # record is now taken from the first iteration. See #93.
+  skip_on_cran()
+  f <- nec4param
+  d <- f$fit$data
+  d$y <- abs(d$y)
+  d$y[1:3] <- 0
+  res <- NULL
+  msgs <- capture.output(
+    res <- check_update_data(list(f, f), d, Gamma(link = "identity")),
+    type = "message"
+  )
+  expect_true(any(grepl("shifted", msgs)))
+  expect_s3_class(res$substitutions, "data.frame")
+  expect_equal(res$substitutions$n_rows, 3)
+  # Reported once for the set, not once per member.
+  expect_equal(sum(grepl("have been shifted", msgs)), 1)
+  # And the correction still reaches the frame, from whichever iteration made
+  # it.
+  expect_equal(sum(res$data$y == 0), 0)
 })
 
 
@@ -405,6 +433,30 @@ test_that("a disp() sub-model that is not finite is refused, naming the term", {
   expect_error(
     check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~log(x))), d),
     "log\\(x\\)"
+  )
+  # A missing value is not an infinite one, and naming it as one pointed at
+  # log() of a zero, which is the wrong cause. check_data()'s complete-cases
+  # check cannot report it either: it is given the model frame, which by design
+  # does not contain a disp() term's columns.
+  d_na <- d
+  d_na$w <- c(NA, rep(1, nrow(d_na) - 1))
+  expect_error(
+    check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~w)), d_na),
+    "missing values"
+  )
+  expect_error(
+    check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~w)), d_na),
+    "\"w\""
+  )
+  # parse_disp_term()'s own refusals are raised from here rather than swallowed
+  # by a try(). Suppressing them deferred the error to add_brm_defaults(), which
+  # runs inside the per-model try() in bnec(), so one malformed formula printed
+  # the refusal once for every member of the model set.
+  expect_error(
+    check_disp_finite(
+      bnf(y ~ crf(x, model = "nec3param") + disp(~x) + disp(~log(x))), d
+    ),
+    "more than one"
   )
   expect_error(
     check_disp_finite(bnf(y ~ crf(x, model = "nec3param") + disp(~log(x))), d),

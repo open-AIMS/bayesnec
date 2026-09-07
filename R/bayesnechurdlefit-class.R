@@ -45,7 +45,17 @@ is_bayesnechurdlefit <- function(x) {
 #' truncated to the smaller.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{x}, \code{growth},
-#' \code{survival} and \code{combined}.
+#' \code{survival} and \code{combined}, and \code{control}, a list of the same
+#' three names holding one control value per draw.
+#'
+#' @details The control is the prediction at the lowest observed concentration,
+#' pinned to the same concentration on both sides, rather than the first column
+#' of the grid. Computed here rather than in each caller so that the control and
+#' the curve are truncated to the same draws by the same operation; reading the
+#' control off a differently truncated matrix would pair a draw's curve with
+#' another draw's reference. This is D15 ruling 2 applied to the two-block
+#' class: without it, supplying \code{x_range} changes every reported ECx and
+#' NSEC.
 #'
 #' @importFrom brms posterior_epred
 #'
@@ -72,10 +82,21 @@ hurdle_component_preds <- function(object, resolution = 1000, x_range = NA) {
   g <- posterior_epred(object$growth, newdata = nd_g$newdata, re_formula = NA)
   s <- posterior_epred(object$survival, newdata = nd_s$newdata,
                        re_formula = NA)
+  x_at <- hurdle_control_x(object)
+  epred_part <- function(part) {
+    function(nd) posterior_epred(part, newdata = nd, re_formula = NA)
+  }
+  c_g <- control_posterior(object$growth, nd_g$newdata, epred_part(object$growth),
+                           x_at = x_at)
+  c_s <- control_posterior(object$survival, nd_s$newdata,
+                           epred_part(object$survival), x_at = x_at)
   n <- min(nrow(g), nrow(s))
   g <- g[seq_len(n), , drop = FALSE]
   s <- s[seq_len(n), , drop = FALSE]
-  list(x = nd_g$x_vec, growth = g, survival = s, combined = g * s)
+  c_g <- c_g[seq_len(n)]
+  c_s <- c_s[seq_len(n)]
+  list(x = nd_g$x_vec, growth = g, survival = s, combined = g * s,
+       control = list(growth = c_g, survival = c_s, combined = c_g * c_s))
 }
 
 #' @noRd
@@ -137,8 +158,14 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
   }
-  g_post <- unlist(nec(object$growth, posterior = TRUE))
-  s_post <- unlist(nec(object$survival, posterior = TRUE))
+  # The component reports are muffled and one is raised below for the vector
+  # this method actually returns. Left on, a censored component was reported by
+  # each of the calls here and again by the report below, three times over for
+  # the combined value.
+  g_post <- without_censored_warning(unlist(nec(object$growth,
+                                                posterior = TRUE)))
+  s_post <- without_censored_warning(unlist(nec(object$survival,
+                                                posterior = TRUE)))
   if (which == "growth") {
     out <- g_post
   } else if (which == "survival") {
@@ -146,8 +173,10 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   } else {
     n <- min(length(g_post), length(s_post))
     out <- pmin(g_post[seq_len(n)], s_post[seq_len(n)])
-    g_type <- attr(nec(object$growth), "toxicity_estimate")
-    s_type <- attr(nec(object$survival), "toxicity_estimate")
+    g_type <- attr(without_censored_warning(nec(object$growth)),
+                   "toxicity_estimate")
+    s_type <- attr(without_censored_warning(nec(object$survival)),
+                   "toxicity_estimate")
     if (!identical(g_type, "nec") || !identical(s_type, "nec")) {
       message("At least one component is an ecx-type (NSEC) estimate, so the",
               " combined value is approximate. See ?nec.bayesnechurdlefit.")
@@ -156,7 +185,12 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
   if (inherits(xform, "function")) {
     out <- xform(out)
   }
-  estimate <- quantile(out, probs = prob_vals)
+  # na.rm and the report above it: either component may be an ecx-type fit
+  # whose no-effect estimate is read off the curve, and such a draw is NA where
+  # the curve never reaches the reference. pmin() propagates that into the
+  # combined value. See #39 and D15 ruling 3.
+  warn_censored_draws(out, "no-effect estimate")
+  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "toxicity_estimate") <- "nec"
   attr(out, "toxicity_estimate") <- "nec"
@@ -213,15 +247,20 @@ ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 1000,
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]
-  control <- p_samples[, 1]
+  # The control comes from hurdle_component_preds(), which reads it at the
+  # lowest observed concentration. Taking p_samples[, 1] instead made every
+  # estimate a function of x_range, which is what D15 ruling 2 removes for the
+  # single-fit class.
+  control <- preds$control[[which]]
   out <- ecx_from_posterior(p_samples, preds$x, ecx_val, type, control,
                             NA_real_)
   # Put the estimate back on the fitted scale, matching ecx.bayesnecfit.
   out <- sub_x_transformation(out, object$formula)
+  warn_censored_draws(out, paste0("ECx", ecx_val))
   if (inherits(xform, "function")) {
     out <- xform(out)
   }
-  estimate <- quantile(out, probs = prob_vals)
+  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "ecx_val") <- ecx_val
   attr(estimate, "resolution") <- resolution

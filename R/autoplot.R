@@ -313,8 +313,8 @@ ggbnec_data.bayesnecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                        x_grid_raw, xform))
   }
   if (add_ecx) {
-    ecx_vals <- to_axis_scale(ecx(x, ...), bdat, x$bayesnecformula,
-                              x_grid_raw, xform)
+    ecx_vals <- to_axis_scale(plot_ecx(x, x$fit$family$family, list(...)),
+                              bdat, x$bayesnecformula, x_grid_raw, xform)
     out <- bind_ecx(out, ecx_vals)
   }
   out
@@ -366,8 +366,10 @@ ggbnec_data.bayesmanecfit <- function(x, add_nec = TRUE, add_ecx = FALSE,
                                        x_grid_raw, xform))
   }
   if (add_ecx) {
-    ecx_vals <- to_axis_scale(ecx(x, ...), bdat, manec_formula,
-                              x_grid_raw, xform)
+    ecx_vals <- to_axis_scale(
+      plot_ecx(x, x$mod_fits[[1]]$fit$family$family, list(...)),
+      bdat, manec_formula, x_grid_raw, xform
+    )
     out <- bind_ecx(out, ecx_vals)
   }
   out

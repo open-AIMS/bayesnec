@@ -1,6 +1,26 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/master/examples
 # Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
-on: [push, pull_request]
+# A push to a branch that has an open pull request fires both `push` and
+# `pull_request`, so an unfiltered trigger ran the four-job matrix twice for
+# every push. With a stacked set of pull requests that is eight runs for one
+# propagated fix, on a repository that runs one job at a time, and the queue
+# never drained. Every other workflow here already filters; this one did not.
+#
+# `push` is now limited to the integration branches, and a branch with a pull
+# request is still checked through `pull_request`. Nothing loses coverage: a
+# stacked branch is checked on its own pull request, and again once GitHub
+# retargets that pull request to `dev` as the one below it merges.
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+  workflow_dispatch:
+
+# Supersede rather than queue. Pushing a correction to a branch whose check is
+# still running made both run to completion, and only the second was ever read.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 name: R-CMD-check
 

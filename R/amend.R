@@ -212,6 +212,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     old_weights <- if (is.null(old_method)) list() else list(method = old_method)
     loo_controls <- list(fitting = list(), weights = old_weights)
   }
+  bnec_rec <- attr(object, "bnec_record")
   model_set <- names(mod_fits)
   if (!is.null(drop)) {
     model_set <- handle_set(model_set, drop = drop)
@@ -228,7 +229,12 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   family <- mod_fits[[1]]$fit$family
   formula <- mod_fits[[1]]$bayesnecformula
   bdat <- model.frame(formula, data = data)
-  model_set <- check_models(model_set, family, bdat)
+  model_set <- check_models(model_set, family, bdat, record = TRUE)
+  # Stripped as soon as it is read, for the reason check_models() gives at its
+  # record block: `model_set` is passed on from here, and an attribute nobody
+  # expects makes it compare unequal to the plain character vector.
+  amend_excluded <- attr(model_set, "excluded")
+  model_set <- as.character(model_set)
   old_fits <- mod_fits
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
@@ -302,5 +308,75 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # Only the models this call attempted. Failures recorded on the object being
   # amended are not carried forward: a model that failed then may have been
   # dropped now, or is being retried here with different priors.
-  attach_failed_models(out, failed)
+  out <- attach_failed_models(out, failed)
+  # The candidate set changed, so the record is rebuilt rather than carried
+  # through. `substitutions` is not: amend() fits from the stored data with
+  # skip_check = TRUE, so it makes no substitution of its own and the one
+  # bnec() made still describes the response every model here was fitted to.
+  #
+  # Rebuilt only where there was a record to begin with. An object fitted by a
+  # version that did not record one has no `requested` to extend, and inventing
+  # `substitutions = NULL` for it would state that no substitution was made
+  # when what is true is that it is not known.
+  if (!is.null(bnec_rec)) {
+    out <- attach_bnec_record(
+      out, amend_requested(bnec_rec$requested, add), model_set,
+      amend_exclusions(bnec_rec, amend_excluded, model_set, add),
+      bnec_rec$substitutions
+    )
+  }
+  out
+}
+
+#' The candidate set an amended object was asked for
+#'
+#' @param requested The \code{requested} element of the record being amended.
+#' @param add The equations added by this call, or \code{NULL}.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#' @noRd
+amend_requested <- function(requested, add) {
+  union(as.character(requested), as.character(add))
+}
+
+#' The exclusions of an amended object, keeping requested partitioned exactly
+#'
+#' Three things can put an equation in \code{requested} but not in the set
+#' attempted: \code{check_models()} declined it in this call, it was declined
+#' in the call being amended and has not been asked for again, or the user
+#' dropped it here. All three are recorded, so that \code{requested} is
+#' partitioned by the set attempted and this table, as it is for
+#' \code{\link{bnec}}.
+#'
+#' @param bnec_rec The record being amended.
+#' @param excluded The \code{excluded} attribute from this call's
+#' \code{check_models()}.
+#' @param attempted The set this call attempted.
+#' @param add The equations added by this call, or \code{NULL}.
+#'
+#' @return A \code{\link[base]{data.frame}} of equation and reason.
+#' @noRd
+amend_exclusions <- function(bnec_rec, excluded, attempted, add) {
+  out <- if (is.null(excluded)) {
+    data.frame(model = character(), reason = character(),
+               stringsAsFactors = FALSE)
+  } else {
+    excluded
+  }
+  requested <- amend_requested(bnec_rec$requested, add)
+  unaccounted <- setdiff(requested, c(attempted, out$model))
+  if (length(unaccounted) == 0) {
+    return(out)
+  }
+  prior <- bnec_rec$excluded
+  reasons <- vapply(unaccounted, function(m) {
+    hit <- which(prior$model == m)
+    if (length(hit) > 0) {
+      prior$reason[hit[1]]
+    } else {
+      "dropped by amend()"
+    }
+  }, character(1), USE.NAMES = FALSE)
+  rbind(out, data.frame(model = unaccounted, reason = reasons,
+                        stringsAsFactors = FALSE))
 }

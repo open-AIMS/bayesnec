@@ -1,6 +1,6 @@
 #' What \code{bnec()} did to your request before fitting
 #'
-#' Reports the candidate set as requested, the candidate set as fitted, the
+#' Reports the candidate set as requested, the candidate set attempted, the
 #' equations excluded and why, and any substitution made in the response.
 #'
 #' @details \code{\link{bnec}} decides which of the requested equations it will
@@ -10,7 +10,7 @@
 #' discarded, so neither could be recovered from the returned object: only from
 #' console output, which a knitted document or a call wrapped in
 #' \code{\link[base]{suppressMessages}} does not keep. The set as requested, the
-#' set as fitted, the reason for the difference, and what was altered in the
+#' set attempted, the reason for the difference, and what was altered in the
 #' data are exactly what a methods section has to state.
 #'
 #' Two of the three substitutions were silent even on the console, so a user
@@ -21,12 +21,24 @@
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{requested} and
-#' \code{fitted}, both \code{\link[base]{character}} vectors of equation names;
-#' \code{excluded}, a \code{\link[base]{data.frame}} of the equations
+#' \code{attempted}, both \code{\link[base]{character}} vectors of equation
+#' names; \code{excluded}, a \code{\link[base]{data.frame}} of the equations
 #' \code{\link{bnec}} declined to attempt with the reason for each; and
 #' \code{substitutions}, a \code{\link[base]{data.frame}} of the changes made to
-#' the response, or \code{NULL} where none were made. \code{NULL} for an object
-#' fitted by a version that did not record it.
+#' the response, or \code{NULL} where none were made. \code{requested} is
+#' partitioned exactly by \code{attempted} and \code{excluded$model}.
+#'
+#' \code{attempted} is the set \code{\link{bnec}} tried to fit, not the set
+#' that sampled: an equation that was attempted and failed appears here, and
+#' for \code{\link{bnec}} and \code{\link{amend}} also in
+#' \code{\link{failed_models}}. The name was chosen over \code{fitted} for
+#' that reason. \code{\link[stats]{update}} does not record failures, so an
+#' equation whose refit failed stays in \code{attempted} and is not reported
+#' by \code{\link{failed_models}}.
+#'
+#' The record is kept through \code{\link[stats]{update}} and
+#' \code{\link{amend}}. \code{NULL} for an object fitted by a version that
+#' did not record it.
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{models}}, \code{\link{check_data}}
 #'
@@ -53,18 +65,18 @@ bnec_record <- function(x) {
 #'
 #' @param out The fitted object.
 #' @param requested The equations the user asked for.
-#' @param fitted The equations that were attempted.
+#' @param attempted The equations that were attempted.
 #' @param excluded The \code{excluded} attribute from \code{check_models()}.
 #' @param substitutions The \code{substitutions} element of
 #' \code{check_data()}'s return.
 #'
 #' @return \code{out}, with the record attached.
 #' @noRd
-attach_bnec_record <- function(out, requested, fitted, excluded,
+attach_bnec_record <- function(out, requested, attempted, excluded,
                                substitutions) {
   attr(out, "bnec_record") <- list(
     requested = as.character(requested),
-    fitted = as.character(fitted),
+    attempted = as.character(attempted),
     excluded = if (is.null(excluded)) {
       data.frame(model = character(), reason = character(),
                  stringsAsFactors = FALSE)
