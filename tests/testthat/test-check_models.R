@@ -59,7 +59,8 @@ test_that("keeps zero bounded models for the gaussian family (#206)", {
                c("nec3param", "nec4param", "ecxexp"))
   # A single zero-bounded equation named explicitly used to be an error,
   # because the set emptied.
-  expect_equal(check_models("nec3param", gaussian_family_default), "nec3param")
+  expect_equal(check_models("nec3param", gaussian_family_default), "nec3param",
+               ignore_attr = TRUE)
   expect_silent(check_models(mod_groups$zero_bounded, gaussian_family_default))
   # The link exclusion is a different condition and still applies.
   gaussian_family_log <- validate_family(gaussian(link = "log"),
@@ -110,4 +111,37 @@ test_that("models() rejects ranges and names it cannot map", {
   for (grp in names(models())) {
     expect_setequal(names(models(grp)), models()[[grp]])
   }
+})
+
+
+test_that("check_models records which equations it excluded, and why (#261)", {
+  # bnec() decided which equations it would not attempt, told the user once by
+  # message(), and discarded the decision, so the composition of the candidate
+  # set could not be recovered from the fit -- only from console output, which
+  # a knitted document or a suppressMessages() call does not keep.
+  beta_identity <- validate_family(Beta(link = "identity"),
+                                   link_source = "chosen")
+  kept <- suppressMessages(check_models(mod_groups$all, beta_identity,
+                                       record = TRUE))
+  rec <- attr(kept, "excluded")
+  expect_s3_class(rec, "data.frame")
+  expect_named(rec, c("model", "reason"))
+  # The record and the returned set partition the requested set exactly.
+  expect_setequal(c(as.character(kept), rec$model), mod_groups$all)
+  expect_length(intersect(as.character(kept), rec$model), 0)
+  # Every excluded equation carries a non-empty reason.
+  expect_true(all(nzchar(rec$reason)))
+  expect_true("neclin" %in% rec$model)
+  expect_match(rec$reason[rec$model == "neclin"], "unbounded below")
+})
+
+test_that("an empty exclusion record is still a data frame", {
+  # The edge case: nothing dropped. A NULL here would make every downstream
+  # nrow() and rbind() conditional.
+  gaussian_identity <- validate_family("gaussian")
+  kept <- suppressMessages(check_models(c("nec4param", "ecx4param"),
+                                        gaussian_identity, record = TRUE))
+  rec <- attr(kept, "excluded")
+  expect_s3_class(rec, "data.frame")
+  expect_equal(nrow(rec), 0)
 })

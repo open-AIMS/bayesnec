@@ -278,6 +278,10 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
 #'
 #' @param x A \code{\link[base]{numeric}} vector containing the x predictor.
 #' @param y A \code{\link[base]{numeric}} vector containing the y response.
+#' @param report_after A \code{\link[base]{numeric}} value, the number of
+#' seconds after which the search says it is still running. It does not end the
+#' search: the only bound is \code{n_trials}, so that the initial values a
+#' given seed produces do not depend on how busy the machine is.
 #' @param n_trials A \code{\link[base]{numeric}} vector indicating
 #' how many attempts the function should run before giving up.
 #' @param seed seed number for reproducible random number generation. Defaults
@@ -288,7 +292,8 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
-make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
+make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL,
+                            report_after = 20, ...) {
   limits <- range(y, na.rm = TRUE)
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
@@ -296,10 +301,33 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
   dots <- list(...)
   priors_df <- blank_bounds_to_na(as.data.frame(dots$priors))
   priors_df <- priors_df[priors_df$prior != "", ]
+  started <- Sys.time()
   set.seed(seed)
   inits <- make_inits(model, fct_args, ...)
   init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
   are_good <- all(sapply(init_ranges, check_init_predictions, limits))
+  # #266 objects that this ran 561 seconds for a single model with no output,
+  # and proposes a smaller cap on the grounds that the outcome after exhausting
+  # it -- Stan's own random initialisation -- is available at the first attempt.
+  # Measured before changing it, and that reasoning does not hold: a search that
+  # succeeds is not equivalent to one that stops early. On a twenty-row,
+  # four-dose dataset nec4param needed 250 attempts to succeed at one seed and
+  # more than 1000 at two others, while nec3param on the same data never
+  # succeeded at all. A cap of 1e3 would therefore have turned working fits into
+  # random initialisation, silently, on exactly the small designs where good
+  # initial values matter most. The cap stays at 1e4.
+  #
+  # A wall-clock bound was tried and removed. It made the number of attempts,
+  # and so the initial values, and so the fit, a function of machine load: the
+  # search needs about 3.6 s idle on one packaged case and exceeded a 10 s
+  # budget under a parallel test run on the same machine. A fit whose starting
+  # values depend on what else is running is not reproducible, and #266 asked
+  # for time not to be wasted, not for results to change.
+  #
+  # What is fixed instead is the actual complaint: a user watching a long search
+  # could not tell it from a hang. It now says so while it runs.
+  started <- Sys.time()
+  reported <- FALSE
   n_t <- 1
   while (!are_good && n_t <= n_trials) {
     inits <- make_inits(model, fct_args, ...)
@@ -315,11 +343,26 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL, ...) {
       are_good <- all(sapply(init_ranges, check_init_predictions, limits))
     }
     n_t <- n_t + 1
+    # Said once, the first time the search passes report_after seconds, so a
+    # long search is distinguishable from a hang without a message per attempt.
+    if (!reported &&
+          as.numeric(Sys.time() - started, units = "secs") > report_after) {
+      message("Still searching for initial values for the ", model,
+              " model (", n_t, " of ", n_trials, " attempts so far). This can",
+              " take a few minutes for a small or awkward design; the fit will",
+              " proceed on Stan's default initialisation if it does not",
+              " succeed.")
+      reported <- TRUE
+    }
   }
   if (!are_good) {
+    elapsed <- as.numeric(Sys.time() - started, units = "secs")
     message("bayesnec failed to find initial values within the",
-            " range of the response. Using Stan's default",
-            " initialisation process.")
+            " range of the response for the ", model, " model after ", n_t,
+            " attempts and ", signif(elapsed, 2), " seconds. Using Stan's",
+            " default initialisation process. This usually means the priors",
+            " and the response do not overlap; get_priors() reports the priors",
+            " in use.")
     list(random = "random")
   } else {
     inits

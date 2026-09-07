@@ -327,3 +327,30 @@ test_that("nec is truncated at the recorded predictor range", {
   expect_equal(as.numeric(pr$lb[pr$nlpar == "nec"]), 0)
   expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
 })
+
+test_that("get_priors reports the substitution its priors are built from", {
+  # check_data() can shift the response off a boundary before the prior is
+  # derived from it, and every prior this function returns is derived from that
+  # response. The messages were moved out of check_data() so that a model set
+  # would not repeat them once per member; without a call at this entry point
+  # that made the route silent, where it previously reported the Gamma
+  # correction. See #93 and D16.
+  d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
+                  y = rep(c(8, 6, 3, 0), each = 5))
+  expect_message(
+    get_priors(y ~ crf(x, model = "nec3param"), data = d,
+               family = Gamma(link = "identity")),
+    "have been shifted"
+  )
+  # Reported once for the set, not once per member.
+  msgs <- capture.output(
+    invisible(get_priors(y ~ crf(x, model = c("nec3param", "nec4param")),
+                         data = d, family = Gamma(link = "identity"))),
+    type = "message"
+  )
+  expect_equal(sum(grepl("have been shifted", msgs)), 1)
+  # And it does not point the user at ?bnec_record, which names something this
+  # call does not produce.
+  expect_false(any(grepl("bnec_record", msgs)))
+  expect_true(any(grepl("priors below are derived", msgs)))
+})

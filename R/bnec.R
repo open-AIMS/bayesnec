@@ -569,6 +569,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # smaller sample than was supplied. check_data() keeps the check for the
   # routes that do not come through here. See #278.
   check_complete_cases(bdat)
+  # Checked against `data`, not `bdat`: a disp(~...) term's variables are kept
+  # out of the model frame on purpose, because brm() is handed the user's full
+  # data frame and resolves them itself. Raised here for the reason above --
+  # check_data() runs once per model, and the default model argument is a set.
+  # See #271.
+  check_disp_finite(formula, data)
   model <- get_model_from_formula(formula)
   brm_args <- list(...)
   # `prior` is an explicit argument (rather than relying on `...`) so that a
@@ -616,7 +622,30 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # get_priors(). Both are true and both must be resolved, so the order does
   # not change what the user has to do.
   check_inline_boundary(bdat, brm_args$family)
-  model <- check_models(model, brm_args$family, bdat)
+  requested_models <- model
+  model <- check_models(model, brm_args$family, bdat, record = TRUE)
+  excluded_models <- attr(model, "excluded")
+  # Stripped as soon as it has been read. The single-model branch below passes
+  # `model` straight to fit_bayesnec(), which stores it as out$model, and to
+  # expand_nec(), which forwards it to brms as model_name -- so the record rode
+  # along as an attribute on a character(1), printed with every such fit, was
+  # serialised twice, and made identical(fit$model, "nec3param") FALSE. The
+  # multi-model branch escaped it only because `model[m]` drops attributes.
+  # check_models() warns about exactly this at its record block. See #261.
+  model <- as.character(model)
+  # Reported once here rather than from check_data(), which runs once per
+  # model. Computed from the same model frame and family the loop will use, so
+  # what is reported is what will be done. See #93 and D16.
+  # retrieve_cens(), not retrieve_var(bdat, "cens_var"): a censoring indicator
+  # is often a character vector ("none", "left", "right"), and retrieve_var()
+  # refuses a non-numeric column. This is how check_data() reads it, and
+  # reading it any other way made a censored hurdle fit error before it
+  # started. See #93.
+  substitutions <- substitution_record(
+    retrieve_var(bdat, "y_var", error = TRUE), retrieve_cens(bdat),
+    brm_args$family
+  )
+  report_substitutions(substitutions)
   model_survival <- check_model_survival(model_survival, brm_args$family, bdat)
   loo_controls <- define_loo_controls(loo_controls, brm_args$family$family)
   if (length(model) == 0) {
@@ -658,6 +687,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     # bayesnecfit, and that is exactly the case where knowing what happened to
     # the other twenty-two matters most.
     out <- attach_failed_models(out, failed)
+    out <- attach_bnec_record(out, requested_models, model,
+                              excluded_models, substitutions)
     message_control_fit(out)
     out
   } else {
@@ -669,6 +700,8 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                           resolution = resolution, sig_val = sig_val,
                           loo_controls = loo_controls, model = model)
     out <- allot_class(mod_fit, c("bayesnecfit", "bnecfit"))
+    out <- attach_bnec_record(out, requested_models, model,
+                              excluded_models, substitutions)
     message_control_fit(out)
     out
   }

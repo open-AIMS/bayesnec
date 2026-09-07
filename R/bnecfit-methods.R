@@ -141,6 +141,12 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   if (!original_class %in% c("bayesnecfit", "bayesmanecfit")) {
     stop("Object is not of class bayesnecfit or bayesmanecfit.")
   }
+  # Read before recover_prebayesnecfit() replaces `object` with the list of
+  # prebayesnecfits. expand_manec() and expand_nec() build a new object, so an
+  # attribute not re-attached at the end of this method is lost, and
+  # bnec_record() then returned NULL for a fit this version had recorded --
+  # which is the one thing the documented NULL is supposed to rule out.
+  bnec_rec <- attr(object, "bnec_record")
   object <- recover_prebayesnecfit(object)
   dot_args <- list(...)
   # The family is validated at this entry point rather than forwarded untouched
@@ -168,7 +174,40 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   }
   if (!is.null(newdata) || "family" %in% names(dot_args)) {
     data_to_check <- if (is.null(newdata)) object[[1]]$fit$data else newdata
-    changed_family <- has_family_changed(object, data_to_check, dot_args$family)
+    checked <- check_update_data(object, data_to_check, dot_args$family,
+                                 on_fit = !is.null(bnec_rec))
+    changed_family <- checked$changed_family
+    # The substitutions are those of the data this call fitted, so they replace
+    # rather than add to the ones bnec() recorded. The candidate set is not
+    # touched by update(), so `requested`, `attempted` and `excluded` are
+    # carried through unchanged.
+    #
+    # Single-bracket assignment of a one-element list, not `$<-`: `$<-` with a
+    # NULL value deletes the name, so an update that substituted nothing
+    # returned a three-name record where bnec() and amend() return four. The
+    # element has to stay present and NULL, which is how attach_bnec_record()
+    # builds it.
+    if (!is.null(bnec_rec)) {
+      bnec_rec["substitutions"] <- list(checked$substitutions)
+    }
+    # The corrected frame replaces the caller's newdata, so a boundary shift
+    # check_data() reported is the one brms::update() is given. Without this
+    # the message was emitted and the correction thrown away. See #274.
+    #
+    # The family-only route needs the substitution too, and guarding this on
+    # `!is.null(newdata)` alone left it out. update(family = Beta(link =
+    # "identity"), force_fit = TRUE) on a fit whose stored response holds an
+    # exact 0 or 1 checks object[[1]]$fit$data, reports the shift, and then
+    # passed newdata = NULL to brms::update() -- so brms refitted the
+    # unshifted stored data and Stan failed on the boundary just reported
+    # repaired. That is #274's failure mode on the second of its two routes.
+    #
+    # NULL is still passed where nothing was corrected. That is what tells
+    # brms to reuse the stored data rather than treat it as new, and it keeps
+    # the data_name attribute brms deparses and prints.
+    if (!is.null(newdata) || !identical(checked$data, data_to_check)) {
+      newdata <- checked$data
+    }
   } else {
     changed_family <- FALSE
   }
@@ -213,7 +252,7 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
     object <- expand_manec(object, formula = formulas, x_range = x_range,
                            resolution = resolution, sig_val = sig_val,
                            loo_controls = loo_controls)
-    allot_class(object, c("bayesmanecfit", "bnecfit"))
+    out <- allot_class(object, c("bayesmanecfit", "bnecfit"))
   } else if (length(object) == 1) {
     if (inherits(object[[1]], "somethingwentwrong")) {
       stop("Your attempt to update the original model(s) failed. Perhaps you",
@@ -223,8 +262,15 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
                            x_range = x_range, resolution = resolution,
                            sig_val = sig_val, loo_controls = loo_controls,
                            model = names(object))
-    allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
+    out <- allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
   } else {
     stop("Stan failed to update your objects.")
   }
+  # Re-attached rather than rebuilt: an object updated from one this version
+  # fitted keeps its record, and one updated from an older fit has none to
+  # keep, which is the documented meaning of a NULL record.
+  if (!is.null(bnec_rec)) {
+    attr(out, "bnec_record") <- bnec_rec
+  }
+  out
 }

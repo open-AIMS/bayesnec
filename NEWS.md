@@ -61,6 +61,29 @@
   zero, which is a real measurement on a response that can go negative and is
   what OECD TG 201 reports rather than truncating at 100 per cent.
 
+## New
+
+- **`bnec_record()`** reports what `bnec()` did to the request before fitting:
+  the candidate set as requested, the set attempted, the equations excluded with
+  the reason for each, and any substitution made in the response. Both were
+  reported by `message()` and then discarded, so neither could be recovered from
+  the returned object --- only from console output, which a knitted document or
+  a call wrapped in `suppressMessages()` does not keep. The set as requested,
+  the set attempted, the reason for the difference, and what was altered in the
+  data are what a methods section has to state (#261, #93). The element is named
+  `attempted` rather than `fitted` because an equation that was attempted and
+  failed to sample appears in it and in `failed_models()`; `requested` is
+  partitioned exactly by `attempted` and `excluded$model`. The record is kept
+  through `update()`, and rebuilt by `amend()` for the set that call produced.
+
+- `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
+  over-dispersion, alongside the median and the interval. It uses the whole
+  posterior rather than a point estimate or one tail quantile, and it is
+  symmetric: `1 - P(>1)` answers the under-dispersion question, which nothing
+  else reported. `summary()`'s weights table gains the matching
+  `dispersion_P_over_1` column. `?dispersion` now states that `beta_binomial`
+  adds variance to the binomial and so cannot address under-dispersion (#262).
+
 ## Bug fixes
 
 - `ecx()` and `nsec()` discarded any arithmetic inside an inline `crf()`
@@ -360,6 +383,79 @@
   by a guard that has already stopped on that input. Four
   `check_custom_name()` calls whose result nothing read are removed alongside
   them (#278).
+
+- `update()` with `newdata` reported a boundary correction and then discarded
+  it. The check ran `check_data()` on the new data, emitted its message, kept
+  only the family from the result and passed the user's raw `newdata` to
+  `brms::update()`, so the fit failed naming the condition the package had just
+  said it repaired. That is #258's failure mode on a route #258 did not cover,
+  because the write-back that fixed it lives in `fit_bayesnec()` and this path
+  does not go through it. `has_family_changed()` is replaced by
+  `check_update_data()`, which returns the corrected frame alongside the family.
+  Both routes into that check are covered: `update(family = )` with no
+  `newdata` reads the fit's stored data, so the corrected frame is passed there
+  too, while `newdata` stays `NULL` where nothing was corrected, which is what
+  tells `brms` to reuse the stored data (#274).
+
+- A `disp()` sub-model is now checked for finiteness before `brm()` sees it.
+  `check_data()` tests the predictor and the response and names the column when
+  either fails, but it inspects only the population variables `crf()` declares,
+  and a `disp(~...)` term's variables are deliberately kept out of the model
+  frame. So `disp(~log(x))` on a predictor containing a zero produced a `brms`
+  warning about the data in general, after which the fit did not run, with
+  nothing naming the term responsible. The refusal names the term and is raised
+  from `bnec()` and `bnec_group()` before any model is fitted. A missing value
+  in such a term is reported as missing rather than as non-finite, since
+  `check_data()`'s complete-cases check cannot see those columns either (#271).
+
+- `set_distribution()` returned `NULL` for an integer vector containing negative
+  values: the integer branch tested `min(x) >= 0` and had no `else`. Automatic
+  family selection read that `NULL` and the call failed reporting a `family`
+  argument the user had not supplied. An integer response with negative values
+  --- a difference, an increment, a change in a count between two times --- now
+  gets `gaussian`, which is what the equivalent numeric vector already got
+  (#272).
+
+- The two remaining silent corrections to the response --- shifting a zero and a
+  one off the boundary for a `Beta` family --- now report what was substituted
+  and how many rows. All three corrections are reported once per call from the
+  user-facing entry points rather than once per model from `check_data()`, which
+  a model set repeated for every member --- `bnec()`, `bnec_group()`,
+  `get_priors()` and `update()`. The substitutions are recorded on the fitted
+  object; see `bnec_record()`. `get_priors()` reports them because every prior
+  it returns is derived from the substituted response, and says so rather than
+  naming a fitted object it does not produce (#93).
+
+- The initial-value search reports that it is still running, rather than being
+  cut short. #266 measured 561 seconds for a single model on a twenty-row
+  dataset with no output while it ran, and proposed a smaller cap on the grounds
+  that the outcome after exhausting it --- Stan's own random initialisation ---
+  is available at the first attempt. Measured before changing it, that reasoning
+  does not hold: on a twenty-row, four-dose design `nec4param` needs 250
+  attempts to succeed at one seed and more than 1000 at two others, while
+  `nec3param` on the same data never succeeds. **A smaller cap would have turned
+  working fits into random initialisation, silently, on exactly the small
+  designs where good initial values matter most**, so the cap stays at 10,000.
+
+  What changes is the complaint itself: the search now says it is still running
+  once it passes twenty seconds, naming the model and the attempt count, so a
+  long search can be told from a hang. The fallback message reports how many
+  attempts were made and how long they took.
+
+  A wall-clock bound was tried and removed before release. It made the number of
+  attempts --- and so the initial values, and so the fit --- a function of
+  machine load: the search needs about 3.6 seconds on one packaged case when the
+  machine is idle and exceeded a ten-second budget under a parallel test run on
+  the same machine (#266).
+
+- `average_estimates()`, `compare_estimates()` and `compare_fitted()` took the
+  *first* `n_samples` draws of a longer posterior and permuted those, rather
+  than a random subset, so where components had unequal draw counts the tail of
+  the longer one was never used. Their documentation now states that the pairing
+  is stochastic and needs `set.seed()` for a reproducible result, and that it
+  assumes the posteriors come from separate fits --- two levels of one fit share
+  draws, and permuting them widens the difference posterior and pulls
+  `prob_diff` toward 0.5, which under-detects a real difference (#218).
 
 # bayesnec 2.1.4
 

@@ -158,11 +158,15 @@ test_that("check_data still nudges zeros for Gamma, and now says so", {
   dat <- data.frame(x = as.numeric(rep(1:4, each = 5)),
                     y = c(rep(10, 15), rep(3, 3), 0, 0))
   bdat <- model.frame(bnf(y ~ crf(x, "nec3param")), data = dat)
-  expect_message(
-    out <- bayesnec:::check_data(bdat, Gamma(link = "identity"), "nec3param"),
-    "hurdle_gamma"
+  # The nudge still happens; the message that names hurdle_gamma as the remedy
+  # now comes from report_substitutions(), which bnec() calls once per call.
+  # See #93.
+  expect_silent(
+    out <- bayesnec:::check_data(bdat, Gamma(link = "identity"), "nec3param")
   )
   expect_equal(sum(out$mod_dat$y == 0), 0)
+  expect_message(bayesnec:::report_substitutions(out$substitutions),
+                 "hurdle_gamma")
 })
 
 test_that("extract_pars anchors on the parameter name", {

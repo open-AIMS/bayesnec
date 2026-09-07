@@ -857,3 +857,59 @@ test_that("group_inits works for a formula carrying a rate() aterm", {
   expect_equal(dim(gi$z_1), c(1L, 12L))
   expect_true(all(gi$z_1 == 0))
 })
+
+
+test_that("the search is bounded by attempts alone, and the cap is 1e4", {
+  # A wall-clock bound was tried for #266 and removed: it made the number of
+  # attempts, and so the initial values, and so the fit, a function of machine
+  # load. Two of these assertions exist to stop it coming back.
+  expect_false("max_seconds" %in% names(formals(make_good_inits)))
+  expect_equal(formals(make_good_inits)$n_trials, quote(1e4))
+  # report_after says the search is still running; it must not end it.
+  expect_true("report_after" %in% names(formals(make_good_inits)))
+})
+
+test_that("the search is deterministic given a seed", {
+  # The property the wall-clock bound broke, and the reason it was removed: two
+  # runs with the same seed must agree whatever else the machine is doing. A
+  # time-bounded search does fewer attempts under load, so a busy machine got
+  # different initial values -- and therefore a different fit -- from an idle
+  # one. Asserted on the result rather than on the absence of the argument,
+  # which the sibling test above covers, because it is the behaviour that
+  # matters.
+  skip_on_cran()
+  x <- rep(c(1, 5, 20, 100), each = 5)
+  y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
+  pr <- suppressMessages(
+    define_prior("nec4param", validate_family("Beta"), x, y)
+  )
+  run <- function() {
+    suppressMessages(
+      make_good_inits("nec4param", x, y, n_trials = 20, seed = 42,
+                      priors = pr, chains = 2)
+    )
+  }
+  expect_equal(run(), run())
+})
+
+test_that("a long search says it is still running", {
+  # The actual complaint in #266: 561 seconds with no output, which a user
+  # cannot tell from a hang. report_after = 0 makes the notice fire on the
+  # first pass, so the assertion is on the mechanism rather than on a
+  # wall-clock reading, which would be load-sensitive.
+  skip_on_cran()
+  priors <- brms::prior_string("normal(1e6, 1)", nlpar = "top") +
+    brms::prior_string("normal(1e6, 1)", nlpar = "beta") +
+    brms::prior_string("normal(1e6, 1)", nlpar = "nec")
+  msg <- capture.output(
+    make_good_inits("nec3param", x = c(1, 5, 20, 100),
+                    y = c(0.9, 0.6, 0.3, 0.1), priors = priors, chains = 2,
+                    n_trials = 3, report_after = 0),
+    type = "message"
+  )
+  msg <- paste(msg, collapse = " ")
+  expect_match(msg, "Still searching")
+  expect_match(msg, "nec3param")
+  # and it still falls back when the cap is reached
+  expect_match(msg, "failed to find initial values")
+})

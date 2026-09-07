@@ -125,6 +125,103 @@ check_complete_cases <- function(data) {
        " those rows before fitting.", call. = FALSE)
 }
 
+#' Does every dispersion sub-model term evaluate to finite values?
+#'
+#' \code{check_data()} tests the predictor and the response for finiteness and
+#' names the column when either fails, but it inspects only the population
+#' variables \code{crf()} declares. A \code{disp(~...)} term is an arbitrary
+#' \pkg{brms} formula evaluated against the user's data frame, and its
+#' variables are deliberately kept out of the model frame -- \code{brm()} is
+#' handed the full data frame and resolves them itself -- so nothing tested
+#' them and an infinite value reached Stan. The fit then did not run, reporting
+#' a \pkg{brms} warning about the data in general with nothing naming the term
+#' responsible. See #271.
+#'
+#' Raised from \code{\link{bnec}} and \code{bnec_group()} rather than from
+#' \code{\link{check_data}}, which is the placement rule for a refusal that is
+#' a property of the data and the formula together. Here there is a second
+#' reason: \code{check_data()} is given the model frame, which by design does
+#' not contain the dispersion sub-model's columns, so it could not perform this
+#' check even if it were the right place for it.
+#'
+#' Only terms that evaluate to a numeric vector are tested. A smooth,
+#' \code{disp(~s(x))}, evaluates to a specification object rather than to
+#' numbers and is left to \pkg{brms}.
+#'
+#' @param formula A \code{\link{bayesnecformula}}.
+#' @param data A \code{\link[base]{data.frame}}, the one the user supplied.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#'
+#' @importFrom stats as.formula terms
+#' @noRd
+check_disp_finite <- function(formula, data) {
+  # parse_disp_term()'s own refusals -- more than one disp() term, and a term
+  # it cannot parse -- are raised from here rather than swallowed by a try().
+  # Suppressing them did not avoid the error, it deferred it to
+  # add_brm_defaults(), which runs inside the per-model try() in bnec(), so one
+  # malformed formula printed the refusal once for every member of the model
+  # set and ended on the generic all-models-failed advice. That is the pattern
+  # this check exists to remove.
+  disp_spec <- parse_disp_term(formula)
+  if (is.null(disp_spec) || !identical(disp_spec$route, "A")) {
+    return(invisible(NULL))
+  }
+  # parse_disp_term() returns the right-hand side as an expression string
+  # ("log(x)"), not as a formula string, so the tilde is added here. Without it
+  # as.formula() errors and the check silently passed everything.
+  disp_formula <- try(as.formula(paste("~", disp_spec$value)), silent = TRUE)
+  if (inherits(disp_formula, "try-error")) {
+    return(invisible(NULL))
+  }
+  labels <- attr(terms(disp_formula), "term.labels")
+  bad <- character(0)
+  incomplete <- character(0)
+  for (label in labels) {
+    values <- try(eval(str2lang(label), envir = data), silent = TRUE)
+    if (inherits(values, "try-error") || !is.numeric(values)) {
+      next
+    }
+    # NA and Inf are separated, and tested independently so a term with both
+    # is reported for both. They have different causes and different remedies,
+    # and check_complete_cases() cannot report the NA because it is given the
+    # model frame, which by design does not contain the dispersion sub-model's
+    # columns. Reporting a missing value as non-finite named log() of a zero
+    # as the usual cause, which is the wrong diagnosis.
+    if (anyNA(values)) {
+      incomplete <- c(incomplete, label)
+    }
+    if (!all(is.finite(values[!is.na(values)]))) {
+      bad <- c(bad, label)
+    }
+  }
+  msgs <- character(0)
+  if (length(incomplete) > 0) {
+    msgs <- c(msgs, paste0(
+      "The dispersion sub-model term(s) ",
+      paste0("\"", incomplete, "\"", collapse = "; "),
+      " contain missing values on your data. A dispersion sub-model's",
+      " variables are deliberately kept out of the model frame, so",
+      " check_data()'s complete-cases check does not see them and brms is",
+      " handed the NA. Drop or impute those rows before fitting."
+    ))
+  }
+  if (length(bad) > 0) {
+    msgs <- c(msgs, paste0(
+      "The dispersion sub-model term(s) ",
+      paste0("\"", bad, "\"", collapse = "; "),
+      " evaluate to values that are not finite on your data. A dispersion",
+      " sub-model is passed to brms unchanged, so this reaches Stan and the",
+      " fit does not run. Check the term against the columns it names --",
+      " log() of a zero and division by a zero are the usual causes."
+    ))
+  }
+  if (length(msgs) > 0) {
+    stop(paste(msgs, collapse = " "), call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' check_data
 #'
 #' Check data input for a Bayesian NEC model fit
@@ -215,14 +312,18 @@ check_data <- function(data, family, model) {
   # the hu block with nothing to identify itself from. fam_tag is
   # "hurdle_gamma" rather than "Gamma" in that case, so the condition below
   # already excludes it; the guard is explicit so it survives refactoring.
+  # The three nudges below are silent here and reported once from the
+  # user-facing entry points instead -- bnec(), bnec_group(), get_priors() and
+  # update(). check_data() runs once per model, so a message from here is
+  # repeated for every member of a model set; the substitution itself is a
+  # property of the data and the family, fixed for the whole call. This is the
+  # placement check_normalisation() and check_inline_boundary() already use.
+  # Two of the three were silent altogether, so a user comparing bayesnec
+  # against another engine had no way to see that the data had been altered.
+  # See #93 and D16.
   if (any(to_shift) & fam_tag == "Gamma" & !is_hurdle_family(fam_tag)) {
     min_val <- min(y[y > 0])
     data[to_shift, y_pos] <- y[to_shift] + (min_val / 10)
-    message("Your response contains zeros, which a Gamma distribution cannot",
-            " represent. They have been shifted to ", signif(min_val / 10, 3),
-            " (one tenth of the smallest non-zero value). If those zeros are",
-            " meaningful -- for example individuals that died -- consider",
-            " family = hurdle_gamma() instead, which models them explicitly.")
   }
   if (any(to_shift) & fam_tag == "beta") {
     min_val <- min(y[y > 0])
@@ -247,7 +348,97 @@ check_data <- function(data, family, model) {
     # are built from.
     mod_dat$denom <- rate_var
   }
-  list(mod_dat = mod_dat, family = family)
+  list(mod_dat = mod_dat, family = family,
+       substitutions = substitution_record(y, cens, family))
+}
+
+#' What check_data() substitutes in the response, and why
+#'
+#' The conditions mirror the three nudges in \code{\link{check_data}} exactly,
+#' censoring exemptions included, so the record describes what was done rather
+#' than restating the rule. Returned by \code{\link{check_data}}, reported
+#' once by \code{report_substitutions()} at each user-facing entry point, and
+#' stored on the fitted object so that a user comparing \pkg{bayesnec} against
+#' another engine can recover what was altered. See #93.
+#'
+#' @param y The response, as read from the model frame.
+#' @param cens The censoring indicator, or \code{NULL}.
+#' @param family A \code{\link[stats]{family}}.
+#'
+#' @return A \code{\link[base]{data.frame}} with one row per substitution
+#' rule that fired, or \code{NULL} where none did.
+#' @noRd
+substitution_record <- function(y, cens, family) {
+  fam_tag <- family$family
+  out <- list()
+  to_shift <- y == 0 & !is_censored(cens)
+  if (any(to_shift) && fam_tag %in% c("Gamma", "beta") &&
+        !is_hurdle_family(fam_tag)) {
+    min_val <- min(y[y > 0])
+    out[["zero"]] <- data.frame(
+      variable = "response", rule = "shifted off zero",
+      n_rows = sum(to_shift), from = 0, to = min_val / 10,
+      reason = paste0("a ", fam_tag,
+                      " distribution cannot represent a zero"),
+      remedy = if (identical(fam_tag, "Gamma")) {
+        "hurdle_gamma()"
+      } else {
+        "zero_inflated_beta()"
+      },
+      stringsAsFactors = FALSE
+    )
+  }
+  to_drop <- y == 1 & !is_censored(cens)
+  if (any(to_drop) && fam_tag %in% c("beta", "zero_inflated_beta")) {
+    out[["one"]] <- data.frame(
+      variable = "response", rule = "shifted off one",
+      n_rows = sum(to_drop), from = 1, to = 0.999,
+      reason = "a beta distribution is defined on the open interval (0, 1)",
+      remedy = NA_character_,
+      stringsAsFactors = FALSE
+    )
+  }
+  if (length(out) == 0) {
+    return(NULL)
+  }
+  do.call(rbind, out)
+}
+
+#' Report the response substitutions, once per call
+#'
+#' @param record The \code{substitutions} element of \code{check_data()}'s
+#' return.
+#' @param on_fit Does this caller return a fitted object that stores the
+#' record? \code{TRUE} for \code{\link{bnec}} and \code{update()};
+#' \code{FALSE} for \code{\link{get_priors}}, which returns priors, so
+#' pointing the user at \code{?bnec_record} there would name something the
+#' call does not produce.
+#'
+#' @return \code{NULL}, invisibly. Called for the message.
+#' @noRd
+report_substitutions <- function(record, on_fit = TRUE) {
+  if (is.null(record) || nrow(record) == 0) {
+    return(invisible(NULL))
+  }
+  where <- if (on_fit) {
+    " The substitution is recorded on the fitted object; see ?bnec_record."
+  } else {
+    " The priors below are derived from the substituted response."
+  }
+  for (i in seq_len(nrow(record))) {
+    r <- record[i, ]
+    extra <- if (!is.na(r$remedy)) {
+      paste0(" If those zeros are meaningful -- for example individuals that",
+             " died -- consider family = ", r$remedy, " instead, which models",
+             " them explicitly.")
+    } else {
+      ""
+    }
+    message("Your response contains ", r$n_rows, " value(s) at ", r$from,
+            ", which cannot be fitted because ", r$reason,
+            ". They have been shifted to ", signif(r$to, 3), ".", where, extra)
+  }
+  invisible(NULL)
 }
 
 #' Refuse a formula whose transformed response sits on a boundary its family

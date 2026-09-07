@@ -927,13 +927,14 @@ extract_formula <- function(x) {
 
 #' @noRd
 #' @importFrom stats model.frame
-has_family_changed <- function(x, data, family = NULL) {
+check_update_data <- function(x, data, family = NULL, on_fit = TRUE) {
   # A named argument rather than `...`: update.bnecfit() passed the family
   # positionally, so names(list(...)) was NULL, "family" %in% names() was
   # FALSE in retrieve_valid_family(), and the family was re-derived from the
   # data. The guard then compared the data-derived family against the fitted
   # one and could not detect a family change at all. See #256.
   brm_args <- if (is.null(family)) list() else list(family = family)
+  substitutions <- NULL
   for (i in seq_along(x)) {
     formula <- extract_formula(x[[i]])
     bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
@@ -944,9 +945,47 @@ has_family_changed <- function(x, data, family = NULL) {
     fam <- retrieve_valid_family(brm_args, bdat)
     model <- check_models(model, fam, bdat)
     checked_df <- check_data(data = bdat, family = fam, model = model)
+    # The corrections check_data() reports have to reach the data frame brms
+    # is given. This function used to read checked_df$family and discard the
+    # rest, so update(newdata = ) told the user their response had been shifted
+    # off a boundary and then passed the raw newdata to brms::update(), which
+    # failed naming the condition that had just been reported repaired. That is
+    # #258's failure mode on a route #258 did not cover, because the write-back
+    # that fixed it lives in fit_bayesnec() and this path does not go through
+    # it. See #274.
+    #
+    # Written back inside the loop so a model set converges on one corrected
+    # frame: every member shares the same response, and check_data() is
+    # deterministic given the family, so the correction each iteration computes
+    # is the same one.
+    #
+    # The record is captured on the first iteration rather than read from
+    # checked_df after the loop, and for the same reason: the write-back
+    # corrects `data` in place, so iteration 2 rebuilds bdat from a response
+    # that no longer sits on the boundary and substitution_record() returns
+    # NULL for it. Reading the last iteration's record reported nothing at all
+    # for a model set -- the object update.bnecfit() is given for any
+    # bayesmanecfit -- while reporting normally for a single model. See #93.
+    if (i == 1) {
+      substitutions <- checked_df$substitutions
+    }
+    data <- write_back_checks(data, bdat, "y_var", checked_df$mod_dat$y)
   }
-  !identical(family_signature(checked_df$family),
-             family_signature(x[[1]]$fit$family))
+  # Reported once, outside the loop, for the reason given in check_data(): the
+  # substitution is a property of the data and the family and does not need
+  # restating per model. See #93.
+  # on_fit is the caller's answer to whether the object it returns will store
+  # the record. update.bnecfit() re-attaches only where the input already had
+  # one, so updating a fit saved by a version from before bnec_record() existed
+  # would otherwise print "recorded on the fitted object; see ?bnec_record" and
+  # return an object whose bnec_record() is NULL.
+  report_substitutions(substitutions, on_fit = on_fit)
+  list(
+    changed_family = !identical(family_signature(checked_df$family),
+                                family_signature(x[[1]]$fit$family)),
+    data = data,
+    substitutions = substitutions
+  )
 }
 
 #' The tag and the links, which is what "a different family" means here
