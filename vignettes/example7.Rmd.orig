@@ -1256,7 +1256,7 @@ the same floored data and a true control value of 9.6%.
 vignette does not claim a mechanism for it. What these fits do settle is that an
 earlier and superficially reasonable explanation is wrong: that a Gamma's
 mean-squared variance overweights the low tail and flattens the descent. That
-would show up in `beta`, and `beta` is the parameter that does not move.
+would show up in `beta`, and `beta` is the parameter that does not change.
 
 ## Credible interval coverage
 
