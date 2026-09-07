@@ -485,11 +485,24 @@ test_that("a hurdle family gets group-level priors too", {
   # both blocks' own parameters are still there and untouched
   expect_true(all(c("top", "beta", "nec", "hutop", "hubeta", "hunec") %in%
                     pr$nlpar))
-  # scaled from the survivors, not from the whole response including the
-  # structural zeros
+  # Scaled from the survivors, not from the whole response including the
+  # structural zeros -- and then converted onto the scale the deviation is
+  # applied on. The mu block of hurdle_gamma is (0, Inf), so #257 applies the
+  # deviation multiplicatively and the width is the delta-method log-scale
+  # conversion s_y / mean(y), capped at a coefficient of variation of 1,
+  # rather than the response-scale s_y this used to assert.
+  surv <- y[y > 0]
+  s_y <- diff(range(surv)) / 10
+  expected <- signif(min(s_y / mean(surv), 1), 4)
   scale_got <- as.numeric(sub(".*, ([0-9.e+-]+)\\)$", "\\1",
                               pr$prior[pr$class == "sd"]))
-  expect_equal(scale_got, signif(diff(range(y[y > 0])) / 10, 4))
+  expect_equal(scale_got, expected)
+  # The survivors-only scaling is what is being asserted, so it is checked
+  # against the whole response as well: including the structural zeros would
+  # change both terms of the ratio.
+  expect_false(isTRUE(all.equal(scale_got,
+                               signif(min((diff(range(y)) / 10) / mean(y), 1),
+                                      4))))
 })
 
 test_that("a group-level term on a hurdle reaches the mu block only", {

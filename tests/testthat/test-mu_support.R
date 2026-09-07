@@ -138,7 +138,8 @@ test_that("the model range table covers every model exactly once", {
   expect_setequal(tab$model, models()$all)
   expect_equal(anyDuplicated(tab$model), 0)
   expect_setequal(names(tab), c("model", "below_zero", "unscaled_excess",
-                               "ceiling_at_one", "zero_asymptote"))
+                               "can_exceed_one", "ceiling_at_one",
+                               "zero_asymptote"))
 })
 
 # --- the table regenerated from the formulas -------------------------------
@@ -437,21 +438,55 @@ test_that("ogl_transform_kind refuses the equations the transform is undefined f
     expect_equal(ogl_transform_kind(m, beta), "none")
     expect_equal(ogl_transform_kind(m, validate_family("Gamma")), "none")
   }
-  # Can exceed 1: logit is NaN. vignette("example2b") documents nechormepwr as
-  # able to produce predictions greater than 1.
-  expect_equal(ogl_transform_kind("nechormepwr", beta), "none")
-  expect_equal(ogl_transform_kind("nechorme4pwr", beta), "none")
+  # Can exceed 1: logit is NaN, and the collapsed form has a pole at
+  # o = log((m - 1) / m) once m > 1 and changes sign across it. ALL SIX
+  # hormesis equations with an excess term are excluded, not only the two whose
+  # excess carries no coefficient -- the gate needs the mean to be provably
+  # strictly inside (0, 1), and "the fit can shrink the term" is not that.
+  # An earlier version of this test asserted "logit" for nechorme on the
+  # grounds that scaled hormesis is bounded by top; model_mu_ranges()'s own
+  # documentation says otherwise, and it is right.
+  for (m in c("nechormepwr", "nechorme4pwr", "nechorme", "nechorme4",
+              "ecxhormebc4", "ecxhormebc5")) {
+    expect_equal(ogl_transform_kind(m, beta), "none")
+  }
   # Saturates at exactly 1, where logit is Inf.
   expect_equal(ogl_transform_kind("nechormepwr01", beta), "none")
-  # Scaled hormesis is bounded by top and is admissible.
-  expect_equal(ogl_transform_kind("nechorme", beta), "logit")
-  expect_equal(ogl_transform_kind("nechorme4", beta), "logit")
+  # The exclusion is specific to the unit interval: an excess above 1 is no
+  # obstacle to a log transform, which needs only positivity.
+  expect_equal(ogl_transform_kind("nechorme", validate_family("Gamma")), "log")
+  expect_equal(ogl_transform_kind("ecxhormebc5", validate_family("poisson")),
+               "log")
   # A bot fixed at 0 is not a problem: the mean is still strictly inside.
   expect_equal(ogl_transform_kind("ecxwb1p3", beta), "logit")
   # Degenerate input.
   expect_equal(ogl_transform_kind("nec3param", NULL), "none")
   expect_equal(ogl_transform_kind("notamodel", beta), "none")
   expect_equal(ogl_transform_kind(character(0), beta), "none")
+})
+
+test_that("can_exceed_one is stronger than unscaled_excess, and is what gates", {
+  # The two columns answer different questions and must not be conflated.
+  # unscaled_excess is about admissibility -- can the fit shrink the excess --
+  # and check_models() is right to admit an equation whose excess it can.
+  # can_exceed_one is about whether a logit is defined, and holds for all six.
+  tab <- model_mu_ranges()
+  excess <- tab$model[tab$unscaled_excess]
+  exceeds <- tab$model[tab$can_exceed_one]
+  expect_setequal(excess, c("nechormepwr", "nechorme4pwr"))
+  expect_setequal(exceeds, c("nechormepwr", "nechorme4pwr", "nechorme",
+                             "nechorme4", "ecxhormebc4", "ecxhormebc5"))
+  # Strictly stronger: everything unscaled_excess flags, can_exceed_one flags.
+  expect_true(all(excess %in% exceeds))
+  expect_false(all(exceeds %in% excess))
+  # And the pole this exists to avoid is real.
+  ev <- function(m, o) m * exp(o) / (1 - m + m * exp(o))
+  expect_gt(ev(1.5, -1.0986), 1e4)
+  expect_lt(ev(1.5, -1.1), 0)
+  # while an equation the gate admits is well behaved over the same range
+  expect_true(all(vapply(c(-1.0986, -1.1, -5, 5),
+                         function(o) ev(0.7, o) > 0 && ev(0.7, o) < 1,
+                         logical(1))))
 })
 
 test_that("the transform is collapsed, and is the identity at zero deviation", {
