@@ -222,6 +222,35 @@ check_disp_finite <- function(formula, data) {
   invisible(NULL)
 }
 
+#' Refuse a data column whose name collides with a generated parameter
+#'
+#' The group-level transform (#257) introduces an intermediate non-linear term
+#' named \code{bnecmu}, and \code{ogl()} introduces one named \code{ogl}. Both
+#' are resolved by \pkg{brms} against the user's data frame, so a column of
+#' either name would be silently preferred over the generated term and the fit
+#' would be a different model with no error. Refused by name here rather than
+#' left to produce a confusing \pkg{brms} message about a formula the user did
+#' not write.
+#'
+#' @param data A \code{\link[base]{data.frame}}, the one the user supplied.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_reserved_names <- function(data) {
+  reserved <- c("bnecmu", "ogl")
+  clash <- intersect(reserved, names(data))
+  if (length(clash) > 0) {
+    stop("Your data contains the column(s) ",
+         paste0("\"", clash, "\"", collapse = "; "),
+         ", which bayesnec generates as model terms. brms resolves formula",
+         " terms against your data first, so a column of that name would be",
+         " used in place of the generated term and the fit would silently be a",
+         " different model. Rename the column(s) before fitting.",
+         call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' check_data
 #'
 #' Check data input for a Bayesian NEC model fit

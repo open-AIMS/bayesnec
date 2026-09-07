@@ -185,6 +185,17 @@ mu_is_constrained <- function(family, dpar = "mu") {
 #'   \item \code{below_zero}: the mean is unbounded below, because a linear
 #'     term is subtracted from it with nothing to stop it. \code{neclin},
 #'     \code{neclinhorme} and \code{ecxlin}.
+#'   \item \code{can_exceed_one}: the mean can exceed 1 for \emph{some}
+#'     setting of the parameters, whether or not the fit can shrink the term
+#'     responsible. Strictly weaker than admissibility and strictly stronger
+#'     than \code{unscaled_excess}: it holds for all six hormesis equations
+#'     with an additive or multiplicative excess term, not only the two whose
+#'     excess carries no coefficient. Nothing consumes it for
+#'     \code{\link{check_models}}, which is right --- an equation whose excess
+#'     the fit can shrink is still admissible. It is consumed by #257, which
+#'     needs the mean to be provably \emph{strictly} inside (0, 1) before it
+#'     may take a logit of it, and for which "the fit can shrink it" is not
+#'     good enough.
 #'   \item \code{unscaled_excess}: the mean can exceed 1 through a term
 #'     carrying \strong{no coefficient}, so the fit cannot shrink it.
 #'     \code{nechormepwr} and \code{nechorme4pwr}, whose hormesis term is
@@ -286,13 +297,13 @@ model_mu_ranges <- function() {
   spec <- list(
     nec3param     = list(),
     nec4param     = list(),
-    nechorme      = list(),
-    nechorme4     = list(),
+    nechorme      = list(can_exceed_one = TRUE),
+    nechorme4     = list(can_exceed_one = TRUE),
     necsigm       = list(),
     neclin        = list(below_zero = TRUE),
     neclinhorme   = list(below_zero = TRUE),
-    nechormepwr   = list(unscaled_excess = TRUE),
-    nechorme4pwr  = list(unscaled_excess = TRUE),
+    nechormepwr   = list(unscaled_excess = TRUE, can_exceed_one = TRUE),
+    nechorme4pwr  = list(unscaled_excess = TRUE, can_exceed_one = TRUE),
     nechormepwr01 = list(ceiling_at_one = TRUE),
     ecxlin        = list(below_zero = TRUE),
     ecxexp        = list(),
@@ -305,14 +316,15 @@ model_mu_ranges <- function() {
     ecxll5        = list(),
     ecxll4        = list(),
     ecxll3        = list(),
-    ecxhormebc4   = list(),
-    ecxhormebc5   = list()
+    ecxhormebc4   = list(can_exceed_one = TRUE),
+    ecxhormebc5   = list(can_exceed_one = TRUE)
   )
   flag <- function(x, nm) isTRUE(x[[nm]])
   out <- data.frame(
     model = names(spec),
     below_zero = vapply(spec, flag, logical(1), "below_zero"),
     unscaled_excess = vapply(spec, flag, logical(1), "unscaled_excess"),
+    can_exceed_one = vapply(spec, flag, logical(1), "can_exceed_one"),
     ceiling_at_one = vapply(spec, flag, logical(1), "ceiling_at_one"),
     stringsAsFactors = FALSE
   )
@@ -328,4 +340,110 @@ model_mu_ranges <- function() {
   out$zero_asymptote <- !has_bot & !out$below_zero
   rownames(out) <- NULL
   out
+}
+
+#' Which scale a group-level deviation on the whole curve should be applied on
+#'
+#' @details A group-level term adds an offset that \pkg{brms} declares
+#' unconstrained. Under the identity link \code{\link{bnec}} uses, the mean it
+#' is added to is often not unconstrained, and every leapfrog step that carries
+#' \code{mu} outside the likelihood's support is rejected by Stan and counted as
+#' a divergence. Applying the deviation on a transformed scale makes those
+#' excursions impossible by construction, without changing what \code{top},
+#' \code{bot}, \code{nec} and \code{beta} mean: the deviation is zero-centred,
+#' and \code{m * exp(0)} is \code{m}. See #257.
+#'
+#' Two gates, and both must pass.
+#'
+#' \strong{Is a transform needed?} \code{\link{mu_is_constrained}} says the
+#' likelihood constrains \code{mu} and the link cannot keep it inside. Under a
+#' \code{log} or \code{logit} link the offset is already on the linear predictor
+#' and there is nothing to do.
+#'
+#' \strong{Is a transform applicable?} \code{\link{model_mu_ranges}} says the
+#' mean is provably strictly inside the interval, so \code{log} or
+#' \code{logit} of it is defined. This is a blocker rather than a caveat for
+#' three groups of equations: \code{neclin}, \code{neclinhorme} and
+#' \code{ecxlin} are unbounded below, so \code{log} of the mean is \code{NaN};
+#' \code{nechormepwr} and \code{nechorme4pwr} can exceed 1, so \code{logit} is
+#' \code{NaN}; and \code{nechormepwr01} saturates at exactly 1, where
+#' \code{logit} is \code{Inf}. Those keep the additive offset and the raised
+#' \code{adapt_delta} permanently.
+#'
+#' @param model A \code{\link[base]{character}} string naming one equation.
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @return \code{"logit"}, \code{"log"}, or \code{"none"}.
+#'
+#' @seealso \code{\link{mu_is_constrained}}, \code{\link{model_mu_ranges}}
+#'
+#' @noRd
+ogl_transform_kind <- function(model, family) {
+  if (is.null(family) || is.null(model) || length(model) != 1) {
+    return("none")
+  }
+  if (!mu_is_constrained(family)) {
+    return("none")
+  }
+  ranges <- model_mu_ranges()
+  row <- ranges[ranges$model == model, , drop = FALSE]
+  if (nrow(row) != 1) {
+    return("none")
+  }
+  # Unbounded below rules out both transforms: neither log nor logit of a
+  # negative mean is defined.
+  if (isTRUE(row$below_zero)) {
+    return("none")
+  }
+  support <- mu_support(family)
+  if (identical(support, c(0, 1))) {
+    # Anything that can reach or pass 1 rules out logit, and "can" means for
+    # any setting of the parameters -- not merely for settings the fit cannot
+    # shrink. unscaled_excess is the narrower property, and gating on it
+    # admitted nechorme, nechorme4, ecxhormebc4 and ecxhormebc5, whose mean can
+    # exceed 1 through exp(slope) * x. The collapsed form has a pole at
+    # o = log((m - 1) / m) once m > 1 and changes sign across it -- at m = 1.5
+    # it returns 8.1e4 at o = -1.0986 and -720 at o = -1.1 -- and those fits
+    # would also have lost the adapt_delta raise on the false premise that the
+    # mean cannot leave its support.
+    if (isTRUE(row$can_exceed_one) || isTRUE(row$ceiling_at_one)) {
+      return("none")
+    }
+    return("logit")
+  }
+  if (identical(support, c(0, Inf))) {
+    return("log")
+  }
+  "none"
+}
+
+#' The collapsed transform for a group-level deviation on the whole curve
+#'
+#' @details Written in collapsed form, never as the literal
+#' \code{inv_logit(logit(m) + o)} sandwich. \code{logit(m)} underflows to
+#' \code{-Inf} once the decay term exceeds about 709, and
+#' \code{inv_logit(-Inf + o)} is exactly 0, which fails the likelihood's
+#' positivity check just as surely as \code{mu > 1} does. The collapsed forms
+#' are stable as \code{m -> 0}, which is the region occupied by the tail of a
+#' declining curve such as \code{nec3param}. See #257.
+#'
+#' \code{logit}: \code{mu = m e^o / (1 - m + m e^o)}, which is
+#' \code{odds(mu) = odds(m) e^o}.
+#'
+#' \code{log}: \code{mu = m e^o}.
+#'
+#' @param kind \code{"logit"} or \code{"log"}.
+#' @param m A \code{\link[base]{character}} string naming the curve term.
+#' @param o A \code{\link[base]{character}} string naming the deviation term.
+#'
+#' @return A \code{\link[base]{character}} string.
+#' @noRd
+ogl_transform_expr <- function(kind, m = "bnecmu", o = "ogl") {
+  switch(
+    kind,
+    logit = paste0(m, " * exp(", o, ") / (1 - ", m, " + ", m,
+                   " * exp(", o, "))"),
+    log = paste0(m, " * exp(", o, ")"),
+    stop("kind must be \"logit\" or \"log\".", call. = FALSE)
+  )
 }

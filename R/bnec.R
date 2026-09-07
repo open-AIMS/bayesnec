@@ -575,6 +575,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # check_data() runs once per model, and the default model argument is a set.
   # See #271.
   check_disp_finite(formula, data)
+  check_reserved_names(data)
   model <- get_model_from_formula(formula)
   brm_args <- list(...)
   # `prior` is an explicit argument (rather than relying on `...`) so that a

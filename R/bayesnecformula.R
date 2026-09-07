@@ -645,7 +645,8 @@ wrangle_model_formula <- function(model, formula, data, family = NULL,
   brms_bf[[1]][[3]] <- str2lang(tmp)
   bnec_group_vars <- attr(data, "bnec_group")
   if (any(!is.na(bnec_group_vars))) {
-    brms_bf <- add_formula_glef(model, brms_bf, formula, data)
+    brms_bf <- add_formula_glef(model, brms_bf, formula, data,
+                                family = family)
   }
   # Hurdle families get a second, mechanically derived parameter block for the
   # hurdle probability. Added after any group-level terms so that those apply
@@ -726,7 +727,8 @@ clean_bar_glef <- function(x) {
 #' @noRd
 #' @importFrom stats terms
 #' @importFrom formula.tools rhs `rhs<-`
-add_formula_glef <- function(model, brmform, bnecform, data) {
+add_formula_glef <- function(model, brmform, bnecform, data,
+                             family = NULL) {
   crf_term <- grep("crf(", labels(terms(bnecform)), fixed = TRUE,
                    value = TRUE)
   to_eval <- paste0("update(bnecform, ~ . - ", crf_term, ")")
@@ -783,8 +785,34 @@ add_formula_glef <- function(model, brmform, bnecform, data) {
   if (any(grepl("ogl(", split_random_call, fixed = TRUE))) {
     str_calls <- grep("ogl(", split_random_call, fixed = TRUE, value = TRUE)
     vars <- all.vars(str2lang(paste0(str_calls, collapse = " + ")))
-    tmp <- paste0("ogl + ", deparse1(brmform[[1]][[3]]))
-    brmform[[1]][[3]] <- str2lang(tmp)
+    kind <- ogl_transform_kind(model, family)
+    if (identical(kind, "none")) {
+      # The additive offset, which is what every version up to 2.1.4 emitted.
+      # Kept for a mean the likelihood does not constrain, for a non-identity
+      # link where the offset is already on the linear predictor, and for the
+      # equations whose mean can reach or pass a bound, where the transform is
+      # undefined rather than merely unnecessary. See ogl_transform_kind().
+      tmp <- paste0("ogl + ", deparse1(brmform[[1]][[3]]))
+      brmform[[1]][[3]] <- str2lang(tmp)
+    } else {
+      # The curve becomes an intermediate quantity and the deviation is applied
+      # to it multiplicatively, so mu cannot leave its support however long the
+      # leapfrog trajectory is. The deviation is zero-centred and
+      # m * exp(0) == m, so the transformed model is the current model when the
+      # deviation is zero and top, bot, nec and beta keep their meanings.
+      #
+      # Built by setting the nl and loop attributes rather than by calling
+      # brms::nlf(), which returns a list intended for bf() to unpack rather
+      # than a formula. Checked against brms 2.23.0: the two produce identical
+      # Stan code. See #257.
+      curve <- deparse1(brmform[[1]][[3]])
+      brmform[[1]][[3]] <- str2lang(ogl_transform_expr(kind))
+      curve_form <- stats::as.formula(paste("bnecmu ~", curve))
+      attr(curve_form, "nl") <- TRUE
+      attr(curve_form, "loop") <- TRUE
+      # Prepended, so the intermediate is defined before the terms that read it.
+      brmform[[2]] <- c(list(bnecmu = curve_form), brmform[[2]])
+    }
     brmform[[2]]$ogl <- ogl ~ 1
     for (j in seq_along(vars)) {
       brmform[[2]]$ogl <- str2lang(paste0(deparse1(brmform[[2]]$ogl),

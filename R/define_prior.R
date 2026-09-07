@@ -93,6 +93,14 @@ define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
                          model_survival = NULL, disp_spec = NULL,
                          group_spec = NULL) {
+  # Which scale an ogl deviation is applied on decides how wide its prior
+  # should be, and it is a property of the model and the family, both of which
+  # are in scope here and are not in define_group_prior(). See #257.
+  ogl_kind <- if (isTRUE(group_spec$ogl)) {
+    ogl_transform_kind(model, family)
+  } else {
+    "none"
+  }
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
     hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
@@ -118,7 +126,8 @@ define_prior <- function(model, family, predictor, response,
       split_hurdle_response(predictor, response)$mu$y, mu_family
     )
     group_priors <- define_group_prior(group_spec, predictor, mu_response,
-                                       prior_type = prior_type)
+                                       prior_type = prior_type,
+                                       ogl_transform = ogl_kind)
     if (!is.null(group_priors)) {
       hurdle_priors <- hurdle_priors + group_priors
     }
@@ -344,7 +353,8 @@ define_prior <- function(model, family, predictor, response,
   # response is on the link scale by this point, which is what the group-level
   # offsets are added on, so it is the right scale to take the prior from.
   group_priors <- define_group_prior(group_spec, predictor, response,
-                                     prior_type = prior_type)
+                                     prior_type = prior_type,
+                                     ogl_transform = ogl_kind)
   if (!is.null(group_priors)) {
     priors <- priors + group_priors
   }
@@ -511,7 +521,8 @@ define_disp_prior <- function(disp_spec, family, response) {
 #'
 #' @noRd
 define_group_prior <- function(group_spec, predictor, response,
-                               prior_type = "uninformative") {
+                               prior_type = "uninformative",
+                               ogl_transform = "none") {
   if (is.null(group_spec) || length(group_spec$nlpars) == 0) {
     return(NULL)
   }
@@ -527,8 +538,51 @@ define_group_prior <- function(group_spec, predictor, response,
   }
   s_y <- safe_scale(response)
   s_x <- safe_scale(predictor)
+  # Where the ogl deviation is applied multiplicatively (#257), it is on the
+  # log or log-odds scale rather than on the response scale, so the response
+  # scale s_y is not the right width for it. These are delta-method conversions
+  # of the same rule, evaluated at the mean of the response:
+  #
+  #   s_log   = s_y / mean(y)             a group-level coefficient of variation
+  #   s_logit = s_y / (m * (1 - m))
+  #
+  # Both are evaluated at a single point and the Jacobian varies along the
+  # curve -- at m = 0.9 the logit Jacobian is 11.1 and at m = 0.5 it is 4 -- so
+  # this is a conversion of the existing convention onto the new scale, not an
+  # exact reparameterisation of the same prior.
+  m_y <- mean(response, na.rm = TRUE)
+  # Taken as an argument rather than read off group_spec. It used to be set in
+  # add_brm_defaults() and nowhere else, so get_priors() and amend() -- which
+  # build group_spec straight from parse_group_terms() -- fell through to the
+  # response-scale width and disagreed with what bnec() actually fitted by a
+  # factor of four. get_priors() then misreported the prior in use, which the
+  # initial-value fallback message explicitly tells the user to trust, and
+  # amend() fitted a model into an existing set with a prior no other member
+  # had. Computed once here, from the model and family define_prior() already
+  # has, so the three callers cannot drift apart. See #257.
+  s_ogl <- switch(
+    ogl_transform,
+    # Capped. s_y does not shrink as the response mean approaches zero, so the
+    # ratio is unbounded there: on a count response with many structural zeros
+    # -- zero_inflated_poisson and zero_inflated_negbinomial are both accepted
+    # -- s_y / m_y can put several orders of magnitude on the group-level mean.
+    # The logit branch below is self-limiting because s_y shrinks as the mean
+    # approaches either bound; this one is not. The cap is a coefficient of
+    # variation of 1, which at two prior standard deviations still admits a
+    # factor of e^2 on the mean and is far wider than any group-level effect
+    # these designs carry. See #257.
+    log = if (is.finite(m_y) && m_y > 0) min(s_y / m_y, 1) else s_y,
+    logit = if (is.finite(m_y) && m_y > 0 && m_y < 1) {
+      s_y / (m_y * (1 - m_y))
+    } else {
+      s_y
+    },
+    s_y
+  )
   scale_for <- function(par) {
-    if (par %in% c("top", "bot", "ogl")) {
+    if (par == "ogl") {
+      s_ogl
+    } else if (par %in% c("top", "bot")) {
       s_y
     } else if (par %in% c("nec", "ec50")) {
       s_x
@@ -543,7 +597,7 @@ define_group_prior <- function(group_spec, predictor, response,
     out <- if (is.null(out)) pr else out + pr
   }
   if (isTRUE(group_spec$ogl)) {
-    out <- out + prior_string(paste0("normal(0, ", signif(s_y, 4), ")"),
+    out <- out + prior_string(paste0("normal(0, ", signif(s_ogl, 4), ")"),
                               nlpar = "ogl")
   }
   out

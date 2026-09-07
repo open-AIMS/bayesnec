@@ -1,5 +1,59 @@
 # bayesnec 2.2.0
 
+## Sampler behaviour
+
+- **A group-level deviation on the whole curve, `ogl()`, is now applied
+  multiplicatively rather than as an additive offset**, wherever the likelihood
+  constrains the mean and the equation's mean is provably strictly inside its
+  support. `brms` declares the offset unconstrained, and under the identity link
+  `bnec()` uses, the mean it was added to often is not: every leapfrog step that
+  carried `mu` outside the likelihood's support was rejected by Stan and counted
+  as a divergence. On the unit interval the deviation now scales the odds,
+  `mu = m e^o / (1 - m + m e^o)`; on the positive half-line it scales the mean,
+  `mu = m e^o`. Both are written collapsed rather than as
+  `inv_logit(logit(m) + o)`, which is not equivalent in floating point: `logit(m)`
+  underflows to `-Inf` once the decay term exceeds about 709, and
+  `inv_logit(-Inf + o)` is exactly 0, which fails a likelihood's positivity check
+  as surely as `mu > 1` does (#257).
+
+  **The deviation is zero-centred and `m e^0` is `m`, so the transformed model is
+  the current model when the deviation is zero**: `top`, `bot`, `nec` and `beta`
+  keep their meanings, and `ecx()`, `nsec()` and the model-averaging machinery
+  are unaffected.
+
+  **Two gates, and both must pass.** The likelihood must constrain the mean and
+  the link must be unable to keep it inside, which is what `gaussian` and an
+  explicit `log` or `logit` link fail. And the equation's mean must be provably
+  strictly inside the interval, which `neclin`, `neclinhorme` and `ecxlin` fail
+  by being unbounded below, `nechormepwr` and `nechorme4pwr` by being able to
+  exceed 1, and `nechormepwr01` by saturating at exactly 1. Everything outside
+  those gates keeps the additive offset.
+
+  **`adapt_delta` is no longer raised to 0.99 for a fit whose only group-level
+  structure is a transformed `ogl()` term.** The raise was added in 2.1.4 to
+  mitigate exactly these excursions and costs roughly fourteen times the gradient
+  evaluations per iteration; a multiplicative deviation cannot make the
+  excursions, so there is nothing left to mitigate. A `pgl()` term, an explicit
+  `(par | group)` term, and every equation outside the gates keep it.
+
+  **The `ogl` prior is widened onto the scale the deviation is applied on**, by
+  delta-method conversion of the existing rule evaluated at `mean(y)`:
+  `s_log = s_y / mean(y)`, a group-level coefficient of variation, and
+  `s_logit = s_y / (m (1 - m))`. Both are evaluated at a single point while the
+  Jacobian varies along the curve, so this is a conversion of the convention onto
+  the new scale rather than an exact reparameterisation of the same prior.
+
+  **`ogl` and `bnecmu` are now refused as data column names.** The transform
+  introduces `bnecmu` as an intermediate term and \pkg{brms} resolves formula
+  terms against the user's data frame first, so a column of either name would be
+  used in place of the generated term and the fit would silently be a different
+  model. A data frame carrying either name that fitted under 2.1.x now stops
+  with an error naming the column, before any model is compiled.
+
+  **Not in this change:** `pgl()` and explicit `(par | group)` terms, which place
+  a deviation on an individual curve parameter rather than on the mean and need
+  the same idea one level down.
+
 ## Breaking changes to ECx, NSEC and ECNSEC
 
 - **Every ECx, NSEC and ECNSEC is now measured from the control** --- the
