@@ -133,28 +133,26 @@ test_that("find_transformations reports the response for this fixture", {
   expect_identical(find_transformations(bdat), "y")
 })
 
-test_that("a transformed response suppresses xform on the predictor axis", {
-  # PINS THE #268 DEFECT on the autoplot path for a bayesnecfit (the guard at
-  # R/autoplot.R:308). xform is accepted and silently dropped from the axis,
-  # so the curve comes back on the fitted scale while the caller asked for the
-  # recorded one. The estimates nec() and ecx() return are unaffected; this is
-  # the plot alone.
+test_that("a transformed response no longer suppresses xform (#268)", {
+  # INVERTED. The guard was the length of find_transformations(), which answers
+  # for the formula as a whole, so a transformation on the response suppressed
+  # xform on a predictor nobody had transformed.
   #
-  # INVERT THIS TEST WHEN #268 IS FIXED: the two should then differ by the
-  # factor xform applies, as in "xform is applied to the predictor axis of a
-  # single fit" above.
+  # INVERTED: the guard is now per-variable, so the two differ by the factor
+  # xform applies, as in "xform is applied to the predictor axis of a single
+  # fit" above.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
-  expect_equal(gg_x_max(f, xform = function(x) x * 100), gg_x_max(f),
+  expect_equal(gg_x_max(f, xform = function(x) x * 100), gg_x_max(f) * 100,
                tolerance = 1e-8)
 })
 
-test_that("a transformed response suppresses xform for a model set too", {
-  # PINS THE #268 DEFECT on the bayesmanecfit branch (the guard at
-  # R/autoplot.R:352). Same inversion applies.
+test_that("a transformed response no longer suppresses xform for a set", {
+  # INVERTED with its sibling above. The bayesmanecfit branch had the same
+  # guard and the same defect.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
-  expect_equal(gg_x_max(m, xform = function(x) x * 100), gg_x_max(m),
+  expect_equal(gg_x_max(m, xform = function(x) x * 100), gg_x_max(m) * 100,
                tolerance = 1e-8)
 })
 
@@ -256,5 +254,53 @@ test_that("autoplot accepts xform without error on both classes", {
     "ggplot")
   expect_s3_class(
     suppressMessages(autoplot(manec_example, xform = function(x) x * 100)),
+    "ggplot")
+})
+
+
+# ---- the ECx annotation on an inline-transformed predictor -------------------
+
+# to_axis_scale()'s numerical-inverse branch built a fresh vector, dropping the
+# ecx_val attribute that bind_ecx() reads and assigns into the data frame, so
+# the assignment received NULL and the call failed with "replacement has length
+# zero". The branch runs only when the predictor is transformed inline AND
+# xform is left at its default, which is why no existing test reached it: every
+# transformed-predictor test here supplies an xform, and every default-xform
+# test uses an untransformed predictor. That combination is the one
+# vignette("example1") uses.
+#
+# The formula is rewritten on a stored fit rather than fitted, the same trick
+# transformed_response_fit() uses in setup.R, applied to the predictor instead
+# of the response. manec_example's x is 0.032 to 3.22, so log() is finite
+# throughout.
+transformed_predictor_fit <- function(fit, model) {
+  fit$bayesnecformula <- bayesnecformula(
+    stats::as.formula(paste0("y ~ crf(log(x), model = \"", model, "\")"))
+  )
+  fit
+}
+
+test_that("ggbnec_data annotates an ecx on a transformed predictor", {
+  skip_on_cran()
+  tf <- transformed_predictor_fit(nec4param, "nec4param")
+  out <- suppressMessages(suppressWarnings(
+    ggbnec_data(tf, add_ecx = TRUE)
+  ))
+  expect_s3_class(out, "data.frame")
+  # The ecx_val attribute survives the inverse and reaches the data frame; it
+  # is what labels the annotation, so a NULL here is the failure above.
+  expect_equal(out$ecx_int[!is.na(out$ecx_int)], 10)
+})
+
+test_that("autoplot draws that annotation without error", {
+  skip_on_cran()
+  tf <- transformed_predictor_fit(nec4param, "nec4param")
+  expect_s3_class(
+    suppressMessages(suppressWarnings(autoplot(tf, ecx = TRUE))),
+    "ggplot")
+  # An xform supplied takes the other branch, which never lost the attribute.
+  expect_s3_class(
+    suppressMessages(suppressWarnings(
+      autoplot(tf, ecx = TRUE, xform = exp))),
     "ggplot")
 })

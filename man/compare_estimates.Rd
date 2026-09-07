@@ -9,7 +9,6 @@ compare_estimates(
   comparison = "n(s)ec",
   ecx_val = 10,
   type = "absolute",
-  hormesis_def = "control",
   sig_val = 0.01,
   resolution = 100,
   x_range = NA
@@ -23,14 +22,14 @@ compare_estimates(
 \item{comparison}{The posterior predictions to compare, takes values of
 "nec", "n(s)ec", "nsec", "ecx" or "fitted".}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value
-between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
+\item{ecx_val}{The desired percentage effect value, defaults to 10. Any
+value above 0 is accepted for every \code{type} except "direct", where it
+is a response value rather than a percentage. Values above 100 are
+meaningful under "absolute" for a response that can go negative --- see
+Details.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
-of "max" or "control". See Details.}
+"absolute" (the default), "relative", "range" or "direct". See Details.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}

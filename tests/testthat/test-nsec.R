@@ -104,3 +104,45 @@ test_that("sig_val passes correctly", {
                 resolution = 10)
   expect_equal(names(nsec4), c("Q50", "Q30", "Q70"))
 })
+
+
+# ---- D15: the control anchors nsec too, and hormesis_def is gone -------------
+
+test_that("hormesis_def is refused by name on nsec", {
+  skip_on_cran()
+  expect_error(nsec(nec4param, hormesis_def = "max"),
+               "hormesis_def has been removed")
+  expect_error(nsec(manec_example, hormesis_def = "control"),
+               "hormesis_def has been removed")
+})
+
+test_that("ecnsec is the absolute percent effect at the nsec", {
+  # D15 ruling 5, toxval#49 and T8. The attached ecnsec used to be measured
+  # against the fitted range, by three formulas that agreed only for a
+  # monotonic curve. It is now (control - reference) / control * 100, which is
+  # exactly what ecx measures under its default type.
+  skip_on_cran()
+  out <- nsec(nec4param, resolution = 200, sig_val = 0.01) |>
+    suppressWarnings()
+  ec <- attr(out, "ecnsec_relativeP")
+  expect_length(ec, 3)
+  # A percentage, and a small one: the NSEC is by construction the point at
+  # which the curve first leaves the control's own lower tail, so the effect
+  # there is a few per cent rather than tens of per cent.
+  expect_true(all(ec > 0))
+  expect_true(all(ec < 100))
+  expect_lt(ec[1], 25)
+})
+
+test_that("nsec returns NA where the curve never reaches the reference", {
+  # D15 ruling 3. Restricting x_range to the flat head of the curve leaves no
+  # crossing to find. Up to 2.1.3 every such draw returned max(x_vec), so the
+  # NSEC was reported as the top of the range with nothing said.
+  skip_on_cran()
+  expect_warning(
+    out <- nsec(nec4param, resolution = 50, x_range = c(0, 0.05),
+                posterior = TRUE),
+    "does not fall below"
+  )
+  expect_true(any(is.na(out)))
+})

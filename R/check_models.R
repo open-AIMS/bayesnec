@@ -173,20 +173,27 @@ check_models <- function(model, family, data) {
       model <- use_model
     }
   }
-  if (fam_tag == "gaussian") {
-    use_model <-  model[!model %in% mod_groups$zero_bounded]
-    drop_model <- setdiff(model, use_model)
-    if (length(drop_model) > 0) {
-      message(paste("Dropping the model(s)",
-                    paste0(drop_model, collapse = ", "),
-                    "as they are not valid in the case of Gaussian y data."))
-    }
-    if (length(use_model) == 0) {
-      stop("None of the model(s) specified are valid for Gaussian y data.")
-    } else {
-      model <- use_model
-    }
-  }
+  # The block that stood here dropped every zero-bounded equation --
+  # nec3param, ecxexp, ecxsigm, ecxwb1p3, ecxwb2p3, ecxll3 -- whenever the
+  # family was gaussian, on the grounds that they "cannot generate predictions
+  # of negative response values". That conflates the range of the mean
+  # function with the support of the likelihood: a gaussian likelihood
+  # evaluates f(y | mu, sigma) and the data enter only through y - mu, so the
+  # sign of y is never tested. A mean function asymptoting to zero with
+  # gaussian error is internally consistent -- near the asymptote it predicts
+  # negative observations at a rate set by mu and sigma, which are ordinary
+  # negative residuals.
+  #
+  # Removed with #206. The exclusion prevented the curve shape OECD TG 201 and
+  # Ritz, Gerhard & Streibig (2026) both recommend for algal growth-rate data
+  # -- a lower asymptote fixed at zero, representing complete inhibition --
+  # from being fitted at all, nec3param, the package's namesake equation,
+  # included. #206 measured that these equations fit cleanly under gaussian
+  # and that model weights reject them where the shape is wrong, so the
+  # candidate set is the right place for that judgement rather than a
+  # pre-fit refusal. The separate link exclusion above is unaffected and still
+  # applies: it is keyed on a log or logit link, which is a different
+  # condition and a correct one.
   if (!missing(data)) {
     x <- retrieve_var(data, "x_var")
     if (contains_negative(x)) {

@@ -113,23 +113,35 @@ plot.bayesnecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     ec10 <- ecx(x)
   }
   if (add_ec10 & family == "gaussian") {
-    ec10 <- ecx(x, type = "relative")
+    # "range", not "relative". This line asked for "relative" because up to
+    # 2.1.3 that named the control-to-minimum span, which is the annotation a
+    # gaussian response wants: 0 is not a meaningful floor for a response that
+    # can go negative. "relative" now names the control-to-bot span, so keeping
+    # the old word would have silently changed the annotated value -- measured
+    # on manec_example's nec4param, EC10 1.673 against 1.581 -- warned the
+    # caller about a rename they had not asked for, and errored outright for a
+    # bot-free equation under gaussian, which #206 has just made fittable.
+    ec10 <- ecx(x, type = "range")
   }
 
   bdat <- model.frame(x$bayesnecformula, data = x$fit$data, run_par_checks = TRUE)
-  trans_vars <- find_transformations(bdat)
   x_dat <- x$fit$data[[x_var]]
   x_vec <- x$pred_vals$data$x  
   
-  # if no transformations are applied via formula (including on trials),
-  # use xform on axis
-  if (length(trans_vars) == 0) {
+  # Asked of the predictor alone. The guard was the length of
+  # find_transformations(), which answers for the formula as a whole, so a
+  # transformation on the response suppressed xform on the predictor axis and
+  # the axis was drawn on the fitted scale while the caller had asked for the
+  # recorded one. This is the same per-variable correction #258 made to
+  # fit_bayesnec(). See #268.
+  if (!pop_var_is_transformed(bdat, "x_var")) {
       x_dat <- xform(x_dat)
       x_vec <- xform(x_vec)
   }
       
-  ec10 <- xform(ec10)  
-  nec <- xform(x$ne)
+  x_grid_raw <- x$pred_vals$data$x
+  ec10 <- to_axis_scale(ec10, bdat, x$bayesnecformula, x_grid_raw, xform)
+  nec <- to_axis_scale(x$ne, bdat, x$bayesnecformula, x_grid_raw, xform)
 
   if (jitter_x) {
     x_dat <- jitter(x_dat)
@@ -242,7 +254,6 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
     universal <- x$mod_fits[[1]]
     mod_dat <- universal$fit$data
     bdat <- model.frame(x$mod_fits[[1]]$bayesnecformula, data = mod_dat)
-    trans_vars <- find_transformations(bdat)
     y_var <- attr(bdat, "bnec_pop")[["y_var"]]
     x_var <- attr(bdat, "bnec_pop")[["x_var"]]
     family <- universal$fit$family$family
@@ -257,16 +268,20 @@ plot.bayesmanecfit <- function(x, ..., CI = TRUE, add_nec = TRUE,
       ec10 <- ecx(x)
     }
     if (add_ec10 & family == "gaussian") {
-      ec10 <- ecx(x, type = "relative")
+      # "range" rather than "relative", for the reasons given in
+      # plot.bayesnecfit above.
+      ec10 <- ecx(x, type = "range")
     }
     x_dat <- mod_dat[[x_var]]
     x_vec <- x$w_pred_vals$data$x
-    if (length(trans_vars) == 0) {
+    if (!pop_var_is_transformed(bdat, "x_var")) {
       x_dat <- xform(x_dat)
       x_vec <- xform(x_vec)
     }
-    nec <- xform(x$w_ne)
-    ec10 <- xform(ec10)
+    x_grid_raw <- x$w_pred_vals$data$x
+    manec_formula <- x$mod_fits[[1]]$bayesnecformula
+    nec <- to_axis_scale(x$w_ne, bdat, manec_formula, x_grid_raw, xform)
+    ec10 <- to_axis_scale(ec10, bdat, manec_formula, x_grid_raw, xform)
     if (jitter_x) {
       x_dat <- jitter(x_dat)
     }

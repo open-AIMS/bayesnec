@@ -255,25 +255,24 @@ test_that("xform widens the predictor axis of a model set", {
 
 # ---- #268, pinned on both halves of the figure ------------------------------
 
-test_that("a transformed response suppresses xform on the predictor axis", {
-  # PINS THE #268 DEFECT on the base-plot path for a bayesnecfit
-  # (the guard at R/plot.R:125). xform is accepted and silently dropped from
-  # the axis, so the data is drawn on the fitted scale while the caller asked
-  # for the recorded one.
-  #
-  # INVERT THIS TEST WHEN #268 IS FIXED: the ratio should then be 100, as in
-  # "xform widens the predictor axis of a single fit" above.
+test_that("a transformed response no longer suppresses xform (#268)", {
+  # INVERTED. This pinned the #268 defect: the guard was the length of
+  # find_transformations(), which answers for the formula as a whole, so a
+  # transformation on the response suppressed xform on a predictor nobody had
+  # transformed and the ratio was 1. The guard is now per-variable, so the
+  # ratio is the factor xform applies, as it is for a formula with no
+  # transformation at all.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
-  expect_equal(pl_x_ratio(f), 1, tolerance = 1e-6)
+  expect_equal(pl_x_ratio(f), 100, tolerance = 1e-6)
 })
 
-test_that("a transformed response suppresses xform for a model set too", {
-  # PINS THE #268 DEFECT on the bayesmanecfit branch (the guard at
-  # R/plot.R:279). Same inversion applies.
+test_that("a transformed response no longer suppresses xform for a set", {
+  # INVERTED with its sibling above. The bayesmanecfit branch had the same
+  # guard and the same defect.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
-  expect_equal(pl_x_ratio(m), 1, tolerance = 1e-6)
+  expect_equal(pl_x_ratio(m), 100, tolerance = 1e-6)
 })
 
 test_that("the nec annotation is drawn off the end of the axis", {
@@ -290,20 +289,18 @@ test_that("the nec annotation is drawn off the end of the axis", {
   # The suite already mocks this way in test-fit_bayesnec.R and
   # test-inits_functions.R.
   #
-  # INVERT THIS TEST WHEN #268 IS FIXED: the drawn NEC must then fall inside
-  # the axis, whichever scale the fix settles on. A fix that changes only the
-  # guard, or only R/plot.R:130-131, fails one of the two tests and leaves the
-  # other passing, which is the point of asserting both.
+  # INVERTED. The annotation and the axis are now put on one scale by
+  # to_axis_scale(), so the NEC line falls inside the axis. Asserting both this
+  # and the axis ratio above is what catches a half-fix: correcting the guard
+  # alone, or the annotation alone, fails one and leaves the other passing.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
   drawn <- NULL
   local_mocked_bindings(abline = function(v = NULL, ...) drawn <<- v,
                         .package = "bayesnec")
   axis_max <- pl_x_max(f, xform = function(x) x * 100)
-  # Measured on nec4param: the axis maximum is 3.35 and the NEC line, its lower
-  # and its upper bound are drawn at 146, 136 and 153.
   expect_length(drawn, 3)
-  expect_gt(min(drawn), axis_max)
+  expect_lte(max(drawn), axis_max)
 })
 
 test_that("the model set draws its nec annotation off the axis too", {
@@ -314,10 +311,7 @@ test_that("the model set draws its nec annotation off the axis too", {
   # file exists to catch, and until this assertion was added the model-set
   # annotation was the one site of the four that nothing observed.
   #
-  # Measured on manec_example with xform = x * 100: the axis maximum is 3.35
-  # and the weighted NEC and its bounds are drawn at 145, 74.9 and 152.7.
-  #
-  # INVERT THIS TEST WHEN #268 IS FIXED, with the sibling above it.
+  # INVERTED with the sibling above it.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
   drawn <- NULL
@@ -325,7 +319,7 @@ test_that("the model set draws its nec annotation off the axis too", {
                         .package = "bayesnec")
   axis_max <- pl_x_max(m, xform = function(x) x * 100)
   expect_length(drawn, 3)
-  expect_gt(min(drawn), axis_max)
+  expect_lte(max(drawn), axis_max)
 })
 
 test_that("the ec10 annotation is drawn off the axis as well", {
@@ -334,10 +328,7 @@ test_that("the ec10 annotation is drawn off the axis as well", {
   # of the claim made at the top of this file was not read: gating ec10 alone
   # left every assertion in the branch passing.
   #
-  # Measured on nec4param with xform = x * 100: the axis maximum is 3.35 and
-  # the EC10 is drawn beyond it.
-  #
-  # INVERT THIS TEST WHEN #268 IS FIXED, with its siblings above.
+  # INVERTED with its siblings above.
   skip_on_cran()
   f <- transformed_response_fit(nec4param, "nec4param")
   drawn <- NULL
@@ -346,7 +337,7 @@ test_that("the ec10 annotation is drawn off the axis as well", {
   axis_max <- pl_x_max(f, add_nec = FALSE, add_ec10 = TRUE,
                        xform = function(x) x * 100)
   expect_length(drawn, 3)
-  expect_gt(min(drawn), axis_max)
+  expect_lte(max(drawn), axis_max)
 })
 
 test_that("the model set draws its ec10 annotation off the axis too", {
@@ -356,7 +347,7 @@ test_that("the model set draws its ec10 annotation off the axis too", {
   # in this review that a bayesmanecfit site was missed after its bayesnecfit
   # twin was covered.
   #
-  # INVERT THIS TEST WHEN #268 IS FIXED, with its siblings above.
+  # INVERTED with its siblings above.
   skip_on_cran()
   m <- transformed_response_manec(manec_example)
   drawn <- NULL
@@ -366,16 +357,15 @@ test_that("the model set draws its ec10 annotation off the axis too", {
     pl_x_max(m, add_nec = FALSE, add_ec10 = TRUE, xform = function(x) x * 100)
   )
   expect_length(drawn, 3)
-  expect_gt(min(drawn), axis_max)
+  expect_lte(max(drawn), axis_max)
 })
 
 test_that("plot and autoplot make the xform decision the same way", {
   # The two paths make that decision independently. Today this assertion is
-  # implied by the two axis pins above -- both ratios are pinned to 1
+  # implied by the two axis pins above -- both ratios are now pinned to 100
   # separately, so it cannot fail unless one of those fails first -- and it is
-  # kept for what happens after #268 is fixed. Those two pins are then inverted
-  # to 100 or deleted; this one is not, and it goes on requiring the two paths
-  # to agree whatever scale the fix settles on.
+  # kept because it goes on requiring the two paths to agree whatever scale a
+  # later change settles on.
   #
   # Ratios rather than limits, so the base path's axis expansion does not enter
   # the comparison.

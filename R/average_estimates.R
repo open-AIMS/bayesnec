@@ -28,7 +28,7 @@
 #' model fits contained in \code{x}. See Details.
 #'
 #' @importFrom stats quantile
-#' @importFrom chk chk_lgl chk_character chk_numeric
+#' @importFrom chk chk_lgl chk_numeric
 #'
 #' @examples
 #' \dontrun{
@@ -43,7 +43,7 @@
 #' @export
 average_estimates <- function(x, estimate = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
-                              hormesis_def = "control", sig_val = 0.01,
+                              sig_val = 0.01,
                               resolution = 1000, x_range = NA, xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   if (!is.list(x) | is.null(names(x))) {
@@ -53,8 +53,14 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
     stop("Argument estimate must be a character vector")
   }
   chk_lgl(posterior)
-  chk_character(type)
-  chk_character(hormesis_def)
+  # Validated against the four-value vocabulary here rather than left to the
+  # per-fit ecx() calls below, so that an invalid type is refused before any
+  # posterior is drawn, and the rename warning is issued once for the call
+  # rather than once per fit in x. Same reasoning as ecx.bayesmanecfit and
+  # compare_estimates(). See D15 ruling 8.
+  type <- validate_ecx_type(type, match.call())
+  warned <- options(bayesnec.relative_warned = TRUE)
+  on.exit(options(warned), add = TRUE)
   chk_numeric(ecx_val)
   chk_numeric(sig_val)
   chk_numeric(resolution)
@@ -71,12 +77,12 @@ average_estimates <- function(x, estimate = "nec", ecx_val = 10,
   if (estimate == "ecx") {
     posterior_list <- lapply(x, ecx, ecx_val = ecx_val, resolution = resolution,
                              posterior = TRUE, type = type,
-                             hormesis_def = hormesis_def, x_range = x_range,
+                             x_range = x_range,
                              xform = xform)
   }
   if (estimate == "nsec") {
     posterior_list <- lapply(x, nsec, sig_val = sig_val, resolution = resolution,
-                             posterior = TRUE, hormesis_def = hormesis_def,
+                             posterior = TRUE,
                              x_range = x_range, xform = xform)
   }
   names(posterior_list) <- names(x)

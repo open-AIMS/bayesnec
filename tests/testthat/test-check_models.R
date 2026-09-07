@@ -47,10 +47,27 @@ test_that(paste0("properly drops lin models for identity link for",
                c("neclin", "neclinhorme", "ecxlin"))
 })
 
-test_that("properly drops zero bounded models for Gaussian family", {
+test_that("keeps zero bounded models for the gaussian family (#206)", {
+  # The inverse of the assertion that stood here. Up to 2.1.3 every
+  # zero-bounded equation was dropped under gaussian on the grounds that it
+  # "cannot generate predictions of negative response values", which confuses
+  # the range of the mean function with the support of the likelihood. The
+  # exclusion is removed; the candidate set now decides by weight.
   gaussian_family_default <- validate_family("gaussian")
   expect_equal(check_models(c("nec3param", "nec4param", "ecxexp"),
-                            gaussian_family_default), "nec4param")
+                            gaussian_family_default),
+               c("nec3param", "nec4param", "ecxexp"))
+  # A single zero-bounded equation named explicitly used to be an error,
+  # because the set emptied.
+  expect_equal(check_models("nec3param", gaussian_family_default), "nec3param")
+  expect_silent(check_models(mod_groups$zero_bounded, gaussian_family_default))
+  # The link exclusion is a different condition and still applies.
+  gaussian_family_log <- validate_family(gaussian(link = "log"),
+                                         link_source = "chosen")
+  expect_false(
+    "nec3param" %in% check_models(c("nec3param", "nec4param"),
+                                  gaussian_family_log)
+  )
 })
 
 test_that("models() and check_models() agree for every response range", {

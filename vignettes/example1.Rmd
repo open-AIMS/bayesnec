@@ -101,7 +101,7 @@ autoplot(exp_2, xform = function(x) exp(x) - 1)
 A transformation written inside `disp` rather than `crf` fails differently, and less clearly. A `disp` formula is evaluated by `brms` rather than by `bayesnec`, so nothing checks it: with `disp(~log(x))` a zero concentration reaches Stan as `-Inf`, with a warning about infinite values in the data and no mention of the term responsible. The remedy is the same --- add the offset to the data and name that column.
 
 
-One caution on the inline form as the package currently stands. A transformation whose argument is a bare variable, such as `log(x)` or `sqrt(x)`, is handled correctly throughout. Where the argument contains arithmetic of its own, such as `log(x + 1)`, `nec` is still reported on the transformed scale but `ecx` and `nsec` are not: they are back-transformed as though the offset were absent, and so are slightly in error. Pre-computing the transformation into its own column and passing it as a bare variable avoids this entirely:
+The inline form and a pre-computed column give the same estimate, whether the transformation's argument is a bare variable such as `log(x)` or contains arithmetic of its own such as `log(x + 1)`. Up to `bayesnec` 2.1.3 the two disagreed: an estimate read off the prediction grid was put back on the fitted scale by a substitution that replaced the parsed call's first argument slot rather than the predictor variable inside it, so the `+ 1` was discarded and `log(x + 1)` was inverted as `log(x)`. Nothing errored and the value returned was plausible. That is fixed, and the pre-computed column below is now an equivalent way of writing the same model rather than a workaround:
 
 
 ``` r
