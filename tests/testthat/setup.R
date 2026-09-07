@@ -1,10 +1,16 @@
 library(bayesnec)
 library(brms)
 library(testthat)
+
+# stats:: and utils:: are namespaced explicitly because this file also runs in
+# each of testthat's parallel worker subprocesses, which attach far less than an
+# interactive session: data() and runif() are not visible there, and the setup
+# fails before a single test runs. Nothing else in this file reaches outside
+# base.
 options(mc.cores = 1)
 
 random_filename <- function(nchar) {
-  paste0(c(round(runif(nchar) * 15), sample(letters, nchar),
+  paste0(c(round(stats::runif(nchar) * 15), sample(letters, nchar),
          sample(LETTERS, nchar))[sample(1:nchar * 3, nchar)], collapse = "")
 }
 
@@ -14,14 +20,14 @@ add_na <- function(x, n = 3) {
   x_b
 }
 
-data(nec_data)
+utils::data(nec_data)
 other_data <- nec_data
 colnames(other_data) <- c("a", "b")
 nec_data$count <- as.integer(round(nec_data$y * 20))
 nec_data$trials <- as.integer(20)
 nec_data$log_x <- log(nec_data$x)
 
-data(manec_example)
+utils::data(manec_example)
 nec4param <- pull_out(manec_example, model = "nec4param") |>
   suppressMessages() |>
   suppressWarnings()
