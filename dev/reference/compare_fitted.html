@@ -19,7 +19,7 @@ compares these across a vector of fitted values."><meta property="og:image" cont
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.29</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.30</span>
       </span>
     </div>
 
@@ -137,6 +137,30 @@ user-specific data.frame, set <code>make_newdata = FALSE</code> and provide
 an additional data.frame via the <code>newdata</code> argument. For guidance
 on how to structure <code>newdata</code>, see for example
 <code><a href="https://mc-stan.org/rstantools/reference/posterior_epred.html" class="external-link">posterior_epred</a></code>.</p>
+    </div>
+    <div id="reproducibility">
+    <h2>Reproducibility</h2>
+
+
+<p>The draws of each posterior are paired by an independent random permutation,
+so <code>prob_diff</code> and the difference intervals change between identical
+calls. Use <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before the call for a reproducible
+result. This is a Monte Carlo approximation to the difference of two
+<b>independent</b> posteriors, using <em>n</em> of the <em>n</em>^2 available
+pairs.</p>
+    </div>
+    <div id="the-independence-assumption">
+    <h2>The independence assumption</h2>
+
+
+<p>The pairing is valid only where the posteriors being compared come from
+<b>separate fits</b>. Two levels of one fit share draws — draw <em>i</em>
+of each comes from the same sweep of the sampler — and permuting them
+destroys that pairing, which discards the correlation between the levels and
+widens the difference posterior. <code>prob_diff</code> is then pulled toward 0.5
+and a real difference is under-detected, which is the wrong direction to err
+in. A within-fit contrast needs draw-wise differencing and must not be routed
+through this function. See #218 and #33.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
