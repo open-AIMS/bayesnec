@@ -426,14 +426,27 @@
   it returns is derived from the substituted response, and says so rather than
   naming a fitted object it does not produce (#93).
 
-- The initial-value search is bounded by elapsed time as well as by attempts.
-  The cap was ten thousand attempts and nothing else, which on a twenty-row
-  dataset ran for 561 seconds for a single model, per model, with no output
-  while it ran, so a user could not tell a long search from a hang. The outcome
-  after exhausting it is Stan's own random initialisation, which is available at
-  the first attempt, so that time bought nothing. The default is now ten seconds
-  or a thousand attempts, whichever comes first, and the fallback message states
-  how many attempts were made, how long they took, and which model (#266).
+- The initial-value search reports that it is still running, rather than being
+  cut short. #266 measured 561 seconds for a single model on a twenty-row
+  dataset with no output while it ran, and proposed a smaller cap on the grounds
+  that the outcome after exhausting it --- Stan's own random initialisation ---
+  is available at the first attempt. Measured before changing it, that reasoning
+  does not hold: on a twenty-row, four-dose design `nec4param` needs 250
+  attempts to succeed at one seed and more than 1000 at two others, while
+  `nec3param` on the same data never succeeds. **A smaller cap would have turned
+  working fits into random initialisation, silently, on exactly the small
+  designs where good initial values matter most**, so the cap stays at 10,000.
+
+  What changes is the complaint itself: the search now says it is still running
+  once it passes twenty seconds, naming the model and the attempt count, so a
+  long search can be told from a hang. The fallback message reports how many
+  attempts were made and how long they took.
+
+  A wall-clock bound was tried and removed before release. It made the number of
+  attempts --- and so the initial values, and so the fit --- a function of
+  machine load: the search needs about 3.6 seconds on one packaged case when the
+  machine is idle and exceeded a ten-second budget under a parallel test run on
+  the same machine (#266).
 
 - `average_estimates()`, `compare_estimates()` and `compare_fitted()` took the
   *first* `n_samples` draws of a longer posterior and permuted those, rather
