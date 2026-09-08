@@ -1,13 +1,9 @@
 ---
 title: "Modelling growth data and other potentially negative response values"
-output:
-  rmarkdown::html_vignette:
-vignette: >
-  %\VignetteIndexEntry{Modelling growth data and other potentially negative response values}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
-bibliography: bayesnec.bib
----
+output: rmarkdown::html_vignette: vignette: > %\VignetteIndexEntry{Modelling
+growth data and other potentially negative response values}
+%\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8} bibliography:
+bayesnec.bib ---
 
 ```{r setup, include = FALSE}
 stopifnot(require(knitr))
@@ -51,8 +47,8 @@ zero before fitting, by constraining the fitted curve so that its lower
 asymptote cannot fall below zero, by both, or by fitting a response
 distribution such as a Beta or a Gamma that has no support below zero.
 
-This vignette examines what each of those conventions does to the toxicity
-estimate that is subsequently reported. Section 2 sets out how the estimates
+Here we examine what each of those conventions does to the toxicity estimate
+that is subsequently reported. Section 2 sets out how the estimates
 are defined and why the definition matters when the response can cross zero.
 Section 3 sets out what replacing a negative value commits the analyst to,
 which is more than an edit to the data. Section 4 records what the package
@@ -121,7 +117,7 @@ negative part of the curve can only affect them indirectly, by changing the
 shape of the fitted curve through the high-concentration observations. That
 indirect route is what the rest of this vignette quantifies.
 
-No normalisation to the control is applied anywhere here. The absolute ECx
+We do not normalise to the control anywhere here. The absolute ECx
 already expresses the effect relative to the fitted control response, so
 dividing the data by the control mean beforehand would apply the same
 correction twice and would additionally distort the error structure
@@ -211,15 +207,15 @@ second of them.
 # 5 Simulation study
 
 Real datasets can show that the approaches disagree, but not which of them is
-right, because the true toxicity of a real substance is unknown. The comparison
-is therefore made on simulated data, where the true ErC10, ErC50 and `nec` are
-known by construction and each approach can be scored against them.
+right, because the true toxicity of a real substance is unknown. We therefore
+make the comparison on simulated data, where the true ErC10, ErC50 and `nec`
+are known by construction and we can score each approach against them.
 
 ## 5.1 The approaches compared
 
-Eight approaches are compared. Six use a Gaussian family and differ only in how
-the negative values are treated; two impose the zero boundary through the
-response distribution instead.
+We compare eight approaches. Six use a Gaussian family and differ only in how
+they treat the negative values; the other two impose the zero boundary through
+the response distribution instead.
 
 The six Gaussian approaches form a two-by-two design crossing what is done to
 the data with what is done to the lower asymptote, plus two alternatives to
@@ -234,8 +230,8 @@ rather than the other.
 | **magnitude withheld** | **C** — left-censor at zero; **D** — truncate the series | |
 | **boundary imposed by the family** | | **E** — Beta on a scaled response; **F** — Gamma |
 
-The model equation is held fixed at the four-parameter `nec4param` for the six
-Gaussian approaches:
+For the six Gaussian approaches we hold the model equation fixed at the
+four-parameter `nec4param`:
 
 ```{r, eval = FALSE}
 bnec(y ~ crf(x, "nec4param"), data = dat, family = gaussian(link = "identity"))
@@ -251,25 +247,27 @@ of the toxicity estimate, which is referenced from the predicted control down
 to zero. It matters because constraining it changes the shape of the fitted
 curve, and the ECx is read off that curve.
 
-**Holding the equation fixed is a device for attribution, not a model of
-practice.** It ensures that a difference between approaches is a difference in
-the treatment of the data. It also means that where the data have been altered,
-the equation being fitted is no longer the one that generated them, so some
-misfit is a consequence of the design rather than a finding about the
-convention. The results in Sections 5.2 to 5.8 should therefore be read as the direction
-and size of the distortion under a controlled comparison. Section 5.9 relaxes the
-fixed form and fits the candidate set that `bayesnec` recommends, which is what
-an analyst would actually do, and that is where the consequences for a reported
-value are established.
+**We hold the equation fixed as a device for attribution, not because it is
+what an analyst would do.** It ensures that a difference between approaches is
+a difference in the treatment of the data. It also means that where the data
+have been altered, the equation being fitted is no longer the one that
+generated them, so some misfit is a consequence of the design rather than a
+finding about the convention. The results in Sections 5.2 to 5.8 should
+therefore be read as the direction and size of the distortion under a
+controlled comparison. Section 5.9 relaxes the fixed form and fits the
+candidate set that `bayesnec` recommends, which is what an analyst would
+actually do, and that is where the consequences for a reported value are
+established.
 
-The six Gaussian approaches also share one prior. `bnec()` derives its default
-Gaussian priors from the response vector, so allowing each approach to take its
-own default would confound a change in likelihood with a change in prior; on
-one of the real datasets the default `bot` prior is centred at exactly zero
-*because of* the substituted zeros. The prior is built once, from the intact
-data, with `get_priors()`, and passed to the other five. Use `get_priors()`
-rather than `pull_prior()`, which returns the whole `brmsprior` stored in a fit
-and is documented as not accepted by `bnec(prior = )`.
+The six Gaussian approaches also share one prior, and it is worth saying why.
+`bnec()` derives its default Gaussian priors from the response vector, so
+allowing each approach to take its own default would confound a change in
+likelihood with a change in prior; on one of the real datasets the default
+`bot` prior is centred at exactly zero *because of* the substituted zeros. The
+prior is built once, from the intact data, with `get_priors()`, and passed to
+the other five. Use `get_priors()` rather than `pull_prior()`, which returns
+the whole `brmsprior` stored in a fit and is documented as not accepted by
+`bnec(prior = )`.
 
 ### 5.1.1 Approaches retaining the measurement
 
@@ -385,8 +383,8 @@ fit_E <- bnec(y ~ crf(x, "nec3param"), data = dat_E,
               family = Beta(link = "identity"))
 ```
 
-**F — leave the scale alone and fit a Gamma.** No scaling is applied. Negatives
-are again set to zero.
+**F — leave the scale alone and fit a Gamma.** Here we apply no scaling.
+Negatives are again set to zero.
 
 ```{r, eval = FALSE}
 dat_F <- mutate(dat, y = pmax(y, 0))
@@ -434,8 +432,8 @@ handling_levels <- c("Measurement retained", "Zero boundary imposed",
 
 ## 5.2 Design
 
-Data are generated from the same `nec4param` curve that is fitted, so that the
-only misspecification under study is the one each convention introduces.
+We generate the data from the same `nec4param` curve that we then fit, so that
+the only misspecification under study is the one each convention introduces.
 
 ```{r}
 nec4param_curve <- function(x, top, bot, beta, nec) {
@@ -516,14 +514,13 @@ measurement-precision axis and should be read as one.**
 sigma_0 <- 0.096 * log(2.3) / 7   # absolute control SD, anchored at R = 2.3
 ```
 
-The design is nine scenarios crossing `delta` with `top_factor` at fixed
-`R` = 2.3, plus three further scenarios that hold `delta` = 4 and
-`top_factor` = 2.0 and raise `R`, giving four levels of measurement precision
-at an otherwise identical design and truth. Each scenario was simulated 500
-times and every simulated dataset fitted by all eight approaches, giving
-12 x 500 x 8 = 48,000 model fits. Sampling used four chains of 2,000 iterations
-with 1,000 warmup and `adapt_delta = 0.95`, and every fit is retained in the
-summaries.
+The design is nine scenarios crossing `delta` with `top_factor` at fixed `R` =
+2.3, plus three further scenarios that hold `delta` = 4 and `top_factor` = 2.0
+and raise `R`, giving four levels of measurement precision at an otherwise
+identical design and truth. We simulated each scenario 500 times and fitted
+every simulated dataset with all eight approaches, giving 12 x 500 x 8 = 48,000
+model fits. Sampling used four chains of 2,000 iterations with 1,000 warmup and
+`adapt_delta = 0.95`, and every fit is retained in the summaries.
 
 ```{r}
 scenarios <- rbind(
@@ -620,11 +617,11 @@ ggplot(subset(point_data, x > 0), aes(x = x, y = y)) +
 
 ## 5.3 Fitted curves from each approach
 
-Before the aggregate results, one simulated dataset fitted by all eight
-approaches shows what each convention does to the curve. The dataset is one
-draw from scenario 8 — `delta` = 4, `top_factor` = 2.0, `R` = 2.3 — in which
-the true upper asymptote is 0.119, the true lower asymptote is -0.476, and the
-true ErC50 is 5.05. Nine of its 70 observations are negative.
+Before we come to the aggregate results, one simulated dataset fitted by all
+eight approaches shows what each convention does to the curve. The dataset is
+one draw from scenario 8 — `delta` = 4, `top_factor` = 2.0, `R` = 2.3 — in
+which the true upper asymptote is 0.119, the true lower asymptote is -0.476,
+and the true ErC50 is 5.05. Nine of its 70 observations are negative.
 
 ```{r, echo = FALSE}
 # Posterior means from the eight fits to one simulated dataset from scenario 8.
@@ -894,8 +891,8 @@ F,ErC50,stops short,-0.0488,0.7373,0.6874
 
 ## 5.4 Effect of the concentration design
 
-The scenarios have to be separated into two groups before the approaches are
-compared, because the amount of information about the lower asymptote differs
+Before we compare the approaches we have to separate the scenarios into two
+groups, because the amount of information about the lower asymptote differs
 between them. Where the concentration series stops at or before the zero
 crossing, no true mean is negative or only the highest concentration is, so
 there is essentially nothing in the data that determines the asymptote. Where
@@ -1193,14 +1190,14 @@ two practices an analyst would actually apply: fitting a candidate set and
 averaging over it, which is what `bayesnec` recommends, and modelling the
 residual scale.
 
-Five approaches — A, C, B3, E and F — were re-run on three of the twelve
-scenarios, 200 simulated datasets each, with every approach averaged over the
+We re-ran five approaches — A, C, B3, E and F — on three of the twelve
+scenarios, 200 simulated datasets each, averaging every approach over the
 declining candidate set. The datasets are the same ones the single-model
 results used, so every comparison is paired. Models that failed to converge
 (R-hat > 1.01) were dropped and the weights re-stacked over the survivors; no
 approach in any scenario ever lost its whole candidate set.
 
-This sweep was run over the eight-equation Gaussian candidate set that
+We ran this sweep over the eight-equation Gaussian candidate set that
 `bayesnec` retained before version 2.2.0. That set is now fourteen equations,
 and the six added are the zero-asymptote shapes a floored dataset most
 resembles. The direction of that change on these results has not been measured
@@ -1330,9 +1327,9 @@ exactly this case, because a power law in the mean is undefined where the mean
 crosses zero. See the *Non-constant dispersion* section of the
 [Single model usage][e1] vignette.
 
-This was checked on scenario 8: 50 datasets, the six Gaussian approaches fitted
-twice each, once homoscedastic and once under `disp("loglinear")`, paired so
-every contrast is within-dataset. The result splits the approaches in two.
+We checked this on scenario 8, fitting the six Gaussian approaches twice each to
+50 datasets, once homoscedastic and once under `disp("loglinear")`, paired so
+that every contrast is within-dataset. The result splits the approaches in two.
 
 The case against flooring is unaffected. B1's ErC50 bias changes from -9.0% to
 -8.5% and B3's from -10.7% to -9.8%, with coverage still 0.50 and 0.44.
@@ -1353,16 +1350,16 @@ were never floored is close to unbiased. The check is recorded in
 The simulation establishes which approaches are right and which give relatively
 unbiased estimates. It cannot show how large the difference is on a real
 dataset, where the truth is unknown and the design, the noise and the shape of
-the response are not under the analyst's control. Four marine microalgal growth
-tests were therefore analysed by the six Gaussian approaches, and their
-estimates compared with arm A on the same dataset.
+the response are not under the analyst's control. We therefore analysed four
+marine microalgal growth tests with the six Gaussian approaches, and compared
+each estimate with arm A's on the same dataset.
 
 The four tests ship with the package as `alga`, so everything in this section
 is computed when the vignette is built rather than transcribed: two tests on
 *Cladocopium proliferum*, a coral endosymbiont, over seven days, and two on
 *Rhodomonas salina* over three days, each species exposed to two contaminants
-on undisclosed and mutually incomparable concentration scales. Arms E and F are
-not applied here: on a real dataset there is no true value to score them
+on undisclosed and mutually incomparable concentration scales. We do not apply
+arms E and F here: on a real dataset there is no true value to score them
 against, and what they add to the study is that their bias survives to the
 noise-free limit, which can only be shown where the truth is known.
 
@@ -1634,8 +1631,8 @@ times arm A's — the same upward direction, and a similar magnitude, to the
 Under a Gaussian likelihood with no lower plateau in the data, `bot` is
 substantially prior-informed, so it is reasonable to ask whether the
 differences reported above are differences in the prior rather than in the
-likelihood. This was checked on `c_proliferum` by refitting each approach with
-a `bot` prior four times wider and four times tighter than the default, a
+likelihood. We checked this on `c_proliferum` by refitting each approach with a
+`bot` prior four times wider and four times tighter than the default, a
 sixteen-fold range of prior scale. B2 and B3 are excluded because their `bot`
 is fixed.
 
@@ -1757,16 +1754,16 @@ are far better than the alternatives, but neither is perfectly calibrated, and
 the shortfall is at least partly attributable to the next point.
 
 **Residual error is generated heteroscedastic and fitted homoscedastic**
-throughout the simulation. The sweep predates the dispersion interface and was
-run without it, so the coverage figures should be read as reflecting a single
-pooled `sigma` standing in for a residual scale that varies 8.1-fold along the
+throughout the simulation. We ran the sweep before the dispersion interface
+existed, so the coverage figures should be read as reflecting a single pooled
+`sigma` standing in for a residual scale that varies 8.1-fold along the
 curve. The check in Section 5.10 is one scenario at one noise level, and
 `"loglinear"` is itself an approximation to the linear `sigma` ramp the data
 were generated from. It shows the ordering is dispersion-dependent for B2; it
 does not re-score the study. Re-running the precision sweep under
 `disp("loglinear")` is tracked in issue #283.
 
-**The model-averaging sweep was run over an eight-equation candidate set**, as
+**We ran the model-averaging sweep over an eight-equation candidate set**, as
 stated in Section 5.9. Re-running it over the fourteen equations retained from
 version 2.2.0 would establish whether the recovery reported there holds when
 the zero-asymptote shapes are among the candidates. That is the largest
@@ -1785,7 +1782,7 @@ is not what an analyst using `bayesnec` would do. The case-study estimates
 should be read as showing that the choice of convention changes the answer, not
 as recommendations for how to analyse those particular tests.
 
-**The precision sweep was run at one combination of the other two factors**
+**We ran the precision sweep at one combination of the other two factors**
 (`delta` = 4, `top_factor` = 2.0). The convergence behaviour is expected to be
 general, since it follows from the boundary being a fixed misspecification, but
 it has been demonstrated at one point of the design rather than across it.
