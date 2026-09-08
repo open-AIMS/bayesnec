@@ -5,8 +5,10 @@
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #' @param nsec A numeric value indicating the NSEC value for which to extract 
 #' the percentage effect.
-#' @param resolution The number of unique x values over which to find NSEC -
-#' large values will make the NSEC estimate more precise.
+#' @param resolution The number of unique x values over which the curve is
+#' predicted. It affects only \code{type = "range"}, where the denominator is
+#' the lowest response the curve predicts over the grid. The default of 200
+#' matches \code{\link{ecx}} and \code{\link{nsec}}.
 #' @param type A \code{\link[base]{character}} vector, taking values of
 #' "absolute" (the default), "relative" or "range". See Details.
 #' @param xform A function to apply to the returned estimated NSEC concentration
@@ -50,7 +52,7 @@
 #' }
 #'
 #' @export
-ecnsec <- function(object, nsec, resolution = 1000, x_range = NA, 
+ecnsec <- function(object, nsec, resolution = 200, x_range = NA, 
                    type = "absolute",
                  xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("ecnsec")
@@ -73,7 +75,7 @@ ecnsec <- function(object, nsec, resolution = 1000, x_range = NA,
 #' @noRd
 #'
 #' @export
-ecnsec.bnecfit <- function(object, nsec, resolution = 10, x_range = NA, 
+ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA, 
                                type = "absolute",
                              xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
                              posterior = FALSE) {

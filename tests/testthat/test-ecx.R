@@ -262,3 +262,22 @@ test_that("the relative rename warns once for a set, not once per equation", {
   # The option is restored, so a later call in the same session still warns.
   expect_null(getOption("bayesnec.relative_warned"))
 })
+
+test_that("the estimate is insensitive to resolution above the default", {
+  skip_on_cran()
+  # This pins the basis for the default of 200. The crossing is interpolated
+  # between the two bracketing grid points rather than snapped to the nearer of
+  # them, so precision saturates well below the grid spacing and the default no
+  # longer needs to be large. A five-fold increase must not change either
+  # estimator materially. See #39.
+  # as.numeric() rather than unname(): the estimate has a "resolution"
+  # attribute recording what it was computed at, which differs by construction.
+  expect_equal(as.numeric(ecx(nec4param, resolution = 200)),
+               as.numeric(ecx(nec4param, resolution = 1000)),
+               tolerance = 1e-3)
+  suppressWarnings({
+    n200 <- as.numeric(nsec(nec4param, resolution = 200))
+    n1000 <- as.numeric(nsec(nec4param, resolution = 1000))
+  })
+  expect_equal(n200, n1000, tolerance = 1e-3)
+})

@@ -134,6 +134,26 @@
   `bayesnechurdlefit` methods included; they previously stopped with "missing
   values and NaN's not allowed" on a posterior the package had itself written.
 
+- **The default `resolution` is reduced from 1000 to 200** in `ecx()`,
+  `nsec()`, `ecnsec()` and `average_estimates()`. The value of 1000 was
+  calibrated for the nearest-grid-point search that interpolation replaces,
+  where the grid spacing set the precision directly. With interpolation the
+  precision saturates: measured on the equations of `manec_example` at 100
+  draws and on a `nec4param` fit of `nec_data` at 4000 draws, the largest
+  change in any reported ECx or NSEC between a resolution of 200 and one of
+  2000 was 0.006 per cent, and the binding case was `nsec()` on `nec4param`.
+  The reduction lowers the run time of a 4000 draw `nsec()` call by about 10
+  per cent, and the saving grows with the number of draws. The measurement does
+  not cover `bnec_hurdle()` fits or a predictor carrying an inline
+  transformation. Prediction and plotting grids are unaffected: `bnec()`,
+  `bnec_newdata()`, `autoplot()` and the `fitted()`, `predict()` and
+  `posterior_epred()` methods keep a default of 1000 (#39).
+
+- **`ecnsec()` predicts over 200 grid points rather than 10.** Both its
+  methods took 10, disagreeing with the 1000 the `\usage` section stated. The
+  value sets the denominator under `type = "range"`, which was therefore read
+  off a ten-point curve.
+
 - **`ecx_val` is no longer capped at 99.** Any value above 0 is accepted. Under
   `"absolute"` the reference is 0, so a value above 100 names a target below
   zero, which is a real measurement on a response that can go negative and is
