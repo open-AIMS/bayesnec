@@ -535,6 +535,10 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' population-level prior on \code{bot} itself is untouched, because \code{bot}
 #' is still a population-level non-linear parameter.
 #'
+#' A transformed term gets \strong{one} prior, the standard deviation. It has no
+#' population intercept to give a prior to; see \code{\link{add_par_gl_term}}
+#' for why. \code{ogl} gets two, and that asymmetry is deliberate.
+#'
 #' \strong{prior_type.} \code{"regularizing"} halves every generated scale.
 #' The two default sets differ only in the response-scaled parameters for the
 #' curve itself, but a user reaching for the narrower set on a grouped fit is
@@ -629,7 +633,14 @@ define_group_prior <- function(group_spec, predictor, response,
       },
       s_y
     )
-    if (cap && !identical(kind, "none")) min(out, 1) else out
+    # Capped at 1 / narrow rather than at 1. narrow is applied to s_y before the
+    # conversion, so capping at a constant afterwards made the two prior_type
+    # settings return exactly the same width wherever the uninformative one
+    # already exceeded the cap -- which is the response mean close to a bound,
+    # the case the cap exists for. A user selecting "regularizing" on a grouped
+    # fit then changed nothing for the parameter that prompted the choice. See
+    # #294.
+    if (cap && !identical(kind, "none")) min(out, 1 / narrow) else out
   }
   s_ogl <- converted_scale(ogl_transform)
   s_par <- converted_scale(par_transform, cap = TRUE)
@@ -669,18 +680,13 @@ define_group_prior <- function(group_spec, predictor, response,
     out <- out + prior_string(paste0("normal(0, ", signif(s_ogl, 4), ")"),
                               nlpar = "ogl")
   }
-  # The deviation intercept needs a prior for the same reason the ogl intercept
-  # does, and it is the same non-identifiability: a constant added to botgl is
-  # taken back out of bot with no change to the likelihood, and brms leaves a
-  # non-linear population-level parameter flat by default. Centring it at zero
-  # is what makes bot the population-level lower asymptote and botgl deviation
-  # about it.
-  for (p in intersect(group_spec$nlpars, par_transform_pars())) {
-    if (par_is_transformed(p, par_transform)) {
-      out <- out + prior_string(paste0("normal(0, ", signif(s_par, 4), ")"),
-                                nlpar = unname(par_gl_names(p)[["dev"]]))
-    }
-  }
+  # No prior on a deviation intercept, because there is no deviation intercept:
+  # add_par_gl_term() writes botgl ~ 0 + (1 | group), so brms declares no
+  # b_botgl. That is deliberate and is what keeps bot interpretable -- bnecbot
+  # depends on bot and botgl only through their combination, so a free intercept
+  # would be exactly unidentified against bot. ogl is the other case and does
+  # get one, because it is documented as adding a population-level parameter.
+  # See add_par_gl_term(). #294.
   out
 }
 

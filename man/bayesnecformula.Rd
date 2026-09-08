@@ -67,7 +67,7 @@ or model suite. For example, the parameter \code{bot} exists in model
 \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
 will be dropped in models where that parameter does not exist.
 
-\bold{How the deviation is applied}
+\bold{The scale a group-level deviation is applied on}
 
 \pkg{brms} declares a group-level deviation unconstrained, and under the
 \code{"identity"} link \code{\link{bnec}} assigns, the quantity it is added
@@ -85,7 +85,13 @@ deviation on every parameter at once and so generates a mixture of the two.
 
 The deviation is centred on zero and a deviation of zero leaves the value
 unchanged, so \code{top}, \code{bot}, \code{nec} and \code{beta} keep their
-meanings and their own priors. What changes is the name the standard deviation
+meanings and their own priors. A deviation on \code{top} or \code{bot} adds
+no population-level term of its own, so the fit has exactly the parameters the
+additive form had and \code{bot} remains the asymptote the population-level
+curve declines towards. A prior the user supplies for \code{top} or
+\code{bot} must bound it to the range the mean is defined on, because the
+multiplicative form is defined only inside that range; a prior that does not
+is refused with a message naming the bounds to add. What changes is the name the standard deviation
 is reported under: a term on \code{bot} is summarised as
 \code{sd(botgl_Intercept)} rather than \code{sd(bot_Intercept)}, and it is on
 the log-odds or log scale rather than on the response scale. The generated

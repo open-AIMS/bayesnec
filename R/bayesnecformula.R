@@ -76,7 +76,13 @@
 #'
 #' The deviation is centred on zero and a deviation of zero leaves the value
 #' unchanged, so \code{top}, \code{bot}, \code{nec} and \code{beta} keep their
-#' meanings and their own priors. What changes is the name the standard deviation
+#' meanings and their own priors. A deviation on \code{top} or \code{bot} adds
+#' no population-level term of its own, so the fit has exactly the parameters the
+#' additive form had and \code{bot} remains the asymptote the population-level
+#' curve declines towards. A prior the user supplies for \code{top} or
+#' \code{bot} must bound it to the range the mean is defined on, because the
+#' multiplicative form is defined only inside that range; a prior that does not
+#' is refused with a message naming the bounds to add. What changes is the name the standard deviation
 #' is reported under: a term on \code{bot} is summarised as
 #' \code{sd(botgl_Intercept)} rather than \code{sd(bot_Intercept)}, and it is on
 #' the log-odds or log scale rather than on the response scale. The generated
@@ -769,7 +775,7 @@ clean_bar_glef <- function(x) {
 #'   y       ~ bnecbot + (top - bnecbot) * exp(...)
 #'   bnecbot ~ bot * exp(botgl) / (1 - bot + bot * exp(botgl))
 #'   bot     ~ 1
-#'   botgl   ~ 1 + (1 | g)
+#'   botgl   ~ 0 + (1 | g)
 #' }
 #'
 #' \code{bot} is still a population-level non-linear parameter with its own
@@ -777,6 +783,23 @@ clean_bar_glef <- function(x) {
 #' it are unchanged, and the deviation is zero-centred with
 #' \code{m * exp(0) == m}, so \code{bot} keeps its meaning. What changes is that
 #' no value of \code{botgl} can put \code{bnecbot} outside \code{(0, 1)}.
+#'
+#' \strong{The deviation has no population intercept}, which is what keeps
+#' \code{bot} interpretable. \code{bnecbot} depends on \code{bot} and
+#' \code{botgl} only through their combination, so a free \code{b_botgl} would
+#' be exactly unidentified against \code{bot}: the two would trade off along a
+#' ridge with no change to the likelihood, and \code{b_bot_Intercept} would no
+#' longer be the asymptote the population-level curve declines towards.
+#' \code{ecx(type = "relative")} divides by that asymptote at
+#' \code{R/ecx.R:407} and \code{\link{expand_nec}} reports it, so both would
+#' have been wrong. Writing the sub-formula with \code{0 +} removes the
+#' population term altogether --- \pkg{brms} then declares no \code{b_botgl} ---
+#' and leaves exactly the parameters the additive form had: \code{bot}, the
+#' group-level standard deviation, and the deviations themselves, which the
+#' hierarchical prior centres on zero. Checked against \pkg{brms} 2.23.0 in the
+#' generated Stan code. This is where the parameter-level transform differs from
+#' \code{ogl()}, which is documented as adding a population-level parameter of
+#' its own and keeps its intercept and the zero-centred prior #257 gave it.
 #'
 #' The intermediate is built by setting the \code{nl} and \code{loop}
 #' attributes rather than by calling \code{brms::nlf()}, which returns a list
@@ -800,7 +823,7 @@ add_par_gl_term <- function(brmform, par, var, kind) {
     brmform[[1]][[3]] <- eval(call("substitute", brmform[[1]][[3]],
                                    stats::setNames(list(as.name(nms[["inter"]])),
                                                    par)))
-    brmform[[2]][[nms[["dev"]]]] <- as.formula(paste(nms[["dev"]], "~ 1"))
+    brmform[[2]][[nms[["dev"]]]] <- as.formula(paste(nms[["dev"]], "~ 0"))
     inter_form <- as.formula(
       paste(nms[["inter"]], "~",
             ogl_transform_expr(kind, m = par, o = nms[["dev"]]))
@@ -810,11 +833,32 @@ add_par_gl_term <- function(brmform, par, var, kind) {
     brmform[[2]][[nms[["inter"]]]] <- inter_form
   }
   tmp_rhs <- deparse1(rhs(brmform[[2]][[nms[["dev"]]]]))
-  if (!grepl(var, tmp_rhs, fixed = TRUE)) {
+  # The term, not the variable name. Testing for the name alone drops a second
+  # grouping whose name is a substring of one already added: (bot | grp2) +
+  # (bot | grp) kept only grp2, silently and depending on the order written.
+  if (!has_gl_term(tmp_rhs, var)) {
     rhs(brmform[[2]][[nms[["dev"]]]]) <-
       str2lang(paste0(tmp_rhs, " + (1 |", var, ")"))
   }
   brmform
+}
+
+#' Whether a sub-formula's right-hand side already groups by a variable
+#'
+#' @param rhs_str The deparsed right-hand side.
+#' @param var A \code{\link[base]{character}} string naming the grouping
+#' variable.
+#'
+#' @details \code{deparse1()} of a term appended as \code{" + (1 |", var, ")"}
+#' renders as \code{(1 | var)}, with the space \pkg{R} inserts around the bar.
+#' Both spellings are tested so that this does not depend on how the string was
+#' built. See #294.
+#'
+#' @return A \code{\link[base]{logical}}.
+#' @noRd
+has_gl_term <- function(rhs_str, var) {
+  any(vapply(c(paste0("(1 | ", var, ")"), paste0("(1 |", var, ")")),
+             grepl, logical(1), x = rhs_str, fixed = TRUE))
 }
 
 #' @noRd
@@ -888,7 +932,9 @@ add_formula_glef <- function(model, brmform, bnecform, data,
           next
         }
         tmp_rhs <- deparse1(rhs(brmform[[2]][[pars[k]]]))
-        if (!grepl(vars[k], tmp_rhs)) {
+        # See has_gl_term(). The substring test this replaces dropped the second
+        # of (nec | grp2) + (nec | grp) on every version up to 2.1.4.
+        if (!has_gl_term(tmp_rhs, vars[k])) {
           rhs(brmform[[2]][[pars[k]]]) <- str2lang(paste0(tmp_rhs, " + (1 |",
                                                           vars[k], ")"))
         }

@@ -36,8 +36,8 @@ test_that("a term on bot becomes a multiplicative deviation", {
   # prior define_prior() builds for it are untouched.
   expect_equal(sub_rhs(bform, "bot"), "1")
   # The grouping is declared on the deviation, and the curve reads the
-  # intermediate.
-  expect_equal(sub_rhs(bform, "botgl"), "1 + (1 | grp)")
+  # intermediate. `0 +`, not `1 +`: the deviation has no population intercept.
+  expect_equal(sub_rhs(bform, "botgl"), "0 + (1 | grp)")
   expect_equal(sub_rhs(bform, "bnecbot"),
                "bot * exp(botgl)/(1 - bot + bot * exp(botgl))")
   expect_true(grepl("bnecbot", deparse1(bform[[1]][[3]]), fixed = TRUE))
@@ -70,8 +70,8 @@ test_that("pgl expands to what the equivalent explicit terms give", {
   # to exactly what writing those terms out by hand gives -- top and bot
   # transformed, the rest additive.
   bform <- build("pgl(grp)")
-  expect_equal(sub_rhs(bform, "botgl"), "1 + (1 | grp)")
-  expect_equal(sub_rhs(bform, "topgl"), "1 + (1 | grp)")
+  expect_equal(sub_rhs(bform, "botgl"), "0 + (1 | grp)")
+  expect_equal(sub_rhs(bform, "topgl"), "0 + (1 | grp)")
   expect_equal(sub_rhs(bform, "bot"), "1")
   expect_equal(sub_rhs(bform, "top"), "1")
   expect_equal(sub_rhs(bform, "nec"), "1 + (1 | grp)")
@@ -94,8 +94,10 @@ test_that("the mean transform and the parameter transform compose", {
                "bnecmu * exp(ogl)/(1 - bnecmu + bnecmu * exp(ogl))")
   expect_true(grepl("bnecbot", deparse1(formula.tools::rhs(bform[[2]][["bnecmu"]])),
                     fixed = TRUE))
+  # ogl keeps its intercept, because it is documented as adding a
+  # population-level parameter of its own; a transformed parameter does not.
   expect_equal(sub_rhs(bform, "ogl"), "1 + (1 | grp)")
-  expect_equal(sub_rhs(bform, "botgl"), "1 + (1 | grp)")
+  expect_equal(sub_rhs(bform, "botgl"), "0 + (1 | grp)")
 })
 
 test_that("two groupings on one transformed parameter both reach the deviation", {
@@ -106,11 +108,66 @@ test_that("two groupings on one transformed parameter both reach the deviation",
     wrangle_model_formula("nec4param", form, bdat,
                           family = validate_family("Beta"))
   )
-  expect_equal(sub_rhs(bform, "botgl"), "1 + (1 | grp) + (1 | grp2)")
+  expect_equal(sub_rhs(bform, "botgl"), "0 + (1 | grp) + (1 | grp2)")
   expect_equal(sub_rhs(bform, "bot"), "1")
   # The intermediate is built once, not once per grouping.
   expect_equal(sub_rhs(bform, "bnecbot"),
                "bot * exp(botgl)/(1 - bot + bot * exp(botgl))")
+})
+
+test_that("the deviation has no population intercept", {
+  # bnecbot depends on bot and botgl only through their combination, so a free
+  # b_botgl would be exactly unidentified against bot: the two would trade off
+  # along a ridge with no change to the likelihood, and b_bot_Intercept would
+  # stop being the asymptote the population-level curve declines towards.
+  # ecx(type = "relative") divides by that asymptote and expand_nec() reports
+  # it, so both would have been wrong. Asserted in the generated Stan code
+  # rather than in the formula, because what matters is that brms declares no
+  # such parameter.
+  skip_on_cran()
+  bform <- build("(bot | grp)")
+  priors <- define_prior("nec4param", validate_family("Beta"), gdat$pred,
+                         gdat$resp,
+                         group_spec = list(nlpars = "bot", ogl = FALSE))
+  code <- as.character(suppressMessages(
+    brms::make_stancode(bform, data = suppressMessages(
+      model.frame(bnf('resp ~ crf(pred, "nec4param") + (bot | grp)'), gdat)
+    ), family = validate_family("Beta"), prior = priors)
+  ))
+  expect_false(grepl("b_botgl", code, fixed = TRUE))
+  expect_true(grepl("r_1_botgl_1", code, fixed = TRUE))
+  # The parameter count is the additive form's: bot, the standard deviation and
+  # the deviations themselves. bot is declared with the bounds its prior
+  # carries, which is what makes the transform safe.
+  expect_true(grepl("b_bot;", code, fixed = TRUE))
+  expect_true(grepl("sd_1", code, fixed = TRUE))
+})
+
+test_that("a second grouping is not dropped for being a substring of the first", {
+  # grepl(var, rhs) matched the variable's name anywhere in the deparsed
+  # right-hand side, so (bot | grp2) + (bot | grp) kept only grp2 -- silently,
+  # and depending on the order the terms were written in.
+  gdat2 <- transform(gdat, grp2 = factor(rep(1:2, 30)))
+  bld2 <- function(term, par) {
+    form <- bnf(paste0('resp ~ crf(pred, "nec4param") + ', term))
+    bdat <- suppressMessages(model.frame(form, gdat2))
+    bform <- suppressMessages(
+      wrangle_model_formula("nec4param", form, bdat,
+                            family = validate_family("Beta"))
+    )
+    deparse1(formula.tools::rhs(bform[[2]][[par]]))
+  }
+  # The transformed path, in both orders.
+  expect_equal(bld2("(bot | grp2) + (bot | grp)", "botgl"),
+               "0 + (1 | grp2) + (1 | grp)")
+  expect_equal(bld2("(bot | grp) + (bot | grp2)", "botgl"),
+               "0 + (1 | grp) + (1 | grp2)")
+  # The untransformed path had the same defect on every version up to 2.1.4.
+  expect_equal(bld2("(nec | grp2) + (nec | grp)", "nec"),
+               "1 + (1 | grp2) + (1 | grp)")
+  # A genuine repeat is still added once only.
+  expect_equal(bld2("(bot | grp) + (bot | grp)", "botgl"), "0 + (1 | grp)")
+  expect_equal(bld2("(nec | grp) + (nec | grp)", "nec"), "1 + (1 | grp)")
 })
 
 test_that("every equation and family builds Stan code with a group-level term", {

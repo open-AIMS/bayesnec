@@ -110,9 +110,11 @@
   cannot leave, that is decided by the equation alone: for one whose mean lies
   between `bot` and `top`, no group-level term on any parameter can put `mu`
   outside the support, and the raise is dropped. It is kept for `neclin`,
-  `neclinhorme` and `ecxlin`, which are unbounded below, and for the six
-  hormesis equations that can exceed 1 through `exp(slope) * x`. In 2.1.x the
-  raise was applied to every grouped fit on a constrained family.
+  `neclinhorme` and `ecxlin`, which are unbounded below, and for the seven
+  hormesis equations with an excess term, on **every** family --- their mean is
+  negative for a sufficiently negative predictor, which `crf(log(x), ...)`
+  supplies as a matter of course, so a `(0, Inf)` support is no protection. In
+  2.1.x the raise was applied to every grouped fit on a constrained family.
 
   **`top` and `bot` keep their names, their meanings and their own priors.** The
   deviation is zero-centred and `m e^0` is `m`, and the parameter stays a
@@ -122,12 +124,32 @@
   reported under `sd(botgl_Intercept)` rather than `sd(bot_Intercept)`, and is on
   the log-odds or log scale rather than on the response scale.
 
+  The deviation is written `botgl ~ 0 + (1 | group)` and has **no population
+  intercept**, which is what keeps `bot` interpretable: `bnecbot` depends on
+  `bot` and `botgl` only through their combination, so a free intercept would be
+  exactly unidentified against `bot` and `b_bot_Intercept` would no longer be the
+  asymptote the population-level curve declines towards --- which
+  `ecx(type = "relative")` divides by and `summary()` reports. The parameter set
+  is therefore exactly the additive form's: `bot`, the group-level standard
+  deviation, and the deviations themselves. `ogl()` is the other case and keeps
+  the intercept and zero-centred prior #257 gave it, because it is documented as
+  adding a population-level parameter of its own.
+
   **The prior on the deviation is widened onto that scale** by the same
   delta-method conversion #257 uses for `ogl`, evaluated at `mean(y)`, and capped
-  at 1 in both branches. The cap is the one difference: #257 caps the `log`
-  branch only, on the argument that the `logit` ratio is self-limiting at the
-  response mean, and that argument does not hold for a parameter that sits near
-  zero. The `ogl` conversion is unchanged.
+  at one tenth of the response range divided by `prior_type`'s narrowing factor.
+  The cap is the one difference: #257 caps the `log` branch only, on the argument
+  that the `logit` ratio is self-limiting at the response mean, and that argument
+  does not hold for a parameter that sits near zero. The `ogl` conversion is
+  unchanged.
+
+  **A user prior that leaves `top` or `bot` unbounded is now refused** where a
+  group-level term on it would be transformed. The multiplicative form on (0, 1)
+  is defined only while the parameter is inside (0, 1), which the generated
+  priors guarantee with `lb = 0` and `ub = 1`; `fill_missing_priors()` preserves
+  a user row and fills only what is absent, so a user prior with no bounds would
+  have reached Stan unbounded, and outside [0, 1] the expression has a pole and
+  changes sign across it. The error names the parameter and the bounds to add.
 
 ## Breaking changes to ECx, NSEC and ECNSEC
 

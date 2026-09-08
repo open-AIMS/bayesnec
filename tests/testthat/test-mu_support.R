@@ -634,3 +634,53 @@ test_that("the parameter transform is the identity at zero deviation", {
   expect_gt(ev("logit", 1e-8, -20), 0)
   expect_lt(ev("logit", 1e-8, 20), 1)
 })
+
+
+test_that("mu_confined_by_pars tests the excess term on every support", {
+  # The raise gate. It must not delegate to ogl_transform_kind(), which tests
+  # can_exceed_one on the (0, 1) branch only -- there the question is whether a
+  # logit is defined -- and on (0, Inf) returns "log" after testing below_zero
+  # alone. An excess term in exp(slope) * x makes the mean negative for a
+  # sufficiently negative predictor: nechorme's mean is negative for
+  # x < -top / exp(slope), and crf(log(x), ...) supplies a negative predictor as
+  # a matter of course.
+  hormesis <- c("nechorme", "nechorme4", "nechormepwr", "nechorme4pwr",
+                "nechormepwr01", "ecxhormebc4", "ecxhormebc5")
+  for (m in c(hormesis, "neclin", "neclinhorme", "ecxlin")) {
+    expect_false(mu_confined_by_pars(m))
+  }
+  for (m in c("nec3param", "nec4param", "necsigm", "ecxexp", "ecxsigm",
+              "ecx4param", "ecxwb1", "ecxwb2", "ecxwb1p3", "ecxwb2p3",
+              "ecxll5", "ecxll4", "ecxll3")) {
+    expect_true(mu_confined_by_pars(m))
+  }
+  # Every equation is decided, and the two functions agree only where the
+  # support is the unit interval.
+  expect_setequal(c(models()$all),
+                  model_mu_ranges()$model)
+  beta <- validate_family("Beta")
+  for (m in hormesis) {
+    expect_equal(ogl_transform_kind(m, beta), "none")
+    # The divergence this test exists for.
+    expect_equal(ogl_transform_kind(m, validate_family("Gamma")), "log")
+  }
+  expect_false(mu_confined_by_pars(NULL))
+  expect_false(mu_confined_by_pars("notamodel"))
+})
+
+test_that("group_zero_intercepts names ogl and nothing else", {
+  # A transformed parameter deviation is written botgl ~ 0 + (1 | group) and has
+  # no population intercept to start at zero. ogl does.
+  beta <- validate_family("Beta")
+  expect_equal(group_zero_intercepts(list(nlpars = "ogl", ogl = TRUE), beta),
+               "ogl")
+  expect_equal(
+    group_zero_intercepts(list(nlpars = c("top", "bot"), ogl = FALSE), beta),
+    character(0)
+  )
+  expect_equal(
+    group_zero_intercepts(list(nlpars = c("bot", "ogl"), ogl = TRUE), beta),
+    "ogl"
+  )
+  expect_equal(group_zero_intercepts(NULL, beta), character(0))
+})

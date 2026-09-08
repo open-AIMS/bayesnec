@@ -719,12 +719,14 @@ test_that("a transformed term declares its sd on the deviation, not the paramete
   sd_rows <- pr[pr$class == "sd", ]
   expect_setequal(sd_rows$nlpar, c("topgl", "botgl", "nec", "beta"))
   expect_false(any(sd_rows$nlpar %in% c("top", "bot")))
-  # The deviation intercept is unidentified against the parameter it multiplies,
-  # exactly as the ogl intercept is against top and bot, so it gets the same
-  # zero-centred prior.
-  b_rows <- pr[pr$class == "b", ]
-  expect_setequal(b_rows$nlpar, c("topgl", "botgl"))
-  expect_true(all(grepl("^normal\\(0, ", b_rows$prior)))
+  # And it adds nothing else. The deviation has no population intercept to give
+  # a prior to -- add_par_gl_term() writes botgl ~ 0 + (1 | group) precisely
+  # because a free intercept would be exactly unidentified against bot, which
+  # would stop b_bot_Intercept being the asymptote the population-level curve
+  # declines towards. ogl is the other case and does keep an intercept prior.
+  # define_group_prior() returns the group-level rows alone, and for a
+  # transformed term that is the standard deviation and nothing else.
+  expect_true(all(pr$class == "sd"))
 })
 
 test_that("the transformed scale is the delta-method conversion, capped", {
@@ -747,6 +749,8 @@ test_that("the transformed scale is the delta-method conversion, capped", {
   # log: a group-level coefficient of variation.
   log_pr <- bayesnec:::define_group_prior(spec, x, y, par_transform = "log")
   expect_equal(get_scale(log_pr, "sd", "botgl"), signif(min(s_y / m_y, 1), 4))
+  # The prior set for a transformed term is one row, the standard deviation.
+  expect_equal(nrow(as.data.frame(logit_pr)), 1)
   # Untransformed, the response-scale width is kept and the name is the
   # parameter's.
   none_pr <- bayesnec:::define_group_prior(spec, x, y, par_transform = "none")
@@ -774,6 +778,11 @@ test_that("the parameter-level conversion is capped in both branches", {
   expect_equal(get_scale(bayesnec:::define_group_prior(spec, x, y,
                                                       par_transform = "logit"),
                          "botgl"), 1)
+  # The cap scales with prior_type, or "regularizing" would be inert exactly
+  # where the cap binds -- which is this case, the one the cap exists for.
+  expect_equal(get_scale(bayesnec:::define_group_prior(
+    spec, x, y, prior_type = "regularizing", par_transform = "logit"),
+    "botgl"), 0.5)
   # #257's ogl conversion is deliberately left as it was.
   ogl_spec <- list(nlpars = "ogl", ogl = TRUE)
   expect_equal(get_scale(bayesnec:::define_group_prior(ogl_spec, x, y,

@@ -776,17 +776,27 @@ add_brm_defaults <- function(
   # are transformed whenever mu is constrained, so they stay inside the support;
   # nec, ec50, beta, slope, d and f are on the predictor or log scales, and for
   # an equation whose mean lies between bot and top a deviation on any of them
-  # leaves mu between two in-support values. The equations for which that fails
-  # are exactly the ones ogl_transform_kind() already refuses -- neclin,
-  # neclinhorme and ecxlin are unbounded below, and the hormesis equations can
-  # exceed 1 through exp(slope) * x with top and bot both inside (0, 1) -- so
-  # that function answers this question too and no second list is kept.
+  # leaves mu between two in-support values.
+  #
+  # mu_confined_by_pars() answers that and ogl_transform_kind() does not, which
+  # is why this does not delegate to the latter as the first version of #294
+  # did. That function tests can_exceed_one only on the (0, 1) branch, because
+  # there the question is whether a logit is defined; on (0, Inf) it returns
+  # "log" after testing below_zero alone. The hormesis equations then lost the
+  # raise under Gamma and the counts, where 2.1.4 applied it -- and their mean
+  # is negative for a sufficiently negative predictor, which crf(log(x), ...)
+  # supplies as a matter of course.
+  #
+  # An ogl term is the one case where the transform's own gate still decides,
+  # because ogl is not transformed at all where that gate refuses.
   #
   # Measured on herbicide, Beta(link = "identity"), nec4param: a
   # (nec | herbicide) term gives 0 divergent transitions of 2000 at Stan's
   # default adapt_delta of 0.8, and a (bot | herbicide) term gives 51 at 0.95
   # without the transform. See #294.
-  group_is_bounded <- !identical(ogl_transform_kind(model, family), "none")
+  group_is_bounded <- mu_confined_by_pars(model) &&
+    (!isTRUE(group_spec$ogl) ||
+       !identical(ogl_transform_kind(model, family), "none"))
   if (!is.null(group_spec) && mu_is_constrained(family) && !group_is_bounded) {
     ctrl <- if ("control" %in% names(brm_args)) brm_args$control else list()
     if (!("adapt_delta" %in% names(ctrl))) {
@@ -838,6 +848,7 @@ add_brm_defaults <- function(
       fill_missing_priors(priors, default_priors, model)
     }
   }
+  check_transformed_par_bounds(brm_args$prior, group_spec, family)
   # Whether anyone needs initial values, and nothing else. This used to read
   # `|| skip_check`, which made a caller who supplied `init` pay for the search
   # anyway whenever the data check was skipped -- and then discarded what they
@@ -1320,6 +1331,77 @@ step <- function(x) {
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #'
+#' Refuse a transformed parameter whose prior does not bound it to the support
+#'
+#' @param priors The prior set the fit will use, after any user rows have been
+#' merged with the defaults.
+#' @param group_spec The output of \code{\link{parse_group_terms}}.
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @details The multiplicative form on \code{(0, 1)},
+#' \code{m e^o / (1 - m + m e^o)}, is safe \strong{because} \code{m} is inside
+#' \code{(0, 1)}. \code{\link{define_prior}} guarantees that for the priors it
+#' generates, giving \code{top} and \code{bot} \code{lb = 0} and \code{ub = 1},
+#' but \code{\link{fill_missing_priors}} preserves a user row and fills only
+#' what is absent, so a user prior such as
+#' \code{prior_string("normal(0.2, 0.5)", nlpar = "bot")} merges with
+#' \code{lb} and \code{ub} both \code{NA} and \pkg{brms} then declares
+#' \code{b_bot} unbounded.
+#'
+#' Outside \code{[0, 1]} the expression has a pole at
+#' \code{o = log((m - 1) / m)} and changes sign across it: at \code{m = 1.5}
+#' and \code{o = -1.1} it returns about -713. That is the failure
+#' \code{\link{ogl_transform_kind}} refuses the \code{can_exceed_one}
+#' equations to avoid, and it is worse here than the additive form it replaces,
+#' which would have produced an out-of-range mean that Stan rejects visibly as a
+#' divergence rather than a large finite number it accepts.
+#'
+#' Refused rather than worked around. Restoring the bound silently would change
+#' a prior the user wrote, and falling back to the additive form would make the
+#' parameterisation depend on the prior set, which is decided after the formula
+#' is built. The message names the parameter and the bounds it needs. See #294.
+#'
+#' @return \code{NULL}, invisibly. Called for the error.
+#' @noRd
+check_transformed_par_bounds <- function(priors, group_spec, family) {
+  kind <- par_transform_kind(family)
+  if (is.null(group_spec) || identical(kind, "none") || is.null(priors)) {
+    return(invisible(NULL))
+  }
+  transformed <- Filter(function(p) par_is_transformed(p, kind),
+                        intersect(group_spec$nlpars, par_transform_pars()))
+  if (length(transformed) == 0) {
+    return(invisible(NULL))
+  }
+  pr <- as.data.frame(priors)
+  support <- mu_support(family)
+  need_ub <- is.finite(support[2])
+  bad <- character(0)
+  for (p in transformed) {
+    row <- pr[pr$class == "b" & pr$nlpar == p, , drop = FALSE]
+    if (nrow(row) == 0) {
+      next
+    }
+    has_lb <- any(nzchar(row$lb) & !is.na(row$lb))
+    has_ub <- any(nzchar(row$ub) & !is.na(row$ub))
+    if (!has_lb || (need_ub && !has_ub)) {
+      bad <- c(bad, p)
+    }
+  }
+  if (length(bad) > 0) {
+    bounds <- if (need_ub) "lb = 0 and ub = 1" else "lb = 0"
+    stop("The prior(s) for ", paste0("\"", bad, "\"", collapse = "; "),
+         " do not bound the parameter to the range the ", family$family,
+         " mean is defined on. A group-level term on ",
+         paste0("\"", bad, "\"", collapse = "; "),
+         " applies its deviation multiplicatively, which is only defined while",
+         " the parameter is inside that range. Add ", bounds,
+         " to the prior, or drop the group-level term on it. See",
+         " ?bayesnecformula.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' @noRd
 fill_missing_priors <- function(priors, defaults, model) {
   if (is.null(defaults) || nrow(defaults) == 0) {
