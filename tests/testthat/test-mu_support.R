@@ -534,3 +534,103 @@ test_that("the transform is collapsed, and is the identity at zero deviation", {
   expect_equal((ev("logit", m, o) / (1 - ev("logit", m, o))),
                (m / (1 - m)) * exp(o))
 })
+
+
+# ---- #294, a group-level deviation on a single parameter ---------------------
+
+test_that("par_transform_kind picks the scale from the family alone", {
+  expect_equal(par_transform_kind(validate_family("Beta")), "logit")
+  expect_equal(par_transform_kind(validate_family("binomial")), "logit")
+  expect_equal(par_transform_kind(validate_family("beta_binomial")), "logit")
+  expect_equal(par_transform_kind(validate_family("bernoulli")), "logit")
+  expect_equal(par_transform_kind(validate_family("Gamma")), "log")
+  expect_equal(par_transform_kind(validate_family("poisson")), "log")
+  expect_equal(par_transform_kind(validate_family("negbinomial")), "log")
+  # gaussian is unconstrained, so top and bot are not against a boundary and
+  # the additive deviation is kept. The issue's isolating arm: the same term on
+  # the same data gives 51 divergent transitions of 2000 under Beta and none
+  # under gaussian.
+  expect_equal(par_transform_kind(validate_family("gaussian")), "none")
+  # A link that already maps into the support does the job itself.
+  expect_equal(
+    par_transform_kind(validate_family(Beta(link = "logit"),
+                                       link_source = "chosen")),
+    "none"
+  )
+  expect_equal(par_transform_kind(NULL), "none")
+})
+
+test_that("the parameter gate is not the mean gate", {
+  # The deliberate divergence from ogl_transform_kind(). That function needs the
+  # MEAN provably strictly inside (0, 1) and so refuses every equation whose
+  # mean can reach or pass 1. A parameter is not the mean: define_prior() bounds
+  # top and bot to the family's support with lb and ub whatever equation they
+  # appear in, so the transform is defined for them there. Those equations keep
+  # the raised adapt_delta for the separate reason that their mean can leave the
+  # support with every parameter inside it -- see add_brm_defaults().
+  beta <- validate_family("Beta")
+  hormesis <- c("nechorme", "nechorme4", "nechormepwr", "nechorme4pwr",
+                "nechormepwr01", "ecxhormebc4", "ecxhormebc5")
+  for (m in hormesis) {
+    expect_equal(ogl_transform_kind(m, beta), "none")
+  }
+  expect_equal(par_transform_kind(beta), "logit")
+  # And the equations that are unbounded below have no bot parameter to
+  # transform, so the two gates cannot disagree about them in practice.
+  for (m in c("neclin", "neclinhorme", "ecxlin")) {
+    expect_false("bot" %in% names(get(paste0("bf_", m))[[2]]))
+  }
+})
+
+test_that("only the response-scale parameters are transformed", {
+  # nec and ec50 are on the predictor scale and are routinely negative on a log
+  # predictor, so log and logit of them are undefined; beta, slope, d and f are
+  # dimensionless and enter through an exponential. None of them is bounded by
+  # the likelihood, so none needs a transform, and the issue measured 0
+  # divergent transitions of 2000 for a (nec | group) term at Stan's default
+  # adapt_delta of 0.8.
+  expect_setequal(par_transform_pars(), c("top", "bot"))
+  for (p in c("top", "bot")) {
+    expect_true(par_is_transformed(p, "logit"))
+    expect_true(par_is_transformed(p, "log"))
+    expect_false(par_is_transformed(p, "none"))
+  }
+  for (p in c("nec", "ec50", "beta", "slope", "d", "f")) {
+    expect_false(par_is_transformed(p, "logit"))
+    expect_false(par_is_transformed(p, "none"))
+  }
+})
+
+test_that("the generated term names are reserved and are the ones generated", {
+  expect_setequal(generated_term_names(),
+                  c("bnecmu", "ogl", "topgl", "bnectop", "botgl", "bnecbot"))
+  expect_equal(unname(par_gl_names("bot")), c("botgl", "bnecbot"))
+  expect_equal(unname(par_gl_names("top")), c("topgl", "bnectop"))
+  # The parameter itself keeps its name, which is what leaves b_bot_Intercept
+  # and every estimate function that reads it untouched.
+  expect_false("bot" %in% generated_term_names())
+  expect_false("top" %in% generated_term_names())
+})
+
+test_that("the parameter transform is the identity at zero deviation", {
+  # Same collapsed expression as the mean transform, applied to the parameter,
+  # so the same two properties are what matter: it does not change the model
+  # when the deviation is zero, and no deviation can put the parameter outside
+  # its support. bot lives near zero, which is exactly where the literal
+  # inv_logit(logit(m) + o) sandwich fails.
+  ev <- function(kind, m, o) {
+    eval(str2lang(ogl_transform_expr(kind, "bot", "botgl")),
+         list(bot = m, botgl = o))
+  }
+  expect_equal(ev("logit", 0.02, 0), 0.02)
+  expect_equal(ev("log", 0.02, 0), 0.02)
+  for (o in c(-20, -5, -1, 1, 5, 20)) {
+    expect_gt(ev("logit", 0.02, o), 0)
+    expect_lt(ev("logit", 0.02, o), 1)
+    expect_gt(ev("log", 0.02, o), 0)
+  }
+  # A bot estimated at 1e-8 is still strictly inside after a deviation of forty
+  # prior standard deviations, which is what the additive form cannot promise.
+  expect_gt(ev("logit", 1e-8, -20), 0)
+  expect_lt(ev("logit", 1e-8, 20), 1)
+})

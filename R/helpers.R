@@ -766,18 +766,28 @@ add_brm_defaults <- function(
   # iteration. #257 proposes the parameterisation change that removes the need
   # for it. See #245.
   #
-  # #257 landed the parameterisation change for the ogl case, so the raise is
-  # now conditional on the group structure actually still needing it. An ogl
-  # term whose deviation is applied multiplicatively cannot carry mu out of its
-  # support at all, so the mitigation has nothing left to mitigate and costs
-  # roughly fourteen times the gradient evaluations for it. Everything else --
-  # a pgl term, an explicit (par | group) term, and any equation the transform
-  # is not defined for -- keeps needing it, permanently.
-  ogl_is_transformed <- isTRUE(group_spec$ogl) &&
-    !identical(ogl_transform_kind(model, family), "none")
-  only_ogl <- ogl_is_transformed &&
-    identical(sort(unique(group_spec$nlpars)), "ogl")
-  if (!is.null(group_spec) && mu_is_constrained(family) && !only_ogl) {
+  # #257 landed the parameterisation change for the ogl case and #294 for a
+  # term on top or bot, so the raise is now conditional on the group structure
+  # actually still needing it. It comes down to one question: with every
+  # deviation applied on a scale it cannot leave, can any group-level term
+  # still put mu outside the support?
+  #
+  # It cannot, provided the mean is confined by its own parameters. top and bot
+  # are transformed whenever mu is constrained, so they stay inside the support;
+  # nec, ec50, beta, slope, d and f are on the predictor or log scales, and for
+  # an equation whose mean lies between bot and top a deviation on any of them
+  # leaves mu between two in-support values. The equations for which that fails
+  # are exactly the ones ogl_transform_kind() already refuses -- neclin,
+  # neclinhorme and ecxlin are unbounded below, and the hormesis equations can
+  # exceed 1 through exp(slope) * x with top and bot both inside (0, 1) -- so
+  # that function answers this question too and no second list is kept.
+  #
+  # Measured on herbicide, Beta(link = "identity"), nec4param: a
+  # (nec | herbicide) term gives 0 divergent transitions of 2000 at Stan's
+  # default adapt_delta of 0.8, and a (bot | herbicide) term gives 51 at 0.95
+  # without the transform. See #294.
+  group_is_bounded <- !identical(ogl_transform_kind(model, family), "none")
+  if (!is.null(group_spec) && mu_is_constrained(family) && !group_is_bounded) {
     ctrl <- if ("control" %in% names(brm_args)) brm_args$control else list()
     if (!("adapt_delta" %in% names(ctrl))) {
       ctrl$adapt_delta <- 0.99
@@ -874,15 +884,18 @@ add_brm_defaults <- function(
     # A group-level term introduces parameters that are no part of the mean
     # curve either, and they have to come out for the same reason. Two kinds:
     # the standard deviations, dropped by class, which is general and needs no
-    # maintenance; and the `ogl` offset, dropped by name, because it is the one
-    # parameter a group-level term adds that carries class "b" and so survives
+    # maintenance; and the deviation intercepts -- `ogl`, and `topgl` and
+    # `botgl` from #294 -- dropped by name, because they are the parameters a
+    # group-level term adds that are declared with class "b" and so survive
     # every class filter. The `ogl` row is what made make_inits() reject the
     # whole set -- and therefore what stopped a user supplying by hand the
     # group-level prior that was never generated. Filtering unconditionally
-    # rather than from group_spec: `ogl` is a reserved name, so a row carrying
-    # it is always this parameter and never a curve coefficient. See #245.
+    # rather than from group_spec: these are reserved names, so a row carrying
+    # one is always this parameter and never a curve coefficient. See #245 and
+    # #294.
     init_priors <- init_priors[init_priors$class != "sd", ]
-    init_priors <- init_priors[init_priors$nlpar != "ogl", ]
+    init_priors <- init_priors[!init_priors$nlpar %in%
+                                 generated_term_names(), ]
     inits <- if (is_hurdle_family(family)) {
       # Two blocks with differently-scaled responses, primed separately then
       # merged. response_link_scale() is a no-op for hurdle_gamma under an

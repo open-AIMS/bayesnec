@@ -57,8 +57,9 @@
   structure is a transformed `ogl()` term.** The raise was added in 2.1.4 to
   mitigate exactly these excursions and costs roughly fourteen times the gradient
   evaluations per iteration; a multiplicative deviation cannot make the
-  excursions, so there is nothing left to mitigate. A `pgl()` term, an explicit
-  `(par | group)` term, and every equation outside the gates keep it.
+  excursions, so there is nothing left to mitigate. #294 extends the same
+  reasoning to `pgl()` and `(par | group)`; the rule that results is stated
+  there.
 
   **The `ogl` prior is widened onto the scale the deviation is applied on**, by
   delta-method conversion of the existing rule evaluated at `mean(y)`:
@@ -72,11 +73,61 @@
   terms against the user's data frame first, so a column of either name would be
   used in place of the generated term and the fit would silently be a different
   model. A data frame carrying either name that fitted under 2.1.x now stops
-  with an error naming the column, before any model is compiled.
+  with an error naming the column, before any model is compiled. #294 adds
+  `topgl`, `botgl`, `bnectop` and `bnecbot` to the same list.
 
-  **Not in this change:** `pgl()` and explicit `(par | group)` terms, which place
-  a deviation on an individual curve parameter rather than on the mean and need
-  the same idea one level down.
+- **A group-level deviation on `top` or `bot` is now applied multiplicatively
+  as well**, wherever the likelihood constrains the mean. This is #257's change
+  one level down, and it covers `pgl()` and an explicit `(par | group)` term.
+  `bot` is the parameter it matters for: it is the lower asymptote, it is
+  routinely estimated close to zero, and the deviation `brms` added to it was
+  unconstrained, so a long enough leapfrog trajectory took it below zero and the
+  step was rejected. Measured on `herbicide` with `Beta(link = "identity")` and
+  `nec4param`, two chains and 2000 iterations, a `(bot | herbicide)` term gave 51
+  divergent transitions of 2000 at `adapt_delta = 0.95` under 2.1.x and gives
+  none at Stan's default of 0.8 under this change. The same term on a `gaussian`
+  response, where the mean is unconstrained, gave none either way (#294).
+
+  **Only `top` and `bot` are transformed.** `nec` and `ec50` are on the predictor
+  scale and are routinely negative on a log predictor, so `log` and `logit` of
+  them are undefined; `beta`, `slope`, `d` and `f` are dimensionless and enter
+  through an exponential. None of them is bounded by the likelihood, and a
+  `(nec | group)` term gave 0 divergent transitions of 2000 at
+  `adapt_delta = 0.8` on the same fixture. `pgl()` expands to a term on every
+  parameter, so it now generates a mix: transformed on `top` and `bot`, additive
+  on the rest, and identical to writing those terms out by hand.
+
+  **The gate is the family, not the equation**, which is where this differs from
+  `ogl()`. That transform needs the *mean* provably strictly inside its support
+  and so is undefined for the hormesis equations, whose mean can exceed 1. A
+  parameter is not the mean: `top` and `bot` are bounded to the family's support
+  by their own priors whatever equation they appear in, so the parameter-level
+  transform is defined for `nechorme`, `nechorme4`, `nechormepwr01`,
+  `ecxhormebc4` and `ecxhormebc5` as well.
+
+  **`adapt_delta` is now raised to 0.99 only where a group-level term can still
+  take the mean outside its support.** With every deviation applied on a scale it
+  cannot leave, that is decided by the equation alone: for one whose mean lies
+  between `bot` and `top`, no group-level term on any parameter can put `mu`
+  outside the support, and the raise is dropped. It is kept for `neclin`,
+  `neclinhorme` and `ecxlin`, which are unbounded below, and for the six
+  hormesis equations that can exceed 1 through `exp(slope) * x`. In 2.1.x the
+  raise was applied to every grouped fit on a constrained family.
+
+  **`top` and `bot` keep their names, their meanings and their own priors.** The
+  deviation is zero-centred and `m e^0` is `m`, and the parameter stays a
+  population-level term: what is renamed is the generated deviation, `botgl`, and
+  the intermediate the curve reads, `bnecbot`. `b_bot_Intercept` and everything
+  that reads it are unaffected. The group-level standard deviation is now
+  reported under `sd(botgl_Intercept)` rather than `sd(bot_Intercept)`, and is on
+  the log-odds or log scale rather than on the response scale.
+
+  **The prior on the deviation is widened onto that scale** by the same
+  delta-method conversion #257 uses for `ogl`, evaluated at `mean(y)`, and capped
+  at 1 in both branches. The cap is the one difference: #257 caps the `log`
+  branch only, on the argument that the `logit` ratio is self-limiting at the
+  response mean, and that argument does not hold for a parameter that sits near
+  zero. The `ogl` conversion is unchanged.
 
 ## Breaking changes to ECx, NSEC and ECNSEC
 

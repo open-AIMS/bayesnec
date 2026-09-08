@@ -544,3 +544,27 @@ test_that("a data column named after a generated term is refused (#257)", {
   # Both are named at once rather than one per call.
   expect_error(check_reserved_names(d), "bnecmu.*ogl")
 })
+
+test_that("the parameter-level generated terms are reserved too (#294)", {
+  # A term on top or bot introduces topgl and bnectop, botgl and bnecbot. The
+  # set is refused in full whatever the formula is: which terms a fit generates
+  # depends on the family and on the group-level structure, so a conditional
+  # refusal would accept a column on one call and refuse it on the next with the
+  # same data.
+  d <- data.frame(x = rep(c(1, 10), each = 5), y = rep(c(0.8, 0.2), each = 5))
+  for (nm in c("botgl", "topgl", "bnecbot", "bnectop")) {
+    dd <- d
+    dd[[nm]] <- 1
+    expect_error(check_reserved_names(dd), nm)
+  }
+  # The parameters themselves are not added to the reserved set. They keep their
+  # names under the transform, so refusing a column named bot would refuse data
+  # that fitted under 2.1.x. A predictor or response column named after a
+  # non-linear parameter collides with that parameter whatever this change does,
+  # which is a separate matter from the generated terms this check exists for.
+  for (nm in c("top", "bot", "nec", "beta")) {
+    dd <- d
+    dd[[nm]] <- 1
+    expect_null(check_reserved_names(dd))
+  }
+})

@@ -60,10 +60,25 @@ test_that("adapt_delta is not raised for a transformed ogl term", {
   gs_lin <- parse_group_terms(bnf(y ~ crf(x, model = "neclin") + ogl(g)),
                               "neclin")
   expect_equal(args_for("Beta", "neclin", gs_lin), 0.99)
-  # A pgl term is not transformed in this landing, so it keeps the raise.
+  # #294 transforms a pgl term's deviation on top and bot as well, and on
+  # nec3param the mean lies between zero and top, so no group-level term can
+  # take it out of the support and the raise goes with it. Measured on
+  # herbicide, Beta(link = "identity"), nec4param: 0 divergent transitions of
+  # 2000 at Stan's default adapt_delta for a (bot | herbicide) term, against 51
+  # at 0.95 before the transform.
   gs_pgl <- parse_group_terms(bnf(y ~ crf(x, model = "nec3param") + pgl(g)),
                               "nec3param")
-  expect_equal(args_for("Beta", "nec3param", gs_pgl), 0.99)
+  expect_null(args_for("Beta", "nec3param", gs_pgl))
+  # It is kept where the mean can leave the support with every parameter inside
+  # it: neclin is unbounded below, and the hormesis equations can exceed 1
+  # through exp(slope) * x.
+  gs_pgl_lin <- parse_group_terms(bnf(y ~ crf(x, model = "neclin") + pgl(g)),
+                                  "neclin")
+  expect_equal(args_for("Beta", "neclin", gs_pgl_lin), 0.99)
+  gs_pgl_horme <- parse_group_terms(
+    bnf(y ~ crf(x, model = "nechorme") + pgl(g)), "nechorme"
+  )
+  expect_equal(args_for("Beta", "nechorme", gs_pgl_horme), 0.99)
 })
 
 test_that("the ogl prior is widened onto the scale the deviation is applied on", {
