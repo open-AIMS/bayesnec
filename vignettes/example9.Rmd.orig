@@ -121,7 +121,7 @@ ggplot(surv, aes(x = dose, y = suc / tot)) +
 ```
 
 Survival is at or near complete for most of the series and falls away over the
-top two doses. Two features carry into what follows: the response is bounded at
+top two doses. Two features matter for what follows: the response is bounded at
 1 and sits against that bound for most of the range, and the doses are unevenly
 spaced, with most of them crowded near zero.
 
@@ -170,25 +170,39 @@ dispersion(screen, summary = TRUE)
 ```
 
 `dispersion()` returns, for each posterior draw, the ratio of the observed to
-the simulated sum of squared Pearson residuals, summarised here to a median and
-an equal-tailed 95% interval. The statistic centres near 1 when the family's
-variance assumption holds. Because a posterior is returned rather than a point,
-the decision is read from the **interval** rather than from the point estimate,
-which carries no information about how well determined the ratio is.
+the simulated sum of squared Pearson residuals, summarised here to a median, an
+equal-tailed 95% interval, and `P(>1)`: the posterior probability that the ratio
+exceeds 1. The statistic centres near 1 when the family's variance assumption
+holds. Because a posterior is returned rather than a point, the decision is read
+from `P(>1)` rather than from the point estimate, which says nothing about how
+well determined the ratio is.
 
 ```{r family-choice}
 disp <- dispersion(screen, summary = TRUE)
 # length(disp) guards the case below: dispersion() returns an empty vector where
 # the fitted mean reaches 0 or 1, and there is then no verdict to read.
-fam <- if (length(disp) && disp[["Q2.5"]] > 1) "beta_binomial" else "binomial"
+fam <- if (length(disp) && disp[["P(>1)"]] > 0.975) {
+  "beta_binomial"
+} else {
+  "binomial"
+}
 fam
 ```
 
-The interval runs from `r round(disp[["Q2.5"]], 2)` to
-`r round(disp[["Q97.5"]], 2)`. It includes 1, so the screen provides no evidence
-against the binomial variance assumption and the analysis proceeds under
-`binomial`. Had the lower bound exceeded 1, `beta_binomial` would be the choice.
-The point estimate is `r round(disp[["Estimate"]], 2)`: thresholding that number
+The threshold of 0.975 is the package's equal-tailed 95% convention read one
+sidedly, and `P(>1) > 0.975` selects exactly the same fits as the older
+`Q2.5 > 1` rule on the same posterior. The probability is used in preference
+because it reports how much of the posterior lies above the null value rather
+than only whether a bound has been crossed, and because it is symmetric:
+`1 - P(>1)` is the posterior probability of *under*-dispersion, which the
+interval does not address and which `beta_binomial` cannot repair, since it adds
+variance to the binomial and cannot subtract it. `?dispersion` sets this out.
+
+`P(>1)` is `r round(disp[["P(>1)"]], 3)` and the interval runs from
+`r round(disp[["Q2.5"]], 2)` to `r round(disp[["Q97.5"]], 2)`. The probability
+falls below the threshold, so the screen provides no evidence against the
+binomial variance assumption and the analysis proceeds under `binomial`. The
+point estimate is `r round(disp[["Estimate"]], 2)`: thresholding that number
 would decide the family on a quantity the screen has just shown to be poorly
 determined, since `r nrow(surv)` tanks across
 `r length(unique(surv$dose))` doses do not pin the ratio down.
@@ -198,11 +212,11 @@ one observed residual
 sum against a single simulated replicate, so the width of the interval is
 dominated by replicate-to-replicate simulation noise rather than by uncertainty
 about a dispersion parameter. At this design an interval of this width is close
-to what a correctly specified binomial produces on its own, which means the
-`Q2.5 > 1` rule fires only on gross over-dispersion. It is the right shape of
-rule --- a threshold on the point estimate answers a question the data cannot
-support --- but it is a blunt one, and a screen that returns `binomial` is
-better read as *not having detected* over-dispersion than as evidence of its
+to what a correctly specified binomial produces on its own, which means the rule
+fires only on gross over-dispersion whichever summary states it. It is the right
+shape of rule --- a threshold on the point estimate answers a question the data
+cannot support --- but it is a blunt one, and a screen that returns `binomial`
+is better read as *not having detected* over-dispersion than as evidence of its
 absence.
 
 `dispersion()` is defined only for `poisson` and `binomial`, the two families
@@ -262,24 +276,38 @@ excluded before fitting because they are invalid for the family or the
 predictor --- [`example2b`](https://open-aims.github.io/bayesnec/articles/example2b.html) sets out the equations and the rules that
 govern them --- and others are attempted and fail.
 
+`bnec_record()` reports both, so the accounting does not have to be
+reconstructed from the fitted object:
+
 ```{r set-fitted}
-failed <- names(failed_models(fit))
-list(fitted = fit$success_models,
-     failed = failed,
-     excluded = setdiff(models()$decline, c(fit$success_models, failed)))
+rec <- bnec_record(fit)
+rec$excluded
+setdiff(rec$attempted, fit$success_models)
 ```
+
+`requested` is partitioned exactly by `attempted` and `excluded$model`, and an
+equation that was attempted and failed to sample stays in `attempted`, so the
+set difference above is the failures and `failed_models()` names the same ones.
 
 `neclin` and `ecxlin` decay by subtraction rather than by an exponential factor,
 so their fitted mean is unbounded below and cannot be held inside the (0, 1)
 interval a `binomial` mean occupies under an identity link. `bnec()` drops them
-and issues a message at fit time, suppressed here along with the sampler output.
-`?models` sets out this rule and the others; a second one applies to the
-herbicide fits later, where the predictor is transformed.
+before fitting, with the reason recorded in `excluded`. `?models` sets out this
+rule and the others; a second one applies to the herbicide fits later, where the
+predictor is transformed.
+
+`bnec_record()` also reports `substitutions`, the changes `check_data()` made to
+the response because the family cannot represent the value as recorded. That
+element is read in the herbicide section below, where the family is `Beta` and
+a substitution is possible. The set as requested, the set attempted, the reason
+for the difference, and what was altered in the data are what a methods section
+has to state, and reading them from the returned object rather than from console
+output means a knitted document keeps them.
 
 ## The fitted set
 
-`summary()` reports the set as a whole, and two of its columns carry the
-workflow forward.
+`summary()` reports the set as a whole, and two of its columns are used in the
+steps that follow.
 
 ```{r summary-fit}
 summary(fit)
@@ -294,23 +322,33 @@ options suppress. The weights are usable and the estimates behind them are
 flagged as unreliable at those points, which belongs in a methods statement
 alongside the weights themselves.
 
-`dispersion_Estimate` and its interval are the pre-fit screen of section 1,
-asked again of every candidate now that the set exists. This is where the
-question is properly answered, because the screen was one shape and this is all
-of them. Two things to read from it: whether the models carrying weight agree
-with the screen, and whether any of them report `NA`.
+`dispersion_Estimate`, its interval and `dispersion_P_over_1` are the pre-fit
+screen of section 1, asked again of every candidate now that the set exists.
+This is where the question is properly answered, because the screen was one
+shape and this is all of them. `dispersion_P_over_1` is the same `P(>1)` the
+screen used, so the candidates can be read against the threshold applied there.
+Two things to read from it: whether the equations holding weight agree with the
+screen, and whether any of them report `NA`.
 
 ```{r na-dispersion}
-ms <- fit$mod_stats[, c("model", "wi", "dispersion_Estimate")]
+ms <- fit$mod_stats[, c("model", "wi", "dispersion_Estimate",
+                        "dispersion_P_over_1")]
 ms[is.na(ms$dispersion_Estimate), ]
 ```
 
 `dispersion()` builds its Pearson denominator from each model's *fitted* mean,
 so a candidate whose fitted mean reaches 0 or 1 has no denominator and the
 statistic is undefined. It is a property of that candidate rather than of the
-data, which is why only some report it. Where the models carrying the weight are
-the ones returning `NA`, the dispersion screen cannot speak to the family at
+data, which is why only some report it. Where the equations holding the weight
+are the ones returning `NA`, the dispersion screen cannot speak to the family at
 all, and the family decision rests on the local checks in section 4 instead.
+
+Judge the verdict against the weight. An equation whose shape suits the data
+badly fails the dispersion test whatever the data are doing, because the
+residual variation its curve cannot account for is counted as dispersion, and it
+is given almost no stacking weight for the same reason. A test failed by an
+equation that contributes nothing says something about that curve and nothing
+about the model-averaged estimate.
 
 Models that fail to fit are recorded rather than silently discarded:
 
@@ -397,7 +435,7 @@ of a low effective sample size.
 Model averaging combines the candidates in proportion to their weights, so a
 model that has not sampled contributes to the reported estimate on the strength
 of a posterior the sampler never explored. Only models that pass the sampler
-diagnostics should be carried forward.
+diagnostics should be retained.
 
 ```{r exclude, message = TRUE}
 fit_screened <- screen_models(fit)
@@ -406,7 +444,9 @@ fit_screened <- screen_models(fit)
 `screen_models()` runs the same diagnostics as the table above, drops what
 failed, and **reports which models were removed and why**: one line per model,
 naming every threshold it missed rather than only the first. An exclusion step
-that leaves no record is not reproducible.
+that leaves no record is not reproducible, which is why the message is on by
+default and why `quiet = TRUE`, which suppresses it, should not be used in an
+analysis that will be reported.
 
 It screens on the **sampler only**. Whether a model reproduces the data is a
 modelling result rather than a reason the fit is unusable, and dropping on it
@@ -436,7 +476,7 @@ should contain the bulk of the observations and widen where the data are sparse;
 a band that excludes whole groups is a fit problem rather than a sampler one,
 and belongs to section 4.
 
-Some retained models carry divergent transitions below the tolerated ten. The
+Some retained models report divergent transitions below the tolerated ten. The
 threshold used here admits them, which is the kind of decision the reporting
 section exists to make explicit.
 
@@ -458,7 +498,7 @@ one is not a model average, and the object says so.
 
 ```{r best-model}
 # A screened set reduced to one model is returned as a bayesnecfit rather than a
-# bayesmanecfit, and carries no mod_stats -- see ?screen_models.
+# bayesmanecfit, and has no mod_stats -- see ?screen_models.
 best_fit <- if (inherits(fit_screened, "bayesmanecfit")) {
   ms <- fit_screened$mod_stats
   pull_out(fit_screened, model = ms$model[which.max(ms$wi)])
@@ -525,7 +565,7 @@ The `sd_ratio` of 1.9 is not by itself evidence of over-dispersion. `sim_sd` is
 the *median* over draws of a residual standard deviation computed from four
 replicates, and at that size the statistic takes only a handful of distinct
 values, so the ratio is confined to a short ladder rather than varying
-continuously. The column that carries the evidence is `ppp_sd`, and at 0.06 to
+continuously. The primary evidence is `ppp_sd`, and at 0.06 to
 0.09 it places the observed spread in the upper tail of what the model
 simulates, inside the interval `check_fit()` flags on but not far from its edge,
 on a single group of four tanks. That is a weak signal. Reading "twice the
@@ -571,12 +611,15 @@ the discrepancy this check is designed to detect.
 What to state in a methods section:
 
 - **the data as analysed**, including any reconstructed records and which part
-  of the concentration-response they carry;
-- **the family, and how it was chosen** --- the dispersion screen, its interval,
-  the shape it was read from, and what the local check in step 4 showed;
+  of the concentration-response they describe;
+- **the family, and how it was chosen** --- the dispersion screen, its `P(>1)`
+  and the threshold applied to it, the shape it was read from, and what the
+  local check in step 4 showed;
 - **the candidate set as fitted**: the set requested, the equations excluded as
   invalid, and any model that failed to fit at all, with a note of whether a
-  retry was attempted;
+  retry was attempted. `bnec_record()` reports the first three directly, and
+  its `substitutions` element states any change made to the response because the
+  family cannot represent the value as recorded;
 - **the sampler settings**, including the number of retained draws, since the
   ESS cutoff is calibrated against a default this analysis did not use;
 - **the diagnostic thresholds used** --- all three, since they are choices and
@@ -587,9 +630,11 @@ What to state in a methods section:
   evidence;
 - **the estimate settings**, which determine the numbers as much as the model
   set does: `sig_val`, which sets the *NSEC* reference from the control
-  posterior and defaults to 0.01; `type` for `ecx()`, defaulting to
-  `"absolute"`; and any `xform` used to return an estimate to the measured
-  scale;
+  posterior and defaults to 0.01; `type` for `ecx()` and `nsec()`, which takes
+  `"absolute"`, `"range"`, `"relative"` or `"direct"` and defaults to
+  `"absolute"`; `resolution`, the number of grid points the crossing is
+  interpolated on, which defaults to 200; and any `xform` used to return an
+  estimate to the measured scale;
 - **the estimates with their credible intervals**, and the weights of the
   retained models.
 
@@ -608,10 +653,20 @@ ecx(fit_screened, ecx_val = 50)
 ```
 
 Both are model-averaged over the screened set and reported with credible
-intervals, on the scale of the predictor as fitted. `type` defaults to
-`"absolute"`, measuring the decline against the fitted control rather than
-against the range of the curve, and it changes the number materially ---
+intervals, on the scale of the predictor as fitted. Every ECx and NSEC is
+measured from the **control** --- the predicted mean at the lowest concentration
+in the series, taken per posterior draw. `type` sets what the decline is
+measured against: `"absolute"`, the default, takes it against 0, and `"range"`
+takes it against the lowest response the curve predicts. The two answer
+different questions and give different numbers, so the value used has to be
+stated ---
 [`example5`](https://open-aims.github.io/bayesnec/articles/example5.html) sets out the difference.
+
+A target the curve never reaches within the tested range returns `NA` for the
+affected draws, with a warning naming how many. That is a reportable outcome
+rather than a failure: it says the design did not reach the effect size asked
+for, and it is the reason an ECx should not be read from a curve that has not
+declined that far.
 
 # Two further datasets
 
@@ -644,7 +699,7 @@ fit_b <- bnec(fvfm ~ crf(log(concentration), model = "decline"),
 
 Two differences follow.
 
-- **There is no family choice to make.** `beta` already carries a free
+- **There is no family choice to make.** `beta` already has a free
   dispersion parameter (`phi`), so the over-dispersion screen has nothing to
   decide. The screen in step 1 is specifically a `binomial` and `poisson`
   question.
@@ -656,9 +711,16 @@ Two differences follow.
 The candidate set also differs, and the same accounting shows it:
 
 ```{r herbicide-account}
-list(fitted = fit_b$success_models,
-     excluded = setdiff(models()$decline, fit_b$success_models))
+rec_b <- bnec_record(fit_b)
+rec_b$excluded
+rec_b$substitutions
 ```
+
+`substitutions` is `NULL`, which is the evidence for choosing `simazine`: the
+response was fitted as recorded, with nothing shifted off a boundary. On a
+series that does reach 0 or 1 this element names each altered value, so a
+methods section can state what was modelled rather than leaving the reader to
+assume it was the data as measured.
 
 A third equation is excluded here. The predictor is `log(concentration)`, and
 `concentration` starts at 0.1, so the transformed predictor is negative;
@@ -677,7 +739,7 @@ binomial groups above could not exhibit. `ecxexp` reproduces the
 control mean to within about a tenth while simulating several times the observed
 control spread: the location is right and the scale is not. Its weight is
 negligible, so the discrepancy does not propagate into the averaged estimate.
-`?check_fit` records the opposite case, in which a model carries high weight
+`?check_fit` records the opposite case, in which a model holds high weight
 because it fits the bulk of the curve while fitting the control badly.
 
 ```{r herbicide-screen, message = TRUE}
@@ -713,7 +775,7 @@ fit_c_screened <- screen_models(fit_c)
 ```
 
 No candidate fails at these thresholds, and `screen_models()` returns the set
-unchanged. One model carries four divergent transitions, below the tolerated
+unchanged. One model reports four divergent transitions, below the tolerated
 ten. That outcome is itself a result to report: the methods statement is that
 the screen was applied at stated thresholds and removed nothing, which is a
 stronger claim than silence about whether it was applied at all.
