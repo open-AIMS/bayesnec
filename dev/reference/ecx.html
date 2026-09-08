@@ -18,7 +18,7 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="https://open-aim
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.32</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.33</span>
       </span>
     </div>
 
@@ -86,7 +86,7 @@ bayesnecfit or bayesnecfit."><meta property="og:image" content="https://open-aim
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">ecx</span><span class="op">(</span></span>
 <span>  <span class="va">object</span>,</span>
 <span>  ecx_val <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  resolution <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">200</span>,</span>
 <span>  posterior <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  type <span class="op">=</span> <span class="st">"absolute"</span>,</span>
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
@@ -115,8 +115,12 @@ Details.</p></dd>
 
 
 <dt id="arg-resolution">resolution<a class="anchor" aria-label="anchor" href="#arg-resolution"></a></dt>
-<dd><p>The number of unique x values over which to find ECx –
-large values will make the ECx estimate more precise.</p></dd>
+<dd><p>The number of unique x values over which to find ECx.
+The crossing is located by linear interpolation between the two grid values
+that bracket it, so precision saturates well below the grid spacing.
+Increasing the resolution beyond the default of 200 changed the estimate by
+less than 0.01 percent on the fits tested, and increases the run time
+roughly in proportion.</p></dd>
 
 
 <dt id="arg-posterior">posterior<a class="anchor" aria-label="anchor" href="#arg-posterior"></a></dt>
@@ -233,18 +237,18 @@ expected is an error rather than silently ignored.</p>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">ecx</span><span class="op">(</span><span class="va">manec_example</span>, ecx_val <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      Q50     Q2.5    Q97.5 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1.671849 1.602833 1.723065 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.671866 1.602827 1.723080 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"resolution")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 200</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"ecx_val")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 50</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"toxicity_estimate")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "ecx"</span>
 <span class="r-in"><span><span class="fu">ecx</span><span class="op">(</span><span class="va">manec_example</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       Q50      Q2.5     Q97.5 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1.4906359 0.9402655 1.5629285 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.4906382 0.9402071 1.5629496 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"resolution")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 200</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"ecx_val")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"toxicity_estimate")</span>
