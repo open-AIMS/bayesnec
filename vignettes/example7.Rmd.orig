@@ -256,9 +256,9 @@ what an analyst would do.** It ensures that a difference between approaches is
 a difference in the treatment of the data. It also means that where the data
 have been altered, the equation being fitted is no longer the one that
 generated them, so some misfit is a consequence of the design rather than a
-finding about the convention. The results in Sections 5.2 to 5.8 should
+finding about the convention. The results in Sections 5.2 to 5.7 should
 therefore be read as the direction and size of the distortion under a
-controlled comparison. Section 5.9 relaxes the fixed form and fits the
+controlled comparison. Section 5.8 relaxes the fixed form and fits the
 candidate set that `bayesnec` recommends, which is what an analyst would
 actually do, and that is where the consequences for a reported value are
 established.
@@ -492,7 +492,7 @@ approach then fits a single `sigma`, so all eight are misspecified in the same
 way, arm A included. That misspecification does not bias arm A's mean
 structure, which is why its estimates remain unbiased, but it does affect the
 intervals, and it affects B2 most because B2 is the approach whose curve cannot
-reach its own observations. Section 5.10 reports what happens when the
+reach its own observations. Section 5.9 reports what happens when the
 dispersion is modelled instead.
 
 ```{r}
@@ -865,6 +865,10 @@ within Monte Carlo noise. The aggregate results below, each averaging across 500
 simulated datasets, are what the conclusions rest on.
 
 ```{r, echo = FALSE}
+# The eight-approach metrics, kept as the record behind the figures quoted in
+# this section. `regime` distinguishes the scenarios whose series runs past the
+# zero crossing from those that stop at or before it; only the first are
+# reported below.
 sim_results <- read.csv(text = "
 arm,estimate,regime,rel_bias,coverage,rmse
 A,ErC10,reaches,0.2409,0.8380,0.6399
@@ -902,40 +906,18 @@ F,ErC50,stops short,-0.0488,0.7373,0.6874
 ")
 ```
 
-## 5.4 Effect of the concentration design
+## 5.4 ErC10 and ErC50
 
-Before we compare the approaches we have to separate the scenarios into two
-groups, because the amount of information about the lower asymptote differs
-between them. Where the concentration series stops at or before the zero
-crossing, no true mean is negative or only the highest concentration is, so
-there is essentially nothing in the data that determines the asymptote. Where
-the series runs past the crossing, the asymptote is identified.
+Everything reported from here on comes from the scenarios whose concentration
+series runs past the point at which the true curve crosses zero growth, because
+those are the scenarios in which a convention has negative values to act on.
+Where the series stops at or before that crossing, no true mean is negative or
+only the highest concentration is, the lower asymptote is barely identified by
+any approach, and all eight carry a bias of similar size and the same sign: six
+of the eight sit within about four percentage points of each other on ErC50.
+None of the differences reported below appear there. If essentially none of your
+observations are at or below zero growth, none of this applies to your data.
 
-```{r, echo = FALSE}
-knitr::kable(
-  sim_results |>
-    filter(estimate == "ErC50") |>
-    select(arm, regime, rel_bias, coverage) |>
-    pivot_wider(names_from = regime, values_from = c(rel_bias, coverage)),
-  digits = 3,
-  col.names = c("Approach", "bias (reaches)", "bias (stops short)",
-                "coverage (reaches)", "coverage (stops short)"),
-  caption = "**Table 3.** Relative bias and 95% interval coverage for ErC50, averaged across the three `delta` levels at `R` = 2.3. *Reaches* means the concentration series extends past the concentration at which the true curve crosses zero growth, so about one observation in seven has a negative true mean and every convention has values to act on. *Stops short* means it ends at or before that crossing, so no true mean is negative or only the highest concentration is."
-)
-```
-
-In the *stops short* column of Table 3 six of the eight approaches are within
-about four percentage points of each other and B1 has the smallest bias of any.
-That is not evidence that flooring reduces bias. Arm A is itself biased there,
-by about -4%, from an asymptote the design never measured, and flooring happens
-to offset that bias. Averaging the two regimes together would combine a real
-effect with an artefact.
-
-**All results below are from the scenarios that reach past the zero crossing.**
-If essentially none of your observations are at or below zero growth, none of
-this applies to your data.
-
-## 5.5 ErC10 and ErC50
 
 Within the reaching regime the ordering is consistent. Arms A and C are
 unbiased to within one per cent for ErC50 and arm D is close behind. The three
@@ -956,7 +938,7 @@ descend below the boundary, the more the boundary distorts. F has the steepest
 gradient and is the only approach whose bias changes sign across the three
 levels: +14.0%, then -5.6%, then -13.4%.
 
-## 5.6 Effect of measurement precision
+## 5.5 Effect of measurement precision
 
 Scenarios 8 and 10 to 12 hold the design and the true values fixed and vary
 only the control coefficient of variation, from 9.6% down to 1.9%. This is the
@@ -1080,7 +1062,7 @@ be resolved against a 9.6% control coefficient of variation. Once the
 measurement is precise enough, the ErC10 ordering is the same as the ErC50
 ordering.
 
-## 5.7 Credible interval coverage
+## 5.6 Credible interval coverage
 
 Bias understates the problem, because the intervals narrow as precision
 improves while their centre stays displaced.
@@ -1118,11 +1100,11 @@ B2 fails in the opposite direction. Its coverage reaches 1.000, but its RMSE is
 0.63 against arm A's 0.38 and its point estimate is 11% low: the intervals are
 wide enough to contain almost anything. **Coverage should never be reported
 without a measure of interval width**, or the two worst-performing approaches
-here would be scored as the two best. Section 5.10 shows that B2's behaviour is
+here would be scored as the two best. Section 5.9 shows that B2's behaviour is
 substantially a property of the single residual scale rather than of the
 constraint.
 
-## 5.8 NSEC
+## 5.7 NSEC
 
 ErC10 and the NSEC are the two estimates commonly used as a no-effect value, and
 a reader choosing between them needs to know that the conventions do not affect
@@ -1217,7 +1199,7 @@ the other way, low by 5 to 16%, which makes it appear more toxic. Anyone
 treating ErC10 and the NSEC as interchangeable no-effect values should note that
 flooring inflates both, and inflates the NSEC by more.
 
-## 5.9 The model-averaged workflow
+## 5.8 The model-averaged workflow
 
 Everything above holds the equation fixed. That is the right design for
 attributing a change to the treatment of the data, but it is not what an
@@ -1238,7 +1220,8 @@ We ran this sweep over the eight-equation Gaussian candidate set that
 `bayesnec` retained before version 2.2.0. That set is now fourteen equations,
 and the six added are the zero-asymptote shapes a floored dataset most
 resembles. The direction of that change on these results has not been measured
-and is not guessed at here; it is recorded in Section 8.
+and is not guessed at here. Re-running the sweep over the current candidate set
+is tracked in issue #296.
 
 ```{r, echo = FALSE}
 # Phase 10, transcribed from analysis/phase10_vignette_numbers.txt in the
@@ -1379,7 +1362,7 @@ shapes that disagree about the shoulder is not an obvious way to resolve a 10%
 decline against the residual scatter, so these approaches should not be
 summarised across toxicity estimates.
 
-## 5.10 A dispersion sub-model
+## 5.9 A dispersion sub-model
 
 Every fit above holds `sigma` constant along the curve while the data
 were generated with a residual scale varying 8.1-fold. That misspecification is
@@ -1422,10 +1405,11 @@ The four tests ship with `bayesnec` as `alga`, so everything in this section
 is computed when the vignette is built rather than transcribed: two tests on
 *Cladocopium proliferum*, a coral endosymbiont, over seven days, and two on
 *Rhodomonas salina* over three days, each species exposed to two contaminants
-on undisclosed and mutually incomparable concentration scales. We do not apply
-arms E and F here: on a real dataset there is no true value to score them
-against, and what they add to the study is that their bias survives to the
-noise-free limit, which can only be shown where the truth is known.
+on undisclosed and mutually incomparable concentration scales. We include arms E
+and F here, because a Beta or a Gamma fitted to floored growth rates is how data
+of this kind have most often been analysed. We leave out arm D: truncation is
+defined by reference to arm A's own fitted curve rather than being a choice an
+analyst makes independently, and the simulation already scores it.
 
 ```{r}
 data(alga)
@@ -1472,7 +1456,7 @@ datasets_t <- with(datasets, data.frame(
 datasets_t <- as.data.frame(t(datasets_t), stringsAsFactors = FALSE)
 names(datasets_t) <- datasets$dataset
 knitr::kable(datasets_t,
-  caption = "**Table 4.** The four case-study datasets, computed from `alga`. All are in the regime where the design reaches the zero-growth boundary. `Below limit` counts the rows whose population fell below the counting limit, for which the source substituted a zero.")
+  caption = "**Table 3.** The four case-study datasets, computed from `alga`. All are in the regime where the design reaches the zero-growth boundary. `Below limit` counts the rows whose population fell below the counting limit, for which the source substituted a zero.")
 ```
 
 ## 6.1 Undefined growth rates in the *Rhodomonas* tests
@@ -1504,7 +1488,7 @@ the value the retained-measurement arms give.
 ## 6.2 Estimates from each approach
 
 ```{r, results = "hide"}
-# One dataset's six arms. The prior is pulled from A and passed to the other
+# One dataset's seven arms. The prior is pulled from A and passed to the other
 # five for the reason given in Section 5.1: bnec() derives the default Gaussian
 # priors from the response vector, and on r_salina2 the substituted zeros pull
 # the default bot prior onto zero, so letting each arm take its own default
@@ -1534,18 +1518,15 @@ fit_arms <- function(d) {
   d_cens <- transform(d,
     cens = ifelse(below_limit | y < 0, "left", "none"),
     y = ifelse(below_limit, bound, pmax(y, 0)))
-  # D's cut-off is the lowest tested concentration at which A's own posterior
-  # mean has reached zero, which is how the approach is defined -- it cannot be
-  # applied without first fitting A.
-  mu_A <- fitted(fit_A, newdata = data.frame(dose = d$dose))[, "Estimate"]
-  cross <- suppressWarnings(min(d$dose[mu_A <= 0]))
+  # E and F take bnec()'s own defaults rather than the shared prior, as they do
+  # in the simulation: taking the defaults is the practice under examination,
+  # and a prior built for nec4param carries a bot row that nec3param has no
+  # parameter for.
+  d_scaled <- transform(d_floored, y = y / max(y))
 
   list(
     A  = fit_A,
     C  = bnec(y | cens(cens) ~ crf(dose, "nec4param"), data = d_cens,
-              family = gaussian(link = "identity"), prior = shared,
-              seed = 333, open_progress = FALSE),
-    D  = bnec(y ~ crf(dose, "nec4param"), data = subset(d, dose < cross),
               family = gaussian(link = "identity"), prior = shared,
               seed = 333, open_progress = FALSE),
     B1 = bnec(y ~ crf(dose, "nec4param"), data = d_floored,
@@ -1556,6 +1537,12 @@ fit_arms <- function(d) {
               seed = 333, open_progress = FALSE),
     B3 = bnec(y ~ crf(dose, "nec4param"), data = d_floored,
               family = gaussian(link = "identity"), prior = pinned,
+              seed = 333, open_progress = FALSE),
+    E  = bnec(y ~ crf(dose, "nec3param"), data = d_scaled,
+              family = Beta(link = "identity"),
+              seed = 333, open_progress = FALSE),
+    F  = bnec(y ~ crf(dose, "nec3param"), data = d_floored,
+              family = Gamma(link = "identity"),
               seed = 333, open_progress = FALSE))
 }
 
@@ -1678,7 +1665,7 @@ design rather than the data. Where it did not, its intervals are
 arm A's. Fixing the asymptote at zero while leaving genuinely negative data in
 place asks the model to fit a curve that cannot reach its own observations, and
 the sampler reports this as divergent transitions and very wide intervals.
-Section 5.10 shows that a dispersion sub-model removes most of this.
+Section 5.9 shows that a dispersion sub-model removes most of this.
 
 The NSEC panel is consistent with the simulation on the dataset best placed to
 show it. `r_salina2` has the largest proportion of observations at or below
@@ -1726,7 +1713,7 @@ knitr::kable(
   digits = c(0, 3, 3, 3, 2),
   col.names = c("Approach", "bot (tighter prior)", "bot (default)",
                 "bot (wider prior)", "range, as a multiple"),
-  caption = "**Table 5.** Posterior mean lower asymptote on c_proliferum under three bot priors spanning a sixteen-fold range of scale."
+  caption = "**Table 4.** Posterior mean lower asymptote on c_proliferum under three bot priors spanning a sixteen-fold range of scale."
 )
 ```
 
@@ -1737,7 +1724,7 @@ knitr::kable(
     pivot_wider(names_from = estimate, values_from = estimate_span_pct),
   digits = 2,
   col.names = c("Approach", "ErC10", "ErC50", "NSEC"),
-  caption = "**Table 6.** How far each reported toxicity estimate changes across the same sixteen-fold change in the bot prior, as a percentage of its value under the default prior."
+  caption = "**Table 5.** How far each reported toxicity estimate changes across the same sixteen-fold change in the bot prior, as a percentage of its value under the default prior."
 )
 ```
 
@@ -1748,7 +1735,7 @@ prior or the measurements. A parameter that is robust to its prior is normally
 reassuring; here it indicates that the data have been replaced by a constant.
 
 The reported toxicity estimates are robust in every approach. The largest
-change anywhere in Table 6 is 7.8%, against a gap of about 33% between arm A
+change anywhere in Table 5 is 7.8%, against a gap of about 33% between arm A
 and B2 on the same dataset. The differences this vignette reports are therefore
 differences in the likelihood. The toxicity estimates can be reported even
 where the parameter that generates them cannot.
@@ -1821,14 +1808,14 @@ the shortfall is at least partly attributable to the next point.
 throughout the simulation. We ran the sweep before the dispersion interface
 existed, so the coverage figures should be read as reflecting a single pooled
 `sigma` standing in for a residual scale that varies 8.1-fold along the
-curve. The check in Section 5.10 is one scenario at one noise level, and
+curve. The check in Section 5.9 is one scenario at one noise level, and
 `"loglinear"` is itself an approximation to the linear `sigma` ramp the data
 were generated from. It shows the ordering is dispersion-dependent for B2; it
 does not re-score the study. Re-running the precision sweep under
 `disp("loglinear")` is tracked in issue #283.
 
 **We ran the model-averaging sweep over an eight-equation candidate set**, as
-stated in Section 5.9. Re-running it over the fourteen equations retained from
+stated in Section 5.8. Re-running it over the fourteen equations retained from
 version 2.2.0 would establish whether the recovery reported there holds when
 the zero-asymptote shapes are among the candidates. That is the largest
 outstanding gap in this vignette.
