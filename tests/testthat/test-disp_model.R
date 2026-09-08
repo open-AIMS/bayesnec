@@ -436,3 +436,42 @@ test_that("a variance function recovers a known exponent", {
   # and it should be distinguishable from constant dispersion
   expect_true(quantile(c1, 0.025) > 0)
 })
+
+
+test_that("route B reads the curve the fit uses, not the template (#294)", {
+  # make_disp_block() rebuilt the curve from bf_<model>, which discarded
+  # everything add_formula_glef() had done to the main expression. With the
+  # multiplicative deviation that meant phi was modelled as a function of the
+  # population-level bot while mu used bnecbot, silently and with no message.
+  # wrangle_model_formula() already adds the dispersion block last for exactly
+  # this reason; the rebuild was what stopped that having any effect.
+  set.seed(294)
+  d <- data.frame(resp = runif(60, 0.05, 0.9),
+                  pred = rep(log(c(0.1, 1, 10, 100, 1000, 1e4)), 10),
+                  grp = factor(rep(1:5, each = 12)))
+  fam <- validate_family("Beta")
+  phi_of <- function(txt) {
+    f <- bnf(paste0('resp ~ crf(pred, "nec4param") + ', txt))
+    bdat <- suppressMessages(model.frame(f, d))
+    bform <- suppressMessages(
+      wrangle_model_formula("nec4param", f, bdat, family = fam)
+    )
+    deparse1(formula.tools::rhs(bform[[2]][["phi"]]))
+  }
+  # A transformed parameter deviation reaches the variance function.
+  expect_true(grepl("bnecbot", phi_of('(bot | grp) + disp("twosided")'),
+                    fixed = TRUE))
+  expect_true(grepl("bnecbot", phi_of('pgl(grp) + disp("twosided")'),
+                    fixed = TRUE))
+  # So does #257's deviation on the whole curve, which route B had never seen.
+  expect_true(grepl("bnecmu", phi_of('ogl(grp) + disp("twosided")'),
+                    fixed = TRUE))
+  # An ungrouped fit is unchanged: the curve it reads is the template's.
+  ungrouped <- phi_of('disp("twosided")')
+  expect_true(grepl("bot + (top - bot)", ungrouped, fixed = TRUE))
+  expect_false(grepl("bnec", ungrouped, fixed = TRUE))
+  # A term on an untransformed parameter reaches it through the nlpar, as it
+  # always did, so the curve still names nec.
+  expect_true(grepl("nec)", phi_of('(nec | grp) + disp("twosided")'),
+                    fixed = TRUE))
+})

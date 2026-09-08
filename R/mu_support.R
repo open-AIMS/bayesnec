@@ -447,3 +447,197 @@ ogl_transform_expr <- function(kind, m = "bnecmu", o = "ogl") {
     stop("kind must be \"logit\" or \"log\".", call. = FALSE)
   )
 }
+
+#' The parameters a group-level deviation may be applied multiplicatively on
+#'
+#' @details \code{top} and \code{bot} are the two parameters on the response
+#' scale, and \code{\link{define_prior}} bounds both of them to the support of
+#' the mean --- \code{lb = 0} and \code{ub = 1} for the unit-interval families,
+#' \code{lb = 0} for the count and Gamma families. Every other parameter is on
+#' the predictor scale (\code{nec}, \code{ec50}) or is dimensionless and enters
+#' through an exponential (\code{beta}, \code{slope}, \code{d}, \code{f}), so
+#' an unconstrained deviation on it cannot put the parameter itself outside a
+#' range the likelihood requires, and \code{log} or \code{logit} of it is not
+#' generally defined --- \code{nec} on a log predictor is routinely negative.
+#' See #294.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#'
+#' @noRd
+par_transform_pars <- function() {
+  c("top", "bot")
+}
+
+#' Which scale a group-level deviation on a single parameter should be applied on
+#'
+#' @details The parameter-level counterpart of \code{\link{ogl_transform_kind}}.
+#' \code{pgl()} and an explicit \code{(par | group)} term add the deviation to
+#' the parameter on the parameter's own scale, and \pkg{brms} declares it
+#' unconstrained, so where that parameter is against a boundary of the mean's
+#' support the same excursions #257 removed from the mean occur on the
+#' parameter. \code{bot} is the case that matters: it is the lower asymptote, it
+#' is routinely estimated close to zero, and a deviation large enough to take it
+#' below zero makes the likelihood undefined. Measured on \code{herbicide} with
+#' \code{Beta(link = "identity")} and \code{nec4param}, a \code{(bot | herbicide)}
+#' term gives 51 divergent transitions of 2000 at \code{adapt_delta = 0.95} where
+#' the same term on a \code{gaussian} response gives none. See #294.
+#'
+#' \strong{The gate is the family, not the equation}, and this is where the
+#' judgement differs from \code{\link{ogl_transform_kind}}. That function asks
+#' whether the \emph{mean} is provably strictly inside the interval, which
+#' depends on the equation: \code{nechorme} can exceed 1 through
+#' \code{exp(slope) * x}, so \code{logit} of its mean is undefined. A parameter
+#' is not the mean. \code{top} and \code{bot} are bounded to the family's support
+#' by their own priors whatever equation they appear in, so
+#' \code{\link{model_mu_ranges}} is not consulted and the transform is defined
+#' for \code{nechorme}, \code{nechorme4}, \code{nechormepwr01},
+#' \code{ecxhormebc4} and \code{ecxhormebc5} even though the mean transform is
+#' not. Those equations keep the raised \code{adapt_delta} for the separate
+#' reason that their mean can leave the support with every parameter inside it;
+#' see \code{\link{add_brm_defaults}}.
+#'
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @return \code{"logit"}, \code{"log"}, or \code{"none"}.
+#'
+#' @seealso \code{\link{ogl_transform_kind}}, \code{\link{ogl_transform_expr}}
+#'
+#' @noRd
+par_transform_kind <- function(family) {
+  if (is.null(family) || !mu_is_constrained(family)) {
+    return("none")
+  }
+  support <- mu_support(family)
+  if (identical(support, c(0, 1))) {
+    return("logit")
+  }
+  if (identical(support, c(0, Inf))) {
+    return("log")
+  }
+  "none"
+}
+
+#' Whether a group-level term on one parameter takes the multiplicative form
+#'
+#' @param par A \code{\link[base]{character}} string naming one parameter.
+#' @param kind The output of \code{\link{par_transform_kind}}.
+#'
+#' @return A \code{\link[base]{logical}}.
+#' @noRd
+par_is_transformed <- function(par, kind) {
+  !identical(kind, "none") && par %in% par_transform_pars()
+}
+
+#' The names of the two terms a transformed parameter introduces
+#'
+#' @details \code{bot} keeps its name and stays a population-level non-linear
+#' parameter, so \code{b_bot_Intercept} and the prior
+#' \code{\link{define_prior}} builds for it are unchanged and every estimate
+#' function that reads them is unaffected. What is new is \code{botgl}, the
+#' deviation, and \code{bnecbot}, the intermediate the curve reads in place of
+#' \code{bot}. The naming follows \code{bnecmu} from #257 for the same reason:
+#' the generated term is the one that is renamed, never the parameter the user
+#' asked about.
+#'
+#' @param par A \code{\link[base]{character}} string naming one parameter.
+#'
+#' @return A named \code{\link[base]{character}} vector of length two.
+#' @noRd
+par_gl_names <- function(par) {
+  c(dev = paste0(par, "gl"), inter = paste0("bnec", par))
+}
+
+#' Whether an equation's mean is confined to the support by its own parameters
+#'
+#' @details The question the \code{adapt_delta} raise turns on. With every
+#' deviation applied on a scale it cannot leave, a group-level term can still
+#' put \code{mu} outside the support if the equation's mean is not bounded by
+#' \code{top} and \code{bot}. Three properties break that, and any one of them
+#' is enough:
+#'
+#' \itemize{
+#'   \item \code{below_zero} --- \code{neclin}, \code{neclinhorme} and
+#'     \code{ecxlin}, whose mean is unbounded below.
+#'   \item \code{can_exceed_one} --- the six hormesis equations with an excess
+#'     term in \code{exp(slope) * x}.
+#'   \item \code{ceiling_at_one} --- \code{nechormepwr01}.
+#' }
+#'
+#' \strong{All three are tested whatever the family's support is}, and that is
+#' where this differs from \code{\link{ogl_transform_kind}}, which tests
+#' \code{can_exceed_one} and \code{ceiling_at_one} on the \code{(0, 1)} branch
+#' only because they are about a \code{logit} being defined. They are not only
+#' about that here. An excess term in \code{exp(slope) * x} makes the mean
+#' negative for a sufficiently negative predictor --- \code{nechorme}'s mean is
+#' negative for \code{x < -top / exp(slope)} --- and \code{crf(log(x), ...)}
+#' supplies a negative predictor as a matter of course. So the hormesis
+#' equations can leave a \code{(0, Inf)} support as well, and a deviation on
+#' \code{slope} increases \code{exp(slope)} directly.
+#'
+#' Delegating this to \code{\link{ogl_transform_kind}} dropped the raise for
+#' those equations under \code{Gamma}, \code{poisson} and \code{negbinomial},
+#' where 2.1.4 applied it. See #294.
+#'
+#' @param model A \code{\link[base]{character}} string naming one equation.
+#'
+#' @return A \code{\link[base]{logical}}.
+#' @noRd
+mu_confined_by_pars <- function(model) {
+  if (is.null(model) || length(model) != 1) {
+    return(FALSE)
+  }
+  ranges <- model_mu_ranges()
+  row <- ranges[ranges$model == model, , drop = FALSE]
+  if (nrow(row) != 1) {
+    return(FALSE)
+  }
+  !isTRUE(row$below_zero) && !isTRUE(row$can_exceed_one) &&
+    !isTRUE(row$ceiling_at_one)
+}
+
+#' Every generated term name a group-level structure can introduce
+#'
+#' @details Used by \code{\link{check_reserved_names}} to refuse a data column
+#' that would be resolved in place of one of them, and by
+#' \code{\link{add_brm_defaults}} to drop their rows from the prior set the
+#' initial-value search reads. Enumerated rather than derived from the formula
+#' so that both callers refuse the same set whatever the formula turns out to
+#' be.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#' @noRd
+generated_term_names <- function() {
+  c("bnecmu", "ogl", unlist(lapply(par_transform_pars(), par_gl_names),
+                            use.names = FALSE))
+}
+
+#' The deviation intercepts a group-level structure leaves unidentified
+#'
+#' @details \code{ogl} enters as an offset on the whole curve, so a constant
+#' added to it can be taken back out of \code{top} and \code{bot} with no
+#' change to the likelihood. Its population intercept is therefore not
+#' identified by the data, is given a zero-centred prior by
+#' \code{\link{define_group_prior}}, and is started at zero rather than at
+#' Stan's own draw. See #245.
+#'
+#' The parameter-level transform has the same non-identifiability and resolves
+#' it differently: the deviation is written with no population intercept at all,
+#' so there is nothing here to initialise. See \code{\link{add_par_gl_term}}
+#' and #294.
+#'
+#' @param group_spec The output of \code{\link{parse_group_terms}}.
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @return A \code{\link[base]{character}} vector, possibly empty.
+#' @noRd
+group_zero_intercepts <- function(group_spec, family) {
+  if (is.null(group_spec)) {
+    return(character(0))
+  }
+  # Only ogl. A transformed parameter deviation is written botgl ~ 0 + (1 |
+  # group) and has no population intercept to initialise; see
+  # add_par_gl_term(). family is kept in the signature because which terms a
+  # formula generates is a property of it, and a caller should not have to know
+  # that the answer happens not to depend on it today.
+  if (isTRUE(group_spec$ogl)) "ogl" else character(0)
+}

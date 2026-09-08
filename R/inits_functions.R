@@ -437,7 +437,9 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
 #' @param family A \code{\link[stats]{family}} object.
 #' @param priors The \code{\link[brms]{brmsprior}} the fit will use, read for
 #' the scale of the generated group-level standard deviations.
-#' @param ogl Whether the formula carries an \code{ogl} offset parameter.
+#' @param group_spec The output of \code{\link{parse_group_terms}}, used only
+#' to decide which deviation intercepts to start at zero. See
+#' \code{\link{group_zero_intercepts}}.
 #'
 #' @details A prior is not enough here, and this is the part of #245 that is
 #' easy to get wrong. Stan draws its default initial values as
@@ -480,7 +482,7 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
 #' @importFrom stats median gaussian
 #'
 #' @noRd
-group_inits <- function(brms_bf, data, family, priors, ogl = FALSE) {
+group_inits <- function(brms_bf, data, family, priors, group_spec = NULL) {
   # The group-level dimensions M_k and N_k come from the random-effects
   # structure alone, so the family is irrelevant to the answer -- but it is not
   # irrelevant to whether the call succeeds, and each of the two candidates
@@ -530,8 +532,8 @@ group_inits <- function(brms_bf, data, family, priors, ogl = FALSE) {
     out[[paste0("sd_", k)]] <- as.array(rep(start_sd, n_terms))
     out[[paste0("z_", k)]] <- matrix(0, nrow = n_terms, ncol = n_levels)
   }
-  if (isTRUE(ogl)) {
-    out$b_ogl <- as.array(0)
+  for (nm in group_zero_intercepts(group_spec, family)) {
+    out[[paste0("b_", nm)]] <- as.array(0)
   }
   out
 }

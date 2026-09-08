@@ -67,6 +67,39 @@ or model suite. For example, the parameter \code{bot} exists in model
 \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
 will be dropped in models where that parameter does not exist.
 
+\bold{The scale a group-level deviation is applied on}
+
+\pkg{brms} declares a group-level deviation unconstrained, and under the
+\code{"identity"} link \code{\link{bnec}} assigns, the quantity it is added
+to often is not. Where the likelihood restricts the range of the mean ---
+every family except \code{gaussian} --- the deviation is therefore applied
+\emph{multiplicatively} rather than added, so that no proposal can put the
+quantity outside the range in which the model is defined. On a \code{0} to
+\code{1} response it scales the odds and on a positive response it scales the
+value itself. This applies to \code{ogl}, where the deviation is on the whole
+curve, and to a term on \code{top} or \code{bot}, which are the two
+parameters bounded to the support of the mean. A deviation on \code{nec},
+\code{ec50}, \code{beta}, \code{slope}, \code{d} or \code{f} is added, as
+none of those is bounded by the likelihood. A \code{pgl} term places a
+deviation on every parameter at once and so generates a mixture of the two.
+
+The deviation is centred on zero and a deviation of zero leaves the value
+unchanged, so \code{top}, \code{bot}, \code{nec} and \code{beta} keep their
+meanings and their own priors. A deviation on \code{top} or \code{bot} adds
+no population-level term of its own, so the fit has exactly the parameters the
+additive form had and \code{bot} remains the asymptote the population-level
+curve declines towards. A prior the user supplies for \code{top} or
+\code{bot} must bound it to the range the mean is defined on, because the
+multiplicative form is defined only inside that range; a prior that does not
+is refused with a message naming the bounds to add. What changes is the name the standard deviation
+is reported under: a term on \code{bot} is summarised as
+\code{sd(botgl_Intercept)} rather than \code{sd(bot_Intercept)}, and it is on
+the log-odds or log scale rather than on the response scale. The generated
+term names \code{ogl}, \code{bnecmu}, \code{topgl}, \code{botgl},
+\code{bnectop} and \code{bnecbot} are refused as data column names, because
+\pkg{brms} would resolve a column of that name in place of the generated term.
+See \code{vignette("example3")}.
+
 \bold{Dispersion sub-models: \code{disp}}
 
 By default a fit holds the family's dispersion parameter constant across the

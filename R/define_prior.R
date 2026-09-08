@@ -101,6 +101,9 @@ define_prior <- function(model, family, predictor, response,
   } else {
     "none"
   }
+  # The same question for a term on top or bot, and it is decided by the family
+  # alone rather than by the model. See par_transform_kind(). #294.
+  par_kind <- if (is.null(group_spec)) "none" else par_transform_kind(family)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
     hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
@@ -127,7 +130,8 @@ define_prior <- function(model, family, predictor, response,
     )
     group_priors <- define_group_prior(group_spec, predictor, mu_response,
                                        prior_type = prior_type,
-                                       ogl_transform = ogl_kind)
+                                       ogl_transform = ogl_kind,
+                                       par_transform = par_kind)
     if (!is.null(group_priors)) {
       hurdle_priors <- hurdle_priors + group_priors
     }
@@ -371,7 +375,8 @@ define_prior <- function(model, family, predictor, response,
   # offsets are added on, so it is the right scale to take the prior from.
   group_priors <- define_group_prior(group_spec, predictor, response,
                                      prior_type = prior_type,
-                                     ogl_transform = ogl_kind)
+                                     ogl_transform = ogl_kind,
+                                     par_transform = par_kind)
   if (!is.null(group_priors)) {
     priors <- priors + group_priors
   }
@@ -451,6 +456,10 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' @param response A \code{\link[base]{numeric}} vector of the response, on
 #' the link scale.
 #' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
+#' @param ogl_transform The output of \code{\link{ogl_transform_kind}} for this
+#' model and family, or \code{"none"}.
+#' @param par_transform The output of \code{\link{par_transform_kind}} for this
+#' family, or \code{"none"}.
 #'
 #' @details Without this, no prior is generated for a group-level standard
 #' deviation and it falls through to the \pkg{brms} default,
@@ -468,7 +477,9 @@ define_disp_prior <- function(disp_spec, family, response) {
 #'
 #' \itemize{
 #'   \item \code{top}, \code{bot} and \code{ogl} are on the response scale:
-#'     \code{diff(range(response)) / 10}.
+#'     \code{diff(range(response)) / 10}, unless the deviation is applied
+#'     multiplicatively, in which case it is on the log or log-odds scale and
+#'     the width is converted onto it (see below).
 #'   \item \code{nec} and \code{ec50} are on the predictor scale:
 #'     \code{diff(range(predictor)) / 10}.
 #'   \item \code{beta}, \code{slope}, \code{d} and \code{f} are
@@ -510,9 +521,23 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' length of the leapfrog trajectory that crosses it. Divergent transitions on a
 #' grouped fit are therefore expected wherever the response distribution
 #' restricts the range of the mean; see \code{\link{add_brm_defaults}} for the
-#' \code{adapt_delta} that mitigates them, \code{vignette("example3")} for what
-#' a user should check, and #257 for the parameterisation change that removes
-#' the cause.
+#' \code{adapt_delta} that mitigates them and \code{vignette("example3")} for
+#' what a user should check.
+#'
+#' \strong{Where the deviation is applied multiplicatively that argument no
+#' longer holds}, and the prior is on a different scale. #257 did this for
+#' \code{ogl} and #294 for \code{top} and \code{bot}: the deviation enters as
+#' \code{p = m e^o / (1 - m + m e^o)} on (0, 1) or \code{p = m e^o} on
+#' (0, Inf), so no value of \code{o} can put the parameter outside its support
+#' and the prior on \code{o} is a statement about a ratio rather than about a
+#' difference. The declared name changes with it: a transformed term puts the
+#' standard deviation on \code{botgl} rather than on \code{bot}. The
+#' population-level prior on \code{bot} itself is untouched, because \code{bot}
+#' is still a population-level non-linear parameter.
+#'
+#' A transformed term gets \strong{one} prior, the standard deviation. It has no
+#' population intercept to give a prior to; see \code{\link{add_par_gl_term}}
+#' for why. \code{ogl} gets two, and that asymmetry is deliberate.
 #'
 #' \strong{prior_type.} \code{"regularizing"} halves every generated scale.
 #' The two default sets differ only in the response-scaled parameters for the
@@ -539,7 +564,8 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' @noRd
 define_group_prior <- function(group_spec, predictor, response,
                                prior_type = "uninformative",
-                               ogl_transform = "none") {
+                               ogl_transform = "none",
+                               par_transform = "none") {
   if (is.null(group_spec) || length(group_spec$nlpars) == 0) {
     return(NULL)
   }
@@ -577,46 +603,90 @@ define_group_prior <- function(group_spec, predictor, response,
   # amend() fitted a model into an existing set with a prior no other member
   # had. Computed once here, from the model and family define_prior() already
   # has, so the three callers cannot drift apart. See #257.
-  s_ogl <- switch(
-    ogl_transform,
-    # Capped. s_y does not shrink as the response mean approaches zero, so the
-    # ratio is unbounded there: on a count response with many structural zeros
-    # -- zero_inflated_poisson and zero_inflated_negbinomial are both accepted
-    # -- s_y / m_y can put several orders of magnitude on the group-level mean.
-    # The logit branch below is self-limiting because s_y shrinks as the mean
-    # approaches either bound; this one is not. The cap is a coefficient of
-    # variation of 1, which at two prior standard deviations still admits a
-    # factor of e^2 on the mean and is far wider than any group-level effect
-    # these designs carry. See #257.
-    log = if (is.finite(m_y) && m_y > 0) min(s_y / m_y, 1) else s_y,
-    logit = if (is.finite(m_y) && m_y > 0 && m_y < 1) {
-      s_y / (m_y * (1 - m_y))
-    } else {
+  #
+  # `cap` is the difference between the ogl conversion and the parameter-level
+  # one. #257 capped the log branch only, because s_y shrinks as the mean
+  # approaches either bound of (0, 1) and the logit ratio is therefore
+  # self-limiting at the response mean. A parameter-level deviation is
+  # converted at the response mean as well, so the same argument holds, but the
+  # parameter it is applied to -- bot -- is not the response mean and sits near
+  # zero. The cap is applied to both branches there so that the width cannot
+  # run away on a response whose own mean is close to a bound. Left off the ogl
+  # branches so that #257's fits are unchanged. See #294.
+  converted_scale <- function(kind, cap = FALSE) {
+    out <- switch(
+      kind,
+      # Capped. s_y does not shrink as the response mean approaches zero, so
+      # the ratio is unbounded there: on a count response with many structural
+      # zeros -- zero_inflated_poisson and zero_inflated_negbinomial are both
+      # accepted -- s_y / m_y can put several orders of magnitude on the
+      # group-level mean. The logit branch below is self-limiting because s_y
+      # shrinks as the mean approaches either bound; this one is not. The cap
+      # is a coefficient of variation of 1, which at two prior standard
+      # deviations still admits a factor of e^2 on the mean and is far wider
+      # than any group-level effect these designs carry. See #257.
+      log = if (is.finite(m_y) && m_y > 0) min(s_y / m_y, 1) else s_y,
+      logit = if (is.finite(m_y) && m_y > 0 && m_y < 1) {
+        s_y / (m_y * (1 - m_y))
+      } else {
+        s_y
+      },
       s_y
-    },
-    s_y
-  )
+    )
+    # Capped at 1 / narrow rather than at 1. narrow is applied to s_y before the
+    # conversion, so capping at a constant afterwards made the two prior_type
+    # settings return exactly the same width wherever the uninformative one
+    # already exceeded the cap -- which is the response mean close to a bound,
+    # the case the cap exists for. A user selecting "regularizing" on a grouped
+    # fit then changed nothing for the parameter that prompted the choice. See
+    # #294.
+    if (cap && !identical(kind, "none")) min(out, 1 / narrow) else out
+  }
+  s_ogl <- converted_scale(ogl_transform)
+  s_par <- converted_scale(par_transform, cap = TRUE)
   scale_for <- function(par) {
     if (par == "ogl") {
       s_ogl
     } else if (par %in% c("top", "bot")) {
-      s_y
+      # A transformed deviation is on the log or log-odds scale, so the
+      # response-scale width is not the right one for it; the same delta-method
+      # conversion the ogl prior uses is applied instead.
+      if (par_is_transformed(par, par_transform)) s_par else s_y
     } else if (par %in% c("nec", "ec50")) {
       s_x
     } else {
       0.5 / narrow
     }
   }
+  # The name the standard deviation is declared under is the deviation term's,
+  # not the parameter's: a transformed term puts (1 | group) on botgl, and bot
+  # itself keeps the population-level prior define_prior() already built for it.
+  # A prior on nlpar "bot" of class "sd" would match nothing in the fit and brms
+  # would drop it silently. See add_par_gl_term(). #294.
+  nlpar_for <- function(par) {
+    if (par_is_transformed(par, par_transform)) {
+      unname(par_gl_names(par)[["dev"]])
+    } else {
+      par
+    }
+  }
   out <- NULL
   for (p in group_spec$nlpars) {
     pr <- prior_string(paste0("student_t(3, 0, ", signif(scale_for(p), 4), ")"),
-                       class = "sd", nlpar = p)
+                       class = "sd", nlpar = nlpar_for(p))
     out <- if (is.null(out)) pr else out + pr
   }
   if (isTRUE(group_spec$ogl)) {
     out <- out + prior_string(paste0("normal(0, ", signif(s_ogl, 4), ")"),
                               nlpar = "ogl")
   }
+  # No prior on a deviation intercept, because there is no deviation intercept:
+  # add_par_gl_term() writes botgl ~ 0 + (1 | group), so brms declares no
+  # b_botgl. That is deliberate and is what keeps bot interpretable -- bnecbot
+  # depends on bot and botgl only through their combination, so a free intercept
+  # would be exactly unidentified against bot. ogl is the other case and does
+  # get one, because it is documented as adding a population-level parameter.
+  # See add_par_gl_term(). #294.
   out
 }
 

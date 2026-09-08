@@ -60,10 +60,25 @@ test_that("adapt_delta is not raised for a transformed ogl term", {
   gs_lin <- parse_group_terms(bnf(y ~ crf(x, model = "neclin") + ogl(g)),
                               "neclin")
   expect_equal(args_for("Beta", "neclin", gs_lin), 0.99)
-  # A pgl term is not transformed in this landing, so it keeps the raise.
+  # #294 transforms a pgl term's deviation on top and bot as well, and on
+  # nec3param the mean lies between zero and top, so no group-level term can
+  # take it out of the support and the raise goes with it. Measured on
+  # herbicide, Beta(link = "identity"), nec4param: 0 divergent transitions of
+  # 2000 at Stan's default adapt_delta for a (bot | herbicide) term, against 51
+  # at 0.95 before the transform.
   gs_pgl <- parse_group_terms(bnf(y ~ crf(x, model = "nec3param") + pgl(g)),
                               "nec3param")
-  expect_equal(args_for("Beta", "nec3param", gs_pgl), 0.99)
+  expect_null(args_for("Beta", "nec3param", gs_pgl))
+  # It is kept where the mean can leave the support with every parameter inside
+  # it: neclin is unbounded below, and the hormesis equations can exceed 1
+  # through exp(slope) * x.
+  gs_pgl_lin <- parse_group_terms(bnf(y ~ crf(x, model = "neclin") + pgl(g)),
+                                  "neclin")
+  expect_equal(args_for("Beta", "neclin", gs_pgl_lin), 0.99)
+  gs_pgl_horme <- parse_group_terms(
+    bnf(y ~ crf(x, model = "nechorme") + pgl(g)), "nechorme"
+  )
+  expect_equal(args_for("Beta", "nechorme", gs_pgl_horme), 0.99)
 })
 
 test_that("the ogl prior is widened onto the scale the deviation is applied on", {
@@ -132,4 +147,93 @@ test_that("get_priors reports the ogl prior bnec() actually fits (#257)", {
   )
   ogl_of <- function(p) sort(p$prior[p$nlpar == "ogl"])
   expect_equal(ogl_of(reported), ogl_of(fitted_pr))
+})
+
+
+# ---- #294, the bounds the multiplicative form on (0, 1) rests on -------------
+
+test_that("a user prior that unbounds a transformed parameter is refused", {
+  # m * exp(o) / (1 - m + m * exp(o)) is safe because m is inside (0, 1).
+  # define_prior() guarantees that for the priors it generates, giving top and
+  # bot lb = 0 and ub = 1, but fill_missing_priors() preserves a user row and
+  # fills only what is absent -- so a user prior with no bounds merges with lb
+  # and ub NA and brms declares b_bot unbounded. Outside [0, 1] the expression
+  # has a pole at o = log((m - 1) / m) and changes sign across it, which the
+  # additive form it replaces would not have done: that would have produced an
+  # out-of-range mean Stan rejects visibly rather than a large finite number it
+  # accepts.
+  set.seed(294)
+  d <- data.frame(y = runif(60, 0.05, 0.9),
+                  x = rep(log(c(0.1, 1, 10, 100, 1000, 1e4)), 10),
+                  g = factor(rep(1:5, each = 12)))
+  beta <- validate_family("Beta")
+  spec <- list(nlpars = "bot", ogl = FALSE)
+  args_with <- function(pr, group_spec = spec, family = beta) {
+    suppressMessages(suppressWarnings(add_brm_defaults(
+      list(chains = 2, prior = pr), "nec4param", family, d$x, d$y,
+      skip_check = TRUE, custom_name = NULL, group_spec = group_spec
+    )))
+  }
+  unbounded <- brms::prior_string("normal(0.2, 0.5)", nlpar = "bot")
+  expect_error(args_with(unbounded), "do not bound the parameter")
+  expect_error(args_with(unbounded), "multiplicatively")
+  # The remedy the message names works.
+  bounded <- brms::prior_string("normal(0.2, 0.5)", nlpar = "bot",
+                                lb = 0, ub = 1)
+  expect_s3_class(args_with(bounded)$prior, "brmsprior")
+  # And so does the other remedy: without a group-level term on bot there is no
+  # transform, so an unbounded prior is the user's business.
+  expect_s3_class(
+    args_with(unbounded, group_spec = list(nlpars = "nec", ogl = FALSE))$prior,
+    "brmsprior"
+  )
+  # gaussian is unconstrained, so nothing is transformed and nothing is refused.
+  expect_s3_class(
+    args_with(unbounded, family = validate_family("gaussian"))$prior,
+    "brmsprior"
+  )
+  # On a positive-support family only the lower bound is required.
+  gam <- validate_family("Gamma")
+  dg <- transform(d, y = y * 10)
+  lb_only <- brms::prior_string("gamma(2, 1)", nlpar = "bot", lb = 0)
+  expect_s3_class(
+    suppressMessages(suppressWarnings(add_brm_defaults(
+      list(chains = 2, prior = lb_only), "nec4param", gam, dg$x, dg$y,
+      skip_check = TRUE, custom_name = NULL, group_spec = spec
+    )))$prior,
+    "brmsprior"
+  )
+})
+
+test_that("the adapt_delta raise is kept for the hormesis equations on every family", {
+  # The first version of #294 delegated this to ogl_transform_kind(), which
+  # tests can_exceed_one on the (0, 1) branch only, so the hormesis equations
+  # lost the raise under Gamma and the counts, where 2.1.4 applied it. Their
+  # mean can leave a (0, Inf) support too, and a deviation on slope is what
+  # makes that more likely.
+  set.seed(294)
+  d <- data.frame(y = runif(60, 0.05, 0.9),
+                  x = rep(log(c(0.1, 1, 10, 100, 1000, 1e4)), 10))
+  spec <- list(nlpars = c("top", "slope", "nec", "beta"), ogl = FALSE)
+  ad <- function(model, fam) {
+    suppressMessages(add_brm_defaults(
+      list(chains = 2), model, validate_family(fam), d$x, d$y,
+      skip_check = TRUE, custom_name = NULL, group_spec = spec
+    ))$control$adapt_delta
+  }
+  for (m in c("nechorme", "nechorme4", "ecxhormebc4", "ecxhormebc5",
+              "nechormepwr", "nechormepwr01")) {
+    for (fam in c("Beta", "Gamma", "poisson", "negbinomial")) {
+      expect_equal(ad(m, fam), 0.99, label = paste(m, fam))
+    }
+  }
+  # And is still dropped where the mean is confined by its own parameters.
+  for (fam in c("Beta", "Gamma", "poisson")) {
+    expect_null(ad("nec4param", fam))
+    expect_null(ad("ecxwb1", fam))
+  }
+  # And still kept where the equation is unbounded below.
+  for (fam in c("Beta", "Gamma")) {
+    expect_equal(ad("neclin", fam), 0.99)
+  }
 })
