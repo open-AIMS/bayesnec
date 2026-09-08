@@ -311,12 +311,17 @@ fit_C <- bnec(y | cens(cens) ~ crf(x, "nec4param"), data = dat_C,
               family = gaussian(link = "identity"), prior = shared_prior)
 ```
 
-**D — truncate the series.** The concentration series is cut off above the
-concentration at which the response is expected to reach zero, and only the
-remaining data are analysed. Nothing false is asserted, but the highest
-concentrations are discarded. That cut-off is not known in advance: it has to
-be read off a fitted curve, which here is arm A's, so approach D cannot be
-applied without first fitting approach A.
+**D — truncate the concentration series.** The cut-off is a *concentration*,
+not a response value. Every treatment group above the concentration at which
+the response is expected to reach zero is dropped, including the positive
+replicates in those groups, and the remaining data are analysed unchanged.
+Nothing false is asserted about any observation that is kept, but the cut-off
+has to come from somewhere: it is read off a fitted curve, which here is arm
+A's, so D cannot be applied without first fitting A.
+
+Deleting the individual negative observations while keeping the rest of their
+treatment group is a different practice, and it is not one of the eight
+approaches compared here. Section 8 records that gap.
 
 ```{r, eval = FALSE}
 crossing <- min(dat$x[fitted(fit_A, newdata = data.frame(x = dat$x))[, "Estimate"] <= 0])
@@ -1832,6 +1837,14 @@ the four real datasets it was fixed for comparability across approaches, and it
 is not what an analyst using `bayesnec` would do. The case-study estimates
 should be read as showing that the choice of convention changes the answer, not
 as recommendations for how to analyse those particular tests.
+
+**Deleting the negative observations is not among the approaches tested.** The
+eight approaches either keep a negative value, replace it with zero, withhold
+its magnitude, or drop the concentrations at which it occurs. Deleting the
+individual rows and keeping the rest of their treatment group is a fifth
+practice and a plausible one. It is not covered here and would need its own arm,
+because it changes the replication per concentration rather than the values,
+which is a different kind of edit from the four the study scores.
 
 **We ran the precision sweep at one combination of the other two factors**
 (`delta` = 4, `top_factor` = 2.0). The convergence behaviour is expected to be
