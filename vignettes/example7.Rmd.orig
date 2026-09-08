@@ -1,9 +1,13 @@
 ---
 title: "Modelling growth data and other potentially negative response values"
-output: rmarkdown::html_vignette: vignette: > %\VignetteIndexEntry{Modelling
-growth data and other potentially negative response values}
-%\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8} bibliography:
-bayesnec.bib ---
+output:
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{Modelling growth data and other potentially negative response values}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: bayesnec.bib
+---
 
 ```{r setup, include = FALSE}
 stopifnot(require(knitr))
@@ -1205,9 +1209,14 @@ and is not guessed at here; it is recorded in Section 8.
 
 ```{r, echo = FALSE}
 # Phase 10, transcribed from analysis/phase10_vignette_numbers.txt in the
-# compendium at 0181d66e. bias_s is the single-model result recomputed over
-# these same 200 datasets, not the 500-dataset figure above, so the two
-# differ slightly; the paired 200 is the right baseline for a paired contrast.
+# compendium at 0181d66e, produced by analysis/phase10_vignette_numbers.R over
+# analysis/phase10_metrics.csv. Figures are at n = 200 per cell: 3 cells x 200 x
+# 5 arms, 27,600 model fits, 0 failures, 0 exclusions.
+# bias_s is the single-model result recomputed over these same 200 datasets, not
+# the 500-dataset figure quoted earlier, so the two differ slightly; the paired
+# 200 is the right baseline for a paired contrast.
+# Regenerate in the compendium after any change to the sweep and move the pinned
+# commit in Section 9 to match. Never edit a result in place.
 phase10 <- read.csv(text = "
 cell,arm,estimate,bias_s,bias_a,cov_s,cov_a
 CV 9.6%,A,ErC10,19.0,-11.3,0.875,1.000
