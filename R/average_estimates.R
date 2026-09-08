@@ -62,7 +62,7 @@
 average_estimates <- function(x, estimate = "nec", ecx_val = 10,
                               posterior = FALSE, type = "absolute",
                               sig_val = 0.01,
-                              resolution = 1000, x_range = NA, xform = identity,
+                              resolution = 200, x_range = NA, xform = identity,
                               prob_vals = c(0.5, 0.025, 0.975)) {
   if (!is.list(x) | is.null(names(x))) {
     stop("Argument x must be a named list")

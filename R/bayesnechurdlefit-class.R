@@ -219,7 +219,7 @@ nec.bayesnechurdlefit <- function(object, posterior = FALSE, xform = identity,
 #' @method ecx bayesnechurdlefit
 #'
 #' @export
-ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 1000,
+ecx.bayesnechurdlefit <- function(object, ecx_val = 10, resolution = 200,
                                   posterior = FALSE, type = "absolute",
                                   x_range = NA, xform = identity,
                                   prob_vals = c(0.5, 0.025, 0.975),

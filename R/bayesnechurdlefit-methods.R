@@ -241,7 +241,7 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
 #' @method nsec bayesnechurdlefit
 #'
 #' @export
-nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
+nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
                                    x_range = NA,
                                    xform = identity,
                                    prob_vals = c(0.5, 0.025, 0.975), ...,
@@ -923,7 +923,7 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' @method ecnsec bayesnechurdlefit
 #'
 #' @export
-ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 10,
+ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
                                      x_range = NA,
                                      type = "absolute", xform = identity,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
