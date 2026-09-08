@@ -12,6 +12,18 @@ against the landed code, not against this branch, which is 81 commits behind
 
 ---
 
+## 0. Status
+
+**Executed 2026-09-07.** The stack landed while this was being written — #286
+into `batch-4-group-scale`, then #284 into `dev` — so the rewrite was carried
+out the same night rather than deferred. `origin/dev` at `a7ba018f` was merged into
+`negsgr-cens-vignette`, the verification checklist in §7 was worked, the
+vignette was rewritten to §4, arm G was added, and the vignette was
+precompiled. What follows is the plan as agreed; §12 records where the delivered
+work departed from it.
+
+---
+
 ## 1. Thesis
 
 One sentence, and every section is subordinate to it:
@@ -269,3 +281,56 @@ The distinction must survive the rewrite and be stated in the vignette.
 - `CLAUDE.md` §11's first entry, which states that `bnec()` forces
   `link = "identity"` on every family. That is now inaccurate for the reason in
   §3, but it is RF's file and is not edited here. Raise it separately.
+
+
+---
+
+## 12. Departures from the plan, and what was measured
+
+Recorded 2026-09-07, after execution.
+
+**Length.** The plan set about 6,800 words. Delivered is 8,199 words of prose,
+from 11,674 — a 30% reduction rather than the 40% budgeted. The overshoot is in
+the simulation and the model-averaging sections, which were kept fuller than
+planned once the decision to retain model averaging was taken. Counted as prose
+only: code chunks, HTML comments and fenced blocks excluded. The whole-file
+count including code is 13,094 words, from 16,341.
+
+**The Gaussian candidate set is demonstrated, not asserted.** `check_models()`
+is not exported, but `models()` is, and `R/models.R` records that it derives its
+answer from `check_models()` rather than restating it. `models(c(-Inf, Inf))`
+therefore returns the set `bnec()` retains for an unbounded response, and the
+vignette prints `setdiff(names(show_params("decline")), names(models(c(-Inf,
+Inf))))`, which is `character(0)`. This is better than the plan asked for: the
+claim cannot drift from the package's own rule without the chunk changing.
+
+**Arm G's palette.** The eight-hue separation analysis recorded in the colour
+chunk was done for eight series and has not been re-run for nine. Arm G is
+therefore given its own `case_arm_levels` and `case_arm_cols`, used only by the
+case-study figure, where the arm is encoded on the y axis as well as by colour.
+The simulation figures are untouched and still use the original eight.
+
+**Phase 10 re-run: measured, and not attempted.** The compendium records its own
+budget in `analysis/phase10_gate2_pilot.R`: 31.5 worker-minutes per iteration
+measured on the pilot, over the eight-equation set, with wall-clock per
+iteration equal to worker-minutes because each iteration occupies one worker.
+The script's own formula is `n * 3 * per_iter / w / 60` hours plus about two
+hours of warm-up. At n = 200, three cells and 16 workers that is **21.7 hours
+for the eight-equation set**. Fitting fourteen equations rather than eight
+scales the per-iteration cost by roughly 14/8, giving **about 36 hours**. This
+machine has 22 cores. The re-run is therefore between one and two days of
+dedicated compute, not an overnight job, and it was not started: it would have
+competed with the precompile for cores, and the compendium checkout carries a
+recorded hazard about concurrent sessions (`RESUME.md`).
+
+**Verification results.** All twelve checks in §7 were run against merged `dev`.
+Confirmed: fourteen declining equations, all fourteen retained under
+`gaussian(link = "identity")`, `nec3param` among them; `disp("power")` refused
+where the fitted mean crosses zero, with the message naming `disp("loglinear")`;
+the zero and one nudges unchanged in value, censored rows exempt, and reported
+once from `bnec()` via `report_substitutions()` with a `remedy` field naming
+`hurdle_gamma()` or `zero_inflated_beta()`; `supported_links()` is `identity`,
+`log`, `logit`. Arm G was smoke-tested before the precompile was launched:
+`nec3param` under a Gaussian family fits, and `ecx(type = "absolute")` and
+`nsec()` both return three finite values on it — the path that was refused
+before #206.
