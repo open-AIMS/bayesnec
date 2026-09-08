@@ -147,7 +147,7 @@ reference converges on the control mean, and for an equation that includes a
 `nec` parameter the NSEC converges on `nec` itself. The true `nec` is therefore
 the NSEC's limiting value, not its expected value at any finite level of noise.
 
-# What flooring commits you to
+# Flooring and the response distribution
 
 Replacing a negative growth rate with zero is not only an edit to the data. It
 asserts that the response cannot be negative, which is a statement about the
@@ -188,7 +188,7 @@ that is genuinely zero because the population died is a different process
 again, which the hurdle and zero-inflated families are designed for; they are
 not a remedy for a substituted negative.
 
-# What the revised defaults permit
+# Zero-asymptote equations under a Gaussian family
 
 The zero-asymptote curve shape is now available under a Gaussian family, so
 the shape of the model and the treatment of the data are separate decisions.
@@ -256,7 +256,7 @@ that curve.
 
 `bayesnec` ordinarily fits a candidate set and averages over it (see the
 [Multi model usage][e2] vignette), which remains the recommendation for
-estimating a toxicity value; the *Two routes to an adequate floored result*
+estimating a toxicity value; the *Routes to an adequate floored result*
 section relaxes the fixed form and reports what changes. Fixing the form also
 removes misspecification from the simulation, since `nec4param` is the
 generating equation.
@@ -422,7 +422,7 @@ handling_levels <- c("Measurement retained", "Zero boundary imposed",
                      "Zero bounded by the family")
 ```
 
-# Four algal growth tests
+# Marine microalgal growth tests
 
 The simulation below establishes which approach is right. Real data establish
 whether the choice makes a practical difference, and the answer is that it
@@ -1530,7 +1530,7 @@ substance appear more toxic than it is. **The NSEC is biased high**, by 47 to
 purpose is to identify a concentration at which no significant effect occurs,
 the second is the more serious, because it errs against protection.
 
-# Two routes to an adequate floored result
+# Routes to an adequate floored result
 
 Two established practices repair much of the damage flooring does. Both work.
 Neither is required once the measurements are kept as recorded, and that is the
