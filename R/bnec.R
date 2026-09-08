@@ -130,6 +130,11 @@
 #' parameter (without a bottom plateau) will be fit; "zero_bounded" are models
 #' that are bounded to be zero; or "decline" excludes all hormesis models, i.e.,
 #' only allows a strict decline in response across the whole predictor range.
+#' Each group names a shape rather than a set of equations admissible for a
+#' given response --- "decline" includes the linear-decay models, which are
+#' dropped for a zero-bounded or 0, 1 bounded response --- so a group string is
+#' filtered by the same family check that \code{model = "all"} is. See
+#' \code{\link{models}}.
 #' Notice that if one of these group strings is provided together with a
 #' user-specified named list for the \code{\link[brms]{brm}}'s argument
 #' \code{prior}, the list names need to contain

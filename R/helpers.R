@@ -828,7 +828,17 @@ add_brm_defaults <- function(
       fill_missing_priors(priors, default_priors, model)
     }
   }
-  if (!("init" %in% names(brm_args)) || skip_check) {
+  # Whether anyone needs initial values, and nothing else. This used to read
+  # `|| skip_check`, which made a caller who supplied `init` pay for the search
+  # anyway whenever the data check was skipped -- and then discarded what they
+  # supplied, because the search result is assigned over it below. Measured on a
+  # 32-row four-dose Beta fixture with nec3param, 2026-09-07, R 4.6.1: 597.6 s
+  # with `init` supplied against 577.2 s without, identical within noise. The
+  # clause was load-bearing for one caller only, and that is fixed at its
+  # source: amend() passed `init = simdat$init`, the stanfit inits of a model
+  # already in the set, to a model being added to it, so the search had to run
+  # to overwrite them. amend() no longer passes them. See #290.
+  if (!("init" %in% names(brm_args))) {
     msg_tag <- family$family
     model_tag <- if (is.null(model_survival) || identical(model_survival,
                                                           model)) {

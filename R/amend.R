@@ -243,9 +243,16 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
     model <- model_set[m]
     mod_m <- try(old_fits[[model]], silent = TRUE)
     if (!inherits(mod_m, "prebayesnecfit")) {
+      # No `init`. This branch is reached only for a model that is not already
+      # in the set, and simdat$init holds the stanfit initial values of a model
+      # that is -- values named for another equation's parameters, which are
+      # meaningless here. add_brm_defaults() overwrote them with its own search
+      # in every case, so omitting them changes nothing that happened; what it
+      # changes is that the search is now requested by the absence of `init`
+      # rather than compelled by skip_check. See #290.
       brm_args <- list(
         family = family, iter = simdat$iter, thin = simdat$thin,
-        warmup = simdat$warmup, init = simdat$init, chains = simdat$chains,
+        warmup = simdat$warmup, chains = simdat$chains,
         sample_prior = simdat$sample_prior
       )
       brm_args$prior <- priors

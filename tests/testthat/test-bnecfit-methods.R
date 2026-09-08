@@ -157,3 +157,39 @@ test_that("a link the caller writes is honoured on update", {
   )
   expect_equal(got$family$link, "logit")
 })
+
+test_that("update returns a bayesnecfit when only one model survives", {
+  skip_on_cran()
+  # A refit that fails for one model of a set is the ordinary case
+  # expand_manec()'s single-survivor branch exists to handle, so update() must
+  # return what bnec() and amend() return for the same surviving set. It
+  # classed the bare one-element list as a bayesmanecfit, and every method on
+  # the result then failed on a missing `mod_fits`. See #288.
+  #
+  # The stub returns the stored fit unchanged for the first model and fails for
+  # the second, which reaches the branch without sampling.
+  tbl <- get(".__S3MethodsTable__.", envir = asNamespace("stats"))
+  orig_method <- get("update.brmsfit", envir = tbl)
+  on.exit(assign("update.brmsfit", orig_method, envir = tbl), add = TRUE)
+  n_called <- 0
+  stub <- function(object, formula. = NULL, newdata = NULL, recompile = NULL,
+                   ...) {
+    n_called <<- n_called + 1
+    if (n_called == 1) {
+      object
+    } else {
+      stop("halted by test")
+    }
+  }
+  assign("update.brmsfit", stub, envir = tbl)
+  # try(silent = FALSE) in the refit loop prints the stub's stop to stderr.
+  invisible(capture.output(
+    upd <- suppressMessages(update(manec_example)),
+    type = "message"
+  ))
+  expect_s3_class(upd, "bayesnecfit")
+  expect_false(inherits(upd, "bayesmanecfit"))
+  expect_true(is_bayesnecfit(upd))
+  expect_equal(upd$model, names(manec_example$mod_fits)[1])
+  expect_error(suppressWarnings(summary(upd)), NA)
+})

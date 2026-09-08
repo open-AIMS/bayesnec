@@ -421,6 +421,46 @@ test_that("the fixed parameter is dropped before the inits reach brm", {
   # the prior itself must still reach brm(); only the init is dropped
   expect_true("constant(0)" %in% out$prior$prior)
 })
+
+test_that("a supplied init is honoured whether or not the data check is run", {
+  # add_brm_defaults() used to run the search when `init` was absent OR when
+  # skip_check was TRUE, so a caller who supplied initial values under
+  # skip_check = TRUE paid for a search -- measured at 577 s on a fixture that
+  # cannot be initialised -- and then had what they supplied overwritten by its
+  # result. The two conditions answer different questions: whether anyone needs
+  # initial values, and whether the data has been checked. See #290.
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(42)
+  y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
+  searched <- FALSE
+  local_mocked_bindings(
+    make_good_inits = function(...) {
+      searched <<- TRUE
+      list(random = "random")
+    },
+    .package = "bayesnec"
+  )
+  for (sc in c(TRUE, FALSE)) {
+    searched <- FALSE
+    out <- suppressMessages(
+      bayesnec:::add_brm_defaults(list(init = "random"), "nec4param",
+                                 validate_family("gaussian"), x, y,
+                                 skip_check = sc, custom_name = NULL)
+    )
+    expect_false(searched)
+    expect_identical(out$init, "random")
+  }
+  # Absent, the search still runs on both routes.
+  for (sc in c(TRUE, FALSE)) {
+    searched <- FALSE
+    suppressMessages(
+      bayesnec:::add_brm_defaults(list(), "nec4param",
+                                 validate_family("gaussian"), x, y,
+                                 skip_check = sc, custom_name = NULL)
+    )
+    expect_true(searched)
+  }
+})
 # --- #244 x #148: the two halves of the constant-prior NA ---------------------
 # brms carries a parameter fixed by constant() into the draws as a zero-variance
 # column, and posterior returns NA for it. Before #148 Part D that NA reached

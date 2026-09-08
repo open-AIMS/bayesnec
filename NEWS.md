@@ -164,6 +164,29 @@
 
 ## Bug fixes
 
+- `update()` on a `bayesmanecfit` returned an object classed `bayesmanecfit`
+  with none of that class's structure whenever all but one model failed to
+  refit. The guard tested the length of the candidate set going in rather than
+  the number of survivors coming out, so `expand_manec()`'s single-survivor
+  branch --- which returns a bare one-element list of `prebayesnecfit` --- was
+  classed as a model average. The result had no `mod_fits`, `mod_stats` or
+  `w_pred_vals`, and every `bayesmanecfit` method then failed naming a missing
+  component rather than the update. `update()` now routes a single survivor
+  through `expand_nec()` and returns a `bayesnecfit`, which is what `bnec()` and
+  `amend()` already returned for the same surviving set (#288).
+
+- A supplied `init` no longer triggers the initial-value search. The search ran
+  when `init` was absent **or** when `skip_check` was `TRUE`, so a caller who
+  supplied initial values under `skip_check = TRUE` waited for a search and then
+  had what they supplied overwritten by its result. Measured on a 32-row,
+  four-dose `Beta` fixture with `nec3param`, 2026-09-07, R 4.6.1: 597.6 s with
+  `init` supplied against 577.2 s without, identical within noise. The one
+  caller that depended on the search running regardless was `amend()`, which
+  passed the stanfit initial values of a model already in the set to a model
+  being added to it; those values name another equation's parameters and were
+  discarded by the search in every case, so `amend()` no longer passes them and
+  its behaviour is unchanged (#290).
+
 - `ecx()` and `nsec()` discarded any arithmetic inside an inline `crf()`
   transformation when putting the estimate back on the fitted scale. The
   substitution replaced the parsed call's first argument slot, so
@@ -534,6 +557,19 @@
   assumes the posteriors come from separate fits --- two levels of one fit share
   draws, and permuting them widens the difference posterior and pulls
   `prob_diff` toward 0.5, which under-detects a real difference (#218).
+
+## Documentation
+
+- `?bnec` and `?models` now state that a model group names the shape of the
+  response and not the set of equations admissible for it. `mod_groups$decline`
+  includes `neclin` and `ecxlin`, whose mean decays by subtraction and is
+  unbounded below, so neither is admissible for a response bounded at zero. A
+  `bnec()` call is unaffected --- `check_models()` drops them where the family
+  requires it, and a group string is filtered by the same check that
+  `model = "all"` is --- but nothing said so, and code reading the group
+  directly as a statement of admissibility got two equations that are not.
+  `models()` given a numeric range returns the admissible set and is the route
+  to use where that is what is wanted (#285).
 
 # bayesnec 2.1.4
 
