@@ -103,14 +103,16 @@ spacing_cv <- function(x) sd(diff(sort(x))) / mean(diff(sort(x)))
 round(c(linear = spacing_cv(conc), log = spacing_cv(log(conc))), 2)
 ```
 
-Any simple transformation may be written directly inside `crf`, as `crf(log(x), model = "nec4param")`. Two consequences follow. Zero concentrations cannot be logged, so a control recorded as `0` needs an offset first — `bayesnec` uses `min(x[x > 0]) / 10` when it has to make that substitution itself on the raw axis. And the toxicity estimates are then returned on the transformed scale, so `nec`, `ecx` and `nsec` need back-transforming, with `xform` doing the same job for plots:
+Any simple transformation may be written directly inside `crf`, as `crf(log(x), model = "nec4param")`. Two consequences follow. The transformation is evaluated before `bayesnec` inspects the predictor, so a control concentration recorded as `0` arrives at the data check as `log(0)` and the fit stops, reporting a predictor that is not finite. `bayesnec` does not correct a zero on the predictor axis, on either the recorded or the transformed scale: a concentration of zero is an ordinary control, and no response distribution constrains the values a predictor may take. An offset for a logarithm is therefore the user's to choose and to add to the data first. And the toxicity estimates are then returned on the transformed scale, so `nec`, `ecx` and `nsec` need back-transforming, with `xform` doing the same job for plots:
 
 ```{r, eval = FALSE}
 ecx(exp_2, xform = function(x) exp(x) - 1)
 autoplot(exp_2, xform = function(x) exp(x) - 1)
 ```
 
-One caution on the inline form as the package currently stands. A transformation whose argument is a bare variable, such as `log(x)` or `sqrt(x)`, is handled correctly throughout. Where the argument contains arithmetic of its own, such as `log(x + 1)`, `nec` is still reported on the transformed scale but `ecx` and `nsec` are not: they are back-transformed as though the offset were absent, and so are slightly in error. Pre-computing the transformation into its own column and passing it as a bare variable avoids this entirely:
+A transformation written inside `disp` rather than `crf` fails differently, and less clearly. A `disp` formula is evaluated by `brms` rather than by `bayesnec`, so nothing checks it: with `disp(~log(x))` a zero concentration reaches Stan as `-Inf`, with a warning about infinite values in the data and no mention of the term responsible. The remedy is the same --- add the offset to the data and name that column.
+
+The inline form and a pre-computed column give the same estimate, whether the transformation's argument is a bare variable such as `log(x)` or contains arithmetic of its own such as `log(x + 1)`. Up to `bayesnec` 2.1.3 the two disagreed: an estimate read off the prediction grid was put back on the fitted scale by a substitution that replaced the parsed call's first argument slot rather than the predictor variable inside it, so the `+ 1` was discarded and `log(x + 1)` was inverted as `log(x)`. Nothing errored and the value returned was plausible. That is fixed, and the pre-computed column below is now an equivalent way of writing the same model rather than a workaround:
 
 ```{r, eval = FALSE}
 prop_data$log_x <- log(prop_data$raw_x + 1)
@@ -458,7 +460,7 @@ y ~ crf(x, model = "nec4param") + disp("power")    # on the fitted mean
 
 `disp(~x)` is an ordinary `brms` distributional formula, so anything `brms` understands is allowed, including `disp(~log(x))` and `disp(~s(x))`. It states only that variability differs along the concentration axis. `disp("power")` instead models the dispersion parameter as a function of the **fitted mean**, which is a statement about the measurement process rather than about the concentration axis. The two coincide for a monotone curve, where the fitted mean is itself a monotone function of the predictor, and separate under hormesis or where a design revisits the same fitted mean. The available variance functions, the families each applies to, and what the estimated exponent implies for a given family are described in `?bayesnecformula`.
 
-A variance function of the fitted mean requires the mean to be modelled on its natural scale, because the sub-model is built by substituting the model's own curve expression into the variance function, and that expression is the linear predictor on the *link* scale. `bnec` uses an identity link whenever it selects the family itself, so no action is needed in the usual case; if you supply a family explicitly, supply the link too, as in `Gamma(link = "identity")`. Other links are refused rather than fitted, because under an inverse link the sub-model would estimate the slope with the opposite sign while converging perfectly well.
+A variance function of the fitted mean requires the mean to be modelled on its natural scale, because the sub-model is built by substituting the model's own curve expression into the variance function, and that expression is the linear predictor on the *link* scale. `bnec` fits on the identity link and assigns it itself unless you write a link argument, so no action is needed in the usual case; naming the family, as in `family = "Gamma"` or `family = Gamma()`, is enough. Other links are refused rather than fitted, because under an inverse link the sub-model would estimate the slope with the opposite sign while converging perfectly well.
 
 ## Choosing a variance function
 

@@ -1,95 +1,283 @@
 # bayesnec 2.2.0
 
-- New vignette, `vignette("example9")` — *A complete analysis workflow* — running
-  a single analysis from data to reportable estimate: family choice from a
-  dispersion screen, fitting, sampler diagnostics per candidate model, fit
-  diagnostics via `pp_check()` and `check_fit()`, exclusion of models that fail
-  the screen, and reporting. It covers the two steps the other vignettes state
-  but do not demonstrate — choosing the family from the data, and removing a
-  model from the set and seeing what that does to the answer.
+## Default priors
 
-  The family screen reads the `dispersion()` posterior against its null value of
-  1 rather than thresholding the point estimate, which is the package's existing
-  convention and the only coherent reading of a statistic returned with an
-  interval. The exclusion step is worked on three datasets because the outcome
-  differs between them: `nassarius` drops half the model weight and the
-  model-averaged *N(S)EC* does not move, `simazine` drops far less weight and it
-  does, and `diuron` has nothing to drop. Weight redistribution and movement of
-  the estimate are separate consequences, and neither is predictable before the
-  screen is run — which is the argument for the step being obligatory. The
-  screening itself uses `check_sampling()` and `screen_models()` rather than
-  hand-rolled code, which is what those helpers exist for. See #219.
+- **The `nec` and `ec50` gamma prior now peaks at the median predictor**, not at
+  twice it. The rate changes from `2/m` to `4/m`, which moves the mode of the
+  untruncated prior from `2m` to `m` and its mean from `2.5m` to `1.25m`. On a
+  series spaced evenly from zero, `2m` is close to the largest concentration
+  tested, so after truncation to the predictor range the density rose
+  monotonically across everything the prior permitted and pulled the *NEC*
+  estimate towards the highest concentration --- the wrong direction for a
+  protective estimate. `4/m` is also what `?bnec` and `vignette("example3")`
+  already described the prior as doing (#273).
 
-- A control lack-of-fit is now surfaced rather than waiting to be looked for:
-  once at the end of `bnec()`, and as a line in `summary()` alongside the
-  convergence verdict. Both threshold on the **ratio** of observed to simulated,
-  not on the posterior predictive p-value. That is deliberate and measured: on
-  two independently fitted parameterisations of the same data the simulated
-  control mean overshot the observed by ~19%, reproducing across fits, while
-  both p-values sat at about 0.82 and neither came near flagging. A p-value
-  threshold would stay silent on exactly the case the check exists to catch.
-  `nsec()` reads its reference from the control, so this is the region most
-  likely to move a reported no-effect concentration. See #148.
+  The other two entries of `x_prs` place their maximum density at a central
+  measure of the predictor --- `beta(2, 2)` at the centre of the unit interval,
+  `normal(median(x), ...)` at the median --- so the gamma entry was the only one
+  of the three that did not, and the only one that did not do what it was
+  documented to do.
 
-- New `check_fit()`, reporting per group of the predictor the observed location
-  and scale of the response against what the fitted model simulates, with a
-  posterior predictive p-value for each and the control group flagged. It sits
-  alongside `check_chains()`, which checks the sampler, and `check_priors()`,
-  which checks the priors: this checks the fit against the data.
+  **This changes every default fit** whose predictor is non-negative, which is
+  the `Gamma` branch of the predictor-scaled priors, and it applies to `ec50` as
+  well as to `nec`, since both read the same entry. The alternative considered
+  and not taken was `gamma(2, 2/m)`, whose mean rather than mode is *m*; the
+  reasoning is recorded on #273.
 
-  It is deliberately **local**. `dispersion()` reports one global statistic, and
-  for any family with a free dispersion parameter that parameter absorbs exactly
-  the discrepancy the global statistic measures — on the packaged
-  `manec_example` the global Pearson ratio is a healthy 1.011 [0.71, 1.44] while
-  the same fit simulates about 26% more variability than the data show in the
-  control region. That matters because `nsec()` sets its reference from the
-  posterior of the control mean, so mis-stating control variability moves a
-  reported no-effect concentration, and nothing previously reported it.
+## Sampler behaviour
 
-  The scale statistic is computed on residuals, not raw values: within a group
-  the raw standard deviation mixes residual variability with the slope of the
-  curve across that group, which would make every steep region look
-  overdispersed. Grouping prefers genuine replication and falls back to binning
-  with a warning. For a `bayesmanecfit` the per-candidate-model rows are
-  reported with their stacking weights, because weights come from a global
-  `elpd` and a candidate can hold high weight while fitting the control badly.
-  For the mixture families the observed and simulated proportion of zeros is
-  reported too — the question those families exist to answer, which nothing
-  else reported. \code{plot()} shows the same table graphically: per group, the
-  observed statistic against the 95% span of what the fit simulates, in
-  separate location and scale panels with the control drawn apart. See #148,
-  which also closes #56.
+- **A group-level deviation on the whole curve, `ogl()`, is now applied
+  multiplicatively rather than as an additive offset**, wherever the likelihood
+  constrains the mean and the equation's mean is provably strictly inside its
+  support. `brms` declares the offset unconstrained, and under the identity link
+  `bnec()` uses, the mean it was added to often is not: every leapfrog step that
+  carried `mu` outside the likelihood's support was rejected by Stan and counted
+  as a divergence. On the unit interval the deviation now scales the odds,
+  `mu = m e^o / (1 - m + m e^o)`; on the positive half-line it scales the mean,
+  `mu = m e^o`. Both are written collapsed rather than as
+  `inv_logit(logit(m) + o)`, which is not equivalent in floating point: `logit(m)`
+  underflows to `-Inf` once the decay term exceeds about 709, and
+  `inv_logit(-Inf + o)` is exactly 0, which fails a likelihood's positivity check
+  as surely as `mu > 1` does (#257).
 
-- New `pp_check()` methods for `bayesnecfit`, `bayesmanecfit` and
-  `bayesnechurdlefit`, so posterior predictive checks no longer require
-  unwrapping the underlying `brmsfit`. `pp_check(x, type = "loo_pit_overlay")`
-  gives a LOO-PIT check — the Bayesian counterpart of a uniform quantile
-  residual — using the `loo` criterion `bnec()` already adds, so it needs no
-  extra step and no new dependency. See #148 and #56.
+  **The deviation is zero-centred and `m e^0` is `m`, so the transformed model is
+  the current model when the deviation is zero**: `top`, `bot`, `nec` and `beta`
+  keep their meanings, and `ecx()`, `nsec()` and the model-averaging machinery
+  are unaffected.
 
-- `hurdle_poisson` and `hurdle_negbinomial` are now available as two-block
-  families, the count analogues of `hurdle_gamma`. Use them where the non-zero
-  response is a count and the zeros are *observed* to be structural — the
-  individual died, the replicate failed. `brms` writes the positive part
-  zero-truncated, so the mean block estimates the mean of the surviving counts
-  rather than the mean of counts conditioned on being non-zero, and both blocks
-  carry an interpretable concentration-response curve. This is deliberately not
-  the same decision as for `zero_inflated_poisson` and
-  `zero_inflated_negbinomial`, which stay on the single-block path: there the
-  zeros are latent, so the zero-probability and the mean are weakly separated
-  exactly where the mean is small — the high-concentration end that determines
-  the *NEC*. See #209.
+  **Two gates, and both must pass.** The likelihood must constrain the mean and
+  the link must be unable to keep it inside, which is what `gaussian` and an
+  explicit `log` or `logit` link fail. And the equation's mean must be provably
+  strictly inside the interval, which `neclin`, `neclinhorme` and `ecxlin` fail
+  by being unbounded below, `nechormepwr` and `nechorme4pwr` by being able to
+  exceed 1, and `nechormepwr01` by saturating at exactly 1. Everything outside
+  those gates keeps the additive offset.
 
-- **Behaviour change:** `bnec_hurdle()` now refuses `poisson` and `negbinomial`
-  as the growth family, on the automatically selected path as well as a supplied
-  one. It fits the growth component to the non-zero rows with an *untruncated*
-  count family, which estimates `mu / (1 - exp(-mu))` rather than `mu`; the bias
-  is negligible for large means and grows as the mean falls towards zero, which
-  is the high-concentration end the *NEC* and ECx are read off. For
-  `hurdle_gamma` the same construction is exact, because a Gamma has no mass at
-  zero, which is why this only surfaced once counts were in scope. The separate
-  fits cannot express the truncation, so the error points at
-  `bnec(family = "hurdle_poisson")`, which is correct by construction. See #209.
+  **`adapt_delta` is no longer raised to 0.99 for a fit whose only group-level
+  structure is a transformed `ogl()` term.** The raise was added in 2.1.4 to
+  mitigate exactly these excursions and costs roughly fourteen times the gradient
+  evaluations per iteration; a multiplicative deviation cannot make the
+  excursions, so there is nothing left to mitigate. A `pgl()` term, an explicit
+  `(par | group)` term, and every equation outside the gates keep it.
+
+  **The `ogl` prior is widened onto the scale the deviation is applied on**, by
+  delta-method conversion of the existing rule evaluated at `mean(y)`:
+  `s_log = s_y / mean(y)`, a group-level coefficient of variation, and
+  `s_logit = s_y / (m (1 - m))`. Both are evaluated at a single point while the
+  Jacobian varies along the curve, so this is a conversion of the convention onto
+  the new scale rather than an exact reparameterisation of the same prior.
+
+  **`ogl` and `bnecmu` are now refused as data column names.** The transform
+  introduces `bnecmu` as an intermediate term and \pkg{brms} resolves formula
+  terms against the user's data frame first, so a column of either name would be
+  used in place of the generated term and the fit would silently be a different
+  model. A data frame carrying either name that fitted under 2.1.x now stops
+  with an error naming the column, before any model is compiled.
+
+  **Not in this change:** `pgl()` and explicit `(par | group)` terms, which place
+  a deviation on an individual curve parameter rather than on the mean and need
+  the same idea one level down.
+
+## Breaking changes to ECx, NSEC and ECNSEC
+
+- **Every ECx, NSEC and ECNSEC is now measured from the control** --- the
+  predicted mean at the lowest concentration in the supplied predictor, taken
+  per posterior draw. `ecx()` measured from the maximum of the predicted curve
+  instead. The two are the same point for a monotonic decreasing curve and
+  differ for a hormetic one, where the maximum is the peak at the *NEC*, so
+  every ECx reported for a hormesis equation changes. `nsec()` was already
+  anchored on the control except for a `hormesis_def == "max"` branch, which is
+  removed, so the two estimators now agree by construction (#195). The control
+  is read at the lowest *observed* concentration rather than at the first column
+  of the prediction grid, on the `bayesnechurdlefit` class as well as the
+  single-fit one, so supplying `x_range` no longer changes any reported
+  estimate.
+
+- **`type` is a four-value vocabulary.** `"absolute"` (the default) measures
+  control to 0; `"relative"` measures control to the equation's theoretical
+  asymptote, the `bot` parameter where the equation has one and 0 otherwise;
+  `"range"` measures control to the lowest response the curve predicts; and
+  `"direct"` takes a response value. **`"range"` is what `"relative"` computed
+  up to 2.1.3**, and supplying `type = "relative"` explicitly now warns, naming
+  `"range"`, because the two are different quantities. `"relative"` is refused
+  where the bound is infinite --- an equation with no `bot` under a family
+  unbounded below --- because there is then no denominator (#195). The same
+  four values are accepted wherever `type` is taken: `ecx()`, `nsec()`,
+  `ecnsec()`, `compare_estimates()`, `compare_posterior()` and
+  `average_estimates()`, each validating against one shared definition, and each
+  warning about the rename once for the call rather than once per fit.
+
+- **`hormesis_def` is removed** from `ecx()`, `nsec()`, `ecnsec()`,
+  `compare_estimates()`, `compare_posterior()` and `average_estimates()`. With
+  the control always the reference it selects nothing. Its documented `"max"`
+  behaviour was what `ecx()` did unconditionally, while its `ecx()` consumer had
+  been commented out for several releases, so the argument was inert there and
+  live in `nsec()`. A call still passing it is refused by name rather than
+  absorbed by `...` (#195).
+
+- **`ecnsec()` now inverts the `ecx()` reference construction under the same
+  `type`**, and takes `type = "absolute"` by default. It was computed by three
+  different formulas, one per `nsec()` method, which agreed only for a monotonic
+  decreasing curve and measured the effect against the fitted range rather than
+  against the control. Reported ECNSEC values change and are generally smaller.
+  `type = "direct"` is refused, having no percentage to report.
+
+- **A target the curve never reaches within the predictor range returns `NA`,
+  with a warning naming how many draws were affected.** Both estimators
+  previously returned the grid point whose prediction was nearest the target,
+  which for a curve that never declines to the target is the *lowest*
+  concentration in the series --- the furthest possible value from the truth,
+  reported as an ECx with nothing said. The crossing is now found by
+  interpolation between the bracketing grid points rather than snapped to the
+  nearer of them (#39). Every function that summarises such a posterior reports
+  the censoring and excludes the affected draws, `nec()` and the
+  `bayesnechurdlefit` methods included; they previously stopped with "missing
+  values and NaN's not allowed" on a posterior the package had itself written.
+
+- **The default `resolution` is reduced from 1000 to 200** in `ecx()`,
+  `nsec()`, `ecnsec()` and `average_estimates()`. The value of 1000 was
+  calibrated for the nearest-grid-point search that interpolation replaces,
+  where the grid spacing set the precision directly. With interpolation the
+  precision saturates: measured on the equations of `manec_example` at 100
+  draws and on a `nec4param` fit of `nec_data` at 4000 draws, the largest
+  change in any reported ECx or NSEC between a resolution of 200 and one of
+  2000 was 0.006 per cent, and the binding case was `nsec()` on `nec4param`.
+  The reduction lowers the run time of a 4000 draw `nsec()` call by about 10
+  per cent, and the saving grows with the number of draws. The measurement does
+  not cover `bnec_hurdle()` fits or a predictor carrying an inline
+  transformation. Prediction and plotting grids are unaffected: `bnec()`,
+  `bnec_newdata()`, `autoplot()` and the `fitted()`, `predict()` and
+  `posterior_epred()` methods keep a default of 1000 (#39).
+
+- **`ecnsec()` predicts over 200 grid points rather than 10.** Both its
+  methods took 10, disagreeing with the 1000 the `\usage` section stated. The
+  value sets the denominator under `type = "range"`, which was therefore read
+  off a ten-point curve.
+
+- **`ecx_val` is no longer capped at 99.** Any value above 0 is accepted. Under
+  `"absolute"` the reference is 0, so a value above 100 names a target below
+  zero, which is a real measurement on a response that can go negative and is
+  what OECD TG 201 reports rather than truncating at 100 per cent.
+
+## New
+
+- **`bnec_record()`** reports what `bnec()` did to the request before fitting:
+  the candidate set as requested, the set attempted, the equations excluded with
+  the reason for each, and any substitution made in the response. Both were
+  reported by `message()` and then discarded, so neither could be recovered from
+  the returned object --- only from console output, which a knitted document or
+  a call wrapped in `suppressMessages()` does not keep. The set as requested,
+  the set attempted, the reason for the difference, and what was altered in the
+  data are what a methods section has to state (#261, #93). The element is named
+  `attempted` rather than `fitted` because an equation that was attempted and
+  failed to sample appears in it and in `failed_models()`; `requested` is
+  partitioned exactly by `attempted` and `excluded$model`. The record is kept
+  through `update()`, and rebuilt by `amend()` for the set that call produced.
+
+- `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
+  over-dispersion, alongside the median and the interval. It uses the whole
+  posterior rather than a point estimate or one tail quantile, and it is
+  symmetric: `1 - P(>1)` answers the under-dispersion question, which nothing
+  else reported. `summary()`'s weights table gains the matching
+  `dispersion_P_over_1` column. `?dispersion` now states that `beta_binomial`
+  adds variance to the binomial and so cannot address under-dispersion (#262).
+
+## Bug fixes
+
+- `update()` on a `bayesmanecfit` returned an object classed `bayesmanecfit`
+  with none of that class's structure whenever all but one model failed to
+  refit. The guard tested the length of the candidate set going in rather than
+  the number of survivors coming out, so `expand_manec()`'s single-survivor
+  branch --- which returns a bare one-element list of `prebayesnecfit` --- was
+  classed as a model average. The result had no `mod_fits`, `mod_stats` or
+  `w_pred_vals`, and every `bayesmanecfit` method then failed naming a missing
+  component rather than the update. `update()` now routes a single survivor
+  through `expand_nec()` and returns a `bayesnecfit`, which is what `bnec()` and
+  `amend()` already returned for the same surviving set (#288).
+
+- A supplied `init` no longer triggers the initial-value search. The search ran
+  when `init` was absent **or** when `skip_check` was `TRUE`, so a caller who
+  supplied initial values under `skip_check = TRUE` waited for a search and then
+  had what they supplied overwritten by its result. Measured on a 32-row,
+  four-dose `Beta` fixture with `nec3param`, 2026-09-07, R 4.6.1: 597.6 s with
+  `init` supplied against 577.2 s without, identical within noise. The one
+  caller that depended on the search running regardless was `amend()`, which
+  passed the stanfit initial values of a model already in the set to a model
+  being added to it; those values name another equation's parameters and were
+  discarded by the search in every case, so `amend()` no longer passes them and
+  its behaviour is unchanged (#290).
+
+- `ecx()` and `nsec()` discarded any arithmetic inside an inline `crf()`
+  transformation when putting the estimate back on the fitted scale. The
+  substitution replaced the parsed call's first argument slot, so
+  `crf(log(x + 1))` was inverted as `log(x)` and the `+ 1` was dropped. Nothing
+  errored and the value returned was plausible. Measured on a `nec4param` fit to
+  `nec_data` with `crf(log(raw_x + 1))`: EC10 was 1.372 where the same model
+  fitted through a pre-computed `log(x + 1)` column gave 1.598, a 14 per cent
+  error on the fitted scale and a concentration of 2.94 against 3.94 once
+  back-transformed. The same defect was present at three further sites --- the
+  stored *NEC* or *NSEC* written by `expand_nec()` at fit time, and both hurdle
+  methods --- so it reached every fit using an inline transformation with
+  arithmetic, not only explicit `ecx()` calls. `vignette("example1")` fits
+  `crf(log(raw_x + 1))` and reports an ECx from it (#196).
+
+- `plot()` and `autoplot()` decided whether to apply `xform` to the predictor
+  axis from a guard that answered for the formula as a whole, so a
+  transformation on the *response* suppressed `xform` on the *predictor* axis
+  and the axis was drawn on the fitted scale while the caller had asked for the
+  recorded one. The guard is now per-variable, as `fit_bayesnec()`'s became in
+  2.1.4 (#268).
+
+- The *NEC* and EC10 annotations on `plot()` and `autoplot()` were drawn at
+  their own value on an axis drawn on a different scale whenever the formula
+  transformed the predictor, so the annotation did not correspond to the curve
+  beneath it and could fall outside the axis entirely. Estimates and axis are
+  now put on one scale: with the caller's `xform` where one was supplied, and
+  otherwise by inverting numerically on the prediction grid, so the default case
+  is correct without the caller having to know an inverse was needed (#160,
+  #161).
+
+- `autoplot(x, ecx = TRUE)` no longer fails for a fit whose formula transforms
+  the predictor inline, such as `crf(log(raw_x + 1))`, when `xform` is left at
+  its default. Putting the estimate on the axis scale by inverting numerically
+  on the prediction grid returned a vector stripped of the `ecx_val` attribute
+  that labels the annotation, and the call ended in "replacement has length
+  zero". Supplying an `xform` took a different branch and was unaffected, which
+  is why the failure was specific to the default (#160, #161).
+
+- `compare_estimates()` and `compare_posterior()` no longer report
+  `prob = NA` for a comparison in which any draw is censored. The pairwise
+  probability is computed over the draw pairs where both estimates are
+  identified; a single unreached draw in either posterior previously voided the
+  whole comparison, and silently, the probability being a value rather than an
+  error (#39).
+
+- `plot()` and `autoplot()` annotate the same EC10 for a gaussian fit. `plot()`
+  asked for `type = "relative"` under its 2.1.3 meaning, the control-to-minimum
+  span, while `autoplot()` took the `ecx()` default, so the same fit was
+  annotated with two different quantities depending on which method drew it.
+  Both now ask for `type = "range"`, which is the span `plot()` intended: 0 is
+  not a meaningful floor for a response that can go negative. Under the renamed
+  `"relative"` that line would have annotated a third quantity, warned about a
+  rename the caller had not asked for, and errored outright for a `bot`-free
+  equation, which #206 has just made fittable under gaussian.
+
+- A `crf()` term naming more than one variable, such as `crf(log(offset + x))`,
+  is refused when an estimate is put back on the fitted scale rather than
+  silently inverted on whichever variable comes first. `simplify_formula()`
+  treats every variable inside `crf()` as the predictor, so such a formula has
+  no single predictor to invert on (#196).
+
+- Zero-bounded equations --- `nec3param`, `ecxexp`, `ecxsigm`, `ecxwb1p3`,
+  `ecxwb2p3`, `ecxll3` --- are no longer dropped when `family = gaussian()`.
+  The exclusion conflated the range of the mean function with the support of the
+  likelihood: a gaussian likelihood evaluates `y - mu` and never tests the sign
+  of `y`, so a mean function asymptoting to zero with gaussian error is
+  internally consistent. It prevented the curve shape OECD TG 201 and Ritz,
+  Gerhard & Streibig (2026) both recommend for algal growth-rate data from being
+  fitted at all, `nec3param` included, and a user naming a single zero-bounded
+  equation explicitly got an error rather than a message. Model weights now make
+  that judgement. The separate `log`/`logit` link exclusion is unchanged (#206).
 
 - New `bnec_group()` and the `bayesnecgroupfit` class, fitting the model set
   independently within each level of a factor and model-averaging within each
@@ -145,6 +333,281 @@
   Refitting the favoured combination *jointly* is not included: that needs
   level-aware post-processing inside the toxicity estimators, which is the code
   the `toxval` migration moves. See #33.
+
+- A boundary correction is no longer discarded when a transformation is written
+  inline in `crf()`. `check_data()` shifts a response off a boundary its family
+  cannot represent — a zero under `Gamma` or `beta`, a one under `beta` or
+  `zero_inflated_beta` — and
+  the shift reached `brm()` only where no population variable was transformed
+  inside the formula. The guard was all-or-nothing, so `crf(log(concentration))`
+  discarded a shift applied to the *response*: the correction was computed,
+  reported to the user, and then dropped, and the fit failed with a `brms` error
+  naming the condition the package had reported it had repaired. The decision is
+  now made one variable at a time, so a transformation on the predictor no
+  longer affects the response. Reported as #258; `bnec(fvfm ~
+  crf(log(concentration), ...), data = herbicide)` reproduces it on packaged
+  data.
+
+  Where the *transformed* response is itself the one on the boundary, the
+  correction cannot be carried through at all, because `brm()` re-evaluates the
+  transformation from the recorded column. That is now an error naming the
+  conflict and the remedy, in place of a `brms` failure; it is raised once per
+  `bnec()` call rather than once per model, so a model set stops with the cause
+  rather than repeating it for every member.
+
+  The new error reaches two exported functions that run the same check.
+  `get_priors()` now raises it for a formula whose inline-transformed response
+  sits on a boundary the family excludes, where it previously returned a prior
+  table describing a fit that could not be run. `update()` raises it whenever it
+  tests for a change of family — when new data is supplied, or a family is —
+  and the response of the data being tested lands on such a boundary.
+
+- **A zero in the predictor is no longer corrected.** `check_data()` replaced a
+  zero concentration with `min(x[x > 0]) / 10` before the data reached `brm()`,
+  and a fit whose predictor includes an exact zero therefore gives different
+  estimates under this version. No family constrains the values a predictor may
+  take, so no correction was ever required: `nec3param` and `ecxsigm` fitted to
+  a predictor of 0, 5, 15, 45 and 135 converge with zero divergent transitions
+  either way, and agree to within a third of the width of their credible
+  intervals. The correction was applied without notice, it was never reversed
+  in the estimates it changed (#93), and its size depended on the design rather
+  than on the data, so the same control was fitted at a different value
+  depending on the lowest non-zero concentration tested. The predictor now
+  reaches `brm()` on the scale the user recorded, and `nec()`, `ecx()` and
+  `nsec()` report on that scale too. See #269.
+
+  The corresponding corrections for a predictor bounded on 0 and 1 are removed
+  with it. Those were unreachable — `check_data()` tested for `"beta"` where
+  `set_distribution()` returns `"Beta"` — so no released version applied them
+  and nothing changes for such a predictor. Reported as #265, closed by removal
+  rather than by repair.
+
+  One class of fit that ran under earlier versions now stops. A logarithm of the
+  predictor written inside a `disp()` sub-model — `disp(~log(x))` — was
+  evaluated against the substituted value, so a zero concentration reached Stan
+  as `log(min(x[x > 0]) / 10)`. It now reaches Stan as `-Inf`, `brms` warns
+  "Found infinite values in the data", and the fit does not run. Add the offset
+  of your choice to the data and name that column in the `disp` formula. Nothing
+  validates a `disp` formula for finiteness before `brm()` sees it, which is
+  raised separately as #271.
+
+- **The `nec` and `ec50` prior scale is taken from the concentration series,
+  not from the observation vector.** The rate of the `gamma` prior those two
+  parameters receive was built from `quantile(predictor, 0.5)`, which is
+  weighted by how many replicates each concentration received. **Any design with
+  unequal replication gets a different `nec` and `ec50` prior under this
+  version, whether or not the predictor includes a zero.** On a strictly
+  positive predictor of 0.5, 1, 3, 10, 30 and 100 replicated 1, 3, 6, 8, 2 and 1
+  times, the prior changes from `gamma(5, 0.2)` to `gamma(5, 0.3077)`, a change
+  in its mean from 25 to 16.25 on a predictor running to 100. The rate is now
+  built from the median of the *distinct* predictor values, which is the same
+  quantity for a balanced design.
+
+  The zero case is where the change is largest. Twelve controls beside
+  concentrations of 5, 15, 45, 135, 200 and 300 gave `gamma(5, 4)` under earlier
+  versions, a prior mean for `nec` of 1.25 on a predictor running to 300, and
+  give `gamma(5, 0.0444)` here, a prior mean of 112.5. Nothing errored and
+  nothing was reported: more than half the observations sat at the control, the
+  predictor correction had replaced those zeros with 0.5 before the median was
+  taken, and the median of the corrected observations was 0.5. The same
+  calculation on the recorded predictor returns `gamma(5, Inf)`, which is not a
+  prior at all, so removing the correction on its own would have exposed a
+  failure rather than a degenerate prior. The distinct-value median cannot be
+  zero for any predictor this entry applies to. See #269.
+
+  A second consequence of taking the median of the distinct values: the two
+  blocks of a hurdle or zero-inflated fit no longer disagree about the scale of
+  their shared predictor purely because of replication. The `hu` block was
+  already primed from `sort(unique(predictor))`, by `survival_by_x()`, so on an
+  unbalanced design the `mu` block and the `hu` block previously received
+  different rates for the same concentrations — `gamma(5, 0.4)` against
+  `gamma(5, 0.1333)` on a design of eight controls and four replicates each at
+  5, 15, 45 and 135. Both are `gamma(5, 0.1333)` here. They can still differ for
+  a substantive reason: the `mu` block is primed from the non-zero subset of the
+  response, so a concentration at which every response is zero is absent from its
+  series. On the same design with complete mortality at 135, the `mu` block gets
+  `gamma(5, 0.2)` against `gamma(5, 0.1333)` for the `hu` block. That is the
+  intended behaviour — the `mu` block is fitted only to the survivors — and it is
+  the ordinary shape of a dataset a hurdle family is chosen for.
+
+- A fit whose data was corrected under an earlier version can no longer be
+  combined with a new fit of the same data. `c()` and `+` on `bnecfit` objects
+  compare the stored data frames exactly, so a fit whose control was recorded at
+  `min(x[x > 0]) / 10` and one whose control is the zero the user recorded are
+  refused with "Dataset values differ across fits". This reaches any fit with a
+  zero in the predictor, and any fit to which the response boundary shift above
+  applied; a fit whose data neither correction touched is unaffected. Refit both,
+  or use `amend()`, which refits from the data frame already stored and so keeps
+  an older set consistent in its *data*.
+
+  It does not keep it consistent in its *priors*. `amend()` builds a default
+  prior for each model it adds, so a model added under this version to a set
+  fitted under an earlier one is given the new `nec` and `ec50` rate while the
+  models already in the set retain the old one. That applies to every prior this
+  release changes, not only to the predictor-scaled ones. Where the comparison
+  between models matters, refit the whole set.
+
+- The response write-back now matches rows by name rather than assigning
+  wholesale, so it is correct for a data frame whose row names are not `1:n`
+  and cannot fail with "replacement has *n* rows, data has *m*". A missing
+  value in any variable the formula names, which is the other way the model
+  frame comes back shorter than the data frame `brm()` is given, is refused
+  outright as of the entry below rather than accommodated by the write-back.
+
+- `trials()` carrying arithmetic — `y | trials(n * 2) ~ crf(x, ...)` — no longer
+  fits every observation against the wrong number of trials. The trials column
+  was written back into the user's data before `brm()` saw it, and the aterm
+  matches the bare column name, so `n` was overwritten with `n * 2` and `brm()`
+  then evaluated `trials(n * 2)` against *that*: a recorded 10 became 40. The
+  write-back is removed; `check_data()` never corrects the trials variable, so
+  it had nothing to carry.
+
+- A row with a missing value in any variable the formula names is refused
+  rather than left for `stats::model.frame()` to remove. The model frame drops
+  incomplete cases before the finiteness guard in `check_data()` is reached, so
+  `Inf` was refused while `NA` and `NaN` were removed silently: twenty rows
+  supplied, nineteen fitted, nothing said. The error reports how many rows held
+  a missing value and which they were, by row name. Where those rows are
+  genuinely to be discarded, apply `na.omit()` to the data frame before calling
+  `bnec()`, so that the sample the estimates are derived from is the user's
+  decision and is visible in the script.
+
+  The check runs in `bnec()` before any model is fitted, and in `bnec_group()`
+  before the first level is, so a model set states the refusal once and a
+  grouped fit states it before it samples anything. It is retained in
+  `check_data()` for the two routes that do not come through `bnec()`:
+  `get_priors()` and `amend()`. The finiteness guard also reads `is.finite()`
+  elementwise rather than on the mean, so a missing value that reaches it
+  through `options(na.action = "na.pass")` is refused as well, naming the
+  column (#278).
+
+- `position_legend` in `plot()` accepts the numeric form its documentation has
+  always named. Both the keyword form and the coordinate form
+  `graphics::legend()` takes are now valid: one of the eight position keywords
+  the previous guard listed, or a numeric vector of length two giving the x and
+  y coordinates. The guard it replaces also tested
+  `match(legend_positions, position_legend)`, matching the valid keywords into
+  the user's value rather than the reverse, so `c("topright", "bogus")` passed
+  it and failed inside `legend()` with `'arg' must be of length 1`, which names
+  neither the argument nor the valid values. Both `plot()` methods now use one
+  guard with one message (#278).
+
+- `ggbnec_data()` validates `xform` for a `bayesmanecfit` as it already did for
+  a `bayesnecfit`. `ggbnec_data(x, xform = "no")` failed with
+  `could not find function "xform"` for a model set where a single fit reported
+  `xform must be a function.` (#278).
+
+- Four unreachable guards removed, with no change in behaviour. The predictor
+  and group-level type checks in `check_data()` composed a longer message than
+  `retrieve_var()` and `check_formula()`, which refuse the same input first and
+  say the same thing; the `lxform` branch in each `plot()` method is preceded
+  by a guard that has already stopped on that input. Four
+  `check_custom_name()` calls whose result nothing read are removed alongside
+  them (#278).
+
+- `update()` with `newdata` reported a boundary correction and then discarded
+  it. The check ran `check_data()` on the new data, emitted its message, kept
+  only the family from the result and passed the user's raw `newdata` to
+  `brms::update()`, so the fit failed naming the condition the package had just
+  said it repaired. That is #258's failure mode on a route #258 did not cover,
+  because the write-back that fixed it lives in `fit_bayesnec()` and this path
+  does not go through it. `has_family_changed()` is replaced by
+  `check_update_data()`, which returns the corrected frame alongside the family.
+  Both routes into that check are covered: `update(family = )` with no
+  `newdata` reads the fit's stored data, so the corrected frame is passed there
+  too, while `newdata` stays `NULL` where nothing was corrected, which is what
+  tells `brms` to reuse the stored data (#274).
+
+- A `disp()` sub-model is now checked for finiteness before `brm()` sees it.
+  `check_data()` tests the predictor and the response and names the column when
+  either fails, but it inspects only the population variables `crf()` declares,
+  and a `disp(~...)` term's variables are deliberately kept out of the model
+  frame. So `disp(~log(x))` on a predictor containing a zero produced a `brms`
+  warning about the data in general, after which the fit did not run, with
+  nothing naming the term responsible. The refusal names the term and is raised
+  from `bnec()` and `bnec_group()` before any model is fitted. A missing value
+  in such a term is reported as missing rather than as non-finite, since
+  `check_data()`'s complete-cases check cannot see those columns either (#271).
+
+- `set_distribution()` returned `NULL` for an integer vector containing negative
+  values: the integer branch tested `min(x) >= 0` and had no `else`. Automatic
+  family selection read that `NULL` and the call failed reporting a `family`
+  argument the user had not supplied. An integer response with negative values
+  --- a difference, an increment, a change in a count between two times --- now
+  gets `gaussian`, which is what the equivalent numeric vector already got
+  (#272).
+
+- The two remaining silent corrections to the response --- shifting a zero and a
+  one off the boundary for a `Beta` family --- now report what was substituted
+  and how many rows. All three corrections are reported once per call from the
+  user-facing entry points rather than once per model from `check_data()`, which
+  a model set repeated for every member --- `bnec()`, `bnec_group()`,
+  `get_priors()` and `update()`. The substitutions are recorded on the fitted
+  object; see `bnec_record()`. `get_priors()` reports them because every prior
+  it returns is derived from the substituted response, and says so rather than
+  naming a fitted object it does not produce (#93).
+
+- The initial-value search reports that it is still running, rather than being
+  cut short. #266 measured 561 seconds for a single model on a twenty-row
+  dataset with no output while it ran, and proposed a smaller cap on the grounds
+  that the outcome after exhausting it --- Stan's own random initialisation ---
+  is available at the first attempt. Measured before changing it, that reasoning
+  does not hold: on a twenty-row, four-dose design `nec4param` needs 250
+  attempts to succeed at one seed and more than 1000 at two others, while
+  `nec3param` on the same data never succeeds. **A smaller cap would have turned
+  working fits into random initialisation, silently, on exactly the small
+  designs where good initial values matter most**, so the cap stays at 10,000.
+
+  What changes is the complaint itself: the search now says it is still running
+  once it passes twenty seconds, naming the model and the attempt count, so a
+  long search can be told from a hang. The fallback message reports how many
+  attempts were made and how long they took.
+
+  A wall-clock bound was tried and removed before release. It made the number of
+  attempts --- and so the initial values, and so the fit --- a function of
+  machine load: the search needs about 3.6 seconds on one packaged case when the
+  machine is idle and exceeded a ten-second budget under a parallel test run on
+  the same machine (#266).
+
+- `average_estimates()`, `compare_estimates()` and `compare_fitted()` took the
+  *first* `n_samples` draws of a longer posterior and permuted those, rather
+  than a random subset, so where components had unequal draw counts the tail of
+  the longer one was never used. Their documentation now states that the pairing
+  is stochastic and needs `set.seed()` for a reproducible result, and that it
+  assumes the posteriors come from separate fits --- two levels of one fit share
+  draws, and permuting them widens the difference posterior and pulls
+  `prob_diff` toward 0.5, which under-detects a real difference (#218).
+
+## Documentation
+
+- New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
+  running a single analysis from data to reportable estimate: choosing the
+  family from a dispersion screen, fitting the candidate set, sampler
+  diagnostics per candidate equation, fit diagnostics through `pp_check()` and
+  `check_fit()`, exclusion of the equations that fail the screen, and reporting.
+  It works through the two steps the other vignettes state but do not
+  demonstrate: choosing the family from the data, and removing an equation from
+  the set and measuring the effect on the estimate.
+
+  The family screen reads `P(>1)` from `dispersion()`, the posterior probability
+  of over-dispersion, rather than thresholding the point estimate or the lower
+  bound of the interval. The exclusion step is worked on three datasets ---
+  `nassarius`, `simazine` and `diuron` --- because the share of the model weight
+  removed and the change in the model-averaged *N(S)EC* are separate
+  consequences, and neither is predictable before the screen is run. That is the
+  argument for the step being obligatory. The screening uses `check_sampling()`
+  and `screen_models()` rather than code written for the vignette. See #219.
+
+- `?bnec` and `?models` now state that a model group names the shape of the
+  response and not the set of equations admissible for it. `mod_groups$decline`
+  includes `neclin` and `ecxlin`, whose mean decays by subtraction and is
+  unbounded below, so neither is admissible for a response bounded at zero. A
+  `bnec()` call is unaffected --- `check_models()` drops them where the family
+  requires it, and a group string is filtered by the same check that
+  `model = "all"` is --- but nothing said so, and code reading the group
+  directly as a statement of admissibility got two equations that are not.
+  `models()` given a numeric range returns the admissible set and is the route
+  to use where that is what is wanted (#285).
 
 # bayesnec 2.1.4
 
@@ -223,6 +686,112 @@
   `.Rmd` files are display-only markdown that `R CMD check` builds in seconds.
   Edit the `.Rmd.orig`, note in the pull request that the rendered output is
   stale, and rebuild at release. See #190.
+
+- **`bnec()` now assigns the link unless you choose one.** Which link a fit used
+  previously depended on how the family was written, and the difference was
+  silent: `family = "Beta"` gave the identity link, while `family = Beta` and
+  `family = Beta()` gave **logit**, and `family = Gamma()` gave **inverse**. In
+  those cases the curve was fitted to a transform of the mean while `top`, `bot`
+  and `nec` were reported as though they were on the response scale, which is
+  the property the identity link exists to preserve.
+
+  Naming a family and nothing more now leaves the link to `bayesnec`, so
+  `"Beta"`, `Beta`, `Beta()` and `hurdle_gamma()` all fit on the identity link.
+  Writing a link argument makes it yours and it is honoured, as in
+  `Beta(link = "logit")` or `Beta("logit")`. This is read one link at a time:
+  in a two-block family, `hurdle_gamma(link = "log")` leaves `link_hu` to
+  `bayesnec`, and `hurdle_gamma(link_hu = ...)` leaves the mean link to
+  `bayesnec`. The dispersion links `link_phi`, `link_shape` and `link_sigma`
+  are outside the rule and are carried through unchanged, except on `Gamma`,
+  where one is refused rather than silently dropped. Only `identity`, `log` and `logit`
+  are fitted on; any other link is refused with an error naming the family,
+  where previously `inverse`, `probit`, `cloglog`, `sqrt` and the rest were
+  accepted silently.
+
+  A family that does not arrive written as a constructor call is the case
+  intent cannot be read from, since `Beta()` and `Beta(link = "logit")` produce
+  identical objects: one held in a variable, one read back off a fit with
+  `fit$family`, or one passed through `do.call()`. The object's links are
+  honoured, and where the mean link is not the identity a message says which
+  one was taken.
+
+  Two consequences worth noting. A hurdle or zero-inflated family named without
+  a link, such as `family = hurdle_gamma()`, now works: both its links are
+  assigned, where before it errored because `link_hu` defaults to logit. And
+  `family = "beta"` now works — the tag `brms` reports for that family, which
+  previously gave `unused argument (link = "identity")` because `get("beta")`
+  resolves to `base::beta()`. A string naming any other function, such as
+  `family = "t"`, now says the family is not implemented rather than giving the
+  same `unused argument` error. **If you have code passing a constructed family
+  and relying on its default link, add the link explicitly.** See #256.
+
+- **`update()` on a fitted object now reads the family the same way.** A family
+  passed to `update()` was forwarded to `brms` untouched, so
+  `update(fit, family = Beta(), force_fit = TRUE)` refitted on **logit** where
+  `bnec(family = Beta())` fits on the identity link, and an unsupported link
+  such as `Beta(link = "probit")` was accepted without comment. The link is now
+  assigned or honoured exactly as in `bnec()`, an unsupported link is refused
+  before any model is refitted, and the validated family is the one `brms`
+  receives.
+
+  The guard that asks whether the family has changed also works for the first
+  time. It was given the family positionally, so it never saw it and compared
+  the family derived from the data against the fitted one instead; and it
+  compared the whole family object, which never matched, because `brms` stores
+  a `brmsfamily` in the fit while `gaussian` and `Gamma` are built from
+  `stats`. It now compares the family tag and its links. In practice
+  `update(fit, family = "gaussian")` on a gaussian fit no longer asks for
+  `force_fit = TRUE`, while a genuine change of family or link does. See #256.
+
+- Internal: a single statement of the interval the response distribution allows
+  the mean to occupy, and of what each model's mean can produce.
+  `mu_support()` returns that interval as a property of the response
+  distribution — `(-Inf, Inf)` for gaussian, `(0, 1)` for the proportion
+  families and `(0, Inf)` for the count and Gamma families, with a `dpar`
+  argument for the second block of a two-block family, whose `hu` or `zi`
+  probability is on `(0, 1)` whatever its `mu` block is. `mu_is_constrained()`
+  adds the link, and asks family and link **together**: `brms` applies the
+  inverse link before the likelihood, so what decides it is whether the range of
+  that inverse lies inside the support. `Beta(link = "log")` is the case that
+  shows neither decides it alone — `exp()` is positive but unbounded above, so
+  on a 0–1 response it can still hand the likelihood an invalid mean, under a
+  link that is perfectly safe for every count family.
+
+  `model_mu_ranges()` records, for each of the 23 models, whether its mean can
+  fall below zero, whether it can exceed one through a term carrying no
+  coefficient, whether it decays onto zero, and whether it saturates at one.
+  These are two different questions and the flags are not interchangeable.
+  Support asks whether the mean can leave the interval the likelihood defines;
+  appropriateness asks whether the shape is meaningful for the response at all.
+  `nechormepwr01` is excluded from the count and Gamma families on
+  appropriateness — its hormetic term saturates at exactly 1, so for a mean
+  above 1 it expresses a decline where hormesis is intended — and a
+  support-only rule would have wrongly reinstated it.
+
+  `check_models()` is unchanged and keeps its own gates. A new test asserts they
+  agree with the table for all twelve families in `mod_fams`, so the two cannot
+  drift apart as `?models` and `check_models()` did in #170. A later change
+  makes the gates derive from the table, where any difference is then a decision
+  rather than a regression. See #256.
+
+- The `adapt_delta = 0.99` that a grouped fit receives is now decided by whether
+  the link's inverse maps into the response distribution's support, rather than
+  by the family tag and a list of two links. Two corrections follow, both
+  affecting grouped fits only. Over the 87 family and link combinations
+  `validate_family()` accepts — every family in `mod_fams` against every link it
+  constructs, with `link_hu` and `link_zi` at the identity `bnec()` requires:
+
+  - **4 combinations now receive it and did not before**:
+    `binomial(link = "log")`, `bernoulli(link = "log")`, `Beta(link = "log")`
+    and `zero_inflated_beta(link = "log")`. This is the defect above — a log
+    link does not keep a 0–1 bounded mean in range — so these were previously
+    sampling without the mitigation.
+  - **42 no longer receive it**, across `probit`, `probit_approx`, `cloglog`,
+    `cauchit`, `softit`, `sqrt`, `softplus` and `squareplus`. The inverse of
+    each maps into the support, so no proposal can reach an invalid mean and the
+    raise was costing gradient evaluations with nothing to prevent.
+
+  Ungrouped fits are unaffected in every case. See #256.
 
 - Group-level terms now work with a bounded family. `ogl()`, `pgl()` and
   `(par | group)` add parameters that `get_priors()` never described, so a

@@ -421,6 +421,46 @@ test_that("the fixed parameter is dropped before the inits reach brm", {
   # the prior itself must still reach brm(); only the init is dropped
   expect_true("constant(0)" %in% out$prior$prior)
 })
+
+test_that("a supplied init is honoured whether or not the data check is run", {
+  # add_brm_defaults() used to run the search when `init` was absent OR when
+  # skip_check was TRUE, so a caller who supplied initial values under
+  # skip_check = TRUE paid for a search -- measured at 577 s on a fixture that
+  # cannot be initialised -- and then had what they supplied overwritten by its
+  # result. The two conditions answer different questions: whether anyone needs
+  # initial values, and whether the data has been checked. See #290.
+  x <- as.numeric(rep(1:10, each = 5))
+  set.seed(42)
+  y <- 3 * exp(-exp(-0.5) * pmax(x - 4, 0)) + rnorm(length(x), 0, 0.1)
+  searched <- FALSE
+  local_mocked_bindings(
+    make_good_inits = function(...) {
+      searched <<- TRUE
+      list(random = "random")
+    },
+    .package = "bayesnec"
+  )
+  for (sc in c(TRUE, FALSE)) {
+    searched <- FALSE
+    out <- suppressMessages(
+      bayesnec:::add_brm_defaults(list(init = "random"), "nec4param",
+                                 validate_family("gaussian"), x, y,
+                                 skip_check = sc, custom_name = NULL)
+    )
+    expect_false(searched)
+    expect_identical(out$init, "random")
+  }
+  # Absent, the search still runs on both routes.
+  for (sc in c(TRUE, FALSE)) {
+    searched <- FALSE
+    suppressMessages(
+      bayesnec:::add_brm_defaults(list(), "nec4param",
+                                 validate_family("gaussian"), x, y,
+                                 skip_check = sc, custom_name = NULL)
+    )
+    expect_true(searched)
+  }
+})
 # --- #244 x #148: the two halves of the constant-prior NA ---------------------
 # brms carries a parameter fixed by constant() into the draws as a zero-variance
 # column, and posterior returns NA for it. Before #148 Part D that NA reached
@@ -609,11 +649,15 @@ test_that("sd_prior_scales reads the scale out of a generated prior", {
   expect_equal(bayesnec:::sd_prior_scales(mixed), c(0.09, 0.5, 2))
 })
 
+# mu_support() and mu_is_constrained() are tested directly in
+# test-mu_support.R; what is tested here is the gate that consumes them.
 test_that("the adapt_delta raise is gated on the support of mu", {
   # An unconstrained mean has no boundary for a group-level offset to cross, so
   # a grouped gaussian fit is left at the brms default; every other family under
-  # an identity link restricts mu and gets the raise. Under a log or logit link
-  # mu is the linear predictor and is unconstrained whatever the family. See
+  # an identity link restricts mu and gets the raise. A non-identity link is
+  # decided by whether the range of its inverse lies inside that support, which
+  # is not the same as "any link other than identity is safe": Beta(link =
+  # "log") is not, because exp() is unbounded above. See mu_is_constrained(),
   # #245 and #256.
   x <- as.numeric(rep(1:10, each = 5))
   set.seed(245)
@@ -624,7 +668,13 @@ test_that("the adapt_delta raise is gated on the support of mu", {
       skip_check = TRUE, custom_name = NULL, group_spec = group
     ))
   }
-  grouped <- list(nlpars = "ogl", ogl = TRUE)
+  # A pgl-shaped spec, deliberately: #257 applies the deviation
+  # multiplicatively for an ogl term, which removes the excursion the raise
+  # exists to mitigate and so removes the raise with it. A deviation placed on
+  # individual curve parameters is not transformed, so it is the case where the
+  # mu-support gate this test is about is still the thing deciding. The
+  # ogl-and-transform interaction is asserted separately in test-check_priors.R.
+  grouped <- list(nlpars = c("top", "beta", "nec"), ogl = FALSE)
 
   # constrained mean, grouped: raised
   expect_equal(defaults(validate_family("Beta"), grouped)$control$adapt_delta,
@@ -637,6 +687,10 @@ test_that("the adapt_delta raise is gated on the support of mu", {
   expect_null(defaults(validate_family("gaussian"), grouped)$control)
   expect_null(defaults(gaussian(link = "log"), grouped)$control)
   expect_null(defaults(Beta(link = "logit"), grouped)$control)
+  # and the ogl case, which #257 transforms, is not raised at all
+  expect_null(
+    defaults(validate_family("Beta"), list(nlpars = "ogl", ogl = TRUE))$control
+  )
   # constrained mean, ungrouped: left alone, since there is no unconstrained
   # deviation to carry the mean out of range
   expect_null(defaults(validate_family("Beta"), NULL)$control)
@@ -654,20 +708,6 @@ test_that("the adapt_delta raise is gated on the support of mu", {
     validate_family("Beta"), x, y, skip_check = TRUE, custom_name = NULL,
     group_spec = grouped))
   expect_equal(own$control$adapt_delta, 0.8)
-})
-
-test_that("mu_is_constrained answers on family and link together", {
-  f <- bayesnec:::mu_is_constrained
-  expect_true(f(validate_family("Beta")))
-  expect_true(f(validate_family("beta_binomial")))
-  expect_true(f(validate_family("Gamma")))
-  expect_true(f(validate_family("poisson")))
-  expect_true(f(validate_family("hurdle_gamma")))
-  expect_false(f(validate_family("gaussian")))
-  # the link is asked as well as the family
-  expect_false(f(gaussian(link = "log")))
-  expect_false(f(Beta(link = "logit")))
-  expect_false(f(NULL))
 })
 
 test_that("a constant ogl intercept gets no initial value", {
@@ -866,4 +906,60 @@ test_that("group_inits works for a formula carrying a rate() aterm", {
   expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
   expect_equal(dim(gi$z_1), c(1L, 12L))
   expect_true(all(gi$z_1 == 0))
+})
+
+
+test_that("the search is bounded by attempts alone, and the cap is 1e4", {
+  # A wall-clock bound was tried for #266 and removed: it made the number of
+  # attempts, and so the initial values, and so the fit, a function of machine
+  # load. Two of these assertions exist to stop it coming back.
+  expect_false("max_seconds" %in% names(formals(make_good_inits)))
+  expect_equal(formals(make_good_inits)$n_trials, quote(1e4))
+  # report_after says the search is still running; it must not end it.
+  expect_true("report_after" %in% names(formals(make_good_inits)))
+})
+
+test_that("the search is deterministic given a seed", {
+  # The property the wall-clock bound broke, and the reason it was removed: two
+  # runs with the same seed must agree whatever else the machine is doing. A
+  # time-bounded search does fewer attempts under load, so a busy machine got
+  # different initial values -- and therefore a different fit -- from an idle
+  # one. Asserted on the result rather than on the absence of the argument,
+  # which the sibling test above covers, because it is the behaviour that
+  # matters.
+  skip_on_cran()
+  x <- rep(c(1, 5, 20, 100), each = 5)
+  y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
+  pr <- suppressMessages(
+    define_prior("nec4param", validate_family("Beta"), x, y)
+  )
+  run <- function() {
+    suppressMessages(
+      make_good_inits("nec4param", x, y, n_trials = 20, seed = 42,
+                      priors = pr, chains = 2)
+    )
+  }
+  expect_equal(run(), run())
+})
+
+test_that("a long search says it is still running", {
+  # The actual complaint in #266: 561 seconds with no output, which a user
+  # cannot tell from a hang. report_after = 0 makes the notice fire on the
+  # first pass, so the assertion is on the mechanism rather than on a
+  # wall-clock reading, which would be load-sensitive.
+  skip_on_cran()
+  priors <- brms::prior_string("normal(1e6, 1)", nlpar = "top") +
+    brms::prior_string("normal(1e6, 1)", nlpar = "beta") +
+    brms::prior_string("normal(1e6, 1)", nlpar = "nec")
+  msg <- capture.output(
+    make_good_inits("nec3param", x = c(1, 5, 20, 100),
+                    y = c(0.9, 0.6, 0.3, 0.1), priors = priors, chains = 2,
+                    n_trials = 3, report_after = 0),
+    type = "message"
+  )
+  msg <- paste(msg, collapse = " ")
+  expect_match(msg, "Still searching")
+  expect_match(msg, "nec3param")
+  # and it still falls back when the cap is reached
+  expect_match(msg, "failed to find initial values")
 })

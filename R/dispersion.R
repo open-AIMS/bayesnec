@@ -16,12 +16,26 @@
 #' @return A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
 #' n-long vector containing the dispersion metric, where n is the number of post
 #' warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If
-#' TRUE, a named vector of length 3 --- \code{Estimate}, \code{Q2.5} and
-#' \code{Q97.5} --- holding the median of the dispersion metric and an
-#' equal-tailed 95% interval. Returns an empty vector for any family other than
-#' \code{poisson} or \code{binomial}, whose variance is fixed by the mean: a
-#' family carrying a free dispersion parameter poses no over-dispersion
-#' question.
+#' TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
+#' (median, 95% credible interval, and the posterior probability of
+#' over-dispersion) of the dispersion metric.
+#'
+#' @details The statistic is the ratio of the observed to the simulated Pearson
+#' residual sum of squares, whose null value is 1. With \code{summary = TRUE}
+#' the returned vector carries \code{P(>1)}, the posterior probability that the
+#' ratio exceeds 1. It uses the whole posterior rather than a point estimate or
+#' a single tail quantile, and it is symmetric: \code{1 - P(>1)} is the
+#' posterior probability of under-dispersion, which no other summary here
+#' addresses.
+#'
+#' \bold{A beta-binomial fit does not address under-dispersion.}
+#' \code{beta_binomial} adds a variance component to the binomial, so it can
+#' represent a variance above the binomial's and not one below it. Where
+#' \code{P(>1)} is near 0 --- the data vary less than the fitted model implies
+#' --- moving from \code{binomial} to \code{beta_binomial} cannot help, and
+#' the usual causes are a mis-specified mean curve or non-independent
+#' observations that make the effective sample size smaller than the nominal
+#' one.
 #'
 #' @importFrom brms standata posterior_linpred posterior_epred posterior_predict
 #' @importFrom chk chk_lgl
@@ -63,7 +77,8 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   if (fam %in% allowed_fams) {
     # The link is taken from the fit rather than left at the family default.
     # get("poisson")() is a log link and get("binomial")() a logit one, but
-    # bnec() forces link = "identity", so posterior_linpred() below is already
+    # The fit is on link = "identity" -- assigned by bnec() unless the caller
+  # wrote a link -- so posterior_linpred() below is already
     # on the response scale and linkinv() would transform it a second time. For
     # a Poisson that means exp() of a mean of ~90, giving variance weights of
     # ~1e39; they do not cancel out of the ratio, because rowSums() weights the
@@ -114,7 +129,17 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
       numeric()
     } else {
       if (summary) {
-        estimates_summary(disp)
+        # P(dispersion > 1) is added to the median and the equal-tailed
+        # interval. The two rules the interval supports are both poor: a
+        # threshold on the point estimate discards the uncertainty the
+        # statistic was computed to express, and requiring Q2.5 > 1 is blunt,
+        # because each draw compares one observed residual sum against a single
+        # simulated replicate and the interval's width at a typical design is
+        # dominated by replicate-to-replicate simulation noise. The posterior
+        # probability uses the whole posterior, is directly interpretable, and
+        # is symmetric: 1 - p answers the under-dispersion question, which
+        # nothing else here addresses. See #262.
+        c(estimates_summary(disp), "P(>1)" = mean(disp > 1, na.rm = TRUE))
       } else {
         disp
       }      

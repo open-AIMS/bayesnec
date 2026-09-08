@@ -5,11 +5,12 @@
 #' \code{\link{bayesmanecfit}} returned by \code{\link{bnec}}.
 #' @param nsec A numeric value indicating the NSEC value for which to extract 
 #' the percentage effect.
-#' @param resolution The number of unique x values over which to find NSEC -
-#' large values will make the NSEC estimate more precise.
-#' @param hormesis_def A \code{\link[base]{character}} vector, taking values
+#' @param resolution The number of unique x values over which the curve is
+#' predicted. It affects only \code{type = "range"}, where the denominator is
+#' the lowest response the curve predicts over the grid. The default of 200
+#' matches \code{\link{ecx}} and \code{\link{nsec}}.
 #' @param type A \code{\link[base]{character}} vector, taking values of
-#' "relative", "absolute" (the default) or "direct". See Details.
+#' "absolute" (the default), "relative" or "range". See Details.
 #' @param xform A function to apply to the returned estimated NSEC concentration
 #' values prior to estimating the percentage effect.
 #' @param x_range A range of x values over which to consider extracting NSEC.
@@ -24,20 +25,18 @@
 #' Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated 
 #' effect size. This function estimates the effect of a given NSEC estimate.
 #' 
-#' For \code{hormesis_def}, if "max", then the ECNSEC values are calculated
-#' as a decline from the maximum estimates (i.e. the peak);
-#' if "control", then ECNSEC values are calculated relative to the control, which
-#' is assumed to be the lowest observed concentration in the input data contained
-#' in the supplied model fit.
-#' 
-#' For \code{type} "relative" is calculated as the percentage decrease
-#' from the maximum predicted value of the response (top) to the minimum
-#' predicted value of the response. Type "absolute" (the default) is
-#' calculated as the percentage decrease from the maximum value of the
-#' response (top) to 0. Type "direct"
-#' provides a direct estimate of the x value for a given y.
-#' Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
-#' model is estimated at a percent decline from the control.
+#' The effect is measured from the control --- the predicted mean at the
+#' lowest concentration in the supplied predictor, per posterior draw --- and
+#' \code{type} names what it is measured towards, exactly as in
+#' \code{\link{ecx}}: "absolute" (the default) towards 0, "relative" towards
+#' the equation's theoretical asymptote, "range" towards the lowest response
+#' the curve predicts. \code{ecnsec} is the inverse of the \code{ecx}
+#' reference construction under the same \code{type}, so the two answer the
+#' same question of the same curve. "direct" names a response value rather
+#' than a percentage and is refused here.
+#'
+#' The \code{hormesis_def} argument has been removed; the control is now
+#' always the reference. See \code{\link{ecx}}.
 #'
 #' @seealso \code{\link{bnec}}
 #'
@@ -53,8 +52,8 @@
 #' }
 #'
 #' @export
-ecnsec <- function(object, nsec, resolution = 1000, x_range = NA, 
-                   hormesis_def = "control", type = "absolute",
+ecnsec <- function(object, nsec, resolution = 200, x_range = NA, 
+                   type = "absolute",
                  xform = identity, prob_vals = c(0.5, 0.025, 0.975), ...) {
   UseMethod("ecnsec")
 }
@@ -76,16 +75,20 @@ ecnsec <- function(object, nsec, resolution = 1000, x_range = NA,
 #' @noRd
 #'
 #' @export
-ecnsec.bnecfit <- function(object, nsec, resolution = 10, x_range = NA, 
-                               hormesis_def = "control", type = "absolute",
+ecnsec.bnecfit <- function(object, nsec, resolution = 200, x_range = NA, 
+                               type = "absolute",
                              xform = identity, prob_vals = c(0.5, 0.025, 0.975), ..., 
                              posterior = FALSE) {
   chk_numeric(nsec)
   chk_logical(posterior)
+  check_removed_args(list(...))
 
-  if ((hormesis_def %in% c("max", "control")) == FALSE) {
-    stop("type must be one of \"max\" or \"control\" (the default). ",
-         "Please see ?ecx for more details.")
+  type <- validate_ecx_type(type, match.call())
+  if (identical(type, "direct")) {
+    stop("type = \"direct\" names a response value rather than a ",
+         "percentage, so there is no percent effect for ecnsec to report. ",
+         "Use type = \"absolute\" (the default), \"relative\" or ",
+         "\"range\".", call. = FALSE)
   }
   if(!inherits(xform, "function")) { 
     stop("xform must be a function.")}  
@@ -114,23 +117,27 @@ ecnsec.bnecfit <- function(object, nsec, resolution = 10, x_range = NA,
                                    re_formula = NA)
   reference <- median(pred_val_nsec[, 2])
 
-  if (hormesis_def == "max") {
-    control_posterior <- apply(p_samples, 1, max)
-  } else {
-    control_posterior <- p_samples[, 1]
-  }
-  
-  if(type=="relative"){  
-    min_posterior <- p_samples[, ncol(p_samples)]
-  } else {
-    min_posterior <- 0   
-  }
-  
-  dif_valsC <- control_posterior-min_posterior
-  
-  ecnsecP <-  (control_posterior -  reference)/  dif_valsC * 100
-
-  ecnsec <- quantile(ecnsecP, probs = prob_vals)
+  # The percent effect at the NSEC is the inverse of the ecx reference
+  # construction under the same type, so ecnsec and ecx answer the same
+  # question of the same curve. The control is the predicted mean at the
+  # lowest observed concentration, per draw, and the denominator is the span
+  # from the control to whatever that type measures towards. The branch this
+  # replaces used the maximum of the curve as the control when hormesis_def
+  # was "max", and the response at the highest concentration as the floor
+  # under "relative", neither of which matches ecx. See toxval#49, T8, and
+  # D15 ruling 5.
+  control_draws <- control_posterior(
+    object, newdata_list$newdata,
+    function(nd) posterior_epred(object, newdata = nd, re_formula = NA)
+  )
+  floor_draws <- switch(
+    type,
+    absolute = 0,
+    relative = ecx_asymptote(object, "relative"),
+    range = apply(p_samples, 1, min, na.rm = TRUE)
+  )
+  ecnsecP <- (control_draws - reference) / (control_draws - floor_draws) * 100
+  ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
 
     if (!posterior) {
       ecnsec

@@ -241,12 +241,13 @@ bnec_newdata.bayesnechurdlefit <- function(x, resolution = 100,
 #' @method nsec bayesnechurdlefit
 #'
 #' @export
-nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
-                                   x_range = NA, hormesis_def = "control",
+nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
+                                   x_range = NA,
                                    xform = identity,
                                    prob_vals = c(0.5, 0.025, 0.975), ...,
                                    posterior = FALSE, which = "combined") {
   check_component_arg(list(...), object)
+  check_removed_args(list(...))
   chk_logical(posterior)
   if (!inherits(xform, "function")) {
     stop("xform must be a function.")
@@ -254,14 +255,19 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[hurdle_check_which(which)]]
-  reference <- quantile(p_samples[, 1], sig_val)
-  out <- apply(p_samples, 1, nsec_fct, reference = reference,
-               x_vec = preds$x)
+  # The control is read at the lowest observed concentration rather than at the
+  # first column of the grid, so supplying x_range does not change the reference
+  # and therefore the estimate, exactly as in nsec.bayesnecfit. See D15 ruling 2.
+  reference <- quantile(preds$control[[hurdle_check_which(which)]], sig_val)
+  out <- vapply(seq_len(nrow(p_samples)), function(i) {
+    crossing_x(p_samples[i, ], reference, preds$x)
+  }, numeric(1))
   out <- hurdle_xform_x(object, out)
+  warn_censored_draws(out, "NSEC")
   if (inherits(xform, "function")) {
     out <- xform(out)
   }
-  estimate <- quantile(out, probs = prob_vals)
+  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "toxicity_estimate") <- "nsec"
   attr(estimate, "component") <- hurdle_check_which(which)
@@ -280,14 +286,7 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 1000,
 #'
 #' @noRd
 hurdle_xform_x <- function(object, out) {
-  x_str <- grep("crf(", labels(terms(object$formula)), fixed = TRUE,
-                value = TRUE)
-  x_call <- str2lang(eval(parse(text = x_str)))
-  if (inherits(x_call, "call")) {
-    x_call[[2]] <- str2lang("out")
-    out <- eval(x_call)
-  }
-  out
+  sub_x_transformation(out, object$formula)
 }
 
 # ---------------------------------------------------------------------------
@@ -912,29 +911,59 @@ autoplot.bayesnechurdlefit <- function(object, ..., which = "combined",
 #' \code{"growth"} or \code{"survival"}.
 #' @param posterior Should the full posterior be returned instead of a summary?
 #'
+#' @details \code{type = "absolute"} (the default) and \code{"range"} are
+#' defined here and invert the \code{\link{ecx}} reference construction under
+#' the same \code{type}. \code{"relative"} is refused, as it is by
+#' \code{\link{ecx}} for this class: a two-block fit has no single \code{bot}
+#' parameter to measure towards. \code{"direct"} is refused because it names a
+#' response value rather than a percentage.
+#'
 #' @return A vector of estimates.
 #'
 #' @method ecnsec bayesnechurdlefit
 #'
 #' @export
-ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 10,
-                                     x_range = NA, hormesis_def = "control",
+ecnsec.bayesnechurdlefit <- function(object, nsec, resolution = 200,
+                                     x_range = NA,
                                      type = "absolute", xform = identity,
                                      prob_vals = c(0.5, 0.025, 0.975), ...,
                                      posterior = FALSE, which = "combined") {
   which <- hurdle_check_which(which)
+  check_removed_args(list(...))
+  type <- validate_ecx_type(type, match.call())
+  if (identical(type, "direct")) {
+    stop("type = \"direct\" names a response value rather than a ",
+         "percentage, so there is no percent effect for ecnsec to report. ",
+         "Use type = \"absolute\" (the default) or \"range\".", call. = FALSE)
+  }
+  if (identical(type, "relative")) {
+    # Refused for the same reason ecx.bayesnechurdlefit refuses it: the
+    # combined endpoint is a product of two equations and has no single fitted
+    # asymptote to measure towards. See D15 ruling 6.
+    stop("type = \"relative\" is not defined for a hurdle fit, whose ",
+         "asymptote is not a single fitted parameter. Use ",
+         "type = \"absolute\" or type = \"range\".", call. = FALSE)
+  }
   preds <- hurdle_component_preds(object, resolution = resolution,
                                   x_range = x_range)
   p_samples <- preds[[which]]
   # ecnsec asks: what percentage effect does a given predictor value
-  # correspond to? Read off the same curve everything else uses.
-  out <- apply(p_samples, 1, function(p) {
-    100 * (1 - p[which.min(abs(preds$x - nsec))] / p[1])
-  })
+  # correspond to? Read off the same curve everything else uses, and inverted
+  # from the same reference construction ecx uses under the same type, so that
+  # the two answer the same question of the same curve. The version this
+  # replaces was the absolute form written out, applied whatever type was
+  # supplied, and it took the control from the grid's first column rather than
+  # from the lowest observed concentration. See D15 rulings 2 and 5.
+  control <- preds$control[[which]]
+  floor_draws <- switch(type,
+                        absolute = 0,
+                        range = apply(p_samples, 1, min, na.rm = TRUE))
+  at_nsec <- p_samples[, which.min(abs(preds$x - nsec))]
+  out <- (control - at_nsec) / (control - floor_draws) * 100
   if (inherits(xform, "function")) {
     out <- xform(out)
   }
-  estimate <- quantile(out, probs = prob_vals)
+  estimate <- quantile(out, probs = prob_vals, na.rm = TRUE)
   names(estimate) <- clean_names(estimate)
   attr(estimate, "component") <- which
   if (!posterior) estimate else out

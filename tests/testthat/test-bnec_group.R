@@ -37,6 +37,28 @@ test_that("a level too small to support a fit is refused", {
   )
 })
 
+test_that("a missing value is refused before the first level is fitted", {
+  # Each level is a complete fit, so without a check before the loop a missing
+  # value in level "b" would be reached only after level "a" had compiled and
+  # sampled. Measured on two levels of twelve: level "a" ran to completion
+  # before level "b" raised. The whole data frame is checked, so the row is
+  # named as the user recorded it rather than by its position within a subset.
+  # See #278.
+  d <- data.frame(x = rep(1:10, 2), y = rep(seq(0.9, 0.1, length = 10), 2),
+                  site = rep(c("a", "b"), each = 10))
+  d$y[14] <- NA
+  msgs <- capture.output(
+    msg <- tryCatch(bnec_group(y ~ crf(x, "nec3param"), d, group_var = "site"),
+                    error = conditionMessage),
+    type = "message"
+  )
+  expect_match(msg, "1 row\\(s\\) with missing values")
+  expect_match(msg, "at row\\(s\\) 14")
+  # Nothing was fitted: bnec_group() announces every level it starts, so the
+  # absence of that message is what says the loop was never entered.
+  expect_false(any(grepl("Fitting level", msgs)))
+})
+
 test_that("crossed_group_weights requires the right class", {
   expect_error(crossed_group_weights(manec_example), "bayesnecgroupfit")
 })

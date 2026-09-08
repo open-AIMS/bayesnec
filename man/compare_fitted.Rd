@@ -11,8 +11,12 @@ compare_fitted(x, resolution = 50, x_range = NA, make_newdata = TRUE, ...)
 \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}} returned by
 \code{\link{bnec}}.}
 
-\item{resolution}{The number of unique x values over which to find ECx --
-large values will make the ECx estimate more precise.}
+\item{resolution}{The number of unique x values over which to find ECx.
+The crossing is located by linear interpolation between the two grid values
+that bracket it, so precision saturates well below the grid spacing.
+Increasing the resolution beyond the default of 200 changed the estimate by
+less than 0.01 percent on the fits tested, and increases the run time
+roughly in proportion.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -46,6 +50,28 @@ an additional data.frame via the \code{newdata} argument. For guidance
 on how to structure \code{newdata}, see for example
 \code{\link[brms]{posterior_epred}}.
 }
+\section{Reproducibility}{
+
+The draws of each posterior are paired by an independent random permutation,
+so \code{prob_diff} and the difference intervals change between identical
+calls. Use \code{\link[base]{set.seed}} before the call for a reproducible
+result. This is a Monte Carlo approximation to the difference of two
+\bold{independent} posteriors, using \emph{n} of the \emph{n}^2 available
+pairs.
+}
+
+\section{The independence assumption}{
+
+The pairing is valid only where the posteriors being compared come from
+\bold{separate fits}. Two levels of one fit share draws --- draw \emph{i}
+of each comes from the same sweep of the sampler --- and permuting them
+destroys that pairing, which discards the correlation between the levels and
+widens the difference posterior. \code{prob_diff} is then pulled toward 0.5
+and a real difference is under-detected, which is the wrong direction to err
+in. A within-fit contrast needs draw-wise differencing and must not be routed
+through this function. See #218 and #33.
+}
+
 \examples{
 \dontrun{
 library(bayesnec)

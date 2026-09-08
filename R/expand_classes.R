@@ -62,17 +62,36 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    out <- apply(post, 1, nsec_fct, reference = reference, x_vec = pred_data$x)
-    x_str <- grep("crf(", labels(terms(formula)), fixed = TRUE, value = TRUE)
-    x_call <- str2lang(eval(parse(text = x_str)))
-    if (inherits(x_call, "call")) {
-      x_call[[2]] <- str2lang("out")
-      out <- eval(x_call)
+    out <- vapply(seq_len(nrow(post)), function(i) {
+      crossing_x(post[i, ], reference, pred_data$x)
+    }, numeric(1))
+    n_missing <- sum(is.na(out))
+    if (n_missing > 0) {
+      # Names the equation. bnec() calls this once per model, so on the default
+      # 23-model set an unnamed message says only that something somewhere is
+      # censored, which is not enough to act on.
+      message("The fitted ", object$model, " curve does not fall to the ",
+              "control's ", sig_val, " quantile within the predictor range ",
+              "for ", n_missing, " of ", length(out), " draws. Those draws ",
+              "are excluded from the NSEC summary, which is therefore ",
+              "censored above the highest concentration tested.")
     }
-    out
+    sub_x_transformation(out, formula)
+  }
+  # Memoised alongside get_pred_posterior(). A smooth block on a hurdle fit
+  # reaches this twice on the same posterior -- once for the response block and
+  # once for the combined endpoint -- and crossing_x() is a root search per
+  # draw, so the second pass is measurable where the nearest-grid-point search
+  # it replaced was not.
+  ne_off_curve <- NULL
+  get_ne_off_curve <- function() {
+    if (is.null(ne_off_curve)) {
+      ne_off_curve <<- nsec_off_curve(get_pred_posterior())
+    }
+    ne_off_curve
   }
   if (mod_class == "ecx") {
-    ne_posterior <- nsec_off_curve(get_pred_posterior())
+    ne_posterior <- get_ne_off_curve()
     extracted_params$ne <- estimates_summary(ne_posterior)
   } else {
     ne_posterior <- as_draws_df(fit)[["b_nec_Intercept"]]
@@ -107,7 +126,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
       # curve itself rather than combined from the parts. When only one block
       # is smooth this is an N(S)EC in the sense of Fisher et al. (2023): a
       # threshold on one process and a significant-effect point on the other.
-      combined_ne <- nsec_off_curve(get_pred_posterior())
+      combined_ne <- get_ne_off_curve()
       ne_lab <- if (mod_class == "ecx" && hu_class == "ecx") {
         "NSEC"
       } else {
@@ -123,7 +142,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   od <- dispersion(object, summary = TRUE)
   if (length(od) == 0) {
-    od <- c(NA, NA, NA)
+    od <- c(Estimate = NA, Q2.5 = NA, Q97.5 = NA, `P(>1)` = NA)
   }
   predicted_y <- fitted(fit, robust = TRUE, re_formula = NA, scale = "response")
   residuals <-  residuals(fit, method = "pp_expect")[, "Estimate"]
@@ -290,8 +309,8 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   mod_dat <- model.frame(formula[[1]], data = object[[1]]$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   disp <-  do_wrapper(object, extract_dispersion, fct = "rbind")
-  colnames(disp) <- c("dispersion_Estimate",
-                      "dispersion_Q2.5", "dispersion_Q97.5")
+  colnames(disp) <- c("dispersion_Estimate", "dispersion_Q2.5",
+                      "dispersion_Q97.5", "dispersion_P_over_1")
   mod_stats <- data.frame(model = success_models)
   mod_stats$waic <- sapply(object, extract_waic_estimate)
   loo_mw_args <- c(list(x = lapply(object, extract_loo)), loo_w_controls)

@@ -11,7 +11,6 @@
   comparison = "n(s)ec",
   ecx_val = 10,
   type = "absolute",
-  hormesis_def = "control",
   sig_val = 0.01,
   resolution,
   x_range = NA,
@@ -31,20 +30,24 @@ compare_posterior(x, ...)
 \item{comparison}{The posterior predictions to compare, takes values of
 "nec", "n(s)ec", "nsec", "ecx" or "fitted".}
 
-\item{ecx_val}{The desired percentage effect value. This must be a value
-between 1 and 99 (for type = "relative" and "absolute"), defaults to 10.}
+\item{ecx_val}{The desired percentage effect value, defaults to 10. Any
+value above 0 is accepted for every \code{type} except "direct", where it
+is a response value rather than a percentage. Values above 100 are
+meaningful under "absolute" for a response that can go negative --- see
+Details.}
 
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
-
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values
-of "max" or "control". See Details.}
+"absolute" (the default), "relative", "range" or "direct". See Details.}
 
 \item{sig_val}{Probability value to use as the lower quantile to test
 significance of the predicted posterior values.}
 
-\item{resolution}{The number of unique x values over which to find ECx --
-large values will make the ECx estimate more precise.}
+\item{resolution}{The number of unique x values over which to find ECx.
+The crossing is located by linear interpolation between the two grid values
+that bracket it, so precision saturates well below the grid spacing.
+Increasing the resolution beyond the default of 200 changed the estimate by
+less than 0.01 percent on the fits tested, and increases the run time
+roughly in proportion.}
 
 \item{x_range}{A range of x values over which to consider extracting ECx.}
 
@@ -83,20 +86,13 @@ The levels share no parameters, so the posteriors are independent and the
 pairwise probabilities are read directly, with no multiple-comparison
 adjustment implied.
 
-\code{type} "relative" is calculated as the percentage decrease
-from the maximum predicted value of the response (top) to the minimum
-predicted value of the response. Type "absolute" (the default) is
-calculated as the percentage decrease from the maximum value of the
-response (top) to 0 (or bot for a 4 parameter model fit). Type "direct"
-provides a direct estimate of the x value for a given y.
-Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
-model is estimated at a percent decline from the control.
-
-For \code{hormesis_def}, if "max", then ECx or NSEC values -- i.e.,
-depending on argument \code{comparison} -- are calculated
-as a decline from the maximum estimates (i.e. the peak at NEC);
-if "control", then ECx or NSEC values are calculated relative to the
-control, which is assumed to be the lowest observed concentration.
+\code{type} is passed to \code{\link{ecx}} and takes the same four
+values, all measured from the control --- the predicted mean at the lowest
+concentration in the supplied predictor, per posterior draw. "absolute" (the
+default) measures to 0, "relative" to the equation's theoretical asymptote,
+"range" to the lowest response the curve predicts, and "direct" takes a
+response value rather than a percentage. See \code{\link{ecx}} for the full
+definitions and for what changed at 2.2.0.
 
 The argument \code{make_newdata} is only used if
 \code{comparison = "fitted"}. It is relevant to those who want the package

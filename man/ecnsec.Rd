@@ -8,9 +8,8 @@ object of class \code{\link{bayesnecfit}} or \code{\link{bayesmanecfit}}.}
 ecnsec(
   object,
   nsec,
-  resolution = 1000,
+  resolution = 200,
   x_range = NA,
-  hormesis_def = "control",
   type = "absolute",
   xform = identity,
   prob_vals = c(0.5, 0.025, 0.975),
@@ -24,15 +23,15 @@ ecnsec(
 \item{nsec}{A numeric value indicating the NSEC value for which to extract
 the percentage effect.}
 
-\item{resolution}{The number of unique x values over which to find NSEC -
-large values will make the NSEC estimate more precise.}
+\item{resolution}{The number of unique x values over which the curve is
+predicted. It affects only \code{type = "range"}, where the denominator is
+the lowest response the curve predicts over the grid. The default of 200
+matches \code{\link{ecx}} and \code{\link{nsec}}.}
 
 \item{x_range}{A range of x values over which to consider extracting NSEC.}
 
-\item{hormesis_def}{A \code{\link[base]{character}} vector, taking values}
-
 \item{type}{A \code{\link[base]{character}} vector, taking values of
-"relative", "absolute" (the default) or "direct". See Details.}
+"absolute" (the default), "relative" or "range". See Details.}
 
 \item{xform}{A function to apply to the returned estimated NSEC concentration
 values prior to estimating the percentage effect.}
@@ -58,20 +57,18 @@ the mean control response. See the detailed derivation in
 Fisher and Fox (2023). Like NOEC, NSEC estimates will have an associated
 effect size. This function estimates the effect of a given NSEC estimate.
 
-For \code{hormesis_def}, if "max", then the ECNSEC values are calculated
-as a decline from the maximum estimates (i.e. the peak);
-if "control", then ECNSEC values are calculated relative to the control, which
-is assumed to be the lowest observed concentration in the input data contained
-in the supplied model fit.
+The effect is measured from the control --- the predicted mean at the
+lowest concentration in the supplied predictor, per posterior draw --- and
+\code{type} names what it is measured towards, exactly as in
+\code{\link{ecx}}: "absolute" (the default) towards 0, "relative" towards
+the equation's theoretical asymptote, "range" towards the lowest response
+the curve predicts. \code{ecnsec} is the inverse of the \code{ecx}
+reference construction under the same \code{type}, so the two answer the
+same question of the same curve. "direct" names a response value rather
+than a percentage and is refused here.
 
-For \code{type} "relative" is calculated as the percentage decrease
-from the maximum predicted value of the response (top) to the minimum
-predicted value of the response. Type "absolute" (the default) is
-calculated as the percentage decrease from the maximum value of the
-response (top) to 0. Type "direct"
-provides a direct estimate of the x value for a given y.
-Note that for the current version, ECx for an "nechorme" (NEC Hormesis)
-model is estimated at a percent decline from the control.
+The \code{hormesis_def} argument has been removed; the control is now
+always the reference. See \code{\link{ecx}}.
 }
 \examples{
 \donttest{

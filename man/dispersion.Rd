@@ -20,12 +20,9 @@ vector? Defaults to FALSE.}
 A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
 n-long vector containing the dispersion metric, where n is the number of post
 warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If
-TRUE, a named vector of length 3 --- \code{Estimate}, \code{Q2.5} and
-\code{Q97.5} --- holding the median of the dispersion metric and an
-equal-tailed 95\% interval. Returns an empty vector for any family other than
-\code{poisson} or \code{binomial}, whose variance is fixed by the mean: a
-family carrying a free dispersion parameter poses no over-dispersion
-question.
+TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
+(median, 95\% credible interval, and the posterior probability of
+over-dispersion) of the dispersion metric.
 }
 \description{
 Calculates a posterior dispersion metric.
@@ -34,6 +31,23 @@ Calculates a posterior dispersion metric.
 This function calculates a dispersion metric which takes the ratio
 between the observed relative to simulated Pearson residuals sums of
 squares.
+
+The statistic is the ratio of the observed to the simulated Pearson
+residual sum of squares, whose null value is 1. With \code{summary = TRUE}
+the returned vector carries \code{P(>1)}, the posterior probability that the
+ratio exceeds 1. It uses the whole posterior rather than a point estimate or
+a single tail quantile, and it is symmetric: \code{1 - P(>1)} is the
+posterior probability of under-dispersion, which no other summary here
+addresses.
+
+\bold{A beta-binomial fit does not address under-dispersion.}
+\code{beta_binomial} adds a variance component to the binomial, so it can
+represent a variance above the binomial's and not one below it. Where
+\code{P(>1)} is near 0 --- the data vary less than the fitted model implies
+--- moving from \code{binomial} to \code{beta_binomial} cannot help, and
+the usual causes are a mis-specified mean curve or non-independent
+observations that make the effective sample size smaller than the nominal
+one.
 }
 \examples{
 \dontrun{

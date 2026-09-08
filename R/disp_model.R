@@ -143,17 +143,18 @@ check_disp_spec <- function(spec, family, response = NULL) {
     # A variance function of the fitted mean is built by substituting the
     # model's own curve expression into the form. That expression is the linear
     # predictor on the LINK scale, so it is the mean only under an identity
-    # link. bnec() forces identity whenever it selects the family itself, but a
-    # user-supplied family keeps whatever link it was given, and the failure is
-    # silent for some of them: under Gamma's default inverse link the block
-    # computes log(1/mu) = -log(mu) and the slope is estimated with the wrong
-    # sign, converging cleanly and excluding zero. Refuse rather than fit that.
+    # link. bnec() assigns identity unless the caller wrote a link argument, or
+    # supplied a family it could not read intent from (#256), so this fires on
+    # those two routes. The failure it refuses is silent: under an inverse link
+    # the block computes
+    # log(1/mu) = -log(mu) and the slope is estimated with the wrong sign,
+    # converging cleanly and excluding zero. Refuse rather than fit that.
     link <- if (inherits(family, "family")) family$link else "identity"
     if (!identical(link, "identity")) {
       stop("A variance function of the fitted mean needs the mean modelled on",
            " its natural scale, but family ", fam_tag, " was supplied with a \"",
-           link, "\" link. Pass ", fam_tag, "(link = \"identity\"), or omit",
-           " `family` and let bnec() choose it, which uses an identity link.",
+           link, "\" link. Pass ", fam_tag, "(link = \"identity\"), or name",
+           " the family without a link, as in family = \"", fam_tag, "\".",
            " To model dispersion on the predictor instead, pass a formula,",
            " e.g. disp(~x), which is valid under any link. See",
            " ?bayesnecformula", call. = FALSE)

@@ -485,11 +485,24 @@ test_that("a hurdle family gets group-level priors too", {
   # both blocks' own parameters are still there and untouched
   expect_true(all(c("top", "beta", "nec", "hutop", "hubeta", "hunec") %in%
                     pr$nlpar))
-  # scaled from the survivors, not from the whole response including the
-  # structural zeros
+  # Scaled from the survivors, not from the whole response including the
+  # structural zeros -- and then converted onto the scale the deviation is
+  # applied on. The mu block of hurdle_gamma is (0, Inf), so #257 applies the
+  # deviation multiplicatively and the width is the delta-method log-scale
+  # conversion s_y / mean(y), capped at a coefficient of variation of 1,
+  # rather than the response-scale s_y this used to assert.
+  surv <- y[y > 0]
+  s_y <- diff(range(surv)) / 10
+  expected <- signif(min(s_y / mean(surv), 1), 4)
   scale_got <- as.numeric(sub(".*, ([0-9.e+-]+)\\)$", "\\1",
                               pr$prior[pr$class == "sd"]))
-  expect_equal(scale_got, signif(diff(range(y[y > 0])) / 10, 4))
+  expect_equal(scale_got, expected)
+  # The survivors-only scaling is what is being asserted, so it is checked
+  # against the whole response as well: including the structural zeros would
+  # change both terms of the ratio.
+  expect_false(isTRUE(all.equal(scale_got,
+                               signif(min((diff(range(y)) / 10) / mean(y), 1),
+                                      4))))
 })
 
 test_that("a group-level term on a hurdle reaches the mu block only", {
@@ -564,4 +577,113 @@ test_that("a degenerate scale is not narrowed by prior_type", {
     prior_type = "regularizing"
   ))
   expect_equal(pr$prior, "student_t(3, 0, 0.5)")
+})
+
+# #269: the nec/ec50 gamma rate is taken from the distinct predictor values
+# rather than from the observation vector, so that it describes the
+# concentration series and not the replication of it.
+
+test_that("the nec prior rate is finite when most observations are controls", {
+  # More than half the observations at a zero control made the observation
+  # median zero, and 1 / (0 / 4) put "gamma(5, Inf)" into the prior table. The
+  # rate is stated as a value rather than recomputed, so that the test says
+  # what the prior should be and not how define_prior() arrives at it: the
+  # distinct values are 0, 5, 15, 45, 135, 200, 300, whose median is 45.
+  x <- c(rep(0, 12), 5, 15, 45, 135, 200, 300)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  expect_equal(pr$prior[pr$nlpar == "nec"], "gamma(5, 0.0888888888888889)")
+})
+
+test_that("the nec prior scale ignores replication, not just zeros", {
+  # The rate is taken from the concentration series, so an unbalanced design
+  # gets a different prior from the one earlier versions built whether or not a
+  # zero is present. Distinct values 0.5, 1, 3, 10, 30, 100 have median 6.5,
+  # against an observation median of 10.
+  x <- c(0.5, rep(1, 3), rep(3, 6), rep(10, 8), rep(30, 2), 100)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  expect_equal(pr$prior[pr$nlpar == "nec"], "gamma(5, 0.615384615384615)")
+})
+
+test_that("the nec prior is unchanged for a balanced design", {
+  # The distinct-value median and the observation median agree wherever every
+  # concentration has the same number of replicates, so no existing fit of that
+  # shape gets a different prior.
+  x <- rep(c(0, 5, 15, 45, 135), each = 6)
+  y <- rev(seq_along(x)) + 1
+  pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
+                     predictor = x, response = y)
+  expect_equal(pr$prior[pr$nlpar == "nec"],
+               paste0("gamma(5, ", 1 / (quantile(x, 0.5) / 4), ")"))
+})
+
+
+test_that("the nec and ec50 gamma prior peaks at the median predictor (#273)", {
+  # The mode of gamma(shape, rate) is (shape - 1) / rate. At the old rate of
+  # 2/m that was 2m -- twice the median predictor -- and on a linearly spaced
+  # series 2m is close to the maximum, so the truncated prior rose
+  # monotonically across the whole range it permitted and pulled the estimate
+  # towards the highest concentration tested. At 4/m the mode is m, which is
+  # what ?bnec and vignette("example3") describe, and what makes it consistent
+  # with the other two entries of x_prs, which peak at a central measure of the
+  # predictor.
+  #
+  # The response family below is arbitrary: x_prs is indexed on x_type, which is
+  # set_distribution(predictor, ...), so a non-negative predictor takes the
+  # gamma entry whatever the response is. The entry is labelled "Gamma" for the
+  # predictor's distribution, not for a response family, which is easy to read
+  # the other way round. Asserted directly in the next test.
+  rate_of <- function(x, family = Beta(link = "identity")) {
+    d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
+    pr <- suppressMessages(
+      get_priors(y ~ crf(x, model = "nec3param"), data = d, family = family)
+    )
+    as.numeric(sub(".*gamma\\(5, ([0-9.e+-]+)\\).*", "\\1",
+                   pr$prior[pr$nlpar == "nec"]))
+  }
+  x_linear <- rep(c(0, 25, 50, 75, 100), each = 6)
+  m <- median(unique(x_linear))
+  r <- rate_of(x_linear)
+  expect_equal(r, 4 / m)
+  mode <- (5 - 1) / r
+  expect_equal(mode, m)
+  # The mode is now strictly inside the truncation bounds, which is the whole
+  # point: at the old rate it sat exactly on the upper bound for this design.
+  expect_lt(mode, max(x_linear))
+  expect_gt(mode, min(x_linear))
+  expect_equal((5 - 1) / (2 / m), max(x_linear))  # the defect, for contrast
+
+  # A log-spaced series has a much smaller m relative to its maximum, so the
+  # mode was already inside the range there; the correction still moves it.
+  x_log <- rep(c(0.1, 1, 10, 100, 1000), each = 6)
+  expect_equal((5 - 1) / rate_of(x_log), median(unique(x_log)))
+})
+
+test_that("the nec prior is chosen from the predictor, not the response", {
+  # x_prs is indexed on set_distribution(predictor, ...), so its "Gamma" entry
+  # names a non-negative predictor rather than a Gamma response. The labels
+  # reuse family names for predictor types, which reads as though the response
+  # family selects the prior; it does not, and every family below returns the
+  # same one on the same predictor.
+  x <- rep(c(0, 25, 50, 75, 100), each = 6)
+  nec_prior <- function(family, y) {
+    pr <- suppressMessages(
+      get_priors(y ~ crf(x, model = "nec3param"),
+                 data = data.frame(x = x, y = y), family = family)
+    )
+    pr$prior[pr$nlpar == "nec"]
+  }
+  target <- paste0("gamma(5, ", 1 / (median(unique(x)) / 4), ")")
+  expect_equal(nec_prior(Beta(link = "identity"),
+                         rep(c(0.9, 0.8, 0.5, 0.2, 0.05), each = 6)), target)
+  expect_equal(nec_prior(Gamma(link = "identity"),
+                         rep(c(9, 8, 5, 2, 1), each = 6)), target)
+  expect_equal(nec_prior(gaussian(),
+                         rep(c(9, 8, 5, 2, -1), each = 6)), target)
+  expect_equal(nec_prior(poisson(link = "identity"),
+                         as.integer(rep(c(90, 80, 50, 20, 5), each = 6))),
+               target)
 })

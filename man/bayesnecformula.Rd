@@ -178,7 +178,8 @@ fires on every path that fits --- \code{\link{bnec}} always supplies one ---
 but not on a bare \code{\link{make_brmsformula}(formula, data)} call, which
 has no family to validate and builds the formula unchecked.
 
-Because \code{\link{bnec}} forces \code{link = "identity"}, \pkg{brms}
+Because \code{\link{bnec}} fits on \code{link = "identity"}, which it
+assigns unless a link argument is written, \pkg{brms}
 writes the denominator multiplicatively on the response scale rather than as
 a log offset on the linear predictor, so the mean \emph{is} the rate and
 "top", "bot" and "nec" stay directly interpretable as counts per unit

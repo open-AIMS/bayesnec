@@ -65,6 +65,8 @@
 #'
 #' @export
 bnec_group <- function(formula, data, group_var, family = NULL, ...) {
+  # Captured before anything can rebind it; see family_link_source() and #256.
+  link_source <- family_link_source(substitute(family), env = parent.frame())
   if (!is.character(group_var) || length(group_var) != 1) {
     stop("`group_var` must be a single column name.", call. = FALSE)
   }
@@ -111,16 +113,32 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
          " concentration-response model in its own right, so it needs enough",
          " data to support one.", call. = FALSE)
   }
+  # Refused before the loop, not left to the bnec() call for the level that
+  # holds it. Each level is a complete fit, so a missing value in level k would
+  # otherwise be reached only after levels 1 to k-1 had sampled -- measured on
+  # two levels of twelve, level "a" compiled and sampled to completion before
+  # level "b" raised. The whole data frame is checked here, so the rows are
+  # named as the user recorded them rather than by their position within a
+  # subset. See #278.
+  mod_dat <- model.frame(formula, data = data)
+  check_complete_cases(mod_dat)
+  # Before the loop for the same reason as the line above it: bnec_group()
+  # fits each level with bnec() in sequence, so a refusal reached at level k
+  # arrives only after levels 1 to k-1 have compiled and sampled. See #271.
+  check_disp_finite(formula, data)
+  check_reserved_names(data)
+  # The response substitutions are not reported here. bnec_group() fits each
+  # level on its own subset, so the values substituted differ between levels
+  # and the per-level bnec() call is where the report belongs. See #93.
   # Chosen once, from the whole response, for the reason in Details.
   if (is.null(family)) {
-    mod_dat <- model.frame(formula, data = data)
     y <- retrieve_var(mod_dat, "y_var", error = TRUE)
     tr <- retrieve_var(mod_dat, "trials_var")
     family <- set_distribution(y, support_integer = TRUE, trials = tr)
     message("Family chosen once from the whole response: ", family,
             ". Pass `family` to override.")
   }
-  family <- validate_family(family)
+  family <- validate_family(family, link_source = link_source)
   # The crossed weights are an outer product of the per-level weight vectors,
   # and that identity holds for pseudo-BMA only, so the method is checked in
   # crossed_group_weights() rather than merely documented -- multiplying
@@ -150,7 +168,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
                       family = family, ...)
   }
   out <- list(fits = fits, group_var = group_var, levels = levs,
-              formula = formula, data = data, family = family,
+              formula = formula, data = data, family = unmark_family(family),
               n = as.integer(counts[levs]), weights_method = wt_method)
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }

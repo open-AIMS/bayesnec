@@ -75,6 +75,16 @@ predictor contains negative values. These restrictions do
 not need to be controlled by the user and a call to \code{\link{bnec}} with
 \code{models = "all"} will simply exclude inappropriate models.
 
+A model group names a shape, not a set of equations admissible for a given
+response. "decline" is the set that excludes the hormesis models, and it
+therefore includes "neclin" and "ecxlin", whose mean decays by subtraction
+and is unbounded below. Neither is admissible for a response bounded at
+zero. A \code{\link{bnec}} call is unaffected, because the same internal
+check described above drops them where the family requires it; what the
+group name does not do is state which equations that check will keep. Code
+that needs the admissible set should ask for it directly, by passing the
+numeric range --- \code{models(c(0, 1))} --- rather than reading a group.
+
 \bold{Coming from the \code{drc} package}
 
 \code{drc}'s \code{NEC.2()}, \code{NEC.3()} and \code{NEC.4()} are

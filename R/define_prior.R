@@ -86,12 +86,21 @@ positive_scale <- function(response, probs) {
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
 #' @importFrom stats sd
+#' @importFrom stats median
 #'
 #' @noRd
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
                          model_survival = NULL, disp_spec = NULL,
                          group_spec = NULL) {
+  # Which scale an ogl deviation is applied on decides how wide its prior
+  # should be, and it is a property of the model and the family, both of which
+  # are in scope here and are not in define_group_prior(). See #257.
+  ogl_kind <- if (isTRUE(group_spec$ogl)) {
+    ogl_transform_kind(model, family)
+  } else {
+    "none"
+  }
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   if (is_hurdle_family(family)) {
     hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
@@ -110,13 +119,15 @@ define_prior <- function(model, family, predictor, response,
     # bot. Put on the link scale of the mu family before it is measured, so
     # that this branch and the one below both take the scale from the quantity
     # the offsets are actually added to rather than differing over a step that
-    # is a no-op only for as long as bnec() forces the identity link.
+    # is a no-op only for as long as the fit is on the identity link, which is
+  # what bnec() assigns unless the caller wrote a link argument (#256).
     mu_family <- hurdle_mu_family(family)
     mu_response <- response_link_scale(
       split_hurdle_response(predictor, response)$mu$y, mu_family
     )
     group_priors <- define_group_prior(group_spec, predictor, mu_response,
-                                       prior_type = prior_type)
+                                       prior_type = prior_type,
+                                       ogl_transform = ogl_kind)
     if (!is.null(group_priors)) {
       hurdle_priors <- hurdle_priors + group_priors
     }
@@ -238,11 +249,51 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = "beta(1, 5)",
                  beta = "beta(1, 5)")
   }
+  # The rate of the nec/ec50 gamma prior is set from the median of the distinct
+  # predictor values, not from the median of the observation vector. A prior
+  # scale should describe the concentrations that were tested, not how many
+  # replicates each of them received. Where more than half the observations sit
+  # at a zero control the observation median is zero and 1 / (0 / 2) made the
+  # prior string "gamma(5, Inf)"; the distinct-value median cannot be zero
+  # while the predictor reaches above one, which is the condition under which
+  # this entry is selected. The two agree for a balanced design, and the
+  # distinct series is what survival_by_x() already primes the hu block of a
+  # hurdle or zero-inflated fit from, so the two blocks of one fit no longer
+  # disagree about the scale of their shared predictor purely because of
+  # replication -- previously by a factor of three on an unbalanced design. They
+  # can still differ for a substantive reason: the mu block is primed from the
+  # non-zero subset, so a concentration at which every response is zero is
+  # absent from its series, which is the right answer for a block fitted only to
+  # survivors. See #269.
+  #
+  # unique() collapses replicates only where their recorded values are
+  # bit-identical, so this reads the series as it was entered. A nominal series
+  # typed as constants collapses; one computed per replicate, as a dilution
+  # factor applied row by row, may not, in which case the median is the
+  # observation median again and the prior is the one earlier versions built.
+  # That is acceptable because the prior is weakly informative either way, and
+  # the alternative -- rounding before comparing -- would need a tolerance with
+  # no defensible value on an arbitrary concentration scale.
+  x_med <- median(unique(predictor))
+  # gamma(5, 4/m), not gamma(5, 2/m). The mode of gamma(shape, rate) is
+  # (shape - 1) / rate, so at rate 2/m it was 2m -- twice the median predictor.
+  # On a linearly spaced series m is close to half the maximum, which put the
+  # mode on the upper truncation bound: after truncation the density increased
+  # monotonically across the whole tested range, so the prior pulled the nec
+  # towards the highest concentration tested, which is the wrong direction for
+  # a protective estimate. At rate 4/m the maximum density is at m and the mean
+  # at 1.25m, which is what ?bnec and vignette("example3") already describe.
+  #
+  # Chosen for consistency rather than from a fit. The other two entries of
+  # x_prs place their maximum density at a central measure of the predictor --
+  # beta(2, 2) at the centre of the unit interval, normal(median(x), ...) at the
+  # median -- so the gamma entry should peak at m. The alternative considered
+  # and not taken was gamma(2, 2/m), whose mean rather than mode is m: its
+  # maximum density is at m/2, which matches neither the documentation nor the
+  # convention the other two entries follow, both being specified by where the
+  # density peaks rather than by where its mean falls. See #273.
   x_prs <- c(Beta = "beta(2, 2)",
-             Gamma = paste0("gamma(5, ",
-                            1 / (quantile(predictor,
-                                          probs = 0.5) / 2),
-                            ")"),
+             Gamma = paste0("gamma(5, ", 1 / (x_med / 4), ")"),
              gaussian = paste0("normal(",
                                quantile(predictor,
                                         probs = 0.5),
@@ -319,7 +370,8 @@ define_prior <- function(model, family, predictor, response,
   # response is on the link scale by this point, which is what the group-level
   # offsets are added on, so it is the right scale to take the prior from.
   group_priors <- define_group_prior(group_spec, predictor, response,
-                                     prior_type = prior_type)
+                                     prior_type = prior_type,
+                                     ogl_transform = ogl_kind)
   if (!is.null(group_priors)) {
     priors <- priors + group_priors
   }
@@ -403,7 +455,7 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' @details Without this, no prior is generated for a group-level standard
 #' deviation and it falls through to the \pkg{brms} default,
 #' \code{student_t(3, 0, 2.5)}. On a bounded response under the identity link
-#' \code{\link{bnec}} forces, an offset drawn at that scale puts the mean
+#' \code{\link{bnec}} assigns, an offset drawn at that scale puts the mean
 #' outside its support, where the likelihood is undefined. There is no inverse
 #' link to rescue it -- that is the trade \code{\link{bnec}} makes so that
 #' \code{top}, \code{bot} and \code{nec} stay directly interpretable -- so
@@ -486,7 +538,8 @@ define_disp_prior <- function(disp_spec, family, response) {
 #'
 #' @noRd
 define_group_prior <- function(group_spec, predictor, response,
-                               prior_type = "uninformative") {
+                               prior_type = "uninformative",
+                               ogl_transform = "none") {
   if (is.null(group_spec) || length(group_spec$nlpars) == 0) {
     return(NULL)
   }
@@ -502,8 +555,51 @@ define_group_prior <- function(group_spec, predictor, response,
   }
   s_y <- safe_scale(response)
   s_x <- safe_scale(predictor)
+  # Where the ogl deviation is applied multiplicatively (#257), it is on the
+  # log or log-odds scale rather than on the response scale, so the response
+  # scale s_y is not the right width for it. These are delta-method conversions
+  # of the same rule, evaluated at the mean of the response:
+  #
+  #   s_log   = s_y / mean(y)             a group-level coefficient of variation
+  #   s_logit = s_y / (m * (1 - m))
+  #
+  # Both are evaluated at a single point and the Jacobian varies along the
+  # curve -- at m = 0.9 the logit Jacobian is 11.1 and at m = 0.5 it is 4 -- so
+  # this is a conversion of the existing convention onto the new scale, not an
+  # exact reparameterisation of the same prior.
+  m_y <- mean(response, na.rm = TRUE)
+  # Taken as an argument rather than read off group_spec. It used to be set in
+  # add_brm_defaults() and nowhere else, so get_priors() and amend() -- which
+  # build group_spec straight from parse_group_terms() -- fell through to the
+  # response-scale width and disagreed with what bnec() actually fitted by a
+  # factor of four. get_priors() then misreported the prior in use, which the
+  # initial-value fallback message explicitly tells the user to trust, and
+  # amend() fitted a model into an existing set with a prior no other member
+  # had. Computed once here, from the model and family define_prior() already
+  # has, so the three callers cannot drift apart. See #257.
+  s_ogl <- switch(
+    ogl_transform,
+    # Capped. s_y does not shrink as the response mean approaches zero, so the
+    # ratio is unbounded there: on a count response with many structural zeros
+    # -- zero_inflated_poisson and zero_inflated_negbinomial are both accepted
+    # -- s_y / m_y can put several orders of magnitude on the group-level mean.
+    # The logit branch below is self-limiting because s_y shrinks as the mean
+    # approaches either bound; this one is not. The cap is a coefficient of
+    # variation of 1, which at two prior standard deviations still admits a
+    # factor of e^2 on the mean and is far wider than any group-level effect
+    # these designs carry. See #257.
+    log = if (is.finite(m_y) && m_y > 0) min(s_y / m_y, 1) else s_y,
+    logit = if (is.finite(m_y) && m_y > 0 && m_y < 1) {
+      s_y / (m_y * (1 - m_y))
+    } else {
+      s_y
+    },
+    s_y
+  )
   scale_for <- function(par) {
-    if (par %in% c("top", "bot", "ogl")) {
+    if (par == "ogl") {
+      s_ogl
+    } else if (par %in% c("top", "bot")) {
       s_y
     } else if (par %in% c("nec", "ec50")) {
       s_x
@@ -518,7 +614,7 @@ define_group_prior <- function(group_spec, predictor, response,
     out <- if (is.null(out)) pr else out + pr
   }
   if (isTRUE(group_spec$ogl)) {
-    out <- out + prior_string(paste0("normal(0, ", signif(s_y, 4), ")"),
+    out <- out + prior_string(paste0("normal(0, ", signif(s_ogl, 4), ")"),
                               nlpar = "ogl")
   }
   out
