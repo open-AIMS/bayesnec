@@ -37,11 +37,10 @@ test_that("adapt_delta is not raised for a transformed ogl term", {
   gs <- parse_group_terms(f, "nec3param")
   # The initial-value search is mocked away. This fixture cannot be initialised
   # at all, so the search runs to the 1e4 cap -- 577 seconds measured -- and
-  # these assertions are about adapt_delta, not about inits. Supplying
-  # init = "random" does not avoid it here: add_brm_defaults() runs the search
-  # when init is absent OR when skip_check is TRUE (R/helpers.R:831), and these
-  # calls pass skip_check = TRUE. test-define_prior.R suppresses it with `init`
-  # instead, which works there because that call passes skip_check = FALSE.
+  # these assertions are about adapt_delta, not about inits. Since #290 an
+  # init = "random" in the argument list would suppress the search here too;
+  # the mock is kept because it states what these calls need directly, rather
+  # than through a second argument whose effect on the search is incidental.
   local_mocked_bindings(
     make_good_inits = function(...) list(random = "random"),
     .package = "bayesnec"

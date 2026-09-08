@@ -249,10 +249,26 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   }
   formulas <- lapply(object, extract_formula)
   if (length(object) > 1) {
-    object <- expand_manec(object, formula = formulas, x_range = x_range,
-                           resolution = resolution, sig_val = sig_val,
-                           loo_controls = loo_controls)
-    out <- allot_class(object, c("bayesmanecfit", "bnecfit"))
+    mod_fits <- expand_manec(object, formula = formulas, x_range = x_range,
+                             resolution = resolution, sig_val = sig_val,
+                             loo_controls = loo_controls)
+    # Guard on the length of the result, not on the length of the set that went
+    # in. Where all but one model fails to refit, expand_manec() returns a bare
+    # one-element list of prebayesnecfit, which has none of a bayesmanecfit's
+    # structure; classing that as one gave an object whose every method failed
+    # on a missing `mod_fits`. bnec() and amend() already guard this way and
+    # route the single survivor through expand_nec(); the three entry points
+    # now agree, which is what stopped this being noticed. See #288.
+    if (length(mod_fits) > 1) {
+      out <- allot_class(mod_fits, c("bayesmanecfit", "bnecfit"))
+    } else {
+      surviving <- names(mod_fits)
+      mod_fits <- expand_nec(mod_fits[[1]], formula = formulas[[surviving]],
+                             x_range = x_range, resolution = resolution,
+                             sig_val = sig_val, loo_controls = loo_controls,
+                             model = surviving)
+      out <- allot_class(mod_fits, c("bayesnecfit", "bnecfit"))
+    }
   } else if (length(object) == 1) {
     if (inherits(object[[1]], "somethingwentwrong")) {
       stop("Your attempt to update the original model(s) failed. Perhaps you",
