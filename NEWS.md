@@ -18,19 +18,23 @@
   concentration tested only where that concentration is within about 2.6 times
   the median. That ratio is a property of the design: 2.0 for a series spaced
   evenly from zero, and 13 to 125 for the four `nassarius` series. No fixed
-  shape serves both --- the shape that peaks at *m* and still reaches the
-  highest dose is 8.6 on a linear series and 1.03 on the widest `nassarius`
-  series, and at 1.03 the density decreases monotonically across the whole
-  tested range, so it no longer has a maximum at *m* at all. The prior adopted
-  here also has a monotonically decreasing density on the dose scale over the
-  whole tested range on the four `nassarius` series, and that is not the same
-  defect: a lognormal's dose-scale mode is `exp(mu - sigma^2)`, so the density
-  falls because the change of variable from the log scale redistributes it and
-  not because the prior has lost its centre, which stays at the median dose on
-  the scale the convention is now stated on. Separately, selecting on the
-  support made the prior depend on
-  the units the dose was recorded in: measured on the `nassarius` contaminant A
-  dose series, the central 95% interval covered 1.7% of the predictor range
+  shape serves both, and the shape that would is not usable. Solving for the
+  shape whose maximum density is at *m* and whose 97.5% point is the highest
+  dose gives 8.6 on a linear series and 1.03 on the widest `nassarius` series.
+  At 1.03 the mode is still at *m*, by construction, but that is all that is:
+  the density rises 5.7% from the lowest dose to the mode and then falls to 2.8%
+  of its peak at the highest, and the median is 3.85, twenty-four times *m* and
+  above every dose but the top one, so the prior pulls the estimate towards the
+  highest concentrations. The prior adopted here also has a monotonically
+  decreasing density on the dose scale over the whole tested range on the four
+  `nassarius` series, and that is not the same defect: a lognormal's dose-scale
+  mode is `exp(mu - sigma^2)`, so the density falls because the change of
+  variable from the log scale redistributes it. The median is what separates
+  them --- on the contaminant A series the median of the untruncated prior built
+  here is 0.223, the median positive dose exactly, against 3.85 for the
+  shape-1.03 gamma. Separately, selecting on the support made the prior depend
+  on the units the dose was recorded in: measured on the `nassarius` contaminant
+  A dose series, the central 95% interval covered 1.7% of the predictor range
   under the gamma entry, 81% under `beta(2, 2)` rescaled to that range, and
   1097% under the normal entry before truncation, for the same experiment
   expressed three ways.
@@ -44,23 +48,23 @@
   untruncated prior on the dose scale is that dose. Both statements describe the
   untruncated prior; truncation at the highest dose removes part of the upper
   tail and so pulls the median down, to 0.58 against a median dose of 0.88 on
-  `nec_data`. The standard deviation is set so that the prior's central
-  95% interval covers every concentration tested: it is the larger of the two
-  half-widths from the location to the ends of the logged series, divided by
-  `qnorm(0.975)`. The criterion is the whole of
-  the rule --- a prior on a threshold should not exclude a concentration the
-  experiment applied, at either end --- so the width is stated rather than
-  chosen and it adapts to the design. Expressed as a multiple of `sd(log(x))` it
-  lands between 0.73 and 1.18 across five designs, at 0.92 to 1.03 on the four
-  `nassarius` series, and at 1.75 on `nec_data`, whose predictor is continuous
-  and densely sampled. A fixed multiple was considered and not taken: it states
-  no criterion, so it cannot guarantee that coverage on a design it was not
-  chosen against, and any multiple broad enough for a densely sampled continuous
-  predictor puts a large share of the prior below the lowest concentration
-  tested on a wide dilution series, where the lower truncation bound is a zero
-  control. At 1.5 times `sd(log(x))`, 21% of the truncated prior on the
-  `nassarius` contaminant A series lies below its lowest dose of 0.01; the rule
-  adopted leaves 9.0% there and 3.3% on a series spaced evenly from zero.
+  `nec_data`. The standard deviation is set so that the central 95% interval of
+  the untruncated prior covers every concentration tested: it is the larger of
+  the two half-widths from the location to the ends of the logged series,
+  divided by `qnorm(0.975)`. The criterion is the whole of the rule --- a prior
+  on a threshold should not exclude a concentration the experiment applied, at
+  either end --- so the width is stated rather than chosen and it adapts to the
+  design. Expressed as a multiple of `sd(log(x))` it lands between 0.73 and 1.18
+  across five designs, at 0.92 to 1.03 on the four `nassarius` series, and at
+  1.75 on `nec_data`, whose predictor is continuous and densely sampled. A fixed
+  multiple was considered and not taken: it states no criterion, so it cannot
+  guarantee that coverage on a design it was not chosen against, and any
+  multiple broad enough for a densely sampled continuous predictor puts a large
+  share of the prior below the lowest concentration tested on a wide dilution
+  series, where the lower truncation bound is a zero control. At 1.5 times
+  `sd(log(x))`, 21% of the truncated prior on the `nassarius` contaminant A
+  series lies below its lowest dose of 0.01; the rule adopted leaves 9.0% there
+  and 3.3% on a series spaced evenly from zero.
 
   **The width is set by the two extreme concentrations**, not by the spread of
   the series between them, so it is sensitive to how a control is recorded. The

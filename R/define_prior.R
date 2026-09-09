@@ -107,24 +107,28 @@ positive_scale <- function(response, probs) {
 #' tested only where that dose is within about 2.6 times the median dose, and
 #' that ratio is a property of the design: 2.0 for a series spaced evenly from
 #' zero, and 13 to 125 for the four nassarius series. No fixed shape serves
-#' both. The shape that puts the maximum density at \emph{m} and still reaches
-#' the highest dose is 8.6 on a linear series and 1.03 on the widest nassarius
-#' series, and at 1.03 the density decreases monotonically across the whole
-#' tested range, so it no longer has a maximum at \emph{m} at all --- which is
-#' the failure #273 reported with its direction reversed.
+#' both, and the shape that would is not usable. Solving for the shape whose
+#' maximum density is at \emph{m} and whose 97.5\% point is the highest dose
+#' gives 8.6 on a linear series and 1.03 on the widest nassarius series. At 1.03
+#' the mode is still at \emph{m}, by construction, but that is all that is: the
+#' density rises 5.7\% from the lowest dose to the mode and then falls to 2.8\%
+#' of its peak at the highest, and the median is 3.85, twenty-four times
+#' \emph{m} and above every dose but the top one. A prior whose mode is the
+#' median dose and whose median is above all but the highest dose is not
+#' describing the series it was built from, and it pulls the estimate towards
+#' the highest concentrations, which is the failure #273 reported.
 #'
 #' The prior built here has a monotonically decreasing density on the dose scale
 #' over the whole tested range on all four nassarius series, and that is not the
 #' same defect. A lognormal's dose-scale mode is \code{exp(mu - sigma^2)}, so
 #' any lognormal wide enough sits below the lowest dose; the density falls
 #' because the change of variable from the log scale to the dose scale
-#' redistributes it, not because the prior has lost its centre. Its maximum
-#' density is at the median dose on the log scale, which is the scale the
-#' convention is now stated on, and the median of the untruncated prior on the
-#' dose scale is the median dose. What the gamma at shape 1.03 loses is the
-#' centre itself: neither its mode nor its median is at \emph{m} on any scale.
-#' Over the sweep below the truncated prior CDF at the true value runs 0.43 to
-#' 0.95, so the mass is where the doses are.
+#' redistributes it. Where the mass is, is what separates the two, and the
+#' median is the quantity that says so: on the nassarius contaminant A series
+#' the median of the untruncated prior built here is 0.223, the median positive
+#' dose exactly, against 3.85 for the shape-1.03 gamma. Over the sweep below the
+#' truncated prior CDF at the true value runs 0.43 to 0.95, so the mass is where
+#' the doses are.
 #'
 #' \code{mu} is the median of the distinct positive predictor values, on the
 #' log scale. Distinct values rather than the observation vector so that
@@ -145,8 +149,9 @@ positive_scale <- function(response, probs) {
 #' dilution series is designed on, and it is the only reading under which a
 #' prior peaking at the median can also reach 125 times it.
 #'
-#' \code{sigma} on the dose scale is set so that the prior's central 95\%
-#' interval covers every dose tested: it is the larger of the two half-widths
+#' \code{sigma} on the dose scale is set so that the central 95\% interval of
+#' the untruncated prior covers every dose tested: it is the larger of the two
+#' half-widths
 #' from \code{mu} to the ends of the logged series, divided by
 #' \code{qnorm(0.975)}. The criterion is the whole of the rule --- a prior on a
 #' threshold should not exclude a concentration the experiment applied, at
