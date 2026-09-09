@@ -330,7 +330,7 @@ for the difference, and what was altered in the data are what a methods section
 has to state, and reading them from the returned object rather than from console
 output means a knitted document keeps them.
 
-## The fitted set
+## Model weights and dispersion
 
 `summary()` reports the set as a whole, and two of its columns are used in the
 steps that follow.
@@ -581,8 +581,11 @@ observed variability and the observed level *locally*, within each concentration
 group, with the control flagged.
 
 The control is the lowest value of the predictor, which is `bayesnec`'s
-convention throughout: `check_fit()` flags that group, and `nsec()` reads its
-reference from the posterior of the fitted mean there. An experiment whose
+convention throughout. `check_fit()` flags that group, and both estimators read
+their reference from the posterior of the fitted mean there: `nsec()` sets its
+significance reference from it, and since #281 every ECx is measured from it as
+well. Control variability therefore propagates into every threshold the analysis
+reports, not only the no-effect concentration. An experiment whose
 lowest treatment is not a control is being analysed on that assumption and
 should say so.
 
@@ -595,35 +598,38 @@ the series and is therefore still the control.
 
 For a `bayesmanecfit` it returns every group of every candidate model, which is
 more than can be read at once. Two views are useful. The first is the control
-row of each model, which is the row that matters most. `nsec()` sets its
-reference from the posterior of the fitted control mean, and since every ECx is
-also measured from the control, both estimators read this row. Control
-variability therefore propagates into every threshold the analysis reports, not
-only the no-effect concentration.
+row of each model, which is the row both estimators read their reference
+from.
 
 ```{r checkfit-control}
 cf <- check_fit(fit_screened)
 cf[cf$control, ]
 ```
 
-The control group is 0.001 rather than 0 because `bnec()` replaces a zero
-predictor with one tenth of the smallest positive value: a `Gamma`-distributed predictor
-cannot take the value zero. The substitution is the same idea as the response
-substitution described later for a `Beta` response, applied to the other axis.
-Analysts commonly do the same thing by hand before fitting, to plot a control on
-a logarithmic axis; `bnec()` doing it means the fit does not depend on whether
-they remembered to.
+The control group is 0, the value recorded. Earlier versions replaced a zero
+predictor with one tenth of the smallest positive concentration before the data
+reached `brm()`; that correction was removed, because no family constrains the
+values a predictor may take and the size of the shift depended on the design
+rather than on the data. The predictor is now fitted on the scale it was
+recorded on, and `nec()`, `ecx()` and `nsec()` report on that scale. A fit made
+under an earlier version and a fit made now will differ wherever the predictor
+includes an exact zero.
+
+The response is a separate matter, and is still corrected where a family cannot
+represent a recorded value. Adding a small constant to a zero concentration
+remains something an analyst may choose to do, to plot a control on a
+logarithmic axis; it is now entirely their decision, and the control convention
+above is what makes it safe either way.
 
 The column flagged is `ppp_mean`, so the discrepancy is one of location. The
 fitted control mean is 5.75 against an observed 5.25, because the groups
 immediately above the control are all at complete survival and pull `top` up.
 That single fact produces both the high `ppp_mean` and the low `ppp_sd`.
 
-`nsec()` reads its reference from the posterior of the fitted control mean. A
-control mean simulated above the observed one raises that reference, so the
-curve crosses it earlier and the reported no-effect estimate is lower, which is
-the protective direction. Every candidate shows it, so model averaging does not
-remove it.
+A control mean simulated above the observed one raises the reference both
+estimators read, so the curve crosses it earlier and the reported no-effect
+estimate is lower, which is the protective direction. Every candidate shows it,
+so model averaging does not remove it.
 
 The `sd_ratio` of 1.9 is not by itself evidence of over-dispersion. `sim_sd` is
 the *median* over draws of a residual standard deviation computed from four
