@@ -129,25 +129,24 @@ top two doses. Two features matter for what follows: the response is bounded at
 1 and sits against that bound for most of the range, and the doses are unevenly
 spaced, with most of them crowded near zero.
 
-The dose is left untransformed, and that was tested rather than assumed. A
-logarithm is unavailable, since the series includes a zero control, but a square
-root is not: it is defined at zero and it does compress an unevenly spaced
-series. Fitting the same set to `sqrt(dose)`, with the data, settings and seed
-otherwise unchanged, makes every diagnostic worse. Eight of eleven equations
-fail the sampler screen of step 3 against two of nine untransformed, four of
-them with more than 750 divergent transitions, and the control lack-of-fit check
-is raised for all eleven where it is raised for none.
+The dose is left untransformed. A logarithm is unavailable, since the series
+includes a zero control, but a square root is not: it is defined at zero and it
+does compress an unevenly spaced series, so the choice is a real one.
 
-The reason is visible in the series itself. Survival is complete out to a dose
-of 1.25 and gone by 2.5, so the whole of the response change happens in one
-interval; a square root maps that interval onto `1.118` to `1.581` while
-spreading out the low doses where nothing happens. Compressing the only region
-where the response changes forces a steeper fit in transformed units, which is
-what
-the divergences report. A transform is a modelling decision to be checked
-against the fit, not a habit. The two herbicide fits later use a logarithmic
-predictor on concentrations spanning `0.1` to `300`, which is the case that does
-warrant one.
+Two things bear on it. The predictor enters the equations directly, so a
+transform changes the shape being fitted and not merely the axis: the same
+equation describes a different curve in `dose` and in `sqrt(dose)`. And the
+default priors are scaled from the predictor, so a transform moves them --- on
+these data the `nec` prior is `gamma(5, 25)` truncated to `[0, 20]`
+untransformed, and `gamma(5, 10)` truncated to `[0, 4.47]` under a square root.
+Neither consideration settles the question, and which scale samples better on a
+given dataset is an empirical matter, to be checked against the diagnostics of
+section 3 rather than argued from the shape of the series.
+
+The predictor is left as recorded here, so that every estimate is in the units
+the experiment was run in and needs no back-transformation. The two herbicide
+fits later use a logarithmic predictor on concentrations spanning `0.1` to
+`300`, and show what a transformed predictor requires when it is reported.
 
 ## The dispersion screen
 
