@@ -265,10 +265,11 @@ NULL
 #'
 #' This dataset exists to demonstrate group-level terms (see
 #' \code{vignette("example8")}). Its design supplies replication at three
-#' nested scales --- four wells within a concentration, 33 plates each spanning
-#' a whole dilution series, and two toxicants read at two exposure times ---
-#' so the same data support a within-concentration group term, an
-#' across-concentration one, and a factor covariate.
+#' nested scales --- four wells within a concentration (\code{conc_group}), 33
+#' plates each spanning a whole dilution series (\code{plate}), and two
+#' toxicants read at two exposure times --- so the same data support a
+#' within-concentration group term, an across-concentration one, and a factor
+#' covariate.
 #'
 #' The tests were run in five dated batches. A batch holds two to five plates,
 #' each of which is a complete test: 11 measured concentrations, four replicate
@@ -322,8 +323,15 @@ NULL
 #' \item{plate}{Plate identifier, unique across the dataset (fct), 16 copper
 #'   plates and 17 zinc. Plate labels repeat between batches in the source
 #'   workbooks, so the level combines toxicant, batch and plate label.}
+#' \item{conc_group}{The four wells at one concentration on one plate (fct),
+#'   numbered in ascending concentration within the plate. This is the
+#'   within-concentration grouping factor: every level sits at a single
+#'   concentration, so it cannot have a concentration-response curve of its
+#'   own.}
 #' \item{well}{Replicate well identifier, unique within plate (fct). Each level
-#'   appears twice, once per exposure time.}
+#'   appears twice, once per exposure time. Within one toxicant-by-exposure-time
+#'   subset a level has a single observation, so a group-level term on
+#'   \code{well} there is an observation-level term rather than a grouping.}
 #' \item{minutes}{Exposure time in minutes at which the plate was read (int),
 #'   15 or 30. The source workbooks also hold a 5 minute read, which the
 #'   published analysis did not use and which is not included here.}
@@ -340,7 +348,7 @@ NULL
 #'
 #' @name lum31
 #' @docType data
-#' @format An object of class `data.frame` with 2904 rows and 9 columns.
+#' @format An object of class `data.frame` with 2904 rows and 10 columns.
 #' @keywords datasets
 #' @examples
 #' head(lum31)

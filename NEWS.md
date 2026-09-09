@@ -259,9 +259,10 @@
   bioluminescent bacterial assay of Luter et al. (2025). 2904 raw luminescence
   readings from 33 plates in five dated batches, each plate a complete series of
   11 measured concentrations by four replicate wells, read at 15 and 30 minutes.
-  Replication at three nested scales --- well within concentration, plate across
-  the whole series, and toxicant by exposure time --- supports every group-level
-  structure `vignette("example8")` demonstrates. Readings were blank-corrected
+  Replication at three nested scales --- the four wells at a concentration
+  (`conc_group`), the plate across the whole series (`plate`), and toxicant by
+  exposure time --- supports every group-level structure `vignette("example8")`
+  demonstrates. Readings were blank-corrected
   against seawater blanks, so 386 of them are negatives that the source records
   replaced with zero and one is a negative that escaped the replacement; `rlu`
   reports each as recorded and `censoring` with `rlu_cens` give the left-censored

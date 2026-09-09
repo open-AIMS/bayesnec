@@ -82,6 +82,18 @@ long <- long |>
     well = paste0(plate, "-w", sprintf("%02d", well_index))
   )
 
+# `conc_group` is the set of four wells at one concentration on one plate. It is
+# the within-concentration grouping factor: every level sits at a single
+# concentration, so a level cannot have a curve of its own, and each has the four
+# observations a group-level standard deviation needs. `well` cannot serve --
+# within one toxicant-by-time arm it has one observation per level, which makes
+# an observation-level term rather than a grouping.
+long <- long |>
+  dplyr::group_by(plate) |>
+  dplyr::mutate(conc_rank = as.integer(factor(conc))) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(conc_group = paste0(plate, "-c", sprintf("%02d", conc_rank)))
+
 # --- 2. Censoring -----------------------------------------------------------
 # Readings were blank-corrected against seawater blanks, so a reading below the
 # blank becomes negative and was replaced by zero in the source workbook. 386
@@ -113,6 +125,7 @@ lum31 <- long |>
     batch = factor(batch, levels = c("19Mar24", "28Mar24", "5Apr24",
                                      "23Apr24", "1Oct24")),
     plate = factor(plate),
+    conc_group = factor(conc_group),
     well = factor(well),
     minutes = minutes,
     conc = conc,
@@ -132,6 +145,14 @@ stopifnot(
           as.character(lum31$conc))] == 4),
   # each physical well is read at both retained exposure times
   all(table(lum31$well) == 2),
+  # four wells to a concentration group, at each exposure time
+  all(table(lum31$conc_group, lum31$minutes) == 4),
+  # a concentration group sits at exactly one concentration
+  all(tapply(lum31$conc, lum31$conc_group, function(z) length(unique(z))) == 1),
+  # the sheet rows run in blocks of four in ascending concentration, so the
+  # well number and the concentration group number agree
+  all(ceiling(as.integer(sub(".*-w", "", as.character(lum31$well))) / 4) ==
+        as.integer(sub(".*-c", "", as.character(lum31$conc_group)))),
   # the predictor must not be integer; bnec() refuses one
   is.numeric(lum31$conc), !is.integer(lum31$conc),
   # censoring flags exactly the readings that were floored or negative
