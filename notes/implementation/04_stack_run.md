@@ -227,3 +227,26 @@ pushing. It exits non-zero and names the file and target.
 Not every internal helper is exported; `\link{}` only works for exported
 functions, aliases in `man/`, and base packages. For anything else use
 `\code{}` without the link.
+
+## Render a vignette somewhere that survives the session
+
+A vignette render is hours of sampling and it is not committed, so where it is
+written decides whether it still exists tomorrow. `example9` was knitted into a
+scratch worktree under `/tmp` on 2026-09-08, 3902 s, and the rendered `.Rmd` and
+its four figures were gone the next morning: that path is session-scoped and is
+cleared. The source was safe because it was committed; everything derived from
+it was not.
+
+Two rules follow.
+
+Knit into a persistent directory. `cache/` and `ignore/` are already in
+`.gitignore`, so either serves; a git worktree created for the purpose belongs
+beside the repository rather than under `/tmp`.
+
+Turn the fit cache on while iterating. `vignettes/precompile.R` reads
+`BAYESNEC_VIGNETTE_CACHE=true` and then caches per vignette under
+`cache/vignettes/<name>/`, so a prose-only correction re-renders in seconds
+instead of refitting. It is off by default because a release render must fit
+from scratch and because invalidation is by chunk-code hash, which does not see
+a change reaching a fit indirectly. Clear the cache before any render whose
+numbers will be quoted.

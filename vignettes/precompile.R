@@ -20,7 +20,44 @@ orig_files <- dir(path = "vignettes/", pattern = "*\\.Rmd\\.orig",
                   full.names = TRUE)
 # need to set system variable locally first -------------------------------
 Sys.setenv("NOT_CRAN" = "true")
-purrr::walk(orig_files, ~knitr::knit(.x, file_path_sans_ext(.x)))
+
+# Optional local fit cache ------------------------------------------------
+# A full vignette is hours of sampling, so a prose-only correction otherwise
+# costs a complete refit -- example9 took 3902 s on 2026-09-08, and was rendered
+# twice in two days for changes that touched no chunk. With the cache on, knitr
+# reloads each chunk's objects and only re-runs the chunks whose code changed.
+#
+# OFF unless BAYESNEC_VIGNETTE_CACHE=true, and deliberately so. Two reasons:
+#
+# 1. A release render must fit from scratch. #190 ships the rendered .Rmd as the
+#    published record of what the package does, and a cached chunk is a fit made
+#    by whatever version was installed when the cache was written. The gate makes
+#    the release path the default and caching the thing you opt into.
+# 2. Invalidation is by chunk-code hash. `autodep` tracks which cached chunks
+#    read objects another chunk created and invalidates downstream, but it reads
+#    only the chunks it has seen, so a change reaching a fit indirectly -- an
+#    edited helper, a new package version, a different seed set outside a chunk
+#    -- is not detected. The failure is silent and looks like a normal render.
+#
+# So: use it while iterating on prose, and delete the cache before any render
+# whose numbers will be quoted. `unlink("cache/vignettes", recursive = TRUE)`.
+use_cache <- identical(Sys.getenv("BAYESNEC_VIGNETTE_CACHE"), "true")
+cache_root <- "cache/vignettes"
+if (use_cache) {
+  message("Vignette fit cache is ON, under ", cache_root, "/. Chunks whose code",
+          " is unchanged will NOT be refitted. Do not ship this render without",
+          " clearing the cache and re-running.")
+}
+
+knit_one <- function(f) {
+  if (use_cache) {
+    base <- file_path_sans_ext(file_path_sans_ext(basename(f)))
+    knitr::opts_chunk$set(cache = TRUE, autodep = TRUE,
+                          cache.path = file.path(cache_root, base, ""))
+  }
+  knitr::knit(f, file_path_sans_ext(f))
+}
+purrr::walk(orig_files, knit_one)
 # Move figures into correct directory so they render ----------------------
 # Every vignette is an html_vignette and so uses the png device: an embedded
 # pdf is rendered by the browser's pdf plugin rather than as an image.
