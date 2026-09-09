@@ -308,6 +308,34 @@ test_that("hurdle_mu_family picks the right family for the non-zero subset", {
   expect_equal(bayesnec:::hurdle_mu_family("zero_inflated_beta")$family, "beta")
 })
 
+test_that("hurdle_mu_family carries the mean link the caller chose", {
+  # A tag names a family and nothing more, so it takes the link bnec assigns.
+  expect_equal(bayesnec:::hurdle_mu_family("hurdle_gamma")$link, "identity")
+  expect_equal(bayesnec:::hurdle_mu_family("zero_inflated_beta")$link,
+               "identity")
+  expect_equal(
+    bayesnec:::hurdle_mu_family(
+      brms::hurdle_gamma(link = "identity", link_hu = "identity")
+    )$link,
+    "identity"
+  )
+  # brms applies the inverse mean link to the whole non-linear expression, so
+  # under these links top and bot are on the log or logit scale and their
+  # priors have to be measured there. See #302.
+  expect_equal(
+    bayesnec:::hurdle_mu_family(
+      brms::hurdle_gamma(link = "log", link_hu = "identity")
+    )$link,
+    "log"
+  )
+  expect_equal(
+    bayesnec:::hurdle_mu_family(
+      brms::zero_inflated_beta(link = "logit", link_zi = "identity")
+    )$link,
+    "logit"
+  )
+})
+
 test_that("make_hu_block prefixes with zi for zero-inflated families", {
   hb <- bayesnec:::make_hu_block("nec3param", "zi")
   expect_setequal(hb$pars, c("zitop", "zibeta", "zinec"))
