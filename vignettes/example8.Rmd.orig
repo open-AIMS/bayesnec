@@ -71,6 +71,160 @@ is shift the response level up or down, and that is a **group-level term**.
 different genotypes, chemicals, seasons. Every level *could* have its own curve,
 and the question is usually whether it does. That is **`bnec_group()`**.
 
+# Group-level term syntax
+
+`ogl()`, `(par | group)` and `pgl()` are written into a `bayesnecformula` the
+same way and produce three different `brms` formulae from the same
+concentration-response equation. Each is generated below by
+`make_brmsformula()`, the function `bnec()` uses to translate a
+`bayesnecformula` into the non-linear `brms` formula that is passed to Stan, so
+what is shown is the model that is fitted rather than a description of it.
+`nec4param` is used throughout, because every parameter a group-level term can
+be placed on --- `top`, `bot`, `beta` and `nec` --- is present in it.
+
+The data are supplied in one chunk and their columns are renamed, so that the
+formulae describe the syntax rather than one experiment. `herbicide`
+[@jones2003] is used: the response `fvfm` is the maximum effective quantum yield
+of photosystem II, a proportion, and is modelled with a `Beta` family. The link
+is stated explicitly because `Beta()` defaults to `logit` and `bnec()` fits
+every family on the identity link.
+
+```{r}
+data(herbicide)
+gdat <- herbicide |>
+  rename(conc = concentration, response = fvfm, group = herbicide) |>
+  mutate(group = factor(group))
+gfam <- Beta(link = "identity")
+
+brms_form <- function(formula, family = gfam) {
+  make_brmsformula(bayesnecformula(formula), data = gdat,
+                   family = family)[["nec4param"]]
+}
+```
+
+## Displacement of the whole curve
+
+`ogl()` gives each level of the grouping one deviation applied to the fitted
+mean. The whole curve is displaced up or down and its shape is identical in
+every level, which makes it the analogue of a random intercept in a linear
+model.
+
+```{r}
+brms_form(response ~ crf(conc, "nec4param") + ogl(group))
+```
+
+The concentration-response equation appears intact as `bnecmu`, and the
+deviation `ogl` is applied to it through
+`bnecmu * exp(ogl) / (1 - bnecmu + bnecmu * exp(ogl))`, which adds `ogl` to the
+log-odds of the mean. `top`, `bot`, `beta` and `nec` each retain a
+population-level intercept and nothing more, so one displacement per level is
+the whole of what the term estimates. The multiplicative form is used because a
+`Beta` response restricts the mean to $(0, 1)$; `vignette("example3")`, section
+"Priors for group-level parameters", states which deviations are applied that
+way and why.
+
+## Deviation on a named parameter
+
+`(par | group)` places a deviation on one named parameter of the equation and
+leaves the others population-level, so the curve changes shape in one specified
+way rather than being displaced as a whole.
+
+```{r}
+brms_form(response ~ crf(conc, "nec4param") + (nec | group))
+```
+
+`nec` gains `+ (1 | group)` and nothing else in the equation changes. The
+threshold is on the scale of the predictor and is not restricted by the response
+distribution, so the deviation is added to it directly.
+
+A parameter that is restricted is written differently.
+
+```{r}
+brms_form(response ~ crf(conc, "nec4param") + (bot | group))
+```
+
+`bot` keeps its population-level intercept, its prior and its meaning. The
+deviation is the separate non-linear parameter `botgl`, which has no intercept
+of its own --- `0 + (1 | group)` --- and is therefore centred on zero, and
+`bnecbot` recombines the two on the log-odds scale. `brms` reports the standard
+deviation of that deviation as `sd(botgl_Intercept)`, which is read as a
+log-odds and not as a proportion.
+
+The term names a parameter, and not every equation of a model set has every
+parameter: `bot` is a parameter of `nec4param` and not of `nec3param`. Where the
+named parameter is absent the term is dropped for that equation and the fit
+proceeds without it. The drop is reported by a message, which is easily lost
+among Stan's compilation output. `check_formula()` reports it for every equation
+of the set before any model is fitted.
+
+```{r, message = TRUE}
+check_formula(
+  bayesnecformula(response ~ crf(conc, c("nec3param", "nec4param")) +
+                    (bot | group)),
+  data = gdat, run_par_checks = TRUE
+)
+```
+
+## Deviation on every parameter
+
+`pgl()` places a deviation on every parameter of the equation at once, so each
+level is given its own curve shrunk towards a common one, and the parameter
+names of the equation do not have to be known in advance.
+
+```{r}
+brms_form(response ~ crf(conc, "nec4param") + pgl(group))
+```
+
+All four parameters gain a group-level term. `beta` and `nec` are on unbounded
+scales and take theirs additively; `top` and `bot` are restricted by the
+response distribution and take theirs through `topgl` and `botgl` in the same
+transformed form as above. Four group-level standard deviations are estimated
+from however many levels the grouping has, which is the widest of the three
+claims and the one the data are least likely to support.
+
+## An unconstrained mean
+
+Under `gaussian()` the mean is on the real line and no transformation is needed,
+so all three terms appear as plain additive `brms` terms.
+
+```{r}
+brms_form(response ~ crf(conc, "nec4param") + ogl(group), family = gaussian())
+brms_form(response ~ crf(conc, "nec4param") + (nec | group), family = gaussian())
+brms_form(response ~ crf(conc, "nec4param") + pgl(group), family = gaussian())
+```
+
+`ogl` is added to the equation rather than applied to its odds, and `pgl()`
+reduces to `+ (1 | group)` on each of the four parameters. Compared with the
+`Beta` formulae above, this isolates the transformation as a consequence of the
+support of the response distribution rather than of the grouping term.
+
+## Term choice and design structure
+
+The within and across distinction of the previous section decides which of the
+three terms applies, and the decision follows from the design rather than from
+preference.
+
+A grouping whose levels each sit at one concentration --- replicate tanks,
+vessels or chambers --- admits only a displacement. Such a level spans no part
+of the curve, so there is nothing in the data from which to estimate a
+difference in shape, and `ogl()` is the term.
+
+A grouping whose levels each span the whole concentration series --- genotypes,
+plates, separate runs of the same test --- admits a difference in shape. Where
+there is a hypothesis about which feature of the curve varies, `(par | group)`
+states it, and `(nec | group)` is the common case: the threshold differs between
+levels and the rest of the curve is shared. Where there is no such hypothesis,
+`pgl()` fits a separate random curve per level. Five levels is the conventional
+minimum for estimating one group-level standard deviation, and `pgl()` estimates
+one per parameter.
+
+Levels that are fixed and of interest in themselves --- the herbicides used
+above, or a set of species --- are not a random grouping. They are not a sample
+from a larger population, so shrinking them towards a common curve answers a
+different question from the one being asked, and their functional forms may
+differ from one another. `bnec_group()` fits each level separately and is the
+route for these.
+
 # The data
 
 The `coral` dataset carries both structures in one experiment, so this vignette
