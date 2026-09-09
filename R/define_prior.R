@@ -128,9 +128,9 @@ positive_scale <- function(response, probs) {
 #' the median of the untruncated prior built here is 0.223, which is
 #' \code{exp(mu)} and therefore the location the rule specifies exactly ---
 #' that series has an even number of positive doses, so it is the geometric mean
-#' of the two central ones --- against 3.85 for the shape-1.03 gamma. Over the sweep below the
-#' truncated prior CDF at the true value runs 0.43 to 0.95, so the mass is where
-#' the doses are.
+#' of the two central ones --- against 3.85 for the shape-1.03 gamma. Over the
+#' sweep below the truncated prior CDF at the true value runs 0.43 to 0.95, so
+#' the mass is where the doses are.
 #'
 #' \code{mu} is the median of the distinct positive predictor values, on the
 #' log scale. Distinct values rather than the observation vector so that
