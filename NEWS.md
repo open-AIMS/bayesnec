@@ -57,8 +57,9 @@
   structure is a transformed `ogl()` term.** The raise was added in 2.1.4 to
   mitigate exactly these excursions and costs roughly fourteen times the gradient
   evaluations per iteration; a multiplicative deviation cannot make the
-  excursions, so there is nothing left to mitigate. A `pgl()` term, an explicit
-  `(par | group)` term, and every equation outside the gates keep it.
+  excursions, so there is nothing left to mitigate. #294 extends the same
+  reasoning to `pgl()` and `(par | group)`; the rule that results is stated
+  there.
 
   **The `ogl` prior is widened onto the scale the deviation is applied on**, by
   delta-method conversion of the existing rule evaluated at `mean(y)`:
@@ -72,11 +73,83 @@
   terms against the user's data frame first, so a column of either name would be
   used in place of the generated term and the fit would silently be a different
   model. A data frame carrying either name that fitted under 2.1.x now stops
-  with an error naming the column, before any model is compiled.
+  with an error naming the column, before any model is compiled. #294 adds
+  `topgl`, `botgl`, `bnectop` and `bnecbot` to the same list.
 
-  **Not in this change:** `pgl()` and explicit `(par | group)` terms, which place
-  a deviation on an individual curve parameter rather than on the mean and need
-  the same idea one level down.
+- **A group-level deviation on `top` or `bot` is now applied multiplicatively
+  as well**, wherever the likelihood constrains the mean. This is #257's change
+  one level down, and it covers `pgl()` and an explicit `(par | group)` term.
+  `bot` is the parameter it matters for: it is the lower asymptote, it is
+  routinely estimated close to zero, and the deviation `brms` added to it was
+  unconstrained, so a long enough leapfrog trajectory took it below zero and the
+  step was rejected. Measured on `herbicide` with `Beta(link = "identity")` and
+  `nec4param`, two chains and 2000 iterations, a `(bot | herbicide)` term gave 51
+  divergent transitions of 2000 at `adapt_delta = 0.95` under 2.1.x and gives
+  none at Stan's default of 0.8 under this change. The same term on a `gaussian`
+  response, where the mean is unconstrained, gave none either way (#294).
+
+  **Only `top` and `bot` are transformed.** `nec` and `ec50` are on the predictor
+  scale and are routinely negative on a log predictor, so `log` and `logit` of
+  them are undefined; `beta`, `slope`, `d` and `f` are dimensionless and enter
+  through an exponential. None of them is bounded by the likelihood, and a
+  `(nec | group)` term gave 0 divergent transitions of 2000 at
+  `adapt_delta = 0.8` on the same fixture. `pgl()` expands to a term on every
+  parameter, so it now generates a mix: transformed on `top` and `bot`, additive
+  on the rest, and identical to writing those terms out by hand.
+
+  **The gate is the family, not the equation**, which is where this differs from
+  `ogl()`. That transform needs the *mean* provably strictly inside its support
+  and so is undefined for the hormesis equations, whose mean can exceed 1. A
+  parameter is not the mean: `top` and `bot` are bounded to the family's support
+  by their own priors whatever equation they appear in, so the parameter-level
+  transform is defined for `nechorme`, `nechorme4`, `nechormepwr01`,
+  `ecxhormebc4` and `ecxhormebc5` as well.
+
+  **`adapt_delta` is now raised to 0.99 only where a group-level term can still
+  take the mean outside its support.** With every deviation applied on a scale it
+  cannot leave, that is decided by the equation alone: for one whose mean lies
+  between `bot` and `top`, no group-level term on any parameter can put `mu`
+  outside the support, and the raise is dropped. It is kept for `neclin`,
+  `neclinhorme` and `ecxlin`, which are unbounded below, and for the seven
+  hormesis equations with an excess term, on **every** family --- their mean is
+  negative for a sufficiently negative predictor, which `crf(log(x), ...)`
+  supplies as a matter of course, so a `(0, Inf)` support is no protection. In
+  2.1.x the raise was applied to every grouped fit on a constrained family.
+
+  **`top` and `bot` keep their names, their meanings and their own priors.** The
+  deviation is zero-centred and `m e^0` is `m`, and the parameter stays a
+  population-level term: what is renamed is the generated deviation, `botgl`, and
+  the intermediate the curve reads, `bnecbot`. `b_bot_Intercept` and everything
+  that reads it are unaffected. The group-level standard deviation is now
+  reported under `sd(botgl_Intercept)` rather than `sd(bot_Intercept)`, and is on
+  the log-odds or log scale rather than on the response scale.
+
+  The deviation is written `botgl ~ 0 + (1 | group)` and has **no population
+  intercept**, which is what keeps `bot` interpretable: `bnecbot` depends on
+  `bot` and `botgl` only through their combination, so a free intercept would be
+  exactly unidentified against `bot` and `b_bot_Intercept` would no longer be the
+  asymptote the population-level curve declines towards --- which
+  `ecx(type = "relative")` divides by and `summary()` reports. The parameter set
+  is therefore exactly the additive form's: `bot`, the group-level standard
+  deviation, and the deviations themselves. `ogl()` is the other case and keeps
+  the intercept and zero-centred prior #257 gave it, because it is documented as
+  adding a population-level parameter of its own.
+
+  **The prior on the deviation is widened onto that scale** by the same
+  delta-method conversion #257 uses for `ogl`, evaluated at `mean(y)`, and capped
+  at one tenth of the response range divided by `prior_type`'s narrowing factor.
+  The cap is the one difference: #257 caps the `log` branch only, on the argument
+  that the `logit` ratio is self-limiting at the response mean, and that argument
+  does not hold for a parameter that sits near zero. The `ogl` conversion is
+  unchanged.
+
+  **A user prior that leaves `top` or `bot` unbounded is now refused** where a
+  group-level term on it would be transformed. The multiplicative form on (0, 1)
+  is defined only while the parameter is inside (0, 1), which the generated
+  priors guarantee with `lb = 0` and `ub = 1`; `fill_missing_priors()` preserves
+  a user row and fills only what is absent, so a user prior with no bounds would
+  have reached Stan unbounded, and outside [0, 1] the expression has a pole and
+  changes sign across it. The error names the parameter and the bounds to add.
 
 ## Breaking changes to ECx, NSEC and ECNSEC
 
@@ -183,6 +256,45 @@
   adds variance to the binomial and so cannot address under-dispersion (#262).
 
 ## Bug fixes
+
+- `dispersion()` no longer discards the statistic where a single observation is
+  reproduced exactly. The Pearson denominator is the fitted standard deviation,
+  which underflows to exactly zero for a curve that decays fast enough --- `mu
+  (1 - mu) n` for a binomial and `mu` for a Poisson --- and the response at such
+  an observation is the fitted value, so its residual is `0/0`. One of them made
+  every draw `NaN`, and the whole vector was returned empty with a message
+  attributing it to a bad model fit.
+
+  Such a term is now excluded from both the observed and the simulated sum and
+  every draw is retained. The exclusion is the limit rather than an
+  approximation to it: as the fitted mean tends to zero with a response of zero
+  both terms tend to zero, so excluding them is arithmetically identical to
+  contributing zero to each sum, and the ratio is self-normalising, so its null
+  value of 1 holds whatever the size of the retained set. It is made draw by
+  draw, since an observation whose fitted mean underflows in one draw gives an
+  ordinary residual in another, and a message reports the observations and the
+  draws affected. Measured on the fixture added with this change, 400 post
+  warm-up draws: 229 draws exclude nothing, 60 exclude three observations and
+  111 exclude six, and no observation is excluded in every draw.
+
+  Where instead the response differs from a fitted value of zero variance, the
+  statistic is reported as `Inf` and a warning names the observations, rather
+  than the case being swallowed by the same branch. The infinity is produced by
+  the underflow, since in exact arithmetic the residual there is large and
+  finite, but the misfit it reports is real. It is a warning rather than an
+  error because `dispersion()` is called once per equation from `expand_nec()`,
+  where stopping would abandon construction of the whole `bayesmanecfit`.
+
+  Measured on the `nassarius` contaminant A survival set of
+  `vignette("example9")` (binomial, `decline`, nine equations, 2026-09-08, R
+  4.6.1): three equations returned `NA`, among them `ecxsigm` at 0.767 of the
+  model weight with a Bayesian R-squared of 0.91, while `ecxexp` at 0.002 of the
+  weight reported a value. The statistic was therefore least available for the
+  equations describing the data best, since underflow requires a fast decay.
+  `expand_nec()` writes the four `dispersion_*` columns of the weights table
+  from this vector, so those columns now populate for such a fit. An empty
+  vector is returned only where no observation contributes a residual in any
+  draw, with a message that says so (#298).
 
 - `update()` on a `bayesmanecfit` returned an object classed `bayesmanecfit`
   with none of that class's structure whenever all but one model failed to

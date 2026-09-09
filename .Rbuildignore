@@ -30,3 +30,4 @@ README.Rmd
 ^PR_.*\.md$
 ^superceded$
 ^notes$
+^cache$

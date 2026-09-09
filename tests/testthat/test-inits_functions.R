@@ -609,8 +609,10 @@ test_that("group_inits reads its indices from the model brms will build", {
   )
   pr <- brms::prior_string("student_t(3, 0, 0.08)", class = "sd",
                            nlpar = "ogl")
+  # group_spec rather than the old ogl flag: #294 generalised the zero-started
+  # intercepts from `ogl` alone to every deviation intercept a term introduces.
   gi <- bayesnec:::group_inits(bf_one, d, Beta(link = "identity"), pr,
-                               ogl = TRUE)
+                               group_spec = list(nlpars = "ogl", ogl = TRUE))
   expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
   expect_equal(dim(gi$z_1), c(1L, 12L))
   expect_true(all(gi$z_1 == 0))
@@ -668,43 +670,53 @@ test_that("the adapt_delta raise is gated on the support of mu", {
       skip_check = TRUE, custom_name = NULL, group_spec = group
     ))
   }
-  # A pgl-shaped spec, deliberately: #257 applies the deviation
-  # multiplicatively for an ogl term, which removes the excursion the raise
-  # exists to mitigate and so removes the raise with it. A deviation placed on
-  # individual curve parameters is not transformed, so it is the case where the
-  # mu-support gate this test is about is still the thing deciding. The
-  # ogl-and-transform interaction is asserted separately in test-check_priors.R.
-  grouped <- list(nlpars = c("top", "beta", "nec"), ogl = FALSE)
+  # neclin, deliberately. #257 and #294 apply the deviation multiplicatively
+  # wherever they can, and on an equation whose mean is confined by its own
+  # parameters that removes the excursion the raise exists to mitigate, and the
+  # raise with it. neclin's mean is unbounded below, so no transform is defined
+  # for it and the mu-support gate this test is about is still the thing
+  # deciding. The equation gate is asserted separately in test-check_priors.R.
+  grouped <- list(nlpars = c("top", "slope", "nec"), ogl = FALSE)
+  defaults_lin <- function(family, group) {
+    suppressMessages(bayesnec:::add_brm_defaults(
+      list(chains = 2), "neclin", family, x, y,
+      skip_check = TRUE, custom_name = NULL, group_spec = group
+    ))
+  }
 
   # constrained mean, grouped: raised
-  expect_equal(defaults(validate_family("Beta"), grouped)$control$adapt_delta,
+  expect_equal(defaults_lin(validate_family("Beta"), grouped)$control$adapt_delta,
                0.99)
-  expect_equal(defaults(validate_family("Gamma"), grouped)$control$adapt_delta,
+  expect_equal(defaults_lin(validate_family("Gamma"), grouped)$control$adapt_delta,
                0.99)
-  expect_equal(defaults(validate_family("poisson"), grouped)$control$adapt_delta,
-               0.99)
+  expect_equal(
+    defaults_lin(validate_family("poisson"), grouped)$control$adapt_delta, 0.99
+  )
   # unconstrained mean, grouped: left alone
-  expect_null(defaults(validate_family("gaussian"), grouped)$control)
-  expect_null(defaults(gaussian(link = "log"), grouped)$control)
-  expect_null(defaults(Beta(link = "logit"), grouped)$control)
+  expect_null(defaults_lin(validate_family("gaussian"), grouped)$control)
+  expect_null(defaults_lin(gaussian(link = "log"), grouped)$control)
+  expect_null(defaults_lin(Beta(link = "logit"), grouped)$control)
   # and the ogl case, which #257 transforms, is not raised at all
   expect_null(
     defaults(validate_family("Beta"), list(nlpars = "ogl", ogl = TRUE))$control
   )
+  # nor a term on top, bot, nec or beta on an equation whose mean lies between
+  # bot and top, which is what #294 adds
+  expect_null(defaults(validate_family("Beta"), grouped)$control)
   # constrained mean, ungrouped: left alone, since there is no unconstrained
   # deviation to carry the mean out of range
   expect_null(defaults(validate_family("Beta"), NULL)$control)
 
   # a control list supplied for another reason keeps its own entries
   both <- suppressMessages(bayesnec:::add_brm_defaults(
-    list(chains = 2, control = list(max_treedepth = 12)), "nec3param",
+    list(chains = 2, control = list(max_treedepth = 12)), "neclin",
     validate_family("Beta"), x, y, skip_check = TRUE, custom_name = NULL,
     group_spec = grouped))
   expect_equal(both$control$max_treedepth, 12)
   expect_equal(both$control$adapt_delta, 0.99)
   # and an adapt_delta the caller chose is theirs, including a lower one
   own <- suppressMessages(bayesnec:::add_brm_defaults(
-    list(chains = 2, control = list(adapt_delta = 0.8)), "nec3param",
+    list(chains = 2, control = list(adapt_delta = 0.8)), "neclin",
     validate_family("Beta"), x, y, skip_check = TRUE, custom_name = NULL,
     group_spec = grouped))
   expect_equal(own$control$adapt_delta, 0.8)
@@ -730,7 +742,8 @@ test_that("a constant ogl intercept gets no initial value", {
     bayesnec:::wrangle_model_formula("nec4param", bnf, bdat,
                                      validate_family("Beta"))
   ))
-  gi <- bayesnec:::group_inits(bb, d, Beta(link = "identity"), pr, ogl = TRUE)
+  gi <- bayesnec:::group_inits(bb, d, Beta(link = "identity"), pr,
+                               group_spec = list(nlpars = "ogl", ogl = TRUE))
   # group_inits itself is not prior-aware; the strip happens in fit_bayesnec
   expect_true("b_ogl" %in% names(gi))
   const <- as.data.frame(pr)
@@ -821,7 +834,8 @@ test_that("group_inits works for a family whose formula carries trials()", {
   ))
   pr <- brms::prior_string("student_t(3, 0, 0.08)", class = "sd", nlpar = "ogl")
   gi <- expect_no_warning(
-    bayesnec:::group_inits(bb, d, binomial(link = "identity"), pr, ogl = TRUE)
+    bayesnec:::group_inits(bb, d, binomial(link = "identity"), pr,
+                           group_spec = list(nlpars = "ogl", ogl = TRUE))
   )
   expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
   expect_equal(dim(gi$z_1), c(1L, 12L))
@@ -901,7 +915,8 @@ test_that("group_inits works for a formula carrying a rate() aterm", {
   )
   pr <- brms::prior_string("student_t(3, 0, 2)", class = "sd", nlpar = "ogl")
   gi <- expect_no_warning(
-    bayesnec:::group_inits(bb, d, poisson(link = "identity"), pr, ogl = TRUE)
+    bayesnec:::group_inits(bb, d, poisson(link = "identity"), pr,
+                           group_spec = list(nlpars = "ogl", ogl = TRUE))
   )
   expect_setequal(names(gi), c("sd_1", "z_1", "b_ogl"))
   expect_equal(dim(gi$z_1), c(1L, 12L))

@@ -520,7 +520,11 @@ test_that("a group-level term on a hurdle reaches the mu block only", {
                                      validate_family("hurdle_gamma"))
   ))
   subs <- vapply(bb$pforms, function(z) deparse1(z), character(1))
-  expect_true(all(grepl("site", subs[c("top", "beta", "nec")])))
+  # top is transformed on a hurdle_gamma mu block, so its grouping is declared
+  # on topgl rather than on top itself (#294). What is being asserted is that
+  # the grouping reaches the mu block at all, whichever term it lands on.
+  expect_true(all(grepl("site", subs[c("topgl", "beta", "nec")])))
+  expect_false(grepl("site", subs[["top"]]))
   expect_false(any(grepl("site", subs[c("hutop", "hubeta", "hunec")])))
 })
 
@@ -556,17 +560,26 @@ test_that("prior_type reaches define_group_prior through define_prior", {
   x <- as.numeric(rep(1:10, 5))
   y <- plogis(rnorm(50, 1, 1))
   spec <- list(nlpars = "top", ogl = FALSE)
-  sd_of <- function(pt) {
+  sd_row <- function(pt) {
     pr <- as.data.frame(bayesnec:::define_prior(
       "nec4param", validate_family("Beta"), x, y, prior_type = pt,
       group_spec = spec
     ))
-    pr$prior[pr$class == "sd"]
+    pr[pr$class == "sd", ]
   }
-  expect_equal(sd_of("regularizing"),
-               paste0("student_t(3, 0, ", signif(diff(range(y)) / 20, 4), ")"))
-  expect_equal(sd_of("uninformative"),
-               paste0("student_t(3, 0, ", signif(diff(range(y)) / 10, 4), ")"))
+  # Beta transforms top, so the standard deviation is declared on topgl and its
+  # width is the delta-method conversion of the response-scale rule (#294).
+  # narrow enters the response-scale width before the conversion, so the
+  # regularizing scale is still half the uninformative one.
+  m_y <- mean(y)
+  conv <- function(narrow) {
+    signif(min((diff(range(y)) / (10 * narrow)) / (m_y * (1 - m_y)), 1), 4)
+  }
+  expect_equal(sd_row("uninformative")$nlpar, "topgl")
+  expect_equal(sd_row("regularizing")$prior,
+               paste0("student_t(3, 0, ", conv(2), ")"))
+  expect_equal(sd_row("uninformative")$prior,
+               paste0("student_t(3, 0, ", conv(1), ")"))
 })
 
 test_that("a degenerate scale is not narrowed by prior_type", {
@@ -686,4 +699,116 @@ test_that("the nec prior is chosen from the predictor, not the response", {
   expect_equal(nec_prior(poisson(link = "identity"),
                          as.integer(rep(c(90, 80, 50, 20, 5), each = 6))),
                target)
+})
+
+
+# ---- #294, priors for a transformed parameter-level deviation ---------------
+
+test_that("a transformed term declares its sd on the deviation, not the parameter", {
+  # bot keeps the population-level prior define_prior() already builds for it;
+  # what the group-level term adds is a standard deviation on botgl. A prior on
+  # nlpar "bot" of class "sd" would match nothing in the fit and brms would drop
+  # it silently.
+  set.seed(294)
+  x <- runif(100, 0, 10)
+  y <- runif(100, 0.1, 0.9)
+  spec <- list(nlpars = c("top", "bot", "nec", "beta"), ogl = FALSE)
+  pr <- as.data.frame(
+    bayesnec:::define_group_prior(spec, x, y, par_transform = "logit")
+  )
+  sd_rows <- pr[pr$class == "sd", ]
+  expect_setequal(sd_rows$nlpar, c("topgl", "botgl", "nec", "beta"))
+  expect_false(any(sd_rows$nlpar %in% c("top", "bot")))
+  # And it adds nothing else. The deviation has no population intercept to give
+  # a prior to -- add_par_gl_term() writes botgl ~ 0 + (1 | group) precisely
+  # because a free intercept would be exactly unidentified against bot, which
+  # would stop b_bot_Intercept being the asymptote the population-level curve
+  # declines towards. ogl is the other case and does keep an intercept prior.
+  # define_group_prior() returns the group-level rows alone, and for a
+  # transformed term that is the standard deviation and nothing else.
+  expect_true(all(pr$class == "sd"))
+})
+
+test_that("the transformed scale is the delta-method conversion, capped", {
+  set.seed(294)
+  x <- runif(100, 0, 10)
+  y <- runif(100, 0.3, 0.7)
+  spec <- list(nlpars = "bot", ogl = FALSE)
+  get_scale <- function(pr, cls, p) {
+    pr <- as.data.frame(pr)
+    as.numeric(sub(".*, ([0-9.e+-]+)\\)$", "\\1",
+                   pr$prior[pr$class == cls & pr$nlpar == p]))
+  }
+  s_y <- diff(range(y)) / 10
+  m_y <- mean(y)
+  # logit: the response-scale width divided by the Jacobian at the response
+  # mean, which is the same conversion #257 uses for ogl.
+  logit_pr <- bayesnec:::define_group_prior(spec, x, y, par_transform = "logit")
+  expect_equal(get_scale(logit_pr, "sd", "botgl"),
+               signif(s_y / (m_y * (1 - m_y)), 4))
+  # log: a group-level coefficient of variation.
+  log_pr <- bayesnec:::define_group_prior(spec, x, y, par_transform = "log")
+  expect_equal(get_scale(log_pr, "sd", "botgl"), signif(min(s_y / m_y, 1), 4))
+  # The prior set for a transformed term is one row, the standard deviation.
+  expect_equal(nrow(as.data.frame(logit_pr)), 1)
+  # Untransformed, the response-scale width is kept and the name is the
+  # parameter's.
+  none_pr <- bayesnec:::define_group_prior(spec, x, y, par_transform = "none")
+  expect_equal(get_scale(none_pr, "sd", "bot"), signif(s_y, 4))
+})
+
+test_that("the parameter-level conversion is capped in both branches", {
+  # The difference from the ogl conversion, which caps the log branch only.
+  # A response whose own mean is close to a bound makes the logit Jacobian
+  # small and the ratio large; the parameter the deviation is applied to is bot,
+  # which is not the response mean, so the self-limiting argument #257 makes for
+  # ogl does not hold for it, and the cap is applied to both branches.
+  set.seed(294)
+  x <- runif(100, 0, 10)
+  y <- c(runif(99, 0, 0.02), 1 - 1e-4)
+  spec <- list(nlpars = "bot", ogl = FALSE)
+  get_scale <- function(pr, p) {
+    pr <- as.data.frame(pr)
+    as.numeric(sub(".*, ([0-9.e+-]+)\\)$", "\\1",
+                   pr$prior[pr$class == "sd" & pr$nlpar == p]))
+  }
+  s_y <- diff(range(y)) / 10
+  m_y <- mean(y)
+  expect_gt(s_y / (m_y * (1 - m_y)), 1)
+  expect_equal(get_scale(bayesnec:::define_group_prior(spec, x, y,
+                                                      par_transform = "logit"),
+                         "botgl"), 1)
+  # The cap scales with prior_type, or "regularizing" would be inert exactly
+  # where the cap binds -- which is this case, the one the cap exists for.
+  expect_equal(get_scale(bayesnec:::define_group_prior(
+    spec, x, y, prior_type = "regularizing", par_transform = "logit"),
+    "botgl"), 0.5)
+  # #257's ogl conversion is deliberately left as it was.
+  ogl_spec <- list(nlpars = "ogl", ogl = TRUE)
+  expect_equal(get_scale(bayesnec:::define_group_prior(ogl_spec, x, y,
+                                                       ogl_transform = "logit"),
+                         "ogl"),
+               signif(s_y / (m_y * (1 - m_y)), 4))
+})
+
+test_that("define_prior picks the parameter transform from the family", {
+  set.seed(294)
+  x <- runif(100, 0, 10)
+  y <- runif(100, 0.1, 0.9)
+  spec <- list(nlpars = c("bot", "nec"), ogl = FALSE)
+  beta_pr <- as.data.frame(
+    define_prior("nec4param", validate_family("Beta"), x, y, group_spec = spec)
+  )
+  expect_true("botgl" %in% beta_pr$nlpar[beta_pr$class == "sd"])
+  # bot itself still gets its own bounded population-level prior.
+  bot_row <- beta_pr[beta_pr$class == "b" & beta_pr$nlpar == "bot", ]
+  expect_equal(nrow(bot_row), 1)
+  expect_equal(bot_row$ub, "1")
+  # gaussian is unconstrained, so nothing is transformed.
+  gauss_pr <- as.data.frame(
+    define_prior("nec4param", validate_family("gaussian"), x, y,
+                 group_spec = spec)
+  )
+  expect_true("bot" %in% gauss_pr$nlpar[gauss_pr$class == "sd"])
+  expect_false("botgl" %in% gauss_pr$nlpar)
 })

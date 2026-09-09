@@ -58,6 +58,39 @@
 #' \code{model = "nec"} in \code{crf}, the term \code{(bot | group_variable)}
 #' will be dropped in models where that parameter does not exist.
 #'
+#' \bold{The scale a group-level deviation is applied on}
+#'
+#' \pkg{brms} declares a group-level deviation unconstrained, and under the
+#' \code{"identity"} link \code{\link{bnec}} assigns, the quantity it is added
+#' to often is not. Where the likelihood restricts the range of the mean ---
+#' every family except \code{gaussian} --- the deviation is therefore applied
+#' \emph{multiplicatively} rather than added, so that no proposal can put the
+#' quantity outside the range in which the model is defined. On a \code{0} to
+#' \code{1} response it scales the odds and on a positive response it scales the
+#' value itself. This applies to \code{ogl}, where the deviation is on the whole
+#' curve, and to a term on \code{top} or \code{bot}, which are the two
+#' parameters bounded to the support of the mean. A deviation on \code{nec},
+#' \code{ec50}, \code{beta}, \code{slope}, \code{d} or \code{f} is added, as
+#' none of those is bounded by the likelihood. A \code{pgl} term places a
+#' deviation on every parameter at once and so generates a mixture of the two.
+#'
+#' The deviation is centred on zero and a deviation of zero leaves the value
+#' unchanged, so \code{top}, \code{bot}, \code{nec} and \code{beta} keep their
+#' meanings and their own priors. A deviation on \code{top} or \code{bot} adds
+#' no population-level term of its own, so the fit has exactly the parameters the
+#' additive form had and \code{bot} remains the asymptote the population-level
+#' curve declines towards. A prior the user supplies for \code{top} or
+#' \code{bot} must bound it to the range the mean is defined on, because the
+#' multiplicative form is defined only inside that range; a prior that does not
+#' is refused with a message naming the bounds to add. What changes is the name the standard deviation
+#' is reported under: a term on \code{bot} is summarised as
+#' \code{sd(botgl_Intercept)} rather than \code{sd(bot_Intercept)}, and it is on
+#' the log-odds or log scale rather than on the response scale. The generated
+#' term names \code{ogl}, \code{bnecmu}, \code{topgl}, \code{botgl},
+#' \code{bnectop} and \code{bnecbot} are refused as data column names, because
+#' \pkg{brms} would resolve a column of that name in place of the generated term.
+#' See \code{vignette("example3")}.
+#'
 #' \bold{Dispersion sub-models: \code{disp}}
 #'
 #' By default a fit holds the family's dispersion parameter constant across the
@@ -724,6 +757,110 @@ clean_bar_glef <- function(x) {
   gsub("\\(|\\)", "", x)
 }
 
+#' Apply a group-level deviation to one parameter multiplicatively
+#'
+#' @param brmform The \pkg{brms} formula being built.
+#' @param par A \code{\link[base]{character}} string naming the parameter.
+#' @param var A \code{\link[base]{character}} string naming the grouping
+#' variable.
+#' @param kind \code{"logit"} or \code{"log"}, from
+#' \code{\link{par_transform_kind}}.
+#'
+#' @details The parameter-level form of what #257 did to the mean. Instead of
+#' \code{bot ~ 1 + (1 | g)}, which adds an unconstrained deviation to \code{bot}
+#' on \code{bot}'s own scale and lets a leapfrog step take it below zero, the
+#' curve reads an intermediate:
+#'
+#' \preformatted{
+#'   y       ~ bnecbot + (top - bnecbot) * exp(...)
+#'   bnecbot ~ bot * exp(botgl) / (1 - bot + bot * exp(botgl))
+#'   bot     ~ 1
+#'   botgl   ~ 0 + (1 | g)
+#' }
+#'
+#' \code{bot} is still a population-level non-linear parameter with its own
+#' prior and its own name, so \code{b_bot_Intercept} and everything that reads
+#' it are unchanged, and the deviation is zero-centred with
+#' \code{m * exp(0) == m}, so \code{bot} keeps its meaning. What changes is that
+#' no value of \code{botgl} can put \code{bnecbot} outside \code{(0, 1)}.
+#'
+#' \strong{The deviation has no population intercept}, which is what keeps
+#' \code{bot} interpretable. \code{bnecbot} depends on \code{bot} and
+#' \code{botgl} only through their combination, so a free \code{b_botgl} would
+#' be exactly unidentified against \code{bot}: the two would trade off along a
+#' ridge with no change to the likelihood, and \code{b_bot_Intercept} would no
+#' longer be the asymptote the population-level curve declines towards.
+#' \code{ecx(type = "relative")} divides by that asymptote at
+#' \code{R/ecx.R:407} and \code{\link{expand_nec}} reports it, so both would
+#' have been wrong. Writing the sub-formula with \code{0 +} removes the
+#' population term altogether --- \pkg{brms} then declares no \code{b_botgl} ---
+#' and leaves exactly the parameters the additive form had: \code{bot}, the
+#' group-level standard deviation, and the deviations themselves, which the
+#' hierarchical prior centres on zero. Checked against \pkg{brms} 2.23.0 in the
+#' generated Stan code. This is where the parameter-level transform differs from
+#' \code{ogl()}, which is documented as adding a population-level parameter of
+#' its own and keeps its intercept and the zero-centred prior #257 gave it.
+#'
+#' The intermediate is built by setting the \code{nl} and \code{loop}
+#' attributes rather than by calling \code{brms::nlf()}, which returns a list
+#' for \code{bf()} to unpack rather than a formula. Checked against
+#' \pkg{brms} 2.23.0: the sub-formulas may be given in any order, because
+#' \pkg{brms} resolves them by name, and the generated Stan code is identical
+#' either way. See #294.
+#'
+#' @return The modified \pkg{brms} formula.
+#'
+#' @importFrom stats as.formula
+#' @importFrom formula.tools rhs `rhs<-`
+#'
+#' @noRd
+add_par_gl_term <- function(brmform, par, var, kind) {
+  nms <- par_gl_names(par)
+  if (is.null(brmform[[2]][[nms[["dev"]]]])) {
+    # First term on this parameter. Substitution is on the symbol rather than
+    # on the deparsed string so that a parameter name occurring inside a longer
+    # name cannot be hit by accident.
+    brmform[[1]][[3]] <- eval(call("substitute", brmform[[1]][[3]],
+                                   stats::setNames(list(as.name(nms[["inter"]])),
+                                                   par)))
+    brmform[[2]][[nms[["dev"]]]] <- as.formula(paste(nms[["dev"]], "~ 0"))
+    inter_form <- as.formula(
+      paste(nms[["inter"]], "~",
+            ogl_transform_expr(kind, m = par, o = nms[["dev"]]))
+    )
+    attr(inter_form, "nl") <- TRUE
+    attr(inter_form, "loop") <- TRUE
+    brmform[[2]][[nms[["inter"]]]] <- inter_form
+  }
+  tmp_rhs <- deparse1(rhs(brmform[[2]][[nms[["dev"]]]]))
+  # The term, not the variable name. Testing for the name alone drops a second
+  # grouping whose name is a substring of one already added: (bot | grp2) +
+  # (bot | grp) kept only grp2, silently and depending on the order written.
+  if (!has_gl_term(tmp_rhs, var)) {
+    rhs(brmform[[2]][[nms[["dev"]]]]) <-
+      str2lang(paste0(tmp_rhs, " + (1 |", var, ")"))
+  }
+  brmform
+}
+
+#' Whether a sub-formula's right-hand side already groups by a variable
+#'
+#' @param rhs_str The deparsed right-hand side.
+#' @param var A \code{\link[base]{character}} string naming the grouping
+#' variable.
+#'
+#' @details \code{deparse1()} of a term appended as \code{" + (1 |", var, ")"}
+#' renders as \code{(1 | var)}, with the space \pkg{R} inserts around the bar.
+#' Both spellings are tested so that this does not depend on how the string was
+#' built. See #294.
+#'
+#' @return A \code{\link[base]{logical}}.
+#' @noRd
+has_gl_term <- function(rhs_str, var) {
+  any(vapply(c(paste0("(1 | ", var, ")"), paste0("(1 |", var, ")")),
+             grepl, logical(1), x = rhs_str, fixed = TRUE))
+}
+
 #' @noRd
 #' @importFrom stats terms
 #' @importFrom formula.tools rhs `rhs<-`
@@ -735,13 +872,29 @@ add_formula_glef <- function(model, brmform, bnecform, data,
   random_call <- rhs(eval(parse(text = to_eval)))
   random_call <- gsub("\\) \\+ ", ") impossiblestr ", deparse1(random_call))
   split_random_call <- strsplit(random_call, " impossiblestr ")[[1]]
+  # Decided once, before either branch, because pgl() and an explicit
+  # (par | group) term must agree: pgl() is documented as a term on every
+  # parameter at once, so it has to expand to exactly what writing those terms
+  # out by hand would give. Only top and bot are transformed; see
+  # par_transform_pars() for why the others are left additive. #294.
+  par_kind <- par_transform_kind(family)
+  # Read before either branch, because add_par_gl_term() appends sub-formulas of
+  # its own. Iterating over a list that is growing would put a group-level term
+  # on the generated terms as well as on the parameters, and validating the
+  # explicit terms against it would accept (botgl | group) as a parameter of the
+  # model whenever a pgl term had already generated botgl.
+  model_pars <- names(brmform[[2]])
   if (any(grepl("pgl(", split_random_call, fixed = TRUE))) {
     str_calls <- grep("pgl(", split_random_call, fixed = TRUE, value = TRUE)
     vars <- all.vars(str2lang(paste0(str_calls, collapse = " + ")))
-    for (i in seq_along(brmform[[2]])) {
+    for (p in model_pars) {
       for (j in seq_along(vars)) {
-        brmform[[2]][[i]] <- str2lang(paste0(deparse1(brmform[[2]][[i]]),
-                                             " + (1 |", vars[j], ")"))
+        if (par_is_transformed(p, par_kind)) {
+          brmform <- add_par_gl_term(brmform, p, vars[j], par_kind)
+        } else {
+          brmform[[2]][[p]] <- str2lang(paste0(deparse1(brmform[[2]][[p]]),
+                                               " + (1 |", vars[j], ")"))
+        }
       }
     }
   }
@@ -764,8 +917,8 @@ add_formula_glef <- function(model, brmform, bnecform, data,
     split_str_calls <- tmp_list
     pars <- sapply(split_str_calls, `[[`, 1)
     vars <- sapply(split_str_calls, `[[`, 2)
-    if (!all(pars %in% names(brmform[[2]]))) {
-      to_flag <- pars[!pars %in% names(brmform[[2]])]
+    if (!all(pars %in% model_pars)) {
+      to_flag <- pars[!pars %in% model_pars]
       message("The parameter(s) ", paste0("\"", to_flag, "\"", collapse = "; "),
               " are not valid parameters in ", model, ". Ignoring...")
       split_str_calls <- split_str_calls[-match(to_flag, pars)]
@@ -774,8 +927,14 @@ add_formula_glef <- function(model, brmform, bnecform, data,
     }
     if (length(split_str_calls) > 0) {
       for (k in seq_along(pars)) {
+        if (par_is_transformed(pars[k], par_kind)) {
+          brmform <- add_par_gl_term(brmform, pars[k], vars[k], par_kind)
+          next
+        }
         tmp_rhs <- deparse1(rhs(brmform[[2]][[pars[k]]]))
-        if (!grepl(vars[k], tmp_rhs)) {
+        # See has_gl_term(). The substring test this replaces dropped the second
+        # of (nec | grp2) + (nec | grp) on every version up to 2.1.4.
+        if (!has_gl_term(tmp_rhs, vars[k])) {
           rhs(brmform[[2]][[pars[k]]]) <- str2lang(paste0(tmp_rhs, " + (1 |",
                                                           vars[k], ")"))
         }
@@ -844,6 +1003,16 @@ add_formula_glef <- function(model, brmform, bnecform, data,
 #' dropped silently here. \code{add_formula_glef()} messages about it and
 #' ignores it, so generating a prior for a term that will not be in the model
 #' would put a row in the set that never reaches the fit.
+#'
+#' \code{nlpars} names the parameters the user put a term on, not the names
+#' those terms are declared under in the fit. Where the deviation is applied
+#' multiplicatively the standard deviation is declared on \code{botgl} rather
+#' than on \code{bot} (#294), but which parameters that applies to is a
+#' property of the family, and this function is not given one --
+#' \code{\link{get_priors}} and \code{\link{amend}} both call it before the
+#' family is resolved. The mapping is therefore made in
+#' \code{\link{define_group_prior}}, which has the family, and this function
+#' keeps reporting the structure the user wrote.
 #'
 #' @return A \code{\link[base]{list}} with elements \code{nlpars}, the
 #' non-linear parameters carrying a group-level standard deviation, and
