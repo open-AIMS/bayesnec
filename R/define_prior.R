@@ -106,18 +106,22 @@ positive_scale <- function(response, probs) {
 #' both. The shape that puts the maximum density at \emph{m} and still reaches
 #' the highest dose is 8.6 on a linear series and 1.03 on the widest nassarius
 #' series, and at 1.03 the density decreases monotonically across the whole
-#' tested range, which is the failure #273 reported in mirror image.
+#' tested range, which is the failure #273 reported with its direction
+#' reversed.
 #'
 #' \code{mu} is the median of the distinct positive predictor values, on the
 #' log scale. Distinct values rather than the observation vector so that
 #' replication does not change the prior, which is the rule #269 established
-#' for the gamma rate. Because the logarithm is monotonic this is the log of
-#' the median dose, so the prior's maximum density is at the median dose
-#' measured on the log scale and its median is the median dose. Fisher et al.
-#' (2024) specify maximum density at the median predictor without saying which
-#' scale the density is measured on; this reads it on the log-dose scale, which
-#' is the scale a dilution series is designed on, and it is the only reading
-#' under which a prior peaking at the median can also reach 125 times it.
+#' for the gamma rate. Taking the median after logging returns the log of the
+#' median dose where the number of distinct positive doses is odd, and the log
+#' of the geometric mean of the two central doses where it is even, that being
+#' their midpoint on the log axis rather than on the dose axis. The prior's
+#' maximum density is therefore at that dose measured on the log scale, and its
+#' median on the dose scale is that dose. Fisher et al. (2024) specify maximum
+#' density at the median predictor without saying which scale the density is
+#' measured on; this reads it on the log-dose scale, which is the scale a
+#' dilution series is designed on, and it is the only reading under which a
+#' prior peaking at the median can also reach 125 times it.
 #'
 #' \code{sigma} on the dose scale is set so that the prior's central 95\%
 #' interval spans the range of the tested doses on the log scale:
@@ -151,16 +155,18 @@ positive_scale <- function(response, probs) {
 #' a concentration-response curve at all, and the fallback is chosen to be
 #' harmless rather than to be right: the remedy is more concentrations, not a
 #' better prior. A predictor with no positive values at all is refused, because
-#' there is then no dose scale to place the prior on; \code{\link{check_data}}
-#' fails first on such data, so this is a backstop.
+#' there is then no dose scale to place the prior on. \code{check_data()} fails
+#' first on such data, so this is a backstop.
 #'
 #' Evidence for all of the above is prior-only; nothing was fitted. Priors were
 #' obtained through \code{\link{get_priors}} over five designs, three predictor
 #' transforms, all 12 families, both links and both prior types, and scored by
-#' the truncated prior CDF at a known parameter value. The gamma entry placed
-#' the true \emph{NEC} outside the central 95\% of the prior in 8 of 30 design
-#' by transform by parameter cells; the prior built here does so in none. See
-#' #302.
+#' the truncated prior CDF at a known parameter value. The prior is a function
+#' of the predictor alone, so 30 design by transform by parameter cells exhaust
+#' it. The defaults being replaced placed the true value outside the central
+#' 95\% of the truncated prior in 5 of those 30, every one of them a
+#' log-spaced series read on the recorded or the square-root scale; the prior
+#' built here does so in none. See #302.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
 #' was supplied.

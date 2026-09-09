@@ -654,28 +654,29 @@ test_that("the nec prior is finite when most observations are controls", {
   # median zero, and under the gamma entry 1 / (0 / 4) put "gamma(5, Inf)" into
   # the prior table. The location is stated as a value rather than recomputed,
   # so that the test says what the prior should be and not how define_prior()
-  # arrives at it: the distinct positive values are 5, 15, 45, 135, 200, 300,
-  # whose median is 90. See #269.
-  x <- c(rep(0, 12), 5, 15, 45, 135, 200, 300)
+  # arrives at it: the distinct positive values are 5, 15, 45, 135, 300, whose
+  # median is 45. See #269.
+  x <- c(rep(0, 12), 5, 15, 45, 135, 300)
   y <- rev(seq_along(x)) + 1
   pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
                      predictor = x, response = y)
   s <- pr$prior[pr$nlpar == "nec"]
   expect_equal(prior_dist(s), "lognormal")
-  expect_equal(exp(prior_pars(s)[1]), 90)
+  expect_equal(exp(prior_pars(s)[1]), 45)
   expect_true(is.finite(prior_pars(s)[2]))
 })
 
 test_that("the nec prior location ignores replication, not just zeros", {
   # The location is taken from the concentration series, so an unbalanced
   # design gets a different prior from the one an observation median would
-  # build whether or not a zero is present. Distinct values 0.5, 1, 3, 10, 30,
-  # 100 have median 6.5, against an observation median of 10. See #269.
-  x <- c(0.5, rep(1, 3), rep(3, 6), rep(10, 8), rep(30, 2), 100)
+  # build whether or not a zero is present. Distinct values 0.5, 1, 3, 10, 30
+  # have median 3, against an observation median of 6.5. See #269.
+  x <- c(0.5, rep(1, 3), rep(3, 6), rep(10, 8), rep(30, 2))
   y <- rev(seq_along(x)) + 1
   pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
                      predictor = x, response = y)
-  expect_equal(exp(prior_pars(pr$prior[pr$nlpar == "nec"])[1]), 6.5)
+  expect_equal(exp(prior_pars(pr$prior[pr$nlpar == "nec"])[1]), 3)
+  expect_equal(median(x), 6.5)
 })
 
 test_that("replication does not change the nec prior at all", {
@@ -693,13 +694,25 @@ test_that("replication does not change the nec prior at all", {
 
 test_that("the nec prior median is the median dose tested (#302)", {
   # Fisher et al. (2024) specify maximum density at the median predictor. The
-  # logarithm is monotonic, so the median of the logged distinct positive doses
-  # is the log of their median: the prior peaks at the median dose measured on
-  # the log scale, and its median on the dose scale is the median dose itself.
-  x <- rep(c(0, 0.1, 1, 10, 1000), each = 6)
+  # median is taken after logging, so for an odd number of distinct positive
+  # doses it is the log of their median: the prior peaks at the median dose
+  # measured on the log scale, and its median on the dose scale is that dose.
+  x <- rep(c(0, 0.1, 1, 10, 100, 1000), each = 6)
   s <- nec_prior_for(x)
   expect_equal(prior_dist(s), "lognormal")
-  expect_equal(qlnorm(0.5, prior_pars(s)[1], prior_pars(s)[2]), 1)
+  expect_equal(qlnorm(0.5, prior_pars(s)[1], prior_pars(s)[2]), 10)
+})
+
+test_that("an even count of doses centres on their log midpoint (#302)", {
+  # Taking the median after logging interpolates between the two central doses
+  # on the log axis rather than on the dose axis, so it returns their geometric
+  # mean and not their arithmetic one. That is the midpoint of the scale the
+  # series is spaced on, and it is stated here because the two coincide for an
+  # odd count and the difference is otherwise invisible.
+  x <- rep(c(0, 1, 10, 100, 1000), each = 6)
+  s <- nec_prior_for(x)
+  expect_equal(qlnorm(0.5, prior_pars(s)[1], prior_pars(s)[2]), sqrt(10 * 100))
+  expect_equal(median(c(1, 10, 100, 1000)), 55)
 })
 
 test_that("the nec prior spans the tested doses on the log scale (#302)", {

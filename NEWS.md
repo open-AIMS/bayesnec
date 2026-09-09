@@ -28,9 +28,12 @@
   the normal entry, for the same experiment expressed three ways.
 
   **The location and the width.** The mean on the log scale is the median of the
-  distinct positive predictor values, logged; since the logarithm is monotonic
-  the prior's maximum density is at the median dose measured on the log scale
-  and its median on the dose scale is the median dose. The standard deviation is
+  distinct positive predictor values after logging. That is the log of the
+  median dose where the number of distinct positive doses is odd, and the log of
+  the geometric mean of the two central doses where it is even, that being their
+  midpoint on the log axis rather than on the dose axis. The prior's maximum
+  density is at that dose measured on the log scale and its median on the dose
+  scale is that dose. The standard deviation is
   set so that the prior's central 95% interval spans the tested doses on the log
   scale, `(log(max(x)) - log(min(x[x > 0]))) / 3.92`, so the width is a stated
   criterion rather than a chosen constant and adapts to the design. Expressed as
@@ -63,9 +66,11 @@
   The evidence is prior-only; nothing was fitted. Priors were obtained through
   `get_priors()` over five designs, three predictor transforms, all 12 families,
   both links and both prior types, and scored by the truncated prior CDF at a
-  known parameter value. The gamma entry placed the true *NEC* outside the
-  central 95% of the prior in 8 of 30 design by transform by parameter cells;
-  the prior adopted here does so in none.
+  known parameter value. The prior is a function of the predictor alone, so 30
+  design by transform by parameter cells exhaust it. The defaults being
+  replaced placed the true value outside the central 95% of the truncated prior
+  in 5 of those 30, every one of them a log-spaced series read on the recorded
+  or the square-root scale; the prior adopted here does so in none.
 
 - **The `nec` and `ec50` gamma prior was corrected to peak at the median
   predictor** earlier in this release cycle, before being replaced above. The
