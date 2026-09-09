@@ -887,10 +887,16 @@ test_that("a predictor with no positive values is refused (#302)", {
 
 test_that("a hurdle mu block reads the whole predictor for nec (#302)", {
   # Both blocks of a hurdle fit are evaluated over the whole predictor range,
-  # and their nec bounds are rebuilt from it, so the prior inside those bounds
-  # is rebuilt from it too. Priming the mu block's nec from the survivors alone
-  # would state that the threshold is below the highest concentration at which
+  # and their nec bounds are taken from it, so the prior inside those bounds is
+  # taken from it too. Priming the mu block's nec from the survivors alone would
+  # state that the threshold is below the highest concentration at which
   # anything survived, which is the failure this change removes elsewhere.
+  #
+  # Only the mu block moves. survival_by_x() returns sort(unique(predictor)), so
+  # the second block already had the whole predictor's distinct values and its
+  # hunec assertion below held before this change as well; it is kept because
+  # the two blocks agreeing about their shared predictor is the property, and
+  # one of the two would otherwise go unasserted.
   set.seed(302)
   x <- rep(c(0, 1, 10, 100), each = 6)
   y_sub <- c(rgamma(18, 25, 25 / 8), rep(0, 6))     # survivors up to x = 10

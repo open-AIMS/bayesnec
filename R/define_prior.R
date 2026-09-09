@@ -110,8 +110,21 @@ positive_scale <- function(response, probs) {
 #' both. The shape that puts the maximum density at \emph{m} and still reaches
 #' the highest dose is 8.6 on a linear series and 1.03 on the widest nassarius
 #' series, and at 1.03 the density decreases monotonically across the whole
-#' tested range, which is the failure #273 reported with its direction
-#' reversed.
+#' tested range, so it no longer has a maximum at \emph{m} at all --- which is
+#' the failure #273 reported with its direction reversed.
+#'
+#' The prior built here has a monotonically decreasing density on the dose scale
+#' over the whole tested range on all four nassarius series, and that is not the
+#' same defect. A lognormal's dose-scale mode is \code{exp(mu - sigma^2)}, so
+#' any lognormal wide enough sits below the lowest dose; the density falls
+#' because the change of variable from the log scale to the dose scale
+#' redistributes it, not because the prior has lost its centre. Its maximum
+#' density is at the median dose on the log scale, which is the scale the
+#' convention is now stated on, and the median of the untruncated prior on the
+#' dose scale is the median dose. What the gamma at shape 1.03 loses is the
+#' centre itself: neither its mode nor its median is at \emph{m} on any scale.
+#' Over the sweep below the truncated prior CDF at the true value runs 0.43 to
+#' 0.95, so the mass is where the doses are.
 #'
 #' \code{mu} is the median of the distinct positive predictor values, on the
 #' log scale. Distinct values rather than the observation vector so that
@@ -120,8 +133,13 @@ positive_scale <- function(response, probs) {
 #' median dose where the number of distinct positive doses is odd, and the log
 #' of the geometric mean of the two central doses where it is even, that being
 #' their midpoint on the log axis rather than on the dose axis. The prior's
-#' maximum density is therefore at that dose measured on the log scale, and its
-#' median on the dose scale is that dose. Fisher et al. (2024) specify maximum
+#' maximum density is therefore at that dose measured on the log scale, and the
+#' median of the untruncated prior on the dose scale is that dose. Both
+#' statements describe the untruncated prior. Truncation at the highest dose
+#' removes part of the upper tail and so pulls the median down: on
+#' \code{\link{nec_data}} the truncated median is 0.58 against a median dose of
+#' 0.88, and on the nassarius contaminant B series 1.23 against 2.00.
+#' Fisher et al. (2024) specify maximum
 #' density at the median predictor without saying which scale the density is
 #' measured on; this reads it on the log-dose scale, which is the scale a
 #' dilution series is designed on, and it is the only reading under which a
@@ -150,7 +168,7 @@ positive_scale <- function(response, probs) {
 #' applied. The rule adopted leaves 9.0\% below the lowest dose there and 3.3\%
 #' on a series spaced evenly from zero. Expressed as a multiple of
 #' \code{sd(log x)} it lands between 0.73 and 1.18 across the five designs
-#' measured, at 0.93 to 1.03 on the four nassarius series, and at 1.75 on
+#' measured, at 0.92 to 1.03 on the four nassarius series, and at 1.75 on
 #' \code{\link{nec_data}}, whose predictor is continuous and densely sampled, so
 #' it is not equivalent to any one constant.
 #'
@@ -195,7 +213,8 @@ positive_scale <- function(response, probs) {
 #' 95\% of the truncated prior in 5 of those 30, every one of them a
 #' log-spaced series read on the recorded or the square-root scale; the prior
 #' built here does so in none, with the truncated CDF at the true value running
-#' 0.47 to 0.95. The sweep does not cover a true threshold at the very bottom of
+#' 0.47 to 0.95 over the zero-control designs and 0.43 to 0.95 over all 60
+#' cells. The sweep does not cover a true threshold at the very bottom of
 #' a wide dilution series, which is checked separately: on the nassarius
 #' contaminant B series a threshold at the lowest dose applied sits at a
 #' truncated CDF of 0.030, inside the central 95\%, against 0.005 under a prior
@@ -290,7 +309,8 @@ define_prior <- function(model, family, predictor, response,
   if (is_hurdle_family(family)) {
     hurdle_priors <- define_hurdle_prior(model, family, predictor, response,
                                          prior_type = prior_type,
-                                         model_survival = model_survival)
+                                         model_survival = model_survival,
+                                         predictor_scale = predictor_scale)
     # A group-level term reaches the mu block only. add_formula_glef() runs
     # before the hu sub-formulas are attached, so `ogl` and `pgl` never see
     # them -- checked against the formula wrangle_model_formula() actually
@@ -856,7 +876,11 @@ define_group_prior <- function(group_spec, predictor, response,
 #' @noRd
 define_hurdle_prior <- function(model, family, predictor, response,
                                 prior_type = "uninformative",
-                                model_survival = NULL) {
+                                model_survival = NULL,
+                                predictor_scale = NULL) {
+  if (is.null(predictor_scale)) {
+    predictor_scale <- predictor
+  }
   dpar <- hurdle_dpar(family)
   # The second block may carry a different equation from the response block,
   # in which case its priors must be built for that equation's parameters.
@@ -870,12 +894,12 @@ define_hurdle_prior <- function(model, family, predictor, response,
   # well below the real control level.
   mu_priors <- define_prior(model, hurdle_mu_family(family),
                             parts$mu$x, parts$mu$y, prior_type = prior_type,
-                            predictor_scale = predictor)
+                            predictor_scale = predictor_scale)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
                             parts$hu$x, parts$hu$y, prior_type = prior_type,
-                            predictor_scale = predictor)
+                            predictor_scale = predictor_scale)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
   # Both blocks are evaluated over the *whole* predictor range inside the joint
@@ -884,7 +908,10 @@ define_hurdle_prior <- function(model, family, predictor, response,
   # second block from the deduplicated unique-x vector. `predictor_scale` above
   # is what makes the predictor-scaled priors and their bounds come from the
   # whole predictor rather than from those subsets, so that neither threshold is
-  # boxed out of the range it must cover.
+  # boxed out of the range it must cover. Only the mu block is affected in
+  # practice: survival_by_x() returns sort(unique(predictor)), so the second
+  # block's own vector already has the whole predictor's distinct values, and
+  # its prior and bounds are unchanged.
   #
   # The prior is taken from the whole predictor and not only its bounds. A prior
   # shaped by the survivor subset but truncated to the whole predictor states
