@@ -444,6 +444,36 @@ cleared it efficiently, and it is what
 reveals a heavily thinned fit. `?check_sampling` sets out the distinction. The
 decision is taken on `min_ess`; the ratio is read alongside it.
 
+Divergent transitions have an obvious remedy, and trying it is informative
+whether or not it works. A smaller step size makes the sampler less likely to
+overshoot a region of high curvature, so `adapt_delta` is the first thing to
+raise. The two models that failed above are refitted here at 0.99, against the
+default of 0.8:
+
+```{r retry-adapt, results = "hide"}
+retry <- bnec(suc | trials(tot) ~ crf(dose, model = c("ecx4param", "ecxwb2")),
+              data = surv, family = fam, iter = 5e3, chains = 3, seed = 17,
+              control = list(adapt_delta = 0.99))
+```
+
+```{r retry-adapt-table}
+check_sampling(retry)
+```
+
+The effective sample size improves and the divergences do not. That outcome is
+the point of running it: it separates two situations the screen cannot tell
+apart from the counts alone. Divergences that fall when `adapt_delta` rises are
+a step-size problem, and the fit is recoverable at more runtime. Divergences in
+the thousands that survive `adapt_delta = 0.99` are not about the step size at
+all; they say the posterior has a shape the sampler cannot traverse, which
+usually means the equation is a poor description of these data. Nothing is
+gained by raising the setting further.
+
+That is what makes the exclusion in the next section defensible. A methods
+statement that says two models exceeded a cutoff invites the question of whether
+a little more tuning would have saved them. One that says the standard remedy
+was applied and did not change the outcome has answered it.
+
 Chain mixing has to be inspected as well, and for every model rather than for
 the worst one. Poor mixing occurs at an acceptable Rhat, and there is no
 established scalar that catches what rank-normalised split-Rhat and bulk and
