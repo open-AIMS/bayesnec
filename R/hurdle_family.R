@@ -39,8 +39,8 @@ hurdle_dpar <- function(family) {
 #' and initial values should come from whatever family that subset looks like:
 #' Gamma for hurdle_gamma, Beta for zero_inflated_beta.
 #'
-#' \strong{The mean link is carried, not reassigned.} brms applies the inverse
-#' mean link to the whole non-linear expression, so under
+#' The mean link the caller chose is used here rather than replaced. brms
+#' applies the inverse mean link to the whole non-linear expression, so under
 #' \code{hurdle_gamma(link = "log")} the generated Stan code reads
 #' \code{mu = exp(nlp_bot + (nlp_top - nlp_bot) * ...)} and \code{top} and
 #' \code{bot} are on the log scale. Returning an identity-link family here made

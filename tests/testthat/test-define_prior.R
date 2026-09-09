@@ -676,7 +676,6 @@ test_that("the nec prior location ignores replication, not just zeros", {
   pr <- define_prior(model = "nec3param", family = Gamma(link = "identity"),
                      predictor = x, response = y)
   expect_equal(exp(prior_pars(pr$prior[pr$nlpar == "nec"])[1]), 3)
-  expect_equal(median(x), 6.5)
 })
 
 test_that("replication does not change the nec prior at all", {
@@ -711,18 +710,80 @@ test_that("an even count of doses centres on their log midpoint (#302)", {
   # odd count and the difference is otherwise invisible.
   x <- rep(c(0, 1, 10, 100, 1000), each = 6)
   s <- nec_prior_for(x)
+  # 55 is the arithmetic median of the four doses; the prior's median is 31.6.
   expect_equal(qlnorm(0.5, prior_pars(s)[1], prior_pars(s)[2]), sqrt(10 * 100))
-  expect_equal(median(c(1, 10, 100, 1000)), 55)
 })
 
-test_that("the nec prior spans the tested doses on the log scale (#302)", {
-  # The width is set so the untruncated central 95% interval runs from the
-  # lowest positive dose tested to the highest. That is the criterion the width
-  # is chosen by, so it is asserted directly rather than through a constant.
-  x <- rep(c(0, 0.01, 0.1, 1, 10, 100), each = 6)
+test_that("the nec prior covers every dose tested (#302)", {
+  # The width is set so the untruncated central 95% interval reaches both ends
+  # of the concentration series. That is the criterion the width is chosen by,
+  # so it is asserted directly rather than through a constant, and it is
+  # asserted on series that are asymmetric about their median on the log axis
+  # in each direction -- which is where setting the width from half the range
+  # instead leaves the interval correctly wide and wrongly centred.
+  data(nassarius, package = "bayesnec", envir = environment())
+  series <- list(
+    symmetric = c(0, 0.01, 0.1, 1, 10, 100),
+    # median above the log mid-range: one dose far above the rest
+    top_heavy = sort(unique(nassarius$dose[nassarius$contaminant == "A"])),
+    # median below the log mid-range: the low doses are sparse
+    bottom_heavy = sort(unique(nassarius$dose[nassarius$contaminant == "B"]))
+  )
+  for (nm in names(series)) {
+    x <- rep(series[[nm]], each = 6)
+    pos <- unique(x[x > 0])
+    p <- prior_pars(nec_prior_for(x))
+    # covers, not equals: one end is reached exactly and the other is passed,
+    # because the width is the larger of the two half-widths.
+    expect_lte(qlnorm(0.025, p[1], p[2]), min(pos) * (1 + 1e-8), label = nm)
+    expect_gte(qlnorm(0.975, p[1], p[2]), max(pos) * (1 - 1e-8), label = nm)
+  }
+  # Stated as a failing alternative so the reason for the rule is recorded: a
+  # width taken from half the range stops at 9.96 on the contaminant A series,
+  # against a highest dose applied of 20.
+  z <- log(unique(series$top_heavy)[unique(series$top_heavy) > 0])
+  expect_lt(qlnorm(0.975, median(z), diff(range(z)) / (2 * qnorm(0.975))),
+            max(series$top_heavy))
+})
+
+test_that("a low threshold on a wide series is inside the prior (#302)", {
+  # The design sweep behind this change placed every true value in the upper
+  # half of its series, so it could not detect a prior that fails at the bottom.
+  # The nassarius contaminant B series has sparse low doses, so its median sits
+  # above its log mid-range and this is the direction at risk.
+  data(nassarius, package = "bayesnec", envir = environment())
+  x <- rep(sort(unique(nassarius$dose[nassarius$contaminant == "B"])), each = 6)
   p <- prior_pars(nec_prior_for(x))
-  expect_equal(qlnorm(0.025, p[1], p[2]), 0.01)
+  lo <- min(x[x > 0])
+  mass <- plnorm(max(x), p[1], p[2]) - plnorm(min(x), p[1], p[2])
+  cdf_at <- function(q) (plnorm(q, p[1], p[2]) - plnorm(min(x), p[1], p[2])) / mass
+  expect_gt(cdf_at(lo), 0.025)
+  expect_gt(cdf_at(0.05), 0.025)
+})
+
+test_that("two distinct doses give a prior spanning both (#302)", {
+  # The smallest design for which the rule is defined rather than falling back.
+  x <- rep(c(0, 1, 100), each = 6)
+  p <- prior_pars(nec_prior_for(x))
+  # two doses are symmetric about their own median on the log axis, so both
+  # ends are reached exactly.
+  expect_equal(qlnorm(0.025, p[1], p[2]), 1)
   expect_equal(qlnorm(0.975, p[1], p[2]), 100)
+})
+
+test_that("the prior is built from the concentrations as recorded (#302)", {
+  # sigma is set by the two extreme doses, so recording a control as a nominal
+  # small positive value states that the value was applied and widens the prior
+  # to cover it. Pinned because it is a change from the gamma entry, whose rate
+  # came from the median and barely noticed the substitution, and because the
+  # remedy is to record a control as 0.
+  base <- c(0, 0.01, 0.1, 1, 10, 100)
+  s0 <- prior_pars(nec_prior_for(rep(base, each = 6)))
+  eps <- base
+  eps[eps == 0] <- 1e-6
+  s1 <- prior_pars(nec_prior_for(rep(eps, each = 6)))
+  expect_gt(s1[2], s0[2] * 2)
+  expect_equal(qlnorm(0.025, s1[1], s1[2]), 1e-6)
 })
 
 test_that("the nec prior reaches the top of a log-spaced series (#302)", {
@@ -822,6 +883,47 @@ test_that("a predictor with no positive values is refused (#302)", {
   # first on a constant predictor, so this is a backstop rather than the
   # message a user normally sees.
   expect_error(bayesnec:::predictor_prior(rep(0, 10)), "no positive values")
+})
+
+test_that("a hurdle mu block reads the whole predictor for nec (#302)", {
+  # Both blocks of a hurdle fit are evaluated over the whole predictor range,
+  # and their nec bounds are rebuilt from it, so the prior inside those bounds
+  # is rebuilt from it too. Priming the mu block's nec from the survivors alone
+  # would state that the threshold is below the highest concentration at which
+  # anything survived, which is the failure this change removes elsewhere.
+  set.seed(302)
+  x <- rep(c(0, 1, 10, 100), each = 6)
+  y_sub <- c(rgamma(18, 25, 25 / 8), rep(0, 6))     # survivors up to x = 10
+  fam <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+  pr <- bayesnec:::define_hurdle_prior("nec3param", fam, x, y_sub)
+  whole <- bayesnec:::predictor_prior(x)
+  expect_equal(pr$prior[pr$nlpar == "nec"], whole)
+  expect_equal(pr$prior[pr$nlpar == "hunec"], whole)
+  expect_equal(as.numeric(pr$ub[pr$nlpar == "nec"]), 100)
+})
+
+test_that("a hurdle mu block with no surviving dose still builds (#302)", {
+  # Where every survivor sits at the zero control the mu block's own predictor
+  # has no positive value, so a prior built from that subset could not be
+  # constructed at all. Reading the whole predictor removes the refusal.
+  set.seed(302)
+  x <- rep(c(0, 1, 10, 100), each = 6)
+  y_ctl <- c(rgamma(6, 25, 25 / 8), rep(0, 18))
+  fam <- brms::hurdle_gamma(link = "identity", link_hu = "identity")
+  pr <- bayesnec:::define_hurdle_prior("nec3param", fam, x, y_ctl)
+  expect_equal(pr$prior[pr$nlpar == "nec"], bayesnec:::predictor_prior(x))
+})
+
+test_that("define_prior still refuses an integer predictor", {
+  # set_distribution() is called for this error alone; its value is no longer
+  # read. Pinned here so that a later change to set_distribution() cannot
+  # remove the check from this route without a test noticing.
+  x <- as.integer(rep(c(0L, 1L, 10L, 100L), each = 6))
+  y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 6)
+  expect_error(
+    define_prior("nec3param", Beta(link = "identity"), x, y),
+    "does not currently support integer concentration"
+  )
 })
 
 # ---- #294, priors for a transformed parameter-level deviation ---------------

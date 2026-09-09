@@ -308,7 +308,7 @@ test_that("hurdle_mu_family picks the right family for the non-zero subset", {
   expect_equal(bayesnec:::hurdle_mu_family("zero_inflated_beta")$family, "beta")
 })
 
-test_that("hurdle_mu_family carries the mean link the caller chose", {
+test_that("hurdle_mu_family uses the mean link the caller chose", {
   # A tag names a family and nothing more, so it takes the link bnec assigns.
   expect_equal(bayesnec:::hurdle_mu_family("hurdle_gamma")$link, "identity")
   expect_equal(bayesnec:::hurdle_mu_family("zero_inflated_beta")$link,

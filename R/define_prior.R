@@ -92,9 +92,13 @@ positive_scale <- function(response, probs) {
 #' of the units a dose is recorded in, so the same experiment received priors
 #' differing roughly 300-fold in width according to whether the dose was
 #' recorded on a scale reaching above 1, on one confined to the unit interval,
-#' or logged. Measured on the \code{\link{nassarius}} contaminant A series, the
-#' central 95\% interval of the truncated prior covered 1.7\%, 81\% and 1111\%
-#' of the predictor range respectively.
+#' or logged. Measured on the \code{\link{nassarius}} contaminant A dose series,
+#' the central 95\% interval of the prior covered 1.7\% of the predictor range
+#' under the gamma entry, 81\% under \code{beta(2, 2)} rescaled to that range,
+#' and 1097\% under the normal entry before truncation, for the same experiment
+#' expressed three ways. The last is measured untruncated because after
+#' truncation it is 95\% of the range by construction, which is the point: it
+#' is effectively flat over everything the bounds permit.
 #'
 #' The gamma entry could not describe a log-spaced series at any rate. The
 #' spread of a gamma is tied to its shape, so \code{gamma(5, 4/m)} places its
@@ -124,30 +128,54 @@ positive_scale <- function(response, probs) {
 #' prior peaking at the median can also reach 125 times it.
 #'
 #' \code{sigma} on the dose scale is set so that the prior's central 95\%
-#' interval spans the range of the tested doses on the log scale:
-#' \code{(log(max) - log(min positive)) / (2 * qnorm(0.975))}. This is a stated
-#' criterion rather than a chosen constant, and it adapts to the design. The
-#' alternative considered and not taken was a fixed multiple \emph{k} of
-#' \code{sd(log x)}. Any such multiple large enough to be broad on a densely
-#' sampled continuous predictor puts a large share of the prior below the
-#' lowest dose tested on a wide dilution series, where the lower truncation
-#' bound is the zero control: at \emph{k} = 1.5, 21\% of the truncated prior on
+#' interval covers every dose tested: it is the larger of the two half-widths
+#' from \code{mu} to the ends of the logged series, divided by
+#' \code{qnorm(0.975)}. The criterion is the whole of the rule --- a prior on a
+#' threshold should not exclude a concentration the experiment applied, at
+#' either end --- and it is stated rather than a constant being chosen, so it
+#' adapts to the design. Setting \code{sigma} from half the range instead gives
+#' the interval the right width and the wrong centre wherever the series is
+#' asymmetric about its median on the log axis: on the nassarius contaminant A
+#' series that interval runs 0.005 to 9.96 against a series running 0.01 to 20,
+#' so it stops short of the highest dose applied.
+#'
+#' A fixed multiple \emph{k} of \code{sd(log x)} was considered and not taken.
+#' It states no criterion, so it cannot guarantee the coverage above on a design
+#' it was not chosen against, and any multiple large enough to be broad on a
+#' densely sampled continuous predictor puts a large share of the prior below
+#' the lowest dose tested on a wide dilution series, where the lower truncation
+#' bound is the zero control. At \emph{k} = 1.5, 21\% of the truncated prior on
 #' the nassarius contaminant A series lies below its lowest dose of 0.01, and
-#' the lower end of its 95\% interval is 0.0002, four orders of magnitude below
-#' anything measured. The range-spanning rule leaves 5.5\% below the lowest
-#' dose there and 0.2\% on a series spaced evenly from zero. Expressed as a
-#' multiple of \code{sd(log x)} it lands between 0.73 and 0.83 on the dilution
-#' series measured and at 1.22 on \code{\link{nec_data}}, whose predictor is
-#' continuous and densely sampled, so it is not equivalent to any one constant.
+#' the lower end of its 95\% interval is 0.00022, a factor of 45 below anything
+#' applied. The rule adopted leaves 9.0\% below the lowest dose there and 3.3\%
+#' on a series spaced evenly from zero. Expressed as a multiple of
+#' \code{sd(log x)} it lands between 0.73 and 1.18 across the five designs
+#' measured, at 0.93 to 1.03 on the four nassarius series, and at 1.75 on
+#' \code{\link{nec_data}}, whose predictor is continuous and densely sampled, so
+#' it is not equivalent to any one constant.
+#'
+#' \code{sigma} is therefore set by the two extreme doses and not by the spread
+#' of the series between them, which makes it sensitive to how the control is
+#' recorded. The prior is built from the concentrations as recorded, so a
+#' control entered as a nominal small positive value states that the value was
+#' applied and the prior covers it: on the nassarius contaminant A series
+#' \code{sigma} is 2.30 with the control at 0, 2.59 with it at 0.001 and 6.11
+#' with it at 1e-6. Record a control as 0, which is what \code{\link{bnec}}
+#' expects and what the truncation bound is then taken from.
 #'
 #' \code{sigma} on the branch for a predictor supplied already logged stays at
-#' \code{10 sd(x)}. That entry is the published default, every herbicide
+#' \code{10 sd(x)}. That multiplier is the published default, every herbicide
 #' analysis in Fisher et al. (2024) uses it, and it is the branch the other two
-#' are being moved to rather than one being changed. The consequence is that
-#' the same data analysed as \code{crf(x)} and as \code{crf(log(x))} still do
-#' not receive the same prior on \code{nec}. That difference is roughly
-#' tenfold, against roughly 300-fold before this change, and it is a difference
-#' in width alone rather than in the shape or the location of the prior.
+#' are being moved to rather than one being changed. Its location and spread are
+#' now read from the distinct values rather than from the observation vector, as
+#' on the other branch, so the entry is not identical to the released one: over
+#' \code{log(herbicide$concentration)}, 580 rows and 9 distinct values, the
+#' location changes from 1.10 to 2.30 and the spread from 26.3 to 31.5. The
+#' consequence of keeping the multiplier is that the same data analysed as
+#' \code{crf(x)} and as \code{crf(log(x))} still do not receive the same prior
+#' on \code{nec}. That difference is roughly tenfold, against roughly 600-fold
+#' before this change, and it is a difference in width alone rather than in the
+#' shape or the location of the prior.
 #'
 #' A design with fewer than two distinct positive predictor values states no
 #' range for the prior to span and no spread for \code{sd} to measure, so
@@ -166,7 +194,12 @@ positive_scale <- function(response, probs) {
 #' it. The defaults being replaced placed the true value outside the central
 #' 95\% of the truncated prior in 5 of those 30, every one of them a
 #' log-spaced series read on the recorded or the square-root scale; the prior
-#' built here does so in none. See #302.
+#' built here does so in none, with the truncated CDF at the true value running
+#' 0.47 to 0.95. The sweep does not cover a true threshold at the very bottom of
+#' a wide dilution series, which is checked separately: on the nassarius
+#' contaminant B series a threshold at the lowest dose applied sits at a
+#' truncated CDF of 0.030, inside the central 95\%, against 0.005 under a prior
+#' set from half the range. See #302.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
 #' was supplied.
@@ -183,28 +216,35 @@ predictor_prior <- function(predictor) {
   # values is one the user has transformed. Selecting on that is what selects
   # the scale the prior is stated on.
   spans_negative <- min(u) < 0
+  z <- if (spans_negative) u else log(u[u > 0])
+  if (!length(z)) {
+    stop("Cannot build a prior for \"nec\" or \"ec50\": the predictor",
+         " contains no positive values, so there is no concentration scale",
+         " to place them on. Check the predictor variable, and see ?bnec.",
+         call. = FALSE)
+  }
+  mu <- median(z)
   if (spans_negative) {
-    z <- u
     dist <- "normal"
     sigma <- sd(z) * 10
   } else {
-    z <- log(u[u > 0])
-    if (!length(z)) {
-      stop("Cannot build a prior for \"nec\" or \"ec50\": the predictor",
-           " contains no positive values, so there is no concentration scale",
-           " to place them on. Check the predictor variable, and see ?bnec.",
-           call. = FALSE)
-    }
     dist <- "lognormal"
-    sigma <- diff(range(z)) / (2 * qnorm(0.975))
+    # The larger of the two half-widths, not half the range. Setting sigma from
+    # the range alone gives the interval the right width and the wrong centre
+    # wherever the series is not symmetric about its median on the log axis, and
+    # the interval then stops short of one end: on the nassarius contaminant A
+    # series it reached 9.96 against a highest dose of 20, which is the defect
+    # #302 exists to remove.
+    sigma <- max(mu - min(z), max(z) - mu) / qnorm(0.975)
   }
-  # Both branches degenerate on a single distinct value: sd() is NA and the
-  # range is zero. One fallback serves both because both are measured on the
-  # scale the prior is stated on.
-  if (!isTRUE(is.finite(sigma)) || sigma <= 0) {
+  # Both branches degenerate on a single distinct value -- a single distinct
+  # positive value, on the lognormal branch. sd() is NA there and both
+  # half-widths are zero. One fallback serves both because both are measured on
+  # the scale the prior is stated on.
+  if (!is.finite(sigma) || sigma <= 0) {
     sigma <- 1
   }
-  paste0(dist, "(", median(z), ", ", sigma, ")")
+  paste0(dist, "(", mu, ", ", sigma, ")")
 }
 
 #' define_prior
@@ -216,6 +256,11 @@ predictor_prior <- function(predictor) {
 #' @param family A \code{\link[stats]{family}} function.
 #' @param predictor The predictor variable for the NEC model fit.
 #' @param response The response variable for the NEC model fit.
+#' @param predictor_scale The predictor the \code{nec} and \code{ec50} prior is
+#' built from and truncated to. Defaults to \code{predictor}, and differs from
+#' it only for the two blocks of a hurdle or zero-inflated fit, each of which is
+#' primed from a subset of the predictor but evaluated over the whole of it.
+#' See \code{define_hurdle_prior()}.
 #'
 #' @return An object of class \code{\link[brms]{brmsprior}}.
 #' @importFrom brms prior_string
@@ -226,7 +271,10 @@ predictor_prior <- function(predictor) {
 define_prior <- function(model, family, predictor, response,
                          prior_type = "uninformative",
                          model_survival = NULL, disp_spec = NULL,
-                         group_spec = NULL) {
+                         group_spec = NULL, predictor_scale = NULL) {
+  if (is.null(predictor_scale)) {
+    predictor_scale <- predictor
+  }
   # Which scale an ogl deviation is applied on decides how wide its prior
   # should be, and it is a property of the model and the family, both of which
   # are in scope here and are not in define_group_prior(). See #257.
@@ -394,7 +442,7 @@ define_prior <- function(model, family, predictor, response,
   }
   # One construction for nec and ec50, on whichever scale the predictor was
   # supplied on. See predictor_prior() for why, and #302 for the measurements.
-  x_pr <- predictor_prior(predictor)
+  x_pr <- predictor_prior(predictor_scale)
   lbs <- c(Gamma = 0, poisson = 0, negbinomial = 0, gaussian = NA,
            bernoulli = 0, binomial = 0, "beta_binomial" = 0, beta = 0)
   ubs <- c(Gamma = NA, poisson = NA, negbinomial = NA, gaussian = NA,
@@ -406,9 +454,9 @@ define_prior <- function(model, family, predictor, response,
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   # x-dependent priors
   pr_nec <- prior_string(x_pr, nlpar = "nec",
-                         lb = min(predictor), ub = max(predictor))
+                         lb = min(predictor_scale), ub = max(predictor_scale))
   pr_ec50 <- prior_string(x_pr, nlpar = "ec50",
-                          lb = min(predictor), ub = max(predictor))
+                          lb = min(predictor_scale), ub = max(predictor_scale))
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 5)", nlpar = "d")
   pr_beta <- prior_string("normal(0, 5)", nlpar = "beta")
@@ -821,28 +869,39 @@ define_hurdle_prior <- function(model, family, predictor, response,
   # non-zeros only -- including the zeros would drag the top and bot quantiles
   # well below the real control level.
   mu_priors <- define_prior(model, hurdle_mu_family(family),
-                            parts$mu$x, parts$mu$y, prior_type = prior_type)
+                            parts$mu$x, parts$mu$y, prior_type = prior_type,
+                            predictor_scale = predictor)
   # second block: reuse the bernoulli/identity defaults on the proportion
   # non-zero, then rename every non-linear parameter into its namespace.
   hu_priors <- define_prior(model_survival, bernoulli(link = "identity"),
-                            parts$hu$x, parts$hu$y, prior_type = prior_type)
+                            parts$hu$x, parts$hu$y, prior_type = prior_type,
+                            predictor_scale = predictor)
   hu_priors$nlpar <- ifelse(nzchar(hu_priors$nlpar),
                             paste0(dpar, hu_priors$nlpar), hu_priors$nlpar)
   # Both blocks are evaluated over the *whole* predictor range inside the joint
-  # fit, but each was primed from a subset of it: mu from non-zeros only (which
-  # stop short of the concentrations where everything is zero) and the second
-  # block from the deduplicated unique-x vector. Rebuild the predictor-scaled
-  # bounds from the full predictor so neither threshold is boxed out of the
-  # range it must cover.
-  rebound <- function(prs, pars) {
-    is_pred <- prs$nlpar %in% pars
-    if (any(is_pred)) {
-      prs$lb[is_pred] <- as.character(min(predictor))
-      prs$ub[is_pred] <- as.character(max(predictor))
-    }
-    prs
-  }
-  mu_priors <- rebound(mu_priors, c("nec", "ec50"))
-  hu_priors <- rebound(hu_priors, paste0(dpar, c("nec", "ec50")))
+  # fit, but each is primed from a subset of it: mu from the non-zeros only,
+  # which stop short of the concentrations where everything is zero, and the
+  # second block from the deduplicated unique-x vector. `predictor_scale` above
+  # is what makes the predictor-scaled priors and their bounds come from the
+  # whole predictor rather than from those subsets, so that neither threshold is
+  # boxed out of the range it must cover.
+  #
+  # The prior is taken from the whole predictor and not only its bounds. A prior
+  # shaped by the survivor subset but truncated to the whole predictor states
+  # that the threshold lies below the highest concentration at which anything
+  # survived, which is the same failure #302 removes from the single-block path:
+  # on a series reaching 100 whose survivors stop at 10 the mu block's nec prior
+  # placed its 97.5% point at 10.0 while its bounds permitted 100. It also
+  # restores the invariance the single-block path has, that the nec and ec50
+  # prior is a function of the predictor alone, and it makes the two blocks of
+  # one fit agree about the scale of their shared predictor, which is what #269
+  # set out to achieve. #269's argument for priming from the survivors concerns
+  # the response-scaled top and bot, which are still taken from that subset; it
+  # does not reach a parameter measured in units of the predictor.
+  #
+  # It also removes a refusal this path would otherwise reach. Where every
+  # survivor sits at the zero control the mu subset has no positive value and
+  # predictor_prior() has no concentration scale to build on; the whole
+  # predictor always has one wherever the fit is meaningful at all.
   mu_priors + hu_priors
 }

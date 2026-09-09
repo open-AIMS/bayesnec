@@ -124,6 +124,9 @@ prior_samplers <- function() {
 #' @noRd
 prior_sampler <- function(dist) {
   fcts <- prior_samplers()
+  # The name is parsed out of a prior string, and a string a user wrote by hand
+  # can carry surrounding whitespace that prior_string() would not produce.
+  dist <- trimws(dist)
   if (!dist %in% names(fcts)) {
     stop("bayesnec cannot draw initial values or prior samples from a \"",
          dist, "\" prior. It draws from: ",
