@@ -219,7 +219,7 @@ also symmetric, so `1 - P(>1)` is the posterior probability of
 *under*-dispersion --- a case `beta_binomial` cannot accommodate, since it adds
 variance to the binomial and cannot subtract it. `?dispersion` sets this out.
 
-**The number is read; it is not thresholded.** Here `P(>1)` is
+The number is read rather than thresholded. Here `P(>1)` is
 `r round(disp[["P(>1)"]], 3)`, on an interval running from
 `r round(disp[["Q2.5"]], 2)` to `r round(disp[["Q97.5"]], 2)` and a median of
 `r round(disp[["Estimate"]], 2)`. The interval spans 1, so a rule keyed to the
@@ -580,7 +580,7 @@ distribution reproduces every group.
 observed variability and the observed level *locally*, within each concentration
 group, with the control flagged.
 
-**The control is the lowest value of the predictor.** That is `bayesnec`'s
+The control is the lowest value of the predictor, which is `bayesnec`'s
 convention throughout: `check_fit()` flags that group, and `nsec()` reads its
 reference from the posterior of the fitted mean there. An experiment whose
 lowest treatment is not a control is being analysed on that assumption and
@@ -614,8 +614,8 @@ Analysts commonly do the same thing by hand before fitting, to plot a control on
 a logarithmic axis; `bnec()` doing it means the fit does not depend on whether
 they remembered to.
 
-**The flagged column is `ppp_mean`, and the discrepancy is one of location.**
-The fitted control mean is 5.75 against an observed 5.25, because the groups
+The column flagged is `ppp_mean`, so the discrepancy is one of location. The
+fitted control mean is 5.75 against an observed 5.25, because the groups
 immediately above the control are all at complete survival and pull `top` up.
 That single fact produces both the high `ppp_mean` and the low `ppp_sd`.
 
