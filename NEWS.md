@@ -140,6 +140,23 @@
   series at a truncated prior CDF of 0.9995 and `4/m` at 1.0000, so reverting
   reduced the error without removing it.
 
+- **The initial-value search now finds values for `nechormepwr` and
+  `nechorme4pwr` on a 0-1 bounded family whose predictor reaches 1**, where the
+  gamma prior it replaces did not. Those models stay excluded for such families
+  by `check_models()`, so no fit a user can request changes. What changed is the
+  evidence recorded for the exclusion, and with it the wording of `?models` and
+  of the message `check_models()` prints. Both said there is no parameter value
+  that keeps the mean inside (0, 1) wherever the predictor reaches 1. That is
+  true only where `nec` is also at or above 1, so that some concentration at or
+  above 1 falls below the threshold, where the decay factor is exactly 1 and the
+  mean is at least `top + 1`. A `nec` below 1 puts every such concentration past
+  the threshold and the mean can be held inside (0, 1). The lognormal prior
+  proposes a `nec` that low often enough for the search to find one; the gamma
+  did not, so the over-statement was never exercised. The exclusion is unchanged
+  and its reason is unchanged in substance: `nec` is truncated to the predictor
+  range, so every value at or above 1 is one the sampler is free to propose, and
+  each is outside the likelihood's support (#177, #302).
+
 - **The `nec` and `ec50` prior of a hurdle or zero-inflated fit is built from
   the whole predictor.** Both blocks of such a fit are evaluated over the whole
   predictor range and their `nec` bounds were already rebuilt from it, but the

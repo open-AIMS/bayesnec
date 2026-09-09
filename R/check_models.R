@@ -19,10 +19,22 @@ bounded_linear_drops <- function() {
 #' \code{x^(1 / (1 + exp(slope)))}, which has no coefficient. The exponent lies
 #' in (0, 1), so at \code{x = 1} the term contributes exactly 1 whatever
 #' \code{slope} is, and below the threshold -- where the decay factor is exactly
-#' 1 -- the fitted mean is at least \code{top + 1}. No parameter value keeps that
-#' inside (0, 1) for a predictor that reaches 1, which is why the initial-value
-#' search cannot be fixed for this combination: there is nothing to find. See
-#' #177.
+#' 1 -- the fitted mean is at least \code{top + 1}. Wherever the predictor
+#' reaches 1 and \code{nec} is at or above 1 there is therefore a concentration
+#' at which no parameter value keeps the mean inside (0, 1).
+#'
+#' \code{nec} is truncated to the predictor range, so every such value is one
+#' the sampler is free to propose, and each proposal is outside the likelihood's
+#' support. That is why this is an exclusion rather than a harder search for
+#' initial values, and it is the reason stated to the user. It is not that no
+#' parameter value at all can be found: a \code{nec} below 1 puts every
+#' concentration at or above 1 past the threshold, where the decay factor is
+#' less than 1, and the mean can then be held inside (0, 1). The initial-value
+#' search will find such a draw if the prior on \code{nec} proposes one often
+#' enough, which the lognormal prior adopted under #302 does and the gamma prior
+#' before it did not. Finding one does not make the model usable, because the
+#' region it avoids is still inside the bounds the sampler explores. See #177
+#' and #302.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
@@ -49,8 +61,10 @@ unscaled_power_message <- function(drop_model, fam_tag) {
          " as they are not valid in the case of a ", fam_tag,
          " with identity link: their hormesis term",
          " x^(1 / (1 + exp(slope))) has no scale parameter, so the fitted mean",
-         " is at least top + 1 wherever the predictor reaches 1 and cannot be",
-         " held inside (0, 1). Use nechorme, nechorme4 or nechormepwr01 for a",
+         " is at least top + 1 at any concentration at or above 1 that falls",
+         " below nec, and cannot be held inside (0, 1) there. nec is bounded to",
+         " the predictor range, so the sampler is free to propose such a value.",
+         " Use nechorme, nechorme4 or nechormepwr01 for a",
          " hormesis model on a bounded response. See ?models.")
 }
 

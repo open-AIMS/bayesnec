@@ -75,24 +75,58 @@ test_that("initialisation confirms why they are excluded", {
   }
   # The evidence behind the exclusion, kept as a test so that a future change to
   # the init search is measured against it rather than assumed to have fixed it.
+  #
+  # The claim is about the region the sampler may reach, not about whether any
+  # draw at all can be found. A nec at or above 1 puts some concentration at or
+  # above 1 below the threshold, where the decay factor is exactly 1 and the
+  # mean is at least top + 1; no parameter value keeps that inside (0, 1), and
+  # the search fails. A nec below 1 puts every such concentration past the
+  # threshold and the mean can be held inside (0, 1), so the search succeeds --
+  # which it does under the lognormal prior adopted in #302 and did not under
+  # the gamma prior before it, purely because the lognormal proposes a low nec
+  # more often. Succeeding does not make the model usable, because nec is
+  # truncated to the predictor range and the sampler is free to leave the
+  # region the draw avoids. Both halves are asserted, so that neither reading
+  # can drift.
   fam <- validate_family(bernoulli(link = "identity"))
-  found <- function(model, x, y) {
-    pr <- define_prior(model, fam, x, y)
+  search <- function(model, x, y, priors = NULL) {
+    if (is.null(priors)) {
+      priors <- define_prior(model, fam, x, y)
+    }
     ii <- suppressMessages(
       bayesnec:::make_good_inits(model, x, y, n_trials = 200, seed = 1,
-                                 priors = pr, chains = 2)
+                                 priors = priors, chains = 2)
     )
-    !(length(ii) == 1 && identical(ii$random, "random"))
+    if (length(ii) == 1 && identical(ii$random, "random")) {
+      return(NULL)
+    }
+    vapply(ii, function(z) as.numeric(z$b_nec), numeric(1))
+  }
+  found <- function(...) !is.null(search(...))
+  above_one <- function(model, x, y) {
+    pr <- define_prior(model, fam, x, y)
+    pr$prior[pr$nlpar == "nec"] <- "uniform(1, 3.22)"
+    pr$lb[pr$nlpar == "nec"] <- "1"
+    pr
   }
   y <- nec_data$y
   x_over_one <- nec_data$x                                  # reaches 3.22
   x_under_one <- nec_data$x / max(nec_data$x) * 0.9         # stays below 1
-  expect_false(found("nechormepwr", x_over_one, y))
-  expect_false(found("nechorme4pwr", x_over_one, y))
+  for (model in c("nechormepwr", "nechorme4pwr")) {
+    # Confined to nec at or above 1, there is nothing to find.
+    expect_false(found(model, x_over_one, y, above_one(model, x_over_one, y)),
+                 info = model)
+    # Left free, the search succeeds only by placing nec below 1, which is the
+    # case the equation can represent and the one the sampler need not stay in.
+    nec_found <- search(model, x_over_one, y)
+    expect_false(is.null(nec_found), info = model)
+    expect_true(all(nec_found < 1), info = model)
+  }
   # Not a defect of the search: the same models initialise when the predictor
-  # never reaches 1, which is the only case the equation can represent. That is
-  # a property of the units the predictor happens to be in, not of the model,
-  # which is why the exclusion is by family rather than conditional on the data.
+  # never reaches 1, which is the only case the equation can represent
+  # throughout. That is a property of the units the predictor happens to be in,
+  # not of the model, which is why the exclusion is by family rather than
+  # conditional on the data.
   expect_true(found("nechormepwr", x_under_one, y))
   expect_true(found("nechorme4pwr", x_under_one, y))
   # The scaled siblings initialise either way.
