@@ -28,6 +28,20 @@
 #' posterior probability of under-dispersion, which no other summary here
 #' addresses.
 #'
+#' \bold{An observation the model reproduces exactly is excluded.} The Pearson
+#' denominator is the fitted standard deviation, which is exactly zero wherever
+#' the fitted mean underflows --- \code{mu (1 - mu) n} for a binomial and
+#' \code{mu} for a Poisson both do so for a curve that decays fast enough. An
+#' observation whose response equals that fitted value contributes \code{0/0}
+#' to both sums and says nothing about dispersion in either direction, so it is
+#' excluded from both and every draw is retained. The number of observations
+#' excluded is reported. Where instead the response differs from a fitted value
+#' of zero variance, the model has assigned zero variance to a value it did not
+#' predict; the Pearson residual is infinite, the statistic is reported as
+#' \code{Inf}, and a warning names the observations. An empty vector is
+#' returned only where every observation has zero variance and is reproduced
+#' exactly, in which case there are no residuals to compare.
+#'
 #' \bold{A beta-binomial fit does not address under-dispersion.}
 #' \code{beta_binomial} adds a variance component to the binomial, so it can
 #' represent a variance above the binomial's and not one below it. Where
@@ -69,6 +83,13 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   }
   chk_lgl(summary)
   chk_number(seed)
+  # Captured before `model` is replaced by the brmsfit. expand_nec() calls this
+  # once per equation, so an unnamed message on a model set says only that
+  # something somewhere was excluded, which is not enough to act on.
+  mod_name <- model$model
+  if (is.null(mod_name)) {
+    mod_name <- "fitted"
+  }
   formula <- model$bayesnecformula
   model <- model$fit
   mod_dat <- model.frame(formula, data = model$data)
@@ -92,10 +113,12 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
     prd_out <- posterior_epred(model)
     set.seed(seed)
     ppd_out <- posterior_predict(model)
-    prd_sr <- matrix(0, nrow(prd_out), ncol(prd_out))
-    sim_sr <- matrix(0, nrow(prd_out), ncol(prd_out))
+    # The per-observation fitted variance is collected first and the residual
+    # arithmetic done in one place, because an observation with zero variance
+    # has to be handled differently depending on whether the response agrees
+    # with the fitted value. See pearson_dispersion() and #298.
+    var_out <- matrix(0, nrow(prd_out), ncol(prd_out))
     for (i in seq_len(nrow(prd_out))) {
-      prd_y <- prd_out[i, ]
       prd_mu <- fam_fcts$linkinv(lpd_out[i, ])
       prd_var_y <- fam_fcts$variance(prd_mu)
       if (fam == "binomial") {
@@ -115,17 +138,16 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
         # rather than copying this line. See #136.
         prd_var_y <- prd_var_y * model$data[[rate_var]]
       }
-      prd_res <- (obs_y - prd_y) / sqrt(prd_var_y)
-      sim_y <- ppd_out[i, ]
-      sim_res <- (sim_y - prd_y) / sqrt(prd_var_y)
-      prd_sr[i, ] <- prd_res^2
-      sim_sr[i, ] <- sim_res^2
+      var_out[i, ] <- prd_var_y
     }
-    disp <- rowSums(prd_sr) / rowSums(sim_sr)
-    if (any(is.na(disp))) {
-      message("Your model predictions have generated no residuals; this is",
-              " most likely cause by a bad model fit. Ignoring dispersion",
-              " calculation.")
+    disp <- pearson_dispersion(obs_y, prd_out, ppd_out, var_out,
+                               labels = rownames(model$data),
+                               model_name = mod_name)
+    if (all(is.na(disp))) {
+      message("Every observation has a fitted variance of zero and is",
+              " reproduced exactly by the ", mod_name, " model, so there are",
+              " no residuals to compare. The dispersion statistic is not",
+              " defined for this fit.")
       numeric()
     } else {
       if (summary) {
@@ -147,4 +169,115 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   } else {
     numeric()
   }
+}
+
+#' Pearson residual dispersion ratio, with degenerate observations handled
+#'
+#' Computes, for each posterior draw, the ratio of the observed to the
+#' simulated Pearson residual sum of squares.
+#'
+#' @param obs_y A \code{\link[base]{numeric}} vector of observed responses.
+#' @param prd_out A draws-by-observations \code{\link[base]{matrix}} of fitted
+#' means, from \code{\link[brms]{posterior_epred}}.
+#' @param ppd_out A draws-by-observations \code{\link[base]{matrix}} of
+#' simulated responses, from \code{\link[brms]{posterior_predict}}.
+#' @param var_out A draws-by-observations \code{\link[base]{matrix}} of fitted
+#' variances on the scale of \code{obs_y}.
+#' @param labels A \code{\link[base]{character}} vector naming the
+#' observations, used in the message and the warning. Defaults to the column
+#' positions.
+#' @param model_name A \code{\link[base]{character}} naming the equation, used
+#' in the message and the warning.
+#'
+#' @details The Pearson denominator is \code{sqrt(var_out)}, which is exactly
+#' zero wherever the fitted mean underflows --- \code{mu (1 - mu) n} for a
+#' binomial and \code{mu} for a Poisson both do so for a curve that decays fast
+#' enough. Two cases reach that zero and they need opposite treatment.
+#'
+#' Where the response equals the fitted value, the model is degenerate at that
+#' observation and the data agree with it exactly. Both the observed and the
+#' simulated term are \code{0/0}: the observation says nothing about dispersion
+#' in either direction, so it is excluded from both sums and every draw is
+#' retained. Discarding the whole statistic instead, as this function did
+#' before #298, lost it precisely for the equations describing the data best,
+#' since underflow requires a fast decay.
+#'
+#' Where the response differs from the fitted value, the model has assigned zero
+#' variance to a value it did not predict. That is a severe misfit rather than a
+#' numerical artefact, so its infinite observed term is kept and the statistic
+#' is reported as \code{Inf}. Only the simulated term is excluded, because a
+#' degenerate predictive distribution cannot deviate from its mean and is
+#' \code{0/0} whichever case holds. A warning names the observations. It is a
+#' warning rather than an error because \code{dispersion()} is called once per
+#' equation from \code{expand_nec()}, so stopping would abandon construction of
+#' a whole \code{\link{bayesmanecfit}} for one candidate whose shape is wrong.
+#'
+#' @return A \code{\link[base]{numeric}} vector with one element per draw.
+#' \code{NA} for a draw in which every observation is degenerate and agreeing.
+#'
+#' @noRd
+pearson_dispersion <- function(obs_y, prd_out, ppd_out, var_out,
+                               labels = NULL, model_name = NULL) {
+  who <- if (is.null(model_name)) {
+    "The fitted mean"
+  } else {
+    paste0("The fitted ", model_name, " mean")
+  }
+  if (length(labels) != ncol(prd_out)) {
+    labels <- as.character(seq_len(ncol(prd_out)))
+  }
+  denom <- sqrt(var_out)
+  obs_mat <- matrix(obs_y, nrow(prd_out), ncol(prd_out), byrow = TRUE)
+  prd_sr <- ((obs_mat - prd_out) / denom)^2
+  sim_sr <- ((ppd_out - prd_out) / denom)^2
+  # A variance that is not finite is neither of the two cases below and no
+  # accepted family should produce one. It is excluded from both sums and
+  # reported, rather than left to disappear into the na.rm below.
+  unusable <- !is.finite(var_out)
+  degenerate <- var_out == 0
+  degenerate[unusable] <- FALSE
+  disagreeing <- degenerate & obs_mat != prd_out
+  prd_sr[unusable | (degenerate & !disagreeing)] <- NA
+  sim_sr[unusable | degenerate] <- NA
+  # na.rm drops the excluded terms rather than the draw. A draw in which every
+  # observation is excluded and none of them disagrees sums to 0/0, and is
+  # returned as NA so that estimates_summary() excludes it as it does a
+  # censored ECx draw. Where such a draw does have a disagreeing observation
+  # the observed sum is Inf and the ratio stays Inf, which is the verdict that
+  # case earns.
+  n_used <- rowSums(!degenerate & !unusable)
+  disp <- rowSums(prd_sr, na.rm = TRUE) / rowSums(sim_sr, na.rm = TRUE)
+  disp[n_used == 0 & rowSums(disagreeing) == 0] <- NA_real_
+  if (any(unusable)) {
+    warning(who, "'s variance is not finite at ",
+            n_obs_phrase(sum(colSums(unusable) > 0)), " (",
+            paste(labels[which(colSums(unusable) > 0)], collapse = ", "),
+            "). Those observations are excluded from the dispersion ",
+            "statistic.", call. = FALSE)
+  }
+  excluded <- which(colSums(degenerate & !disagreeing) > 0)
+  if (length(excluded) > 0) {
+    message(who, " has zero variance at ", length(excluded), " of ",
+            ncol(prd_out), " observations (", paste(labels[excluded],
+            collapse = ", "), ") which the model reproduces exactly. Those ",
+            "observations carry no information about dispersion and are ",
+            "excluded from the statistic; all draws are retained.")
+  }
+  infinite <- which(colSums(disagreeing) > 0)
+  if (length(infinite) > 0) {
+    warning(who, " has zero variance at ",
+            n_obs_phrase(length(infinite)), " (",
+            paste(labels[infinite], collapse = ", "),
+            ") whose response is not the fitted value. The Pearson residual ",
+            "is infinite there and the dispersion statistic is reported as ",
+            "Inf. This is a property of the fit rather than a numerical ",
+            "limit: the model has assigned zero variance to a value it did ",
+            "not predict.", call. = FALSE)
+  }
+  disp
+}
+
+#' @noRd
+n_obs_phrase <- function(n) {
+  paste(n, if (n == 1) "observation" else "observations")
 }

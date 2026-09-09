@@ -40,6 +40,20 @@ a single tail quantile, and it is symmetric: \code{1 - P(>1)} is the
 posterior probability of under-dispersion, which no other summary here
 addresses.
 
+\bold{An observation the model reproduces exactly is excluded.} The Pearson
+denominator is the fitted standard deviation, which is exactly zero wherever
+the fitted mean underflows --- \code{mu (1 - mu) n} for a binomial and
+\code{mu} for a Poisson both do so for a curve that decays fast enough. An
+observation whose response equals that fitted value contributes \code{0/0}
+to both sums and says nothing about dispersion in either direction, so it is
+excluded from both and every draw is retained. The number of observations
+excluded is reported. Where instead the response differs from a fitted value
+of zero variance, the model has assigned zero variance to a value it did not
+predict; the Pearson residual is infinite, the statistic is reported as
+\code{Inf}, and a warning names the observations. An empty vector is
+returned only where every observation has zero variance and is reproduced
+exactly, in which case there are no residuals to compare.
+
 \bold{A beta-binomial fit does not address under-dispersion.}
 \code{beta_binomial} adds a variance component to the binomial, so it can
 represent a variance above the binomial's and not one below it. Where
