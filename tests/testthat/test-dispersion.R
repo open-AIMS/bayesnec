@@ -126,15 +126,76 @@ test_that("a draw with nothing left to compare returns NA", {
   expect_true(all(is.na(disp)))
 })
 
-test_that("a non-finite variance is excluded and reported", {
+test_that("a variance that is not finite is excluded and reported", {
   d <- degenerate_input()
   d$var_out[1, 3] <- NA_real_
   d$var_out[2, 3] <- 5
   expect_warning(
     disp <- pearson_dispersion(d$obs_y, d$prd_out, d$ppd_out, d$var_out),
-    "not finite"
+    "negative or not finite"
   )
   expect_true(all(is.finite(disp)))
+})
+
+test_that("a negative variance is excluded rather than dropped by na.rm", {
+  # is.finite(-1) is TRUE, so the guard tests the sign as well. Without it
+  # sqrt() returns NaN, na.rm drops the term, and the observation is still
+  # counted as contributing.
+  d <- degenerate_input()
+  d$var_out[, 3] <- c(-1, -1)
+  expect_warning(
+    disp <- pearson_dispersion(d$obs_y, d$prd_out, d$ppd_out, d$var_out),
+    "negative or not finite"
+  )
+  keep <- 1:2
+  obs_mat <- matrix(d$obs_y, 2, 3, byrow = TRUE)[, keep]
+  wanted <- rowSums(((obs_mat - d$prd_out[, keep]) /
+                       sqrt(d$var_out[, keep]))^2) /
+    rowSums(((d$ppd_out[, keep] - d$prd_out[, keep]) /
+               sqrt(d$var_out[, keep]))^2)
+  expect_equal(unname(disp), unname(wanted))
+})
+
+test_that("the exclusion is reported per draw, not as a fixed set", {
+  # The exclusion is elementwise. Reporting only the observations would
+  # describe a set dropped from the whole posterior, which is a different
+  # operation: measured on the fixture below, 229 of 400 draws exclude nothing.
+  d <- degenerate_input()
+  d$var_out[2, 3] <- 5
+  expect_message(
+    pearson_dispersion(d$obs_y, d$prd_out, d$ppd_out, d$var_out),
+    "1 of 3 observations \\(3\\) which the model reproduces exactly, in 1 of 2 draws"
+  )
+})
+
+test_that("draws that return NA are named rather than silently dropped", {
+  # #39's account of a censored draw, applied here: a draw in which no
+  # observation contributes a residual is excluded from the summary by the
+  # na.rm in estimates_summary(), so the count is reported.
+  d <- degenerate_input()
+  d$var_out[1, ] <- 0
+  d$prd_out[1, ] <- d$obs_y
+  d$ppd_out[1, ] <- d$obs_y
+  # capture_messages() rather than expect_message(), which lets the exclusion
+  # message this input also raises through to the console.
+  msgs <- capture_messages(
+    disp <- pearson_dispersion(d$obs_y, d$prd_out, d$ppd_out, d$var_out)
+  )
+  expect_match(paste(msgs, collapse = " "),
+               "No observation contributes a residual in 1 of 2 draws")
+  expect_true(is.na(disp[1]))
+  expect_true(is.finite(disp[2]))
+})
+
+test_that("the report reads correctly with no equation name", {
+  # The name was pre-filled with "fitted" and then interpolated into "The
+  # fitted <name> mean", which printed "The fitted fitted mean".
+  d <- degenerate_input()
+  msg <- capture_messages(
+    pearson_dispersion(d$obs_y, d$prd_out, d$ppd_out, d$var_out)
+  )
+  expect_match(msg[1], "^The fitted mean has zero variance")
+  expect_no_match(msg[1], "fitted fitted")
 })
 
 test_that("the statistic is unchanged where no observation is degenerate", {
@@ -149,22 +210,52 @@ test_that("the statistic is unchanged where no observation is degenerate", {
   expect_equal(unname(disp), unname(wanted))
 })
 
+# Fitted once and reused: two tests need the same fit and it takes minutes to
+# sample. At the two highest doses nothing survived, and nec3param's fitted mean
+# underflows to exactly zero there.
+degenerate_fit <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      d <- data.frame(x = rep(c(0, 1, 2, 3, 4), each = 3), trials = 10,
+                      y = c(10, 10, 10, 10, 9, 10, 9, 8, 9, 0, 0, 0, 0, 0, 0))
+      cached <<- bnec(y | trials(trials) ~ crf(x, model = "nec3param"),
+                      data = d, family = "binomial", iter = 400, warmup = 200,
+                      chains = 2, seed = 298, refresh = 0,
+                      open_progress = FALSE) |>
+        suppressMessages() |>
+        suppressWarnings()
+    }
+    cached
+  }
+})
+
 test_that("a fit that reproduces a group exactly still reports a statistic", {
-  # The same failure end to end. At the two highest doses nothing survived and
-  # nec3param's fitted mean underflows to exactly zero there, so six of the
-  # fifteen observations are degenerate. Before #298 every draw was NaN, the
-  # returned vector was empty, and expand_nec() wrote NA into the dispersion
-  # columns of the weights table.
-  d <- data.frame(x = rep(c(0, 1, 2, 3, 4), each = 3), trials = 10,
-                  y = c(10, 10, 10, 10, 9, 10, 9, 8, 9, 0, 0, 0, 0, 0, 0))
-  fit <- bnec(y | trials(trials) ~ crf(x, model = "nec3param"), data = d,
-              family = "binomial", iter = 400, warmup = 200, chains = 2,
-              seed = 298, refresh = 0, open_progress = FALSE) |>
-    suppressMessages() |>
-    suppressWarnings()
+  # The same failure end to end. Six of the fifteen observations have a fitted
+  # variance of exactly zero in at least one draw. Before #298 every draw was
+  # NaN, the returned vector was empty, and expand_nec() wrote NA into the
+  # dispersion columns of the weights table.
+  fit <- degenerate_fit()
   expect_true(any(brms::posterior_linpred(pull_brmsfit(fit)) == 0))
-  expect_message(disp <- dispersion(fit, summary = TRUE), "reproduces exactly")
+  expect_message(disp <- dispersion(fit, summary = TRUE),
+                 "6 of 15 observations .* in [0-9]+ of 400 draws")
   expect_length(disp, 4)
   expect_true(all(is.finite(disp)))
   expect_false(is.na(fit$dispersion[["Estimate"]]))
+})
+
+test_that("a fit with nothing left to compare returns an empty vector", {
+  # The remaining branch: every draw is NA, so there is no statistic. Reaching
+  # it from a real fit needs a model degenerate at every observation, which is
+  # not a fit anyone would produce, so the return of pearson_dispersion() is
+  # substituted instead.
+  fit <- degenerate_fit()
+  local_mocked_bindings(
+    pearson_dispersion = function(obs_y, prd_out, ...) {
+      rep(NA_real_, nrow(prd_out))
+    }
+  )
+  expect_message(disp <- dispersion(fit), "not\\s+defined for this fit")
+  expect_length(disp, 0)
+  expect_length(suppressMessages(dispersion(fit, summary = TRUE)), 0)
 })

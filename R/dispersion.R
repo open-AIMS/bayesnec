@@ -15,14 +15,18 @@
 #'
 #' @return A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
 #' n-long vector containing the dispersion metric, where n is the number of post
-#' warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If
+#' warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. An
+#' element of that vector is \code{Inf} for a draw containing an observation of
+#' zero fitted variance whose response is not the fitted value, and \code{NA}
+#' for a draw in which no observation contributes a residual; both cases are
+#' described under Details and both are reported when they arise. If
 #' TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
 #' (median, 95% credible interval, and the posterior probability of
 #' over-dispersion) of the dispersion metric.
 #'
 #' @details The statistic is the ratio of the observed to the simulated Pearson
 #' residual sum of squares, whose null value is 1. With \code{summary = TRUE}
-#' the returned vector carries \code{P(>1)}, the posterior probability that the
+#' the returned vector reports \code{P(>1)}, the posterior probability that the
 #' ratio exceeds 1. It uses the whole posterior rather than a point estimate or
 #' a single tail quantile, and it is symmetric: \code{1 - P(>1)} is the
 #' posterior probability of under-dispersion, which no other summary here
@@ -34,11 +38,22 @@
 #' \code{mu} for a Poisson both do so for a curve that decays fast enough. An
 #' observation whose response equals that fitted value contributes \code{0/0}
 #' to both sums and says nothing about dispersion in either direction, so it is
-#' excluded from both and every draw is retained. The number of observations
-#' excluded is reported. Where instead the response differs from a fitted value
+#' excluded from both and every draw is retained. The exclusion is the limit
+#' rather than an approximation to it: as the fitted mean tends to zero with a
+#' response of zero the observed term tends to zero, and the simulated term
+#' does the same, because a predictive distribution of vanishing variance
+#' returns its mean with probability approaching one. Excluding a term is
+#' arithmetically identical to contributing zero to both sums, so it introduces
+#' no bias in either direction, and the ratio is self-normalising --- under the
+#' null each retained observation contributes approximately 1 to the
+#' denominator, so the null value of 1 holds whatever the size of the retained
+#' set. The exclusion is made draw by draw, since an observation whose fitted
+#' mean underflows in one draw gives an ordinary residual in another, and the
+#' number of observations and of draws affected is reported. Where instead the response differs from a fitted value
 #' of zero variance, the model has assigned zero variance to a value it did not
-#' predict; the Pearson residual is infinite, the statistic is reported as
-#' \code{Inf}, and a warning names the observations. An empty vector is
+#' predict; the statistic is reported as \code{Inf} and a warning names the
+#' observations. The infinity is the underflow --- in exact arithmetic the
+#' residual there is large and finite --- but the misfit it reports is real. An empty vector is
 #' returned only where every observation has zero variance and is reproduced
 #' exactly, in which case there are no residuals to compare.
 #'
@@ -87,9 +102,7 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
   # once per equation, so an unnamed message on a model set says only that
   # something somewhere was excluded, which is not enough to act on.
   mod_name <- model$model
-  if (is.null(mod_name)) {
-    mod_name <- "fitted"
-  }
+  mod_label <- if (is.null(mod_name)) "fitted" else mod_name
   formula <- model$bayesnecformula
   model <- model$fit
   mod_dat <- model.frame(formula, data = model$data)
@@ -135,7 +148,10 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
         # than a plain multiple. dispersion() does not accept negbinomial at
         # all -- see allowed_fams above -- so there is nothing to get wrong
         # today, but whoever widens that list must derive the negbinomial case
-        # rather than copying this line. See #136.
+        # rather than copying this line. See #136. Such a change also reaches
+        # pearson_dispersion(), whose classification of a zero denominator
+        # assumes the variance and the mean underflow together; that holds for
+        # binomial and Poisson and not for a Gamma-style variance.
         prd_var_y <- prd_var_y * model$data[[rate_var]]
       }
       var_out[i, ] <- prd_var_y
@@ -144,10 +160,13 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
                                labels = rownames(model$data),
                                model_name = mod_name)
     if (all(is.na(disp))) {
-      message("Every observation has a fitted variance of zero and is",
-              " reproduced exactly by the ", mod_name, " model, so there are",
-              " no residuals to compare. The dispersion statistic is not",
-              " defined for this fit.")
+      # Reached when no draw retains an observation. The usual cause is that
+      # every observation has zero variance and is reproduced exactly, but the
+      # message states the condition tested rather than assuming the cause.
+      message("No observation contributes a residual to compare in any draw of",
+              " the ", mod_label, " model, so the dispersion statistic is not",
+              " defined for this fit. Where the fitted mean underflows this is",
+              " because the model reproduces every observation exactly.")
       numeric()
     } else {
       if (summary) {
@@ -203,21 +222,33 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
 #' since underflow requires a fast decay.
 #'
 #' Where the response differs from the fitted value, the model has assigned zero
-#' variance to a value it did not predict. That is a severe misfit rather than a
-#' numerical artefact, so its infinite observed term is kept and the statistic
-#' is reported as \code{Inf}. Only the simulated term is excluded, because a
+#' variance to a value it did not predict. The infinity is produced by the
+#' underflow, since in exact arithmetic the residual there is large and finite,
+#' but the misfit it reports is real, so the observed term is kept and the
+#' statistic is reported as \code{Inf}. Only the simulated term is excluded, because a
 #' degenerate predictive distribution cannot deviate from its mean and is
 #' \code{0/0} whichever case holds. A warning names the observations. It is a
 #' warning rather than an error because \code{dispersion()} is called once per
 #' equation from \code{expand_nec()}, so stopping would abandon construction of
 #' a whole \code{\link{bayesmanecfit}} for one candidate whose shape is wrong.
 #'
+#' The classification of a zero denominator assumes that the variance and the
+#' mean underflow together, which holds for the two families
+#' \code{dispersion()} accepts: \code{1 - mu} is exactly 1 for any \code{mu}
+#' below machine epsilon, so \code{mu (1 - mu) n} and \code{mu n} are the same
+#' product. It does not hold for a family whose variance underflows first --- a
+#' Gamma-style \code{mu^2 / shape} is zero at \code{mu = 1e-170} --- where a
+#' response of zero would be classified as a disagreement and the statistic
+#' reported as \code{Inf}. See the note on \code{allowed_fams} in
+#' \code{dispersion()}.
+#'
 #' @return A \code{\link[base]{numeric}} vector with one element per draw.
-#' \code{NA} for a draw in which every observation is degenerate and agreeing.
+#' \code{NA} for a draw in which no observation contributes a residual.
 #'
 #' @noRd
 pearson_dispersion <- function(obs_y, prd_out, ppd_out, var_out,
                                labels = NULL, model_name = NULL) {
+  who_short <- if (is.null(model_name)) "fitted model" else model_name
   who <- if (is.null(model_name)) {
     "The fitted mean"
   } else {
@@ -226,53 +257,84 @@ pearson_dispersion <- function(obs_y, prd_out, ppd_out, var_out,
   if (length(labels) != ncol(prd_out)) {
     labels <- as.character(seq_len(ncol(prd_out)))
   }
-  denom <- sqrt(var_out)
   obs_mat <- matrix(obs_y, nrow(prd_out), ncol(prd_out), byrow = TRUE)
-  prd_sr <- ((obs_mat - prd_out) / denom)^2
-  sim_sr <- ((ppd_out - prd_out) / denom)^2
-  # A variance that is not finite is neither of the two cases below and no
-  # accepted family should produce one. It is excluded from both sums and
-  # reported, rather than left to disappear into the na.rm below.
-  unusable <- !is.finite(var_out)
+  # A variance that is negative or not finite is neither of the two cases below
+  # and no accepted family should produce one. It is excluded from both sums and
+  # reported, rather than left to disappear into the na.rm below. The negative
+  # test is needed as well as is.finite(): a negative variance is finite, and
+  # sqrt() would otherwise turn it into a NaN term that na.rm drops in silence,
+  # under base R's unattributed "NaNs produced" warning. Setting it missing
+  # before the square root keeps that warning from being raised at all.
+  unusable <- !is.finite(var_out) | var_out < 0
+  var_out[unusable] <- NA_real_
   degenerate <- var_out == 0
   degenerate[unusable] <- FALSE
   disagreeing <- degenerate & obs_mat != prd_out
-  prd_sr[unusable | (degenerate & !disagreeing)] <- NA
-  sim_sr[unusable | degenerate] <- NA
+  denom <- sqrt(var_out)
+  prd_sr <- ((obs_mat - prd_out) / denom)^2
+  sim_sr <- ((ppd_out - prd_out) / denom)^2
+  prd_sr[degenerate & !disagreeing] <- NA
+  # Defensive rather than load-bearing: a predictive distribution with zero
+  # variance is a point mass at its mean, so ppd_out equals prd_out and the
+  # term is already 0/0 whichever of the two cases holds.
+  sim_sr[degenerate] <- NA
   # na.rm drops the excluded terms rather than the draw. A draw in which every
-  # observation is excluded and none of them disagrees sums to 0/0, and is
-  # returned as NA so that estimates_summary() excludes it as it does a
-  # censored ECx draw. Where such a draw does have a disagreeing observation
-  # the observed sum is Inf and the ratio stays Inf, which is the verdict that
-  # case earns.
-  n_used <- rowSums(!degenerate & !unusable)
+  # term is excluded sums to 0/0, and the NaN that produces is replaced with NA
+  # so that the returned vector reads as missing rather than as an arithmetic
+  # accident; is.na() treats the two alike, so nothing downstream depends on
+  # the substitution. estimates_summary() then excludes such a draw as it does
+  # a censored ECx draw. A draw with a disagreeing observation divides Inf by
+  # the sum of what is left and stays Inf, which is the verdict that case
+  # earns.
   disp <- rowSums(prd_sr, na.rm = TRUE) / rowSums(sim_sr, na.rm = TRUE)
-  disp[n_used == 0 & rowSums(disagreeing) == 0] <- NA_real_
+  disp[is.nan(disp)] <- NA_real_
   if (any(unusable)) {
-    warning(who, "'s variance is not finite at ",
+    warning(who, "'s variance is negative or not finite at ",
             n_obs_phrase(sum(colSums(unusable) > 0)), " (",
             paste(labels[which(colSums(unusable) > 0)], collapse = ", "),
             "). Those observations are excluded from the dispersion ",
             "statistic.", call. = FALSE)
   }
-  excluded <- which(colSums(degenerate & !disagreeing) > 0)
+  reproduced <- degenerate & !disagreeing
+  excluded <- which(colSums(reproduced) > 0)
   if (length(excluded) > 0) {
+    # The count of draws is reported alongside the count of observations
+    # because the exclusion is elementwise and not a fixed set: an observation
+    # whose fitted mean underflows in a steep draw gives an ordinary residual
+    # in a shallower one. Naming only the observations would describe a set
+    # that is dropped from the whole posterior, which is a different and more
+    # damaging operation than the one performed. See #300.
     message(who, " has zero variance at ", length(excluded), " of ",
             ncol(prd_out), " observations (", paste(labels[excluded],
-            collapse = ", "), ") which the model reproduces exactly. Those ",
-            "observations carry no information about dispersion and are ",
-            "excluded from the statistic; all draws are retained.")
+            collapse = ", "), ") which the model reproduces exactly, in ",
+            sum(rowSums(reproduced) > 0), " of ", nrow(prd_out), " draws. ",
+            "Such a term says nothing about dispersion in either direction, ",
+            "and is excluded from both sums in the draws where it arises; ",
+            "every draw is retained.")
+  }
+  n_missing <- sum(is.na(disp))
+  if (n_missing > 0 && n_missing < length(disp)) {
+    # The same account nsec_off_curve() gives of a censored draw: the draws
+    # that return NA are named rather than left to be dropped by the na.rm in
+    # estimates_summary() and in P(>1). See #39.
+    message("No observation contributes a residual in ", n_missing, " of ",
+            length(disp), " draws of the ", who_short, ". Those draws return ",
+            "NA and are excluded from the summary, which is computed from the ",
+            "remainder.")
   }
   infinite <- which(colSums(disagreeing) > 0)
   if (length(infinite) > 0) {
     warning(who, " has zero variance at ",
             n_obs_phrase(length(infinite)), " (",
             paste(labels[infinite], collapse = ", "),
-            ") whose response is not the fitted value. The Pearson residual ",
-            "is infinite there and the dispersion statistic is reported as ",
-            "Inf. This is a property of the fit rather than a numerical ",
-            "limit: the model has assigned zero variance to a value it did ",
-            "not predict.", call. = FALSE)
+            ") whose response is not the fitted value. The statistic is ",
+            "reported as Inf. The infinity itself is the underflow --- in ",
+            "exact arithmetic the Pearson residual there is large and finite ",
+            "--- but the misfit it reports is real. For a converged binomial ",
+            "or Poisson fit this is close to unreachable, because the ",
+            "likelihood rejects a draw that assigns zero probability to an ",
+            "observed value, so the first thing to check is that the response ",
+            "and the fitted mean are on the same scale.", call. = FALSE)
   }
   disp
 }

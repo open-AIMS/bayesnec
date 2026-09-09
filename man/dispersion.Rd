@@ -19,7 +19,11 @@ vector? Defaults to FALSE.}
 \value{
 A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
 n-long vector containing the dispersion metric, where n is the number of post
-warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. If
+warm-up posterior draws from the \code{\link[brms]{brmsfit}} object. An
+element of that vector is \code{Inf} for a draw containing an observation of
+zero fitted variance whose response is not the fitted value, and \code{NA}
+for a draw in which no observation contributes a residual; both cases are
+described under Details and both are reported when they arise. If
 TRUE, then a \code{\link[base]{data.frame}} containing the summary stats
 (median, 95\% credible interval, and the posterior probability of
 over-dispersion) of the dispersion metric.
@@ -34,7 +38,7 @@ squares.
 
 The statistic is the ratio of the observed to the simulated Pearson
 residual sum of squares, whose null value is 1. With \code{summary = TRUE}
-the returned vector carries \code{P(>1)}, the posterior probability that the
+the returned vector reports \code{P(>1)}, the posterior probability that the
 ratio exceeds 1. It uses the whole posterior rather than a point estimate or
 a single tail quantile, and it is symmetric: \code{1 - P(>1)} is the
 posterior probability of under-dispersion, which no other summary here
@@ -46,11 +50,22 @@ the fitted mean underflows --- \code{mu (1 - mu) n} for a binomial and
 \code{mu} for a Poisson both do so for a curve that decays fast enough. An
 observation whose response equals that fitted value contributes \code{0/0}
 to both sums and says nothing about dispersion in either direction, so it is
-excluded from both and every draw is retained. The number of observations
-excluded is reported. Where instead the response differs from a fitted value
+excluded from both and every draw is retained. The exclusion is the limit
+rather than an approximation to it: as the fitted mean tends to zero with a
+response of zero the observed term tends to zero, and the simulated term
+does the same, because a predictive distribution of vanishing variance
+returns its mean with probability approaching one. Excluding a term is
+arithmetically identical to contributing zero to both sums, so it introduces
+no bias in either direction, and the ratio is self-normalising --- under the
+null each retained observation contributes approximately 1 to the
+denominator, so the null value of 1 holds whatever the size of the retained
+set. The exclusion is made draw by draw, since an observation whose fitted
+mean underflows in one draw gives an ordinary residual in another, and the
+number of observations and of draws affected is reported. Where instead the response differs from a fitted value
 of zero variance, the model has assigned zero variance to a value it did not
-predict; the Pearson residual is infinite, the statistic is reported as
-\code{Inf}, and a warning names the observations. An empty vector is
+predict; the statistic is reported as \code{Inf} and a warning names the
+observations. The infinity is the underflow --- in exact arithmetic the
+residual there is large and finite --- but the misfit it reports is real. An empty vector is
 returned only where every observation has zero variance and is reproduced
 exactly, in which case there are no residuals to compare.
 

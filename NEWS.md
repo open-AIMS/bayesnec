@@ -263,24 +263,38 @@
   (1 - mu) n` for a binomial and `mu` for a Poisson --- and the response at such
   an observation is the fitted value, so its residual is `0/0`. One of them made
   every draw `NaN`, and the whole vector was returned empty with a message
-  attributing it to a bad model fit. Such observations are now excluded from
-  both the observed and the simulated sum, every draw is retained, and a message
-  names them. Where instead the response differs from a fitted value of zero
-  variance, the observed Pearson residual is infinite; that is a property of the
-  fit rather than a numerical limit, so the statistic is reported as `Inf` and a
-  warning names the observations rather than the case being swallowed by the
-  same branch. It is a warning rather than an error because `dispersion()` is
-  called once per equation from `expand_nec()`, where stopping would abandon
-  construction of the whole `bayesmanecfit`. Measured on the `nassarius`
-  contaminant A survival set of `vignette("example9")` (binomial, `decline`,
-  nine equations, 2026-09-08, R 4.6.1): three equations returned `NA`, among
-  them `ecxsigm` at 0.767 of the model weight with a Bayesian R-squared of 0.91,
-  while `ecxexp` at 0.002 of the weight reported a value. The statistic was
-  therefore least available for the equations describing the data best, since
-  underflow requires a fast decay. `expand_nec()` writes the four `dispersion_*`
-  columns of the weights table from this vector, so those columns now populate
-  for such a fit. An empty vector is returned only where every observation is
-  degenerate, with a message that says so (#298).
+  attributing it to a bad model fit.
+
+  Such a term is now excluded from both the observed and the simulated sum and
+  every draw is retained. The exclusion is the limit rather than an
+  approximation to it: as the fitted mean tends to zero with a response of zero
+  both terms tend to zero, so excluding them is arithmetically identical to
+  contributing zero to each sum, and the ratio is self-normalising, so its null
+  value of 1 holds whatever the size of the retained set. It is made draw by
+  draw, since an observation whose fitted mean underflows in one draw gives an
+  ordinary residual in another, and a message reports the observations and the
+  draws affected. Measured on the fixture added with this change, 400 post
+  warm-up draws: 229 draws exclude nothing, 60 exclude three observations and
+  111 exclude six, and no observation is excluded in every draw.
+
+  Where instead the response differs from a fitted value of zero variance, the
+  statistic is reported as `Inf` and a warning names the observations, rather
+  than the case being swallowed by the same branch. The infinity is produced by
+  the underflow, since in exact arithmetic the residual there is large and
+  finite, but the misfit it reports is real. It is a warning rather than an
+  error because `dispersion()` is called once per equation from `expand_nec()`,
+  where stopping would abandon construction of the whole `bayesmanecfit`.
+
+  Measured on the `nassarius` contaminant A survival set of
+  `vignette("example9")` (binomial, `decline`, nine equations, 2026-09-08, R
+  4.6.1): three equations returned `NA`, among them `ecxsigm` at 0.767 of the
+  model weight with a Bayesian R-squared of 0.91, while `ecxexp` at 0.002 of the
+  weight reported a value. The statistic was therefore least available for the
+  equations describing the data best, since underflow requires a fast decay.
+  `expand_nec()` writes the four `dispersion_*` columns of the weights table
+  from this vector, so those columns now populate for such a fit. An empty
+  vector is returned only where no observation contributes a residual in any
+  draw, with a message that says so (#298).
 
 - `update()` on a `bayesmanecfit` returned an object classed `bayesmanecfit`
   with none of that class's structure whenever all but one model failed to
