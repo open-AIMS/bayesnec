@@ -73,6 +73,134 @@ positive_scale <- function(response, probs) {
   q
 }
 
+#' The default prior for the nec and ec50 parameters
+#'
+#' \code{nec} and \code{ec50} are measured in units of the predictor, so their
+#' prior has to describe the concentration series that was tested. That series
+#' is usually spaced logarithmically, and this builds a normal prior on the log
+#' of the predictor: \code{lognormal(mu, sigma)} where the predictor is
+#' supplied on the dose scale, and \code{normal(mu, sigma)} where it spans
+#' negative values and has therefore already been log transformed by the user.
+#' The two are one rule stated on two scales. Truncation is applied by the
+#' caller, to the observed predictor range, and is unchanged.
+#'
+#' @details Until #302 there were three entries, selected by the support of the
+#' predictor: \code{gamma(5, 4/m)} where the predictor was non-negative and
+#' reached above 1, \code{beta(2, 2)} where it lay within [0, 1], and
+#' \code{normal(median(x), 10 sd(x))} where it spanned negative values, with
+#' \emph{m} the median of the distinct predictor values. Support is a property
+#' of the units a dose is recorded in, so the same experiment received priors
+#' differing roughly 300-fold in width according to whether the dose was
+#' recorded on a scale reaching above 1, on one confined to the unit interval,
+#' or logged. Measured on the \code{\link{nassarius}} contaminant A series, the
+#' central 95\% interval of the truncated prior covered 1.7\%, 81\% and 1111\%
+#' of the predictor range respectively.
+#'
+#' The gamma entry could not describe a log-spaced series at any rate. The
+#' spread of a gamma is tied to its shape, so \code{gamma(5, 4/m)} places its
+#' maximum density at \emph{m} and its central 95\% interval at 0.41\emph{m} to
+#' 2.56\emph{m} whatever the data are. It therefore reaches the highest dose
+#' tested only where that dose is within about 2.6 times the median dose, and
+#' that ratio is a property of the design: 2.0 for a series spaced evenly from
+#' zero, and 13 to 125 for the four nassarius series. No fixed shape serves
+#' both. The shape that puts the maximum density at \emph{m} and still reaches
+#' the highest dose is 8.6 on a linear series and 1.03 on the widest nassarius
+#' series, and at 1.03 the density decreases monotonically across the whole
+#' tested range, which is the failure #273 reported in mirror image.
+#'
+#' \code{mu} is the median of the distinct positive predictor values, on the
+#' log scale. Distinct values rather than the observation vector so that
+#' replication does not change the prior, which is the rule #269 established
+#' for the gamma rate. Because the logarithm is monotonic this is the log of
+#' the median dose, so the prior's maximum density is at the median dose
+#' measured on the log scale and its median is the median dose. Fisher et al.
+#' (2024) specify maximum density at the median predictor without saying which
+#' scale the density is measured on; this reads it on the log-dose scale, which
+#' is the scale a dilution series is designed on, and it is the only reading
+#' under which a prior peaking at the median can also reach 125 times it.
+#'
+#' \code{sigma} on the dose scale is set so that the prior's central 95\%
+#' interval spans the range of the tested doses on the log scale:
+#' \code{(log(max) - log(min positive)) / (2 * qnorm(0.975))}. This is a stated
+#' criterion rather than a chosen constant, and it adapts to the design. The
+#' alternative considered and not taken was a fixed multiple \emph{k} of
+#' \code{sd(log x)}. Any such multiple large enough to be broad on a densely
+#' sampled continuous predictor puts a large share of the prior below the
+#' lowest dose tested on a wide dilution series, where the lower truncation
+#' bound is the zero control: at \emph{k} = 1.5, 21\% of the truncated prior on
+#' the nassarius contaminant A series lies below its lowest dose of 0.01, and
+#' the lower end of its 95\% interval is 0.0002, four orders of magnitude below
+#' anything measured. The range-spanning rule leaves 5.5\% below the lowest
+#' dose there and 0.2\% on a series spaced evenly from zero. Expressed as a
+#' multiple of \code{sd(log x)} it lands between 0.73 and 0.83 on the dilution
+#' series measured and at 1.22 on \code{\link{nec_data}}, whose predictor is
+#' continuous and densely sampled, so it is not equivalent to any one constant.
+#'
+#' \code{sigma} on the branch for a predictor supplied already logged stays at
+#' \code{10 sd(x)}. That entry is the published default, every herbicide
+#' analysis in Fisher et al. (2024) uses it, and it is the branch the other two
+#' are being moved to rather than one being changed. The consequence is that
+#' the same data analysed as \code{crf(x)} and as \code{crf(log(x))} still do
+#' not receive the same prior on \code{nec}. That difference is roughly
+#' tenfold, against roughly 300-fold before this change, and it is a difference
+#' in width alone rather than in the shape or the location of the prior.
+#'
+#' A design with fewer than two distinct positive predictor values states no
+#' range for the prior to span and no spread for \code{sd} to measure, so
+#' \code{sigma} falls back to 1 on the log scale. Such a design cannot identify
+#' a concentration-response curve at all, and the fallback is chosen to be
+#' harmless rather than to be right: the remedy is more concentrations, not a
+#' better prior. A predictor with no positive values at all is refused, because
+#' there is then no dose scale to place the prior on; \code{\link{check_data}}
+#' fails first on such data, so this is a backstop.
+#'
+#' Evidence for all of the above is prior-only; nothing was fitted. Priors were
+#' obtained through \code{\link{get_priors}} over five designs, three predictor
+#' transforms, all 12 families, both links and both prior types, and scored by
+#' the truncated prior CDF at a known parameter value. The gamma entry placed
+#' the true \emph{NEC} outside the central 95\% of the prior in 8 of 30 design
+#' by transform by parameter cells; the prior built here does so in none. See
+#' #302.
+#'
+#' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
+#' was supplied.
+#'
+#' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
+#' prior string.
+#'
+#' @importFrom stats median sd qnorm
+#'
+#' @noRd
+predictor_prior <- function(predictor) {
+  u <- unique(predictor)
+  # A concentration cannot be negative, so a predictor that spans negative
+  # values is one the user has transformed. Selecting on that is what selects
+  # the scale the prior is stated on.
+  spans_negative <- min(u) < 0
+  if (spans_negative) {
+    z <- u
+    dist <- "normal"
+    sigma <- sd(z) * 10
+  } else {
+    z <- log(u[u > 0])
+    if (!length(z)) {
+      stop("Cannot build a prior for \"nec\" or \"ec50\": the predictor",
+           " contains no positive values, so there is no concentration scale",
+           " to place them on. Check the predictor variable, and see ?bnec.",
+           call. = FALSE)
+    }
+    dist <- "lognormal"
+    sigma <- diff(range(z)) / (2 * qnorm(0.975))
+  }
+  # Both branches degenerate on a single distinct value: sd() is NA and the
+  # range is zero. One fallback serves both because both are measured on the
+  # scale the prior is stated on.
+  if (!isTRUE(is.finite(sigma)) || sigma <= 0) {
+    sigma <- 1
+  }
+  paste0(dist, "(", median(z), ", ", sigma, ")")
+}
+
 #' define_prior
 #'
 #' Generates prior model objects to pass to \pkg{brms}
@@ -166,8 +294,13 @@ define_prior <- function(model, family, predictor, response,
     }
   }
   response <- response_link_scale(response, family)
-  x_type <- set_distribution(predictor, silence_y_msgs = TRUE,
-                             silence_x_msgs = FALSE)
+  # Called for its error alone. It rejects an integer predictor, which
+  # check_data() also rejects and for the reason recorded there; this call is
+  # the backstop for the routes that reach prior construction directly. Its
+  # value is no longer read: the nec and ec50 prior is one construction
+  # selected by whether the predictor spans negative values, not three selected
+  # by which distribution describes the predictor's support. See #302.
+  set_distribution(predictor, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
   # Two prior sets for the response-scaled parameters (top, bot):
   #  - "uninformative": the weakly-informative defaults described in the JSS
   #    article (Fisher et al. 2024); wider, closer to truly uninformative.
@@ -253,55 +386,9 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = "beta(1, 5)",
                  beta = "beta(1, 5)")
   }
-  # The rate of the nec/ec50 gamma prior is set from the median of the distinct
-  # predictor values, not from the median of the observation vector. A prior
-  # scale should describe the concentrations that were tested, not how many
-  # replicates each of them received. Where more than half the observations sit
-  # at a zero control the observation median is zero and 1 / (0 / 2) made the
-  # prior string "gamma(5, Inf)"; the distinct-value median cannot be zero
-  # while the predictor reaches above one, which is the condition under which
-  # this entry is selected. The two agree for a balanced design, and the
-  # distinct series is what survival_by_x() already primes the hu block of a
-  # hurdle or zero-inflated fit from, so the two blocks of one fit no longer
-  # disagree about the scale of their shared predictor purely because of
-  # replication -- previously by a factor of three on an unbalanced design. They
-  # can still differ for a substantive reason: the mu block is primed from the
-  # non-zero subset, so a concentration at which every response is zero is
-  # absent from its series, which is the right answer for a block fitted only to
-  # survivors. See #269.
-  #
-  # unique() collapses replicates only where their recorded values are
-  # bit-identical, so this reads the series as it was entered. A nominal series
-  # typed as constants collapses; one computed per replicate, as a dilution
-  # factor applied row by row, may not, in which case the median is the
-  # observation median again and the prior is the one earlier versions built.
-  # That is acceptable because the prior is weakly informative either way, and
-  # the alternative -- rounding before comparing -- would need a tolerance with
-  # no defensible value on an arbitrary concentration scale.
-  x_med <- median(unique(predictor))
-  # gamma(5, 4/m), not gamma(5, 2/m). The mode of gamma(shape, rate) is
-  # (shape - 1) / rate, so at rate 2/m it was 2m -- twice the median predictor.
-  # On a linearly spaced series m is close to half the maximum, which put the
-  # mode on the upper truncation bound: after truncation the density increased
-  # monotonically across the whole tested range, so the prior pulled the nec
-  # towards the highest concentration tested, which is the wrong direction for
-  # a protective estimate. At rate 4/m the maximum density is at m and the mean
-  # at 1.25m, which is what ?bnec and vignette("example3") already describe.
-  #
-  # Chosen for consistency rather than from a fit. The other two entries of
-  # x_prs place their maximum density at a central measure of the predictor --
-  # beta(2, 2) at the centre of the unit interval, normal(median(x), ...) at the
-  # median -- so the gamma entry should peak at m. The alternative considered
-  # and not taken was gamma(2, 2/m), whose mean rather than mode is m: its
-  # maximum density is at m/2, which matches neither the documentation nor the
-  # convention the other two entries follow, both being specified by where the
-  # density peaks rather than by where its mean falls. See #273.
-  x_prs <- c(Beta = "beta(2, 2)",
-             Gamma = paste0("gamma(5, ", 1 / (x_med / 4), ")"),
-             gaussian = paste0("normal(",
-                               quantile(predictor,
-                                        probs = 0.5),
-                               ", ", sd(predictor) * 10, ")"))
+  # One construction for nec and ec50, on whichever scale the predictor was
+  # supplied on. See predictor_prior() for why, and #302 for the measurements.
+  x_pr <- predictor_prior(predictor)
   lbs <- c(Gamma = 0, poisson = 0, negbinomial = 0, gaussian = NA,
            bernoulli = 0, binomial = 0, "beta_binomial" = 0, beta = 0)
   ubs <- c(Gamma = NA, poisson = NA, negbinomial = NA, gaussian = NA,
@@ -312,9 +399,9 @@ define_prior <- function(model, family, predictor, response,
   pr_bot <- prior_string(y_b_prs[fam_tag], nlpar = "bot",
                          lb = lbs[fam_tag], ub = ubs[fam_tag])
   # x-dependent priors
-  pr_nec <- prior_string(x_prs[x_type], nlpar = "nec",
+  pr_nec <- prior_string(x_pr, nlpar = "nec",
                          lb = min(predictor), ub = max(predictor))
-  pr_ec50 <- prior_string(x_prs[x_type], nlpar = "ec50",
+  pr_ec50 <- prior_string(x_pr, nlpar = "ec50",
                           lb = min(predictor), ub = max(predictor))
   # x- and y-independent priors
   pr_d <- prior_string("normal(0, 5)", nlpar = "d")
