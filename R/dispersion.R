@@ -148,10 +148,7 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
         # than a plain multiple. dispersion() does not accept negbinomial at
         # all -- see allowed_fams above -- so there is nothing to get wrong
         # today, but whoever widens that list must derive the negbinomial case
-        # rather than copying this line. See #136. Such a change also reaches
-        # pearson_dispersion(), whose classification of a zero denominator
-        # assumes the variance and the mean underflow together; that holds for
-        # binomial and Poisson and not for a Gamma-style variance.
+        # rather than copying this line. See #136.
         prd_var_y <- prd_var_y * model$data[[rate_var]]
       }
       var_out[i, ] <- prd_var_y
@@ -231,16 +228,6 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
 #' warning rather than an error because \code{dispersion()} is called once per
 #' equation from \code{expand_nec()}, so stopping would abandon construction of
 #' a whole \code{\link{bayesmanecfit}} for one candidate whose shape is wrong.
-#'
-#' The classification of a zero denominator assumes that the variance and the
-#' mean underflow together, which holds for the two families
-#' \code{dispersion()} accepts: \code{1 - mu} is exactly 1 for any \code{mu}
-#' below machine epsilon, so \code{mu (1 - mu) n} and \code{mu n} are the same
-#' product. It does not hold for a family whose variance underflows first --- a
-#' Gamma-style \code{mu^2 / shape} is zero at \code{mu = 1e-170} --- where a
-#' response of zero would be classified as a disagreement and the statistic
-#' reported as \code{Inf}. See the note on \code{allowed_fams} in
-#' \code{dispersion()}.
 #'
 #' @return A \code{\link[base]{numeric}} vector with one element per draw.
 #' \code{NA} for a draw in which no observation contributes a residual.
