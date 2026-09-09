@@ -118,16 +118,33 @@ head(surv)
 Look at the data before fitting anything.
 
 ```{r exmp9-data}
+dose_breaks <- c(0, 0.16, 0.63, 1.25, 2.5, 5, 10, 20)
 ggplot(surv, aes(x = dose, y = suc / tot)) +
   geom_point(size = 2, alpha = 0.7) +
+  # Axis spacing only: the transform is applied to the scale, so the data and
+  # every estimate stay on the recorded dose. Transforming the breaks instead
+  # would relabel the axis without respacing it.
+  scale_x_continuous(transform = "sqrt", breaks = dose_breaks) +
   labs(x = "Dose", y = "Proportion surviving") +
   theme_classic()
 ```
 
 Survival is at or near complete for most of the series and falls away over the
-top two doses. Two features matter for what follows: the response is bounded at
-1 and sits against that bound for most of the range, and the doses are unevenly
-spaced, with most of them crowded near zero.
+top two doses. Two features matter for what follows. The response is bounded at
+1 and sits against that bound for most of the range: nine of the eleven doses
+have survival at or above 0.875, and the whole of the decline happens between
+1.25 and 2.5, with no dose tested in between. And the doses are unevenly spaced,
+a doubling ladder from 0.01 to 2.5 followed by a single dose at 20.
+
+The axis above is square-root spaced for that second reason. On a linear axis
+the nine doses up to 1.25 occupy the leftmost six per cent of the plot and
+overlap into a single stack, so the figure shows the two highest doses and
+nothing else. The spacing is applied through `scale_x_continuous()`, which
+changes the axis and not the data: the fit below uses the recorded dose, and
+every estimate is reported in those units. A logarithmic axis would separate the
+low doses further still, but a logarithm is undefined at a zero control, so it
+requires substituting a value for that control first --- a decision the analysis
+would then have to state.
 
 The dose is left untransformed. A logarithm is unavailable, since the series
 includes a zero control, but a square root is not: it is defined at zero and it
@@ -535,7 +552,8 @@ Whether it does is a property of the particular dataset, and is not knowable
 before the screen is run.
 
 ```{r exmp9-plot-after}
-autoplot(fit_screened)
+autoplot(fit_screened) +
+  scale_x_continuous(transform = "sqrt", breaks = dose_breaks)
 ```
 
 The averaged curve with its credible band, over the screened set. The band
