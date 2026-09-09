@@ -125,8 +125,10 @@ positive_scale <- function(response, probs) {
 #' because the change of variable from the log scale to the dose scale
 #' redistributes it. Where the mass is, is what separates the two, and the
 #' median is the quantity that says so: on the nassarius contaminant A series
-#' the median of the untruncated prior built here is 0.223, the median positive
-#' dose exactly, against 3.85 for the shape-1.03 gamma. Over the sweep below the
+#' the median of the untruncated prior built here is 0.223, which is
+#' \code{exp(mu)} and therefore the location the rule specifies exactly ---
+#' that series has an even number of positive doses, so it is the geometric mean
+#' of the two central ones --- against 3.85 for the shape-1.03 gamma. Over the sweep below the
 #' truncated prior CDF at the true value runs 0.43 to 0.95, so the mass is where
 #' the doses are.
 #'

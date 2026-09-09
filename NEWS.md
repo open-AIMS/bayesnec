@@ -31,8 +31,9 @@
   mode is `exp(mu - sigma^2)`, so the density falls because the change of
   variable from the log scale redistributes it. The median is what separates
   them --- on the contaminant A series the median of the untruncated prior built
-  here is 0.223, the median positive dose exactly, against 3.85 for the
-  shape-1.03 gamma. Separately, selecting on the support made the prior depend
+  here is 0.223, which is the location the rule specifies exactly, that series
+  having an even number of positive doses so that the location is the geometric
+  mean of the two central ones, against 3.85 for the shape-1.03 gamma. Separately, selecting on the support made the prior depend
   on the units the dose was recorded in: measured on the `nassarius` contaminant
   A dose series, the central 95% interval covered 1.7% of the predictor range
   under the gamma entry, 81% under `beta(2, 2)` rescaled to that range, and
