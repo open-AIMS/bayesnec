@@ -199,8 +199,9 @@ well determined the ratio is.
 
 ```{r family-choice}
 disp <- dispersion(screen, summary = TRUE)
-# dispersion() returns an empty vector where the statistic is undefined for the
-# fit -- the case described in step 2 -- and there is then no verdict to read.
+# dispersion() returns an empty vector where every observation has a fitted
+# variance of zero -- the underflow described in step 2, in the case where it
+# reaches all of them -- and there is then no verdict to read.
 if (length(disp)) disp[["P(>1)"]] else NA_real_
 ```
 
@@ -353,30 +354,25 @@ screen of section 1, asked again of every candidate now that the set exists.
 This is where the question is properly answered, because the screen was one
 shape and this is all of them. `dispersion_P_over_1` is the same `P(>1)` the
 screen used, so the candidates can be read against the threshold applied there.
-Two things to read from it: whether the equations holding weight agree with the
-screen, and whether any of them report `NA`.
+The question is whether the equations holding weight agree with the screen.
 
-```{r na-dispersion}
-ms <- fit$mod_stats[, c("model", "wi", "dispersion_Estimate",
-                        "dispersion_P_over_1")]
-ms[is.na(ms$dispersion_Estimate), ]
+```{r set-dispersion}
+fit$mod_stats[, c("model", "wi", "dispersion_Estimate", "dispersion_P_over_1")]
 ```
 
-`dispersion()` builds its Pearson denominator from each model's *fitted* mean.
-At the highest dose nothing survived, and an equation that decays fast enough
-predicts a mean that underflows to exactly zero there. The denominator is then
-zero and the numerator is zero as well, because the model has reproduced that
-group exactly, so the residual is `0/0`. A single such observation makes the
-statistic undefined for the whole fit.
-
-Two things follow, and neither is a fault in the fit. The statistic is lost
-precisely for the equations that describe these data best, since underflow
-requires a fast decay --- the three reporting `NA` here include the
-highest-weighted equation in the set. And the accompanying message attributes it
-to a bad model fit, which is not what has happened. It is a numerical limit of
-how the statistic is computed, and it means the dispersion screen cannot speak
-to the family for the models that contribute most. The family decision is taken
-on the local checks in section 4 instead.
+For some of these equations part of the data is excluded before the statistic is
+computed, and `dispersion()` says so in a message that this document's chunk
+options suppress. It is not a fault in the fit. `dispersion()` builds its
+Pearson denominator from each model's *fitted* mean. At the highest dose nothing survived, and an
+equation that decays fast enough predicts a mean that underflows to exactly zero
+there. The denominator is then zero and the numerator is zero as well, because
+the model has reproduced that group exactly, so the residual is `0/0`. An
+observation of that kind says nothing about dispersion in either direction, so
+it is excluded from both sums and the message names how many were excluded; the
+statistic is computed from the remaining observations and every posterior draw
+is retained. Underflow requires a fast decay, so it is the equations describing
+these data best that are affected, and the exclusion is what keeps the statistic
+available for them.
 
 Judge the verdict against the weight. An equation whose shape suits the data
 badly fails the dispersion test whatever the data are doing, because the
@@ -571,9 +567,9 @@ No panel does. Across all `r length(unique(surv$dose))` doses the observed
 counts fall within the simulated intervals, including the transition at 1.25 and
 2.5 where the response collapses. At the highest dose every tank is at zero
 survival and the model reproduces that exactly, with no simulated spread at
-all --- the same configuration that leaves `dispersion()` undefined for this
-equation. Read together with the screen of step 1, the binomial is adequate for
-these data: a global statistic found no evidence against it, and the predictive
+all --- the same configuration that `dispersion()` excludes from its sums for
+this equation. Read together with the screen of step 1, the binomial is adequate
+for these data: a global statistic found no evidence against it, and the predictive
 distribution reproduces every group.
 
 `check_fit()` tests something narrower: whether the model reproduces the
