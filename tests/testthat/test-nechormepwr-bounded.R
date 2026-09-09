@@ -77,17 +77,19 @@ test_that("initialisation confirms why they are excluded", {
   # the init search is measured against it rather than assumed to have fixed it.
   #
   # The claim is about the region the sampler may reach, not about whether any
-  # draw at all can be found. A nec at or above 1 puts some concentration at or
-  # above 1 below the threshold, where the decay factor is exactly 1 and the
+  # draw at all can be found. Where a concentration at or above 1 falls strictly
+  # below nec it sits under the threshold, the decay factor is exactly 1 and the
   # mean is at least top + 1; no parameter value keeps that inside (0, 1), and
   # the search fails. A nec below 1 puts every such concentration past the
   # threshold and the mean can be held inside (0, 1), so the search succeeds --
   # which it does under the lognormal prior adopted in #302 and did not under
-  # the gamma prior before it, purely because the lognormal proposes a low nec
-  # more often. Succeeding does not make the model usable, because nec is
-  # truncated to the predictor range and the sampler is free to leave the
-  # region the draw avoids. Both halves are asserted, so that neither reading
-  # can drift.
+  # the gamma prior before it, because the draws that succeed sit near nec =
+  # 0.08 to 0.24 and the truncated prior probability of reaching there changed
+  # by a factor of 40 to 900. Succeeding does not make the model usable: nec is
+  # truncated to the predictor range so the sampler is free to leave the region
+  # the draw avoids, and a nec below 1 does not by itself keep the mean inside
+  # (0, 1) either. Both halves are asserted, so that neither reading can
+  # drift.
   fam <- validate_family(bernoulli(link = "identity"))
   search <- function(model, x, y, priors = NULL) {
     if (is.null(priors)) {

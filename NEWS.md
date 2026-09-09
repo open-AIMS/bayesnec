@@ -147,15 +147,26 @@
   evidence recorded for the exclusion, and with it the wording of `?models` and
   of the message `check_models()` prints. Both said there is no parameter value
   that keeps the mean inside (0, 1) wherever the predictor reaches 1. That is
-  true only where `nec` is also at or above 1, so that some concentration at or
-  above 1 falls below the threshold, where the decay factor is exactly 1 and the
+  true only where a concentration at or above 1 falls strictly below `nec`, so
+  that it sits under the threshold, where the decay factor is exactly 1 and the
   mean is at least `top + 1`. A `nec` below 1 puts every such concentration past
-  the threshold and the mean can be held inside (0, 1). The lognormal prior
-  proposes a `nec` that low often enough for the search to find one; the gamma
-  did not, so the over-statement was never exercised. The exclusion is unchanged
-  and its reason is unchanged in substance: `nec` is truncated to the predictor
-  range, so every value at or above 1 is one the sampler is free to propose, and
-  each is outside the likelihood's support (#177, #302).
+  the threshold, and initial values can then be found.
+
+  The exclusion is unchanged and remains correct, for a reason the text now
+  states as well: the hormesis term has no coefficient the fit can drive towards
+  zero, so the mean is not bounded above by 1 for any parameter values on any
+  predictor, which is what `mu_support()` has always recorded for these two
+  equations as `unscaled_excess`. Measured on a predictor confined below 1,
+  where the `top + 1` argument says nothing, 2,899 of 3,591 grid points over
+  `top`, `slope`, `beta` and `nec` still put the mean above 1. Bounding `nec`
+  below 1 is therefore not the fix it appears to be: on `nec_data` with `nec`
+  below 1, 3,696 of 4,788 grid points put the mean above 1.
+
+  The search finds initial values now and did not before because the draws that
+  succeed sit near `nec` = 0.08 to 0.24, where the truncated prior probability
+  changed by a factor of 40 to 900: `P(nec < 0.25)` from 0.0063 to 0.269 and
+  `P(nec < 0.1)` from 0.00011 to 0.0975. `P(nec < 1)` moved only 0.481 to 0.670
+  and would not account for it (#177, #302).
 
 - **The `nec` and `ec50` prior of a hurdle or zero-inflated fit is built from
   the whole predictor.** Both blocks of such a fit are evaluated over the whole

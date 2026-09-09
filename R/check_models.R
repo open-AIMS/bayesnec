@@ -19,22 +19,36 @@ bounded_linear_drops <- function() {
 #' \code{x^(1 / (1 + exp(slope)))}, which has no coefficient. The exponent lies
 #' in (0, 1), so at \code{x = 1} the term contributes exactly 1 whatever
 #' \code{slope} is, and below the threshold -- where the decay factor is exactly
-#' 1 -- the fitted mean is at least \code{top + 1}. Wherever the predictor
-#' reaches 1 and \code{nec} is at or above 1 there is therefore a concentration
-#' at which no parameter value keeps the mean inside (0, 1).
+#' 1 -- the fitted mean is at least \code{top + 1}. Wherever a concentration at
+#' or above 1 falls strictly below \code{nec} there is therefore a point at
+#' which no parameter value keeps the mean inside (0, 1). \code{nec} is
+#' truncated to the predictor range, so on a predictor reaching above 1 every
+#' such \code{nec} is a value the sampler is free to propose, and each proposal
+#' is outside the likelihood's support.
 #'
-#' \code{nec} is truncated to the predictor range, so every such value is one
-#' the sampler is free to propose, and each proposal is outside the likelihood's
-#' support. That is why this is an exclusion rather than a harder search for
-#' initial values, and it is the reason stated to the user. It is not that no
-#' parameter value at all can be found: a \code{nec} below 1 puts every
-#' concentration at or above 1 past the threshold, where the decay factor is
-#' less than 1, and the mean can then be held inside (0, 1). The initial-value
-#' search will find such a draw if the prior on \code{nec} proposes one often
-#' enough, which the lognormal prior adopted under #302 does and the gamma prior
-#' before it did not. Finding one does not make the model usable, because the
-#' region it avoids is still inside the bounds the sampler explores. See #177
-#' and #302.
+#' \strong{That is the sharpest demonstration, not the whole reason.} These two
+#' equations are \code{unscaled_excess} in \code{\link{mu_support}}: their mean
+#' is not bounded above by 1 for any parameter values on any predictor, because
+#' the hormesis term has no coefficient the fit can drive towards zero. Measured
+#' on a predictor confined below 1 -- where the \code{top + 1} argument says
+#' nothing -- 2,899 of 3,591 grid points over \code{top}, \code{slope},
+#' \code{beta} and \code{nec} still put the mean above 1, reaching 1.95. That is
+#' why the exclusion is unconditional on the data rather than applied only where
+#' the predictor reaches above 1.
+#'
+#' It is also why bounding \code{nec} below 1 is not the fix it appears to be.
+#' On \code{nec_data}, with \code{nec} below 1, 3,696 of 4,788 grid points put
+#' the mean above 1, reaching 3.03: a low \code{nec} is necessary and nowhere
+#' near sufficient, and the admissible set is a curved region in \code{top},
+#' \code{slope} and \code{nec} jointly rather than a bound on \code{nec}.
+#'
+#' So the initial-value search finding an admissible draw does not make the
+#' model usable. It does now find one, where the gamma prior it replaced did
+#' not, because the draws that succeed sit near \code{nec} = 0.08 to 0.24 and
+#' the truncated prior probability of reaching there changed by a factor of 40
+#' to 900: \code{P(nec < 0.25)} from 0.0063 to 0.269 and \code{P(nec < 0.1)}
+#' from 0.00011 to 0.0975. \code{P(nec < 1)} moved only 0.481 to 0.670, which
+#' would not explain it. See #177 and #302.
 #'
 #' @return A \code{\link[base]{character}} vector.
 #'
@@ -61,9 +75,13 @@ unscaled_power_message <- function(drop_model, fam_tag) {
          " as they are not valid in the case of a ", fam_tag,
          " with identity link: their hormesis term",
          " x^(1 / (1 + exp(slope))) has no scale parameter, so the fitted mean",
-         " is at least top + 1 at any concentration at or above 1 that falls",
-         " below nec, and cannot be held inside (0, 1) there. nec is bounded to",
-         " the predictor range, so the sampler is free to propose such a value.",
+         " is at least top + 1 at any concentration at or above 1 that",
+         " falls below nec, and cannot be held inside (0, 1) there. nec is",
+         " bounded to the predictor range, so the sampler is free to propose",
+         " such a value. More generally the term has no coefficient the fit",
+         " can drive towards zero, so the mean is not bounded above by 1 on",
+         " any predictor, which is why the exclusion does not depend on the",
+         " range of yours.",
          " Use nechorme, nechorme4 or nechormepwr01 for a",
          " hormesis model on a bounded response. See ?models.")
 }
