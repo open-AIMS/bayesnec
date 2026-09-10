@@ -42,3 +42,8 @@ prompts/
 
 # Safety-net backups of untracked files before editing; never committed.
 superceded/
+
+# Container image for HPC vignette precompilation (see hpc/README.md).
+# Built locally, identity recorded in hpc/image.lock.
+*.sif
+.apptainer-tmp/

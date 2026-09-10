@@ -1,0 +1,135 @@
+Bootstrap: docker
+From: rocker/r-ver@sha256:a5df0ae591422cc1733e97da03a9f4eff4cf172e40895225959aa93bb7ff7517
+
+# Toolchain for precompiling the bayesnec vignettes on the AIMS HPC.
+#
+# The image holds R, cmdstan, brms and everything the vignettes load. It does
+# NOT hold bayesnec. The job installs bayesnec from the checked-out source at
+# start-up, into a job-local library that is placed first on R_LIBS. That is
+# what lets one image precompile a vignette from any branch: example7's case
+# studies are computed at build time so that they track the version of the
+# package they ship with, and an image pinning bayesnec to a commit cannot
+# honestly do that for a different branch. See #306.
+#
+#   ./hpc/build.sh          # build here, write hpc/image.lock
+#
+# Built on a workstation and copied across rather than built on the HPC. That
+# is not a preference: the cluster's singularity 3.6.3 refuses a --fakeroot
+# build because the invoking account has no entry in /etc/subuid, and a %post
+# section cannot run without it. Verified on hpc-l001, 2026-09-10:
+#   FATAL: could not use fakeroot: no mapping entry found in /etc/subuid
+# The image changes only when a dependency changes, not when the package or the
+# branch changes, so the copy is rare rather than per-run.
+
+%labels
+    Purpose bayesnec vignette precompilation
+    Base rocker/r-ver:4.6.1
+    Maintainer Rebecca Fisher
+    Issue https://github.com/open-AIMS/bayesnec/issues/306
+
+%post
+    set -eu
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Kept identical to the digest on the From: line above. build.sh asserts
+    # that the two agree before it starts, so the duplication cannot drift.
+    BASE_DIGEST=sha256:a5df0ae591422cc1733e97da03a9f4eff4cf172e40895225959aa93bb7ff7517
+    CMDSTAN_VERSION=2.39.0
+
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential g++ make \
+        libcurl4-openssl-dev libssl-dev libxml2-dev \
+        libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+        libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
+        git ca-certificates \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Pinning the base image by digest is not enough on its own to make the
+    # package set reproducible. rocker/r-ver configures
+    # https://p3m.dev/cran/__linux__/noble/latest, which is a moving target: the
+    # first build of this file resolved knitr 1.52 and posterior 1.7.0, and a
+    # rebuild a month later would resolve whatever is current then, without any
+    # change to this file. The date below is what fixes it.
+    #
+    # The prefix is read from the base image rather than written out, so that a
+    # change of base distribution is followed rather than silently pointed at a
+    # snapshot for the wrong one, which would drop every binary package and
+    # build the lot from source.
+    P3M_DATE=2026-09-10
+    P3M_SNAPSHOT="$(R -q --no-echo -e 'cat(sub("/latest/?$", "", getOption("repos")[[1]]))')/${P3M_DATE}"
+    case "$P3M_SNAPSHOT" in
+      *"/${P3M_DATE}") : ;;
+      *) echo "could not derive a dated snapshot from the base image repository:" >&2
+         echo "  $P3M_SNAPSHOT" >&2; exit 1 ;;
+    esac
+    echo "options(repos = c(CRAN = '${P3M_SNAPSHOT}'))" \
+      >> /usr/local/lib/R/etc/Rprofile.site
+    R -q --no-echo -e 'r <- getOption("repos")[[1]];
+        if (grepl("/latest/?$", r)) stop("repository is still floating: ", r);
+        cat("repository pinned to", r, "\n")'
+
+    # cmdstanr is not on CRAN.
+    R -q -e 'install.packages("cmdstanr", repos = c("https://stan-dev.r-universe.dev", getOption("repos")))'
+    mkdir -p /opt/cmdstan
+    R -q -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', cores = 4, version = '${CMDSTAN_VERSION}')"
+
+    export CMDSTAN="/opt/cmdstan/cmdstan-${CMDSTAN_VERSION}"
+    export BASE_DIGEST
+
+    # Packages the vignettes load directly, plus every bayesnec Imports and the
+    # Suggests the vignettes reach. bayesnec itself is deliberately absent, so
+    # its dependencies have to be named here rather than resolved from its
+    # DESCRIPTION. Adding a dependency to bayesnec therefore requires an image
+    # rebuild; the job says so when R CMD INSTALL fails.
+    #
+    # Written as heredocs rather than `R -e` one-liners: a backslash-continued
+    # `R -e` argument reaches R with the backslashes still in it, which is a
+    # syntax error, and the failure comes 35 minutes into a build.
+    Rscript - <<'RS'
+pk <- c("brms", "ggplot2", "dplyr", "tidyr", "knitr", "rmarkdown",
+        "posterior", "bayesplot",
+        "formula.tools", "loo", "purrr", "tibble", "tidyselect", "rlang",
+        "chk", "modelbased", "extraDistr", "R.utils")
+install.packages(pk)
+miss <- pk[!vapply(pk, requireNamespace, logical(1), quietly = TRUE)]
+if (length(miss)) stop("not installed: ", paste(miss, collapse = ", "))
+# Fail the build rather than ship an image that would shadow the job-local
+# bayesnec. A site library copy would win or lose depending on R_LIBS order.
+if (requireNamespace("bayesnec", quietly = TRUE)) stop("bayesnec must not be in this image")
+RS
+
+    # The manifest is the image's identity. hpc/build.sh copies it out to
+    # hpc/image.lock and the job asserts the image it is running still matches
+    # the committed copy, so rebuilding the image cannot silently change
+    # committed vignette output. See hpc/README.md.
+    mkdir -p /opt/bayesnec-precompile
+    Rscript - <<'RS'
+pk <- c("brms", "ggplot2", "dplyr", "tidyr", "knitr", "rmarkdown",
+        "posterior", "bayesplot",
+        "formula.tools", "loo", "purrr", "tibble", "tidyselect", "rlang",
+        "chk", "modelbased", "extraDistr", "R.utils", "cmdstanr")
+cmdstanr::set_cmdstan_path(Sys.getenv("CMDSTAN"))
+lines <- c(
+  "base_image: rocker/r-ver:4.6.1",
+  paste0("base_digest: ", Sys.getenv("BASE_DIGEST")),
+  paste0("r_version: ", paste(R.version$major, R.version$minor, sep = ".")),
+  paste0("cmdstan: ", cmdstanr::cmdstan_version()),
+  paste0("repos: ", paste(getOption("repos"), collapse = " ")),
+  "packages:",
+  paste0("  ", pk, ": ",
+         vapply(pk, function(p) as.character(utils::packageVersion(p)), character(1))))
+writeLines(lines, "/opt/bayesnec-precompile/manifest.txt")
+writeLines(lines)
+RS
+
+%environment
+    export CMDSTAN=/opt/cmdstan/cmdstan-2.39.0
+    export NOT_CRAN=true
+
+%runscript
+    exec Rscript "$@"
+
+%test
+    R -q -e 'stopifnot(!requireNamespace("bayesnec", quietly = TRUE)); cat("bayesnec absent: OK\n")'
+    R -q -e 'cmdstanr::set_cmdstan_path(Sys.getenv("CMDSTAN")); cat("cmdstan", cmdstanr::cmdstan_version(), "\n")'
+    R -q -e 'cat("brms", as.character(packageVersion("brms")), "\n")'

@@ -1,0 +1,111 @@
+#!/bin/bash
+#SBATCH --job-name=bnec-precompile
+#SBATCH --partition=cpuq
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=32GB
+#SBATCH --time=24:00:00
+#SBATCH --output=logs/precompile-%A_%a.log
+#SBATCH --error=logs/precompile-%A_%a.err
+
+# Precompile one vignette. The vignette is this task's line of vignettes.txt,
+# which hpc/precompile-hpc.sh writes from the names given on its command line.
+#
+# --cpus-per-task=4: every fit in a vignette is independent of every other and
+# is run in sequence, so the only parallelism available is the four chains
+# within a fit. Asking for more would leave cores idle.
+#
+# --mem=32GB is over-provisioning rather than a measurement. On a 490GB node
+# with four cores requested the binding constraint is cores, so raising this
+# changes nothing about throughput while removing the risk of an OOM kill
+# hours into a run. example7 holds 24 model-averaged fits over thirteen
+# equations in memory at once.
+#
+# --time=24:00:00: example7 took 309 min end to end on a cold Stan cache and
+# was still running at 4 h 31 m on a warm one, of which over two hours was
+# ecx() and nsec() extraction rather than sampling (#306). A day is generous
+# for the largest vignette in the repository and a task that exceeds it has
+# gone wrong rather than been slow.
+
+set -euo pipefail
+
+# `module` returns non-zero on a cluster where these are already loaded, which
+# under `set -e` would end the job before it started.
+module load slurm || true
+module load singularity || true
+command -v singularity > /dev/null || {
+  echo "singularity not on PATH after 'module load singularity'" >&2; exit 1; }
+
+JOB="${SLURM_SUBMIT_DIR:-$PWD}"
+cd "$JOB"
+mkdir -p logs out
+
+TASK="${SLURM_ARRAY_TASK_ID:-1}"
+VIG=$(sed -n "${TASK}p" vignettes.txt)
+[ -n "$VIG" ] || { echo "no vignette on line $TASK of vignettes.txt" >&2; exit 1; }
+
+SIF="$JOB/bayesnec-precompile.sif"
+LIB="$JOB/lib"
+# Shared between vignettes, between runs and between branches: cmdstanr names a
+# compiled program after a hash of its Stan source, so a program is reused only
+# where the source is identical. This is the single largest saving available --
+# roughly half the elapsed time of a cold example7 precompile -- and it is why
+# the directory is on scratch rather than in the job.
+CACHE="${BAYESNEC_STAN_CACHE:-/export/scratch/$USER/bayesnec-stan-cache}"
+
+echo "=== $(date -Is) precompiling $VIG on $(hostname)"
+# Marks the start of this run, so that the figures it wrote can be told from
+# the committed ones deployed alongside them without needing the git tree.
+STARTED="$JOB/.started-$VIG"
+: > "$STARTED"
+
+# The image is the other half of what determines the committed output, so a
+# job refuses to run against an image that is not the one the branch records.
+# Rebuilding the image is a change that can alter committed vignette output and
+# has to be made deliberately, on a pull request, not discovered afterwards.
+lock_sha=$(sed -n 's/^sif_sha256: //p' hpc/image.lock)
+have_sha=$(sha256sum "$SIF" | cut -d' ' -f1)
+if [ "$lock_sha" != "$have_sha" ]; then
+  echo "image does not match hpc/image.lock" >&2
+  echo "  hpc/image.lock: $lock_sha" >&2
+  echo "  $SIF: $have_sha" >&2
+  echo "Copy the image this branch records, or rebuild and update the lock." >&2
+  exit 1
+fi
+echo "--- image"; cat hpc/image.lock
+
+# bayesnec from the checked-out source, into a job-local library that goes
+# first on R_LIBS. This is the whole point of the design: the image holds the
+# toolchain and not the package, so one image precompiles any branch.
+rm -rf "$LIB"; mkdir -p "$LIB"
+singularity exec -B "$JOB":"$JOB" --pwd "$JOB" "$SIF" \
+  R CMD INSTALL --library="$LIB" . \
+  || { echo "R CMD INSTALL failed. If a dependency is missing the image needs" >&2
+       echo "rebuilding: add it to hpc/bayesnec-precompile.def." >&2; exit 1; }
+
+mkdir -p "$CACHE"
+
+# BAYESNEC_VIGNETTE_CACHE is deliberately not passed through. A vignette
+# precompiled on the HPC is one whose numbers will be quoted, and the fit cache
+# reuses chunks fitted by whatever version was installed when it was written.
+singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" --pwd "$JOB" \
+  --env R_LIBS="$LIB" \
+  --env BAYESNEC_STAN_CACHE="$CACHE" \
+  --env BAYESNEC_VIGNETTES="$VIG" \
+  "$SIF" Rscript vignettes/precompile.R
+
+# Only reached when precompile.R exited zero, which it does not do when a chunk
+# errored: knitr renders a failed chunk and carries on, so the check inside the
+# script is what stands between a failed run and a plausible-looking .Rmd.
+# `set -e` above turns that exit status into a failed job, and the outputs are
+# staged only here, so nothing is available to copy back from a failed run.
+OUT="out/$VIG"
+rm -rf "$OUT"; mkdir -p "$OUT/vignettes"
+cp "vignettes/$VIG.Rmd" "$OUT/vignettes/"
+# The figures this run wrote. precompile.R copies into vignettes/ only the
+# figures whose files it changed, so mtime identifies them without needing the
+# git tree, which is not deployed.
+find vignettes -name 'vignette-fig-*.png' -newer "$STARTED" \
+  -exec cp {} "$OUT/vignettes/" \;
+echo "=== $(date -Is) $VIG done; staged $(ls "$OUT/vignettes" | wc -l) file(s) in $OUT"

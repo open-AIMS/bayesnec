@@ -59,7 +59,6 @@ library(ggplot2)
 
 ```{r, results = "hide", echo = FALSE}
 library(bayesnec)
-rstan::rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 ```
 
