@@ -206,9 +206,13 @@ it is matched exactly and not confused with <code>prior_type</code>.</p></dd>
 default priors to build when the user does not supply their own. Either
 <code>"uninformative"</code> (the default; the weakly-informative priors described
 in Fisher et al. 2024) or <code>"regularizing"</code> (narrower priors, with the
-no-effect <code>top</code> parameter centred on the control mean, which sits at the
-upper end of the response range for these monotonically decreasing models).
-Ignored when priors are supplied directly via the <code>prior</code> argument.</p></dd>
+no-effect <code>top</code> parameter placed at the mean response over the lowest
+concentrations tested and <code>bot</code> at the mean over the highest). The
+regularizing set narrows the response-scaled and group-level priors to 0.4 of
+the width of the uninformative set, and the <code>nec</code> and <code>ec50</code> prior
+to 0.84 of it; see <code><a href="../articles/example3.html">vignette("example3")</a></code> for why the two factors
+differ. Ignored when priors are supplied directly via the <code>prior</code>
+argument.</p></dd>
 
 
 <dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
