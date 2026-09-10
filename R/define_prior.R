@@ -380,8 +380,9 @@ beta_from_mode_sd <- function(mode, spread) {
 #' \code{ecxll4}, \code{ecxll5}, \code{ecxwb1}, \code{ecxwb1p3},
 #' \code{ecxhormebc4} and \code{ecxhormebc5} --- return 38.06 to 38.34, an
 #' error of 4\%. On a shallow curve with a low midpoint, a rate of 0.2 and an
-#' \code{ec50} of 1, all ten are further off: 20.4 to 29.7 against the same
-#' \code{top} of 40. Note that \code{ecxhormebc4} and \code{ecxhormebc5}
+#' \code{ec50} of 1, all ten are further off: 17.6 to 29.7 against the same
+#' \code{top} of 40, the lowest being \code{ecxwb1p3}. \code{ecxll5} depends on
+#' its shape parameter \code{f} as well as on \code{exp(beta) * ec50}. Note that \code{ecxhormebc4} and \code{ecxhormebc5}
 #' appear in both lists: their excess term does vanish at zero, and their
 #' denominator does not.
 #'

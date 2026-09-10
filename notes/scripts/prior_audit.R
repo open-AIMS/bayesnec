@@ -292,7 +292,11 @@ for (dn in names(designs)) {
  }
 }
 res <- do.call(rbind, rows)
-out <- Sys.getenv("BAYESNEC_PRIOR_AUDIT_OUT", "prior_audit.rds")
+# Written under tempdir() by default, so that a run from the repository root
+# does not leave an untracked .rds behind. Set BAYESNEC_PRIOR_AUDIT_OUT to keep
+# the result.
+out <- Sys.getenv("BAYESNEC_PRIOR_AUDIT_OUT",
+                  file.path(tempdir(), "prior_audit.rds"))
 saveRDS(res, out)
 cat("rows:", nrow(res), "\n")
 cat("errors:", sum(res$par == "<error>"), "\n")
