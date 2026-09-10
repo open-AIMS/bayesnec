@@ -32,3 +32,5 @@ README.Rmd
 ^notes$
 ^cache$
 ^hpc$
+^.*\.sif$
+^\.apptainer-tmp$

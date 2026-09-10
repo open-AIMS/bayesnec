@@ -76,6 +76,13 @@ From: rocker/r-ver@sha256:a5df0ae591422cc1733e97da03a9f4eff4cf172e40895225959aa9
     export CMDSTAN="/opt/cmdstan/cmdstan-${CMDSTAN_VERSION}"
     export BASE_DIGEST
 
+    # rstan is installed even though every vignette samples with cmdstanr. It is
+    # not a fallback: brms stores a fit as a stanfit object whichever backend
+    # produced it, and its cmdstanr path builds that object in
+    # read_csv_as_stanfit(), which needs rstan's S4 class definitions. Without
+    # it every fit fails and bnec() reports only "None of the models fit
+    # successfully". Measured with brms 2.23.0.
+    #
     # Packages the vignettes load directly, plus every bayesnec Imports and the
     # Suggests the vignettes reach. bayesnec itself is deliberately absent, so
     # its dependencies have to be named here rather than resolved from its
@@ -86,7 +93,7 @@ From: rocker/r-ver@sha256:a5df0ae591422cc1733e97da03a9f4eff4cf172e40895225959aa9
     # `R -e` argument reaches R with the backslashes still in it, which is a
     # syntax error, and the failure comes 35 minutes into a build.
     Rscript - <<'RS'
-pk <- c("brms", "ggplot2", "dplyr", "tidyr", "knitr", "rmarkdown",
+pk <- c("brms", "rstan", "ggplot2", "dplyr", "tidyr", "knitr", "rmarkdown",
         "posterior", "bayesplot",
         "formula.tools", "loo", "purrr", "tibble", "tidyselect", "rlang",
         "chk", "modelbased", "extraDistr", "R.utils")
@@ -104,7 +111,7 @@ RS
     # committed vignette output. See hpc/README.md.
     mkdir -p /opt/bayesnec-precompile
     Rscript - <<'RS'
-pk <- c("brms", "ggplot2", "dplyr", "tidyr", "knitr", "rmarkdown",
+pk <- c("brms", "rstan", "ggplot2", "dplyr", "tidyr", "knitr", "rmarkdown",
         "posterior", "bayesplot",
         "formula.tools", "loo", "purrr", "tibble", "tidyselect", "rlang",
         "chk", "modelbased", "extraDistr", "R.utils", "cmdstanr")

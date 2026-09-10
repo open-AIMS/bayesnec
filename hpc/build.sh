@@ -35,19 +35,30 @@ write_lock() {
 
 if [ "${1:-}" = "--check" ]; then
   [ -f "$SIF" ] || { echo "no $SIF here; build it first" >&2; exit 1; }
-  tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
-  apptainer exec "$SIF" cat /opt/bayesnec-precompile/manifest.txt > "$tmp"
-  printf 'sif_sha256: %s\n' "$(sha256sum "$SIF" | cut -d' ' -f1)" >> "$tmp"
-  if diff -u "$LOCK" "$tmp"; then
+  # The digest of the file is the whole check: the manifest is generated from
+  # inside the image, so an image with this digest has that manifest. Reading
+  # the manifest instead would mean an apptainer exec, and without squashfuse
+  # on the host that unpacks 700MB to a sandbox first -- about a minute, every
+  # deploy. The manifest is read only to report what differs.
+  lock_sha=$(sed -n 's/^sif_sha256: //p' "$LOCK")
+  have_sha=$(sha256sum "$SIF" | cut -d' ' -f1)
+  if [ "$lock_sha" = "$have_sha" ]; then
     echo "$SIF matches $LOCK"
-  else
-    echo >&2
-    echo "$SIF does not match $LOCK. Rebuilding the image changes what the" >&2
-    echo "vignettes are precompiled with, so update $LOCK deliberately and say" >&2
-    echo "so on the pull request -- do not overwrite it as a side effect." >&2
-    exit 1
+    exit 0
   fi
-  exit 0
+  echo "$SIF does not match $LOCK." >&2
+  echo "  $LOCK: $lock_sha" >&2
+  echo "  $SIF:  $have_sha" >&2
+  tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
+  if apptainer exec "$SIF" cat /opt/bayesnec-precompile/manifest.txt > "$tmp" 2>/dev/null; then
+    printf 'sif_sha256: %s\n' "$have_sha" >> "$tmp"
+    diff -u "$LOCK" "$tmp" >&2 || true
+  fi
+  echo >&2
+  echo "Rebuilding the image changes what the vignettes are precompiled with," >&2
+  echo "so update $LOCK deliberately and say so on the pull request -- do not" >&2
+  echo "overwrite it as a side effect." >&2
+  exit 1
 fi
 
 command -v apptainer > /dev/null || { echo "apptainer not on PATH" >&2; exit 1; }

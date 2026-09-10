@@ -30,6 +30,19 @@ Named vignettes are optional; with none it precompiles all of them. `--no-wait`
 returns the job id instead of blocking, and `--fetch` collects a run submitted
 that way.
 
+Three environment variables change where it works: `HOST` (default
+`rfisher@hpc-l001.aims.gov.au`), `DEST` (a directory on the cluster, by default
+under `/export/scratch` for the account in `HOST`), and `SIF`, the local path to
+the image. `SIF` matters under WSL, where the repository is on a 9p mount: both
+building the image there and reading it for the copy are several times slower
+than on the Linux filesystem, so build it elsewhere and point `SIF` at it.
+Whatever it is called locally, it is copied to the cluster under one fixed name.
+
+`APPTAINER_TMPDIR` chooses where `build.sh` unpacks the base image. It needs
+about 15 GB on a local Linux filesystem; `build.sh` refuses a tmpfs or a 9p
+mount, because the extraction of tens of thousands of small files is what
+decides how long the build takes.
+
 ## Building the image
 
 Built on a workstation with `apptainer` and copied across. That is not a

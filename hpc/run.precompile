@@ -60,6 +60,14 @@ echo "=== $(date -Is) precompiling $VIG on $(hostname)"
 STARTED="$JOB/.started-$VIG"
 : > "$STARTED"
 
+# Cleared now, not after the run succeeds. Staging on success alone is not
+# enough: a rerun that fails would leave the previous run's output in place,
+# and --fetch would return it as though it were this run's. The requirement is
+# that a failed precompile has nothing to collect, so the previous result is
+# removed before anything can fail.
+OUT="out/$VIG"
+rm -rf "$OUT"
+
 # The image is the other half of what determines the committed output, so a
 # job refuses to run against an image that is not the one the branch records.
 # Rebuilding the image is a change that can alter committed vignette output and
@@ -78,11 +86,30 @@ echo "--- image"; cat hpc/image.lock
 # bayesnec from the checked-out source, into a job-local library that goes
 # first on R_LIBS. This is the whole point of the design: the image holds the
 # toolchain and not the package, so one image precompiles any branch.
+#
+# R_LIBS_USER is set to the same directory, and that is not redundant. Apptainer
+# bind-mounts $HOME by default, so without it R_LIBS_USER resolves to the
+# account's own library on the host -- ~/R/x86_64-pc-linux-gnu-library/4.6 --
+# and the container reads the host's packages. Verified locally on 2026-09-10:
+# an image built with no bayesnec in it reported bayesnec as available, because
+# it was seeing the workstation's library through the bound home directory.
 rm -rf "$LIB"; mkdir -p "$LIB"
-singularity exec -B "$JOB":"$JOB" --pwd "$JOB" "$SIF" \
+singularity exec -B "$JOB":"$JOB" --pwd "$JOB" \
+  --env R_LIBS="$LIB" --env R_LIBS_USER="$LIB" "$SIF" \
   R CMD INSTALL --library="$LIB" . \
   || { echo "R CMD INSTALL failed. If a dependency is missing the image needs" >&2
        echo "rebuilding: add it to hpc/bayesnec-precompile.def." >&2; exit 1; }
+
+# What was installed is what will be loaded. The check is cheap and the failure
+# it guards against -- a bayesnec from somewhere else, reached through the bound
+# home directory -- would otherwise be invisible in the output.
+singularity exec -B "$JOB":"$JOB" --pwd "$JOB" \
+  --env R_LIBS="$LIB" --env R_LIBS_USER="$LIB" "$SIF" Rscript -e '
+    p <- find.package("bayesnec")
+    lib <- normalizePath(Sys.getenv("R_LIBS"))
+    if (!identical(normalizePath(dirname(p)), lib))
+      stop("bayesnec resolved to ", p, ", not the job library ", lib)
+    cat("bayesnec", as.character(packageVersion("bayesnec")), "from", p, "\n")'
 
 mkdir -p "$CACHE"
 
@@ -90,7 +117,7 @@ mkdir -p "$CACHE"
 # precompiled on the HPC is one whose numbers will be quoted, and the fit cache
 # reuses chunks fitted by whatever version was installed when it was written.
 singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" --pwd "$JOB" \
-  --env R_LIBS="$LIB" \
+  --env R_LIBS="$LIB" --env R_LIBS_USER="$LIB" \
   --env BAYESNEC_STAN_CACHE="$CACHE" \
   --env BAYESNEC_VIGNETTES="$VIG" \
   "$SIF" Rscript vignettes/precompile.R
@@ -100,8 +127,7 @@ singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" --pwd "$JOB" \
 # script is what stands between a failed run and a plausible-looking .Rmd.
 # `set -e` above turns that exit status into a failed job, and the outputs are
 # staged only here, so nothing is available to copy back from a failed run.
-OUT="out/$VIG"
-rm -rf "$OUT"; mkdir -p "$OUT/vignettes"
+mkdir -p "$OUT/vignettes"
 cp "vignettes/$VIG.Rmd" "$OUT/vignettes/"
 # The figures this run wrote. precompile.R copies into vignettes/ only the
 # figures whose files it changed, so mtime identifies them without needing the

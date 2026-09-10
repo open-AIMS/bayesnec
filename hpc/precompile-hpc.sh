@@ -99,14 +99,19 @@ printf '%s\n' "${args[@]}" > .vignettes.tmp
 rsync -a .vignettes.tmp "$HOST:$DEST/vignettes.txt"
 rm -f .vignettes.tmp
 
+# Copied under a fixed name, which is the name run.precompile looks for. $SIF
+# is a local path and may be called anything -- it is often built somewhere
+# other than the repository, because the repository is on a slow mount under
+# WSL -- so its basename must not be what identifies it on the cluster.
+REMOTE_SIF="$DEST/bayesnec-precompile.sif"
 # Copied only when the remote copy is not already this image. The image changes
 # when a dependency changes, not when the branch does, so this is rare.
-remote_sha=$(ssh "$HOST" "sha256sum $DEST/$SIF 2>/dev/null | cut -d' ' -f1" || true)
+remote_sha=$(ssh "$HOST" "sha256sum $REMOTE_SIF 2>/dev/null | cut -d' ' -f1" || true)
 if [ "$remote_sha" != "$(sha256sum "$SIF" | cut -d' ' -f1)" ]; then
-  # ~20 minutes over the VPN, measured at about 600 kB/s on 2026-09-10.
+  # About 20 minutes over the VPN, measured at roughly 900 kB/s on 2026-09-10.
   # --partial so an interrupted copy resumes rather than starting again.
   echo "==> copying the container ($(du -h "$SIF" | cut -f1); about 20 minutes)"
-  rsync -a --partial --progress "$SIF" "$HOST:$DEST/"
+  rsync -a --partial --info=progress2 "$SIF" "$HOST:$REMOTE_SIF"
 else
   echo "==> container already present and matching"
 fi
