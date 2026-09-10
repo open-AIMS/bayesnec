@@ -161,12 +161,13 @@ spreads <- list(
   total = function(x, y) sd(y)
 )
 
-alt_band <- function(x, y, width, spread) {
-  centres <- c(regularizing_location(x, y, "top")[["location"]],
-               regularizing_location(x, y, "bot")[["location"]],
-               replicated_group_means(x, y))
-  s <- width * spreads[[spread]](x, y)
-  c(min(centres) - s, max(centres) + s)
+# The band under an alternative spread, with everything else held at what the
+# package does. Used by the robustness measurement below; measure_coverage()
+# reaches the same thing through init_limits()'s spread_fn argument.
+alt_band <- function(x, y, width, spread, zero_bounded = FALSE,
+                     support = c(-Inf, Inf)) {
+  init_limits(x, y, width = width, zero_bounded = zero_bounded,
+              support = support, spread_fn = spreads[[spread]])
 }
 
 # R1: the band must contain the asymptotes of the curve that generated the
@@ -220,12 +221,12 @@ measure_coverage <- function(ks = c(1, 2, 3, 4, 5), n_seed = 20,
     sigma <- 0.1 * (top - bot) * if (het) 1 + 4 * rank(x) / length(x) else 1
     y <- pr_spec$draw(mu, sigma)
     for (sp in names(spreads)) for (k in ks) {
-      b <- if (sp == "pooled") {
-        init_limits(x, y, width = k, zero_bounded = pr_spec$zero_bounded,
-                    support = pr_spec$support)
-      } else {
-        alt_band(x, y, k, sp)
-      }
+      # Every spread goes through the same clamp and the same boundary inset,
+      # so the three rows differ in the spread alone. Routing only the shipped
+      # one through init_limits() made the other two look better than it by the
+      # width of the inset rather than by anything about the spread.
+      b <- init_limits(x, y, width = k, zero_bounded = pr_spec$zero_bounded,
+                       support = pr_spec$support, spread_fn = spreads[[sp]])
       out[[length(out) + 1]] <- data.frame(
         process = pn, grid = gn, reps = rp, eq = eq, shape = shape, het = het,
         spread = sp, k = k,

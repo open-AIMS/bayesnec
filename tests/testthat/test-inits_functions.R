@@ -1537,23 +1537,31 @@ test_that("a band with nothing to anchor on rejects every draw", {
   expect_false(check_init_predictions(c(1e9, 1e5, -1e5, -1e9), lim))
 })
 
-test_that("the boundary floor falls as a count design gains replicates", {
-  # Read from the level means and not from the observations. min(y[y > 0]) is 1
-  # for any integer response, so an observation-based floor is the same for
-  # eight replicates as for eight hundred and says nothing about the design.
-  gen <- function(reps) {
-    set.seed(21)
+test_that("the count floor tracks the level means, not the integer scale", {
+  # min(y[y > 0]) is 1 for any integer response, so a floor read from an
+  # observation is the same for eight replicates as for eight hundred. Read from
+  # the level means it is a tenth of the smallest of them, which is a quantity
+  # the design can say something about. Replication concentrates it rather than
+  # lowering it, so the assertion is on the spread and not on the level.
+  floor_at <- function(reps, seed) {
+    set.seed(seed)
     x <- rep(c(0, 1, 2, 4, 8, 16), each = reps)
     mu <- c(20, 18, 12, 5, 1, 0.3)[match(x, c(0, 1, 2, 4, 8, 16))]
     y <- rpois(length(x), mu) * rbinom(length(x), 1, 0.8)
     init_limits(x, y, zero_bounded = TRUE, support = c(0, Inf))[1]
   }
-  small <- gen(8)
-  large <- gen(80)
-  expect_gt(small, 0)
-  expect_lt(large, small)
-  # and it stays below a generating asymptote the released criterion admitted
-  expect_lt(small, 0.3)
+  seeds <- 1:40
+  small <- vapply(seeds, function(s) floor_at(8, s), numeric(1))
+  large <- vapply(seeds, function(s) floor_at(80, s), numeric(1))
+  # Well below both the integer granularity and the generating asymptote.
+  expect_lt(median(small), 0.1)
+  expect_lt(median(large), 0.1)
+  expect_lt(median(large), 0.3)
+  # The level is the same; what replication removes is the spread and the
+  # seeds whose top group is entirely zero, which disable the inset.
+  expect_lt(abs(median(large) - median(small)), 0.02)
+  expect_lt(IQR(large), IQR(small))
+  expect_lt(sum(large == 0), sum(small == 0))
 })
 
 test_that("the inset is no stricter than range(y) where the response reaches in", {

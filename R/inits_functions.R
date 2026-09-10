@@ -521,6 +521,10 @@ group_spread <- function(x, y) {
 #' @param support A \code{\link[base]{numeric}} vector of length 2, the
 #' interval the curve is permitted to occupy on its own scale, from
 #' \code{\link{init_support}}. The band is intersected with it.
+#' @param spread_fn The estimator of the spread. Exposed so that
+#' \code{notes/scripts/init_search_audit.R} can compare alternatives with
+#' everything else held at what the package does; no caller in the package
+#' passes it.
 #'
 #' @details \code{\link{check_init_predictions}} requires the initial curve to
 #' lie between these two values. They used to be \code{range(y)}, the smallest
@@ -573,24 +577,22 @@ group_spread <- function(x, y) {
 #' \code{\link{boundary_inset}} for what that is for and what it gives up.
 #'
 #' \strong{The width.} Four standard deviations. The rule is the smallest width
-#' at which coverage of the asymptotes of the curve that generated the data
-#' stops improving, because a band that excludes them rejects a correct starting
-#' value and a wider one admits a starting point further into a tail.
+#' that covers the asymptotes of the curve that generated the data in every cell
+#' measured, because a band that excludes them rejects a correct starting value
+#' and a wider one admits a starting point further into a tail. Two kinds of
+#' cell are out of scope, both because no width covers them and the rule would
+#' otherwise never be satisfied: a design whose predictor stops short of the
+#' crossing, and the count design described at \code{\link{boundary_inset}}
+#' whose generating \code{bot} lies below the floor. Both were confirmed
+#' width-invariant before being excluded.
 #'
 #' Measured over 6,480 simulated responses: three generating processes ---
 #' gaussian, Beta and poisson, so that the clamp and the boundary inset are
 #' exercised and not only the band --- by three predictor grids, three
 #' replication levels, three equations, a steep and a shallow curve, constant
-#' and fivefold-rising dispersion, twenty seeds. Of the 270 cells whose design
-#' reaches its lower asymptote, a width of four covers the true \code{top} and
-#' \code{bot} in 269, and five covers the same 269. Three covers 267, two 263
-#' and one 240.
-#'
-#' By process at a width of four: 90 of 90 gaussian cells, 90 of 90 Beta, and 89
-#' of 90 poisson. The single poisson cell is not a width the band can buy --- it
-#' is unchanged from two to five --- and is the count floor described at
-#' \code{\link{boundary_inset}}, where a generating \code{bot} below a tenth of
-#' the smallest level mean cannot be reached.
+#' and fivefold-rising dispersion, twenty seeds. Of the 269 in-scope cells, four
+#' covers all of them; three covers 267, two 263 and one 240. By process at a
+#' width of four: 90 of 90 gaussian, 90 of 90 Beta, and 89 of 89 poisson.
 #'
 #' \strong{Four rather than five, and why the earlier answer was five.} Under a
 #' whole-series spread on an unreplicated design the gaussian process needed
@@ -601,6 +603,12 @@ group_spread <- function(x, y) {
 #' each half of the series and taking the larger ---
 #' \code{\link{successive_difference_spread}} --- covers that cell at four, so
 #' the width no longer compensates for it.
+#'
+#' The reduction from five to four is not felt equally. On a replicated design
+#' the pooled spread is unchanged and the band narrows by the full fifth. On an
+#' unreplicated one the half-series estimator is 7 to 21 per cent wider than the
+#' whole-series estimator it replaces, so the band narrows by 5 to 11 per cent:
+#' most of the width the rule gives back is spent on the better spread.
 #'
 #' \strong{The support is a hard bound on it.} Under the identity link
 #' \code{\link{bnec}} assigns, an initial curve outside the interval the
@@ -617,8 +625,8 @@ group_spread <- function(x, y) {
 #' \strong{What the band does not fix.} Where the highest concentration has not
 #' reached the lower asymptote, every level mean and both anchors sit above the
 #' true \code{bot} and widening does not reach it: over the simulated designs
-#' whose predictor stops short of the crossing, coverage was 0.50 at a width of
-#' five and 0.47 at four. That is a bias and not noise, and it is the same
+#' whose predictor stops short of the crossing, coverage is 0.160 at a width
+#' of four and 0.172 at five, against 0.003 at one.
 #' limitation \code{\link{regularizing_location}} records for the regularizing
 #' prior. The released criterion is affected identically, and worse, because
 #' \code{min(y)} is above the true asymptote on such a design as well.
@@ -628,7 +636,8 @@ group_spread <- function(x, y) {
 #'
 #' @noRd
 init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
-                        support = c(-Inf, Inf)) {
+                        support = c(-Inf, Inf),
+                        spread_fn = group_spread) {
   keep <- is.finite(x) & is.finite(y)
   x <- x[keep]
   y <- y[keep]
@@ -654,7 +663,7 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
                regularizing_location(x, y, "bot", zero_bounded)[["location"]],
                replicated_group_means(x, y))
   centres <- centres[is.finite(centres)]
-  spread <- width * group_spread(x, y)
+  spread <- width * spread_fn(x, y)
   # min() and max() over every level mean rather than the two anchors in their
   # nominal roles. The anchors are read from the ends of the predictor, and a
   # response that is not monotone at its ends -- which the alga series is not,
@@ -677,7 +686,11 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
     out <- range(y, na.rm = TRUE)
   }
   if (!all(is.finite(out))) {
-    return(c(-Inf, Inf))
+    # Unreachable on a non-empty finite response, since range(y) is finite
+    # there. c(NA, NA) and not c(-Inf, Inf) for the reason given above: an
+    # unbounded pair would accept every draw, which is the reverse of what a
+    # band with nothing to anchor on should do.
+    return(c(NA_real_, NA_real_))
   }
   out <- c(max(out[1], support[1]), min(out[2], support[2]))
   # Where the band reaches a boundary of the support it stops at the nearest
@@ -747,7 +760,12 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
 #' extremum enters the band, and it enters as a cap on a tightening rather than
 #' as a reference the band is built from. Where the response does not reach the
 #' boundary the cap makes the inset no stricter than \code{range(y)} was: on the
-#' second block of a hurdle fit both are 6e-3. Where the response does reach it
+#' second block of a hurdle fit both are 6e-3. The cap therefore inherits
+#' \code{range(y)}'s sensitivity to one observation at that boundary: a single
+#' value just inside it sets the whole gap, and can reduce the guard to almost
+#' nothing. That is the price of the guarantee, and it is bounded --- the result
+#' is never worse than the criterion this replaces. Where the response does
+#' reach it
 #' --- a count with zeros, a survival of exactly none --- \code{range(y)} put
 #' its bound \emph{at} the boundary, and the inset is deliberately stricter,
 #' which is the case it exists for. On a \code{zero_inflated_poisson} design of
@@ -759,11 +777,31 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
 #' remove, and on a count response it carries no information about the design at
 #' all: \code{min(y[y > 0])} is 1 for any integer response, so a floor read from
 #' it is 0.1 for eight replicates or eight hundred. Read from the level means it
-#' is a tenth of the smallest group mean, which falls as replication rises. On a
+#' is a tenth of the smallest group mean.
+#'
+#' One case qualifies that. Where the extreme concentration of an unreplicated
+#' count design returns zero, \code{\link{regularizing_location}}'s
+#' zero-bounded branch substitutes \code{min(y[y > 0]) / 10} for the
+#' \code{bot} location, so the "level mean" is an extremum one layer down and
+#' the floor is \code{min(y[y > 0]) / 100}. That is the residue of the
+#' constant-floor defect rather than a return to it --- it tracks the data
+#' where 0.1 did not --- and it is the mechanism behind the one simulated cell
+#' no width covers.
+#'
+#' On a
 #' \code{zero_inflated_poisson} design of six concentrations by eight it is
 #' 0.0375 against a generating \code{bot} of 0.3, where the observation-based
 #' floor was 0.1 and the observed-value floor before that was 0.375 --- above
 #' the asymptote, which is the error the width is chosen to avoid.
+#'
+#' What replication changes is the spread of that floor and not its level. Over
+#' 200 seeds of that design the median floor is 0.025 at eight replicates, at
+#' eighty and at four hundred; the interquartile range falls from
+#' [0.0125, 0.0375] to [0.0223, 0.0255], and the share of seeds whose top group
+#' is entirely zero --- which puts a level mean on the boundary and disables the
+#' inset altogether --- falls from 15 per cent to none. So the floor
+#' concentrates on a tenth of the true smallest level mean rather than
+#' falling.
 #'
 #' \strong{What this guards against, and what it does not.} A curve collapsing
 #' onto the boundary, not a merely small value. On the hurdle block the floor is
