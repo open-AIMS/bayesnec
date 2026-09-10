@@ -94,11 +94,17 @@ options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
 
 # Chains run in parallel across the cores this run has been given. Without
 # this, brms takes cores from getOption("mc.cores"), whose default is 1, and
-# four chains run one after another: only example2, example3 and example6 set
-# it in a chunk of their own, so example1 and example4 were sampling serially
-# on a four-core allocation. SLURM_CPUS_PER_TASK is the allocation rather than
-# the node, which parallel::detectCores() reports and which would oversubscribe
-# a shared node; the fallback is used off the cluster.
+# four chains run one after another: example1 and example4 were sampling
+# serially on a four-core allocation. SLURM_CPUS_PER_TASK is the allocation
+# rather than the node; the fallback is used off the cluster.
+#
+# example2, example3 and example6 set mc.cores themselves, to
+# parallel::detectCores(), in a chunk, and so override this. That reports the
+# node and not the allocation, but brms runs at most `chains` in parallel and
+# every one of those vignettes takes the default of four, so it oversubscribes
+# nothing as they stand. Removing those lines would change the rendered output
+# of three vignettes for no change in what is fitted, so they are left where
+# they are and noted here.
 .cpus <- suppressWarnings(as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")))
 if (is.na(.cpus) || .cpus < 1) {
   .cpus <- max(1L, parallel::detectCores(logical = FALSE))

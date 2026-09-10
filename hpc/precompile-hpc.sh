@@ -67,9 +67,16 @@ args=("${norm[@]}")
 
 fetch() {
   local n=0 rc
-  local head; head=$(git rev-parse HEAD)
+  # Written by the deploy in this same invocation, or read back from the last
+  # one when --fetch is used on its own.
+  local want="${DEPLOY_ID:-}"
+  [ -n "$want" ] || want=$(cat .last-deploy 2>/dev/null || true)
   for v in "${args[@]}"; do
-    ssh -o BatchMode=yes "$HOST" "test -d $DEST/out/$v"; rc=$?
+    # `|| rc=$?` and not `; rc=$?`: a simple command that fails is not exempt
+    # from errexit, so the plain form ended the script before either branch
+    # below could run, and --fetch exited silently on the commonest case there
+    # is -- a job that has not finished.
+    rc=0; ssh -o BatchMode=yes "$HOST" "test -d $DEST/out/$v" || rc=$?
     # 255 is ssh itself failing. Reporting that as a failed job would be wrong
     # and would send someone to look at the wrong thing.
     if [ "$rc" -eq 255 ]; then
@@ -85,14 +92,18 @@ fetch() {
     # first branch's vignette, and say "collected".
     local stamped
     stamped=$(ssh -o BatchMode=yes "$HOST" \
-      "sed -n 's/^commit: //p' $DEST/out/$v/STAMP 2>/dev/null" || true)
+      "sed -n 's/^deploy_id: //p' $DEST/out/$v/STAMP 2>/dev/null" || true)
     if [ -z "$stamped" ]; then
       echo "$v: staged output has no STAMP -- it predates this check. Rerun it." >&2
       continue
     fi
-    if [ "$stamped" != "$head" ]; then
-      echo "$v: staged output was precompiled from commit $stamped, and this" >&2
-      echo "  working tree is at $head. Not collecting it; rerun the vignette." >&2
+    if [ -z "$want" ]; then
+      echo "$v: no record of a deployment here to compare with. Rerun it." >&2
+      continue
+    fi
+    if [ "$stamped" != "$want" ]; then
+      echo "$v: staged output is from deployment $stamped, and the last one from" >&2
+      echo "  this working tree was $want. Not collecting it; rerun the vignette." >&2
       continue
     fi
     rsync -a --exclude STAMP "$HOST:$DEST/out/$v/vignettes/" vignettes/
@@ -148,7 +159,15 @@ rsync -a --delete \
 # What was sent, recorded on the machine that ran it. The image identity is in
 # hpc/image.lock, which is part of the tree above and is checked again by the
 # job itself before anything is fitted.
+# A per-deployment identifier, and not the commit alone. The script copies the
+# working tree rather than the commit, so two deployments from the same HEAD with
+# different uncommitted edits are indistinguishable by commit -- and committing
+# anything at all between deploying and collecting would make a commit check
+# reject good output. The job writes this into the staged output and fetch
+# compares it.
+DEPLOY_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$-$RANDOM"
 {
+  echo "deploy_id: $DEPLOY_ID"
   echo "deployed: $(date -Is)"
   echo "by: $(id -un)@$(hostname)"
   echo "branch: $(git rev-parse --abbrev-ref HEAD)"
@@ -159,6 +178,10 @@ rsync -a --delete \
 } > .PROVENANCE.tmp
 rsync -a .PROVENANCE.tmp "$HOST:$DEST/PROVENANCE"
 rm -f .PROVENANCE.tmp
+
+# Kept so that a later `--fetch` in a separate invocation knows which deployment
+# it is collecting. Untracked; .gitignore covers it.
+printf '%s\n' "$DEPLOY_ID" > .last-deploy
 
 printf '%s\n' "${args[@]}" > .vignettes.tmp
 rsync -a .vignettes.tmp "$HOST:$DEST/vignettes.txt"

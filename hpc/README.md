@@ -121,10 +121,18 @@ name, size and modification time. The `example7` figures above are as reported o
 second run had not finished when it was last observed, so they do not on their
 own give a warm total to set against the cold 309 min.
 
-The cache lives at
-`/export/scratch/$USER/bayesnec-stan-cache`, outside any job directory, and is
-shared between vignettes, between runs and between branches. `BAYESNEC_STAN_CACHE`
-overrides the location.
+The cache lives under `/export/scratch/$USER/bayesnec-stan-cache`, outside any
+job directory, and is shared between vignettes, between runs and between
+branches. `BAYESNEC_STAN_CACHE` overrides the location.
+
+It is keyed on the toolchain, in a subdirectory named from the base image digest
+and the cmdstan version. `cmdstanr` names a cached program after a hash of its
+Stan source and nothing else, so the executable beside it records neither the
+cmdstan that produced it nor the compiler. Sharing one directory across images
+would hand a run binaries built by a different one, which is the guarantee the
+image check exists to give. Changing the base image or cmdstan therefore starts
+a cold cache; changing an R package does not, because it cannot change the
+binary that a given Stan source compiles to.
 
 The second run also showed a cost that is not fitting: extracting `ecx()` and
 `nsec()` from 24 model-averaged fits took over two hours on its own, because each
@@ -177,11 +185,14 @@ failed run leaves nothing to collect, which is what `--fetch` reports.
 ## Changing a dependency
 
 The image names the packages it installs. Adding a dependency to `bayesnec`
-therefore requires a rebuild, and the job checks for this before it samples:
-`R CMD INSTALL` fails on a missing `Depends` or `Imports`, and the step after it
-asserts that every `Suggests` entry of the deployed `DESCRIPTION` is available
-too. The vignettes reach `knitr`, `rmarkdown`, `extraDistr` and `R.utils` through
-`Suggests`, and a missing one of those would otherwise fail mid-knit, hours in.
+therefore requires a rebuild, and the job checks for this before it samples.
+`R CMD INSTALL` fails on a missing `Depends` or `Imports`. The step after it
+asserts, in addition, the packages `precompile.R` loads and the packages the
+vignette being built attaches with `library()` or `require()` — read from the
+vignette source, because three of them, `bayesplot`, `posterior` and `cmdstanr`,
+appear in no field of `DESCRIPTION`. Anything else in `Suggests` is reported
+when missing rather than asserted: `testthat` is one, and an image for
+precompiling vignettes has no reason to hold it.
 
 Rebuild with `./hpc/build.sh`, commit the changed `hpc/image.lock`, and state on
 the pull request that the image changed and what it changed to.

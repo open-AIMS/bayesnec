@@ -47,3 +47,7 @@ superceded/
 # Built locally, identity recorded in hpc/image.lock.
 *.sif
 .apptainer-tmp/
+
+# Written by hpc/precompile-hpc.sh so a later --fetch knows which deployment
+# it is collecting.
+.last-deploy
