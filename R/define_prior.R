@@ -78,8 +78,10 @@ positive_scale <- function(response, probs) {
 #' \code{prior_type} selects between two sets of defaults for the two
 #' response-scaled parameters \code{top} and \code{bot} and for the two
 #' predictor-scaled parameters \code{nec} and \code{ec50}. The
-#' \code{"uninformative"} set is the one Fisher et al. (2024) describe and is
-#' the one on CRAN; it is stated per family and is not changed here. The
+#' \code{"uninformative"} set is the one Fisher et al. (2024) describe; it is
+#' stated per family and is not changed here. It is not quite the set on CRAN,
+#' for two reasons that predate #305 and are recorded under
+#' \strong{What is and is not released} below. The
 #' \code{"regularizing"} set is stated once, as two numbers, and every family's
 #' entry is derived from them:
 #'
@@ -148,10 +150,24 @@ positive_scale <- function(response, probs) {
 #' \code{regularizing_location()} records the measurements and the alternatives
 #' that were tried.
 #'
-#' \strong{Nothing released changes.} \code{prior_type} does not exist on
+#' \strong{What is and is not released.} \code{prior_type} does not exist on
 #' \code{master} (2.1.3.1, the CRAN release), so the whole
 #' \code{"regularizing"} set is unreleased and no published analysis is
-#' affected. The \code{"uninformative"} set is untouched by #305.
+#' affected by anything #305 changes. The \code{"uninformative"} set is
+#' untouched by #305.
+#'
+#' It is not, however, identical to the set on CRAN, and two earlier changes on
+#' \code{dev} are the reason. #302 and PR #304 replaced the \code{nec} and
+#' \code{ec50} entry outright: on a series of 0, 1, ... 10 the released entry is
+#' \code{gamma(5, 0.4)} and this one is
+#' \code{lognormal(1.70060, 0.867668)}. And #210 and #232 put
+#' \code{positive_scale()} in place of the raw quantile on the gamma branch of
+#' \code{top} and \code{bot}, which changes nothing on a response with no zeros
+#' and everything on one with many: on a \code{poisson} response with 22 zeros
+#' of 66, CRAN gives \code{gamma(2, 100)} for \code{bot} against
+#' \code{gamma(2, 0.2849)} here, the first being the collapse #210 exists to
+#' remove. Neither is a change #305 makes, and neither is a reason to describe
+#' the \code{"uninformative"} entries as the released ones without saying so.
 #'
 #' @noRd
 regularizing_factor <- 0.4
@@ -971,8 +987,9 @@ define_prior <- function(model, family, predictor, response,
   # Two prior sets for the response-scaled parameters (top, bot):
   #  - "uninformative": the weakly-informative defaults described in the JSS
   #    article (Fisher et al. 2024); wider, closer to truly uninformative. Each
-  #    family's entry is stated here, as the article states it, and is the one
-  #    on CRAN.
+  #    family's entry is stated here, as the article states it. It is not quite
+  #    the entry on CRAN -- #210 and #302 changed two of them on dev, neither
+  #    under #305; see regularizing_factor above.
   #  - "regularizing": narrower priors, with the no-effect (top) parameter
   #    placed at the 95th percentile of the response -- which, for these
   #    monotonically decreasing models, sits inside the control group -- and
