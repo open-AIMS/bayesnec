@@ -62,9 +62,20 @@ no coefficient ("nechormepwr", "nechorme4pwr") are excluded for 0, 1 bounded
 families under an identity link. The term
 \code{x^(1 / (1 + exp(slope)))} contributes exactly 1 at \code{x = 1}
 whatever "slope" is, and below the threshold the decay factor is 1, so the
-fitted mean is at least \code{top + 1} wherever the predictor reaches 1.
-There is no parameter value that keeps it inside (0, 1), which is why this is
-an exclusion rather than a harder search for initial values.
+fitted mean is at least \code{top + 1} at any concentration at or above 1
+that falls strictly below "nec". Since "nec" is bounded to the predictor
+range, every such value is one the sampler is free to propose, and each
+proposal is outside the likelihood's support. More generally the exponent
+\code{1 / (1 + exp(slope))} tends to 0 as "slope" grows, so the term tends to
+1 for every concentration above 0 and the mean below the threshold tends to
+\code{top + 1}. For any "top" above 0 there is therefore a "slope" at which
+the mean exceeds 1, whatever range the predictor covers, and the term has no
+coefficient the fit can drive towards zero. That is why the exclusion does
+not depend on the predictor supplied. That is why this is
+an exclusion rather than a harder search for initial values: a \code{nec}
+below 1 does admit some initial values, but it neither stops the sampler
+reaching the values that do not nor keeps the mean inside (0, 1) by
+itself.
 "nechormepwr01" is the bounded hormesis form and is retained there;
 conversely it is excluded for the zero-bounded identity families, being
 bounded on (0, 1) by construction and so unable to represent a response with

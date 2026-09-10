@@ -2,27 +2,318 @@
 
 ## Default priors
 
-- **The `nec` and `ec50` gamma prior now peaks at the median predictor**, not at
-  twice it. The rate changes from `2/m` to `4/m`, which moves the mode of the
-  untruncated prior from `2m` to `m` and its mean from `2.5m` to `1.25m`. On a
-  series spaced evenly from zero, `2m` is close to the largest concentration
-  tested, so after truncation to the predictor range the density rose
-  monotonically across everything the prior permitted and pulled the *NEC*
-  estimate towards the highest concentration --- the wrong direction for a
-  protective estimate. `4/m` is also what `?bnec` and `vignette("example3")`
-  already described the prior as doing (#273).
+- **The `"regularizing"` prior set is now one statement applied to every
+  family.** `prior_type = "regularizing"` was written out branch by branch, and
+  the branches had drifted apart, so the word did not describe one thing:
+  measured over 420 `top` and `bot` entries built from one simulated response
+  each --- five designs, three predictor transforms, seven families, two links
+  --- the ratio of the regularizing prior standard deviation to the
+  uninformative one ran from 0.032 to 2.18, and the regularizing prior was the
+  *wider* of the two in 17 of them. The set is now defined once, by a location
+  and a spread, and each family's entry is derived from it using whichever
+  distribution matches the parameter's support, with its **mode** at the
+  location and its standard deviation at the spread. On the same measurement the
+  ratio is `0.4` exactly in 385 of the 420 entries and is never above 1 (#305).
 
-  The other two entries of `x_prs` place their maximum density at a central
-  measure of the predictor --- `beta(2, 2)` at the centre of the unit interval,
-  `normal(median(x), ...)` at the median --- so the gamma entry was the only one
-  of the three that did not, and the only one that did not do what it was
-  documented to do.
+  **The location is now read at the end of the predictor.** `top` is the level
+  of the response before the curve responds and `bot` the level after it stops
+  changing, so each is estimated from the observations at the corresponding end
+  of the concentration series --- the control group for `top` --- rather than
+  from the extreme, or an extreme quantile, of the response pooled over the
+  whole design. A pooled quantile is a proxy for the level of one plateau whose
+  quality depends on what share of the design sits on that plateau, and it is
+  biased in opposite directions for a discrete and for an over-dispersed
+  response: against a true `bot` of 5 the smallest count observed ran 1 to 3,
+  while against a true `top` of 40 the 95th percentile of an over-dispersed
+  count reached 72. Over the 720 `top` and `bot` cells of the prior audit the
+  released set placed the true value outside the central 95% of its own prior in
+  65; the set adopted here does so in 1. The `"uninformative"` set does so in
+  none and is unchanged.
 
-  **This changes every default fit** whose predictor is non-negative, which is
-  the `Gamma` branch of the predictor-scaled priors, and it applies to `ec50` as
-  well as to `nec`, since both read the same entry. The alternative considered
-  and not taken was `gamma(2, 2/m)`, whose mean rather than mode is *m*; the
-  reasoning is recorded on #273.
+  **The spread is floored at the standard error of the location.** A mean of six
+  control observations is not a precise estimate of a plateau, and a prior
+  narrower than the noise in its own anchor states a precision the data do not
+  supply. The spread is therefore `0.4` of the uninformative width or the
+  standard error of the location, whichever is larger, and never more than the
+  uninformative width. The floor binds in 35 of the 420 entries measured, on the
+  responses whose anchor is least precise: a `bernoulli` one, where a single
+  observation states only whether one individual responded, and an
+  over-dispersed count.
+
+  **Two designs the earlier prior sweep did not contain were measured
+  separately**: complete effect at the highest concentration, so that the
+  top-dose group is entirely zero, and a hurdle or zero-inflated fit whose
+  survival declines with concentration. Over 420 such cells --- ten seeds, three
+  designs, five families --- the true value falls outside the central 95% of its
+  own prior in 12 cells, against 31 for the released `"regularizing"` set and
+  127 for the `"uninformative"` set; and the prior density at the true value is
+  below 0.15 of the prior's own maximum in 1 cell, against 60 and 61. The second
+  measure is reported alongside the first because a beta prior whose maximum
+  density is at 0.014 has nearly all its mass above it, so the interval measure
+  penalises a well-placed prior on a bounded parameter near its boundary.
+
+  All 12 of those cells are sampling error rather than a property of the rule.
+  Eleven are a six-replicate binary group: six replicates resolve a survival of
+  0.014 only to the nearest sixth, at least one individual survives 8.1% of the
+  time, and the prior then follows the observed proportion of 0.167. The twelfth
+  is the same thing on a mu block whose highest surviving concentration held two
+  survivors. That is the one respect in which reading the response is a
+  liability: the `"uninformative"` entry for those families is a constant and is
+  unaffected.
+
+  Three properties of the anchor come from those designs. A zero at the highest
+  concentration is the endpoint responding and is kept in the average, where a
+  zero at the control is a structural one and is excluded; where every
+  observation at the highest concentration is zero the location is a tenth of
+  the smallest positive observation, and at the control it is the extreme
+  quantile of the positive part; and the subset never extends past a fifth of
+  the concentrations tested, which is what keeps the second block of a hurdle
+  fit, primed from one survival proportion per concentration, from averaging
+  half the design. The scripts are archived at
+  `notes/scripts/prior_hard_cases.R`.
+
+  **The 0-1 bounded families now read the response.** `beta(5, 1)` against
+  `beta(5, 2)` changed the width of the `top` prior by 12 per cent and did not
+  change what the prior was anchored to, because it had no anchor. The
+  regularizing entry for the `bernoulli`, `binomial`, `beta_binomial` and `Beta`
+  families is now a beta distribution whose mode is the observed control level
+  and whose standard deviation follows the same rule as every other branch. The
+  `"uninformative"` entries for those families remain the fixed `beta(5, 2)` and
+  `beta(2, 5)` that Fisher et al. (2024) describe.
+
+  **`nec` and `ec50` are narrowed under `"regularizing"` as well**, which they
+  were not: the predictor-scaled prior was identical under both sets, so
+  selecting the narrower set did nothing for the two parameters a user most
+  often selects it for. It is narrowed by `qnorm(0.975) / qnorm(0.99)`, which is
+  `0.84`, and not by `0.4` like the response-scaled entries. Its width is not a
+  free choice --- it is set to the smallest width whose central 95% interval
+  still reaches the farthest concentration tested, which is what #302 exists to
+  guarantee --- so the only room to narrow it is the confidence level at which
+  it covers the series. Narrowing it by `0.4` instead puts the true threshold
+  outside the central 95% of the prior in 8 of the 30 design by transform by
+  parameter cells of the audit, against none at `0.84`.
+
+  **Group-level scales take the same factor**, `0.4`, rather than the one half
+  they took before, and the cap on the `ogl` log-scale conversion now scales
+  with the prior type. It was a constant, so on a response whose range is more
+  than 25 times its mean both prior types returned `student_t(3, 0, 1)` and
+  selecting the narrower set changed nothing for the parameter that prompted the
+  choice --- the defect #294 removed for a parameter-level term, left in place
+  on this branch. Nothing here changes a released number: `prior_type` does not
+  exist on `master` (2.1.3.1, the CRAN release), so the whole `"regularizing"`
+  set is unreleased.
+
+- **The `nec` and `ec50` prior is now a normal on the log of the predictor.**
+  The three entries selected by the predictor's support --- `gamma(5, 4/m)`
+  where the predictor was non-negative and reached above 1, `beta(2, 2)` where
+  it lay within [0, 1], and `normal(median(x), 10 sd(x))` where it spanned
+  negative values --- become one construction, written as a `lognormal` where
+  the predictor is supplied on the dose scale and as a `normal` where it is
+  supplied already logged. The two are one rule stated on two scales. Truncation
+  to the observed predictor range is unchanged (#302).
+
+  **Two defects are removed.** The gamma entry could not describe a
+  logarithmically spaced concentration series at any rate. A gamma's spread is
+  tied to its shape, so `gamma(5, 4/m)` places its central 95% interval at
+  `0.41m` to `2.56m` whatever the data are, and it reaches the highest
+  concentration tested only where that concentration is within about 2.6 times
+  the median. That ratio is a property of the design: 2.0 for a series spaced
+  evenly from zero, and 13 to 125 for the four `nassarius` series. No fixed
+  shape serves both, and the shape that would is not usable. Solving for the
+  shape whose maximum density is at *m* and whose 97.5% point is the highest
+  dose gives 8.6 on a linear series and 1.03 on the widest `nassarius` series.
+  At 1.03 the mode is still at *m*, by construction, but that is all that is:
+  the density rises 5.7% from the lowest dose to the mode and then falls to 2.8%
+  of its peak at the highest, and the median is 3.85, twenty-four times *m* and
+  above every dose but the top one, so the prior pulls the estimate towards the
+  highest concentrations. The prior adopted here also has a monotonically
+  decreasing density on the dose scale over the whole tested range on the four
+  `nassarius` series, and that is not the same defect: a lognormal's dose-scale
+  mode is `exp(mu - sigma^2)`, so the density falls because the change of
+  variable from the log scale redistributes it. The median is what separates
+  them --- on the contaminant A series the median of the untruncated prior built
+  here is 0.223, which is the location the rule specifies exactly, that series
+  having an even number of positive doses so that the location is the geometric
+  mean of the two central ones, against 3.85 for the shape-1.03 gamma.
+  Separately, selecting on the support made the prior depend on the units the
+  dose was recorded in: measured on the `nassarius` contaminant A dose series,
+  the central 95% interval covered 1.7% of the predictor range
+  under the gamma entry, 81% under `beta(2, 2)` rescaled to that range, and
+  1097% under the normal entry before truncation, for the same experiment
+  expressed three ways.
+
+  **The location and the width.** The mean on the log scale is the median of the
+  distinct positive predictor values after logging. That is the log of the
+  median dose where the number of distinct positive doses is odd, and the log of
+  the geometric mean of the two central doses where it is even, that being their
+  midpoint on the log axis rather than on the dose axis. The prior's maximum
+  density is at that dose measured on the log scale and the median of the
+  untruncated prior on the dose scale is that dose. Both statements describe the
+  untruncated prior; truncation at the highest dose removes part of the upper
+  tail and so pulls the median down, to 0.58 against a median dose of 0.88 on
+  `nec_data`. The standard deviation is set so that the central 95% interval of
+  the untruncated prior covers every concentration tested: it is the larger of
+  the two half-widths from the location to the ends of the logged series,
+  divided by `qnorm(0.975)`. The criterion is the whole of the rule --- a prior
+  on a threshold should not exclude a concentration the experiment applied, at
+  either end --- so the width is stated rather than chosen and it adapts to the
+  design. Expressed as a multiple of `sd(log(x))` it lands between 0.73 and 1.18
+  across five designs, at 0.92 to 1.03 on the four `nassarius` series, and at
+  1.75 on `nec_data`, whose predictor is continuous and densely sampled. A fixed
+  multiple was considered and not taken: it states no criterion, so it cannot
+  guarantee that coverage on a design it was not chosen against, and any
+  multiple broad enough for a densely sampled continuous predictor puts a large
+  share of the prior below the lowest concentration tested on a wide dilution
+  series, where the lower truncation bound is a zero control. At 1.5 times
+  `sd(log(x))`, 21% of the truncated prior on the `nassarius` contaminant A
+  series lies below its lowest dose of 0.01; the rule adopted leaves 9.0% there
+  and 3.3% on a series spaced evenly from zero.
+
+  **The width is set by the two extreme concentrations**, not by the spread of
+  the series between them, so it is sensitive to how a control is recorded. The
+  prior is built from the concentrations as recorded, so a control entered as a
+  nominal small positive value states that the value was applied and the prior
+  covers it: on the `nassarius` contaminant A series the standard deviation is
+  2.30 with the control at 0, 2.59 with it at 0.001 and 6.11 with it at 1e-6.
+  Record a control as 0.
+
+  **A departure from the published wording.** Fisher et al. (2024) specify
+  maximum density at the median value of the predictor without saying which
+  scale the density is measured on. This reads it on the log-dose scale, which
+  is the scale a dilution series is designed on, and is the only reading under
+  which a prior peaking at the median can also reach 125 times it. The
+  multiplier for a predictor supplied already logged is unchanged at
+  `10 sd(x)`; the consequence is that the same data analysed as `crf(x)` and as
+  `crf(log(x))` still receive priors differing about tenfold in width, against
+  about 600-fold before this change on the current defaults and about 300-fold
+  on the released ones.
+
+  **The already-logged entry is not identical to the released one.** Its
+  location and spread are now read from the distinct predictor values rather
+  than from the observation vector, as on the other branch, which extends #269's
+  rule to the whole construction so that replication has no effect on the prior
+  at all. Over the pooled `log(herbicide$concentration)` column, 580 rows and 9
+  distinct values, the location changes from 1.10 to 2.30 and the spread from
+  26.3 to 31.5. The article fits one herbicide at a time, where the same
+  mechanism applies to each subset. The two differ under balanced replication as
+  well, because the standard deviation
+  over `k` distinct values replicated `r` times is `sqrt(r(k-1)/(rk-1))` times
+  the standard deviation of the distinct values. So the herbicide analyses of
+  Fisher et al. (2024) do change, in the width of the `nec` and `ec50` prior
+  alone; `nec_data` is unaffected on this point only because its predictor has
+  no repeated values.
+
+  **This changes every default fit** whose predictor is non-negative, and it
+  applies to `ec50` as well as to `nec`, since both read the same entry. Of the
+  analyses published in Fisher et al. (2024), the `nec_data` walkthrough changes
+  in the shape and the location of the prior as well as its width --- Figures 3
+  to 5 and the printed `summary()` --- because its predictor takes the gamma
+  entry. Every herbicide fit in that article logs the predictor before fitting,
+  so those analyses stay on the normal entry and change only in its width, for
+  the reason above.
+
+  The evidence is prior-only; nothing was fitted. Priors were obtained through
+  `get_priors()` over five designs, three predictor transforms, all 12 families,
+  both links and both prior types, and scored by the truncated prior CDF at a
+  known parameter value. The prior is a function of the predictor alone, so 30
+  design by transform by parameter cells exhaust it. The defaults being
+  replaced placed the true value outside the central 95% of the truncated prior
+  in 5 of those 30, every one of them a log-spaced series read on the recorded
+  or the square-root scale; the prior adopted here does so in none, with the
+  truncated CDF at the true value running 0.47 to 0.95 over the zero-control
+  designs and 0.43 to 0.95 over all 60 cells. The sweep places every
+  true value in the upper half of its series and so cannot detect a prior that
+  fails at the bottom; that case is checked separately, and on the `nassarius`
+  contaminant B series a threshold at the lowest dose applied sits at a
+  truncated CDF of 0.030.
+
+- **The `nec` and `ec50` gamma prior was corrected to peak at the median
+  predictor** earlier in this release cycle, before being replaced above. The
+  rate changed from `2/m` to `4/m`, which changed the mode of the untruncated
+  prior from `2m` to `m` and its mean from `2.5m` to `1.25m`. On a series spaced
+  evenly from zero, `2m` is close to the largest concentration tested, so after
+  truncation to the predictor range the density rose monotonically across
+  everything the prior permitted and pulled the *NEC* estimate towards the
+  highest concentration --- the wrong direction for a protective estimate
+  (#273). It is recorded here because it was a change to a released default, and
+  because it is the step that showed no rate could serve both a linear and a
+  log-spaced design: `2/m` places the true *NEC* of the widest `nassarius`
+  series at a truncated prior CDF of 0.9995 and `4/m` at 1.0000, so reverting
+  reduced the error without removing it.
+
+- **The initial-value search now finds values for `nechormepwr` and
+  `nechorme4pwr` on a 0-1 bounded family whose predictor reaches 1**, where the
+  gamma prior it replaces did not. Those models stay excluded for such families
+  by `check_models()`, so no fit a user can request changes. What changed is the
+  evidence recorded for the exclusion, and with it the wording of `?models` and
+  of the message `check_models()` prints. Both said there is no parameter value
+  that keeps the mean inside (0, 1) wherever the predictor reaches 1. That is
+  true only where a concentration at or above 1 falls strictly below `nec`, so
+  that it sits under the threshold, where the decay factor is exactly 1 and the
+  mean is at least `top + 1`. A `nec` below 1 puts every such concentration past
+  the threshold, and initial values can then be found.
+
+  The exclusion is unchanged and remains correct, for a reason the text now
+  states as well. The `top + 1` argument is about a predictor reaching above 1,
+  while the exclusion is unconditional on the data. What justifies that is the
+  exponent: `1 / (1 + exp(slope))` tends to 0 as `slope` grows, so
+  `x^(1 / (1 + exp(slope)))` tends to 1 for every concentration above 0, and the
+  mean below the threshold tends to `top + 1`. For any `top` above 0 there is
+  therefore a `slope` at which the mean exceeds 1, whatever range the predictor
+  covers — at `x = 0.001` that slope is 4.90 for `top = 0.05`, 2.19 for
+  `top = 0.5` and 0.27 for `top = 0.95`, against a `normal(0, 5)` prior on
+  `slope`. This is what `mu_support()` has always recorded for these two
+  equations as `unscaled_excess`: the mean can exceed 1 through a term with no
+  coefficient, so the fit cannot shrink it. Corroborated by measurement: on a
+  predictor confined below 1, 2,899 of 3,591 grid points over `top`, `slope`,
+  `beta` and `nec` put the mean above 1. Bounding `nec` below 1 is therefore not
+  the fix the earlier wording invited: on `nec_data` with `nec` below 1, 3,696 of
+  4,788 grid points put the mean above 1.
+
+  The search finds initial values now and did not before because the draws that
+  succeed sit near `nec` = 0.08 to 0.24, where the truncated prior probability
+  changed by a factor of 40 to 900: `P(nec < 0.25)` from 0.0063 to 0.269 and
+  `P(nec < 0.1)` from 0.00011 to 0.0975. `P(nec < 1)` moved only 0.481 to 0.670
+  and would not account for it (#177, #302).
+
+- **The `nec` and `ec50` prior of a hurdle or zero-inflated fit is built from
+  the whole predictor.** Both blocks of such a fit are evaluated over the whole
+  predictor range and their `nec` bounds were already rebuilt from it, but the
+  mu block's prior was shaped by the survivor subset alone. On a series reaching
+  100 whose survivors stop at 10 that placed the prior's 97.5% point at 10.0
+  while its bounds permitted 100, which is the same failure this release removes
+  from the single-block path. The response-scaled `top` and `bot` are still
+  taken from the survivors, which is what #269 was about; a parameter measured
+  in units of the predictor is not. This also removes a refusal the path would
+  otherwise reach, where every survivor sits at the zero control and the subset
+  has no positive value to build a concentration scale from (#302).
+
+- **`lognormal` can now be sampled from.** `make_inits()`, `refine_inits()` and
+  `sample_priors()` each held their own table of four distributions --- gamma,
+  normal, beta, uniform --- so a prior on any other distribution reached
+  `fcts[[dist]](...)` as `NULL` and failed with "attempt to apply
+  non-function", naming neither the prior nor the distribution. The three copies
+  are replaced by one lookup that includes `lognormal`, and an unrecognised
+  distribution now raises an error naming it and listing the supported set. This
+  affects any user-supplied prior outside those four, not only the new default
+  (#302).
+
+- **The `top` and `bot` priors of a hurdle or zero-inflated fit are now built on
+  the mean link scale.** `hurdle_mu_family()` returned an identity-link family
+  whatever link the caller supplied, so `define_prior()` measured the response
+  untransformed while `brms` applies the inverse mean link to the whole
+  non-linear expression, putting `top` and `bot` on the link scale. Under
+  `zero_inflated_beta(link = "logit")` that gave `beta(5, 2)` bounded to [0, 1]
+  for a `top` whose value on the logit scale exceeds 1 for any response plateau
+  above 0.73, and `beta(2, 5)` for a `bot` that must be negative for any
+  response floor below 0.5 --- a support that excludes the answer rather than
+  merely misplacing density. These fits now take the unbounded normal entries,
+  which is what Fisher et al. (2024) specify for any link mapping to the whole
+  real line. `link_hu` and `link_zi` are required to be the identity, so the
+  second block is unaffected. The group-level standard deviations of such a fit
+  change with it: `define_prior()` puts the mu-block response on the mean link
+  scale before their scale is measured from it, and that step was a no-op only
+  while the mu family was rebuilt on the identity link (#302).
 
 ## Sampler behaviour
 
@@ -554,7 +845,7 @@
 
   It does not keep it consistent in its *priors*. `amend()` builds a default
   prior for each model it adds, so a model added under this version to a set
-  fitted under an earlier one is given the new `nec` and `ec50` rate while the
+  fitted under an earlier one is given the new `nec` and `ec50` prior while the
   models already in the set retain the old one. That applies to every prior this
   release changes, not only to the predictor-scaled ones. Where the comparison
   between models matters, refit the whole set.
