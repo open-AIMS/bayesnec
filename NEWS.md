@@ -52,12 +52,14 @@
   density is at 0.014 has nearly all its mass above it, so the interval measure
   penalises a well-placed prior on a bounded parameter near its boundary.
 
-  Eleven of those 12 cells are sampling error in a six-replicate binary group
-  rather than a property of the rule. Six replicates resolve a survival of 0.014
-  only to the nearest sixth, and at least one individual survives 8.1% of the
-  time, at which point the observed proportion is 0.167 and the prior follows
-  it. That is the one respect in which reading the response is a liability: the
-  `"uninformative"` entry for those families is a constant and is unaffected.
+  All 12 of those cells are sampling error rather than a property of the rule.
+  Eleven are a six-replicate binary group: six replicates resolve a survival of
+  0.014 only to the nearest sixth, at least one individual survives 8.1% of the
+  time, and the prior then follows the observed proportion of 0.167. The twelfth
+  is the same thing on a mu block whose highest surviving concentration held two
+  survivors. That is the one respect in which reading the response is a
+  liability: the `"uninformative"` entry for those families is a constant and is
+  unaffected.
 
   Three properties of the anchor come from those designs. A zero at the highest
   concentration is the endpoint responding and is kept in the average, where a

@@ -5,6 +5,12 @@
 # brms 2.23.0. Archived here because it is the only reproduction of the
 # measurements cited in #302, #304 and #305.
 #
+# Updated 2026-09-10 for #305: the prior parser gained a `lognormal`
+# case, without which every nec and ec50 cell returns NA and the run
+# stops; the output path is now relative and overridable through
+# BAYESNEC_PRIOR_AUDIT_OUT; and the summary tables the issue and pull
+# request bodies cite are printed at the end.
+#
 # It no longer reproduces its own nec/ec50 results. Those findings were
 # acted on in #302 and PR #304, which replaced the three support-selected
 # entries with a normal prior on the log of the predictor, so re-running
@@ -103,17 +109,24 @@ parse_prior <- function(s) {
   args <- as.numeric(strsplit(gsub("^.*\\(|\\)$", "", s), ",")[[1]])
   list(fam = fam, a = args[1], b = args[2])
 }
+# lognormal was added when #302 replaced the three support-selected nec and
+# ec50 entries with one normal on the log of the predictor. Without it every
+# nec and ec50 cell -- 960 of the 4,320 -- returns NA and trunc_summary() stops
+# the run on the first of them.
 pdf_of <- function(p, q) switch(p$fam,
   gamma = dgamma(q, p$a, p$b),
   normal = dnorm(q, p$a, p$b),
+  lognormal = dlnorm(q, p$a, p$b),
   beta = dbeta(q, p$a, p$b), rep(NA_real_, length(q)))
 cdf_of <- function(p, q) switch(p$fam,
   gamma = pgamma(q, p$a, p$b),
   normal = pnorm(q, p$a, p$b),
+  lognormal = plnorm(q, p$a, p$b),
   beta = pbeta(q, p$a, p$b), rep(NA_real_, length(q)))
 qf_of <- function(p, q) switch(p$fam,
   gamma = qgamma(q, p$a, p$b),
   normal = qnorm(q, p$a, p$b),
+  lognormal = qlnorm(q, p$a, p$b),
   beta = qbeta(q, p$a, p$b), rep(NA_real_, length(q)))
 
 # Summaries of the prior AFTER truncation to [lb, ub], which is the
@@ -124,7 +137,7 @@ trunc_summary <- function(pstr, lb, ub, truth) {
   if (is.null(p)) return(NULL)
   lo <- if (is.na(lb)) -Inf else lb
   hi <- if (is.na(ub)) Inf else ub
-  if (p$fam %in% c("gamma", "beta")) lo <- max(lo, 0)
+  if (p$fam %in% c("gamma", "beta", "lognormal")) lo <- max(lo, 0)
   if (p$fam == "beta") hi <- min(hi, 1)
   Flo <- if (is.infinite(lo) && lo < 0) 0 else cdf_of(p, lo)
   Fhi <- if (is.infinite(hi)) 1 else cdf_of(p, hi)
@@ -138,8 +151,14 @@ trunc_summary <- function(pstr, lb, ub, truth) {
     if (truth <= lo) 0 else if (truth >= hi) 1 else
       (cdf_of(p, truth) - Flo) / mass
   }
+  raw_sd <- switch(p$fam,
+    gamma = sqrt(p$a) / p$b,
+    normal = p$b,
+    lognormal = sqrt((exp(p$b^2) - 1) * exp(2 * p$a + p$b^2)),
+    beta = sqrt(p$a * p$b / ((p$a + p$b)^2 * (p$a + p$b + 1))),
+    NA_real_)
   list(mode = mode, med = tq(0.5), q025 = tq(0.025), q975 = tq(0.975),
-       p_truth = pt, mass_kept = mass)
+       p_truth = pt, mass_kept = mass, raw_sd = raw_sd)
 }
 
 # ---- run -------------------------------------------------------------
@@ -206,7 +225,7 @@ for (dn in names(designs)) {
           prior_type = ptype, model = mod, par = "<error>",
           prior = as.character(attr(pr, "condition")$message),
           lb = NA, ub = NA, truth = NA, mode = NA, q025 = NA, q975 = NA,
-          p_truth = NA, x_type = NA, mu_min = NA, mu_max = NA,
+          p_truth = NA, raw_sd = NA, x_type = NA, mu_min = NA, mu_max = NA,
           y_min = NA, y_q10 = NA, y_q25 = NA, y_q75 = NA, y_q90 = NA,
           y_max = NA, y_sd = NA, y_zero_frac = NA, sub = sub_note,
           stringsAsFactors = FALSE)
@@ -257,6 +276,7 @@ for (dn in names(designs)) {
           q025 = if (is.null(ss)) NA else ss$q025,
           q975 = if (is.null(ss)) NA else ss$q975,
           p_truth = if (is.null(ss)) NA else ss$p_truth,
+          raw_sd = if (is.null(ss)) NA else ss$raw_sd,
           x_type = set_distribution(xt, silence_y_msgs = TRUE,
                                     silence_x_msgs = TRUE),
           mu_min = mu_span[1], mu_max = mu_span[2],
@@ -272,7 +292,46 @@ for (dn in names(designs)) {
  }
 }
 res <- do.call(rbind, rows)
-saveRDS(res, "/tmp/claude-1000/-mnt-c-Rworking-bayesnec/e7a2a7b5-c48f-4b1a-b05b-b81c0af40c95/scratchpad/prior_audit.rds")
+out <- Sys.getenv("BAYESNEC_PRIOR_AUDIT_OUT", "prior_audit.rds")
+saveRDS(res, out)
 cat("rows:", nrow(res), "\n")
 cat("errors:", sum(res$par == "<error>"), "\n")
 print(unique(res$prior[res$par == "<error>"]))
+cat("written to", out, "\n")
+
+# ---- the tables the issue and PR bodies cite --------------------------
+# top and bot are read from the nec4param cells and nec/ec50 from the
+# ecx4param cells, so that each parameter is assessed on the equation
+# whose curve identifies it. An ecx4param design does not reach its own
+# upper asymptote on the wide series, so scoring `top` there would
+# measure the design rather than the prior.
+band <- function(d) !is.na(d$p_truth) & (d$p_truth < 0.025 | d$p_truth > 0.975)
+tb <- subset(res, par %in% c("top", "bot") & model == "nec4param")
+tb$fail <- band(tb)
+cat("\n== top and bot: cells outside the central 95% of the truncated prior ==\n")
+print(with(tb, tapply(fail, list(paste(family, link), prior_type), sum)))
+cat("\ntotals of", sum(tb$prior_type == "regularizing"), "cells each:\n")
+print(tapply(tb$fail, tb$prior_type, sum))
+cat("\nmean distance of the truncated CDF at the truth from 0.5:\n")
+print(round(tapply(abs(tb$p_truth - 0.5), tb$prior_type, mean, na.rm = TRUE), 4))
+
+xp <- subset(res, (par == "nec" & model == "nec4param") |
+                    (par == "ec50" & model == "ecx4param"))
+xp$fail <- band(xp)
+cat("\n== nec and ec50: cells outside the central 95% ==\n")
+print(with(xp, tapply(fail, list(par, prior_type), sum)))
+cat("truncated CDF at the truth, range by prior type:\n")
+for (pt in unique(xp$prior_type)) {
+  cat(" ", pt, ":",
+      paste(round(range(xp$p_truth[xp$prior_type == pt], na.rm = TRUE), 3),
+            collapse = " to "), "\n")
+}
+
+# NOTE on ratios. The response is redrawn inside the prior_type loop
+# above, so a ratio of prior widths taken across the two types here
+# compares priors built from different draws. The coverage tables are
+# unaffected, because each prior is scored against its own data, but a
+# ratio must be measured with both priors built from one response. That
+# is what the ratio figures in PR #307 report and this script does not.
+cat("\nRatios across prior types are NOT reported here; see the note in the",
+    "source.\n")

@@ -359,21 +359,29 @@ beta_from_mode_sd <- function(mode, spread) {
 #' is at the level \code{top} describes and the highest is at the level
 #' \code{bot} describes.
 #'
-#' The first is exact at a predictor of zero for fifteen of the 23 equations:
-#' all ten with a \code{nec} parameter, and \code{ecxlin}, \code{ecxexp},
-#' \code{ecxsigm}, \code{ecxwb2} and \code{ecxwb2p3}. That includes every
-#' hormesis equation, whose excess term contributes nothing there --- the term
-#' is \code{exp(slope) * x} for \code{nechorme}, \code{nechorme4},
-#' \code{neclinhorme}, \code{ecxhormebc4} and \code{ecxhormebc5},
+#' The first is an identity at a predictor of zero for thirteen of the 23
+#' equations: all ten with a \code{nec} parameter, and \code{ecxlin},
+#' \code{ecxexp} and \code{ecxsigm}. That includes every hormesis equation,
+#' whose excess term contributes nothing there --- the term is
+#' \code{exp(slope) * x} for \code{nechorme}, \code{nechorme4},
+#' \code{neclinhorme}, \code{ecxhormebc4} and \code{ecxhormebc5}, and
 #' \code{x^(1 / (1 + exp(slope)))} for \code{nechormepwr} and
-#' \code{nechorme4pwr}, and a bounded form of the same for
-#' \code{nechormepwr01}. For the remaining eight --- \code{ecx4param},
-#' \code{ecxll3}, \code{ecxll4}, \code{ecxll5}, \code{ecxwb1},
-#' \code{ecxwb1p3}, \code{ecxhormebc4} and \code{ecxhormebc5} --- it is a
-#' limit rather than an identity, because the sigmoid denominator is not exactly
-#' 1 at zero. Measured at \code{top} 40, \code{bot} 5, \code{ec50} 2 and a
-#' decay rate of 1.5, the eight return 38.06 to 38.34 against a \code{top} of
-#' 40, an error of 4\%. Note that \code{ecxhormebc4} and \code{ecxhormebc5}
+#' \code{nechorme4pwr}. \code{nechormepwr01} reaches \code{top} exactly too,
+#' by a different route: its increase is a logistic in the predictor,
+#' \code{1 / (1 + (1/top - 1) exp(-exp(slope) x))}, which is \code{top} at
+#' zero by construction.
+#'
+#' For the other ten it is a limit rather than an identity, because the sigmoid
+#' term is not exactly at its asymptote at zero. How close it is depends on the
+#' curve rather than on the equation, being governed by
+#' \code{exp(beta) * ec50}: at \code{top} 40, \code{bot} 5, \code{ec50} 2 and
+#' a rate of 1.5, \code{ecxwb2} and \code{ecxwb2p3} are within 1e-7 of
+#' \code{top} and the other eight --- \code{ecx4param}, \code{ecxll3},
+#' \code{ecxll4}, \code{ecxll5}, \code{ecxwb1}, \code{ecxwb1p3},
+#' \code{ecxhormebc4} and \code{ecxhormebc5} --- return 38.06 to 38.34, an
+#' error of 4\%. On a shallow curve with a low midpoint, a rate of 0.2 and an
+#' \code{ec50} of 1, all ten are further off: 20.4 to 29.7 against the same
+#' \code{top} of 40. Note that \code{ecxhormebc4} and \code{ecxhormebc5}
 #' appear in both lists: their excess term does vanish at zero, and their
 #' denominator does not.
 #'
@@ -437,7 +445,12 @@ beta_from_mode_sd <- function(mode, spread) {
 #' cells of \code{notes/scripts/prior_hard_cases.R} that happened 7 times
 #' against the 4.9 the binomial predicts. The \code{"uninformative"} entry for
 #' those families is a constant and is unaffected, which is the one respect in
-#' which reading the response is a liability rather than an improvement.
+#' which reading the response is a liability rather than an improvement. The
+#' same thing on a smaller scale accounts for the twelfth of the twelve cells
+#' that script reports: a \code{zero_inflated_beta} mu block whose highest
+#' surviving concentration held two survivors, 0.420 and 0.514, so the location
+#' was their mean of 0.467 against a true 0.6, and their standard error of 0.047
+#' was below the stated spread so the floor did not bind.
 #'
 #' A group whose observations are all equal states no variability of its own,
 #' which is not the same as estimating its mean exactly. It is the ordinary case
