@@ -34,19 +34,68 @@ for a in "$@"; do
   esac
 done
 
+mapfile -t available < <(cd vignettes && ls -1 *.Rmd.orig | sed 's/\.Rmd\.orig$//')
+[ "${#available[@]}" -gt 0 ] || {
+  echo "no vignettes/*.Rmd.orig here. Run this from the repository root." >&2
+  exit 1; }
+
 # Default to every vignette, which is what precompile.R does when given none.
 if [ "${#args[@]}" -eq 0 ]; then
-  mapfile -t args < <(cd vignettes && ls *.Rmd.orig | sed 's/\.Rmd\.orig$//')
+  args=("${available[@]}")
 fi
 
+# Names are normalised to the stem and checked here, not left to precompile.R
+# inside the job. Checked there, a typo or a name from another branch is caught
+# only after the tree sync, the lock check, a possible 20-minute image copy and
+# R CMD INSTALL. Normalised here, because run.precompile reads vignettes.txt as
+# a bare stem: `example3.Rmd` would make it copy `example3.Rmd.Rmd`, and a name
+# with a directory in it would make it write a marker file into a directory
+# that does not exist.
+norm=()
+for v in "${args[@]}"; do
+  v=$(basename "$v"); v="${v%.orig}"; v="${v%.Rmd}"
+  found=0
+  for a in "${available[@]}"; do [ "$a" = "$v" ] && found=1 && break; done
+  if [ "$found" -eq 0 ]; then
+    echo "no vignettes/$v.Rmd.orig on this branch." >&2
+    echo "Available: ${available[*]}" >&2
+    exit 1
+  fi
+  norm+=("$v")
+done
+args=("${norm[@]}")
+
 fetch() {
-  local n=0
+  local n=0 rc
+  local head; head=$(git rev-parse HEAD)
   for v in "${args[@]}"; do
-    if ! ssh "$HOST" "test -d $DEST/out/$v"; then
+    ssh -o BatchMode=yes "$HOST" "test -d $DEST/out/$v"; rc=$?
+    # 255 is ssh itself failing. Reporting that as a failed job would be wrong
+    # and would send someone to look at the wrong thing.
+    if [ "$rc" -eq 255 ]; then
+      echo "could not reach $HOST; not collecting" >&2
+      exit 1
+    elif [ "$rc" -ne 0 ]; then
       echo "no output staged for $v -- the job failed, or has not finished" >&2
       continue
     fi
-    rsync -a "$HOST:$DEST/out/$v/vignettes/" vignettes/
+    # The staged output survives a redeploy, because out/ is excluded from the
+    # sync that would otherwise delete it. Without this check, deploying a
+    # second branch and collecting before its job had started would return the
+    # first branch's vignette, and say "collected".
+    local stamped
+    stamped=$(ssh -o BatchMode=yes "$HOST" \
+      "sed -n 's/^commit: //p' $DEST/out/$v/STAMP 2>/dev/null" || true)
+    if [ -z "$stamped" ]; then
+      echo "$v: staged output has no STAMP -- it predates this check. Rerun it." >&2
+      continue
+    fi
+    if [ "$stamped" != "$head" ]; then
+      echo "$v: staged output was precompiled from commit $stamped, and this" >&2
+      echo "  working tree is at $head. Not collecting it; rerun the vignette." >&2
+      continue
+    fi
+    rsync -a --exclude STAMP "$HOST:$DEST/out/$v/vignettes/" vignettes/
     n=$((n + 1))
   done
   [ "$n" -gt 0 ] || { echo "nothing collected" >&2; exit 1; }
@@ -60,6 +109,22 @@ if [ "$fetch_only" -eq 1 ]; then fetch; exit 0; fi
 [ -f "$SIF" ] || {
   echo "no $SIF here. Build it first:  ./hpc/build.sh" >&2; exit 1; }
 ./hpc/build.sh --check
+
+# A second deployment while an array is still queued would rewrite the tree, and
+# vignettes.txt with it, underneath the tasks that have not started. Task 3 would
+# then precompile whatever is on line 3 of the new file, against the new source,
+# and stage it under that name -- output that looks valid and is not. The
+# job-local library is shared in the same way. The array is submitted at %1, so
+# a full run is a long time to leave that window open.
+running=$(ssh -o BatchMode=yes "$HOST" "bash -lc 'module load slurm >/dev/null 2>&1; \
+  squeue -h -u \$USER -n bnec-precompile -o %A'" || true)
+if [ -n "$running" ]; then
+  echo "a precompile job is already queued or running on $HOST:" >&2
+  echo "  $(echo "$running" | tr '\n' ' ')" >&2
+  echo "Wait for it, or cancel it with scancel. Deploying now would rewrite the" >&2
+  echo "tree underneath it." >&2
+  exit 1
+fi
 
 echo "==> creating $DEST on $HOST"
 ssh "$HOST" "mkdir -p $DEST/logs $DEST/out"
@@ -106,7 +171,16 @@ rm -f .vignettes.tmp
 REMOTE_SIF="$DEST/bayesnec-precompile.sif"
 # Copied only when the remote copy is not already this image. The image changes
 # when a dependency changes, not when the branch does, so this is rare.
-remote_sha=$(ssh "$HOST" "sha256sum $REMOTE_SIF 2>/dev/null | cut -d' ' -f1" || true)
+# `|| true` is not used here: it would make an ssh failure look like "no image
+# present" and start a needless 20-minute copy of 700MB. sha256sum's own failure
+# on a missing file is separated from ssh's by the exit status.
+if remote_sha=$(ssh -o BatchMode=yes "$HOST" \
+     "sha256sum $REMOTE_SIF 2>/dev/null | cut -d' ' -f1"); then :
+elif [ "$?" -eq 255 ]; then
+  echo "could not reach $HOST" >&2; exit 1
+else
+  remote_sha=""
+fi
 if [ "$remote_sha" != "$(sha256sum "$SIF" | cut -d' ' -f1)" ]; then
   # About 20 minutes over the VPN, measured at roughly 900 kB/s on 2026-09-10.
   # --partial so an interrupted copy resumes rather than starting again.
@@ -135,7 +209,7 @@ if [ "$wait_for_job" -eq 0 ]; then
 Submitted. To follow it:
 
   ssh $HOST 'squeue -j $JOB'
-  ssh $HOST 'tail -f $DEST/logs/precompile-${JOB}_1.log'
+  ssh $HOST 'tail -f $DEST/logs/precompile-${JOB}_1.log'   # stdout and stderr
 
 To collect the output when it finishes:
 
@@ -148,12 +222,24 @@ echo "==> waiting (polling every ${POLL}s; Ctrl-C is safe, the job keeps running
 # A poll that cannot reach the cluster is treated as "still running", not as
 # "finished". Otherwise a dropped VPN part-way through a run would end the wait
 # and send the script on to collect output that does not exist yet.
+# squeue stops knowing about a job once slurmctld has purged the record, which
+# is five minutes after it ends by default, and reports that by exiting non-zero
+# -- indistinguishable from an unreachable host. So a non-zero exit falls
+# through to sacct, which keeps the record, and the loop ends on a terminal
+# state there. Without that, a connection lost across the completion window
+# becomes a permanent wait under a misleading message.
 while :; do
   if state=$(ssh -o BatchMode=yes "$HOST" \
        "bash -lc 'module load slurm >/dev/null 2>&1; squeue -h -j $JOB -o %T'"); then
     [ -n "$state" ] || break
   else
-    echo "  (could not reach $HOST; retrying)" >&2
+    acct=$(ssh -o BatchMode=yes "$HOST" \
+      "bash -lc 'module load slurm >/dev/null 2>&1; sacct -j $JOB -X -n -o State'" \
+      || true)
+    if printf '%s' "$acct" | grep -qE 'COMPLETED|FAILED|CANCELLED|TIMEOUT|OUT_OF_MEMORY|NODE_FAIL'; then
+      break
+    fi
+    echo "  (could not reach $HOST, or the job record is not yet visible; retrying)" >&2
   fi
   sleep "$POLL"
 done

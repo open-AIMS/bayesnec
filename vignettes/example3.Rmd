@@ -381,10 +381,10 @@ exmp_f <- bnec(y ~ crf(x, model = "nec3param"), data = avoid_data,
 
 ``` r
 fixef(pull_brmsfit(exmp_f))
-#>                 Estimate  Est.Error      Q2.5     Q97.5
-#> beta_Intercept 0.3107041 0.09841615 0.1451665 0.5460517
-#> nec_Intercept  1.1445531 0.07506455 1.0283312 1.3331188
-#> top_Intercept  0.5000000 0.00000000 0.5000000 0.5000000
+#>                 Estimate  Est.Error      Q2.5    Q97.5
+#> beta_Intercept 0.3046734 0.09441713 0.1430319 0.542110
+#> nec_Intercept  1.1396885 0.07174540 1.0234336 1.323081
+#> top_Intercept  0.5000000 0.00000000 0.5000000 0.500000
 ```
 
 ### Consequences of fixing an asymptote
@@ -405,9 +405,9 @@ exmp_g <- bnec(y ~ crf(x, model = "nec3param"), data = avoid_data,
 ``` r
 fixef(pull_brmsfit(exmp_g))
 #>                 Estimate  Est.Error      Q2.5     Q97.5
-#> top_Intercept  0.4886657 0.01597993 0.4591279 0.5212572
-#> beta_Intercept 0.3437224 0.10937483 0.1541249 0.5718228
-#> nec_Intercept  1.1911299 0.09590852 1.0313781 1.3762869
+#> top_Intercept  0.4885838 0.01631940 0.4568980 0.5210170
+#> beta_Intercept 0.3451862 0.11206883 0.1543009 0.5852214
+#> nec_Intercept  1.1919980 0.09776449 1.0351256 1.3855128
 ```
 
 That check only works while `top` is free, and here it passes: the interval covers 0.5, so this assay was unbiased at dose zero. The point is what it would have cost to be unable to ask. Had the assay carried a real baseline preference --- a `top` genuinely near 0.62 --- fixing it at 0.5 would have produced a fit that looked exactly as sound as this one. The disagreement does not disappear when it is forbidden from appearing in `top`; it is absorbed into `beta` and `nec` instead, and so into the toxicity estimate, with intervals that no longer reflect it. Whatever value is asserted for `top` propagates into the *NEC* directly, which is visible even here, where 0.5 is the value the data were generated from.
@@ -416,8 +416,8 @@ That check only works while `top` is free, and here it passes: the interval cove
 ``` r
 rbind(fixed = nec(exmp_f), free = nec(exmp_g))
 #>            Q50     Q2.5    Q97.5
-#> fixed 1.131241 1.028331 1.333119
-#> free  1.169913 1.031378 1.376287
+#> fixed 1.128614 1.023434 1.323081
+#> free  1.168571 1.035126 1.385513
 ```
 
 The second is uncertainty. A constant asserts the value is known exactly, so none of it propagates into ECx or the *NEC*, and the credible intervals narrow. That reads as a better analysis and is the opposite.

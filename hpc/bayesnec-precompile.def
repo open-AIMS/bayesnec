@@ -55,6 +55,10 @@ From: rocker/r-ver@sha256:a5df0ae591422cc1733e97da03a9f4eff4cf172e40895225959aa9
     # change of base distribution is followed rather than silently pointed at a
     # snapshot for the wrong one, which would drop every binary package and
     # build the lot from source.
+    # A snapshot for the current day is still settling, so a rebuild on the day
+    # this was first built could resolve a slightly different set; from the day
+    # after, the date fixes it. The manifest records what was actually resolved,
+    # which is what makes that checkable rather than assumed.
     P3M_DATE=2026-09-10
     P3M_SNAPSHOT="$(R -q --no-echo -e 'cat(sub("/latest/?$", "", getOption("repos")[[1]]))')/${P3M_DATE}"
     case "$P3M_SNAPSHOT" in
@@ -68,20 +72,38 @@ From: rocker/r-ver@sha256:a5df0ae591422cc1733e97da03a9f4eff4cf172e40895225959aa9
         if (grepl("/latest/?$", r)) stop("repository is still floating: ", r);
         cat("repository pinned to", r, "\n")'
 
-    # cmdstanr is not on CRAN.
+    # cmdstanr is not on CRAN, so it comes from r-universe, which is a rolling
+    # repository and is not pinned by the date above. The version is asserted
+    # instead: a rebuild that would pick up a different cmdstanr fails here
+    # rather than changing what the vignettes were precompiled with, and the
+    # number is raised deliberately.
+    CMDSTANR_VERSION=0.9.0
     R -q -e 'install.packages("cmdstanr", repos = c("https://stan-dev.r-universe.dev", getOption("repos")))'
+    R -q --no-echo -e "v <- as.character(packageVersion('cmdstanr'));
+        if (!identical(v, '${CMDSTANR_VERSION}'))
+          stop('r-universe now serves cmdstanr ', v, ', not ${CMDSTANR_VERSION}. ',
+               'Raise CMDSTANR_VERSION in the definition file deliberately.')"
     mkdir -p /opt/cmdstan
-    R -q -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', cores = 4, version = '${CMDSTAN_VERSION}')"
+    # Retried: this pulls a 49MB release tarball from GitHub, and a build that
+    # has already spent half an hour should not be ended by one truncated
+    # download. Observed on 2026-09-10, at 30.7MB of 48.6MB.
+    for attempt in 1 2 3; do
+      R -q -e "cmdstanr::install_cmdstan(dir = '/opt/cmdstan', cores = 4, version = '${CMDSTAN_VERSION}', overwrite = TRUE)" && break
+      echo "cmdstan install attempt ${attempt} failed"
+      [ "$attempt" -lt 3 ] || { echo "cmdstan could not be installed" >&2; exit 1; }
+      sleep 30
+    done
 
     export CMDSTAN="/opt/cmdstan/cmdstan-${CMDSTAN_VERSION}"
     export BASE_DIGEST
 
-    # rstan is installed even though every vignette samples with cmdstanr. It is
-    # not a fallback: brms stores a fit as a stanfit object whichever backend
-    # produced it, and its cmdstanr path builds that object in
-    # read_csv_as_stanfit(), which needs rstan's S4 class definitions. Without
-    # it every fit fails and bnec() reports only "None of the models fit
-    # successfully". Measured with brms 2.23.0.
+    # rstan is named although every vignette samples with cmdstanr. brms 2.23.0
+    # lists it under Imports, so installing brms installs it whether it is named
+    # here or not; naming it puts its version in the manifest, and keeps it
+    # available for a precompile that sets BAYESNEC_BACKEND=rstan, which is what
+    # the GitHub workflow does. It is not a fix for anything: the failure that
+    # prompted its addition was `open_progress`, an rstan::sampling() argument
+    # that the cmdstanr path rejects, and that was fixed in the vignettes.
     #
     # Packages the vignettes load directly, plus every bayesnec Imports and the
     # Suggests the vignettes reach. bayesnec itself is deliberately absent, so
@@ -111,22 +133,23 @@ RS
     # committed vignette output. See hpc/README.md.
     mkdir -p /opt/bayesnec-precompile
     Rscript - <<'RS'
-pk <- c("brms", "rstan", "ggplot2", "dplyr", "tidyr", "knitr", "rmarkdown",
-        "posterior", "bayesplot",
-        "formula.tools", "loo", "purrr", "tibble", "tidyselect", "rlang",
-        "chk", "modelbased", "extraDistr", "R.utils", "cmdstanr")
+# Every installed package, not the list installed above. brms alone pulls in
+# StanHeaders, RcppEigen, rstantools and a dozen more, several of which affect
+# the Stan code brms generates, and a manifest naming only what was asked for
+# cannot say what changed between two images.
 cmdstanr::set_cmdstan_path(Sys.getenv("CMDSTAN"))
+ip <- utils::installed.packages()[, "Version"]
+ip <- ip[order(names(ip))]
 lines <- c(
   "base_image: rocker/r-ver:4.6.1",
   paste0("base_digest: ", Sys.getenv("BASE_DIGEST")),
   paste0("r_version: ", paste(R.version$major, R.version$minor, sep = ".")),
   paste0("cmdstan: ", cmdstanr::cmdstan_version()),
   paste0("repos: ", paste(getOption("repos"), collapse = " ")),
-  "packages:",
-  paste0("  ", pk, ": ",
-         vapply(pk, function(p) as.character(utils::packageVersion(p)), character(1))))
+  paste0("packages: ", length(ip)),
+  paste0("  ", names(ip), ": ", ip))
 writeLines(lines, "/opt/bayesnec-precompile/manifest.txt")
-writeLines(lines)
+writeLines(head(lines, 8))
 RS
 
 %environment

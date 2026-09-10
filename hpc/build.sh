@@ -18,19 +18,35 @@ LOCK=hpc/image.lock
 # The digest appears twice in the definition file -- once where apptainer reads
 # it, once where the manifest records it -- because %post cannot see the
 # bootstrap header. Assert they agree rather than trust that they do.
-from_digest=$(grep -m1 '^From:' "$DEF" | sed 's/.*@//')
-post_digest=$(grep -m1 '^ *BASE_DIGEST=' "$DEF" | cut -d= -f2-)
-if [ "$from_digest" != "$post_digest" ]; then
-  echo "digest mismatch in $DEF:" >&2
-  echo "  From:        $from_digest" >&2
-  echo "  BASE_DIGEST: $post_digest" >&2
-  exit 1
-fi
+check_pair() {
+  # $1 label, $2 first value, $3 second value
+  if [ "$2" != "$3" ]; then
+    echo "$1 is written twice in $DEF and the two disagree:" >&2
+    echo "  $2" >&2
+    echo "  $3" >&2
+    exit 1
+  fi
+}
+check_pair "the base digest" \
+  "$(grep -m1 '^From:' "$DEF" | sed 's/.*@//')" \
+  "$(grep -m1 '^ *BASE_DIGEST=' "$DEF" | cut -d= -f2-)"
+check_pair "the cmdstan version" \
+  "$(grep -m1 '^ *CMDSTAN_VERSION=' "$DEF" | cut -d= -f2-)" \
+  "$(grep -m1 '^ *export CMDSTAN=/opt' "$DEF" | sed 's/.*cmdstan-//')"
+check_pair "the base image tag" \
+  "$(grep -m1 '^ *Base ' "$DEF" | awk '{print $2}')" \
+  "$(grep -m1 'base_image: ' "$DEF" | sed 's/.*base_image: //;s/\".*//' | tr -d "'\",")"
 
+# Written to a temporary file and moved into place. A plain redirection into
+# $LOCK truncates the committed lock before apptainer runs, so a failure to read
+# the manifest -- a corrupt image, a sandbox extraction that runs out of space --
+# would leave the record the whole design rests on empty.
 write_lock() {
-  local sif="$1"
-  apptainer exec "$sif" cat /opt/bayesnec-precompile/manifest.txt > "$LOCK"
-  printf 'sif_sha256: %s\n' "$(sha256sum "$sif" | cut -d' ' -f1)" >> "$LOCK"
+  local sif="$1" tmp
+  tmp=$(mktemp)
+  apptainer exec "$sif" cat /opt/bayesnec-precompile/manifest.txt > "$tmp"
+  printf 'sif_sha256: %s\n' "$(sha256sum "$sif" | cut -d' ' -f1)" >> "$tmp"
+  mv "$tmp" "$LOCK"
 }
 
 if [ "${1:-}" = "--check" ]; then

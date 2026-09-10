@@ -77,15 +77,34 @@ Sys.setenv("NOT_CRAN" = "true")
 # cmdstanr for every vignette, not brms's rstan default. cmdstan compiles each
 # Stan program once and caches the executable under a name derived from a hash
 # of the Stan source, so the cache is reusable between runs, between vignettes
-# and between branches wherever the data and priors are unchanged. On example7
-# that is roughly half the elapsed time of a cold precompile -- 309 minutes end
-# to end with 304 programs to compile, against 147 minutes of fitting on a warm
-# cache (2026-09-09/10). rstan has no equivalent cross-session cache.
+# and between branches wherever the data and priors are unchanged. rstan has no
+# equivalent cross-session cache. What that saves depends on how much sampling
+# the vignette does: on example4, 14 programs, a cold run took 13 m 58 s and a
+# warm one 13 m 06 s; example7 compiled 304 programs cold and none warm (#306).
 #
 # This changes the sampler that produces the committed vignette output, so the
 # next full precompile is expected to change numbers in every vignette. That is
 # a deliberate decision recorded on #306, not a side effect.
+#
+# BAYESNEC_BACKEND overrides it, and .github/workflows/precompile-vignettes.yaml
+# sets it to rstan: that runner has neither cmdstanr, which is not on CRAN and
+# not in DESCRIPTION, nor a cmdstan installation, so every fit would fail
+# require_backend() there.
 options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
+
+# Chains run in parallel across the cores this run has been given. Without
+# this, brms takes cores from getOption("mc.cores"), whose default is 1, and
+# four chains run one after another: only example2, example3 and example6 set
+# it in a chunk of their own, so example1 and example4 were sampling serially
+# on a four-core allocation. SLURM_CPUS_PER_TASK is the allocation rather than
+# the node, which parallel::detectCores() reports and which would oversubscribe
+# a shared node; the fallback is used off the cluster.
+.cpus <- suppressWarnings(as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")))
+if (is.na(.cpus) || .cpus < 1) {
+  .cpus <- max(1L, parallel::detectCores(logical = FALSE))
+}
+options(mc.cores = .cpus)
+message("Chains run on ", .cpus, " core(s)")
 
 # Where cmdstanr writes the .stan files it names by hash, and therefore where
 # the compiled executables live. Unset, it is the session tempdir and nothing
@@ -145,13 +164,13 @@ knit_one <- function(f) {
 # left behind by an interrupted run is neither copied over a good committed one
 # nor deleted. Recorded before knitting and compared after: a partial rebuild
 # must not touch the figures of the vignettes it is not rebuilding.
-# Size as well as modification time: mtime resolution is one second on some of
-# the filesystems this runs on, and a figure rewritten to the same size within
-# the same second would otherwise be missed.
+# Contents, not modification time. A figure rewritten within the same second to
+# the same size would be missed by an mtime-and-size comparison, and the
+# filesystems this runs on include one with one-second mtime resolution. These
+# are a handful of small PNGs, so hashing them costs nothing worth measuring.
 fig_state <- function() {
   f <- dir(".", pattern = "^vignette-fig.*\\.png$")
-  info <- file.info(f)
-  stats::setNames(paste(info$mtime, info$size), f)
+  tools::md5sum(f)
 }
 before <- fig_state()
 
@@ -175,6 +194,18 @@ if (length(changed)) {
   }
   unlink(changed)
   message("Copied ", length(changed), " figure(s) into vignettes/")
+}
+
+# Anything left here was written by an earlier run that did not finish, and is
+# deliberately neither copied nor deleted: it may belong to a vignette this run
+# was not asked to rebuild. Reported, because otherwise it accumulates silently
+# -- the working directory is the repository root and these names are not
+# covered by vignettes/.gitignore.
+stale <- setdiff(names(fig_state()), changed)
+if (length(stale)) {
+  message("Left in place, not written by this run: ", paste(stale, collapse = ", "),
+          "\n  They are from an interrupted run. Delete them once you have",
+          " checked which vignette they belong to.")
 }
 
 # Fail on a vignette whose chunks errored ---------------------------------
