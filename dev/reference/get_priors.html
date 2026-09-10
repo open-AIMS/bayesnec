@@ -221,14 +221,14 @@ in.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># the priors bayesnec would generate, without fitting anything</span></span></span>
 <span class="r-in"><span><span class="fu">get_priors</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                       prior class coef group resp dpar nlpar               lb</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                normal(0, 5)     b                       beta             &lt;NA&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                  beta(5, 2)     b                        top                0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  gamma(5, 4.56626360998196)     b                        nec 0.03234801324009</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                ub tag source</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>              &lt;NA&gt;       user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                 1       user</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3.22051966293556       user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                            prior class coef group resp dpar</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                     normal(0, 5)     b                     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                       beta(5, 2)     b                     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  lognormal(-0.132723577442522, 1.68292842267636)     b                     </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  nlpar               lb               ub tag source</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   beta             &lt;NA&gt;             &lt;NA&gt;       user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    top                0                1       user</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    nec 0.03234801324009 3.22051966293556       user</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
