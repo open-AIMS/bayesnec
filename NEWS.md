@@ -325,7 +325,7 @@
   proposals to the fourth power of the per-chain rate. Measured over the
   fourteen equations of the `decline` set at five seeds, the released rule
   drew 148,397 proposals on the packaged `alga` `c_proliferum` contaminant A
-  series against 191, and 334,178 on a small unreplicated design against 257;
+  series against 237, and 334,178 on a small unreplicated design against 308;
   both counts exclude the single-parameter rescue `refine_inits()` makes on a
   failing round, which the released rule ran far more often.
   Of the 340 searches measured, 71 exhausted the 10,000-attempt cap under the
@@ -346,15 +346,14 @@
   Over three designs and fourteen equations the accepted `top` sat 0.149 prior
   standard deviations below the prior median; it now sits within 0.01 of it.
 
-  **The band is every mean response the design estimates**, widened by five
-  pooled within-group standard deviations, intersected with the support of the
-  mean mapped through the link, and stopped a tenth of the way from the
-  boundary of that support towards the nearest value the response takes. Its
-  two outermost centres come from
-  `regularizing_location()`, the anchor the `"regularizing"` prior uses for
-  `top` and `bot`; on a replicated design the ends come from the level means
-  themselves. The width covers the true asymptotes in every draw of all 90
-  simulated cells whose design reaches its lower asymptote. Where the highest
+  **The band is every mean response the design estimates**, widened by four
+  within-group standard deviations, intersected with the support of the mean
+  mapped through the link, and stopped short of the boundary of that support.
+  Its two outermost centres come from `regularizing_location()`, the anchor
+  the `"regularizing"` prior uses for `top` and `bot`; on a replicated design
+  the ends come from the level means themselves. The width is the smallest
+  that covers the true asymptotes in every one of 270 in-scope simulated
+  cells, over gaussian, Beta and poisson responses. Where the highest
   concentration has not reached that asymptote the band sits above the true
   `bot` and no width reaches it, which is the same limitation the regularizing
   prior records.
