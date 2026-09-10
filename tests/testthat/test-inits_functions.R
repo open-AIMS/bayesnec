@@ -1275,8 +1275,8 @@ test_that("the band is bounded by the support of the mean", {
   expect_gt(bounded[1], 0)
   # a tenth of the way from the boundary towards the nearest observed value, so
   # outside the observed range and inside the support
-  expect_gt(bounded[2], max(y))
-  expect_lt(bounded[1], min(y))
+  expect_gte(bounded[2], max(y))
+  expect_lte(bounded[1], min(y))
   # and gaussian is not bounded, so the band is left alone
   expect_equal(init_limits(x, y, support = mu_support(validate_family("gaussian"))),
                unconstrained)
@@ -1393,7 +1393,7 @@ test_that("an unreplicated design uses the successive differences, not sd(y)", {
   # smooth curve have twice the noise variance.
   x <- c(0, 0.5, 1, 2, 4, 8, 16, 32)
   y <- c(0.98, 0.95, 0.88, 0.70, 0.42, 0.20, 0.08, 0.04)
-  expect_equal(group_spread(x, y), sd(diff(y)) / sqrt(2))
+  expect_equal(group_spread(x, y), successive_difference_spread(x, y))
   expect_lt(group_spread(x, y), sd(y) / 3)
   # and the band it gives is a small multiple of the response range, where
   # sd(y) gave more than four times it
@@ -1477,7 +1477,7 @@ test_that("the second block of a hurdle fit is not started at zero survival", {
   # Two orders of magnitude above the 1e-66 that failed, and below the smallest
   # proportion the design records, so the band still contains every level.
   expect_gt(hu_band[1], 1e-5)
-  expect_lt(hu_band[1], min(parts$hu$y))
+  expect_lte(hu_band[1], min(parts$hu$y))
   pr <- suppressMessages(define_prior("nec3param", fam, conc, y))
   inits <- suppressMessages(
     make_good_hurdle_inits("nec3param", conc, y, priors = pr, chains = 2,
@@ -1535,4 +1535,51 @@ test_that("a band with nothing to anchor on rejects every draw", {
   expect_true(all(is.na(lim)))
   expect_false(check_init_predictions(c(1, 0.5, 0.2, 0.1), lim))
   expect_false(check_init_predictions(c(1e9, 1e5, -1e5, -1e9), lim))
+})
+
+test_that("the boundary floor falls as a count design gains replicates", {
+  # Read from the level means and not from the observations. min(y[y > 0]) is 1
+  # for any integer response, so an observation-based floor is the same for
+  # eight replicates as for eight hundred and says nothing about the design.
+  gen <- function(reps) {
+    set.seed(21)
+    x <- rep(c(0, 1, 2, 4, 8, 16), each = reps)
+    mu <- c(20, 18, 12, 5, 1, 0.3)[match(x, c(0, 1, 2, 4, 8, 16))]
+    y <- rpois(length(x), mu) * rbinom(length(x), 1, 0.8)
+    init_limits(x, y, zero_bounded = TRUE, support = c(0, Inf))[1]
+  }
+  small <- gen(8)
+  large <- gen(80)
+  expect_gt(small, 0)
+  expect_lt(large, small)
+  # and it stays below a generating asymptote the released criterion admitted
+  expect_lt(small, 0.3)
+})
+
+test_that("the inset is no stricter than range(y) where the response reaches in", {
+  # The gap is capped at the distance to the closest value the response takes
+  # strictly inside the boundary, so on a response that does not touch the
+  # boundary the criterion is not tightened past the released one.
+  set.seed(22)
+  x <- rep(c(0, 1, 5, 20), each = 5)
+  y <- pmin(pmax(rep(c(0.9, 0.6, 0.25, 0.05), each = 5) + rnorm(20, 0, 0.03),
+                 0.002), 0.998)
+  lim <- init_limits(x, y, support = c(0, 1))
+  expect_lte(lim[1], min(y))
+  expect_gte(lim[2], max(y))
+})
+
+test_that("the spread threshold prefers the differences at two degrees of freedom", {
+  set.seed(23)
+  x <- 1:24
+  y <- 1 - 0.03 * x + rnorm(24, 0, 0.03)
+  # two tied pairs give two degrees of freedom, which is below the threshold
+  x2 <- c(x, 5, 12)
+  y2 <- c(y, y[5] + 0.01, y[12] - 0.01)
+  expect_equal(group_spread(x2, y2), successive_difference_spread(x2, y2))
+  # a third takes it to three, and the pooled estimate is used
+  x3 <- c(x, 5, 12, 18)
+  y3 <- c(y, y[5] + 0.01, y[12] - 0.01, y[18] + 0.02)
+  expect_false(isTRUE(all.equal(group_spread(x3, y3),
+                                successive_difference_spread(x3, y3))))
 })

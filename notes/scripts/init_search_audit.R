@@ -70,6 +70,12 @@ designs <- function() {
   )
 }
 
+# Is a value inside a band, to a relative tolerance.
+covers <- function(value, band) {
+  tol <- sqrt(.Machine$double.eps) * max(1, abs(value))
+  value >= band[1] - tol && value <= band[2] + tol
+}
+
 pred_args <- function(model) {
   pf <- get(paste0("pred_", model), envir = asNamespace("bayesnec"))
   list(fct = pf, args = setdiff(names(unlist(as.list(args(pf)))), "x"))
@@ -165,14 +171,37 @@ alt_band <- function(x, y, width, spread) {
 
 # R1: the band must contain the asymptotes of the curve that generated the
 # data, or the search rejects a correct starting value.
+# Three generating processes, not one. The gaussian responses exercise the band
+# alone; the Beta and the poisson ones reach a boundary of the support, so they
+# are the only cells in which the clamp and boundary_inset() fire at all. Without
+# them the width is selected for asymptote coverage on designs where part of the
+# band is then removed unmeasured, which is how two defects in the inset reached
+# review rather than the script. See #309.
 measure_coverage <- function(ks = c(1, 2, 3, 4, 5), n_seed = 20,
                              seed = 309309) {
   set.seed(seed)
   grids <- list(wide = c(0, 0.1, 0.3, 1, 3, 10, 30, 100),
                 narrow = c(0, 0.5, 1, 2, 4, 8),
                 dense = round(exp(seq(log(0.01), log(100), length.out = 20)), 3))
-  top <- 10; bot <- 2
+  processes <- list(
+    gaussian = list(top = 10, bot = 2, support = c(-Inf, Inf),
+                    zero_bounded = FALSE,
+                    draw = function(mu, sigma) rnorm(length(mu), mu, sigma)),
+    beta = list(top = 0.9, bot = 0.05, support = c(0, 1), zero_bounded = FALSE,
+                draw = function(mu, sigma) {
+                  phi <- 40
+                  m <- pmin(pmax(mu, 1e-4), 1 - 1e-4)
+                  pmin(pmax(rbeta(length(m), m * phi, (1 - m) * phi),
+                            1e-4), 1 - 1e-4)
+                }),
+    poisson = list(top = 30, bot = 0.3, support = c(0, Inf),
+                   zero_bounded = TRUE,
+                   draw = function(mu, sigma) rpois(length(mu), pmax(mu, 1e-6)))
+  )
   out <- list()
+  for (pn in names(processes)) {
+  pr_spec <- processes[[pn]]
+  top <- pr_spec$top; bot <- pr_spec$bot
   for (gn in names(grids)) for (rp in c(1, 3, 6))
     for (eq in c("nec4param", "ecx4param", "ecxwb1"))
       for (shape in c("steep", "shallow"))
@@ -189,20 +218,29 @@ measure_coverage <- function(ks = c(1, 2, 3, 4, 5), n_seed = 20,
     # het: the dispersion rises fivefold across the series, which is what the
     # alga growth series do and what the disp() variance function models.
     sigma <- 0.1 * (top - bot) * if (het) 1 + 4 * rank(x) / length(x) else 1
-    y <- rnorm(length(x), mu, sigma)
+    y <- pr_spec$draw(mu, sigma)
     for (sp in names(spreads)) for (k in ks) {
-      b <- if (sp == "pooled") init_limits(x, y, width = k) else
-        alt_band(x, y, k, sp)  # gaussian simulation: no support to clamp to
+      b <- if (sp == "pooled") {
+        init_limits(x, y, width = k, zero_bounded = pr_spec$zero_bounded,
+                    support = pr_spec$support)
+      } else {
+        alt_band(x, y, k, sp)
+      }
       out[[length(out) + 1]] <- data.frame(
-        grid = gn, reps = rp, eq = eq, shape = shape, het = het,
+        process = pn, grid = gn, reps = rp, eq = eq, shape = shape, het = het,
         spread = sp, k = k,
-        full = top <= b[2] && top >= b[1] && bot >= b[1] && bot <= b[2],
+        # Scored to a relative tolerance. On the poisson process the floor is a
+        # tenth of a small integer count, so at a generating bot of 0.3 it lands
+        # on the true value exactly and five cells were recorded as misses by a
+        # floating-point tie rather than by the criterion.
+        full = covers(top, b) && covers(bot, b),
         # A design whose predictor stops short of the crossing never reaches
         # its lower asymptote, so its bot anchor is biased and no width covers
         # it. Those cells are reported separately rather than counted.
         reaches = shape == "steep" || gn != "narrow",
         stringsAsFactors = FALSE)
     }
+  }
   }
   do.call(rbind, out)
 }
@@ -571,10 +609,17 @@ if (run_this("width")) {
   cov <- measure_coverage()
   cat("\n=== 2a. coverage of the true asymptotes, by spread and width ===\n")
   sub <- cov[cov$reaches, ]
-  cel <- aggregate(full ~ spread + k + grid + shape + reps + eq + het, sub, mean)
+  cel <- aggregate(full ~ spread + k + process + grid + shape + reps + eq + het,
+                   sub, mean)
   for (sp in unique(cel$spread)) for (k in sort(unique(cel$k))) {
     s <- cel[cel$spread == sp & cel$k == k, ]
-    cat(sprintf("%-7s k=%4.1f  complete in %2d of %d cells\n", sp, k,
+    cat(sprintf("%-7s k=%4.1f  complete in %3d of %d cells\n", sp, k,
+                sum(s$full == 1), nrow(s)))
+  }
+  cat("\n  by generating process, pooled spread:\n")
+  for (pn in unique(cel$process)) for (k in sort(unique(cel$k))) {
+    s <- cel[cel$spread == "pooled" & cel$process == pn & cel$k == k, ]
+    cat(sprintf("  %-8s k=%4.1f  complete in %2d of %d cells\n", pn, k,
                 sum(s$full == 1), nrow(s)))
   }
   cat("\n  designs whose predictor stops short of the lower asymptote:\n")

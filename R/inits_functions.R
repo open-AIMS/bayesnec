@@ -378,6 +378,65 @@ replicated_group_means <- function(x, y) {
   vapply(groups, mean, numeric(1), USE.NAMES = FALSE)
 }
 
+#' The spread of a response with nothing replicated, read from its successive
+#' differences
+#'
+#' @param x A \code{\link[base]{numeric}} vector, the predictor.
+#' @param y A \code{\link[base]{numeric}} vector, the response on the link
+#' scale.
+#'
+#' @details For a curve that is smooth between neighbouring concentrations the
+#' variance of the successive differences is twice the noise variance, so
+#' \code{sd(diff(y)) / sqrt(2)} estimates it. It is biased upward by whatever
+#' the curve does between the two points, which is the safe direction, and
+#' unlike the spread of the whole response it does not grow with the size of the
+#' effect.
+#'
+#' \strong{It is read over each half of the series and the larger taken.} A
+#' single number is the wrong summary where the dispersion changes across the
+#' predictor, which is the ordinary case for a growth or a count endpoint and is
+#' what the \code{disp()} variance function exists for. On the one simulated
+#' cell that decided the width of \code{\link{init_limits}} --- an unreplicated
+#' design with a fivefold rise in dispersion --- the whole-series estimate is
+#' 2.35 against a true standard deviation running 1.2 to 4.0, and every failure
+#' to cover the asymptotes was at the lower end of the response, where the noise
+#' is largest. Taking the larger of the two half-series estimates covers that
+#' cell completely at a width of four, where the whole-series estimate needed
+#' five, so the halves remove a width the band would otherwise have paid on
+#' every design to compensate for an estimator that is wrong on this one.
+#'
+#' Each half needs at least three differences before it is read on its own;
+#' below that the whole series is used, because a standard deviation of two
+#' differences is not an estimate of anything and taking the larger of two such
+#' would be a maximum over noise.
+#'
+#' @return A \code{\link[base]{numeric}} of length 1, \code{NA} where the series
+#' is too short to difference.
+#'
+#' @importFrom stats sd
+#'
+#' @noRd
+successive_difference_spread <- function(x, y) {
+  ordered <- y[order(x)]
+  n <- length(ordered)
+  if (n < 3) {
+    return(NA_real_)
+  }
+  whole <- sd(diff(ordered)) / sqrt(2)
+  half <- floor(n / 2)
+  if (half < 4) {
+    return(whole)
+  }
+  lower <- sd(diff(ordered[seq_len(half)])) / sqrt(2)
+  upper <- sd(diff(ordered[(half + 1):n])) / sqrt(2)
+  halves <- c(lower, upper)
+  halves <- halves[is.finite(halves) & halves > 0]
+  if (length(halves) == 0) {
+    return(whole)
+  }
+  max(halves)
+}
+
 #' The pooled within-group standard deviation of the response
 #'
 #' @param x A \code{\link[base]{numeric}} vector, the predictor.
@@ -399,17 +458,13 @@ replicated_group_means <- function(x, y) {
 #' to 1.4 for the pooled one, so it widens the band for a reason that has
 #' nothing to do with the noise.
 #'
-#' \strong{Where no predictor value is replicated} there is no within-group
-#' variation to pool, and the successive differences of the response ordered by
-#' the predictor stand in: for a curve that is smooth between neighbouring
-#' concentrations their variance is twice the noise variance, so
-#' \code{sd(diff(y)) / sqrt(2)} estimates it. It is biased upward by whatever
-#' the curve does between the two points, which is the safe direction, and
-#' unlike the spread of the whole response it does not grow with the size of the
-#' effect. On the eight-concentration unreplicated design measured it gives
-#' 0.068 against 0.395 for \code{sd(y)}, and a band 1.7 times the response range
-#' against 4.4. Below three observations there are too few differences and the
-#' spread of the whole response stands in instead.
+#' \strong{Where the replicates say too little} the spread is read from the
+#' response's successive differences instead; see
+#' \code{\link{successive_difference_spread}}. On the eight-concentration
+#' unreplicated design measured that gives 0.068 against 0.395 for
+#' \code{sd(y)}, and a band 1.7 times the response range against 4.4. Below
+#' three observations there are too few differences and the spread of the whole
+#' response stands in.
 #'
 #' A pooled variance is not robust either, and a single aberrant observation
 #' widens the band: on a four-concentration design of six replicates, replacing
@@ -439,11 +494,7 @@ group_spread <- function(x, y) {
   # factor of seven. Three degrees of freedom is the least that reads as an
   # estimate rather than as one pair.
   df <- sum(n[replicated] - 1)
-  differences <- if (length(y) > 2) {
-    sd(diff(y[order(x)])) / sqrt(2)
-  } else {
-    NA_real_
-  }
+  differences <- successive_difference_spread(x, y)
   out <- if (any(replicated) && df >= 3) {
     v <- vapply(groups[replicated], var, numeric(1))
     sqrt(sum((n[replicated] - 1) * v) / df)
@@ -521,36 +572,35 @@ group_spread <- function(x, y) {
 #' is set back from it, which is read from an extremum and does drift; see
 #' \code{\link{boundary_inset}} for what that is for and what it gives up.
 #'
-#' \strong{The width.} Five standard deviations. The rule is the smallest width
-#' that covers the asymptotes of the curve that generated the data in every cell
-#' measured, because a band that excludes them rejects a correct starting value.
-#' Over 2,160 simulated responses -- three predictor grids, three replication
-#' levels, three equations, a steep and a shallow curve, constant and
-#' fivefold-rising dispersion, twenty seeds, which is 108 cells -- five covers
-#' the true \code{top} and \code{bot} in every draw of all 90 cells whose
-#' design reaches its lower asymptote. Four covers 89 of those cells and three
-#' covers 87, and every cell they miss is an unreplicated design with rising
-#' dispersion, which is where the spread is read from successive differences
-#' rather than from replicates.
+#' \strong{The width.} Four standard deviations. The rule is the smallest width
+#' at which coverage of the asymptotes of the curve that generated the data
+#' stops improving, because a band that excludes them rejects a correct starting
+#' value and a wider one admits a starting point further into a tail.
 #'
-#' \strong{The margin between four and five is one draw.} The single cell four
-#' does not cover fails one of its twenty draws, which is one of the 1,800 draws
-#' in the cells that reach their asymptote. The rule has no tolerance and
-#' therefore selects five. Two alternatives were considered and are not used:
-#' stating a tolerance, which would be a second free quantity chosen with less
-#' evidence than the width itself; and conditioning the width on which spread
-#' estimator was used, since the cells that decide it are exactly the
-#' unreplicated ones, which would make the criterion two criteria. The price of
-#' the wider band is recorded in the log-density measurement --- for
-#' \code{nec3param}, whose lower asymptote is fixed and whose band therefore
-#' widens most in proportion, the median starting log density falls from -1230
-#' to -1261 and its tenth percentile from -1426 to -2137.
+#' Measured over 6,480 simulated responses: three generating processes ---
+#' gaussian, Beta and poisson, so that the clamp and the boundary inset are
+#' exercised and not only the band --- by three predictor grids, three
+#' replication levels, three equations, a steep and a shallow curve, constant
+#' and fivefold-rising dispersion, twenty seeds. Of the 270 cells whose design
+#' reaches its lower asymptote, a width of four covers the true \code{top} and
+#' \code{bot} in 269, and five covers the same 269. Three covers 267, two 263
+#' and one 240.
 #'
-#' Width is a trade against how far into a tail a starting point may sit, so it
-#' is not raised beyond the width the coverage rule selects. Measured against
-#' the compiled Stan program, the log density at the accepted starting points is
-#' reported in the pull request for #309 and the measurement is archived at
-#' \code{notes/scripts/init_search_audit.R}.
+#' By process at a width of four: 90 of 90 gaussian cells, 90 of 90 Beta, and 89
+#' of 90 poisson. The single poisson cell is not a width the band can buy --- it
+#' is unchanged from two to five --- and is the count floor described at
+#' \code{\link{boundary_inset}}, where a generating \code{bot} below a tenth of
+#' the smallest level mean cannot be reached.
+#'
+#' \strong{Four rather than five, and why the earlier answer was five.} Under a
+#' whole-series spread on an unreplicated design the gaussian process needed
+#' five, and the cell that decided it was an unreplicated design with rising
+#' dispersion, missed at the lower end of the response where the noise is
+#' largest. That is a property of the estimator and not of the band, and it was
+#' paid on every design including the replicated ones. Reading the spread over
+#' each half of the series and taking the larger ---
+#' \code{\link{successive_difference_spread}} --- covers that cell at four, so
+#' the width no longer compensates for it.
 #'
 #' \strong{The support is a hard bound on it.} Under the identity link
 #' \code{\link{bnec}} assigns, an initial curve outside the interval the
@@ -577,7 +627,7 @@ group_spread <- function(x, y) {
 #' upper bound in that order.
 #'
 #' @noRd
-init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
+init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
                         support = c(-Inf, Inf)) {
   keep <- is.finite(x) & is.finite(y)
   x <- x[keep]
@@ -645,8 +695,10 @@ init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
   # plateau, which is what it cannot. It never crosses a level mean, so the band
   # still contains every level the design measured. Where the band does not
   # reach the boundary nothing here applies.
-  out[1] <- boundary_inset(out[1], support[1], centres, y, "lower")
-  out[2] <- boundary_inset(out[2], support[2], centres, y, "upper")
+  out[1] <- boundary_inset(out[1], support[1], centres, spread / width, y,
+                           "lower")
+  out[2] <- boundary_inset(out[2], support[2], centres, spread / width, y,
+                           "upper")
   out
 }
 
@@ -655,7 +707,8 @@ init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
 #' @param edge The band's end after clamping to the support.
 #' @param bound The support boundary on that side.
 #' @param centres The level means the band is built from.
-#' @param y The response on the link scale.
+#' @param spread One standard deviation from \code{\link{group_spread}}.
+#' @param y The response on the link scale, read only to cap the inset.
 #' @param side One of \code{"lower"} or \code{"upper"}.
 #' @param fraction How far from the boundary towards the nearest observed value
 #' the band stops.
@@ -669,30 +722,58 @@ init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
 #' the joint log likelihood \code{-Inf} and the fit end on "Initialization
 #' failed".
 #'
-#' \strong{Why a tenth of the way and not the observed value itself.} Stopping
-#' at \code{min(y[y > bound])} was measured and is too strict: on a
-#' \code{zero_inflated_poisson} design of six concentrations by eight, whose
-#' smallest group mean is 0.375, it put the band's floor above a generating
-#' \code{bot} of 0.3 and so excluded the true asymptote --- which is the error
-#' the width is chosen to avoid. It also made the criterion stricter than
-#' \code{range(y)} for two of four equations on that design, per-chain
-#' acceptance falling from 0.347 to 0.197 for \code{nec3param}. A tenth of the
-#' distance from the boundary to the nearest observed value keeps the floor two
-#' orders of magnitude below anything the design resolves --- 6e-4 against the
-#' 1e-66 that failed --- while leaving the asymptote inside. The same tenth is
-#' what \code{\link{regularizing_location}} uses where every observation at the
-#' highest concentration is zero.
+#' \strong{The gap is a tenth of the smaller of two quantities}: the distance
+#' from the boundary to the nearest level mean inside it, and one
+#' \code{\link{group_spread}}. Both are needed, because each alone fails in the
+#' opposite direction.
 #'
-#' \strong{What this gives up.} The floor is an extremum and therefore does
-#' drift with sample size, which is the property the band otherwise removes:
-#' the nearest observed value falls as the design grows, and on the second block
-#' of a hurdle fit it is \code{survival_by_x()}'s \code{eps} of \code{1/(2n)}
-#' whenever a proportion is exactly 0 or 1, so the floor is 8e-4 at n = 60 and
-#' 3e-5 at n = 1500. The extremum is used here to state what the measurement can
-#' distinguish from the boundary, which is what an extremum does state, rather
-#' than to estimate a plateau, which is what it cannot; and what it guards
-#' against is a curve collapsing onto the boundary, not a merely small value, so
-#' a floor that falls with n still does that.
+#' The distance alone ties the gap to the level of the response rather than to
+#' anything near the boundary, so a design whose observations crowd the boundary
+#' --- which is where a curve is most likely to be pushed onto it --- gets the
+#' smallest gap, and one whose observations are far away gets the largest and
+#' needs it least. On a Gamma design that stops short of its asymptote, whose
+#' lowest level mean is 76.8, it gives a floor of 7.68 on a response that says
+#' nothing whatever about zero.
+#'
+#' The spread alone fails the other way, and hard: on the second block of a
+#' hurdle fit it gives 0.024 against the 6e-4 the design resolves, which
+#' excludes the level means the block was primed from.
+#'
+#' The smaller of the two changes nothing wherever the first is already the more
+#' permissive, and relaxes exactly the cases where it is strictest.
+#'
+#' \strong{And the gap never exceeds the distance to the closest value the
+#' response takes strictly inside the boundary.} That is the one place an
+#' extremum enters the band, and it enters as a cap on a tightening rather than
+#' as a reference the band is built from. Where the response does not reach the
+#' boundary the cap makes the inset no stricter than \code{range(y)} was: on the
+#' second block of a hurdle fit both are 6e-3. Where the response does reach it
+#' --- a count with zeros, a survival of exactly none --- \code{range(y)} put
+#' its bound \emph{at} the boundary, and the inset is deliberately stricter,
+#' which is the case it exists for. On a \code{zero_inflated_poisson} design of
+#' six concentrations by eight the floor is 0.0375 where \code{range(y)} gave 0,
+#' and 0.0275 at eighty replicates: it falls as the design resolves more.
+#'
+#' \strong{The nearest \emph{level mean}, not the nearest observation.} An
+#' extremum drifts with sample size, which is the property the band exists to
+#' remove, and on a count response it carries no information about the design at
+#' all: \code{min(y[y > 0])} is 1 for any integer response, so a floor read from
+#' it is 0.1 for eight replicates or eight hundred. Read from the level means it
+#' is a tenth of the smallest group mean, which falls as replication rises. On a
+#' \code{zero_inflated_poisson} design of six concentrations by eight it is
+#' 0.0375 against a generating \code{bot} of 0.3, where the observation-based
+#' floor was 0.1 and the observed-value floor before that was 0.375 --- above
+#' the asymptote, which is the error the width is chosen to avoid.
+#'
+#' \strong{What this guards against, and what it does not.} A curve collapsing
+#' onto the boundary, not a merely small value. On the hurdle block the floor is
+#' 6e-4 and the draw that failed was 1e-66, sixty-two orders of magnitude below
+#' it; a draw at 1e-5 would be accepted and gives a finite log likelihood. The
+#' floor still falls as the design grows, because a group mean at the boundary
+#' end does, and on that block it is \code{survival_by_x()}'s \code{eps} of
+#' \code{1/(2n)} wherever a proportion is exactly 0 or 1. That is the right
+#' direction: more data should mean a smaller mean is distinguishable from the
+#' boundary.
 #'
 #' \strong{The \code{centres} term} disables the inset wherever a level mean
 #' sits at the boundary itself, which is the complete-effect design --- a count
@@ -704,24 +785,44 @@ init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
 #' @return A \code{\link[base]{numeric}} of length 1.
 #'
 #' @noRd
-boundary_inset <- function(edge, bound, centres, y, side, fraction = 0.1) {
+boundary_inset <- function(edge, bound, centres, spread, y, side,
+                           fraction = 0.1) {
   if (!is.finite(bound) || length(centres) == 0) {
     return(edge)
   }
-  inside <- if (side == "lower") y[y > bound] else y[y < bound]
+  if (side == "lower" && edge > bound) {
+    return(edge)
+  }
+  if (side == "upper" && edge < bound) {
+    return(edge)
+  }
+  inside <- if (side == "lower") centres[centres > bound] else
+    centres[centres < bound]
   if (length(inside) == 0) {
     return(edge)
   }
+  nearest <- if (side == "lower") min(inside) - bound else bound - max(inside)
+  gap <- fraction * min(nearest, spread)
+  # And never further from the boundary than the closest value the response
+  # actually takes, so that the inset cannot make the criterion stricter at this
+  # boundary than range(y) was. It is a cap on a tightening and never creates
+  # one, which is the only role an extremum has in the band.
+  observed <- if (side == "lower") y[y > bound] else y[y < bound]
+  if (length(observed)) {
+    reach <- if (side == "lower") {
+      min(observed) - bound
+    } else {
+      bound - max(observed)
+    }
+    gap <- min(gap, reach)
+  }
+  if (!is.finite(gap) || gap <= 0) {
+    return(edge)
+  }
   if (side == "lower") {
-    if (edge > bound) {
-      return(edge)
-    }
-    max(bound, min(c(centres, bound + fraction * (min(inside) - bound))))
+    max(bound, min(c(centres, bound + gap)))
   } else {
-    if (edge < bound) {
-      return(edge)
-    }
-    min(bound, max(c(centres, bound - fraction * (bound - max(inside)))))
+    min(bound, max(c(centres, bound - gap)))
   }
 }
 
