@@ -94,7 +94,7 @@ clauses <- function(p, limits) {
 # The band as make_good_inits() computes it: the family decides the support the
 # curve is clamped to and the treatment of zeros at each end of the series, so a
 # call without it audits a different criterion from the one that ships.
-band_of <- function(dg, y, width = 4) {
+band_of <- function(dg, y, width = formals(init_limits)$width) {
   init_limits(dg$x, y, width = width,
               zero_bounded = zero_bounded_family(dg$family),
               support = init_support(dg$family))
@@ -192,7 +192,7 @@ measure_coverage <- function(ks = c(1, 2, 3, 4, 5), n_seed = 20,
     y <- rnorm(length(x), mu, sigma)
     for (sp in names(spreads)) for (k in ks) {
       b <- if (sp == "pooled") init_limits(x, y, width = k) else
-        alt_band(x, y, k, sp)
+        alt_band(x, y, k, sp)  # gaussian simulation: no support to clamp to
       out[[length(out) + 1]] <- data.frame(
         grid = gn, reps = rp, eq = eq, shape = shape, het = het,
         spread = sp, k = k,
@@ -394,8 +394,12 @@ measure_log_density <- function(
     # through a variable: bnec() re-evaluates the formula outside this frame,
     # so `model = eq` reaches it as "object 'eq' not found".
     form <- stats::as.formula(sprintf("sgr ~ crf(dose, model = \"%s\")", eq))
+    # The family is passed rather than guessed: on a design whose response
+    # happens to lie in (0, 1) bnec() would select Beta, whose dispersion
+    # parameter is phi and not sigma, and the scoring below would then hand
+    # rstan a parameter the model does not declare.
     fit <- try(suppressMessages(suppressWarnings(
-      bnec(form, data = d, chains = 1, iter = 150,
+      bnec(form, data = d, family = fam, chains = 1, iter = 150,
            warmup = 100, refresh = 0, backend = "rstan", seed = 1,
            open_progress = FALSE))), silent = TRUE)
     if (inherits(fit, "try-error")) {
@@ -405,9 +409,20 @@ measure_log_density <- function(
     }
     sf <- fit$fit$fit
     pr <- suppressMessages(define_prior(eq, fam, d$dose, yl))
+    # Whatever the family calls its dispersion parameter, read off the fitted
+    # model rather than assumed, and held fixed so the comparison is of the
+    # curve parameters alone.
+    disp_name <- setdiff(sf@model_pars,
+                         c(names(pred_args(eq)$args), "lprior", "lp__",
+                           grep("^prior_", sf@model_pars, value = TRUE),
+                           paste0("b_", sub("^b_", "", pred_args(eq)$args))))
     score <- function(init) {
-      pl <- c(lapply(init, function(z) array(as.numeric(z), dim = 1)),
-              list(sigma = sigma_fixed))
+      disp <- if (length(disp_name) == 1) {
+        stats::setNames(list(sigma_fixed), disp_name)
+      } else {
+        list()
+      }
+      pl <- c(lapply(init, function(z) array(as.numeric(z), dim = 1)), disp)
       up <- try(rstan::unconstrain_pars(sf, pl), silent = TRUE)
       if (inherits(up, "try-error")) return(c(NA, NA))
       lp <- try(rstan::log_prob(sf, up), silent = TRUE)

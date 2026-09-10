@@ -592,7 +592,61 @@ init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
   if (!all(is.finite(out))) {
     return(c(-Inf, Inf))
   }
-  c(max(out[1], support[1]), min(out[2], support[2]))
+  out <- c(max(out[1], support[1]), min(out[2], support[2]))
+  # Where the band reaches a boundary of the support it stops at the nearest
+  # value the response actually takes instead. A mean at the boundary is not
+  # merely an unlikely starting point: the likelihood cannot evaluate it, and
+  # under a bounded family it is arbitrarily close to one that it can. On the
+  # second block of a hurdle fit the band spans the whole of (0, 1) -- one
+  # survival proportion per concentration is an unreplicated series of a few
+  # points, so the spread read from its successive differences is a third of the
+  # response range -- and a curve accepted at a survival of 1e-66 made the joint
+  # log likelihood -Inf and the fit end on "Initialization failed".
+  #
+  # The extremum is used here to say what the measurement can distinguish from
+  # the boundary, which is what an extremum does state, and not to estimate a
+  # plateau, which is what it cannot. It never crosses a level mean, so the band
+  # still contains every level the design measured. Where the band does not
+  # reach the boundary nothing here applies.
+  out[1] <- boundary_inset(out[1], support[1], centres, y, "lower")
+  out[2] <- boundary_inset(out[2], support[2], centres, y, "upper")
+  out
+}
+
+#' Stop a band at the nearest observed value rather than at the support boundary
+#'
+#' @param edge The band's end after clamping to the support.
+#' @param bound The support boundary on that side.
+#' @param centres The level means the band is built from.
+#' @param y The response on the link scale.
+#' @param side One of \code{"lower"} or \code{"upper"}.
+#'
+#' @return A \code{\link[base]{numeric}} of length 1.
+#'
+#' @noRd
+boundary_inset <- function(edge, bound, centres, y, side) {
+  if (!is.finite(bound)) {
+    return(edge)
+  }
+  if (side == "lower") {
+    if (edge > bound) {
+      return(edge)
+    }
+    inside <- y[y > bound]
+    if (length(inside) == 0) {
+      return(edge)
+    }
+    max(bound, min(c(centres, min(inside))))
+  } else {
+    if (edge < bound) {
+      return(edge)
+    }
+    inside <- y[y < bound]
+    if (length(inside) == 0) {
+      return(edge)
+    }
+    min(bound, max(c(centres, max(inside))))
+  }
 }
 
 #' make_good_inits

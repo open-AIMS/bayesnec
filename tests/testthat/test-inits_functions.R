@@ -1269,8 +1269,11 @@ test_that("the band is bounded by the support of the mean", {
   unconstrained <- init_limits(x, y)
   bounded <- init_limits(x, y, support = mu_support(validate_family("Beta")))
   expect_gt(unconstrained[2], 1)
-  expect_equal(bounded[2], 1)
-  expect_gte(bounded[1], 0)
+  # Inside the support, and inside it strictly: where the band reaches the
+  # boundary it stops at the nearest value the response takes.
+  expect_lt(bounded[2], 1)
+  expect_gt(bounded[1], 0)
+  expect_lte(bounded[2], max(y))
   # and gaussian is not bounded, so the band is left alone
   expect_equal(init_limits(x, y, support = mu_support(validate_family("gaussian"))),
                unconstrained)
@@ -1428,4 +1431,59 @@ test_that("ecxsigm succeeds on the alga c_proliferum series", {
   lim <- init_limits(d$x, d$y, support = init_support(fam))
   expect_true(all(vapply(inits, function(i) check_init_predictions(
     get_init_predictions(i, sort(d$x), pred_ecxsigm, fa), lim), logical(1))))
+})
+
+test_that("the band stops short of the support boundary", {
+  # A mean at the boundary is one the likelihood cannot evaluate. Where the
+  # band reaches it the band stops at the nearest value the response takes, so
+  # that a bounded response cannot be started at a mean no design resolves.
+  x <- rep(c(0, 1, 5, 20), each = 5)
+  set.seed(164)
+  y <- pmin(pmax(rep(c(0.98, 0.6, 0.2, 0.02), each = 5) + rnorm(20, 0, 0.05),
+                 0.002), 0.998)
+  lim <- init_limits(x, y, support = c(0, 1))
+  expect_gt(lim[1], 0)
+  expect_lt(lim[2], 1)
+  # it never crosses a level mean, so every level the design measured is still
+  # inside the band
+  gm <- vapply(split(y, factor(x)), mean, numeric(1))
+  expect_true(all(gm >= lim[1] & gm <= lim[2]))
+  # and an unbounded support is left alone
+  expect_equal(init_limits(x, y), init_limits(x, y, support = c(-Inf, Inf)))
+})
+
+test_that("the second block of a hurdle fit is not started at zero survival", {
+  # The second block is primed from one survival proportion per concentration,
+  # which is an unreplicated series of a few points, so the spread read from its
+  # successive differences is a third of the response range and the band spans
+  # the whole of (0, 1). A curve accepted at a survival of 1e-66 makes the joint
+  # log likelihood -Inf and the fit ends on "Initialization failed".
+  skip_on_cran()
+  set.seed(11)
+  nec3 <- function(x, top, beta, nec) {
+    top * exp(-exp(beta) * (x - nec) * (x > nec))
+  }
+  conc <- rep(c(0, 0.5, 1, 2, 3, 4, 5), each = 12)
+  mu <- nec3(conc, 25, log(0.55), 1)
+  pa <- nec3(conc, 0.97, log(0.9), 2)
+  y <- ifelse(rbinom(length(conc), 1, pa) == 1,
+              rgamma(length(conc), 12, 12 / mu), 0)
+  fam <- validate_family("hurdle_gamma")
+  parts <- split_hurdle_response(conc, y)
+  hu_band <- init_limits(parts$hu$x, parts$hu$y, support = c(0, 1))
+  expect_gte(hu_band[1], min(parts$hu$y))
+  pr <- suppressMessages(define_prior("nec3param", fam, conc, y))
+  inits <- suppressMessages(
+    make_good_hurdle_inits("nec3param", conc, y, priors = pr, chains = 2,
+                           seed = 7, family = fam)
+  )
+  skip_if(length(inits) == 1 && "random" %in% names(inits),
+          "init search fell back to random")
+  fa <- setdiff(names(unlist(as.list(args(pred_nec3param)))), "x")
+  for (i in seq_along(inits)) {
+    hu <- inits[[i]][c("b_hutop", "b_hubeta", "b_hunec")]
+    names(hu) <- sub("^b_hu", "b_", names(hu))
+    surv <- get_init_predictions(hu, sort(parts$hu$x), pred_nec3param, fa)
+    expect_gt(min(surv), min(parts$hu$y) / 2)
+  }
 })

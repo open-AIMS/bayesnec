@@ -325,7 +325,7 @@
   proposals to the fourth power of the per-chain rate. Measured over the
   fourteen equations of the `decline` set at five seeds, the released rule
   drew 148,397 proposals on the packaged `alga` `c_proliferum` contaminant A
-  series against 237, and 334,178 on a small unreplicated design against 137.
+  series against 191, and 334,178 on a small unreplicated design against 257.
   Of the 340 searches measured, 71 exhausted the 10,000-attempt cap under the
   released rule and none do now; a search that exhausts the cap falls through
   to Stan's own initialisation, so that budget was spent to reach the outcome
@@ -342,17 +342,19 @@
   region the criterion admits, so a threshold at the centre of the `top` prior
   did not only reject draws --- it put every accepted `top` on one side of it.
   Over three designs and fourteen equations the accepted `top` sat 0.149 prior
-  standard deviations below the prior median; it now sits 0.031 below.
+  standard deviations below the prior median; it now sits within 0.01 of it.
 
-  **The band is every mean response the design estimates**, widened by four
-  pooled within-group standard deviations and intersected with the support of
-  the mean. Its ends come from `regularizing_location()`, the anchor the
-  `"regularizing"` prior uses for `top` and `bot`, so the package has one
-  definition of where the ends of the curve are. The width covers the true
-  asymptotes in all 90 simulated cells whose design reaches its lower
-  asymptote. Where the highest concentration has not reached that asymptote
-  the band sits above the true `bot` and no width reaches it, which is the
-  same limitation the regularizing prior records.
+  **The band is every mean response the design estimates**, widened by five
+  pooled within-group standard deviations, intersected with the support of the
+  mean, and stopped short of the boundary of that support at the nearest value
+  the response takes. Its two outermost centres come from
+  `regularizing_location()`, the anchor the `"regularizing"` prior uses for
+  `top` and `bot`; on a replicated design the ends come from the level means
+  themselves. The width covers the true asymptotes in every draw of all 90
+  simulated cells whose design reaches its lower asymptote. Where the highest
+  concentration has not reached that asymptote the band sits above the true
+  `bot` and no width reaches it, which is the same limitation the regularizing
+  prior records.
 
   **A fit at a given seed is not bit-identical to one from 2.1.x**, because
   the initial values a seed produces change. Two runs at the same seed still

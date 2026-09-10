@@ -255,8 +255,10 @@ test_that("make_good_hurdle_inits returns both blocks per chain", {
   pr <- bayesnec:::define_prior(
     "nec3param", bayesnec:::validate_family("hurdle_gamma"), x, y
   )
-  inits <- bayesnec:::make_good_hurdle_inits("nec3param", x, y, priors = pr,
-                                             chains = 2, seed = 1)
+  inits <- bayesnec:::make_good_hurdle_inits(
+    "nec3param", x, y, priors = pr, chains = 2, seed = 1,
+    family = bayesnec:::validate_family("hurdle_gamma")
+  )
   skip_if(length(inits) == 1 && "random" %in% names(inits),
           "init search fell back to random")
   expect_length(inits, 2)
@@ -430,8 +432,10 @@ test_that("make_good_hurdle_inits uses the zi prefix", {
   pr <- bayesnec:::define_prior(
     "nec3param", bayesnec:::validate_family("zero_inflated_beta"), x, y
   )
-  inits <- bayesnec:::make_good_hurdle_inits("nec3param", x, y, priors = pr,
-                                             chains = 2, dpar = "zi", seed = 1)
+  inits <- bayesnec:::make_good_hurdle_inits(
+    "nec3param", x, y, priors = pr, chains = 2, dpar = "zi", seed = 1,
+    family = bayesnec:::validate_family("zero_inflated_beta")
+  )
   skip_if(length(inits) == 1 && "random" %in% names(inits),
           "init search fell back to random")
   expect_setequal(names(inits[[1]]),
@@ -478,9 +482,11 @@ test_that("make_good_hurdle_inits primes each block with its own equation", {
   pr <- bayesnec:::define_prior("nec3param",
                                 bayesnec:::validate_family("hurdle_gamma"),
                                 x, y, model_survival = "ecx4param")
-  inits <- bayesnec:::make_good_hurdle_inits("nec3param", x, y, priors = pr,
-                                             chains = 2,
-                                             model_survival = "ecx4param")
+  inits <- bayesnec:::make_good_hurdle_inits(
+    "nec3param", x, y, priors = pr, chains = 2,
+    model_survival = "ecx4param",
+    family = bayesnec:::validate_family("hurdle_gamma")
+  )
   skip_if(length(inits) == 1 && "random" %in% names(inits),
           "init search fell back to random")
   expect_length(inits, 2)
