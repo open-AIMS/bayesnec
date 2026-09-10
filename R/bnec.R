@@ -61,9 +61,13 @@
 #' default priors to build when the user does not supply their own. Either
 #' \code{"uninformative"} (the default; the weakly-informative priors described
 #' in Fisher et al. 2024) or \code{"regularizing"} (narrower priors, with the
-#' no-effect \code{top} parameter centred on the control mean, which sits at the
-#' upper end of the response range for these monotonically decreasing models).
-#' Ignored when priors are supplied directly via the \code{prior} argument.
+#' no-effect \code{top} parameter placed at the mean response over the lowest
+#' concentrations tested and \code{bot} at the mean over the highest). The
+#' regularizing set narrows the response-scaled and group-level priors to 0.4 of
+#' the width of the uninformative set, and the \code{nec} and \code{ec50} prior
+#' to 0.84 of it; see \code{vignette("example3")} for why the two factors
+#' differ. Ignored when priors are supplied directly via the \code{prior}
+#' argument.
 #' @param timeout A positive \code{\link[base]{numeric}} giving the maximum
 #' number of seconds allowed for fitting any single model, passed to
 #' \code{\link[R.utils]{withTimeout}}. This is useful when fitting multiple

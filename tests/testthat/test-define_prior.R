@@ -102,18 +102,39 @@ test_that("prior_type selects between default prior sets", {
                    paste0("normal(", quantile(resp, 0.9), ", ", sd(resp) * 2.5, ")"))
   expect_identical(unin$prior[unin$nlpar == "bot"],
                    paste0("normal(", quantile(resp, 0.1), ", ", sd(resp) * 2.5, ")"))
-  # regularizing differs and uses the narrower scaling (extreme pct, sd * 1)
+  # regularizing places top at the mean response over the lowest predictor
+  # values and bot at the mean over the highest, and takes regularizing_factor
+  # of the uninformative spread. On this branch the normal's location parameter
+  # is its mode as well as its mean, so no solving is involved (#305). A
+  # replicated design is used so the extreme group is a whole dose group, and
+  # the response is ordered against it so the expected values can be written
+  # out rather than recovered from the function under test.
+  x_rep <- as.numeric(rep(1:10, each = 10))
+  y_rep <- as.numeric(rep(seq(100, 10, length.out = 10), each = 10))
+  reg_rep <- define_prior("nec4param", gaussian(), x_rep, y_rep,
+                          prior_type = "regularizing")
+  unin_rep <- define_prior("nec4param", gaussian(), x_rep, y_rep,
+                           prior_type = "uninformative")
+  expect_false(identical(unin_rep$prior, reg_rep$prior))
+  # each dose group is constant here, so the standard error of the location is
+  # zero and the floor does not bind
+  expect_identical(reg_rep$prior[reg_rep$nlpar == "top"],
+                   paste0("normal(100, ",
+                          bayesnec:::regularizing_factor * sd(y_rep) * 2.5, ")"))
+  expect_identical(reg_rep$prior[reg_rep$nlpar == "bot"],
+                   paste0("normal(10, ",
+                          bayesnec:::regularizing_factor * sd(y_rep) * 2.5, ")"))
   expect_false(identical(unin$prior, regu$prior))
-  expect_identical(regu$prior[regu$nlpar == "top"],
-                   paste0("normal(", quantile(resp, 1), ", ", sd(resp), ")"))
-  # beta-family asymmetry differs between sets (identity link keeps beta priors)
+  # beta-family entries differ between sets, and the regularizing one now reads
+  # the response rather than being a second constant (#305).
   rb <- rbeta(100, 1, 5)
   unin_b <- define_prior("nec4param", Beta(link = "identity"), pred_a, rb,
                          prior_type = "uninformative")
   regu_b <- define_prior("nec4param", Beta(link = "identity"), pred_a, rb,
                          prior_type = "regularizing")
   expect_identical(unin_b$prior[unin_b$nlpar == "top"], "beta(5, 2)")
-  expect_identical(regu_b$prior[regu_b$nlpar == "top"], "beta(5, 1)")
+  expect_true(grepl("^beta\\(", regu_b$prior[regu_b$nlpar == "top"]))
+  expect_false(identical(regu_b$prior[regu_b$nlpar == "top"], "beta(5, 1)"))
   # invalid value errors via match.arg
   expect_error(define_prior("nec4param", gaussian(), pred_a, resp,
                             prior_type = "nonsense"))
@@ -582,12 +603,14 @@ test_that("prior_type narrows the group-level scales too", {
   r <- bayesnec:::define_group_prior(spec, x, y, prior_type = "regularizing")
   # signif(., 4) is applied to each scale as it is built, so the halves are
   # compared after the same rounding rather than to an unrounded half.
+  narrow <- bayesnec:::regularizing_factor
   for (p in c("top", "nec", "beta")) {
-    expect_equal(get_scale(r, p, "sd"), signif(get_scale(u, p, "sd") / 2, 4))
+    expect_equal(get_scale(r, p, "sd"),
+                 signif(get_scale(u, p, "sd") * narrow, 4))
   }
   # the ogl intercept narrows with them
   expect_equal(get_scale(r, "ogl", "b"),
-               signif(get_scale(u, "ogl", "b") / 2, 4))
+               signif(get_scale(u, "ogl", "b") * narrow, 4))
   # and the default is unchanged
   expect_equal(bayesnec:::define_group_prior(spec, x, y), u)
 })
@@ -607,14 +630,16 @@ test_that("prior_type reaches define_group_prior through define_prior", {
   # Beta transforms top, so the standard deviation is declared on topgl and its
   # width is the delta-method conversion of the response-scale rule (#294).
   # narrow enters the response-scale width before the conversion, so the
-  # regularizing scale is still half the uninformative one.
+  # regularizing scale is still regularizing_factor of the uninformative one.
   m_y <- mean(y)
   conv <- function(narrow) {
-    signif(min((diff(range(y)) / (10 * narrow)) / (m_y * (1 - m_y)), 1), 4)
+    signif(min((diff(range(y)) / (10 * narrow)) / (m_y * (1 - m_y)),
+               1 / narrow), 4)
   }
   expect_equal(sd_row("uninformative")$nlpar, "topgl")
   expect_equal(sd_row("regularizing")$prior,
-               paste0("student_t(3, 0, ", conv(2), ")"))
+               paste0("student_t(3, 0, ",
+                      conv(1 / bayesnec:::regularizing_factor), ")"))
   expect_equal(sd_row("uninformative")$prior,
                paste0("student_t(3, 0, ", conv(1), ")"))
 })
@@ -835,9 +860,10 @@ test_that("a predictor spanning negative values keeps its published prior", {
 })
 
 test_that("the nec prior is chosen from the predictor, not the response", {
-  # The prior is a function of the predictor alone: no family, link or prior
-  # type changes it. Confirmed in the #302 sweep over all 48 family by link by
-  # prior-type combinations; four families are asserted here.
+  # The prior is a function of the predictor alone: no family and no link
+  # changes it. Confirmed in the #302 sweep over all 48 family by link by
+  # prior-type combinations; four families are asserted here. prior_type is the
+  # one thing that does change it, and only its spread; see the test below.
   x <- rep(c(0, 25, 50, 75, 100), each = 6)
   target <- nec_prior_for(x)
   expect_equal(prior_dist(target), "lognormal")
@@ -848,12 +874,46 @@ test_that("the nec prior is chosen from the predictor, not the response", {
   expect_equal(nec_prior_for(x, poisson(link = "identity"),
                              as.integer(rep(c(90, 80, 50, 20, 5), each = 6))),
                target)
+})
+
+test_that("prior_type narrows the nec and ec50 prior and nothing else (#305)", {
+  # The predictor-scaled prior was identical under both prior types, so
+  # selecting the regularizing set left the two parameters a user most often
+  # selects it for untouched. It now takes regularizing_predictor_factor of the
+  # spread, with the location, the distribution and the truncation unchanged.
+  narrow <- bayesnec:::regularizing_predictor_factor
+  for (x in list(rep(c(0, 25, 50, 75, 100), each = 6),
+                 rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6))) {
+    u <- bayesnec:::predictor_prior(x)
+    r <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
+    expect_equal(prior_dist(r), prior_dist(u))
+    expect_equal(prior_pars(r)[1], prior_pars(u)[1])
+    expect_equal(prior_pars(r)[2], prior_pars(u)[2] * narrow)
+  }
+  # and it reaches both nec and ec50 through define_prior(), with the bounds
+  # left at the predictor range so that no part of the tested series is excluded
+  x <- rep(c(0, 25, 50, 75, 100), each = 6)
+  d <- data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x)))
   reg <- suppressMessages(get_priors(
-    y ~ crf(x, model = "nec3param"),
-    data = data.frame(x = x, y = seq(0.9, 0.1, length.out = length(x))),
+    y ~ crf(x, model = "ecx4param"), data = d,
     family = Beta(link = "identity"), prior_type = "regularizing"
   ))
-  expect_equal(reg$prior[reg$nlpar == "nec"], target)
+  target <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
+  expect_equal(reg$prior[reg$nlpar == "ec50"], target)
+  expect_equal(as.numeric(reg$lb[reg$nlpar == "ec50"]), 0)
+  expect_equal(as.numeric(reg$ub[reg$nlpar == "ec50"]), 100)
+})
+
+test_that("a degenerate predictor scale is not narrowed by prior_type (#305)", {
+  # The fallback of 1 stands in for a spread that could not be measured, so
+  # narrowing it would state a precision nothing in the data supports. Matches
+  # what define_group_prior() does with its own fallback.
+  expect_equal(bayesnec:::predictor_prior(rep(5, 10),
+                                          prior_type = "regularizing"),
+               paste0("lognormal(", log(5), ", 1)"))
+  expect_equal(bayesnec:::predictor_prior(rep(-1.5, 10),
+                                          prior_type = "regularizing"),
+               "normal(-1.5, 1)")
 })
 
 test_that("ec50 reads the same predictor prior as nec", {
@@ -1012,7 +1072,7 @@ test_that("the parameter-level conversion is capped in both branches", {
   # where the cap binds -- which is this case, the one the cap exists for.
   expect_equal(get_scale(bayesnec:::define_group_prior(
     spec, x, y, prior_type = "regularizing", par_transform = "logit"),
-    "botgl"), 0.5)
+    "botgl"), bayesnec:::regularizing_factor)
   # #257's ogl conversion is deliberately left as it was.
   ogl_spec <- list(nlpars = "ogl", ogl = TRUE)
   expect_equal(get_scale(bayesnec:::define_group_prior(ogl_spec, x, y,
@@ -1041,4 +1101,219 @@ test_that("define_prior picks the parameter transform from the family", {
   )
   expect_true("bot" %in% gauss_pr$nlpar[gauss_pr$class == "sd"])
   expect_false("botgl" %in% gauss_pr$nlpar)
+})
+
+# ---------------------------------------------------------------------------
+# The regularizing prior set: one contract, applied to every branch. #305.
+#
+# The set is defined by a location quantile and a spread multiple, and each
+# branch uses whichever distribution matches its parameter's support with its
+# mode at the location and its standard deviation at the spread. These tests
+# assert the two halves of that separately -- the ratio of spreads, and the
+# placement of the mode -- so that a failure says which half moved.
+
+# The mode and standard deviation of a prior string, whichever branch built it.
+prior_moments <- function(s) {
+  a <- prior_pars(s)
+  switch(
+    prior_dist(s),
+    normal = c(mode = a[1], sd = a[2]),
+    gamma = c(mode = (a[1] - 1) / a[2], sd = sqrt(a[1]) / a[2]),
+    beta = c(mode = (a[1] - 1) / (a[1] + a[2] - 2),
+             sd = bayesnec:::beta_sd(a[1], a[2])),
+    lognormal = c(mode = exp(a[1] - a[2]^2),
+                  sd = sqrt((exp(a[2]^2) - 1) * exp(2 * a[1] + a[2]^2)))
+  )
+}
+
+# A nec4param response with known asymptotes, simulated on each branch's own
+# scale. The counts are the case #305 exists for: the true bot of 5 is well
+# above the smallest observation, which is what the released anchor used.
+branch_response <- function(branch, seed = 305) {
+  set.seed(seed)
+  x <- as.numeric(rep(seq(0, 10, length.out = 11), each = 6))
+  shape <- function(top, bot) bot + (top - bot) * exp(-0.8 * pmax(x - 4, 0))
+  switch(
+    branch,
+    normal = list(x = x, y = rnorm(length(x), shape(10, 2), 0.6),
+                  family = gaussian(), top = 10, bot = 2),
+    gamma = list(x = x,
+                 y = as.numeric(rpois(length(x), shape(40, 5))),
+                 family = poisson(link = "identity"), top = 40, bot = 5),
+    beta = list(x = x,
+                y = rbeta(length(x), shape(0.9, 0.05) * 20,
+                          (1 - shape(0.9, 0.05)) * 20),
+                family = Beta(link = "identity"), top = 0.9, bot = 0.05)
+  )
+}
+
+priors_for <- function(d, prior_type) {
+  as.data.frame(define_prior("nec4param", validate_family(d$family), d$x, d$y,
+                             prior_type = prior_type))
+}
+
+test_that("regularizing is never wider than uninformative, in any branch", {
+  # Measured before #305 the ratio ran 0.40 on the normal branch, 0.87 and 0.34
+  # on the gamma branch for top and bot, 1.15 -- wider -- for a negbinomial top,
+  # and 0.88 on the beta branch, and over the whole audit it reached 2.71. The
+  # cap is what a user selecting the narrower set is entitled to.
+  for (branch in c("normal", "gamma", "beta")) {
+    d <- branch_response(branch)
+    u <- priors_for(d, "uninformative")
+    r <- priors_for(d, "regularizing")
+    for (par in c("top", "bot")) {
+      su <- prior_moments(u$prior[u$nlpar == par])[["sd"]]
+      sr <- prior_moments(r$prior[r$nlpar == par])[["sd"]]
+      # the prior string keeps six significant figures, so the comparison is
+      # made at that precision rather than exactly
+      expect_lte(sr / su, 1 + 1e-4)
+      expect_gte(sr / su, bayesnec:::regularizing_factor - 1e-4)
+    }
+  }
+})
+
+test_that("the regularizing spread is the stated factor for a precise anchor", {
+  # The floor at the standard error of the location binds only where the
+  # observations at one end of the predictor are few or individually
+  # uninformative. A well replicated gaussian design is neither, so the ratio is
+  # regularizing_factor exactly there.
+  d <- branch_response("normal")
+  u <- priors_for(d, "uninformative")
+  r <- priors_for(d, "regularizing")
+  for (par in c("top", "bot")) {
+    expect_equal(prior_moments(r$prior[r$nlpar == par])[["sd"]] /
+                   prior_moments(u$prior[u$nlpar == par])[["sd"]],
+                 bayesnec:::regularizing_factor, tolerance = 1e-4,
+                 info = par)
+  }
+})
+
+test_that("the regularizing prior peaks at the level of the curve's own end", {
+  # The contract is stated on the mode, so that one rule means the same thing
+  # whichever distribution a branch uses. A gamma stated by its mean peaks
+  # somewhere else, which is the ambiguity that produced #273 and #302. The
+  # location is the mean response at the end of the predictor where the
+  # parameter is the level of the curve.
+  for (branch in c("normal", "gamma", "beta")) {
+    d <- branch_response(branch)
+    r <- priors_for(d, "regularizing")
+    yl <- bayesnec:::response_link_scale(d$y, validate_family(d$family))
+    for (par in c("top", "bot")) {
+      side <- if (par == "top") "top" else "bot"
+      target <- bayesnec:::regularizing_location(
+        d$x, yl, side,
+        positive_only = branch == "gamma"
+      )[["location"]]
+      expect_equal(prior_moments(r$prior[r$nlpar == par])[["mode"]],
+                   target, tolerance = 1e-3, info = paste(branch, par))
+    }
+  }
+})
+
+test_that("regularizing_location reads the predictor end, not the tail", {
+  # A quantile of the pooled response is a proxy for the level of one plateau
+  # whose quality depends on what share of the design sits on it, and the
+  # over-dispersed count is where that fails: the 95th percentile of the pooled
+  # response reached 72 against a true top of 40.
+  d <- branch_response("gamma")
+  loc <- bayesnec:::regularizing_location(d$x, d$y, "top",
+                                          positive_only = TRUE)
+  expect_lt(abs(loc[["location"]] - d$top), abs(quantile(d$y, 0.95) - d$top))
+  expect_gt(loc[["se"]], 0)
+  # the subset is the control group, which is larger than the minimum
+  expect_equal(loc[["location"]], mean(d$y[d$x == min(d$x)]))
+  # and bot reads the other end
+  expect_equal(
+    bayesnec:::regularizing_location(d$x, d$y, "bot",
+                                     positive_only = FALSE)[["location"]],
+    mean(d$y[d$x == max(d$x)])
+  )
+})
+
+test_that("regularizing_location extends past one value without replication", {
+  # On a continuous predictor every distinct value has one observation, so the
+  # extreme group would be a single point. At least a twentieth of the
+  # observations, and never fewer than three, are averaged instead.
+  set.seed(305)
+  x <- sort(runif(100, 0, 10))
+  y <- 5 + 35 * exp(-0.8 * pmax(x - 4, 0)) + rnorm(100)
+  loc <- bayesnec:::regularizing_location(x, y, "top")
+  expect_equal(loc[["location"]], mean(y[seq_len(5)]))
+  short <- bayesnec:::regularizing_location(x[1:20], y[1:20], "top")
+  expect_equal(short[["location"]], mean(y[seq_len(3)]))
+})
+
+test_that("the regularizing prior does not exclude a count asymptote (#305)", {
+  # The released entry was gamma(5, 5 / (min(y) + min(y > 0) / 10)), whose
+  # maximum density is at about 0.8 times the smallest observation. On a count
+  # response the smallest observation sits well below the asymptote it is meant
+  # to locate, so the prior excluded the value it was built to find: the
+  # truncated CDF at the true bot ran 0.988 to 0.99999 across the audit's cells.
+  d <- branch_response("gamma")
+  expect_lt(min(d$y), d$bot)
+  r <- priors_for(d, "regularizing")
+  a <- prior_pars(r$prior[r$nlpar == "bot"])
+  # bot is bounded below at zero and unbounded above, so the truncated CDF is
+  # the untruncated one.
+  expect_gt(pgamma(d$bot, a[1], a[2]), 0.02)
+  expect_lt(pgamma(d$bot, a[1], a[2]), 0.98)
+  # the released anchor, computed here, is what it is being compared against
+  released <- 5 / (min(d$y) + min(d$y[d$y > 0]) / 10)
+  expect_gt(pgamma(d$bot, 5, released), 0.98)
+})
+
+test_that("the beta branch reads the response under regularizing (#305)", {
+  # beta(5, 1) against beta(5, 2) changed the width by 12 per cent and did not
+  # change what the prior was anchored to, because there was no anchor. Two
+  # responses with different control levels must now receive different priors,
+  # and the same uninformative one.
+  set.seed(305)
+  x <- as.numeric(rep(seq(0, 10, length.out = 11), each = 6))
+  high <- rbeta(length(x), 18, 2)
+  low <- rbeta(length(x), 6, 14)
+  pr <- function(y, type) {
+    p <- as.data.frame(define_prior("nec4param", Beta(link = "identity"), x, y,
+                                    prior_type = type))
+    p$prior[p$nlpar == "top"]
+  }
+  expect_identical(pr(high, "uninformative"), pr(low, "uninformative"))
+  expect_false(identical(pr(high, "regularizing"), pr(low, "regularizing")))
+  expect_gt(prior_moments(pr(high, "regularizing"))[["mode"]],
+            prior_moments(pr(low, "regularizing"))[["mode"]])
+})
+
+test_that("gamma_from_mode_sd solves for the mode and standard deviation", {
+  set.seed(305)
+  for (i in seq_len(50)) {
+    location <- runif(1, 0.01, 100)
+    spread <- runif(1, 0.001, location * 5)
+    p <- bayesnec:::gamma_from_mode_sd(location, spread)
+    expect_gt(p[["shape"]], 1)
+    expect_equal((p[["shape"]] - 1) / p[["rate"]], location)
+    expect_equal(sqrt(p[["shape"]]) / p[["rate"]], spread)
+  }
+})
+
+test_that("beta_from_mode_sd solves for the mode and standard deviation", {
+  set.seed(305)
+  for (i in seq_len(50)) {
+    location <- runif(1, 0.02, 0.98)
+    spread <- runif(1, 0.005, 0.25)
+    p <- bayesnec:::beta_from_mode_sd(location, spread)
+    expect_equal(bayesnec:::beta_sd(p[["shape1"]], p[["shape2"]]), spread,
+                 tolerance = 1e-6)
+    if (p[["shape1"]] > 1 && p[["shape2"]] > 1) {
+      expect_equal((p[["shape1"]] - 1) /
+                     (p[["shape1"]] + p[["shape2"]] - 2), location,
+                   tolerance = 1e-6)
+    }
+  }
+})
+
+test_that("beta_from_mode_sd returns the uniform for an unattainable spread", {
+  # The unit interval bounds how disperse a beta can be: no beta with an
+  # interior mode has a standard deviation at or above 1/sqrt(12). The widest
+  # available is returned rather than the request being met on another support.
+  expect_equal(unname(bayesnec:::beta_from_mode_sd(0.9, 0.5)), c(1, 1))
+  expect_equal(bayesnec:::beta_sd(1, 1), sqrt(1 / 12))
 })

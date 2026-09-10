@@ -2,6 +2,68 @@
 
 ## Default priors
 
+- **The `"regularizing"` prior set is now one statement applied to every
+  family.** `prior_type = "regularizing"` was written out branch by branch, and
+  the branches had drifted apart, so the word did not describe one thing:
+  measured over 420 `top` and `bot` entries built from one simulated response
+  each --- five designs, three predictor transforms, seven families, two links
+  --- the ratio of the regularizing prior standard deviation to the
+  uninformative one ran from 0.032 to 2.18, and the regularizing prior was the
+  *wider* of the two in 17 of them. The set is now defined once, by a location
+  and a spread, and each family's entry is derived from it using whichever
+  distribution matches the parameter's support, with its **mode** at the
+  location and its standard deviation at the spread. On the same measurement the
+  ratio is `0.4` exactly in 404 of the 420 entries and is never above 1 (#305).
+
+  **The location is now read at the end of the predictor.** `top` is the level
+  of the response before the curve responds and `bot` the level after it stops
+  changing, so each is estimated from the observations at the corresponding end
+  of the concentration series --- the control group for `top` --- rather than
+  from the extreme, or an extreme quantile, of the response pooled over the
+  whole design. A pooled quantile is a proxy for the level of one plateau whose
+  quality depends on what share of the design sits on that plateau, and it is
+  biased in opposite directions for a discrete and for an over-dispersed
+  response: against a true `bot` of 5 the smallest count observed ran 1 to 3,
+  while against a true `top` of 40 the 95th percentile of an over-dispersed
+  count reached 72. Over the 720 `top` and `bot` cells of the prior audit the
+  released set placed the true value outside the central 95% of its own prior in
+  65; the set adopted here does so in 1. The `"uninformative"` set does so in
+  none and is unchanged.
+
+  **The spread is floored at the standard error of the location.** A mean of six
+  control observations is not a precise estimate of a plateau, and a prior
+  narrower than the noise in its own anchor states a precision the data do not
+  supply. The spread is therefore `0.4` of the uninformative width or the
+  standard error of the location, whichever is larger, and never more than the
+  uninformative width. The floor binds in 16 of the 420 entries measured, all on
+  a `bernoulli` or `negbinomial` response.
+
+  **The 0-1 bounded families now read the response.** `beta(5, 1)` against
+  `beta(5, 2)` changed the width of the `top` prior by 12 per cent and did not
+  change what the prior was anchored to, because it had no anchor. The
+  regularizing entry for the `bernoulli`, `binomial`, `beta_binomial` and `Beta`
+  families is now a beta distribution whose mode is the observed control level
+  and whose standard deviation follows the same rule as every other branch. The
+  `"uninformative"` entries for those families remain the fixed `beta(5, 2)` and
+  `beta(2, 5)` that Fisher et al. (2024) describe.
+
+  **`nec` and `ec50` are narrowed under `"regularizing"` as well**, which they
+  were not: the predictor-scaled prior was identical under both sets, so
+  selecting the narrower set did nothing for the two parameters a user most
+  often selects it for. It is narrowed by `qnorm(0.975) / qnorm(0.99)`, which is
+  `0.84`, and not by `0.4` like the response-scaled entries. Its width is not a
+  free choice --- it is set to the smallest width whose central 95% interval
+  still reaches the farthest concentration tested, which is what #302 exists to
+  guarantee --- so the only room to narrow it is the confidence level at which
+  it covers the series. Narrowing it by `0.4` instead puts the true threshold
+  outside the central 95% of the prior in 8 of the 30 design by transform by
+  parameter cells of the audit, against none at `0.84`.
+
+  **Group-level scales take the same factor**, `0.4`, rather than the one half
+  they took before. Nothing here changes a released number: `prior_type` does
+  not exist on `master` (2.1.3.1, the CRAN release), so the whole
+  `"regularizing"` set is unreleased.
+
 - **The `nec` and `ec50` prior is now a normal on the log of the predictor.**
   The three entries selected by the predictor's support --- `gamma(5, 4/m)`
   where the predictor was non-negative and reached above 1, `beta(2, 2)` where

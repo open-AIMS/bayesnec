@@ -73,6 +73,360 @@ positive_scale <- function(response, probs) {
   q
 }
 
+#' What the "regularizing" default prior set is
+#'
+#' \code{prior_type} selects between two sets of defaults for the two
+#' response-scaled parameters \code{top} and \code{bot} and for the two
+#' predictor-scaled parameters \code{nec} and \code{ec50}. The
+#' \code{"uninformative"} set is the one Fisher et al. (2024) describe and is
+#' the one on CRAN; it is stated per family and is not changed here. The
+#' \code{"regularizing"} set is stated once, as two numbers, and every family's
+#' entry is derived from them:
+#'
+#' \itemize{
+#'   \item \strong{Location.} The mean response at the end of the predictor
+#'     where the parameter is the level of the curve: the lowest concentrations
+#'     for \code{top} and the highest for \code{bot}, on the link scale the
+#'     parameter is fitted on. See \code{regularizing_location()}. For
+#'     \code{nec} and \code{ec50} the location is the median of the predictor
+#'     and is the same under both sets.
+#'   \item \strong{Spread.} \code{regularizing_factor} times the standard
+#'     deviation of the \code{"uninformative"} prior for the same parameter on
+#'     the same family, floored at the standard error of the location and capped
+#'     at the uninformative width. For \code{nec} and \code{ec50} the factor is
+#'     \code{regularizing_predictor_factor} instead, for the reason recorded
+#'     there.
+#' }
+#'
+#' Each family's entry is then whichever distribution matches the parameter's
+#' support -- normal on the unbounded branch, gamma on the positive branch,
+#' beta on the unit-interval branch -- with its parameters set so that its
+#' \strong{mode} is the location and its standard deviation is the spread.
+#' Matching the mode rather than the mean is what makes one stated rule mean the
+#' same thing on all three branches: a normal is specified by a parameter that
+#' is also its mode, so a gamma specified by its mean peaks somewhere else, and
+#' the same ambiguity produced #273 and #302 on the predictor side.
+#'
+#' \strong{Why it is stated once.} Before #305 each branch was written out
+#' separately and the three had drifted apart, so the word did not describe one
+#' thing. Measured over 420 \code{top} and \code{bot} entries each built from
+#' one simulated response -- 5 designs, 3 predictor transforms, 7 families, 2
+#' links -- the ratio of the regularizing prior standard deviation to the
+#' uninformative one ran from 0.032 to 2.18, and the regularizing prior was the
+#' wider of the two in 17 of them. Averaged by family on the identity link it
+#' was 0.40 for \code{gaussian}, 0.90 and 0.26 for \code{Gamma} \code{top} and
+#' \code{bot}, 1.48 for \code{negbinomial} \code{top}, and 0.88 for the beta
+#' branch, which read nothing from the response at all and so relocated nothing.
+#' Deriving every branch from one pair of numbers makes the ratio
+#' \code{regularizing_factor} in 404 of those 420 entries and no more than 1 in
+#' any of them, and it is what stops a family added later from drifting again.
+#'
+#' \strong{Why the location is read at the end of the predictor.} The released
+#' regularizing entries were anchored on \code{max(response)} and
+#' \code{min(response)}. The smallest observation of a \emph{discrete} response
+#' sits well below the asymptote it is meant to locate: on the simulated count
+#' responses in the audit, against a true \code{bot} of 5 the observed minimum
+#' ran 1 to 3, and the truncated prior CDF at the true value ran 0.988 to
+#' 0.99999, so the prior excluded the value it was built to find. An extreme
+#' quantile of the pooled response is biased in the other direction for an
+#' over-dispersed one and by an amount that depends on the design;
+#' \code{regularizing_location()} records the measurements and the alternatives
+#' that were tried.
+#'
+#' \strong{Nothing released changes.} \code{prior_type} does not exist on
+#' \code{master} (2.1.3.1, the CRAN release), so the whole
+#' \code{"regularizing"} set is unreleased and no published analysis is
+#' affected. The \code{"uninformative"} set is untouched by #305.
+#'
+#' @noRd
+regularizing_factor <- 0.4
+
+#' The factor by which the regularizing set narrows the nec and ec50 prior
+#'
+#' The response-scaled entries are narrowed by \code{regularizing_factor}. The
+#' predictor-scaled entry is not, and cannot be: its width is not a free choice.
+#' \code{predictor_prior()} sets it to the smallest width whose central 95\%
+#' interval still reaches the farthest concentration tested, and #302 exists
+#' because the entry it replaced did not reach it. Narrowing that width by 0.4
+#' puts the true threshold outside the central 95\% of the prior in 8 of the 30
+#' design by transform by parameter cells of the audit, against none at 0.8 and
+#' 2 at 0.75. The room to narrow is therefore the difference between covering
+#' the series at one confidence level and covering it at another, and that is
+#' how the two entries differ: the central 95\% interval reaches the farthest
+#' concentration under \code{"uninformative"} and the central 98\% interval
+#' does under \code{"regularizing"}.
+#'
+#' @noRd
+regularizing_predictor_factor <- qnorm(0.975) / qnorm(0.99)
+
+#' Standard deviation of a beta distribution
+#'
+#' @param shape1,shape2 The two shape parameters.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 1.
+#'
+#' @noRd
+beta_sd <- function(shape1, shape2) {
+  n <- shape1 + shape2
+  sqrt(shape1 * shape2 / (n^2 * (n + 1)))
+}
+
+#' Shape and rate of a gamma with a stated mode and standard deviation
+#'
+#' @details A gamma with shape \emph{s} > 1 and rate \emph{r} has its mode at
+#' \code{(s - 1) / r} and its standard deviation at \code{sqrt(s) / r}. Setting
+#' the mode to \emph{L} and the standard deviation to \emph{S} therefore
+#' requires \code{sqrt(s) / (s - 1) = S / L}, which is a quadratic in
+#' \code{sqrt(s)} with the one positive root
+#' \code{sqrt(s) = (L/S + sqrt(L^2/S^2 + 4)) / 2}. The rate follows as
+#' \code{(s - 1) / L}. The root is always above 1, so the shape is always above
+#' 1 and the distribution always has an interior mode.
+#'
+#' @param mode The intended maximum density, strictly positive.
+#' @param spread The intended standard deviation, strictly positive.
+#'
+#' @return A named \code{\link[base]{numeric}} vector of length 2.
+#'
+#' @noRd
+gamma_from_mode_sd <- function(mode, spread) {
+  ratio <- mode / spread
+  root <- (ratio + sqrt(ratio^2 + 4)) / 2
+  shape <- root^2
+  c(shape = shape, rate = (shape - 1) / mode)
+}
+
+#' Shape parameters of a beta with a stated mode and standard deviation
+#'
+#' @details A beta with both shapes above 1 has its mode at
+#' \code{(a - 1) / (a + b - 2)}, so fixing the mode at \emph{L} leaves one free
+#' parameter, the concentration \code{n = a + b}: \code{a = 1 + L(n - 2)} and
+#' \code{b = 1 + (1 - L)(n - 2)}. The standard deviation falls monotonically in
+#' \emph{n} from \code{1 / sqrt(12)} at \code{n = 2}, where the beta is uniform,
+#' so the concentration is found by root-finding on \emph{n} and the answer is
+#' unique.
+#'
+#' \strong{A standard deviation at or above that of the uniform cannot be
+#' attained} by any beta with an interior mode, since the unit interval bounds
+#' how disperse the density can be. The uniform is returned there, as the widest
+#' available, rather than the request being met on a different support. The
+#' regularizing spreads this is called with run from 0.064, which is
+#' \code{regularizing_factor} of the width of \code{beta(5, 2)}, to that width
+#' itself at 0.160, against a limit of 0.289. So the cap is a guard rather than a
+#' working branch.
+#'
+#' @param mode The intended maximum density, in [0, 1].
+#' @param spread The intended standard deviation, strictly positive.
+#'
+#' @return A named \code{\link[base]{numeric}} vector of length 2.
+#'
+#' @importFrom stats uniroot
+#'
+#' @noRd
+beta_from_mode_sd <- function(mode, spread) {
+  shapes <- function(n) c(1 + mode * (n - 2), 1 + (1 - mode) * (n - 2))
+  sd_at <- function(n) {
+    ab <- shapes(n)
+    beta_sd(ab[1], ab[2])
+  }
+  lo <- 2
+  if (spread >= sd_at(lo)) {
+    ab <- shapes(lo)
+    return(c(shape1 = ab[1], shape2 = ab[2]))
+  }
+  # The upper bracket is found by doubling rather than fixed, because the
+  # concentration needed grows as the square of the reciprocal of the spread and
+  # a fixed ceiling would silently return the ceiling for a narrow request.
+  hi <- 4
+  while (sd_at(hi) > spread && hi < 1e8) {
+    hi <- hi * 2
+  }
+  n <- uniroot(function(n) sd_at(n) - spread, c(lo, hi),
+               tol = .Machine$double.eps^0.5)$root
+  ab <- shapes(n)
+  c(shape1 = ab[1], shape2 = ab[2])
+}
+
+#' The location of a regularizing prior for one response-scaled parameter
+#'
+#' \code{top} is the level of the response where the curve has not yet
+#' responded and \code{bot} the level where it no longer changes, so the
+#' location of a prior for either is an estimate of the response at one end of
+#' the predictor range. This estimates it there, from the observations at that
+#' end, rather than from a quantile of the response pooled over the whole
+#' design.
+#'
+#' @details \strong{Why not a quantile of the pooled response.} A quantile of
+#' the pooled response is a proxy for the level of one plateau, and how good a
+#' proxy it is depends on what share of the design sits on that plateau. If a
+#' share \emph{f} of the observations are at the upper plateau, the upper
+#' plateau occupies levels \emph{1 - f} to 1 of the pooled response, so its own
+#' median sits at level \emph{1 - f/2} -- which is 0.775 for a design with 45\%
+#' of its points above the threshold and 0.59 for one with 82\%. No fixed level
+#' is the plateau for both.
+#'
+#' The consequence is largest where the response is over-dispersed, because the
+#' pooled upper tail is then far above the plateau it is drawn from. Measured on
+#' the audit's simulated \code{negbinomial} responses with a true \code{top} of
+#' 40, the 95th percentile of the pooled response ran to 72 while the mean of
+#' the control observations ran 38 to 43. A prior narrow enough to be
+#' regularizing and located at 72 excludes 40: over the audit's 15 design by
+#' transform cells, an anchor at the 95th percentile put the true value outside
+#' the central 95\% of the prior in 40 of 720 top and bot cells, every one of
+#' them an over-dispersed count. Anchoring at the end of the predictor instead
+#' leaves none.
+#'
+#' \strong{The rule.} Take the observations at the lowest distinct predictor
+#' value for \code{top} and at the highest for \code{bot}, extending to the
+#' next distinct value, and the next, until at least a twentieth of the
+#' observations and no fewer than three are included. The location is their
+#' mean. On a replicated design the extreme group is already larger than that
+#' and is taken on its own, which is the control group for \code{top}; on a
+#' design with no replication the rule averages the few nearest values rather
+#' than returning a single observation.
+#'
+#' \strong{Alternatives measured.} Five anchors were run through the whole
+#' audit on the same simulated data, scored as the number of the 720
+#' \code{nec4param} \code{top} and \code{bot} cells placing the true value
+#' outside the central 95\% of the prior: 65 for the released extremum, 40 for
+#' the 95th and 5th percentiles, 51 for the 90th and 10th, 134 for the 75th and
+#' 25th, 4 for the extreme of the per-dose group means, 27 for the mean of the
+#' extreme tenth of the predictor by rank, and 11 for the rule above. The
+#' group-mean extreme scores best on those designs and is not used, because it
+#' has no meaning without replication: on a continuous predictor with one
+#' observation per value it reduces to the extremum, and on the same check it
+#' failed 4 of 10 \code{Gamma} cells where the rule above failed none.
+#'
+#' \strong{Zeros.} On the branch where the parameter is bounded below at zero
+#' the mean is taken over the positive observations of that subset, for the
+#' reason \code{positive_scale()} records: a zero-inflated response mixes
+#' structural zeros into every summary of its level, and \code{top} is the mean
+#' of the count process rather than of the mixture. Elsewhere the mean is taken
+#' over all of them, because \code{response_link_scale()} has already moved a
+#' zero onto the link scale and there is nothing left to exclude.
+#'
+#' \strong{The standard error is returned with the location} so that
+#' \code{regularizing_entry()} can floor the spread at it. A mean of six
+#' observations is not a precise estimate of a plateau, and a prior narrower
+#' than the noise in its own anchor is what put a true value outside an
+#' otherwise well-placed prior in the remaining cells.
+#'
+#' @param predictor A \code{\link[base]{numeric}} vector of the predictor.
+#' @param response A \code{\link[base]{numeric}} vector of the response,
+#' already on the link scale.
+#' @param side One of \code{"top"} or \code{"bot"}.
+#' @param positive_only Whether to average the positive observations only.
+#'
+#' @return A named \code{\link[base]{numeric}} vector of length 2, the
+#' location and its standard error.
+#'
+#' @importFrom stats quantile sd
+#'
+#' @noRd
+regularizing_location <- function(predictor, response, side,
+                                  positive_only = FALSE) {
+  n <- length(response)
+  # At least a twentieth of the observations, and never fewer than three. On a
+  # replicated design the extreme group is already larger than that and is taken
+  # on its own; on a design with no replication the rule averages the few
+  # nearest values instead of returning a single observation.
+  min_n <- max(3, ceiling(0.05 * n))
+  ux <- sort(unique(predictor), decreasing = side != "top")
+  idx <- integer(0)
+  for (v in ux) {
+    idx <- c(idx, which(predictor == v))
+    if (length(idx) >= min_n) {
+      break
+    }
+  }
+  y <- response[idx]
+  if (positive_only) {
+    pos <- y[y > 0]
+    if (length(pos)) {
+      y <- pos
+    }
+  }
+  location <- mean(y)
+  # A subset that is empty, non-finite, or -- on the zero-bounded branch -- not
+  # positive states no level. The extreme quantile of the whole response stands
+  # in, which is what this replaced; it is reachable only on input the fit could
+  # not use in any case.
+  if (!is.finite(location) || (positive_only && location <= 0)) {
+    probs <- if (side == "top") 0.95 else 0.05
+    fallback <- if (positive_only) {
+      positive_scale(response, probs = probs)
+    } else {
+      unname(quantile(response, probs = probs))
+    }
+    return(c(location = fallback, se = 0))
+  }
+  se <- if (length(y) > 1) sd(y) / sqrt(length(y)) else 0
+  if (!is.finite(se)) {
+    se <- 0
+  }
+  c(location = location, se = se)
+}
+
+#' The regularizing prior for one response-scaled parameter
+#'
+#' Applies the contract recorded at \code{regularizing_factor} to one branch.
+#'
+#' @param branch One of \code{"normal"}, \code{"gamma"} or \code{"beta"}, the
+#' distribution family matching the parameter's support.
+#' @param location The intended maximum density, on the link scale.
+#' @param uninformative_sd The standard deviation of the
+#' \code{"uninformative"} prior for the same parameter on the same family.
+#'
+#' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
+#' prior string.
+#'
+#' @noRd
+regularizing_entry <- function(branch, location, uninformative_sd,
+                               location_se = 0) {
+  # The stated spread, floored at the standard error of the location and capped
+  # at the uninformative width. A prior narrower than the noise in its own
+  # anchor states a precision the data do not supply, and it is that combination
+  # -- a location estimated from a handful of observations and a width chosen
+  # without reference to how well they estimate it -- that puts a true value
+  # outside the prior. The cap keeps the invariant a user selecting this set is
+  # entitled to, that the regularizing prior is never wider than the
+  # uninformative one. So the ratio is regularizing_factor wherever the anchor
+  # is estimated well and rises towards 1 where it is not. Measured over 420 top
+  # and bot entries each built from one response -- 5 designs, 3 predictor
+  # transforms, 7 families, 2 links -- the ratio is exactly regularizing_factor
+  # in 404, the floor binds in 16, of which 11 reach the cap, and it is above 1
+  # in none. Every cell where the floor binds is a bernoulli response, where one
+  # observation states only whether one individual responded, or a negbinomial
+  # one. On dev the same measurement ran 0.032 to 2.18 and was above 1 in 17.
+  spread <- min(max(regularizing_factor * uninformative_sd, location_se),
+                uninformative_sd)
+  # A response with no spread gives no scale to narrow, and every branch below
+  # divides by it. The fit cannot identify a curve on such a response in any
+  # case, so this keeps the prior well formed and leaves the failure to the
+  # sampler rather than raising a second error here.
+  if (!is.finite(spread) || spread <= 0) {
+    spread <- if (branch == "beta") beta_sd(5, 2) else abs(location) / 10
+    if (!is.finite(spread) || spread <= 0) {
+      spread <- 1
+    }
+  }
+  switch(
+    branch,
+    normal = paste0("normal(", location, ", ", spread, ")"),
+    gamma = {
+      pars <- gamma_from_mode_sd(location, spread)
+      paste0("gamma(", signif(pars[["shape"]], 6), ", ",
+             signif(pars[["rate"]], 6), ")")
+    },
+    beta = {
+      pars <- beta_from_mode_sd(location, spread)
+      paste0("beta(", signif(pars[["shape1"]], 6), ", ",
+             signif(pars[["shape2"]], 6), ")")
+    },
+    stop("Unknown prior branch \"", branch, "\".", call. = FALSE)
+  )
+}
+
+
 #' The default prior for the nec and ec50 parameters
 #'
 #' \code{nec} and \code{ec50} are measured in units of the predictor, so their
@@ -227,8 +581,19 @@ positive_scale <- function(response, probs) {
 #' truncated CDF of 0.030, inside the central 95\%, against 0.005 under a prior
 #' set from half the range. See #302.
 #'
+#' \strong{prior_type.} The two default sets differ in the spread of this
+#' prior and in nothing else: \code{"regularizing"} multiplies \code{sigma} by
+#' \code{regularizing_predictor_factor}, leaving the location, the distribution
+#' and the truncation as they are. Until #305 the entry was identical under
+#' both sets, which made \code{prior_type} inert for the two parameters a user
+#' most often reaches for the narrower set because of. The prior remains
+#' truncated to \code{[min(predictor), max(predictor)]}, so narrowing it
+#' concentrates mass in the interior of the tested series and excludes no part
+#' of it.
+#'
 #' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
 #' was supplied.
+#' @param prior_type One of \code{"uninformative"} or \code{"regularizing"}.
 #'
 #' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
 #' prior string.
@@ -236,7 +601,7 @@ positive_scale <- function(response, probs) {
 #' @importFrom stats median sd qnorm
 #'
 #' @noRd
-predictor_prior <- function(predictor) {
+predictor_prior <- function(predictor, prior_type = "uninformative") {
   u <- unique(predictor)
   # A concentration cannot be negative, so a predictor that spans negative
   # values is one the user has transformed. Selecting on that is what selects
@@ -269,6 +634,18 @@ predictor_prior <- function(predictor) {
   # the scale the prior is stated on.
   if (!is.finite(sigma) || sigma <= 0) {
     sigma <- 1
+  } else if (prior_type == "regularizing") {
+    # A narrowing of its own, not regularizing_factor. See
+    # regularizing_predictor_factor for why this entry has so little room: its
+    # width is set by the requirement that the prior reach every concentration
+    # tested, so the only room to narrow is the confidence level at which it
+    # does so.
+    #
+    # Applied after the degenerate fallback and not to it. A fallback stands in
+    # for a scale that could not be measured, and narrowing it would state a
+    # precision that nothing in the data supports; define_group_prior() leaves
+    # its own fallback unnarrowed for the same reason.
+    sigma <- sigma * regularizing_predictor_factor
   }
   paste0(dist, "(", mu, ", ", sigma, ")")
 }
@@ -384,12 +761,16 @@ define_prior <- function(model, family, predictor, response,
   set_distribution(predictor, silence_y_msgs = TRUE, silence_x_msgs = FALSE)
   # Two prior sets for the response-scaled parameters (top, bot):
   #  - "uninformative": the weakly-informative defaults described in the JSS
-  #    article (Fisher et al. 2024); wider, closer to truly uninformative.
+  #    article (Fisher et al. 2024); wider, closer to truly uninformative. Each
+  #    family's entry is stated here, as the article states it, and is the one
+  #    on CRAN.
   #  - "regularizing": narrower priors, with the no-effect (top) parameter
-  #    centred on the control mean -- which, for these monotonically decreasing
-  #    models, sits at the upper end of the response range.
-  # Only the response-scaled (top/bot) priors differ between the two sets; the
-  # predictor-scaled and fixed priors below are shared.
+  #    placed at the 95th percentile of the response -- which, for these
+  #    monotonically decreasing models, sits inside the control group -- and
+  #    bot at the 5th. Every family's entry is derived from one statement of
+  #    what the set is; see regularizing_factor above for it and for why.
+  # The response-scaled (top/bot) priors and the predictor-scaled (nec/ec50)
+  # priors both differ between the two sets. The fixed priors below are shared.
   # Only these three families read u_t_g / u_b_g out of the tables below; every
   # other entry is a literal or is built from quantile()/sd() directly, and is
   # well defined on a response that is entirely negative or entirely zero. So
@@ -431,45 +812,95 @@ define_prior <- function(model, family, predictor, response,
                  "beta_binomial" = "beta(2, 5)",
                  beta = "beta(2, 5)")
   } else {
+    # Every entry below is one application of the contract recorded above
+    # regularizing_factor: the location is q95 for top and q05 for bot, the
+    # spread is regularizing_factor times the standard deviation of the
+    # uninformative entry for the same parameter on the same family, and the
+    # distribution's mode is set to the location.
+    #
+    # The uninformative standard deviations are written out here as their
+    # closed forms rather than recovered from the strings above, because a
+    # prior string is what this function returns and parsing one back is a
+    # worse dependency than restating two lines of algebra:
+    #
+    #   normal(m, 2.5 sd(y))  sd is 2.5 sd(y)
+    #   gamma(2, 2/q)         mean is q at shape 2, so sd is sqrt(2) q / 2
+    #   beta(5, 2)            sd is beta_sd(5, 2), and beta(2, 5) is the same
     u_t_g <- u_b_g <- NA_character_
     if (gamma_scaled) {
-      u_t_g <- paste0("gamma(5, ",
-                      5 / (positive_scale(response, probs = 1)),
-                      ")")
-      # probs = 0 is the minimum, which is zero for a response containing a
-      # single zero -- not merely for a mostly-zero one. So under
-      # "regularizing" the collapse was unconditional on the zero fraction,
-      # where under "uninformative" it needed a quarter of the response to be
-      # zero.
-      u_b_g <- paste0("gamma(5, ",
-                      5 / ((positive_scale(response, probs = 0) +
-                        min(response[response > 0]) / 10)),
-                      ")")
+      loc_t <- regularizing_location(predictor, response, "top",
+                                     positive_only = TRUE)
+      u_t_g <- regularizing_entry(
+        "gamma",
+        location = loc_t[["location"]], location_se = loc_t[["se"]],
+        uninformative_sd = sqrt(2) * positive_scale(response, probs = 0.75) / 2
+      )
+      # The fudge term the released entry added to keep the rate finite is
+      # needed only on the spread now. The location comes from
+      # regularizing_location(), which averages positive observations and so is
+      # strictly positive wherever it returns a subset mean at all.
+      loc_b <- regularizing_location(predictor, response, "bot",
+                                     positive_only = TRUE)
+      u_b_g <- regularizing_entry(
+        "gamma",
+        location = loc_b[["location"]], location_se = loc_b[["se"]],
+        uninformative_sd = sqrt(2) * (positive_scale(response, probs = 0.25) +
+          min(response[response > 0]) / 100) / 2
+      )
+    }
+    # Built only where they are used, for the reason recorded above the
+    # gamma_scaled guard. The beta entries now read the response, so on a
+    # gaussian response spanning negative values beta_from_mode_sd() would
+    # otherwise be asked for a mode outside the unit interval. The quantiles are
+    # taken directly rather than through positive_scale(), because
+    # response_link_scale() has already moved a bounded response strictly inside
+    # (0, 1) and there is no zero left for the rescaling to guard against.
+    u_t_b <- u_b_b <- NA_character_
+    if (fam_tag %in% c("bernoulli", "binomial", "beta_binomial", "beta")) {
+      loc_t <- regularizing_location(predictor, response, "top")
+      loc_b <- regularizing_location(predictor, response, "bot")
+      u_t_b <- regularizing_entry(
+        "beta",
+        location = loc_t[["location"]], location_se = loc_t[["se"]],
+        uninformative_sd = beta_sd(5, 2)
+      )
+      u_b_b <- regularizing_entry(
+        "beta",
+        location = loc_b[["location"]], location_se = loc_b[["se"]],
+        uninformative_sd = beta_sd(2, 5)
+      )
     }
     y_t_prs <- c(Gamma = u_t_g,
                  poisson = u_t_g,
                  negbinomial = u_t_g,
-                 gaussian = paste0("normal(",
-                                   quantile(response, probs = 1),
-                                   ", ", sd(response), ")"),
-                 bernoulli = "beta(5, 1)",
-                 binomial = "beta(5, 1)",
-                 "beta_binomial" = "beta(5, 1)",
-                 beta = "beta(5, 1)")
+                 gaussian = local({
+                   l <- regularizing_location(predictor, response, "top")
+                   regularizing_entry("normal", location = l[["location"]],
+                                      location_se = l[["se"]],
+                                      uninformative_sd = sd(response) * 2.5)
+                 }),
+                 bernoulli = u_t_b,
+                 binomial = u_t_b,
+                 "beta_binomial" = u_t_b,
+                 beta = u_t_b)
     y_b_prs <- c(Gamma = u_b_g,
                  poisson = u_b_g,
                  negbinomial = u_b_g,
-                 gaussian = paste0("normal(",
-                                   quantile(response, probs = 0),
-                                   ", ", sd(response), ")"),
-                 bernoulli = "beta(1, 5)",
-                 binomial = "beta(1, 5)",
-                 "beta_binomial" = "beta(1, 5)",
-                 beta = "beta(1, 5)")
+                 gaussian = local({
+                   l <- regularizing_location(predictor, response, "bot")
+                   regularizing_entry("normal", location = l[["location"]],
+                                      location_se = l[["se"]],
+                                      uninformative_sd = sd(response) * 2.5)
+                 }),
+                 bernoulli = u_b_b,
+                 binomial = u_b_b,
+                 "beta_binomial" = u_b_b,
+                 beta = u_b_b)
   }
   # One construction for nec and ec50, on whichever scale the predictor was
   # supplied on. See predictor_prior() for why, and #302 for the measurements.
-  x_pr <- predictor_prior(predictor_scale)
+  # prior_type changes its spread and not its location or its shape.
+  x_pr <- predictor_prior(predictor_scale, prior_type = prior_type)
   lbs <- c(Gamma = 0, poisson = 0, negbinomial = 0, gaussian = NA,
            bernoulli = 0, binomial = 0, "beta_binomial" = 0, beta = 0)
   ubs <- c(Gamma = NA, poisson = NA, negbinomial = NA, gaussian = NA,
@@ -707,14 +1138,16 @@ define_disp_prior <- function(disp_spec, family, response) {
 #' population intercept to give a prior to; see \code{\link{add_par_gl_term}}
 #' for why. \code{ogl} gets two, and that asymmetry is deliberate.
 #'
-#' \strong{prior_type.} \code{"regularizing"} halves every generated scale.
-#' The two default sets differ only in the response-scaled parameters for the
-#' curve itself, but a user reaching for the narrower set on a grouped fit is
-#' usually reaching for it \emph{because} of the grouping, and leaving the one
-#' parameter that provoked the choice untouched would make the argument inert
-#' where it is most wanted. A factor of two is the same order as the narrowing
-#' the response-scaled priors get (2.5 for gaussian, 1.6 for the gamma-scaled
-#' families, 1.3 for the beta-scaled ones).
+#' \strong{prior_type.} \code{"regularizing"} multiplies every generated scale
+#' by \code{regularizing_factor}. A user reaching for the narrower set on a
+#' grouped fit is usually reaching for it \emph{because} of the grouping, and
+#' leaving the one parameter that provoked the choice untouched would make the
+#' argument inert where it is most wanted. The factor is the same one the
+#' response-scaled and predictor-scaled priors take, so the whole regularizing
+#' set is one number applied everywhere. It was a factor of two until #305,
+#' chosen then as "the same order as" a narrowing that ran from 2.5 to 1.3
+#' depending on the family; that narrowing is now the same in every family and
+#' there is no longer a reason for this one to differ from it.
 #'
 #' The \code{ogl} \emph{intercept} gets a prior too, and needs one for a
 #' different reason. \code{ogl} enters as an offset added to the whole curve,
@@ -737,7 +1170,7 @@ define_group_prior <- function(group_spec, predictor, response,
   if (is.null(group_spec) || length(group_spec$nlpars) == 0) {
     return(NULL)
   }
-  narrow <- if (prior_type == "regularizing") 2 else 1
+  narrow <- if (prior_type == "regularizing") 1 / regularizing_factor else 1
   # A response or predictor with no spread gives a scale of zero, which is not a
   # usable prior. It is degenerate input rather than something to model around,
   # so fall back to the dimensionless scale and let the fit fail on its own
