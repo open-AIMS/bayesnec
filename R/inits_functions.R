@@ -572,9 +572,11 @@ group_spread <- function(x, y) {
 #'
 #' Every quantity the band is built from is a mean, which is what the asymptote
 #' it is compared against estimates, and none of them drifts with sample size.
-#' The one exception is where the band reaches the boundary of the support and
-#' is set back from it, which is read from an extremum and does drift; see
-#' \code{\link{boundary_inset}} for what that is for and what it gives up.
+#' Where the band reaches the boundary of the support it is set back from it,
+#' and that gap is read from a level mean and a spread as well --- but it is
+#' capped by the closest value the response takes inside the boundary, which is
+#' an extremum and does drift. See \code{\link{boundary_inset}} for what the
+#' cap is for and what it gives up.
 #'
 #' \strong{The width.} Four standard deviations. The rule is the smallest width
 #' that covers the asymptotes of the curve that generated the data in every cell
@@ -693,21 +695,11 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
     return(c(NA_real_, NA_real_))
   }
   out <- c(max(out[1], support[1]), min(out[2], support[2]))
-  # Where the band reaches a boundary of the support it stops at the nearest
-  # value the response actually takes instead. A mean at the boundary is not
-  # merely an unlikely starting point: the likelihood cannot evaluate it, and
-  # under a bounded family it is arbitrarily close to one that it can. On the
-  # second block of a hurdle fit the band spans the whole of (0, 1) -- one
-  # survival proportion per concentration is an unreplicated series of a few
-  # points, so the spread read from its successive differences is a third of the
-  # response range -- and a curve accepted at a survival of 1e-66 made the joint
-  # log likelihood -Inf and the fit end on "Initialization failed".
-  #
-  # The extremum is used here to say what the measurement can distinguish from
-  # the boundary, which is what an extremum does state, and not to estimate a
-  # plateau, which is what it cannot. It never crosses a level mean, so the band
-  # still contains every level the design measured. Where the band does not
-  # reach the boundary nothing here applies.
+  # Where the band reaches a boundary of the support it stops short of it. A
+  # mean at the boundary is one the likelihood cannot evaluate, and the clauses
+  # that read the band are strict inequalities, so a band whose end is the
+  # boundary admits a curve arbitrarily close to it. boundary_inset() records
+  # what the gap is read from, why, and what it gives up.
   out[1] <- boundary_inset(out[1], support[1], centres, spread / width, y,
                            "lower")
   out[2] <- boundary_inset(out[2], support[2], centres, spread / width, y,
@@ -715,7 +707,7 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
   out
 }
 
-#' Stop a band at the nearest observed value rather than at the support boundary
+#' Stop a band short of the boundary of the support
 #'
 #' @param edge The band's end after clamping to the support.
 #' @param bound The support boundary on that side.
@@ -723,8 +715,8 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
 #' @param spread One standard deviation from \code{\link{group_spread}}.
 #' @param y The response on the link scale, read only to cap the inset.
 #' @param side One of \code{"lower"} or \code{"upper"}.
-#' @param fraction How far from the boundary towards the nearest observed value
-#' the band stops.
+#' @param fraction The share of the smaller of the two distances below at which
+#' the band stops short of the boundary.
 #'
 #' @details A mean at the boundary of the support is one the likelihood cannot
 #' evaluate, and the clauses of \code{\link{check_init_predictions}} are strict

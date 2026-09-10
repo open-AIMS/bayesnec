@@ -238,7 +238,18 @@ measure_coverage <- function(ks = c(1, 2, 3, 4, 5), n_seed = 20,
         # A design whose predictor stops short of the crossing never reaches
         # its lower asymptote, so its bot anchor is biased and no width covers
         # it. Those cells are reported separately rather than counted.
+        # Two exclusions from the width rule, both because no width covers the
+        # cell and the rule would otherwise never be satisfied. A design whose
+        # predictor stops short of the crossing never reaches its lower
+        # asymptote. And on an unreplicated count design whose extreme
+        # concentration returns zero, regularizing_location() substitutes
+        # min(y[y > 0]) / 10 for the bot location, so the floor is
+        # min(y[y > 0]) / 100 and a generating bot below that cannot be reached;
+        # see boundary_inset(). Both are confirmed width-invariant by the
+        # per-width table this function returns.
         reaches = shape == "steep" || gn != "narrow",
+        floored = pn == "poisson" && rp == 1 && gn == "narrow" &&
+          shape == "steep",
         stringsAsFactors = FALSE)
     }
   }
@@ -609,7 +620,7 @@ if (run_this("acceptance")) {
 if (run_this("width")) {
   cov <- measure_coverage()
   cat("\n=== 2a. coverage of the true asymptotes, by spread and width ===\n")
-  sub <- cov[cov$reaches, ]
+  sub <- cov[cov$reaches & !cov$floored, ]
   cel <- aggregate(full ~ spread + k + process + grid + shape + reps + eq + het,
                    sub, mean)
   for (sp in unique(cel$spread)) for (k in sort(unique(cel$k))) {
@@ -623,7 +634,10 @@ if (run_this("width")) {
     cat(sprintf("  %-8s k=%4.1f  complete in %2d of %d cells\n", pn, k,
                 sum(s$full == 1), nrow(s)))
   }
-  cat("\n  designs whose predictor stops short of the lower asymptote:\n")
+  cat("\n  excluded, count designs whose bot is below the floor:\n")
+  print(aggregate(full ~ k, cov[cov$reaches & cov$floored, ], mean), digits = 3,
+        row.names = FALSE)
+  cat("\n  excluded, designs whose predictor stops short of the asymptote:\n")
   print(aggregate(full ~ spread + k, cov[!cov$reaches, ], mean), digits = 3,
         row.names = FALSE)
   cat("\n=== 2b. one aberrant observation ===\n")
