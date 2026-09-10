@@ -153,14 +153,21 @@
   the threshold, and initial values can then be found.
 
   The exclusion is unchanged and remains correct, for a reason the text now
-  states as well: the hormesis term has no coefficient the fit can drive towards
-  zero, so the mean is not bounded above by 1 for any parameter values on any
-  predictor, which is what `mu_support()` has always recorded for these two
-  equations as `unscaled_excess`. Measured on a predictor confined below 1,
-  where the `top + 1` argument says nothing, 2,899 of 3,591 grid points over
-  `top`, `slope`, `beta` and `nec` still put the mean above 1. Bounding `nec`
-  below 1 is therefore not the fix it appears to be: on `nec_data` with `nec`
-  below 1, 3,696 of 4,788 grid points put the mean above 1.
+  states as well. The `top + 1` argument is about a predictor reaching above 1,
+  while the exclusion is unconditional on the data. What justifies that is the
+  exponent: `1 / (1 + exp(slope))` tends to 0 as `slope` grows, so
+  `x^(1 / (1 + exp(slope)))` tends to 1 for every concentration above 0, and the
+  mean below the threshold tends to `top + 1`. For any `top` above 0 there is
+  therefore a `slope` at which the mean exceeds 1, whatever range the predictor
+  covers — at `x = 0.001` that slope is 4.90 for `top = 0.05`, 2.19 for
+  `top = 0.5` and 0.27 for `top = 0.95`, against a `normal(0, 5)` prior on
+  `slope`. This is what `mu_support()` has always recorded for these two
+  equations as `unscaled_excess`: the mean can exceed 1 through a term with no
+  coefficient, so the fit cannot shrink it. Corroborated by measurement: on a
+  predictor confined below 1, 2,899 of 3,591 grid points over `top`, `slope`,
+  `beta` and `nec` put the mean above 1. Bounding `nec` below 1 is therefore not
+  the fix the earlier wording invited: on `nec_data` with `nec` below 1, 3,696 of
+  4,788 grid points put the mean above 1.
 
   The search finds initial values now and did not before because the draws that
   succeed sit near `nec` = 0.08 to 0.24, where the truncated prior probability

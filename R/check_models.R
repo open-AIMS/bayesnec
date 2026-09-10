@@ -26,15 +26,24 @@ bounded_linear_drops <- function() {
 #' such \code{nec} is a value the sampler is free to propose, and each proposal
 #' is outside the likelihood's support.
 #'
-#' \strong{That is the sharpest demonstration, not the whole reason.} These two
-#' equations are \code{unscaled_excess} in \code{\link{mu_support}}: their mean
-#' is not bounded above by 1 for any parameter values on any predictor, because
-#' the hormesis term has no coefficient the fit can drive towards zero. Measured
-#' on a predictor confined below 1 -- where the \code{top + 1} argument says
-#' nothing -- 2,899 of 3,591 grid points over \code{top}, \code{slope},
-#' \code{beta} and \code{nec} still put the mean above 1, reaching 1.95. That is
-#' why the exclusion is unconditional on the data rather than applied only where
-#' the predictor reaches above 1.
+#' \strong{That is the sharpest case, not the whole reason.} It is a statement
+#' about a predictor reaching above 1, and the exclusion is unconditional on the
+#' data. What justifies that is the exponent. \code{1 / (1 + exp(slope))} tends
+#' to 0 as \code{slope} grows, so \code{x^(1 / (1 + exp(slope)))} tends to 1 for
+#' \emph{every} \code{x} above 0, however small. Below the threshold the mean is
+#' then \code{top + 1} in the limit, so for any \code{top} above 0 there is a
+#' \code{slope} at which the mean exceeds 1 --- on any predictor, at any
+#' concentration. At \code{x = 0.001}, the smallest case, that slope is 4.90 for
+#' \code{top = 0.05}, 2.19 for \code{top = 0.5} and 0.27 for \code{top = 0.95},
+#' against a \code{normal(0, 5)} prior on \code{slope}. These are ordinary
+#' values, not tail values.
+#'
+#' This is what \code{\link{mu_support}} records as \code{unscaled_excess}: the
+#' mean can exceed 1 through a term with no coefficient, so the fit cannot
+#' shrink it. Corroborated by measurement: on a predictor confined below 1,
+#' where the \code{top + 1} argument says nothing, 2,899 of 3,591 grid points
+#' over \code{top}, \code{slope}, \code{beta} and \code{nec} put the mean above
+#' 1, reaching 1.95.
 #'
 #' It is also why bounding \code{nec} below 1 is not the fix it appears to be.
 #' On \code{nec_data}, with \code{nec} below 1, 3,696 of 4,788 grid points put
@@ -78,9 +87,10 @@ unscaled_power_message <- function(drop_model, fam_tag) {
          " is at least top + 1 at any concentration at or above 1 that",
          " falls below nec, and cannot be held inside (0, 1) there. nec is",
          " bounded to the predictor range, so the sampler is free to propose",
-         " such a value. More generally the term has no coefficient the fit",
-         " can drive towards zero, so the mean is not bounded above by 1 on",
-         " any predictor, which is why the exclusion does not depend on the",
+         " such a value. More generally x^(1 / (1 + exp(slope))) tends to 1",
+         " as slope grows, for every concentration above 0, so for any top",
+         " above 0 there is a slope at which the mean exceeds 1 whatever the",
+         " predictor range. That is why the exclusion does not depend on the",
          " range of yours.",
          " Use nechorme, nechorme4 or nechormepwr01 for a",
          " hormesis model on a bounded response. See ?models.")
