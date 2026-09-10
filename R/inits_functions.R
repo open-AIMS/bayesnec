@@ -91,6 +91,52 @@ constant_one_value <- function(x) {
   as.numeric(out)
 }
 
+#' Random generators for the prior distributions bayesnec can draw from
+#'
+#' @details Initial values and \code{\link{sample_priors}} both need to draw
+#' from a prior written as a \pkg{brms} prior string, which requires a
+#' generator per distribution name. The list was previously written out at each
+#' of the three places that needs it, so a distribution added at one was absent
+#' at the others, and an unrecognised name reached \code{fcts[[dist]](...)} as
+#' \code{NULL} and failed with "attempt to apply non-function" -- naming
+#' neither the prior nor the distribution. See #302.
+#'
+#' \code{lognormal} is included because the predictor-scaled parameters are
+#' bounded below at zero and spread over orders of magnitude on a dilution
+#' series, which is what a lognormal describes and a gamma does not.
+#'
+#' @return A named \code{\link[base]{list}} of functions.
+#'
+#' @importFrom stats rgamma rnorm rbeta runif rlnorm
+#'
+#' @noRd
+prior_samplers <- function() {
+  list(gamma = rgamma, normal = rnorm, beta = rbeta, uniform = runif,
+       lognormal = rlnorm)
+}
+
+#' Look up the generator for one prior distribution
+#'
+#' @param dist A \code{\link[base]{character}} string naming the distribution.
+#'
+#' @return A \code{\link[base]{function}}.
+#'
+#' @noRd
+prior_sampler <- function(dist) {
+  fcts <- prior_samplers()
+  # The name is parsed out of a prior string, and a string a user wrote by hand
+  # can carry surrounding whitespace that prior_string() would not produce.
+  dist <- trimws(dist)
+  if (!dist %in% names(fcts)) {
+    stop("bayesnec cannot draw initial values or prior samples from a \"",
+         dist, "\" prior. It draws from: ",
+         paste(names(fcts), collapse = ", "),
+         ". Supply the prior on one of those distributions, or fit with",
+         " brms directly.", call. = FALSE)
+  }
+  fcts[[dist]]
+}
+
 #' make_inits
 #'
 #' Creates list of initialisation values
@@ -103,17 +149,11 @@ constant_one_value <- function(x) {
 #' \pkg{brms}.
 #' @param chains Number of chains to be passed to \pkg{brms} model.
 #'
-#' @importFrom stats rgamma rnorm rbeta runif
-#'
 #' @seealso \code{\link{bnec}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
 make_inits <- function(model, fct_args, priors, chains) {
-  fcts <- c(gamma = rgamma,
-            normal = rnorm,
-            beta = rbeta,
-            uniform = runif)
   priors <- blank_bounds_to_na(as.data.frame(priors))
   priors <- priors[priors$prior != "", ]
   # Only the curve's own coefficients are the business of the initial-value
@@ -170,24 +210,24 @@ make_inits <- function(model, fct_args, priors, chains) {
       } else {
         bits <- gsub("\\(|\\)", ",", priors$prior[j])
         bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
-        fct_i <- bits[1]
+        fct_i <- prior_sampler(bits[1])
         v1 <- as.numeric(bits[2])
         v2 <- as.numeric(bits[3])
-        out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+        out[[i]][[j]] <- fct_i(1, v1, v2)
         if (any(!is.na(priors[j, c("lb", "ub")]))) {
           n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
           if (n_bounds == 2) {
             bounds <- as.numeric(priors[j, c("lb", "ub")])
             while (out[[i]][[j]] <= min(bounds) |
                      out[[i]][[j]] >= max(bounds)) {
-              out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+              out[[i]][[j]] <- fct_i(1, v1, v2)
             }
           } else if (n_bounds == 1) {
             direction <- c("lb", "ub")[!is.na(priors[j, c("lb", "ub")])]
             bound_fct <- ifelse(direction == "lb", `<=`, `>=`)
             bounds <- as.numeric(priors[j, direction])
             while (bound_fct(out[[i]][[j]], bounds)) {
-              out[[i]][[j]] <- fcts[[fct_i]](1, v1, v2)
+              out[[i]][[j]] <- fct_i(1, v1, v2)
             }
           }
         }
@@ -220,10 +260,6 @@ make_inits <- function(model, fct_args, priors, chains) {
 #' @noRd
 refine_inits <- function(init, x, pred_fct, fct_args, limits,
                          priors, n_sub = 500) {
-  fcts <- c(gamma = rgamma,
-            normal = rnorm,
-            beta = rbeta,
-            uniform = runif)
   preds <- get_init_predictions(init, x, pred_fct, fct_args)
   if (check_init_predictions(preds, limits)) {
     return(init)
@@ -250,12 +286,12 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
     if (is_constant_prior(priors$prior[pr_row])) next
     bits <- gsub("\\(|\\)", ",", priors$prior[pr_row])
     bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
-    fct_i <- bits[1]
+    fct_i <- prior_sampler(bits[1])
     v1 <- as.numeric(bits[2])
     v2 <- as.numeric(bits[3])
     for (k in seq_len(n_sub)) {
       candidate <- init
-      new_val <- fcts[[fct_i]](1, v1, v2)
+      new_val <- fct_i(1, v1, v2)
       if (priors$class[pr_row] == "b") {
         dim(new_val) <- 1
       }

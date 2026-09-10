@@ -317,7 +317,7 @@ test_that("a brms default on sd is still dropped", {
 test_that("nec is truncated at the recorded predictor range", {
   # The bound a user sees. Earlier versions returned lb = 0.1, because the zero
   # had been replaced before the prior was built; a zero control is a legitimate
-  # lower bound, since gamma(5, r) has zero density at zero (#269).
+  # lower bound, since the prior on nec has zero density at zero (#269, #302).
   d <- data.frame(x = rep(c(0, 1, 10, 100), each = 5),
                   y = rep(c(8, 6, 3, 1), each = 5))
   pr <- suppressMessages(
