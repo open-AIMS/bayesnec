@@ -583,6 +583,25 @@ regularizing_location <- function(predictor, response, side,
   c(location = location, se = se)
 }
 
+#' Whether a family's response-scaled parameters are bounded below at zero
+#'
+#' @details Read at two places that must agree: the branch of
+#' \code{\link{define_prior}} that builds the gamma-scaled \code{top} and
+#' \code{bot} entries, and the band \code{\link{init_limits}} requires an
+#' initial curve to lie within. Both call \code{\link{regularizing_location}},
+#' whose treatment of zeros differs at the two ends of the predictor series and
+#' is selected by this answer, so a list written out at each site could drift
+#' and the two would then disagree about where the ends of the curve are.
+#'
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#'
+#' @noRd
+zero_bounded_family <- function(family) {
+  isTRUE(family$family %in% c("Gamma", "poisson", "negbinomial"))
+}
+
 #' The regularizing prior for one response-scaled parameter
 #'
 #' Applies the contract recorded at \code{regularizing_factor} to one branch.
@@ -1005,7 +1024,7 @@ define_prior <- function(model, family, predictor, response,
   # and the unguarded min(response[response > 0]) beside it -- reachable for
   # gaussian, where an all-negative response (log ratios, growth increments,
   # anything expressed as a change) is ordinary input. See #229.
-  gamma_scaled <- fam_tag %in% c("Gamma", "poisson", "negbinomial")
+  gamma_scaled <- zero_bounded_family(family)
   if (prior_type == "uninformative") {
     u_t_g <- u_b_g <- NA_character_
     if (gamma_scaled) {

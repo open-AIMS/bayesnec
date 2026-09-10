@@ -251,7 +251,8 @@ make_inits <- function(model, fct_args, priors, chains) {
 #' @param x Sorted predictor values.
 #' @param pred_fct The prediction function for the model.
 #' @param fct_args Parameter names expected by the prediction function.
-#' @param limits A length-2 \code{\link[base]{numeric}} vector (response range).
+#' @param limits A length-2 \code{\link[base]{numeric}} vector, the band from
+#'   \code{\link{init_limits}}.
 #' @param priors A \code{\link[base]{data.frame}} of priors (already filtered
 #'   to non-empty rows).
 #' @param n_sub Maximum number of single-parameter re-draws per parameter.
@@ -305,15 +306,211 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
   init
 }
 
+#' The mean response at each replicated predictor value
+#'
+#' @param x A \code{\link[base]{numeric}} vector, the predictor.
+#' @param y A \code{\link[base]{numeric}} vector, the response on the link
+#' scale.
+#'
+#' @details A group mean is an estimate of the mean response at that
+#' concentration, which is the same quantity an initial curve returns there, so
+#' the two are on the same footing and a level the design measured cannot be
+#' out of bounds. Only replicated values are returned: where a concentration
+#' holds one observation its "mean" is that observation, and admitting those
+#' would put \code{\link{init_limits}} back on the extrema it exists to leave.
+#'
+#' @return A \code{\link[base]{numeric}} vector, possibly empty.
+#'
+#' @noRd
+replicated_group_means <- function(x, y) {
+  groups <- split(y, factor(x))
+  groups <- groups[lengths(groups) > 1]
+  if (length(groups) == 0) {
+    return(numeric(0))
+  }
+  vapply(groups, mean, numeric(1), USE.NAMES = FALSE)
+}
+
+#' The pooled within-group standard deviation of the response
+#'
+#' @param x A \code{\link[base]{numeric}} vector, the predictor.
+#' @param y A \code{\link[base]{numeric}} vector, the response on the link
+#' scale.
+#'
+#' @details The spread \code{\link{init_limits}} widens its band by. It is the
+#' variation of the response about the level of its own concentration, which is
+#' what the band has to allow for once every level's mean is inside it.
+#'
+#' Two alternatives were measured and are not used. The largest single group's
+#' standard deviation is not robust: on a replicated design a single aberrant
+#' observation in one group widened the band by a factor of three, because a
+#' maximum over groups follows whichever group that observation lands in. The
+#' standard deviation of the whole response is not a spread at all -- it grows
+#' with the size of the effect, so it widens the band on a design with a large
+#' decline for a reason that has nothing to do with the noise.
+#'
+#' Where no predictor value is replicated there is no within-group variation to
+#' pool and the spread of the whole response stands in, which is the same
+#' stand-in \code{\link{regularizing_location}} uses where a group states no
+#' variability of its own.
+#'
+#' A pooled variance is not robust either, and a single aberrant observation
+#' widens the band: on a four-concentration design of six replicates, replacing
+#' one control observation by a value three times the control mean widened the
+#' band by a factor of 4.1, against 3.0 for \code{range(y)}. That is the
+#' permissive direction -- the wider band contains the narrower one, so every
+#' starting value accepted before is still accepted -- and what the aberrant
+#' observation does not do is move the band's ends, which shift by a sixth of
+#' it rather than by the whole of it as \code{max(y)} does.
+#'
+#' @return A \code{\link[base]{numeric}} of length 1.
+#'
+#' @importFrom stats var sd
+#'
+#' @noRd
+group_spread <- function(x, y) {
+  groups <- split(y, factor(x))
+  n <- lengths(groups)
+  replicated <- n > 1
+  if (!any(replicated)) {
+    return(sd(y))
+  }
+  v <- vapply(groups[replicated], var, numeric(1))
+  out <- sqrt(sum((n[replicated] - 1) * v) / sum(n[replicated] - 1))
+  if (!is.finite(out) || out <= 0) sd(y) else out
+}
+
+#' The band an initial curve is required to lie within
+#'
+#' @param x A \code{\link[base]{numeric}} vector, the predictor.
+#' @param y A \code{\link[base]{numeric}} vector, the response on the link
+#' scale.
+#' @param width The number of \code{\link{group_spread}} units the band extends
+#' beyond the outermost level mean.
+#' @param zero_bounded Passed to \code{\link{regularizing_location}}, which
+#' treats a zero differently at the two ends of the predictor series.
+#' @param support A \code{\link[base]{numeric}} vector of length 2, the
+#' interval the likelihood permits the mean to take, from
+#' \code{\link{mu_support}}. The band is intersected with it.
+#'
+#' @details \code{\link{check_init_predictions}} requires the initial curve to
+#' lie between these two values. They used to be \code{range(y)}, the smallest
+#' and largest single observations, and three properties make that the wrong
+#' reference rather than merely a strict one. See #309.
+#'
+#' It compares quantities that are not on the same footing. The initial curve's
+#' upper asymptote is an estimate of the mean response at the control, and
+#' \code{max(y)} is the largest single observation in the dataset.
+#'
+#' It is tied to the prior it filters. Both \code{max(y)} and the location of
+#' the \code{top} prior are read from the same response, and on a declining
+#' curve both are read from the control, so the threshold lands close to the
+#' centre of the prior it is testing and the outcome is near a coin toss
+#' whatever the data show. Measured on the packaged \code{alga}
+#' \code{c_proliferum} contaminant A series under the default
+#' \code{"uninformative"} priors, the \code{top} prior is
+#' \code{normal(0.1284, 0.4044)} and the threshold \code{max(y)} is 0.1367 --
+#' 0.021 prior standard deviations from the centre -- and the clause passed 42
+#' to 61 per cent of draws for every one of the fourteen equations of the
+#' declining set.
+#'
+#' And it gets looser as replicates are added, because an extremum drifts
+#' outward with sample size. A starting-value check that is more permissive on
+#' a larger design is the wrong way round.
+#'
+#' \strong{What the band is.} Every mean response the design estimates, widened
+#' by the variation about those means. The means are those of the replicated
+#' predictor values, plus the two \code{\link{regularizing_location}} anchors --
+#' the mean of the observations at the end of the predictor series where the
+#' parameter is the level of the curve, the control end for \code{top} and the
+#' highest concentrations for \code{bot}. That is the anchor #307 adopted for
+#' the regularizing \code{top} and \code{bot} priors, so the package uses one
+#' definition of where the ends of the curve are rather than two.
+#'
+#' The two do different work. On a replicated design the anchors lie inside the
+#' range of the group means, which is where the band's ends come from; on an
+#' unreplicated one there are no group means at all and the anchors carry it,
+#' because \code{\link{regularizing_location}} averages neighbouring
+#' concentrations there rather than reducing to a single observation.
+#'
+#' Every quantity in the band is a mean, which is what the asymptote it is
+#' compared against estimates, and none of them drifts with sample size.
+#'
+#' \strong{The width.} Four standard deviations. The rule is the smallest width
+#' that covers the asymptotes of the curve that generated the data in every
+#' cell measured, because a band that excludes them rejects a correct starting
+#' value. Over 1,080 simulated responses -- three predictor grids, three
+#' replication levels, three equations, a steep and a shallow curve, constant
+#' and fivefold-rising dispersion, twenty seeds -- four covers the true
+#' \code{top} and \code{bot} in all 90 of the cells whose design reaches its
+#' lower asymptote, three covers 88, two covers 84 and one covers 73.
+#'
+#' Width is a trade against how far into a tail a starting point may sit, so it
+#' is not raised further than the coverage rule requires. Measured against the
+#' compiled Stan program on the \code{alga} series, the log density at the
+#' accepted starting points is reported in the pull request for #309 and the
+#' measurement is archived at \code{notes/scripts/init_search_audit.R}.
+#'
+#' \strong{The support is a hard bound on it.} Under the identity link
+#' \code{\link{bnec}} assigns, an initial curve outside the interval the
+#' likelihood permits is not a poor starting point but an invalid one: Stan
+#' rejects it and the fit ends on "Initialization failed". \code{range(y)} kept
+#' the curve inside the support by accident, because a response is inside its
+#' own support and the released criterion never looked beyond it. A band built
+#' from a location and a spread has no such guarantee -- on the
+#' \code{beta_binomial} series of #162 it reaches above 1 -- so it is
+#' intersected with \code{\link{mu_support}}. The clauses that read it are
+#' strict inequalities, so the mean is required strictly inside.
+#'
+#' \strong{What the band does not fix.} Where the highest concentration has not
+#' reached the lower asymptote, every level mean and both anchors sit above the
+#' true \code{bot} and widening does not reach it: over the simulated designs
+#' whose predictor stops short of the crossing, coverage was 0.47 at a width of
+#' four and 0.49 at five. That is a bias and not noise, and it is the same
+#' limitation \code{\link{regularizing_location}} records for the regularizing
+#' prior. The released criterion is affected identically, and worse, because
+#' \code{min(y)} is above the true asymptote on such a design as well.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 2, the lower and
+#' upper bound in that order.
+#'
+#' @noRd
+init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
+                        support = c(-Inf, Inf)) {
+  keep <- is.finite(x) & is.finite(y)
+  x <- x[keep]
+  y <- y[keep]
+  centres <- c(regularizing_location(x, y, "top", zero_bounded)[["location"]],
+               regularizing_location(x, y, "bot", zero_bounded)[["location"]],
+               replicated_group_means(x, y))
+  centres <- centres[is.finite(centres)]
+  spread <- width * group_spread(x, y)
+  # min() and max() over every level mean rather than the two anchors in their
+  # nominal roles. The anchors are read from the ends of the predictor, and a
+  # response that is not monotone at its ends -- which the alga series is not,
+  # its lowest group mean falling at 15 units rather than at 20 -- puts its
+  # extreme level mean somewhere in the interior.
+  out <- c(min(centres) - spread, max(centres) + spread)
+  # A degenerate response leaves nothing to anchor on. Falling back to the
+  # observed range restores the released behaviour for that case rather than
+  # returning a band that rejects everything, which would send every fit to
+  # Stan's initialisation silently.
+  if (length(centres) == 0 || !all(is.finite(out)) || out[1] >= out[2]) {
+    out <- range(y, na.rm = TRUE)
+  }
+  c(max(out[1], support[1]), min(out[2], support[2]))
+}
+
 #' make_good_inits
 #'
-#' Creates list of initialisation values that generate
-#' data within the natural range of data
+#' Creates list of initialisation values that generate data within the band
+#' \code{\link{init_limits}} defines.
 #'
 #' @inheritParams bnec
 #'
 #' @param x A \code{\link[base]{numeric}} vector containing the x predictor.
-#' @param y A \code{\link[base]{numeric}} vector containing the y response.
+#' @param y A \code{\link[base]{numeric}} vector containing the y response,
+#' on the link scale.
 #' @param report_after A \code{\link[base]{numeric}} value, the number of
 #' seconds after which the search says it is still running. It does not end the
 #' search: the only bound is \code{n_trials}, so that the initial values a
@@ -322,61 +519,105 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
 #' how many attempts the function should run before giving up.
 #' @param seed seed number for reproducible random number generation. Defaults
 #' to \code{NULL}.
+#' @param family A \code{\link[stats]{family}} object, or \code{NULL} to leave
+#' the band unconstrained. Two things are read from it and nothing else: the
+#' interval the likelihood permits the mean to take, and whether the
+#' response-scaled parameters are bounded below at zero. Both are properties
+#' \code{\link{init_limits}} needs, and passing the family rather than the two
+#' answers is what stops them being derived from different families at
+#' different call sites.
 #' @param ... Additional arguments to \code{\link{make_inits}}.
 #'
-#' @seealso \code{\link{make_inits}}
+#' @details \strong{A chain is accepted on its own.} The four chains of a fit
+#' are drawn independently, so a chain whose curve lies in the band is a draw
+#' from the same distribution whether the other three passed or not. Requiring
+#' all of them to pass at the same time, and re-drawing the complete set when
+#' any one failed, therefore left the accepted values unchanged and raised the
+#' number of proposals to the fourth power of the per-chain rate. Measured on
+#' the packaged \code{alga} \code{c_proliferum} contaminant A series, where the
+#' per-chain rate runs 9 to 31 per cent, that is the difference between 374 and
+#' 49,621 draws over the fourteen equations of the declining set. Accepted
+#' chains are kept and only the empty slots are re-drawn. See #309.
+#'
+#' \strong{The cap stays at 1e4.} #266 objects that this ran 561 seconds for a
+#' single model with no output, and proposes a smaller cap on the grounds that
+#' the outcome after exhausting it -- Stan's own random initialisation -- is
+#' available at the first attempt. Measured before changing it, and that
+#' reasoning does not hold: a search that succeeds is not equivalent to one that
+#' stops early. On a twenty-row, four-dose dataset \code{nec4param} needed 250
+#' attempts to succeed at one seed and more than 1000 at two others, while
+#' \code{nec3param} on the same data never succeeded at all. A cap of 1e3 would
+#' therefore have turned working fits into random initialisation, silently, on
+#' exactly the small designs where good initial values matter most. Accepting
+#' chains individually removes the need to approach the cap rather than
+#' lowering it.
+#'
+#' \strong{A wall-clock bound was tried and removed.} It made the number of
+#' attempts, and so the initial values, and so the fit, a function of machine
+#' load: the search needs about 3.6 s idle on one packaged case and exceeded a
+#' 10 s budget under a parallel test run on the same machine. A fit whose
+#' starting values depend on what else is running is not reproducible, and #266
+#' asked for time not to be wasted, not for results to change. What is fixed
+#' instead is the actual complaint: a user watching a long search could not tell
+#' it from a hang. It now says so while it runs.
+#'
+#' \strong{The fallback is all or nothing.} Where the cap is reached with any
+#' slot still empty the whole fit is handed to Stan rather than half-primed.
+#' There are no values for the empty slots to supply, and starting some chains
+#' from the search and the rest from Stan's uniform draw would make the chains
+#' of one fit incomparable during warmup.
+#'
+#' @seealso \code{\link{make_inits}}, \code{\link{init_limits}}
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
 make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL,
-                            report_after = 20, ...) {
-  limits <- range(y, na.rm = TRUE)
+                            report_after = 20, family = NULL, ...) {
+  limits <- init_limits(x, y, zero_bounded = zero_bounded_family(family),
+                        support = mu_support(family))
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
   fct_args <- setdiff(fct_args, "x")
   dots <- list(...)
   priors_df <- blank_bounds_to_na(as.data.frame(dots$priors))
   priors_df <- priors_df[priors_df$prior != "", ]
-  started <- Sys.time()
+  chains <- dots$chains
+  x_sorted <- sort(x)
+  # make_inits() takes the number of chains through the same `...` the caller
+  # supplies, so it is overridden here rather than passed separately. Each
+  # round draws only the slots still empty.
+  draw <- function(n) {
+    do.call(make_inits,
+            c(list(model, fct_args), modifyList(dots, list(chains = n))))
+  }
+  passes <- function(inits) {
+    vapply(inits, function(init) {
+      check_init_predictions(
+        get_init_predictions(init, x_sorted, pred_fct, fct_args), limits)
+    }, logical(1))
+  }
   set.seed(seed)
-  inits <- make_inits(model, fct_args, ...)
-  init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
-  are_good <- all(sapply(init_ranges, check_init_predictions, limits))
-  # #266 objects that this ran 561 seconds for a single model with no output,
-  # and proposes a smaller cap on the grounds that the outcome after exhausting
-  # it -- Stan's own random initialisation -- is available at the first attempt.
-  # Measured before changing it, and that reasoning does not hold: a search that
-  # succeeds is not equivalent to one that stops early. On a twenty-row,
-  # four-dose dataset nec4param needed 250 attempts to succeed at one seed and
-  # more than 1000 at two others, while nec3param on the same data never
-  # succeeded at all. A cap of 1e3 would therefore have turned working fits into
-  # random initialisation, silently, on exactly the small designs where good
-  # initial values matter most. The cap stays at 1e4.
-  #
-  # A wall-clock bound was tried and removed. It made the number of attempts,
-  # and so the initial values, and so the fit, a function of machine load: the
-  # search needs about 3.6 s idle on one packaged case and exceeded a 10 s
-  # budget under a parallel test run on the same machine. A fit whose starting
-  # values depend on what else is running is not reproducible, and #266 asked
-  # for time not to be wasted, not for results to change.
-  #
-  # What is fixed instead is the actual complaint: a user watching a long search
-  # could not tell it from a hang. It now says so while it runs.
+  accepted <- vector("list", chains)
+  filled <- rep(FALSE, chains)
   started <- Sys.time()
   reported <- FALSE
-  n_t <- 1
-  while (!are_good && n_t <= n_trials) {
-    inits <- make_inits(model, fct_args, ...)
-    init_ranges <- lapply(inits, get_init_predictions, sort(x), pred_fct, fct_args)
-    are_good <- all(sapply(init_ranges, check_init_predictions, limits))
-    # If the full draw failed, try to fix each chain by re-drawing
-    # one problematic parameter at a time (slope, d, beta).
-    if (!are_good) {
-      inits <- lapply(inits, refine_inits, sort(x), pred_fct, fct_args,
-                      limits, priors_df)
-      init_ranges <- lapply(inits, get_init_predictions, sort(x),
-                            pred_fct, fct_args)
-      are_good <- all(sapply(init_ranges, check_init_predictions, limits))
+  n_t <- 0
+  while (any(!filled) && n_t < n_trials) {
+    empty <- which(!filled)
+    inits <- draw(length(empty))
+    ok <- passes(inits)
+    # refine_inits() re-draws one parameter at a time for a curve that is
+    # finite but out of range. Applied only to the chains that failed: a chain
+    # already accepted is finished, and re-running it would replace one good
+    # draw with another for nothing.
+    if (any(!ok)) {
+      inits[!ok] <- lapply(inits[!ok], refine_inits, x_sorted, pred_fct,
+                           fct_args, limits, priors_df)
+      ok[!ok] <- passes(inits[!ok])
+    }
+    if (any(ok)) {
+      accepted[empty[ok]] <- inits[ok]
+      filled[empty[ok]] <- TRUE
     }
     n_t <- n_t + 1
     # Said once, the first time the search passes report_after seconds, so a
@@ -384,24 +625,25 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL,
     if (!reported &&
           as.numeric(Sys.time() - started, units = "secs") > report_after) {
       message("Still searching for initial values for the ", model,
-              " model (", n_t, " of ", n_trials, " attempts so far). This can",
+              " model (", n_t, " of ", n_trials, " attempts so far, ",
+              sum(filled), " of ", chains, " chains found). This can",
               " take a few minutes for a small or awkward design; the fit will",
               " proceed on Stan's default initialisation if it does not",
               " succeed.")
       reported <- TRUE
     }
   }
-  if (!are_good) {
+  if (any(!filled)) {
     elapsed <- as.numeric(Sys.time() - started, units = "secs")
-    message("bayesnec failed to find initial values within the",
-            " range of the response for the ", model, " model after ", n_t,
-            " attempts and ", signif(elapsed, 2), " seconds. Using Stan's",
-            " default initialisation process. This usually means the priors",
-            " and the response do not overlap; get_priors() reports the priors",
-            " in use.")
+    message("bayesnec failed to find initial values for all ", chains,
+            " chains of the ", model, " model after ", n_t, " attempts and ",
+            signif(elapsed, 2), " seconds; ", sum(filled), " were found.",
+            " Using Stan's default initialisation process for the whole fit.",
+            " This usually means the priors and the response do not overlap;",
+            " get_priors() reports the priors in use.")
     list(random = "random")
   } else {
-    inits
+    accepted
   }
 }
 
@@ -435,10 +677,12 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL,
 #' @return A \code{\link[base]{list}} of initial values, or
 #' \code{list(random = "random")} if either block could not be initialised.
 #'
+#' @importFrom brms bernoulli
+#'
 #' @noRd
 make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
                                    dpar = "hu", seed = NULL,
-                                   model_survival = NULL, ...) {
+                                   model_survival = NULL, family = NULL, ...) {
   if (is.null(model_survival)) {
     model_survival <- model
   }
@@ -448,11 +692,18 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
   mu_pr <- pr[!is_hu, , drop = FALSE]
   hu_pr <- pr[is_hu, , drop = FALSE]
   hu_pr$nlpar <- sub(paste0("^", dpar), "", hu_pr$nlpar)
+  # Each block is primed under the family its own priors are built from, which
+  # is what define_hurdle_prior() uses: the non-zero part's family for the mu
+  # block, and bernoulli with an identity link for the second, whose response is
+  # the proportion surviving. Passing the joint family to either would give the
+  # wrong support -- (0, Inf) for a block whose mean is a proportion.
+  mu_family <- if (is.null(family)) NULL else hurdle_mu_family(family)
   mu_inits <- make_good_inits(model, parts$mu$x, parts$mu$y, priors = mu_pr,
-                              chains = chains, seed = seed, ...)
+                              chains = chains, seed = seed,
+                              family = mu_family, ...)
   hu_inits <- make_good_inits(model_survival, parts$hu$x, parts$hu$y,
                               priors = hu_pr, chains = chains, seed = seed,
-                              ...)
+                              family = bernoulli(link = "identity"), ...)
   # If either block fell back to Stan's random initialisation there is nothing
   # coherent to merge -- hand the whole fit to Stan rather than half-priming it.
   fell_back <- function(x) length(x) == 1 && "random" %in% names(x)
