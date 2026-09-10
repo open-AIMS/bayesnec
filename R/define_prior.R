@@ -583,6 +583,42 @@ regularizing_location <- function(predictor, response, side,
   c(location = location, se = se)
 }
 
+#' The tag \code{define_prior} keys its response-scaled entries on
+#'
+#' @details Not the family name. Two rewrites stand between them, both of which
+#' change which set of \code{top} and \code{bot} entries applies, and both of
+#' which were written inline where they could be read by one caller only.
+#'
+#' A \code{log} or \code{logit} link puts the response on a scale that is real
+#' and unbounded, so the response-scaled priors are the gaussian ones whatever
+#' the family is. Without this a \code{Gamma(link = "log")} fit on a response
+#' below 1 reaches \code{positive_scale()} with a response that is entirely
+#' negative and stops on "the response contains no positive values", which is
+#' the #229 failure.
+#'
+#' The mu block of a zero-inflated count family is an ordinary poisson or
+#' negbinomial mean --- the mixture changes how many zeros are observed, not the
+#' scale of mu --- so the base family's priors are the right ones rather than a
+#' duplicated set of entries in every table. Without this a
+#' \code{zero_inflated_poisson} fit gets no gamma-scaled entry at all and the
+#' \code{NA} reaches \pkg{brms} as "Cannot coerce 'prior' to a single character
+#' value".
+#'
+#' @param family A \code{\link[stats]{family}} object.
+#'
+#' @return A \code{\link[base]{character}} string.
+#'
+#' @noRd
+prior_family_tag <- function(family) {
+  if (is.null(family) || is.null(family$family)) {
+    return(NA_character_)
+  }
+  if (isTRUE(family$link %in% c("logit", "log"))) {
+    return("gaussian")
+  }
+  sub("^zero_inflated_(poisson|negbinomial)$", "\\1", family$family)
+}
+
 #' Whether a family's response-scaled parameters are bounded below at zero
 #'
 #' @details Read at two places that must agree: the branch of
@@ -591,7 +627,9 @@ regularizing_location <- function(predictor, response, side,
 #' initial curve to lie within. Both call \code{\link{regularizing_location}},
 #' whose treatment of zeros differs at the two ends of the predictor series and
 #' is selected by this answer, so a list written out at each site could drift
-#' and the two would then disagree about where the ends of the curve are.
+#' and the two would then disagree about where the ends of the curve are. It is
+#' keyed on \code{\link{prior_family_tag}} rather than on the family name for
+#' the two reasons recorded there.
 #'
 #' @param family A \code{\link[stats]{family}} object.
 #'
@@ -599,7 +637,7 @@ regularizing_location <- function(predictor, response, side,
 #'
 #' @noRd
 zero_bounded_family <- function(family) {
-  isTRUE(family$family %in% c("Gamma", "poisson", "negbinomial"))
+  isTRUE(prior_family_tag(family) %in% c("Gamma", "poisson", "negbinomial"))
 }
 
 #' The regularizing prior for one response-scaled parameter
@@ -969,15 +1007,9 @@ define_prior <- function(model, family, predictor, response,
   }
   link_tag <- family$link
   custom_name <- check_custom_name(family)
-  if (link_tag %in% c("logit", "log")) {
-    fam_tag <- "gaussian"
-  } else { 
-    fam_tag <- family$family
-   }
-  # The mu block of a zero-inflated count family is an ordinary poisson or
-  # negbinomial mean -- the mixture changes how many zeros are observed, not the
-  # scale of mu -- so the base family's priors are the right ones rather than a
-  # duplicated set of entries in every table below.
+  # Both rewrites the tag applies -- the link one and the zero-inflated one --
+  # are in prior_family_tag(), which the init search reads as well. See #309;
+  # the reasoning for each is recorded there.
   #
   # The quantiles below are taken over the whole response, structural zeros
   # included. That used to collapse the `top` and `bot` priors once a large
@@ -986,9 +1018,7 @@ define_prior <- function(model, family, predictor, response,
   # quantile of the positive part. See its documentation for why that is not
   # the same trick define_hurdle_prior() uses, and #210 for what the three
   # failure modes were.
-  if (fam_tag %in% c("zero_inflated_poisson", "zero_inflated_negbinomial")) {
-    fam_tag <- sub("^zero_inflated_", "", fam_tag)
-  }
+  fam_tag <- prior_family_tag(family)
   if (family$family == "beta_binomial" || family$family == "binomial") {
     if (is.integer(response) || max(response) > 1) {
       stop("Response vector must be passed as a proportion to define_prior",

@@ -306,6 +306,53 @@ refine_inits <- function(init, x, pred_fct, fct_args, limits,
   init
 }
 
+#' The interval the initial curve is permitted to occupy, on its own scale
+#'
+#' @param family A \code{\link[stats]{family}} object, or \code{NULL}.
+#'
+#' @details \code{\link{mu_support}} states what the likelihood permits the
+#' \strong{mean} to be. The initial-value search does not evaluate the mean: a
+#' \pkg{brms} non-linear formula defines the linear predictor, and
+#' \code{pred_<model>()} returns that, so the curve and the response the band is
+#' built from are both on the link scale --- \code{fit_bayesnec()} passes
+#' \code{response_link_scale(response, family)}.
+#'
+#' Under the identity link the two scales are the same and the support is the
+#' bound. Under any other link it is not, and clamping the linear predictor to
+#' the support of the mean excludes the region the curve occupies: measured on a
+#' \code{beta_binomial(link = "logit")} response of proportions from 0.083 to
+#' 0.932, whose logit-scale response runs -2.40 to 2.62, an unmapped clamp gives
+#' a band of exactly (0, 1) and so admits only means between 0.5 and 0.73.
+#'
+#' The support is therefore mapped through the link. \code{log} takes (0, 1) to
+#' (-Inf, 0) and (0, Inf) to the whole line; \code{logit} takes (0, 1) to the
+#' whole line. Those are the three links \code{\link{supported_links}} admits;
+#' anything else leaves the band unbounded, which is the released behaviour and
+#' cannot reject a curve that the likelihood would accept.
+#'
+#' @return A \code{\link[base]{numeric}} vector of length 2.
+#'
+#' @importFrom stats qlogis
+#'
+#' @noRd
+init_support <- function(family) {
+  support <- mu_support(family)
+  if (all(is.infinite(support)) || is.null(family$link)) {
+    return(c(-Inf, Inf))
+  }
+  if (identical(family$link, "identity")) {
+    return(support)
+  }
+  mapped <- switch(family$link,
+                   log = suppressWarnings(log(support)),
+                   logit = suppressWarnings(qlogis(support)),
+                   c(-Inf, Inf))
+  if (any(is.na(mapped))) {
+    return(c(-Inf, Inf))
+  }
+  sort(mapped)
+}
+
 #' The mean response at each replicated predictor value
 #'
 #' @param x A \code{\link[base]{numeric}} vector, the predictor.
@@ -342,17 +389,27 @@ replicated_group_means <- function(x, y) {
 #' what the band has to allow for once every level's mean is inside it.
 #'
 #' Two alternatives were measured and are not used. The largest single group's
-#' standard deviation is not robust: on a replicated design a single aberrant
-#' observation in one group widened the band by a factor of three, because a
-#' maximum over groups follows whichever group that observation lands in. The
-#' standard deviation of the whole response is not a spread at all -- it grows
-#' with the size of the effect, so it widens the band on a design with a large
-#' decline for a reason that has nothing to do with the noise.
+#' standard deviation is the least robust of the three: on a replicated design
+#' a single aberrant observation widened the band by a factor of 6.7, against
+#' 4.1 for the pooled spread and 3.0 for \code{range(y)}, because a maximum over
+#' groups follows whichever group that observation lands in. The standard
+#' deviation of the whole response is the most robust, at 1.6, and is not a
+#' spread at all -- it grows with the size of the effect, giving a band 2.6 to
+#' 3.8 times the response range on the replicated designs measured against 1.1
+#' to 1.4 for the pooled one, so it widens the band for a reason that has
+#' nothing to do with the noise.
 #'
-#' Where no predictor value is replicated there is no within-group variation to
-#' pool and the spread of the whole response stands in, which is the same
-#' stand-in \code{\link{regularizing_location}} uses where a group states no
-#' variability of its own.
+#' \strong{Where no predictor value is replicated} there is no within-group
+#' variation to pool, and the successive differences of the response ordered by
+#' the predictor stand in: for a curve that is smooth between neighbouring
+#' concentrations their variance is twice the noise variance, so
+#' \code{sd(diff(y)) / sqrt(2)} estimates it. It is biased upward by whatever
+#' the curve does between the two points, which is the safe direction, and
+#' unlike the spread of the whole response it does not grow with the size of the
+#' effect. On the eight-concentration unreplicated design measured it gives
+#' 0.072 against 0.395 for \code{sd(y)}, and a band 1.3 times the response range
+#' against 4.4. Below three observations there are too few differences and the
+#' spread of the whole response stands in instead.
 #'
 #' A pooled variance is not robust either, and a single aberrant observation
 #' widens the band: on a four-concentration design of six replicates, replacing
@@ -372,11 +429,14 @@ group_spread <- function(x, y) {
   groups <- split(y, factor(x))
   n <- lengths(groups)
   replicated <- n > 1
-  if (!any(replicated)) {
-    return(sd(y))
+  out <- if (any(replicated)) {
+    v <- vapply(groups[replicated], var, numeric(1))
+    sqrt(sum((n[replicated] - 1) * v) / sum(n[replicated] - 1))
+  } else if (length(y) > 2) {
+    sd(diff(y[order(x)])) / sqrt(2)
+  } else {
+    sd(y)
   }
-  v <- vapply(groups[replicated], var, numeric(1))
-  out <- sqrt(sum((n[replicated] - 1) * v) / sum(n[replicated] - 1))
   if (!is.finite(out) || out <= 0) sd(y) else out
 }
 
@@ -390,8 +450,8 @@ group_spread <- function(x, y) {
 #' @param zero_bounded Passed to \code{\link{regularizing_location}}, which
 #' treats a zero differently at the two ends of the predictor series.
 #' @param support A \code{\link[base]{numeric}} vector of length 2, the
-#' interval the likelihood permits the mean to take, from
-#' \code{\link{mu_support}}. The band is intersected with it.
+#' interval the curve is permitted to occupy on its own scale, from
+#' \code{\link{init_support}}. The band is intersected with it.
 #'
 #' @details \code{\link{check_init_predictions}} requires the initial curve to
 #' lie between these two values. They used to be \code{range(y)}, the smallest
@@ -424,32 +484,39 @@ group_spread <- function(x, y) {
 #' the mean of the observations at the end of the predictor series where the
 #' parameter is the level of the curve, the control end for \code{top} and the
 #' highest concentrations for \code{bot}. That is the anchor #307 adopted for
-#' the regularizing \code{top} and \code{bot} priors, so the package uses one
-#' definition of where the ends of the curve are rather than two.
+#' the regularizing \code{top} and \code{bot} priors, so the search and that
+#' prior set read the ends of the curve from the same statistic. The
+#' \code{"uninformative"} set, which is the default, locates \code{top} and
+#' \code{bot} at quantiles of the pooled response instead and is unchanged by
+#' this, so the shared definition covers one of the two prior sets.
 #'
 #' The two do different work. On a replicated design the anchors lie inside the
 #' range of the group means, which is where the band's ends come from; on an
-#' unreplicated one there are no group means at all and the anchors carry it,
-#' because \code{\link{regularizing_location}} averages neighbouring
-#' concentrations there rather than reducing to a single observation.
+#' unreplicated one there are no group means at all and the anchors are the
+#' whole band, because \code{\link{regularizing_location}} averages
+#' neighbouring concentrations there rather than reducing to a single
+#' observation.
 #'
 #' Every quantity in the band is a mean, which is what the asymptote it is
 #' compared against estimates, and none of them drifts with sample size.
 #'
-#' \strong{The width.} Four standard deviations. The rule is the smallest width
-#' that covers the asymptotes of the curve that generated the data in every
-#' cell measured, because a band that excludes them rejects a correct starting
-#' value. Over 1,080 simulated responses -- three predictor grids, three
-#' replication levels, three equations, a steep and a shallow curve, constant
-#' and fivefold-rising dispersion, twenty seeds -- four covers the true
-#' \code{top} and \code{bot} in all 90 of the cells whose design reaches its
-#' lower asymptote, three covers 88, two covers 84 and one covers 73.
+#' \strong{The width.} Five standard deviations. The rule is the smallest width
+#' that covers the asymptotes of the curve that generated the data in every cell
+#' measured, because a band that excludes them rejects a correct starting value.
+#' Over 2,160 simulated responses -- three predictor grids, three replication
+#' levels, three equations, a steep and a shallow curve, constant and
+#' fivefold-rising dispersion, twenty seeds, which is 108 cells -- five covers
+#' the true \code{top} and \code{bot} in every draw of all 90 cells whose
+#' design reaches its lower asymptote. Four covers 89 of those cells and three
+#' covers 87, and the cells they miss are unreplicated designs with rising
+#' dispersion, which is where the spread is read from successive differences
+#' rather than from replicates.
 #'
 #' Width is a trade against how far into a tail a starting point may sit, so it
-#' is not raised further than the coverage rule requires. Measured against the
-#' compiled Stan program on the \code{alga} series, the log density at the
-#' accepted starting points is reported in the pull request for #309 and the
-#' measurement is archived at \code{notes/scripts/init_search_audit.R}.
+#' is not raised beyond the width the coverage rule selects. Measured against
+#' the compiled Stan program, the log density at the accepted starting points is
+#' reported in the pull request for #309 and the measurement is archived at
+#' \code{notes/scripts/init_search_audit.R}.
 #'
 #' \strong{The support is a hard bound on it.} Under the identity link
 #' \code{\link{bnec}} assigns, an initial curve outside the interval the
@@ -459,14 +526,15 @@ group_spread <- function(x, y) {
 #' own support and the released criterion never looked beyond it. A band built
 #' from a location and a spread has no such guarantee -- on the
 #' \code{beta_binomial} series of #162 it reaches above 1 -- so it is
-#' intersected with \code{\link{mu_support}}. The clauses that read it are
-#' strict inequalities, so the mean is required strictly inside.
+#' intersected with \code{\link{init_support}}, which is the support of the
+#' mean mapped onto the scale the curve is on. The clauses that read it are
+#' strict inequalities, so the curve is required strictly inside.
 #'
 #' \strong{What the band does not fix.} Where the highest concentration has not
 #' reached the lower asymptote, every level mean and both anchors sit above the
 #' true \code{bot} and widening does not reach it: over the simulated designs
-#' whose predictor stops short of the crossing, coverage was 0.47 at a width of
-#' four and 0.49 at five. That is a bias and not noise, and it is the same
+#' whose predictor stops short of the crossing, coverage was 0.50 at a width of
+#' five and 0.47 at four. That is a bias and not noise, and it is the same
 #' limitation \code{\link{regularizing_location}} records for the regularizing
 #' prior. The released criterion is affected identically, and worse, because
 #' \code{min(y)} is above the true asymptote on such a design as well.
@@ -475,11 +543,26 @@ group_spread <- function(x, y) {
 #' upper bound in that order.
 #'
 #' @noRd
-init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
+init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
                         support = c(-Inf, Inf)) {
   keep <- is.finite(x) & is.finite(y)
   x <- x[keep]
   y <- y[keep]
+  if (length(y) == 0) {
+    # No observation to anchor on. An empty band rejects every draw and sends
+    # the fit to Stan's own initialisation, which is what range(y) did on the
+    # same input; it is written out rather than left to range() so that it does
+    # not arrive as two warnings about missing arguments. check_data() refuses
+    # an all-missing response before bnec() reaches here.
+    return(c(Inf, -Inf))
+  }
+  # regularizing_location()'s zero-bounded branch falls back to
+  # positive_scale(), which refuses a response with no positive value at all.
+  # That refusal names prior construction and would arrive from inside an
+  # initial-value search, so the branch is taken only where there is something
+  # for it to do. define_prior() refuses such a response first on the bnec()
+  # path, so this guards the direct callers.
+  zero_bounded <- zero_bounded && any(y > 0)
   centres <- c(regularizing_location(x, y, "top", zero_bounded)[["location"]],
                regularizing_location(x, y, "bot", zero_bounded)[["location"]],
                replicated_group_means(x, y))
@@ -490,13 +573,24 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
   # response that is not monotone at its ends -- which the alga series is not,
   # its lowest group mean falling at 15 units rather than at 20 -- puts its
   # extreme level mean somewhere in the interior.
-  out <- c(min(centres) - spread, max(centres) + spread)
-  # A degenerate response leaves nothing to anchor on. Falling back to the
-  # observed range restores the released behaviour for that case rather than
-  # returning a band that rejects everything, which would send every fit to
-  # Stan's initialisation silently.
-  if (length(centres) == 0 || !all(is.finite(out)) || out[1] >= out[2]) {
+  # A degenerate response leaves nothing to anchor on, and the fallback restores
+  # the released reference for that case rather than inventing one. Tested
+  # before the band is computed, because min() and max() of an empty vector
+  # return infinities with a warning the user can do nothing about. Note what
+  # the fallback does and does not do: on a constant response it returns a band
+  # of zero width, which rejects every draw and sends the fit to Stan's
+  # initialisation -- which is what range(y) did on the same response, and is
+  # the right outcome, because a constant response identifies no curve.
+  out <- if (length(centres) == 0) {
+    range(y, na.rm = TRUE)
+  } else {
+    c(min(centres) - spread, max(centres) + spread)
+  }
+  if (!all(is.finite(out)) || out[1] > out[2]) {
     out <- range(y, na.rm = TRUE)
+  }
+  if (!all(is.finite(out))) {
+    return(c(-Inf, Inf))
   }
   c(max(out[1], support[1]), min(out[2], support[2]))
 }
@@ -519,13 +613,20 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
 #' how many attempts the function should run before giving up.
 #' @param seed seed number for reproducible random number generation. Defaults
 #' to \code{NULL}.
-#' @param family A \code{\link[stats]{family}} object, or \code{NULL} to leave
-#' the band unconstrained. Two things are read from it and nothing else: the
-#' interval the likelihood permits the mean to take, and whether the
-#' response-scaled parameters are bounded below at zero. Both are properties
-#' \code{\link{init_limits}} needs, and passing the family rather than the two
-#' answers is what stops them being derived from different families at
-#' different call sites.
+#' @param family A \code{\link[stats]{family}} object. Two things are read from
+#' it and nothing else: the interval the curve is permitted to occupy, and
+#' whether the response-scaled parameters are bounded below at zero. Both are
+#' properties \code{\link{init_limits}} needs, and passing the family rather
+#' than the two answers is what stops them being derived from different families
+#' at different call sites.
+#'
+#' It has no default on purpose. A default of \code{NULL} leaves the band
+#' unbounded, and the constraint it drops is one \code{range(y)} used to supply
+#' for free: a response is inside its own support, so the released criterion
+#' could not admit a curve outside it and a band read from a location and a
+#' spread can. A caller that forgot the argument would get a search that
+#' silently accepts invalid starting values, which is how
+#' \code{test-nechormepwr-bounded.R} began passing when it should not.
 #' @param ... Additional arguments to \code{\link{make_inits}}.
 #'
 #' @details \strong{A chain is accepted on its own.} The four chains of a fit
@@ -535,11 +636,25 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
 #' any one failed, therefore left the accepted values unchanged and raised the
 #' number of proposals to the fourth power of the per-chain rate. Measured on
 #' the packaged \code{alga} \code{c_proliferum} contaminant A series, where the
-#' per-chain rate runs 9 to 31 per cent, that is the difference between 374 and
-#' 49,621 draws over the fourteen equations of the declining set. Accepted
-#' chains are kept and only the empty slots are re-drawn. See #309.
+#' per-chain rate runs 9 to 31 per cent, the released rule drew 148,397
+#' proposals over the fourteen equations of the declining set at five seeds
+#' against 237 for the change. Accepted chains are kept and only the empty slots
+#' are re-drawn. See #309.
 #'
-#' \strong{The cap stays at 1e4.} #266 objects that this ran 561 seconds for a
+#' The set of accepted values is unchanged by this, exactly for a fresh
+#' proposal: the four draws are independent, so conditioning on the other three
+#' having passed does not change the law of the first. Once
+#' \code{\link{refine_inits}} is included it is unchanged up to the weight of
+#' the fourth power of the per-chain rate, because the released loop did not
+#' refine the set it drew before entering the loop and this one refines from the
+#' first round. That weight is between 4e-5 and 9e-3 on the designs measured.
+#'
+#' \strong{The cap stays at 1e4.} It is now exactly \code{n_trials} rounds
+#' where the released loop allowed one more --- it drew the first set before the
+#' loop and then tested \code{n_t <= n_trials} from \code{n_t = 1} --- so the
+#' released bound was \code{n_trials + 1} sets.
+#'
+#' #266 objects that this ran 561 seconds for a
 #' single model with no output, and proposes a smaller cap on the grounds that
 #' the outcome after exhausting it -- Stan's own random initialisation -- is
 #' available at the first attempt. Measured before changing it, and that
@@ -571,10 +686,10 @@ init_limits <- function(x, y, width = 4, zero_bounded = FALSE,
 #' @return A \code{\link[base]{list}} containing the initialisation values.
 #'
 #' @noRd
-make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL,
-                            report_after = 20, family = NULL, ...) {
+make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
+                            report_after = 20, ...) {
   limits <- init_limits(x, y, zero_bounded = zero_bounded_family(family),
-                        support = mu_support(family))
+                        support = init_support(family))
   pred_fct <- get(paste0("pred_", model))
   fct_args <- names(unlist(as.list(args(pred_fct))))
   fct_args <- setdiff(fct_args, "x")
@@ -681,8 +796,8 @@ make_good_inits <- function(model, x, y, n_trials = 1e4, seed = NULL,
 #'
 #' @noRd
 make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
-                                   dpar = "hu", seed = NULL,
-                                   model_survival = NULL, family = NULL, ...) {
+                                   family, dpar = "hu", seed = NULL,
+                                   model_survival = NULL, ...) {
   if (is.null(model_survival)) {
     model_survival <- model
   }
@@ -697,13 +812,12 @@ make_good_hurdle_inits <- function(model, predictor, response, priors, chains,
   # block, and bernoulli with an identity link for the second, whose response is
   # the proportion surviving. Passing the joint family to either would give the
   # wrong support -- (0, Inf) for a block whose mean is a proportion.
-  mu_family <- if (is.null(family)) NULL else hurdle_mu_family(family)
-  mu_inits <- make_good_inits(model, parts$mu$x, parts$mu$y, priors = mu_pr,
-                              chains = chains, seed = seed,
-                              family = mu_family, ...)
+  mu_inits <- make_good_inits(model, parts$mu$x, parts$mu$y,
+                              family = hurdle_mu_family(family), priors = mu_pr,
+                              chains = chains, seed = seed, ...)
   hu_inits <- make_good_inits(model_survival, parts$hu$x, parts$hu$y,
-                              priors = hu_pr, chains = chains, seed = seed,
-                              family = bernoulli(link = "identity"), ...)
+                              family = bernoulli(link = "identity"),
+                              priors = hu_pr, chains = chains, seed = seed, ...)
   # If either block fell back to Stan's random initialisation there is nothing
   # coherent to merge -- hand the whole fit to Stan rather than half-priming it.
   fell_back <- function(x) length(x) == 1 && "random" %in% names(x)

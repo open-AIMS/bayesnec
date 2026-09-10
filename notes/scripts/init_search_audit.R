@@ -5,25 +5,33 @@
 #   Rscript notes/scripts/init_search_audit.R [name ...]
 #
 # With no argument every measurement is run. Naming one or more of
-# acceptance, width, proposals, truncation, logdensity, shortrun runs those
-# alone, which is how they were run for the pull request: the proposal count
-# and the two Stan measurements are slow and are independent of each other.
+# acceptance, width, proposals, truncation, logdensity, shortrun, timing runs
+# those alone, which is how they were run for the pull request: the proposal
+# count, the timing and the two Stan measurements are slow and are independent
+# of each other.
 #
-# Five measurements, each printed with the numbers quoted in the pull request:
+# Seven measurements, each printed with the numbers quoted in the pull request:
 #
-#   1. per-chain acceptance and the contribution of each clause, released
-#      criterion and band, over five designs and the declining set;
-#   2. the width and the spread the band uses, chosen against coverage of the
-#      asymptotes of a known curve and containment of every observed group mean;
-#   3. the proposals the whole declining set draws, released rule against the
-#      change, at five seeds;
-#   4. how much of the prior each criterion keeps and where the kept part sits;
-#   5. the log density and its gradient at the accepted starting points, read
-#      off the compiled Stan program with no sampling, and a short sampler run.
+#   1. acceptance   per-chain acceptance and the contribution of each clause,
+#                   released criterion and band, over five designs and the
+#                   declining set;
+#   2. width        the width and the spread the band uses, chosen against
+#                   coverage of the asymptotes of a known curve, and the
+#                   robustness of each spread to one aberrant observation;
+#   3. proposals    the proposals the whole declining set draws, released rule
+#                   against the change, at five seeds. Counts proposals under
+#                   the two rules only: refine_inits() is excluded from both;
+#   4. truncation   how much of the prior each criterion keeps and where the
+#                   kept part sits;
+#   5. logdensity   the log density and its gradient at the accepted starting
+#                   points, read off the compiled Stan program with no sampling;
+#      shortrun     a short sampler run;
+#   6. timing       the wall clock of the two implementations with
+#                   refine_inits() in place, which 3 excludes.
 #
-# Measurements 5 needs rstan and compiles one Stan program per equation; it is
-# skipped where rstan is absent. Everything else is draws alone and takes a few
-# minutes.
+# logdensity needs rstan and compiles one Stan program per equation; it is
+# skipped where rstan is absent. shortrun and timing fit or search at the
+# shipped cap and are slow. Everything else is draws alone.
 #
 # The released search is reimplemented here rather than checked out, so the
 # script runs against one working tree.
@@ -83,11 +91,20 @@ clauses <- function(p, limits) {
     distinct = length(unique(p)) > 3)
 }
 
+# The band as make_good_inits() computes it: the family decides the support the
+# curve is clamped to and the treatment of zeros at each end of the series, so a
+# call without it audits a different criterion from the one that ships.
+band_of <- function(dg, y, width = 4) {
+  init_limits(dg$x, y, width = width,
+              zero_bounded = zero_bounded_family(dg$family),
+              support = init_support(dg$family))
+}
+
 design_parts <- function(dg) {
   yl <- response_link_scale(dg$y, dg$family)
   list(x = dg$x, y = yl,
        released = range(yl, na.rm = TRUE),
-       band = init_limits(dg$x, yl),
+       band = band_of(dg, yl),
        models = suppressMessages(
          check_models(DECLINE, dg$family, list(predictor = dg$x))))
 }
@@ -191,8 +208,8 @@ measure_coverage <- function(ks = c(1, 2, 3, 4, 5), n_seed = 20,
 }
 
 # The spread has to be robust as well: a single aberrant observation must not
-# decide where the band is. Reported against range(y), which moves by the whole
-# of it.
+# decide where the band is. Reported against range(y), whose upper end follows
+# the observation exactly.
 measure_robustness <- function(seed = 309) {
   set.seed(seed)
   x <- rep(c(0, 1, 5, 20), each = 6)
@@ -223,9 +240,14 @@ measure_robustness <- function(seed = 309) {
 }
 
 # ------------------------------------------------------- 3. the proposals ----
-# The released rule: every chain drawn again whenever any one failed. Both
-# reimplementations exclude refine_inits(), so the comparison is of the two
-# rules and not of a rescue both keep.
+# The released rule: every chain drawn again whenever any one failed.
+#
+# Both reimplementations exclude refine_inits(), so this counts proposals under
+# the two rules and not the single-parameter rescue both keep. That is a
+# statement about the rules; it is not the wall clock of either implementation,
+# because the released one calls refine_inits() on every failing round and so
+# does far more work per round than a proposal count shows. measure_timing()
+# below runs both with the rescue in place.
 search_released <- function(model, x, y, priors, chains = CHAINS,
                             n_trials = CAP) {
   limits <- range(y, na.rm = TRUE)
@@ -248,9 +270,10 @@ search_released <- function(model, x, y, priors, chains = CHAINS,
   c(drawn = drawn, success = as.numeric(good))
 }
 
-search_changed <- function(model, x, y, priors, chains = CHAINS,
+search_changed <- function(model, x, y, priors, family, chains = CHAINS,
                            n_trials = CAP) {
-  limits <- init_limits(x, y)
+  limits <- init_limits(x, y, zero_bounded = zero_bounded_family(family),
+                        support = init_support(family))
   pa <- pred_args(model)
   xs <- sort(x)
   drawn <- 0
@@ -282,7 +305,7 @@ measure_proposals <- function(seeds = 1:5) {
         set.seed(1000 * s + 7)
         a <- search_released(m, p$x, p$y, pr)
         set.seed(1000 * s + 7)
-        b <- search_changed(m, p$x, p$y, pr)
+        b <- search_changed(m, p$x, p$y, pr, dg$family)
         out[[length(out) + 1]] <- data.frame(
           design = dn, model = m, seed = s,
           released_drawn = a[["drawn"]], released_ok = a[["success"]],
@@ -343,20 +366,24 @@ measure_truncation <- function(n_draw = 6000,
 # travelling. Both are read off the compiled Stan program of the fit bnec()
 # would build, with no sampling.
 measure_log_density <- function(
+    design = "alga_cp_A",
     eqs = c("nec3param", "nec4param", "ecx4param", "ecxwb1", "ecxll4",
             "ecxlin"),
-    widths = c(2, 3, 4, 5), n_accept = 400, seed = 3091) {
+    widths = c(3, 4, 5, 6), n_accept = 400, seed = 3091) {
   if (!requireNamespace("rstan", quietly = TRUE)) {
     message("rstan not installed; skipping the log-density measurement")
     return(NULL)
   }
   set.seed(seed)
-  d <- alga[alga$species == "c_proliferum" & alga$contaminant == "A", ]
-  fam <- validate_family("gaussian")
+  dg <- designs()[[design]]
+  fam <- dg$family
+  # A data frame with the names the formula below uses, so that the same code
+  # runs on a packaged series and on a small simulated one.
+  d <- data.frame(dose = dg$x, sgr = dg$y)
   yl <- response_link_scale(d$sgr, fam)
   criteria <- c(list(released = range(yl, na.rm = TRUE)),
                 stats::setNames(lapply(widths, function(k)
-                  init_limits(d$dose, yl, width = k)), paste0("band_k", widths)))
+                  band_of(dg, yl, width = k)), paste0("band_k", widths)))
   # sigma is not part of the init search under either criterion, so holding it
   # at the residual spread makes the comparison one of the curve parameters
   # alone.
@@ -402,7 +429,7 @@ measure_log_density <- function(
         }
       }
       out[[length(out) + 1]] <- data.frame(
-        eq = eq, criterion = cn, accept = n_accept / att,
+        design = design, eq = eq, criterion = cn, accept = n_accept / att,
         finite = mean(is.finite(vals[, 1]) & is.finite(vals[, 2])),
         lp_median = median(vals[, 1], na.rm = TRUE),
         lp_q10 = unname(quantile(vals[, 1], 0.1, na.rm = TRUE)),
@@ -443,6 +470,79 @@ measure_short_run <- function(eqs = c("nec3param", "nec4param", "ecx4param",
 }
 
 # ------------------------------------------------------------------ run ------
+# ------------------------------------------------------- 6. the wall clock ----
+# What the proposal count in 3 leaves out. The released implementation calls
+# refine_inits() on every failing round, on all four chains, and each call makes
+# up to n_sub single-parameter re-draws per tunable parameter -- so a round that
+# fails costs far more than the four proposals it draws. Both implementations
+# are run here with the rescue in place, which is what a user experiences.
+#
+# The released one is reimplemented rather than checked out, as elsewhere. The
+# cap is an argument because at the shipped 1e4 a single search that exhausts it
+# runs for tens of minutes; the default here is the shipped cap and the reduced
+# ones are for a quicker reading.
+released_search_full <- function(model, x, y, priors, family, chains = CHAINS,
+                                 n_trials = CAP) {
+  limits <- range(y, na.rm = TRUE)
+  pa <- pred_args(model)
+  xs <- sort(x)
+  priors_df <- blank_bounds_to_na(as.data.frame(priors))
+  priors_df <- priors_df[priors_df$prior != "", ]
+  ok_all <- function(inits) all(vapply(inits, function(i)
+    check_init_predictions(get_init_predictions(i, xs, pa$fct, pa$args),
+                           limits), logical(1)))
+  inits <- make_inits(model, pa$args, priors, chains)
+  good <- ok_all(inits)
+  n_t <- 1
+  while (!good && n_t <= n_trials) {
+    inits <- make_inits(model, pa$args, priors, chains)
+    good <- ok_all(inits)
+    if (!good) {
+      inits <- lapply(inits, refine_inits, xs, pa$fct, pa$args, limits,
+                      priors_df)
+      good <- ok_all(inits)
+    }
+    n_t <- n_t + 1
+  }
+  good
+}
+
+measure_timing <- function(design = "alga_cp_A",
+                           eqs = c("nec3param", "ecx4param", "ecxwb1p3",
+                                   "ecxlin"),
+                           seeds = 1:3, n_trials = CAP) {
+  dg <- designs()[[design]]
+  p <- design_parts(dg)
+  out <- list()
+  for (m in eqs) {
+    if (!m %in% p$models) next
+    pr <- suppressMessages(define_prior(m, dg$family, p$x, p$y))
+    for (s in seeds) {
+      set.seed(1000 * s + 7)
+      t0 <- Sys.time()
+      rel_ok <- released_search_full(m, p$x, p$y, pr, dg$family,
+                                     n_trials = n_trials)
+      rel_s <- as.numeric(Sys.time() - t0, units = "secs")
+      set.seed(1000 * s + 7)
+      t0 <- Sys.time()
+      got <- suppressMessages(
+        make_good_inits(m, p$x, p$y, family = dg$family, priors = pr,
+                        chains = CHAINS, seed = 1000 * s + 7,
+                        n_trials = n_trials, report_after = Inf))
+      new_s <- as.numeric(Sys.time() - t0, units = "secs")
+      out[[length(out) + 1]] <- data.frame(
+        design = design, model = m, seed = s,
+        released_secs = rel_s, released_ok = rel_ok,
+        changed_secs = new_s,
+        changed_ok = !(length(got) == 1 && "random" %in% names(got)),
+        stringsAsFactors = FALSE)
+      message("timing: ", m, " seed ", s, " released ", signif(rel_s, 3),
+              "s changed ", signif(new_s, 3), "s")
+    }
+  }
+  do.call(rbind, out)
+}
+
 selected <- commandArgs(trailingOnly = TRUE)
 run_this <- function(name) length(selected) == 0 || name %in% selected
 
@@ -523,11 +623,26 @@ if (run_this("truncation")) {
 }
 
 if (run_this("logdensity")) {
-  ld <- measure_log_density()
-  if (!is.null(ld)) {
-    cat("\n=== 5a. log density and gradient at the accepted starting points ===\n")
-    print(ld, digits = 4, row.names = FALSE)
+  # Both a replicated and an unreplicated design: the criterion loosens most on
+  # the unreplicated one, so that is where a wider band is most likely to admit
+  # a starting point far from the data.
+  for (dn in c("alga_cp_A", "small_unrep")) {
+    ld <- measure_log_density(design = dn)
+    if (!is.null(ld)) {
+      cat("\n=== 5a. log density and gradient at the accepted starting points,",
+          dn, "===\n")
+      print(ld, digits = 4, row.names = FALSE)
+    }
   }
+}
+
+if (run_this("timing")) {
+  tm <- measure_timing()
+  cat("\n=== 6. wall clock, refine_inits() in place in both ===\n")
+  print(tm, digits = 4, row.names = FALSE)
+  cat("\n  totals over the equations measured, mean over seeds:\n")
+  print(aggregate(cbind(released_secs, changed_secs) ~ design, tm, function(z)
+    mean(z) * length(unique(tm$model))), digits = 4, row.names = FALSE)
 }
 
 if (run_this("shortrun")) {

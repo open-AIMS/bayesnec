@@ -934,20 +934,20 @@ add_brm_defaults <- function(
         response,
         priors = init_priors,
         chains = brm_args$chains,
+        family = family,
         dpar = hurdle_dpar(family),
         seed = init_seed,
-        model_survival = model_survival,
-        family = family
+        model_survival = model_survival
       )
     } else {
       make_good_inits(
         model,
         predictor,
         response_link,
+        family = family,
         priors = init_priors,
         chains = brm_args$chains,
-        seed = init_seed,
-        family = family
+        seed = init_seed
       )
     }
     if (length(inits) == 1 && "random" %in% names(inits)) {
