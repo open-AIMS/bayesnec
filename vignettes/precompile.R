@@ -102,9 +102,9 @@ options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
 # parallel::detectCores(), in a chunk, and so override this. That reports the
 # node and not the allocation, but brms runs at most `chains` in parallel and
 # every one of those vignettes takes the default of four, so it oversubscribes
-# nothing as they stand. Removing those lines would change the rendered output
-# of three vignettes for no change in what is fitted, so they are left where
-# they are and noted here.
+# nothing as they stand. Those chunks are echo = FALSE, so removing the lines
+# would change nothing a reader sees; they are left alone here because #190
+# re-renders the whole set and is the place to remove them.
 .cpus <- suppressWarnings(as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")))
 if (is.na(.cpus) || .cpus < 1) {
   .cpus <- max(1L, parallel::detectCores(logical = FALSE))

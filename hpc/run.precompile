@@ -116,7 +116,11 @@ echo "--- image"; cat hpc/image.lock
 # startup files matter for the same reason -- R reads ~/.Renviron after the
 # inherited environment, so a host R_LIBS_USER there would override the one set
 # here.
-RENV=(--env R_LIBS="$LIB" --env R_LIBS_USER="$LIB"
+# R_LIBS_SITE is emptied for the same reason: it is the one remaining variable
+# by which a host library could reach .libPaths(). --cleanenv would close the
+# class rather than the instances, but it would also strip the SLURM_ variables
+# this job reads, so the variables are named instead.
+RENV=(--env R_LIBS="$LIB" --env R_LIBS_USER="$LIB" --env R_LIBS_SITE=
       --env R_ENVIRON_USER=/dev/null --env R_PROFILE_USER=/dev/null)
 
 rm -rf "$LIB"; mkdir -p "$LIB"
