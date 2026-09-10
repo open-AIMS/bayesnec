@@ -325,7 +325,9 @@
   proposals to the fourth power of the per-chain rate. Measured over the
   fourteen equations of the `decline` set at five seeds, the released rule
   drew 148,397 proposals on the packaged `alga` `c_proliferum` contaminant A
-  series against 191, and 334,178 on a small unreplicated design against 257.
+  series against 191, and 334,178 on a small unreplicated design against 257;
+  both counts exclude the single-parameter rescue `refine_inits()` makes on a
+  failing round, which the released rule ran far more often.
   Of the 340 searches measured, 71 exhausted the 10,000-attempt cap under the
   released rule and none do now; a search that exhausts the cap falls through
   to Stan's own initialisation, so that budget was spent to reach the outcome
@@ -346,8 +348,9 @@
 
   **The band is every mean response the design estimates**, widened by five
   pooled within-group standard deviations, intersected with the support of the
-  mean, and stopped short of the boundary of that support at the nearest value
-  the response takes. Its two outermost centres come from
+  mean mapped through the link, and stopped a tenth of the way from the
+  boundary of that support towards the nearest value the response takes. Its
+  two outermost centres come from
   `regularizing_location()`, the anchor the `"regularizing"` prior uses for
   `top` and `bot`; on a replicated design the ends come from the level means
   themselves. The width covers the true asymptotes in every draw of all 90

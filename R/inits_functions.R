@@ -407,7 +407,7 @@ replicated_group_means <- function(x, y) {
 #' the curve does between the two points, which is the safe direction, and
 #' unlike the spread of the whole response it does not grow with the size of the
 #' effect. On the eight-concentration unreplicated design measured it gives
-#' 0.072 against 0.395 for \code{sd(y)}, and a band 1.3 times the response range
+#' 0.068 against 0.395 for \code{sd(y)}, and a band 1.7 times the response range
 #' against 4.4. Below three observations there are too few differences and the
 #' spread of the whole response stands in instead.
 #'
@@ -429,13 +429,31 @@ group_spread <- function(x, y) {
   groups <- split(y, factor(x))
   n <- lengths(groups)
   replicated <- n > 1
-  out <- if (any(replicated)) {
-    v <- vapply(groups[replicated], var, numeric(1))
-    sqrt(sum((n[replicated] - 1) * v) / sum(n[replicated] - 1))
-  } else if (length(y) > 2) {
+  # The branch is chosen on how much the replicates actually say, not on
+  # whether any exist. One repeated predictor value contributes a variance on a
+  # single degree of freedom, and taking it in preference to the twenty-odd
+  # differences the rest of the design offers made the spread a function of that
+  # one pair: on a 24-point series, duplicating one value with an equal response
+  # sent the pooled estimate to zero and the band from 1.35 to 4.83 times the
+  # response range, and five draws of a non-equal pair gave estimates spanning a
+  # factor of seven. Three degrees of freedom is the least that reads as an
+  # estimate rather than as one pair.
+  df <- sum(n[replicated] - 1)
+  differences <- if (length(y) > 2) {
     sd(diff(y[order(x)])) / sqrt(2)
   } else {
-    sd(y)
+    NA_real_
+  }
+  out <- if (any(replicated) && df >= 3) {
+    v <- vapply(groups[replicated], var, numeric(1))
+    sqrt(sum((n[replicated] - 1) * v) / df)
+  } else {
+    differences
+  }
+  # Falling back to the differences and not to sd(y), which is the statistic
+  # this function exists to avoid.
+  if (!is.finite(out) || out <= 0) {
+    out <- differences
   }
   if (!is.finite(out) || out <= 0) sd(y) else out
 }
@@ -470,9 +488,9 @@ group_spread <- function(x, y) {
 #' \code{c_proliferum} contaminant A series under the default
 #' \code{"uninformative"} priors, the \code{top} prior is
 #' \code{normal(0.1284, 0.4044)} and the threshold \code{max(y)} is 0.1367 --
-#' 0.021 prior standard deviations from the centre -- and the clause passed 42
-#' to 61 per cent of draws for every one of the fourteen equations of the
-#' declining set.
+#' 0.021 prior standard deviations from the centre -- and over 2,000 draws per
+#' equation the clause passed 46.2 to 61.4 per cent of them for every one of the
+#' fourteen equations of the declining set.
 #'
 #' And it gets looser as replicates are added, because an extremum drifts
 #' outward with sample size. A starting-value check that is more permissive on
@@ -497,8 +515,11 @@ group_spread <- function(x, y) {
 #' neighbouring concentrations there rather than reducing to a single
 #' observation.
 #'
-#' Every quantity in the band is a mean, which is what the asymptote it is
-#' compared against estimates, and none of them drifts with sample size.
+#' Every quantity the band is built from is a mean, which is what the asymptote
+#' it is compared against estimates, and none of them drifts with sample size.
+#' The one exception is where the band reaches the boundary of the support and
+#' is set back from it, which is read from an extremum and does drift; see
+#' \code{\link{boundary_inset}} for what that is for and what it gives up.
 #'
 #' \strong{The width.} Five standard deviations. The rule is the smallest width
 #' that covers the asymptotes of the curve that generated the data in every cell
@@ -508,9 +529,22 @@ group_spread <- function(x, y) {
 #' fivefold-rising dispersion, twenty seeds, which is 108 cells -- five covers
 #' the true \code{top} and \code{bot} in every draw of all 90 cells whose
 #' design reaches its lower asymptote. Four covers 89 of those cells and three
-#' covers 87, and the cells they miss are unreplicated designs with rising
+#' covers 87, and every cell they miss is an unreplicated design with rising
 #' dispersion, which is where the spread is read from successive differences
 #' rather than from replicates.
+#'
+#' \strong{The margin between four and five is one draw.} The single cell four
+#' does not cover fails one of its twenty draws, which is one of the 1,800 draws
+#' in the cells that reach their asymptote. The rule has no tolerance and
+#' therefore selects five. Two alternatives were considered and are not used:
+#' stating a tolerance, which would be a second free quantity chosen with less
+#' evidence than the width itself; and conditioning the width on which spread
+#' estimator was used, since the cells that decide it are exactly the
+#' unreplicated ones, which would make the criterion two criteria. The price of
+#' the wider band is recorded in the log-density measurement --- for
+#' \code{nec3param}, whose lower asymptote is fixed and whose band therefore
+#' widens most in proportion, the median starting log density falls from -1230
+#' to -1261 and its tenth percentile from -1426 to -2137.
 #'
 #' Width is a trade against how far into a tail a starting point may sit, so it
 #' is not raised beyond the width the coverage rule selects. Measured against
@@ -549,12 +583,15 @@ init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
   x <- x[keep]
   y <- y[keep]
   if (length(y) == 0) {
-    # No observation to anchor on. An empty band rejects every draw and sends
-    # the fit to Stan's own initialisation, which is what range(y) did on the
-    # same input; it is written out rather than left to range() so that it does
-    # not arrive as two warnings about missing arguments. check_data() refuses
-    # an all-missing response before bnec() reaches here.
-    return(c(Inf, -Inf))
+    # No observation to anchor on, so every draw is rejected and the fit goes to
+    # Stan's own initialisation. Returned as NA rather than as an inverted pair:
+    # check_init_predictions() reads the band through min() and max(), which
+    # reorder it, so c(Inf, -Inf) is read as the whole line and accepts
+    # everything -- which is what range(y) did on this input, and is the reverse
+    # of what it was taken to do. check_data() refuses an all-missing response
+    # before bnec() reaches here, so this is a guard rather than a fix for an
+    # observed failure.
+    return(c(NA_real_, NA_real_))
   }
   # regularizing_location()'s zero-bounded branch falls back to
   # positive_scale(), which refuses a response with no positive value at all.
@@ -620,32 +657,71 @@ init_limits <- function(x, y, width = 5, zero_bounded = FALSE,
 #' @param centres The level means the band is built from.
 #' @param y The response on the link scale.
 #' @param side One of \code{"lower"} or \code{"upper"}.
+#' @param fraction How far from the boundary towards the nearest observed value
+#' the band stops.
+#'
+#' @details A mean at the boundary of the support is one the likelihood cannot
+#' evaluate, and the clauses of \code{\link{check_init_predictions}} are strict
+#' inequalities, so a band whose end is the boundary admits a curve arbitrarily
+#' close to it. On the second block of a hurdle fit that is not academic: the
+#' block is primed from one survival proportion per concentration, so its band
+#' spans the whole of (0, 1), and a curve accepted at a survival of 1e-66 made
+#' the joint log likelihood \code{-Inf} and the fit end on "Initialization
+#' failed".
+#'
+#' \strong{Why a tenth of the way and not the observed value itself.} Stopping
+#' at \code{min(y[y > bound])} was measured and is too strict: on a
+#' \code{zero_inflated_poisson} design of six concentrations by eight, whose
+#' smallest group mean is 0.375, it put the band's floor above a generating
+#' \code{bot} of 0.3 and so excluded the true asymptote --- which is the error
+#' the width is chosen to avoid. It also made the criterion stricter than
+#' \code{range(y)} for two of four equations on that design, per-chain
+#' acceptance falling from 0.347 to 0.197 for \code{nec3param}. A tenth of the
+#' distance from the boundary to the nearest observed value keeps the floor two
+#' orders of magnitude below anything the design resolves --- 6e-4 against the
+#' 1e-66 that failed --- while leaving the asymptote inside. The same tenth is
+#' what \code{\link{regularizing_location}} uses where every observation at the
+#' highest concentration is zero.
+#'
+#' \strong{What this gives up.} The floor is an extremum and therefore does
+#' drift with sample size, which is the property the band otherwise removes:
+#' the nearest observed value falls as the design grows, and on the second block
+#' of a hurdle fit it is \code{survival_by_x()}'s \code{eps} of \code{1/(2n)}
+#' whenever a proportion is exactly 0 or 1, so the floor is 8e-4 at n = 60 and
+#' 3e-5 at n = 1500. The extremum is used here to state what the measurement can
+#' distinguish from the boundary, which is what an extremum does state, rather
+#' than to estimate a plateau, which is what it cannot; and what it guards
+#' against is a curve collapsing onto the boundary, not a merely small value, so
+#' a floor that falls with n still does that.
+#'
+#' \strong{The \code{centres} term} disables the inset wherever a level mean
+#' sits at the boundary itself, which is the complete-effect design --- a count
+#' response whose highest concentration is entirely zero. The band must contain
+#' every level the design measured, so the protection is absent exactly there.
+#' Nothing else is lost by it: \code{min(y[y > bound])} is at or below every
+#' centre whenever no centre is at the boundary.
 #'
 #' @return A \code{\link[base]{numeric}} of length 1.
 #'
 #' @noRd
-boundary_inset <- function(edge, bound, centres, y, side) {
-  if (!is.finite(bound)) {
+boundary_inset <- function(edge, bound, centres, y, side, fraction = 0.1) {
+  if (!is.finite(bound) || length(centres) == 0) {
+    return(edge)
+  }
+  inside <- if (side == "lower") y[y > bound] else y[y < bound]
+  if (length(inside) == 0) {
     return(edge)
   }
   if (side == "lower") {
     if (edge > bound) {
       return(edge)
     }
-    inside <- y[y > bound]
-    if (length(inside) == 0) {
-      return(edge)
-    }
-    max(bound, min(c(centres, min(inside))))
+    max(bound, min(c(centres, bound + fraction * (min(inside) - bound))))
   } else {
     if (edge < bound) {
       return(edge)
     }
-    inside <- y[y < bound]
-    if (length(inside) == 0) {
-      return(edge)
-    }
-    min(bound, max(c(centres, max(inside))))
+    min(bound, max(c(centres, bound - fraction * (bound - max(inside)))))
   }
 }
 

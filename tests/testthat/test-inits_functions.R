@@ -1273,7 +1273,10 @@ test_that("the band is bounded by the support of the mean", {
   # boundary it stops at the nearest value the response takes.
   expect_lt(bounded[2], 1)
   expect_gt(bounded[1], 0)
-  expect_lte(bounded[2], max(y))
+  # a tenth of the way from the boundary towards the nearest observed value, so
+  # outside the observed range and inside the support
+  expect_gt(bounded[2], max(y))
+  expect_lt(bounded[1], min(y))
   # and gaussian is not bounded, so the band is left alone
   expect_equal(init_limits(x, y, support = mu_support(validate_family("gaussian"))),
                unconstrained)
@@ -1471,7 +1474,10 @@ test_that("the second block of a hurdle fit is not started at zero survival", {
   fam <- validate_family("hurdle_gamma")
   parts <- split_hurdle_response(conc, y)
   hu_band <- init_limits(parts$hu$x, parts$hu$y, support = c(0, 1))
-  expect_gte(hu_band[1], min(parts$hu$y))
+  # Two orders of magnitude above the 1e-66 that failed, and below the smallest
+  # proportion the design records, so the band still contains every level.
+  expect_gt(hu_band[1], 1e-5)
+  expect_lt(hu_band[1], min(parts$hu$y))
   pr <- suppressMessages(define_prior("nec3param", fam, conc, y))
   inits <- suppressMessages(
     make_good_hurdle_inits("nec3param", conc, y, priors = pr, chains = 2,
@@ -1486,4 +1492,47 @@ test_that("the second block of a hurdle fit is not started at zero survival", {
     surv <- get_init_predictions(hu, sort(parts$hu$x), pred_nec3param, fa)
     expect_gt(min(surv), min(parts$hu$y) / 2)
   }
+})
+
+test_that("the boundary inset does not exclude a zero-bounded asymptote", {
+  # Stopping the band at the nearest observed value was measured and is too
+  # strict on a count response with structural zeros: it put the floor above the
+  # generating bot, which is the error the width exists to avoid. A tenth of the
+  # distance from the boundary keeps the floor below anything the design
+  # resolves.
+  set.seed(2)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 8)
+  mu <- c(20, 18, 12, 5, 1, 0.3)[match(x, c(0, 1, 2, 4, 8, 16))]
+  y <- rpois(length(x), mu) * rbinom(length(x), 1, 0.8)
+  lim <- init_limits(x, y, zero_bounded = TRUE, support = c(0, Inf))
+  expect_gt(lim[1], 0)
+  expect_lt(lim[1], 0.3)
+  expect_lt(lim[1], min(y[y > 0]))
+})
+
+test_that("the spread is not decided by a single repeated observation", {
+  # One repeated predictor value contributes a variance on one degree of
+  # freedom. Preferring it to the differences the rest of the design offers made
+  # the band a function of that one pair.
+  set.seed(7)
+  x <- 1:24
+  y <- 1 - 0.03 * x + rnorm(24, 0, 0.03)
+  x2 <- c(x, 12)
+  y2 <- c(y, y[12])
+  expect_lt(abs(group_spread(x2, y2) / group_spread(x, y) - 1), 0.2)
+  # and with enough replication the pooled estimate is used
+  xr <- rep(c(0, 1, 5, 20), each = 5)
+  yr <- rnorm(20, rep(c(1, 0.8, 0.4, 0.1), each = 5), 0.05)
+  v <- vapply(split(yr, factor(xr)), var, numeric(1))
+  expect_equal(group_spread(xr, yr), sqrt(mean(v)))
+})
+
+test_that("a band with nothing to anchor on rejects every draw", {
+  # check_init_predictions() reads the band through min() and max(), which
+  # reorder it, so an inverted pair is read as the whole line and accepts
+  # everything. range(y) on an all-missing response did exactly that.
+  lim <- init_limits(rep(c(0, 1), each = 3), rep(NA_real_, 6))
+  expect_true(all(is.na(lim)))
+  expect_false(check_init_predictions(c(1, 0.5, 0.2, 0.1), lim))
+  expect_false(check_init_predictions(c(1e9, 1e5, -1e5, -1e9), lim))
 })
