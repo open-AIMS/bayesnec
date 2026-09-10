@@ -6,6 +6,15 @@
 > PR #304, so section 1 is a record of the defect rather than of current
 > behaviour. Section 2 was fixed in the same PR. The `top` and `bot` findings in
 > section 3 and in part 2 are open as #305 and still hold.
+>
+> **Two design types this sweep does not contain** --- complete effect at the
+> highest concentration, so that the top-dose group is entirely zero, and a
+> hurdle or zero-inflated fit whose survival declines with concentration --- are
+> measured by `notes/scripts/prior_hard_cases.R`, written for the review of
+> PR #307. Both exposed defects this sweep could not. Note also that this script
+> draws a new response inside its `prior_type` loop, so a ratio taken across the
+> two prior types compares priors built from different draws; the coverage
+> results are unaffected, because each prior is scored against its own data.
 
 # Default priors in bayesnec: an assessment against known parameter values
 

@@ -311,20 +311,37 @@ beta_from_mode_sd <- function(mode, spread) {
 #'
 #' \strong{The rule.} Take the observations at the lowest distinct predictor
 #' value for \code{top} and at the highest for \code{bot}. Extend to the next
-#' distinct value, and the next, until at least a twentieth of the observations
-#' and no fewer than three are included, but never past a fifth of the distinct
-#' values. The location is their mean. On a replicated design the extreme group
-#' already satisfies the first limit and is taken on its own, which is the
-#' control group for \code{top}; on a design with no replication the rule
-#' averages the few nearest values rather than returning a single observation.
+#' distinct value, and the next, until the subset holds a twentieth of the
+#' observations, and no fewer than three, but never past a fifth of the distinct
+#' concentrations. The location is their mean.
+#'
+#' On a replicated design the extreme group already satisfies the first limit
+#' and is taken on its own, which is the control group for \code{top}. On a
+#' densely sampled unreplicated predictor the second limit is loose and the rule
+#' averages the nearest few values: five of a hundred.
 #'
 #' The second limit is what keeps the second block of a hurdle or zero-inflated
-#' fit honest. \code{split_hurdle_response()} primes it from one survival
-#' proportion per concentration, so every group there is a single value and the
-#' first limit alone would average the three most extreme concentrations of a
-#' six-concentration design. Measured on such a design with survival falling
-#' from 0.99 to 0.01, that put the \code{hubot} prior's maximum density at 0.34
-#' against a true value of 0.014.
+#' fit honest. \code{split_hurdle_response()} primes that block from one
+#' survival proportion per concentration, so every group in it is a single value
+#' and the first limit alone would average the three most extreme concentrations
+#' of a six-concentration design. Measured on such a design with survival
+#' falling from 0.99 to 0.014, that put the \code{hubot} prior's maximum
+#' density at 0.34 against a true value of 0.014.
+#'
+#' \strong{What the second limit gives up.} On a design with fewer than ten
+#' concentrations and no replication the subset is one observation, because that
+#' design presents the same input as the hurdle block and the two cannot be told
+#' apart from the data. The location is then a single measurement and its
+#' standard error is the stand-in described below, which is the spread of the
+#' whole response. Where that exceeds \code{regularizing_factor} times the
+#' uninformative width the floor binds and the entry is widened towards the
+#' uninformative one, relocated rather than narrowed. Measured on an
+#' unreplicated eight-concentration series the ratio of the two standard
+#' deviations was 0.55 for \code{top} and 1.00 for \code{bot} on a Gamma
+#' response, and 0.40 for both on a gaussian one, where the stand-in is exactly
+#' the stated spread because the uninformative width is 2.5 times the same
+#' quantity. Widening on an anchor of one observation is the right answer, and
+#' it is a reason to replicate rather than a reason to narrow.
 #'
 #' \strong{Alternatives measured.} Five anchors were run through the whole
 #' audit on the same simulated data, scored as the number of the 720
@@ -342,20 +359,27 @@ beta_from_mode_sd <- function(mode, spread) {
 #' is at the level \code{top} describes and the highest is at the level
 #' \code{bot} describes.
 #'
-#' The first is exact for the threshold equations, whose mean below \code{nec}
-#' is \code{top} with no other term: \code{nec3param}, \code{nec4param},
-#' \code{neclin} and \code{necsigm}. For the hormesis equations it is exact at
-#' a predictor of zero, where the excess term contributes nothing --- that term
+#' The first is exact at a predictor of zero for fifteen of the 23 equations:
+#' all ten with a \code{nec} parameter, and \code{ecxlin}, \code{ecxexp},
+#' \code{ecxsigm}, \code{ecxwb2} and \code{ecxwb2p3}. That includes every
+#' hormesis equation, whose excess term contributes nothing there --- the term
 #' is \code{exp(slope) * x} for \code{nechorme}, \code{nechorme4},
-#' \code{neclinhorme}, \code{ecxhormebc4} and \code{ecxhormebc5}, and
+#' \code{neclinhorme}, \code{ecxhormebc4} and \code{ecxhormebc5},
 #' \code{x^(1 / (1 + exp(slope)))} for \code{nechormepwr} and
-#' \code{nechorme4pwr} --- but not at a lowest concentration above zero, where
-#' the power form is already substantial: \code{0.01^0.1} is 0.63. For the
-#' \code{ecx} equations it is a limit rather than an identity, since the mean at
-#' zero predictor is \code{top} plus a term of order
-#' \code{exp(-ec50 * exp(beta))}. In every case the lowest concentration is the
-#' best estimate of \code{top} the data offer, and it is closer to it than any
-#' quantile of the pooled response.
+#' \code{nechorme4pwr}, and a bounded form of the same for
+#' \code{nechormepwr01}. For the remaining eight --- \code{ecx4param},
+#' \code{ecxll3}, \code{ecxll4}, \code{ecxll5}, \code{ecxwb1},
+#' \code{ecxwb1p3}, \code{ecxhormebc4} and \code{ecxhormebc5} --- it is a
+#' limit rather than an identity, because the sigmoid denominator is not exactly
+#' 1 at zero. Measured at \code{top} 40, \code{bot} 5, \code{ec50} 2 and a
+#' decay rate of 1.5, the eight return 38.06 to 38.34 against a \code{top} of
+#' 40, an error of 4\%. Note that \code{ecxhormebc4} and \code{ecxhormebc5}
+#' appear in both lists: their excess term does vanish at zero, and their
+#' denominator does not.
+#'
+#' In every case the lowest concentration is the best estimate of \code{top}
+#' the data offer, and it is closer to it than any quantile of the pooled
+#' response.
 #'
 #' The second is a property of the design rather than of the equation, and where
 #' the highest concentration has not reached the lower asymptote the location for
@@ -386,11 +410,34 @@ beta_from_mode_sd <- function(mode, spread) {
 #' because \code{response_link_scale()} has already moved a zero onto the link
 #' scale and there is nothing left to exclude.
 #'
+#' Keeping the zeros at the \code{bot} end has a measured limitation under a
+#' zero-inflated family, where a share of them is structural after all, so the
+#' anchor inherits the zero-inflation share as a downward bias. On a
+#' \code{nec4param} \code{zero_inflated_poisson} design with a true \code{bot}
+#' of 5, eleven concentrations by six replicates and ten seeds per level, the
+#' mean location was 3.92 at a zero-inflation of 0.2, 3.27 at 0.4 and 2.39 at
+#' 0.6. Coverage held --- none of the 30 cells put the true value outside the
+#' central 95\% of the prior --- so this is a limitation of the justification
+#' rather than a defect, and the justification is exact only for a response
+#' whose zeros all come from the count process.
+#'
 #' \strong{The standard error is returned with the location} so that
 #' \code{regularizing_entry()} can floor the spread at it. A mean of six
 #' observations is not a precise estimate of a plateau, and a prior narrower
 #' than the noise in its own anchor is what put a true value outside an
 #' otherwise well-placed prior in the remaining cells.
+#'
+#' \strong{A binary endpoint with few replicates limits what any anchor read
+#' from the response can do.} Six replicates resolve a survival of 0.014 only to
+#' the nearest sixth, and at least one individual survives 8.1\% of the time, at
+#' which point the observed proportion is 0.167 --- twelve times the truth and
+#' the best estimate the group supplies. The regularizing entry follows it, and
+#' the standard-error floor cannot cover the gap because the cap holds the
+#' spread at the uninformative width. Over the 60 second-block lower-asymptote
+#' cells of \code{notes/scripts/prior_hard_cases.R} that happened 7 times
+#' against the 4.9 the binomial predicts. The \code{"uninformative"} entry for
+#' those families is a constant and is unaffected, which is the one respect in
+#' which reading the response is a liability rather than an improvement.
 #'
 #' A group whose observations are all equal states no variability of its own,
 #' which is not the same as estimating its mean exactly. It is the ordinary case
@@ -417,15 +464,28 @@ regularizing_location <- function(predictor, response, side,
                                   zero_bounded = FALSE) {
   n <- length(response)
   ux <- sort(unique(predictor), decreasing = side != "top")
-  # Two limits on how far the subset extends from the extreme concentration.
-  # At least a twentieth of the observations, and never fewer than three, so
-  # that a continuous unreplicated predictor gives a local average rather than a
-  # single point; and never more than a fifth of the distinct concentrations, so
-  # that the subset stays at the end of the series. The second limit is what
-  # keeps the second block of a hurdle fit honest: it is primed from one
-  # survival proportion per concentration, so every group there is a single
-  # value and the first limit alone would average the three most extreme
-  # concentrations of a six-concentration design.
+  # Two limits on how far the subset extends from the extreme concentration. It
+  # stops once it holds a twentieth of the observations, and never fewer than
+  # three, so that a densely sampled unreplicated predictor gives a local
+  # average rather than a single point; and it never takes more than a fifth of
+  # the distinct concentrations, so that it stays at the end of the series.
+  #
+  # The second limit is what keeps the second block of a hurdle or zero-inflated
+  # fit honest: that block is primed from one survival proportion per
+  # concentration, so every group in it is a single value and the first limit
+  # alone would average the three most extreme concentrations of a
+  # six-concentration design.
+  #
+  # A design with few concentrations and no replication is the case the two
+  # limits cannot separate, because it presents the same input: one observation
+  # per concentration and fewer than ten of them. It is resolved in favour of
+  # the second limit, so the subset is the single extreme observation. A
+  # range-based version of the limit was measured and resolves it the other way,
+  # at the price of the hurdle block: over the 420 cells of
+  # notes/scripts/prior_hard_cases.R it took the density of the prior at the
+  # true value below 0.15 of its own maximum in 6 cells against 1. What the
+  # single-observation subset gives up is stated where the standard error is
+  # computed below.
   min_n <- max(3, ceiling(0.05 * n))
   max_levels <- max(1, floor(0.2 * length(ux)))
   idx <- integer(0)
@@ -455,11 +515,23 @@ regularizing_location <- function(predictor, response, side,
   }
   location <- mean(y)
   if (zero_bounded && (!is.finite(location) || location <= 0)) {
-    # Every observation at the highest concentration is zero, so the asymptote
-    # is at or below whatever the endpoint can resolve. A tenth of the smallest
-    # positive observation states that, and is the term the released entry
-    # already used to keep its rate finite.
-    location <- min(response[response > 0]) / 10
+    pos <- response[is.finite(response) & response > 0]
+    if (side == "bot" && length(pos)) {
+      # Every observation at the highest concentration is zero, so the asymptote
+      # is at or below whatever the endpoint can resolve. A tenth of the
+      # smallest positive observation states that, and is the term the released
+      # entry already used to keep its rate finite.
+      location <- min(pos) / 10
+    } else {
+      # The subset is entirely zero at the *control*, which under a
+      # zero-inflated family is a run of structural zeros rather than a
+      # statement that the plateau is at the floor. A detection floor is the
+      # wrong location for top: it collapses the prior onto a scale that has
+      # nothing to do with the asymptote, which is the failure #210 exists to
+      # prevent. The extreme quantile of the positive part is the right stand-in
+      # and is what positive_scale() computes.
+      location <- positive_scale(response, probs = 0.95)
+    }
   }
   if (!is.finite(location)) {
     probs <- if (side == "top") 0.95 else 0.05
@@ -958,10 +1030,12 @@ define_prior <- function(model, family, predictor, response,
         location = loc_t[["location"]], location_se = loc_t[["se"]],
         uninformative_sd = sqrt(2) * positive_scale(response, probs = 0.75) / 2
       )
-      # The fudge term the released entry added to keep the rate finite is
-      # needed only on the spread now. The location comes from
-      # regularizing_location(), which averages positive observations and so is
-      # strictly positive wherever it returns a subset mean at all.
+      # The fudge term the released entry added to keep the rate finite is kept
+      # on the spread, which is taken from the same quantile the uninformative
+      # entry uses and so must match it exactly. The location comes from
+      # regularizing_location(), which keeps the zeros at this end of the series
+      # and so returns a tenth of the smallest positive observation where the
+      # whole group is zero; it is strictly positive either way.
       loc_b <- regularizing_location(predictor, response, "bot",
                                      zero_bounded = TRUE)
       u_b_g <- regularizing_entry(

@@ -44,15 +44,31 @@
   separately**: complete effect at the highest concentration, so that the
   top-dose group is entirely zero, and a hurdle or zero-inflated fit whose
   survival declines with concentration. Over 420 such cells --- ten seeds, three
-  designs, five families --- the prior density at the true value is below 0.15
-  of the prior's own maximum in 1 cell, against 60 for the released
-  `"regularizing"` set and 61 for the `"uninformative"` set. Two properties of
-  the anchor come from those designs. A zero at the highest concentration is the
-  endpoint responding and is kept in the average, where a zero at the control is
-  a structural one and is excluded; and the subset never extends past a fifth of
+  designs, five families --- the true value falls outside the central 95% of its
+  own prior in 12 cells, against 31 for the released `"regularizing"` set and
+  127 for the `"uninformative"` set; and the prior density at the true value is
+  below 0.15 of the prior's own maximum in 1 cell, against 60 and 61. The second
+  measure is reported alongside the first because a beta prior whose maximum
+  density is at 0.014 has nearly all its mass above it, so the interval measure
+  penalises a well-placed prior on a bounded parameter near its boundary.
+
+  Eleven of those 12 cells are sampling error in a six-replicate binary group
+  rather than a property of the rule. Six replicates resolve a survival of 0.014
+  only to the nearest sixth, and at least one individual survives 8.1% of the
+  time, at which point the observed proportion is 0.167 and the prior follows
+  it. That is the one respect in which reading the response is a liability: the
+  `"uninformative"` entry for those families is a constant and is unaffected.
+
+  Three properties of the anchor come from those designs. A zero at the highest
+  concentration is the endpoint responding and is kept in the average, where a
+  zero at the control is a structural one and is excluded; where every
+  observation at the highest concentration is zero the location is a tenth of
+  the smallest positive observation, and at the control it is the extreme
+  quantile of the positive part; and the subset never extends past a fifth of
   the concentrations tested, which is what keeps the second block of a hurdle
   fit, primed from one survival proportion per concentration, from averaging
-  half the design.
+  half the design. The scripts are archived at
+  `notes/scripts/prior_hard_cases.R`.
 
   **The 0-1 bounded families now read the response.** `beta(5, 1)` against
   `beta(5, 2)` changed the width of the `top` prior by 12 per cent and did not

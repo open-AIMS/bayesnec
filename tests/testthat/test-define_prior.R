@@ -1483,16 +1483,94 @@ test_that("the uninformative entries are the ones Fisher et al. (2024) state", {
       expect_identical(bot, paste0("normal(", quantile(yl, 0.1), ", ",
                                    sd(yl) * 2.5, ")"))
     } else if (cs$branch == "gamma") {
-      # gamma with shape 2 and its mean at the quartile
+      # gamma with shape 2 and its mean at the quartile. The quantile is taken
+      # with stats::quantile() rather than through positive_scale(), which is an
+      # internal of the code under test; the response here has no zeros, which
+      # is the case positive_scale() is documented to leave untouched, so the
+      # two agree and the assertion does not depend on it.
+      expect_equal(sum(cs$y == 0), 0)
       expect_identical(top, paste0("gamma(2, ",
-                                   1 / (bayesnec:::positive_scale(yl, 0.75) / 2),
-                                   ")"))
+                                   1 / (unname(quantile(yl, 0.75)) / 2), ")"))
       expect_identical(bot, paste0("gamma(2, ",
-                                   1 / ((bayesnec:::positive_scale(yl, 0.25) +
+                                   1 / ((unname(quantile(yl, 0.25)) +
                                      min(yl[yl > 0]) / 100) / 2), ")"))
     } else {
       expect_identical(top, "beta(5, 2)")
       expect_identical(bot, "beta(2, 5)")
     }
   }
+})
+
+# Two further defects found in the second round of review of PR #307.
+
+test_that("an all-zero control does not put top at the detection floor", {
+  # The detection-floor fallback -- a tenth of the smallest positive
+  # observation -- is the right location for bot where the highest
+  # concentration is entirely zero. Applied at the other end it is the #210
+  # collapse: a control of structural zeros, which a zero-inflated family
+  # produces routinely, put top at 0.1 against a true top of 40 and made the
+  # two asymptotes near-identical.
+  set.seed(305)
+  x <- as.numeric(rep(0:5, each = 6))
+  y <- as.numeric(rpois(36, c(40, 40, 40, 20, 6, 5)[x + 1]) *
+                    rbinom(36, 1, 0.5))
+  y[x == 0] <- 0
+  loc <- bayesnec:::regularizing_location(x, y, "top", zero_bounded = TRUE)
+  expect_equal(loc[["location"]], bayesnec:::positive_scale(y, probs = 0.95))
+  expect_gt(loc[["location"]], min(y[y > 0]))
+  pr <- as.data.frame(define_prior(
+    "nec4param",
+    brms::zero_inflated_poisson(link = "identity", link_zi = "identity"),
+    x, y, prior_type = "regularizing"
+  ))
+  a <- prior_pars(pr$prior[pr$nlpar == "top"])
+  expect_gt(pgamma(20, a[1], a[2], lower.tail = FALSE), 0.5)
+  # and the two asymptotes are still distinguishable
+  b <- prior_pars(pr$prior[pr$nlpar == "bot"])
+  expect_gt((a[1] - 1) / a[2], (b[1] - 1) / b[2])
+})
+
+test_that("the extension limit is a fifth of the concentrations, and binds", {
+  # A design with few concentrations and no replication presents the same input
+  # as the second block of a hurdle fit -- one observation per concentration,
+  # and fewer than ten of them -- so the two cannot be told apart from the data
+  # and the limit resolves both the same way. This pins that choice and the
+  # consequence, which is that the entry is relocated rather than narrowed.
+  x <- seq(0, 10, length.out = 8)
+  set.seed(305)
+  y <- 5 + 35 * exp(-0.5 * pmax(x - 3, 0)) + rnorm(8, 0, 3)
+  loc <- bayesnec:::regularizing_location(x, y, "top")
+  expect_equal(floor(0.2 * length(unique(x))), 1)
+  expect_equal(loc[["location"]], y[1])
+  # The standard error stands in for a group that cannot supply one. How far it
+  # then widens the entry depends on the branch: on a Gamma response the
+  # uninformative width is a fraction of a quartile and the floor reaches the
+  # cap, while on a gaussian one the uninformative width is 2.5 sd(y) and the
+  # stand-in of sd(y) is exactly the stated spread, so nothing changes there.
+  r <- as.data.frame(define_prior("nec4param", Gamma(link = "identity"), x, y,
+                                  prior_type = "regularizing"))
+  u <- as.data.frame(define_prior("nec4param", Gamma(link = "identity"), x, y,
+                                  prior_type = "uninformative"))
+  ratio <- vapply(c("top", "bot"), function(np) {
+    prior_moments(r$prior[r$nlpar == np])[["sd"]] /
+      prior_moments(u$prior[u$nlpar == np])[["sd"]]
+  }, numeric(1))
+  expect_true(all(ratio >= bayesnec:::regularizing_factor - 1e-6))
+  expect_true(all(ratio <= 1 + 1e-6))
+  expect_gt(max(ratio), bayesnec:::regularizing_factor + 1e-3)
+  # relocated even where it is not narrowed
+  expect_false(identical(prior_moments(r$prior[r$nlpar == "top"])[["mode"]],
+                         prior_moments(u$prior[u$nlpar == "top"])[["mode"]]))
+  # a densely sampled unreplicated predictor is not limited by it
+  set.seed(305)
+  xd <- sort(runif(100, 0, 10))
+  yd <- 5 + 35 * exp(-0.8 * pmax(xd - 4, 0)) + rnorm(100)
+  expect_equal(bayesnec:::regularizing_location(xd, yd, "top")[["location"]],
+               mean(yd[seq_len(5)]))
+  # and a replicated design is untouched: the control group alone satisfies the
+  # observation limit, so the subset is one concentration
+  xr <- as.numeric(rep(seq(0, 10, length.out = 11), each = 6))
+  yr <- rnorm(66, 10)
+  expect_equal(bayesnec:::regularizing_location(xr, yr, "top")[["location"]],
+               mean(yr[xr == min(xr)]))
 })
