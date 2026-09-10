@@ -9,7 +9,6 @@
 #' sampled priors, "ggplot" (default) returns a \code{\link[ggplot2]{ggplot}}
 #'  and "base" returns a histogram in base R.
 #'
-#' @importFrom stats rgamma rnorm rbeta runif
 #' @importFrom graphics hist
 #' @importFrom ggplot2 ggplot aes geom_histogram facet_wrap theme_bw labs
 #' @importFrom tidyr pivot_longer
@@ -44,7 +43,6 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
     stop("plot must be NA, or a character string of either ",
          "\"ggplot\" or \"base\"")
   }
-  fcts <- c(gamma = rgamma, normal = rnorm, beta = rbeta, uniform = runif)
   priors <- as.data.frame(priors) |>
     filter(class == "b")
   priors <- priors[priors$prior != "", ]
@@ -66,10 +64,10 @@ sample_priors <- function(priors, n_samples = 10000, plot = "ggplot") {
     }
     bits <- gsub("\\(|\\)", ",", priors$prior[j])
     bits <- strsplit(bits, ",", fixed = TRUE)[[1]]
-    fct_i <- bits[1]
+    fct_i <- prior_sampler(bits[1])
     v1 <- as.numeric(bits[2])
     v2 <- as.numeric(bits[3])
-    out[[j]] <- fcts[[fct_i]](n_samples, v1, v2)
+    out[[j]] <- fct_i(n_samples, v1, v2)
     if (any(!is.na(as.numeric(priors[j, c("lb", "ub")])))) {
       n_bounds <- sum(!is.na(priors[j, c("lb", "ub")]))
       if (n_bounds == 2) {

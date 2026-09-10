@@ -978,3 +978,61 @@ test_that("a long search says it is still running", {
   # and it still falls back when the cap is reached
   expect_match(msg, "failed to find initial values")
 })
+
+# #302: the sampling table was written out at each of the three places that
+# needed it, and lognormal was in none of them. lognormal is now the default
+# prior for nec on a predictor supplied on the dose scale, so every fit draws
+# initial values from one, and it is drawn under truncation to the tested range.
+
+lognormal_prior_df <- function(nec_prior = "lognormal(0, 2.3496)") {
+  data.frame(prior = c("normal(1,1)", "normal(0,5)", "normal(0.5,1)",
+                       nec_prior),
+             class = "b", coef = "", group = "", resp = "", dpar = "",
+             nlpar = c("top", "beta", "bot", "nec"),
+             lb = c("", "", "", "0"), ub = c("", "", "", "100"),
+             stringsAsFactors = FALSE)
+}
+
+test_that("make_inits draws a truncated lognormal for nec", {
+  set.seed(302)
+  fct_args <- c("b_top", "b_beta", "b_bot", "b_nec")
+  out <- bayesnec:::make_inits("nec4param", fct_args,
+                               priors = lognormal_prior_df(), chains = 3)
+  expect_length(out, 3)
+  for (chain in out) {
+    expect_setequal(names(chain), fct_args)
+    # the rejection loop against the bounds terminates and respects them
+    expect_gt(as.numeric(chain$b_nec), 0)
+    expect_lt(as.numeric(chain$b_nec), 100)
+  }
+})
+
+test_that("make_inits names a distribution it cannot draw from", {
+  # Previously fcts[[dist]] was NULL and the call failed with "attempt to apply
+  # non-function", naming neither the prior nor the distribution.
+  expect_error(
+    bayesnec:::make_inits("nec4param",
+                          c("b_top", "b_beta", "b_bot", "b_nec"),
+                          priors = lognormal_prior_df("cauchy(0, 1)"),
+                          chains = 2),
+    "cauchy"
+  )
+  expect_error(
+    bayesnec:::make_inits("nec4param",
+                          c("b_top", "b_beta", "b_bot", "b_nec"),
+                          priors = lognormal_prior_df("cauchy(0, 1)"),
+                          chains = 2),
+    "gamma, normal, beta, uniform, lognormal"
+  )
+})
+
+test_that("surrounding whitespace in a prior string is tolerated", {
+  # prior_string() never writes one, but a user assembling a data frame by hand
+  # can, and the parsed name reached the lookup untrimmed.
+  set.seed(302)
+  out <- bayesnec:::make_inits("nec4param",
+                               c("b_top", "b_beta", "b_bot", "b_nec"),
+                               priors = lognormal_prior_df(" lognormal(0, 1)"),
+                               chains = 1)
+  expect_gt(as.numeric(out[[1]]$b_nec), 0)
+})

@@ -39,7 +39,33 @@ hurdle_dpar <- function(family) {
 #' and initial values should come from whatever family that subset looks like:
 #' Gamma for hurdle_gamma, Beta for zero_inflated_beta.
 #'
+#' The mean link the caller chose is used here rather than replaced. brms
+#' applies the inverse mean link to the whole non-linear expression, so under
+#' \code{hurdle_gamma(link = "log")} the generated Stan code reads
+#' \code{mu = exp(nlp_bot + (nlp_top - nlp_bot) * ...)} and \code{top} and
+#' \code{bot} are on the log scale. Returning an identity-link family here made
+#' \code{\link{define_prior}} build their priors from the untransformed
+#' response, as it does for a fit that really is on the identity link, so the
+#' priors described a different scale from the parameters. On
+#' \code{zero_inflated_beta(link = "logit")} that produced \code{beta(5, 2)}
+#' bounded to [0, 1] for a \code{top} whose true value on the logit scale was
+#' 2.2, and \code{beta(2, 5)} for a \code{bot} that must be negative for any
+#' response floor below 0.5 --- a support that excludes the answer rather than
+#' merely misplacing density. The non-hurdle route has always handled this, by
+#' reading the response on the link scale and taking the unbounded normal
+#' entries for a log or logit link, which is what Fisher et al. (2024) describe
+#' for "any response variable for which the link ensures valid values of the
+#' response can take from -Inf to Inf, including log and logit". See #302.
+#'
+#' The second block is unaffected and is deliberately left on the identity
+#' link: \code{\link{validate_family}} requires \code{link_hu} and
+#' \code{link_zi} to be \code{"identity"}, because that block is written as
+#' \code{1 - <non-zero probability>} and any other link would model something
+#' else.
+#'
 #' @param family Either a \code{\link[stats]{family}} object or a family tag.
+#' A tag names a family and nothing more, so it takes the identity link ---
+#' the one \code{\link{bnec}} assigns where it chooses one.
 #'
 #' @return An object of class \code{\link[stats]{family}}.
 #'
@@ -48,10 +74,12 @@ hurdle_dpar <- function(family) {
 #'
 #' @noRd
 hurdle_mu_family <- function(family) {
-  fam_tag <- if (inherits(family, "family")) family$family else family
+  is_fam <- inherits(family, "family")
+  fam_tag <- if (is_fam) family$family else family
+  link <- if (is_fam && !is.null(family$link)) family$link else "identity"
   switch(unname(hurdle_mu_fams[[fam_tag]]),
-         Gamma = Gamma(link = "identity"),
-         beta = Beta(link = "identity"),
+         Gamma = Gamma(link = link),
+         beta = Beta(link = link),
          stop("No mu family defined for ", fam_tag, ".", call. = FALSE))
 }
 
