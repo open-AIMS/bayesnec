@@ -237,8 +237,19 @@ beta_from_mode_sd <- function(mode, spread) {
   # concentration needed grows as the square of the reciprocal of the spread and
   # a fixed ceiling would silently return the ceiling for a narrow request.
   hi <- 4
-  while (sd_at(hi) > spread && hi < 1e8) {
+  while (sd_at(hi) > spread && hi < 1e12) {
     hi <- hi * 2
+  }
+  # Doubling stops at a ceiling as well, or a spread of zero would not terminate.
+  # Where it is reached the bracket does not contain a root, and uniroot() would
+  # stop on end points of the same sign; the narrowest beta the search reached is
+  # returned instead. The spreads this is called with are bounded below by
+  # regularizing_factor times the width of beta(5, 2), so this is unreachable
+  # from define_prior() and exists so that a future caller gets a prior rather
+  # than an error.
+  if (sd_at(hi) > spread) {
+    ab <- shapes(hi)
+    return(c(shape1 = ab[1], shape2 = ab[2]))
   }
   n <- uniroot(function(n) sd_at(n) - spread, c(lo, hi),
                tol = .Machine$double.eps^0.5)$root
@@ -295,6 +306,19 @@ beta_from_mode_sd <- function(mode, spread) {
 #' has no meaning without replication: on a continuous predictor with one
 #' observation per value it reduces to the extremum, and on the same check it
 #' failed 4 of 10 \code{Gamma} cells where the rule above failed none.
+#'
+#' \strong{What the rule assumes.} That the lowest concentration in the design
+#' is at the level \code{top} describes and the highest is at the level
+#' \code{bot} describes. The first holds for every equation \pkg{bayesnec}
+#' fits: each is written so that its mean at zero predictor is \code{top},
+#' including the hormesis equations, whose excess term \code{exp(slope) * x}
+#' contributes nothing there. The second is a property of the design rather than
+#' of the equation, and where the highest concentration has not reached the
+#' lower asymptote the location for \code{bot} sits above the true value. That
+#' is a bias and not noise, so the standard-error floor does not widen the prior
+#' to cover it; the \code{"uninformative"} entry, whose location is the lower
+#' quartile of the whole response, is affected the same way and is the set to
+#' use on a design that does not reach its asymptote.
 #'
 #' \strong{Zeros.} On the branch where the parameter is bounded below at zero
 #' the mean is taken over the positive observations of that subset, for the
