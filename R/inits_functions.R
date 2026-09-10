@@ -592,9 +592,16 @@ group_spread <- function(x, y) {
 #' gaussian, Beta and poisson, so that the clamp and the boundary inset are
 #' exercised and not only the band --- by three predictor grids, three
 #' replication levels, three equations, a steep and a shallow curve, constant
-#' and fivefold-rising dispersion, twenty seeds. Of the 269 in-scope cells, four
-#' covers all of them; three covers 267, two 263 and one 240. By process at a
-#' width of four: 90 of 90 gaussian, 90 of 90 Beta, and 89 of 89 poisson.
+#' and fivefold-rising dispersion, twenty seeds. Of the 270 in-scope cells, four
+#' covers all of them; three covers 268, two 264 and one 241. By process at a
+#' width of four: 90 of 90 gaussian, 90 of 90 Beta and 90 of 90 poisson. The
+#' excluded draws are covered at no width, which is what puts them out of scope.
+#'
+#' \strong{Coverage does not choose the spread.} All three estimators measured
+#' reach 270 of 270 at a width of four and separate only at one, so the case for
+#' the pooled and half-series spread rests on the other two measurements ---
+#' robustness to one aberrant observation, and the width of the band relative to
+#' the response range --- and not on coverage. See \code{\link{group_spread}}.
 #'
 #' \strong{Four rather than five, and why the earlier answer was five.} Under a
 #' whole-series spread on an unreplicated design the gaussian process needed

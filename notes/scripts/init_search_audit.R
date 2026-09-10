@@ -70,6 +70,23 @@ designs <- function() {
   )
 }
 
+# The second exclusion, stated as the mechanism rather than as a set of cells.
+# On a zero-bounded response whose extreme concentration returns nothing but
+# zeros, regularizing_location() substitutes min(y[y > 0]) / 10 for the bot
+# location, so boundary_inset() floors the band at a tenth of that. A generating
+# bot below the floor cannot be covered at any width. See boundary_inset().
+floor_excludes <- function(bot, x, y, spec) {
+  if (!isTRUE(spec$zero_bounded) || !is.finite(spec$support[1])) {
+    return(FALSE)
+  }
+  extreme <- y[x == max(x)]
+  positive <- y[y > spec$support[1]]
+  if (length(positive) == 0 || any(extreme > spec$support[1])) {
+    return(FALSE)
+  }
+  bot < spec$support[1] + (min(positive) - spec$support[1]) / 100
+}
+
 # Is a value inside a band, to a relative tolerance.
 covers <- function(value, band) {
   tol <- sqrt(.Machine$double.eps) * max(1, abs(value))
@@ -248,8 +265,7 @@ measure_coverage <- function(ks = c(1, 2, 3, 4, 5), n_seed = 20,
         # see boundary_inset(). Both are confirmed width-invariant by the
         # per-width table this function returns.
         reaches = shape == "steep" || gn != "narrow",
-        floored = pn == "poisson" && rp == 1 && gn == "narrow" &&
-          shape == "steep",
+        floored = floor_excludes(bot, x, y, pr_spec),
         stringsAsFactors = FALSE)
     }
   }
