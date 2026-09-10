@@ -98,6 +98,21 @@ positive_scale <- function(response, probs) {
 #'     there.
 #' }
 #'
+#' \strong{The two halves are not measured on the same thing, and that is
+#' deliberate.} The location is read at one end of the predictor; the spread is
+#' inherited from the \code{"uninformative"} entry, which is built from a
+#' quantile of the pooled response --- \code{q75} or \code{q25} on the gamma
+#' branch, \code{sd(response)} on the normal one. So on a design where most of
+#' the observations sit on the lower plateau, the width of the \code{top} prior
+#' is scaled by a quantity that describes \code{bot}. Deriving the spread from
+#' the same subset as the location instead would make the regularizing set a
+#' different prior rather than a narrowing of the released one, and it would put
+#' the width at the mercy of a six-observation group. The consequence of
+#' inheriting it is that where the \code{"uninformative"} entry is itself
+#' poorly scaled, so is this one: the cap can then hold the spread below the
+#' standard error of the location, which is the one case where the floor
+#' described below does not do what it is for.
+#'
 #' Each family's entry is then whichever distribution matches the parameter's
 #' support -- normal on the unbounded branch, gamma on the positive branch,
 #' beta on the unit-interval branch -- with its parameters set so that its
@@ -155,6 +170,14 @@ regularizing_factor <- 0.4
 #' how the two entries differ: the central 95\% interval reaches the farthest
 #' concentration under \code{"uninformative"} and the central 98\% interval
 #' does under \code{"regularizing"}.
+#'
+#' That argument is about the lognormal branch, whose width is derived from the
+#' series. On the branch for a predictor the user has already logged the width
+#' is \code{10 * sd(z)}, a constant Fisher et al. (2024) state rather than one
+#' derived from coverage, so the argument does not carry to it. The same factor
+#' is applied there, and the justification is the measurement rather than the
+#' derivation: the 30 cells above include the log-transformed designs, and a
+#' factor of 0.4 fails on them as well.
 #'
 #' @noRd
 regularizing_predictor_factor <- qnorm(0.975) / qnorm(0.99)
@@ -287,13 +310,21 @@ beta_from_mode_sd <- function(mode, spread) {
 #' leaves none.
 #'
 #' \strong{The rule.} Take the observations at the lowest distinct predictor
-#' value for \code{top} and at the highest for \code{bot}, extending to the
-#' next distinct value, and the next, until at least a twentieth of the
-#' observations and no fewer than three are included. The location is their
-#' mean. On a replicated design the extreme group is already larger than that
-#' and is taken on its own, which is the control group for \code{top}; on a
-#' design with no replication the rule averages the few nearest values rather
-#' than returning a single observation.
+#' value for \code{top} and at the highest for \code{bot}. Extend to the next
+#' distinct value, and the next, until at least a twentieth of the observations
+#' and no fewer than three are included, but never past a fifth of the distinct
+#' values. The location is their mean. On a replicated design the extreme group
+#' already satisfies the first limit and is taken on its own, which is the
+#' control group for \code{top}; on a design with no replication the rule
+#' averages the few nearest values rather than returning a single observation.
+#'
+#' The second limit is what keeps the second block of a hurdle or zero-inflated
+#' fit honest. \code{split_hurdle_response()} primes it from one survival
+#' proportion per concentration, so every group there is a single value and the
+#' first limit alone would average the three most extreme concentrations of a
+#' six-concentration design. Measured on such a design with survival falling
+#' from 0.99 to 0.01, that put the \code{hubot} prior's maximum density at 0.34
+#' against a true value of 0.014.
 #'
 #' \strong{Alternatives measured.} Five anchors were run through the whole
 #' audit on the same simulated data, scored as the number of the 720
@@ -309,24 +340,51 @@ beta_from_mode_sd <- function(mode, spread) {
 #'
 #' \strong{What the rule assumes.} That the lowest concentration in the design
 #' is at the level \code{top} describes and the highest is at the level
-#' \code{bot} describes. The first holds for every equation \pkg{bayesnec}
-#' fits: each is written so that its mean at zero predictor is \code{top},
-#' including the hormesis equations, whose excess term \code{exp(slope) * x}
-#' contributes nothing there. The second is a property of the design rather than
-#' of the equation, and where the highest concentration has not reached the
-#' lower asymptote the location for \code{bot} sits above the true value. That
-#' is a bias and not noise, so the standard-error floor does not widen the prior
-#' to cover it; the \code{"uninformative"} entry, whose location is the lower
-#' quartile of the whole response, is affected the same way and is the set to
-#' use on a design that does not reach its asymptote.
+#' \code{bot} describes.
 #'
-#' \strong{Zeros.} On the branch where the parameter is bounded below at zero
-#' the mean is taken over the positive observations of that subset, for the
-#' reason \code{positive_scale()} records: a zero-inflated response mixes
-#' structural zeros into every summary of its level, and \code{top} is the mean
-#' of the count process rather than of the mixture. Elsewhere the mean is taken
-#' over all of them, because \code{response_link_scale()} has already moved a
-#' zero onto the link scale and there is nothing left to exclude.
+#' The first is exact for the threshold equations, whose mean below \code{nec}
+#' is \code{top} with no other term: \code{nec3param}, \code{nec4param},
+#' \code{neclin} and \code{necsigm}. For the hormesis equations it is exact at
+#' a predictor of zero, where the excess term contributes nothing --- that term
+#' is \code{exp(slope) * x} for \code{nechorme}, \code{nechorme4},
+#' \code{neclinhorme}, \code{ecxhormebc4} and \code{ecxhormebc5}, and
+#' \code{x^(1 / (1 + exp(slope)))} for \code{nechormepwr} and
+#' \code{nechorme4pwr} --- but not at a lowest concentration above zero, where
+#' the power form is already substantial: \code{0.01^0.1} is 0.63. For the
+#' \code{ecx} equations it is a limit rather than an identity, since the mean at
+#' zero predictor is \code{top} plus a term of order
+#' \code{exp(-ec50 * exp(beta))}. In every case the lowest concentration is the
+#' best estimate of \code{top} the data offer, and it is closer to it than any
+#' quantile of the pooled response.
+#'
+#' The second is a property of the design rather than of the equation, and where
+#' the highest concentration has not reached the lower asymptote the location for
+#' \code{bot} sits above the true value. That is a bias and not noise, so the
+#' standard-error floor does not widen the prior to cover it; the
+#' \code{"uninformative"} entry, whose location is the lower quartile of the
+#' whole response, is affected the same way and is the set to use on a design
+#' that does not reach its asymptote.
+#'
+#' \strong{Zeros.} A zero means something different at each end of the series,
+#' so the zero-bounded branch treats the two ends differently. At the control a
+#' zero is a structural one --- the zero-inflated families exist for responses
+#' where a share of the observations are zero whatever the concentration --- and
+#' including it drags the estimate below the mean of the count process that
+#' \code{top} describes, which is the reason \code{positive_scale()} exists. So
+#' the \code{top} mean is taken over the positive observations of the subset. At
+#' the highest concentration a zero is the endpoint responding, and it is the
+#' observation that says most about how low \code{bot} is, so the \code{bot}
+#' mean is taken over all of them. Filtering there estimated the asymptote from
+#' the survivors alone: on a \code{poisson} design of six concentrations
+#' descending to complete effect it put the \code{bot} prior's maximum density
+#' at 10.8 against a true \code{bot} of zero, where the released entry put it at
+#' 3.07. Where every observation at the highest concentration is zero the
+#' location is a tenth of the smallest positive observation in the response,
+#' which is the term the released entry already used to keep its rate finite.
+#'
+#' On the other branches the mean is taken over every observation of the subset,
+#' because \code{response_link_scale()} has already moved a zero onto the link
+#' scale and there is nothing left to exclude.
 #'
 #' \strong{The standard error is returned with the location} so that
 #' \code{regularizing_entry()} can floor the spread at it. A mean of six
@@ -334,11 +392,20 @@ beta_from_mode_sd <- function(mode, spread) {
 #' than the noise in its own anchor is what put a true value outside an
 #' otherwise well-placed prior in the remaining cells.
 #'
+#' A group whose observations are all equal states no variability of its own,
+#' which is not the same as estimating its mean exactly. It is the ordinary case
+#' for a binary response --- every control individual survived --- so
+#' \code{sd()} is zero on exactly the group that says least about a proportion.
+#' The spread of the whole response stands in there. It is wider than a pooled
+#' within-group standard deviation would be, and so errs towards a wider prior,
+#' which is the safe direction for a floor.
+#'
 #' @param predictor A \code{\link[base]{numeric}} vector of the predictor.
 #' @param response A \code{\link[base]{numeric}} vector of the response,
 #' already on the link scale.
 #' @param side One of \code{"top"} or \code{"bot"}.
-#' @param positive_only Whether to average the positive observations only.
+#' @param zero_bounded Whether the parameter is bounded below at zero, which is
+#' the gamma branch. It selects the treatment of zeros described above.
 #'
 #' @return A named \code{\link[base]{numeric}} vector of length 2, the
 #' location and its standard error.
@@ -347,44 +414,68 @@ beta_from_mode_sd <- function(mode, spread) {
 #'
 #' @noRd
 regularizing_location <- function(predictor, response, side,
-                                  positive_only = FALSE) {
+                                  zero_bounded = FALSE) {
   n <- length(response)
-  # At least a twentieth of the observations, and never fewer than three. On a
-  # replicated design the extreme group is already larger than that and is taken
-  # on its own; on a design with no replication the rule averages the few
-  # nearest values instead of returning a single observation.
-  min_n <- max(3, ceiling(0.05 * n))
   ux <- sort(unique(predictor), decreasing = side != "top")
+  # Two limits on how far the subset extends from the extreme concentration.
+  # At least a twentieth of the observations, and never fewer than three, so
+  # that a continuous unreplicated predictor gives a local average rather than a
+  # single point; and never more than a fifth of the distinct concentrations, so
+  # that the subset stays at the end of the series. The second limit is what
+  # keeps the second block of a hurdle fit honest: it is primed from one
+  # survival proportion per concentration, so every group there is a single
+  # value and the first limit alone would average the three most extreme
+  # concentrations of a six-concentration design.
+  min_n <- max(3, ceiling(0.05 * n))
+  max_levels <- max(1, floor(0.2 * length(ux)))
   idx <- integer(0)
-  for (v in ux) {
-    idx <- c(idx, which(predictor == v))
-    if (length(idx) >= min_n) {
+  for (i in seq_along(ux)) {
+    idx <- c(idx, which(predictor == ux[i]))
+    if (length(idx) >= min_n || i >= max_levels) {
       break
     }
   }
   y <- response[idx]
-  if (positive_only) {
+  # The zero-bounded branch treats the two ends differently, because a zero
+  # means something different at each. At the control a zero is a structural
+  # one -- the zero-inflated families exist for responses where a share of the
+  # observations are zero whatever the concentration -- and including it drags
+  # the estimate of the plateau below the mean of the count process that top
+  # describes, which is the reason positive_scale() exists. At the highest
+  # concentration a zero is the endpoint responding, and it is the observation
+  # that says most about how low bot is; excluding it estimates the asymptote
+  # from the survivors alone. Measured on a poisson design of six
+  # concentrations descending to complete effect, filtering put the bot prior's
+  # maximum density at 10.8 against a true bot of zero.
+  if (zero_bounded && side == "top") {
     pos <- y[y > 0]
     if (length(pos)) {
       y <- pos
     }
   }
   location <- mean(y)
-  # A subset that is empty, non-finite, or -- on the zero-bounded branch -- not
-  # positive states no level. The extreme quantile of the whole response stands
-  # in, which is what this replaced; it is reachable only on input the fit could
-  # not use in any case.
-  if (!is.finite(location) || (positive_only && location <= 0)) {
-    probs <- if (side == "top") 0.95 else 0.05
-    fallback <- if (positive_only) {
-      positive_scale(response, probs = probs)
-    } else {
-      unname(quantile(response, probs = probs))
-    }
-    return(c(location = fallback, se = 0))
+  if (zero_bounded && (!is.finite(location) || location <= 0)) {
+    # Every observation at the highest concentration is zero, so the asymptote
+    # is at or below whatever the endpoint can resolve. A tenth of the smallest
+    # positive observation states that, and is the term the released entry
+    # already used to keep its rate finite.
+    location <- min(response[response > 0]) / 10
   }
-  se <- if (length(y) > 1) sd(y) / sqrt(length(y)) else 0
-  if (!is.finite(se)) {
+  if (!is.finite(location)) {
+    probs <- if (side == "top") 0.95 else 0.05
+    location <- unname(quantile(response, probs = probs))
+  }
+  se <- if (length(y) > 1) sd(y) / sqrt(length(y)) else NA_real_
+  # A group whose observations are all equal states no variability of its own,
+  # and that is not the same as estimating its mean exactly. It is the ordinary
+  # case for a binary response: every control individual survived, so sd() is
+  # zero on the group that carries least information about a proportion. The
+  # spread of the whole response stands in, which is wider than a pooled
+  # within-group standard deviation would be and so errs towards a wider prior.
+  if (!is.finite(se) || se <= 0) {
+    se <- sd(response) / sqrt(max(length(y), 1))
+  }
+  if (!is.finite(se) || se < 0) {
     se <- 0
   }
   c(location = location, se = se)
@@ -399,6 +490,8 @@ regularizing_location <- function(predictor, response, side,
 #' @param location The intended maximum density, on the link scale.
 #' @param uninformative_sd The standard deviation of the
 #' \code{"uninformative"} prior for the same parameter on the same family.
+#' @param location_se The standard error of \code{location}, which the spread
+#' is floored at. Zero where the location was not estimated from a subset.
 #'
 #' @return A \code{\link[base]{character}} string of length 1, a \pkg{brms}
 #' prior string.
@@ -413,14 +506,20 @@ regularizing_entry <- function(branch, location, uninformative_sd,
   # without reference to how well they estimate it -- that puts a true value
   # outside the prior. The cap keeps the invariant a user selecting this set is
   # entitled to, that the regularizing prior is never wider than the
-  # uninformative one. So the ratio is regularizing_factor wherever the anchor
+  # uninformative one. Where the two conflict the cap wins, so on a response
+  # whose uninformative entry is narrower than the standard error of this
+  # entry's location the floor does not bind and the prior is narrower than that
+  # noise. That is inherited from the uninformative entry rather than introduced
+  # here; see the note on the two halves above regularizing_factor.
+  # So the ratio is regularizing_factor wherever the anchor
   # is estimated well and rises towards 1 where it is not. Measured over 420 top
   # and bot entries each built from one response -- 5 designs, 3 predictor
   # transforms, 7 families, 2 links -- the ratio is exactly regularizing_factor
-  # in 404, the floor binds in 16, of which 11 reach the cap, and it is above 1
-  # in none. Every cell where the floor binds is a bernoulli response, where one
-  # observation states only whether one individual responded, or a negbinomial
-  # one. On dev the same measurement ran 0.032 to 2.18 and was above 1 in 17.
+  # in 385, the floor binds in 35, of which 26 reach the cap, and it is above 1
+  # in none. The cells where the floor binds are the ones whose anchor is
+  # imprecise: a bernoulli response, where one observation states only whether
+  # one individual responded, and an over-dispersed count. On dev the same
+  # measurement ran 0.032 to 2.18 and was above 1 in 17.
   spread <- min(max(regularizing_factor * uninformative_sd, location_se),
                 uninformative_sd)
   # A response with no spread gives no scale to narrow, and every branch below
@@ -853,7 +952,7 @@ define_prior <- function(model, family, predictor, response,
     u_t_g <- u_b_g <- NA_character_
     if (gamma_scaled) {
       loc_t <- regularizing_location(predictor, response, "top",
-                                     positive_only = TRUE)
+                                     zero_bounded = TRUE)
       u_t_g <- regularizing_entry(
         "gamma",
         location = loc_t[["location"]], location_se = loc_t[["se"]],
@@ -864,7 +963,7 @@ define_prior <- function(model, family, predictor, response,
       # regularizing_location(), which averages positive observations and so is
       # strictly positive wherever it returns a subset mean at all.
       loc_b <- regularizing_location(predictor, response, "bot",
-                                     positive_only = TRUE)
+                                     zero_bounded = TRUE)
       u_b_g <- regularizing_entry(
         "gamma",
         location = loc_b[["location"]], location_se = loc_b[["se"]],
@@ -1250,7 +1349,16 @@ define_group_prior <- function(group_spec, predictor, response,
       # is a coefficient of variation of 1, which at two prior standard
       # deviations still admits a factor of e^2 on the mean and is far wider
       # than any group-level effect these designs carry. See #257.
-      log = if (is.finite(m_y) && m_y > 0) min(s_y / m_y, 1) else s_y,
+      # Capped at 1 / narrow rather than at 1, for the reason recorded below the
+      # cap argument: narrow enters s_y before the conversion, so a constant cap
+      # returns the same width under both prior types wherever it binds, and a
+      # user selecting "regularizing" then changes nothing for the parameter
+      # that prompted the choice. #294 fixed that for a parameter-level term
+      # through the `cap` argument and left this branch, which ogl reaches with
+      # cap = FALSE, at a constant. Measured on a response whose range is more
+      # than 25 times its mean, both prior types returned
+      # student_t(3, 0, 1). See #305.
+      log = if (is.finite(m_y) && m_y > 0) min(s_y / m_y, 1 / narrow) else s_y,
       logit = if (is.finite(m_y) && m_y > 0 && m_y < 1) {
         s_y / (m_y * (1 - m_y))
       } else {

@@ -13,7 +13,7 @@
   and a spread, and each family's entry is derived from it using whichever
   distribution matches the parameter's support, with its **mode** at the
   location and its standard deviation at the spread. On the same measurement the
-  ratio is `0.4` exactly in 404 of the 420 entries and is never above 1 (#305).
+  ratio is `0.4` exactly in 385 of the 420 entries and is never above 1 (#305).
 
   **The location is now read at the end of the predictor.** `top` is the level
   of the response before the curve responds and `bot` the level after it stops
@@ -35,8 +35,24 @@
   narrower than the noise in its own anchor states a precision the data do not
   supply. The spread is therefore `0.4` of the uninformative width or the
   standard error of the location, whichever is larger, and never more than the
-  uninformative width. The floor binds in 16 of the 420 entries measured, all on
-  a `bernoulli` or `negbinomial` response.
+  uninformative width. The floor binds in 35 of the 420 entries measured, on the
+  responses whose anchor is least precise: a `bernoulli` one, where a single
+  observation states only whether one individual responded, and an
+  over-dispersed count.
+
+  **Two designs the earlier prior sweep did not contain were measured
+  separately**: complete effect at the highest concentration, so that the
+  top-dose group is entirely zero, and a hurdle or zero-inflated fit whose
+  survival declines with concentration. Over 420 such cells --- ten seeds, three
+  designs, five families --- the prior density at the true value is below 0.15
+  of the prior's own maximum in 1 cell, against 60 for the released
+  `"regularizing"` set and 61 for the `"uninformative"` set. Two properties of
+  the anchor come from those designs. A zero at the highest concentration is the
+  endpoint responding and is kept in the average, where a zero at the control is
+  a structural one and is excluded; and the subset never extends past a fifth of
+  the concentrations tested, which is what keeps the second block of a hurdle
+  fit, primed from one survival proportion per concentration, from averaging
+  half the design.
 
   **The 0-1 bounded families now read the response.** `beta(5, 1)` against
   `beta(5, 2)` changed the width of the `top` prior by 12 per cent and did not
@@ -60,9 +76,14 @@
   parameter cells of the audit, against none at `0.84`.
 
   **Group-level scales take the same factor**, `0.4`, rather than the one half
-  they took before. Nothing here changes a released number: `prior_type` does
-  not exist on `master` (2.1.3.1, the CRAN release), so the whole
-  `"regularizing"` set is unreleased.
+  they took before, and the cap on the `ogl` log-scale conversion now scales
+  with the prior type. It was a constant, so on a response whose range is more
+  than 25 times its mean both prior types returned `student_t(3, 0, 1)` and
+  selecting the narrower set changed nothing for the parameter that prompted the
+  choice --- the defect #294 removed for a parameter-level term, left in place
+  on this branch. Nothing here changes a released number: `prior_type` does not
+  exist on `master` (2.1.3.1, the CRAN release), so the whole `"regularizing"`
+  set is unreleased.
 
 - **The `nec` and `ec50` prior is now a normal on the log of the predictor.**
   The three entries selected by the predictor's support --- `gamma(5, 4/m)`
