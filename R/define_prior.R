@@ -895,6 +895,18 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' and 0.945 under the stated rule. \code{prior_type} was therefore inert for
 #' these two parameters on one of the two routes.
 #'
+#' Two consequences of stating the rule this way are worth recording. The
+#' branch is selected by \code{min(u) < 0}, not by the user having logged the
+#' predictor, so every predictor that spans negative values now receives a prior
+#' with 98\% of its mass inside the tested range where it previously received
+#' \code{10 sd(z)} narrowed by 0.8425. That is the intended change for a logged
+#' concentration series and is unaudited for any other predictor that reaches
+#' below zero. And the rule is now one statement on both branches under
+#' \code{"regularizing"} but not under \code{"uninformative"}, so how much
+#' \code{prior_type} narrows this entry still depends on the route: a factor of
+#' 0.8425 where concentrations are supplied as recorded, and about sixteenfold
+#' on the series measured above where they are supplied logged.
+#'
 #' The two routes now agree on the spread for a series with no zero control,
 #' which is the strongest statement available and is weaker than route
 #' equivalence. Where the design has a control the two routes do not describe
