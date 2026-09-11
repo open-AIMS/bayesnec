@@ -15,6 +15,27 @@ with_parallel_plan <- function(code, workers = 2) {
   code
 }
 
+# Run `code` under a forking plan. Skips where forking is unavailable, which
+# is Windows, and RStudio or Positron everywhere.
+#
+# multisession is the backend the rest of the file uses because it is available
+# on every platform and serialises the round trip. Forking takes a different
+# path through all three of the things this file is about: the worker inherits
+# the parent's memory rather than being sent globals, it inherits the RNG state
+# at the fork rather than being given a stream, and it shares the parent's
+# stderr. None of that is exercised by multisession, so on the platforms where
+# forking works it is worth checking that the same guarantees hold.
+with_fork_plan <- function(code, workers = 2) {
+  skip_if_not_installed("parallelly")
+  skip_if_not(parallelly::supportsMulticore(),
+              "forking is not available on this platform")
+  old_limit <- options(parallelly.maxWorkers.localhost = Inf)
+  on.exit(options(old_limit), add = TRUE)
+  old <- future::plan(future::multicore, workers = workers)
+  on.exit(future::plan(old), add = TRUE)
+  code
+}
+
 skip_unless_future <- function() {
   skip_on_cran()
   skip_if_not_installed("future")
@@ -149,6 +170,41 @@ test_that("the initial-value search draws the same values in a worker", {
     bnec_model_lapply(models, draw_inits, parallel = TRUE)
   }))
   expect_identical(parallel, sequential)
+})
+
+test_that("a forking plan gives the same guarantees as a socket one", {
+  skip_unless_future()
+  # The three assertions this file turns on, run through the fork path. A
+  # forked worker inherits the parent's RNG state at the fork instead of being
+  # given a stream, so the kind restore has to hold there for a different
+  # reason than it does under multisession, and it is the backend on which
+  # sharing the parent's memory could hide a missing binding in
+  # narrow_environment().
+  draw <- function(i) {
+    set.seed(100 + i)
+    stats::runif(3)
+  }
+  sequential <- bnec_model_lapply(1:4, draw, parallel = FALSE)
+  set.seed(9)
+  before <- get(".Random.seed", envir = globalenv())
+  parallel <- with_fork_plan(bnec_model_lapply(1:4, draw, parallel = TRUE))
+  expect_identical(parallel, sequential)
+  expect_identical(get(".Random.seed", envir = globalenv()), before)
+  # And the failure contract, which under forking returns the try-error
+  # through shared memory rather than through serialisation.
+  out <- with_fork_plan(bnec_model_lapply(1:3, function(i) {
+    try(
+      if (i == 2) {
+        stop(fit_failure_condition("nec3param", "boom", NULL, NULL))
+      } else {
+        i
+      },
+      silent = TRUE
+    )
+  }, parallel = TRUE))
+  expect_true(inherits(out[[2]], "try-error"))
+  expect_identical(out[[3]], 3L)
+  expect_true(inherits(attr(out[[2]], "condition"), "bnec_fit_failure"))
 })
 
 test_that("a parallel run leaves the caller's RNG stream where it was", {
