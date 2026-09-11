@@ -13,8 +13,8 @@
 # Seven measurements, each printed with the numbers quoted in the pull request:
 #
 #   1. acceptance   per-chain acceptance and the contribution of each clause,
-#                   released criterion and band, over five designs and the
-#                   declining set;
+#                   released criterion and band, over six designs, both prior
+#                   sets and the declining set;
 #   2. width        the width and the spread the band uses, chosen against
 #                   coverage of the asymptotes of a known curve, and the
 #                   robustness of each spread to one aberrant observation;
@@ -45,16 +45,42 @@ CHAINS <- 4
 CAP <- 1e4
 
 # ---------------------------------------------------------------- designs ----
-# Two packaged growth series, one packaged unit-interval series, and the two
-# small designs the n_trials comment in R/inits_functions.R describes. The
-# simulated ones are generated under a fixed seed so the script is
-# reproducible.
+# Two packaged growth series, one packaged unit-interval series, the two
+# small designs the n_trials comment in R/inits_functions.R describes, and one
+# whose predictor is supplied already logged. The simulated ones are generated
+# under a fixed seed so the script is reproducible.
+#
+# log_supplied exists because the nec and ec50 prior is the only entry
+# prior_type changes for these parameters, and the branch #314 changes is the
+# one a predictor spanning negative values takes. Without it every design here
+# is on the recorded concentration scale, where the regularizing entry is the
+# same before and after #314.
+#
+# Its response is drawn from a separate stream and the global state is restored
+# afterwards, which is what keeps the five designs #312 measured on the draws
+# they had. Appending it to the list would not have been enough. designs() calls
+# set.seed() itself and the measurement loops call designs() once per design
+# iteration, so every design starts from the same state, and any draw added
+# inside designs() shifts that state for all of them rather than only for the
+# design it belongs to. Measured: without the restore, the first three normals
+# drawn in each of the five shared design iterations change from
+# -0.7693, 0.9019, 0.8418 to -0.0003, -0.2092, -0.8552.
+#
+# The same property makes the list order and length immaterial: because every
+# iteration reseeds, adding or reordering a design changes no other design.
 designs <- function() {
   d_a <- alga[alga$species == "c_proliferum" & alga$contaminant == "A", ]
   d_b <- alga[alga$species == "r_salina" & alga$contaminant == "B", ]
   set.seed(20260910)
   small_rep_y <- c(rnorm(5, 0.9, 0.05), rnorm(5, 0.75, 0.05),
                    rnorm(5, 0.35, 0.05), rnorm(5, 0.12, 0.05))
+  log_conc <- log(rep(c(0.1, 0.3, 1, 3, 10, 30, 100), each = 6))
+  log_mu <- pred_nec3param(x = log_conc, b_top = 0.9, b_beta = log(0.6),
+                           b_nec = log(3))
+  shared_state <- .Random.seed
+  set.seed(20260911)
+  log_y <- rnorm(length(log_mu), log_mu, 0.05)
+  assign(".Random.seed", shared_state, envir = globalenv())
   list(
     alga_cp_A = list(x = d_a$dose, y = d_a$sgr,
                      family = validate_family("gaussian")),
@@ -66,7 +92,9 @@ designs <- function() {
                      family = validate_family("gaussian")),
     small_unrep = list(x = c(0, 0.5, 1, 2, 4, 8, 16, 32),
                        y = c(0.98, 0.95, 0.88, 0.70, 0.42, 0.20, 0.08, 0.04),
-                       family = validate_family("gaussian"))
+                       family = validate_family("gaussian")),
+    log_supplied = list(x = log_conc, y = log_y,
+                        family = validate_family("gaussian"))
   )
 }
 
@@ -123,24 +151,46 @@ band_of <- function(dg, y, width = formals(init_limits)$width) {
               support = init_support(dg$family))
 }
 
+# check_models() reads its data argument through retrieve_var(), which looks up
+# the column by the "bnec_pop" attribute a bayesnecformula model frame has. A
+# bare list has no such attribute, so retrieve_var() returns NULL, and the
+# exclusion keyed on a negative predictor is skipped without saying so. That
+# made no difference while every design here was on the recorded concentration
+# scale; on the design supplied logged it retained ecxsigm, which raises the
+# predictor to a fractional power and so returns NaN at every x below zero for
+# every parameter draw. The cell therefore accepted nothing and ran every search
+# to the cap, and it measured a candidate bnec() would have dropped.
+# The response is passed as recorded rather than on the link scale, which is
+# what bnec() passes and what check_data() expects. Every design here is
+# gaussian on the identity link, so the two are the same today; they will not be
+# for a design added on another link, and check_models() reads the response for
+# the exclusions keyed on zeros and on bounds.
+bnec_frame <- function(x, y) {
+  d <- data.frame(x = x, y = y)
+  attr(d, "bnec_pop") <- c(x_var = "x", y_var = "y")
+  d
+}
+
 design_parts <- function(dg) {
   yl <- response_link_scale(dg$y, dg$family)
   list(x = dg$x, y = yl,
        released = range(yl, na.rm = TRUE),
        band = band_of(dg, yl),
        models = suppressMessages(
-         check_models(DECLINE, dg$family, list(predictor = dg$x))))
+         check_models(DECLINE, dg$family, bnec_frame(dg$x, dg$y))))
 }
 
 # ------------------------------------------------- 1. acceptance per chain ----
-measure_acceptance <- function(n_draw = 2000, seed = 30910) {
+measure_acceptance <- function(n_draw = 2000, seed = 30910,
+                               prior_type = "uninformative") {
   set.seed(seed)
   out <- list()
   for (dn in names(designs())) {
     dg <- designs()[[dn]]
     p <- design_parts(dg)
     for (m in p$models) {
-      pr <- try(suppressMessages(define_prior(m, dg$family, p$x, p$y)),
+      pr <- try(suppressMessages(define_prior(m, dg$family, p$x, p$y,
+                                              prior_type = prior_type)),
                 silent = TRUE)
       if (inherits(pr, "try-error")) next
       cl_o <- matrix(NA, n_draw, 5)
@@ -151,7 +201,7 @@ measure_acceptance <- function(n_draw = 2000, seed = 30910) {
         cl_n[i, ] <- clauses(d$pred, p$band)
       }
       out[[length(out) + 1]] <- data.frame(
-        design = dn, model = m,
+        design = dn, model = m, prior_type = prior_type,
         released = mean(apply(cl_o, 1, all)),
         band = mean(apply(cl_n, 1, all)),
         released_min = mean(cl_o[, 1]), released_max = mean(cl_o[, 2]),
@@ -159,7 +209,7 @@ measure_acceptance <- function(n_draw = 2000, seed = 30910) {
         declines = mean(cl_o[, 4]), distinct = mean(cl_o[, 5]),
         stringsAsFactors = FALSE)
     }
-    message("acceptance: ", dn)
+    message("acceptance: ", prior_type, " ", dn)
   }
   do.call(rbind, out)
 }
@@ -358,13 +408,14 @@ search_changed <- function(model, x, y, priors, family, chains = CHAINS,
   c(drawn = drawn, success = as.numeric(all(filled)))
 }
 
-measure_proposals <- function(seeds = 1:5) {
+measure_proposals <- function(seeds = 1:5, prior_type = "uninformative") {
   out <- list()
   for (dn in names(designs())) {
     dg <- designs()[[dn]]
     p <- design_parts(dg)
     for (m in p$models) {
-      pr <- try(suppressMessages(define_prior(m, dg$family, p$x, p$y)),
+      pr <- try(suppressMessages(define_prior(m, dg$family, p$x, p$y,
+                                              prior_type = prior_type)),
                 silent = TRUE)
       if (inherits(pr, "try-error")) next
       for (s in seeds) {
@@ -373,13 +424,13 @@ measure_proposals <- function(seeds = 1:5) {
         set.seed(1000 * s + 7)
         b <- search_changed(m, p$x, p$y, pr, dg$family)
         out[[length(out) + 1]] <- data.frame(
-          design = dn, model = m, seed = s,
+          design = dn, model = m, seed = s, prior_type = prior_type,
           released_drawn = a[["drawn"]], released_ok = a[["success"]],
           changed_drawn = b[["drawn"]], changed_ok = b[["success"]],
           stringsAsFactors = FALSE)
       }
     }
-    message("proposals: ", dn)
+    message("proposals: ", prior_type, " ", dn)
   }
   do.call(rbind, out)
 }
@@ -391,14 +442,16 @@ measure_proposals <- function(seeds = 1:5) {
 measure_truncation <- function(n_draw = 6000,
                                which_designs = c("alga_cp_A", "alga_rs_B",
                                                  "small_rep"),
-                               seed = 30912) {
+                               seed = 30912,
+                               prior_type = "uninformative") {
   set.seed(seed)
   out <- list()
   for (dn in which_designs) {
     dg <- designs()[[dn]]
     p <- design_parts(dg)
     for (m in p$models) {
-      pr <- try(suppressMessages(define_prior(m, dg$family, p$x, p$y)),
+      pr <- try(suppressMessages(define_prior(m, dg$family, p$x, p$y,
+                                              prior_type = prior_type)),
                 silent = TRUE)
       if (inherits(pr, "try-error")) next
       draws <- vector("list", n_draw)
@@ -414,14 +467,14 @@ measure_truncation <- function(n_draw = 6000,
         s <- sd(dm[, par])
         if (!is.finite(s) || s == 0) next
         out[[length(out) + 1]] <- data.frame(
-          design = dn, model = m, par = par,
+          design = dn, model = m, par = par, prior_type = prior_type,
           keep_released = mean(ok[, 1]), keep_band = mean(ok[, 2]),
           shift_released = (median(dm[ok[, 1], par]) - median(dm[, par])) / s,
           shift_band = (median(dm[ok[, 2], par]) - median(dm[, par])) / s,
           stringsAsFactors = FALSE)
       }
     }
-    message("truncation: ", dn)
+    message("truncation: ", prior_type, " ", dn)
   }
   do.call(rbind, out)
 }
@@ -627,10 +680,26 @@ measure_timing <- function(design = "alga_cp_A",
 selected <- commandArgs(trailingOnly = TRUE)
 run_this <- function(name) length(selected) == 0 || name %in% selected
 
+# Both default prior sets, each measurement run once per set under the same
+# seed rather than with prior_type as an inner loop. Interleaving would change
+# the draws every design receives, and the "uninformative" pass is what #309
+# and #312 report; run this way it reproduces them. Every table below is
+# therefore two tables, one per set, and the pairs are not paired draw for draw.
+PRIOR_TYPES <- c("uninformative", "regularizing")
+by_prior_type <- function(f, ...) {
+  do.call(rbind, lapply(PRIOR_TYPES, function(pt) f(..., prior_type = pt)))
+}
+
 if (run_this("acceptance")) {
-  acc <- measure_acceptance()
+  acc <- by_prior_type(measure_acceptance)
   cat("\n=== 1. per-chain acceptance, released criterion and band ===\n")
   print(acc, digits = 3, row.names = FALSE)
+  cat("\n  mean over equations, by design and prior type:\n")
+  print(aggregate(cbind(released, band) ~ design + prior_type, acc, mean),
+        digits = 3, row.names = FALSE)
+  cat("\n  mean over designs and equations, by prior type:\n")
+  print(aggregate(cbind(released, band) ~ prior_type, acc, mean), digits = 3,
+        row.names = FALSE)
 }
 
 if (run_this("width")) {
@@ -682,33 +751,46 @@ if (run_this("width")) {
 }
 
 if (run_this("proposals")) {
-  prop <- measure_proposals()
+  prop <- by_prior_type(measure_proposals)
   cat("\n=== 3. proposals drawn, released rule against the change ===\n")
-  tot <- aggregate(cbind(released_drawn, changed_drawn) ~ design + seed, prop,
-                   sum)
-  print(aggregate(cbind(released_drawn, changed_drawn) ~ design, tot, mean),
-        digits = 6, row.names = FALSE)
+  tot <- aggregate(cbind(released_drawn, changed_drawn) ~
+                     design + seed + prior_type, prop, sum)
+  print(aggregate(cbind(released_drawn, changed_drawn) ~ design + prior_type,
+                  tot, mean), digits = 6, row.names = FALSE)
   cat("\n  per equation, mean over seeds:\n")
-  print(aggregate(cbind(released_drawn, changed_drawn) ~ design + model, prop,
-                  mean), digits = 6, row.names = FALSE)
+  print(aggregate(cbind(released_drawn, changed_drawn) ~
+                    design + model + prior_type, prop, mean),
+        digits = 6, row.names = FALSE)
   cat("\n  searches that exhausted the cap, of ", nrow(prop), ": released ",
       sum(prop$released_ok == 0), ", changed ", sum(prop$changed_ok == 0),
       "\n", sep = "")
-  print(unique(prop[prop$released_ok == 0, c("design", "model")]),
-        row.names = FALSE)
+  print(unique(prop[prop$released_ok == 0,
+                    c("design", "model", "prior_type")]), row.names = FALSE)
 }
 
 if (run_this("truncation")) {
-  tr <- measure_truncation()
+  # The three designs #312 measured, so that the uninformative pass reproduces
+  # its medians, and the design supplied logged separately rather than pooled
+  # into them: a median taken over four designs is not the quantity #312
+  # reported.
+  tr <- by_prior_type(measure_truncation)
+  tr_log <- by_prior_type(measure_truncation, which_designs = "log_supplied")
   cat("\n=== 4. what each criterion keeps of the prior ===\n")
-  for (par in c("b_top", "b_bot", "b_nec", "b_ec50", "b_beta")) {
-    s <- tr[tr$par == par, ]
-    if (!nrow(s)) next
-    cat(sprintf(
-      "%-8s n=%3d  kept: released %.2f band %.2f   median shift, prior sd: released %+.3f band %+.3f\n",
-      par, nrow(s), median(s$keep_released), median(s$keep_band),
-      median(s$shift_released), median(s$shift_band)))
+  for (pt in PRIOR_TYPES) {
+    cat("\n ", pt, ":\n")
+    for (par in c("b_top", "b_bot", "b_nec", "b_ec50", "b_beta")) {
+      s <- tr[tr$par == par & tr$prior_type == pt, ]
+      if (!nrow(s)) next
+      cat(sprintf(
+        "%-8s n=%3d  kept: released %.2f band %.2f   median shift, prior sd: released %+.3f band %+.3f\n",
+        par, nrow(s), median(s$keep_released), median(s$keep_band),
+        median(s$shift_released), median(s$shift_band)))
+    }
   }
+  cat("\n  the design supplied logged, the only one whose nec and ec50 prior",
+      "#314 changes:\n")
+  print(tr_log[tr_log$par %in% c("b_nec", "b_ec50"), ], digits = 3,
+        row.names = FALSE)
   cat("\n  b_top, by design and equation:\n")
   print(tr[tr$par == "b_top", ], digits = 3, row.names = FALSE)
 }

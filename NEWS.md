@@ -84,14 +84,39 @@
   **`nec` and `ec50` are narrowed under `"regularizing"` as well**, which they
   were not: the predictor-scaled prior was identical under both sets, so
   selecting the narrower set did nothing for the two parameters a user most
-  often selects it for. It is narrowed by `qnorm(0.975) / qnorm(0.99)`, which is
-  `0.84`, and not by `0.4` like the response-scaled entries. Its width is not a
-  free choice --- it is set to the smallest width whose central 95% interval
-  still reaches the farthest concentration tested, which is what #302 exists to
-  guarantee --- so the only room to narrow it is the confidence level at which
-  it covers the series. Narrowing it by `0.4` instead puts the true threshold
-  outside the central 95% of the prior in 8 of the 30 design by transform by
-  parameter cells of the audit, against none at `0.84`.
+  often selects it for. The regularizing entry is now the width whose central
+  98% interval reaches the farthest concentration tested, with the location, the
+  distribution and the truncation the same under both sets. Where concentrations
+  are supplied as recorded the `"uninformative"` entry is the same rule at the
+  95% level, so on that route the two sets differ in the confidence level and in
+  nothing else. That width is not a free choice --- #302
+  exists because an entry that did not reach the farthest concentration tested
+  shipped --- so the confidence level is the only room there is to narrow it.
+  Narrowing it by `0.4` like the response-scaled entries instead puts the true
+  threshold outside the central 95% of the prior in 8 of the 30 design by
+  transform by parameter cells of the audit, against none at `0.84` (#305).
+
+  **That rule is stated directly rather than as a multiple of the
+  `"uninformative"` width**, so that it means the same thing whichever way the
+  predictor is supplied. As a multiple it did not. The uninformative width is a
+  coverage width where concentrations are supplied as recorded, but the constant
+  `10 sd(x)` where the user supplies `log(concentration)`, and on a 0.1 to 100
+  series over seven doses that constant is 24.87 against a tested range of 6.91
+  on the log scale. The regularizing prior was therefore uniform across the
+  tested series on that branch --- its truncated CDF at each dose was that
+  dose's position within the range to three decimal places --- so `prior_type`
+  was inert for `nec` and `ec50` for a user who had logged the predictor. The
+  two routes now agree on the spread where the series has no zero control and
+  its lowest tested concentration is below 1. Both conditions are needed,
+  because outside them the two are not the same predictor. A series with a
+  control is read differently on each route: the recorded-concentration route
+  drops the zero, while a user who logs the series must substitute a value for
+  it and that substitute is read. And the route is selected by whether the
+  predictor spans negative values, so a logged series whose lowest tested
+  concentration is at or above 1 stays non-negative, is not recognised as
+  logged, and is logged a second time.
+  Both `"uninformative"` entries are unchanged, and so is the regularizing entry
+  where concentrations are supplied as recorded (#314).
 
   **Group-level scales take the same factor**, `0.4`, rather than the one half
   they took before, and the cap on the `ogl` log-scale conversion now scales

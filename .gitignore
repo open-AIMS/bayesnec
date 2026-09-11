@@ -42,3 +42,16 @@ prompts/
 
 # Safety-net backups of untracked files before editing; never committed.
 superceded/
+
+# Container image for HPC vignette precompilation (see hpc/README.md).
+# Built locally, identity recorded in hpc/image.lock.
+*.sif
+.apptainer-tmp/
+
+# Written by hpc/precompile-hpc.sh so a later --fetch knows which deployment
+# it is collecting.
+.last-deploy
+
+# Local cluster settings for hpc/: account, login node, image path.
+# Copy hpc/local.conf.example to make one.
+hpc/local.conf

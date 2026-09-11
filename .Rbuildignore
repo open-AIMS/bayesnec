@@ -31,3 +31,6 @@ README.Rmd
 ^superceded$
 ^notes$
 ^cache$
+^hpc$
+^.*\.sif$
+^\.apptainer-tmp$

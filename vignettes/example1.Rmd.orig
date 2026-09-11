@@ -162,7 +162,7 @@ where the left-hand side of the formula is implemented exactly as in `brms`, inc
 library(bayesnec)
 
 exp_1 <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
-              data = binom_data, seed = 333, open_progress = FALSE)
+              data = binom_data, seed = 333)
 ```
 
 The function shows the progress of the `brms` fit and returns the usual `brms` output (with a few other elements added to this list). The function `plot(pull_brmsfit(exp_1))` can be used to plot the chains, so we can assess mixing and look for other potential issues with the model fit. We can also run a pairs plot that can help to assess issues with identifiability, and which also looks OK. There are a range of other model diagnostics that can be explored for `brms` model fits, using the function `pull_brmsfit`. We encourage you to explore the rich material already on GitHub regarding use and validation of [brms](https://github.com/paul-buerkner/brms) models.
@@ -198,7 +198,7 @@ The Beta-Binomial model can be useful for overdispersed Binomial data.
 ```{r, results = "hide"}
 exp_1b <- bnec(suc | trials(tot) ~ crf(log(raw_x), model = "nec4param"),
                data = binom_data, family = beta_binomial(link = "identity"),
-               seed = 333, open_progress = FALSE)
+               seed = 333)
 ```
 
 Fitting this data with the `beta_binomial` yields a much more realistic fit in terms of the confidence bounds (check `autoplot(exp_1b, xform = exp)`) and the spread in the data. Note that a dispersion estimate is not provided here, as overdispersion is only relevant for Poisson and Binomial data.
@@ -251,7 +251,7 @@ prop_data <- "https://pastebin.com/raw/123jq46d" |>
   dplyr::mutate(across(where(is.character), as.numeric))
 
 exp_2 <- bnec(resp ~ crf(log(raw_x + 1), model = "nec4param"),
-              data = prop_data, seed = 333, open_progress = FALSE)
+              data = prop_data, seed = 333)
 ```
 
 ```{r exmp1-beta, warning = FALSE, fig.width = 5}
@@ -289,7 +289,7 @@ First, we supply `bnec` with `data` (here `count_data`), and specify our formula
 
 ```{r, warning = FALSE, results = "hide"}
 exp_3 <- bnec(y ~ crf(x, model = "nec4param"), data = count_data,
-              seed = 333, open_progress = FALSE)
+              seed = 333)
 ```
 
 ```{r exmp1-poisson, warning = FALSE, fig.width = 5}
@@ -315,7 +315,7 @@ Fitting these with a Poisson gives credible bands that are far too narrow for th
 
 ```{r, warning = FALSE, results = "hide"}
 exp_3b <- bnec(y ~ crf(x, model = "nec4param"), data = count_data_od,
-               seed = 333, open_progress = FALSE)
+               seed = 333)
 ```
 
 ```{r exmp1-poisson-od, warning = FALSE, fig.width = 5}
@@ -327,7 +327,7 @@ We can refit these data by deliberately specifying the Negative binomial distrib
 
 ```{r, warning = FALSE, results = "hide"}
 exp_3c <- bnec(y ~ crf(x, model = "nec4param"), data = count_data_od,
-               family = "negbinomial", seed = 333, open_progress = FALSE)
+               family = "negbinomial", seed = 333)
 ```
 
 The resultant plot has wider, more realistic credible bands than the Poisson fit to the same data. Note that a dispersion estimate is not returned here, as `bayesnec` calculates one only for the Poisson and Binomial families. See the [Model details][e2b] and [Multi model usage][e2] vignettes for options to fit other models to these data.
@@ -360,7 +360,7 @@ The raw counts are passed to `bnec` unchanged, so a replicate with twenty female
 ```{r, warning = FALSE, results = "hide"}
 exp_3d <- bnec(y | rate(n_females) ~ crf(x, model = "nec4param"),
                data = fecundity_data, family = "poisson",
-               seed = 333, open_progress = FALSE)
+               seed = 333)
 ```
 
 Because `bnec` uses an identity link, `brms` applies the denominator multiplicatively on the response scale rather than as a log offset on the linear predictor. The fitted mean therefore *is* the rate, and `top`, `bot` and `nec` are all directly interpretable as offspring per female. The prediction grid holds the denominator at 1, so the fitted curve and any `ecx` or `nsec` read from it are on that same scale, and `autoplot` divides the observed counts through by the denominator to match.
@@ -389,7 +389,7 @@ measure_data <- nec_data |>
 
 ```{r, warning = FALSE, results = "hide"}
 exp_4 <- bnec(measure ~ crf(x, model = "nec4param"), data = measure_data,
-              seed = 333, open_progress = FALSE)
+              seed = 333)
 ```
 
 ```{r exmp1-gammabase, warning = FALSE, fig.width = 5}
@@ -515,9 +515,9 @@ The coefficient of variation is not constant, which is what tells us a `Gamma` o
 # set.seed() alone is not sufficient: it governs the initial values bayesnec
 # generates, but not the seed Stan's sampler uses, so repeated runs differ.
 disp_const <- bnec(y ~ crf(log(x), model = "ecx4param"),
-                   data = disp_dat, seed = 333, open_progress = FALSE)
+                   data = disp_dat, seed = 333)
 disp_power <- bnec(y ~ crf(log(x), model = "ecx4param") + disp("power"),
-                   data = disp_dat, seed = 333, open_progress = FALSE)
+                   data = disp_dat, seed = 333)
 ```
 
 ```{r disp-compare}
