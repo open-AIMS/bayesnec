@@ -460,49 +460,65 @@ absent, or with no plan set, the models are fitted in sequence exactly as
 before. \code{\link{amend}} uses the plan in the same way, over the models
 it has to fit rather than over the whole set.
 
-\strong{Chains are sampled in sequence inside each worker.}
-\code{\link[brms]{brm}} already parallelises across chains, so models in
-parallel on top of that would request \code{workers x chains} processes;
-with four workers and the default \code{chains = 4} that is sixteen, and on
-most machines it runs slower than fitting in sequence. Under a parallel plan
-\code{\link{bnec}} therefore passes \code{cores = 1} to
-\code{\link[brms]{brm}}. Nest the two levels deliberately by passing
-\code{cores} yourself, which is left alone: \code{bnec(..., cores = 2)}
-with \code{workers = 4} runs four worker processes sampling eight chains
-between them. Passing \code{cores} is also what makes
-\code{getOption("mc.cores")} irrelevant: bayesnec's own \code{cores = 1}
-already overrides it, and without either, a value set in a profile would
-give every worker four chains at once without having been asked for.
+Each model samples its chains in sequence inside its worker.
+\code{\link[brms]{brm}} parallelises across chains on its own account, and
+models in parallel on top of that would ask for \code{workers x chains}
+processes, which on most machines is slower than fitting in sequence. Under
+a parallel plan of more than one worker \code{\link{bnec}} therefore passes
+\code{cores = 1} to \code{\link[brms]{brm}}. Nest the two levels
+deliberately by passing \code{cores} yourself, which is left alone:
+\code{bnec(..., cores = 2)} with \code{workers = 4} runs four worker
+processes sampling eight chains between them.
 
-A plan that names a parallel strategy but resolves to one worker gets
-neither treatment: nothing is clamped and \code{\link{bnec}} says so.
-\code{plan(multicore)} resolves that way wherever forking is unavailable,
-which is Windows, and \pkg{RStudio} or \pkg{Positron} on Linux and macOS.
-\code{plan(multisession)} works everywhere.
+\pkg{future} sets \code{mc.cores} to 1 inside a worker of its own accord,
+so a value set in your profile does not in fact reach \pkg{brms} there --
+measured at 1 under \code{multisession}, \code{multicore} and
+\code{cluster} with \code{options(mc.cores = 7)} in
+\code{R_PROFILE_USER}. The \code{cores = 1} above is therefore belt and
+braces rather than the only thing standing between you and sixteen
+processes. It is kept because it makes what \pkg{brms} is asked to do a
+property of this package rather than of \pkg{future}'s internals.
 
-\strong{Reproducibility, and the one place it stops.} Each fitted model
-reproduces exactly under a parallel plan, given the same \code{seed} passed
-on to \code{\link[brms]{brm}}, and that is tested. Without a \code{seed}
-the initial-value search reseeds from entropy and nothing repeats under
-either plan, which is what this package does today with or without one.
+A plan that names a parallel strategy but resolves to a single worker is
+clamped in neither respect, and \code{\link{bnec}} says which case it is
+in. \code{plan(multicore)} resolves that way wherever forking is
+unavailable, which is Windows, and \pkg{RStudio} or \pkg{Positron} on
+Linux and macOS; \code{plan(multisession)} works everywhere. A
+\code{cluster} plan naming one node also reports one worker, and there the
+fitting does happen in another process.
 
-The model-averaged quantities are the exception, and the reason is worth
+Each fitted model reproduces exactly under a parallel plan, given the
+same \code{seed} passed on to \code{\link[brms]{brm}}, and that is tested.
+Without a \code{seed} the initial-value search reseeds from entropy and
+nothing repeats under either plan, which is what this package does today
+with or without one.
+
+The model-averaged quantities are the exception, and the reason needs
 stating because nothing announces it. Once the models are fitted,
-\code{expand_manec()} draws a seed from the session's RNG stream and uses
-it to decide which posterior draws each equation contributes to the averaged
-estimate. Fitted in sequence, the loop leaves that stream in a state fixed
-by \code{seed}, because every initial-value search ran in this process;
-fitted in parallel the searches run in workers and the stream is untouched.
-The averaged \code{nec}, its interval and the stored prediction grid
-therefore differ between the two plans -- as two valid realisations of the
-same weighting, not as one being wrong.
+\code{expand_manec()} draws a seed from the session's RNG stream and uses it
+to decide which posterior draws each equation contributes to the averaged
+estimate. Fitted in sequence the loop advances that stream, because
+\code{set.seed(seed)} and the initial-value search it governs run in this
+process, and the state the draw is taken from is therefore fixed by
+\code{seed}. Under a parallel plan the loop leaves the stream alone. The
+averaged \code{nec}, its interval and the stored prediction grid therefore
+differ between the two plans -- as two valid realisations of the same
+weighting, not as one being wrong.
 
-\code{\link{bnec}} does not disturb the stream under a parallel plan, so
-\code{set.seed()} in your session before the call fixes that draw, and two
-parallel runs agree. That is what \code{expand_manec()} intends the draw to
-answer to.
+Two consequences follow from that, and they are properties of the plan
+rather than of where the fitting happened, so they hold for a parallel plan
+that resolves to a single worker as much as for one with eight.
+\code{set.seed()} in your session before the call fixes the averaging draw,
+which is what \code{expand_manec()} intends it to answer to, so two parallel
+runs agree. And a parallel call does not move your session's RNG stream on,
+where a sequential one does; if you are drawing from that stream after the
+fit, the two plans leave you in different places.
 
-\strong{Console output from a worker is not ordered.} The per-model
+Supplying \code{init} yourself skips the search altogether, so a sequential
+run does not advance the stream then either and its averaging draw answers
+to your session's seed in the same way.
+
+Console output from a worker is not ordered. The per-model
 messages \code{\link{bnec}} emits come from a worker process and arrive
 out of order, or not at all, depending on the backend. A model that fails
 is still recorded as an \code{NA} entry, the remaining models still fit, and
@@ -523,8 +539,16 @@ the \pkg{brms} arguments, and nothing else \code{\link{bnec}} or
 \code{\link{amend}} has built -- in particular not the fits an
 \code{\link{amend}} call already holds. \pkg{future} refuses to export
 more than 500 MiB by default and says so, naming the applied function rather
-than what is inside it; raise
-\code{options(future.globals.maxSize = )} if a large dataset reaches it.
+than what is inside it; raise \code{options(future.globals.maxSize = )} if
+a large dataset reaches it.
+
+A formula is the one thing sent that brings more than itself: it keeps the
+environment it was written in. Written at the top level that is the global
+environment, which is sent by reference and adds nothing. Written inside a
+function it is that function's frame, and everything in the frame goes with
+it -- measured at 6.18 MiB for a formula built in a frame holding a 6.2 MB
+matrix. So if a limit is reached and the data are not large, look at where
+the formula was created.
 
 \code{\link{bnec_group}} fits one model set per level of the grouping
 variable, so under a parallel plan each level is parallelised in turn and

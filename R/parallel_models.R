@@ -42,14 +42,22 @@ bnec_plan_is_parallel <- function() {
 #' every model in the amended set is carried over from the object.
 #'
 #' \bold{Under a parallel plan of more than one worker, each model samples its
-#' chains in sequence.}
-#' \code{\link[brms]{brm}} already parallelises across chains, so fitting
-#' models in parallel on top of that requests \code{workers x chains}
-#' processes. bayesnec passes no \code{cores} argument of its own, so
-#' \pkg{brms} falls back to \code{getOption("mc.cores")}; a user who set that
-#' in their profile would get four chains per worker without having asked for
-#' them, and a four-worker plan with the default \code{chains = 4} would then
-#' require sixteen processes on a machine that may not have them. A
+#' chains in sequence.} \code{\link[brms]{brm}} already parallelises across
+#' chains, so fitting models in parallel on top of that requests
+#' \code{workers x chains} processes, and bayesnec passes no \code{cores}
+#' argument of its own.
+#'
+#' It is worth being exact about what this prevents, because the obvious
+#' account of it is wrong. \pkg{future} sets \code{mc.cores} to 1 inside a
+#' worker itself, so \pkg{brms} does not in fact reach a value set in the
+#' user's profile: measured 2026-09-11 with \code{options(mc.cores = 7)} in
+#' \code{R_PROFILE_USER}, \code{getOption("mc.cores")} inside a future is 1
+#' under \code{multisession} at two and four workers, under \code{multicore},
+#' and under a two-node \code{cluster}. Passing \code{cores = 1} is therefore
+#' not what stands between the user and sixteen processes; \pkg{future}
+#' already does that. It is kept because it makes what \pkg{brms} is asked to
+#' do a property of this package rather than of an implementation detail of
+#' another, and because it is what a supplied \code{cores} then overrides. A
 #' \code{cores} the user passed to \code{\link{bnec}}, which arrives here in
 #' \code{brm_args} by way of its \code{...}, is left alone: nesting the two
 #' levels is a legitimate thing to want where there are cores to spare, and
@@ -96,11 +104,16 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
   }
   message(
     if (one_worker) {
+      # No advice about which plan to use instead. A single-node cluster plan
+      # reports one worker too, and there the fitting genuinely does move to
+      # another process, so telling that user to switch to multisession would
+      # be beside the point. What is true of every one-worker plan is that the
+      # models are fitted one at a time and that nothing here is clamped.
       paste0("The future plan in effect resolves to a single worker, so the ",
-             n_models, " models are fitted one at a time and chain",
-             " parallelism is left as it is. plan(multicore) does this",
-             " wherever forking is unavailable; plan(multisession) works",
-             " everywhere.")
+             n_models, " models are fitted one at a time and nothing is",
+             " changed about how brms samples its chains. plan(multicore)",
+             " resolves this way wherever forking is unavailable, which",
+             " includes Windows and most IDEs.")
     } else {
       paste0(
         "Fitting ", n_models, " models in parallel over ", workers,
@@ -199,8 +212,15 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' while the others idle; and a worker holds every fit in its chunk until the
 #' chunk ends, which is the memory multiplication \#184 warns about in its
 #' worst form. One element per future gives the assignment dynamically and
-#' holds one fit at a time. The extra exports this implies are what the narrow
-#' environment above is for.
+#' holds one fit at a time.
+#'
+#' The trade is that the data, the formula and the priors are sent once per
+#' model rather than once per worker, which for 23 models over four workers is
+#' about six times the transfer. \code{narrow_environment()} does not offset
+#' that -- those are the objects a fit genuinely needs -- it removes everything
+#' else. Load balancing and holding one fit rather than six are judged the
+#' larger effects on a set whose equations differ in fitting time by an order
+#' of magnitude, but no timing has been taken either way.
 #'
 #' @param X A \code{\link[base]{vector}} to apply over.
 #' @param FUN A \code{\link[base]{function}} taking one element of \code{X}.
