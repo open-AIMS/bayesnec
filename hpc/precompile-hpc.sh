@@ -17,9 +17,20 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-HOST="${HOST:-rfisher@hpc-l001.aims.gov.au}"
+# The account, the login node and the path to the image on this machine are read
+# from hpc/local.conf, which is gitignored. They are settings of one person's
+# machine rather than of the repository, and committing them would publish an
+# account name and an internal hostname. An environment variable overrides the
+# file; hpc/local.conf.example is the template.
+# shellcheck source=/dev/null
+[ -f hpc/local.conf ] && . ./hpc/local.conf
+HOST="${HOST:-}"
+[ -n "$HOST" ] || {
+  echo "HOST is not set. Copy hpc/local.conf.example to hpc/local.conf and put" >&2
+  echo "your cluster account and login node in it, or set HOST in the call." >&2
+  exit 1; }
 DEST="${DEST:-/export/scratch/${HOST%%@*}/bayesnec-precompile}"
-SIF="${SIF:-bayesnec-precompile.sif}"
+SIF="${SIF:-}"
 POLL="${POLL:-60}"
 
 wait_for_job=1
@@ -117,9 +128,31 @@ fetch() {
 
 if [ "$fetch_only" -eq 1 ]; then fetch; exit 0; fi
 
-[ -f "$SIF" ] || {
-  echo "no $SIF here. Build it first:  ./hpc/build.sh" >&2; exit 1; }
-./hpc/build.sh --check
+# A local image is needed to build one and to copy it across, and for nothing
+# else. Once the cluster holds an image matching hpc/image.lock, a precompile run
+# needs no local copy, so when there is none the remote one is checked against the
+# lock rather than refusing outright. That is what lets the day-to-day command
+# need no setting beyond HOST.
+have_local_sif=0
+if [ -n "$SIF" ] && [ -f "$SIF" ]; then
+  have_local_sif=1
+  ./hpc/build.sh --check
+else
+  [ -z "$SIF" ] || echo "SIF is set to $SIF, which is not there." >&2
+  lock_sha=$(sed -n 's/^sif_sha256: //p' hpc/image.lock)
+  remote_sha=$(ssh -o BatchMode=yes "$HOST" \
+    "sha256sum $DEST/bayesnec-precompile.sif 2>/dev/null | cut -d' ' -f1") || {
+    echo "could not reach $HOST" >&2; exit 1; }
+  if [ "$remote_sha" != "$lock_sha" ]; then
+    echo "No image here, and the one on $HOST is not the one this branch records." >&2
+    echo "  hpc/image.lock: $lock_sha" >&2
+    echo "  on the cluster: ${remote_sha:-none}" >&2
+    echo "Build it with ./hpc/build.sh and set SIF in hpc/local.conf, so that it" >&2
+    echo "can be copied across." >&2
+    exit 1
+  fi
+  echo "==> no local image; the one on $HOST matches hpc/image.lock"
+fi
 
 # A second deployment while an array is still queued would rewrite the tree, and
 # vignettes.txt with it, underneath the tasks that have not started. Task 3 would
@@ -192,6 +225,11 @@ rm -f .vignettes.tmp
 # other than the repository, because the repository is on a slow mount under
 # WSL -- so its basename must not be what identifies it on the cluster.
 REMOTE_SIF="$DEST/bayesnec-precompile.sif"
+if [ "$have_local_sif" -eq 0 ]; then
+  # Nothing to copy: the check above established that the cluster already holds
+  # the image this branch records.
+  echo "==> container already present and matching"
+else
 # Copied only when the remote copy is not already this image. The image changes
 # when a dependency changes, not when the branch does, so this is rare.
 # `|| true` is not used here: it would make an ssh failure look like "no image
@@ -211,6 +249,7 @@ if [ "$remote_sha" != "$(sha256sum "$SIF" | cut -d' ' -f1)" ]; then
   rsync -a --partial --info=progress2 "$SIF" "$HOST:$REMOTE_SIF"
 else
   echo "==> container already present and matching"
+fi
 fi
 
 # %1 -- one task at a time. cmdstanr does not lock the compile cache: two tasks

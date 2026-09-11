@@ -30,27 +30,35 @@ Named vignettes are optional; with none it precompiles all of them. `--no-wait`
 returns the job id instead of blocking, and `--fetch` collects a run submitted
 that way.
 
-Three environment variables change where it works: `HOST` (default
-`rfisher@hpc-l001.aims.gov.au`), `DEST` (a directory on the cluster, by default
-under `/export/scratch` for the account in `HOST`), and `SIF`, the local path to
-the image. `SIF` matters under WSL, where the repository is on a 9p mount: both
-building the image there and reading it for the copy are several times slower
-than on the Linux filesystem, so build it elsewhere and point `SIF` at it.
-Whatever it is called locally, it is copied to the cluster under one fixed name.
+Settings live in `hpc/local.conf`, which is gitignored; copy
+`hpc/local.conf.example` and edit it. An account name, a login node and a path on
+one person's disk are not the repository's business, so they are kept out of it.
+An environment variable overrides the file.
 
-`APPTAINER_TMPDIR` chooses where `build.sh` unpacks the base image. It needs
-about 15 GB on a local Linux filesystem; `build.sh` refuses a tmpfs or a 9p
-mount, because the extraction of tens of thousands of small files is what
-decides how long the build takes.
+`HOST` is required and is the only one that usually has to be set: the cluster as
+`ssh` would take it. `DEST` defaults to `/export/scratch/<account>/bayesnec-precompile`.
+
+`SIF` is the image on this machine, and is needed to build one and to copy it to
+the cluster the first time. Once the cluster holds an image matching
+`hpc/image.lock` it can stay unset, and `precompile-hpc.sh` checks the remote
+image against the lock instead. Under WSL, build it somewhere other than the
+repository: the repository is on a 9p mount where unpacking the base image takes
+an order of magnitude longer. Whatever it is called locally, it is copied to the
+cluster under one fixed name.
+
+`APPTAINER_TMPDIR` chooses where `build.sh` unpacks the base image. It needs about
+15 GB on a local Linux filesystem; `build.sh` refuses a tmpfs or a 9p mount,
+because the extraction of tens of thousands of small files is what decides how
+long the build takes.
 
 ## Building the image
 
 Built on a workstation with `apptainer` and copied across. That is not a
-preference. Verified on `hpc-l001` on 2026-09-10: the cluster provides
-singularity 3.6.3, and
+preference. Verified on the AIMS HPC login node on 2026-09-10: the cluster
+provides singularity 3.6.3, and
 
 ```
-FATAL: could not use fakeroot: no mapping entry found in /etc/subuid for rfisher
+FATAL: could not use fakeroot: no mapping entry found in /etc/subuid for <account>
 ```
 
 so a definition file with a `%post` section cannot be built there by an

@@ -11,6 +11,8 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# shellcheck source=/dev/null
+[ -f hpc/local.conf ] && . ./hpc/local.conf
 DEF=hpc/bayesnec-precompile.def
 SIF="${SIF:-bayesnec-precompile.sif}"
 LOCK=hpc/image.lock

@@ -16,7 +16,7 @@ From: rocker/r-ver@sha256:a5df0ae591422cc1733e97da03a9f4eff4cf172e40895225959aa9
 # Built on a workstation and copied across rather than built on the HPC. That
 # is not a preference: the cluster's singularity 3.6.3 refuses a --fakeroot
 # build because the invoking account has no entry in /etc/subuid, and a %post
-# section cannot run without it. Verified on hpc-l001, 2026-09-10:
+# section cannot run without it. Verified on the login node, 2026-09-10:
 #   FATAL: could not use fakeroot: no mapping entry found in /etc/subuid
 # The image changes only when a dependency changes, not when the package or the
 # branch changes, so the copy is rare rather than per-run.
