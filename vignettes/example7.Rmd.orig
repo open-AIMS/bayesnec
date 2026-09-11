@@ -1087,26 +1087,16 @@ for the zero boundary in general.
 The simulation establishes which conventions recover the truth. It cannot show
 how large the difference is on a real dataset, where the truth is unknown and
 the design, the noise and the shape of the response are not under the analyst's
-control. We therefore analysed four marine microalgal growth tests by all six
-conventions, and compared each estimate with the `measured` estimate on the
-same dataset.
+control. Four marine microalgal growth tests were therefore analysed by all six
+conventions, and each estimate compared with the `measured` estimate on the same
+dataset.
 
-The four tests ship with `bayesnec` as `alga`, so everything in this section is
-computed when the vignette is built rather than transcribed: two tests on
-*Cladocopium proliferum*, a coral endosymbiont, over seven days, and two on
-*Rhodomonas salina* over three days, each species exposed to two contaminants
-on undisclosed and mutually incomparable concentration scales.
-
-```{r set-backend}
-# cmdstan compiles each Stan program once and caches the executable, which
-# matters here because the six conventions are averaged over twelve to fourteen
-# equations each on four datasets. See the Installation section of the Hurdle
-# and zero-inflated models vignette for setting it up.
-options(brms.backend = "cmdstanr")
-# Four chains on four cores. Every fit in this section is independent of every
-# other, so the only parallelism worth having is within a fit.
-options(mc.cores = 4)
-```
+The four tests ship with `bayesnec` as `alga`: two tests on *Cladocopium
+proliferum*, a coral endosymbiont, over seven days, and two on *Rhodomonas
+salina* over three days, each species exposed to two contaminants on undisclosed
+and mutually incomparable concentration scales. The datasets themselves are
+summarised from the data that ship with the package, so Table 3 describes
+whatever version you have installed.
 
 ```{r}
 data(alga)
@@ -1123,15 +1113,17 @@ alga$dataset <- factor(
 # for a below-limit count -- flagged `sgr_source == "substituted"` -- this is the
 # rate the substitution implies, and it is what the retaining conventions use in
 # place of the substituted zero.
-alga$bound <- (log(10) - log(alga$density_initial)) / alga$days
 alga$below_limit <- alga$sgr_source == "substituted"
+alga$limit_rate <- (log(10) - log(alga$density_initial)) / alga$days
+alga$y <- ifelse(alga$below_limit, alga$limit_rate, alga$sgr)
 
 datasets <- alga |>
   group_by(dataset, species, duration_d = days) |>
   summarise(n = n(), n_conc = n_distinct(dose),
-            control_rate = mean(sgr[dose == 0]),
+            control_rate = mean(y[dose == 0]),
             below_limit = sum(below_limit),
-            prop_at_or_below_zero = mean(sgr <= 0), .groups = "drop") |>
+            n_negative = sum(y < 0),
+            prop_at_or_below_zero = mean(y <= 0), .groups = "drop") |>
   mutate(fold_change_R = exp(control_rate * duration_d), .before = below_limit)
 ```
 
@@ -1148,30 +1140,31 @@ datasets_t <- with(datasets, data.frame(
   `Control rate (per d)` = sprintf("%.3f", control_rate),
   `Fold change R` = sprintf("%.1f", fold_change_R),
   `Below limit` = as.character(below_limit),
+  `Negative` = as.character(n_negative),
   `Prop. at or below zero` = sprintf("%.2f", prop_at_or_below_zero),
   check.names = FALSE, stringsAsFactors = FALSE))
 datasets_t <- as.data.frame(t(datasets_t), stringsAsFactors = FALSE)
 names(datasets_t) <- datasets$dataset
 knitr::kable(datasets_t,
-  caption = "**Table 3.** The four case-study datasets, computed from `alga`. `Below limit` counts the rows whose population fell below the counting limit, for which the source substituted a zero. All four have a substantial proportion of observations at or below zero growth, so all four are in the regime where Section 5 applies.")
+  caption = "**Table 3.** The four case-study datasets, computed from the `alga` data that ship with the package. `Below limit` counts the rows whose population fell below the counting limit, for which the source substituted a zero. All four have a substantial proportion of observations at or below zero growth, so all four are in the regime where Section 5 applies.")
 ```
 
 ## 6.1 Undefined growth rates in the *Rhodomonas* tests
 
 At the highest concentrations in both *Rhodomonas* tests the population fell
 below the counting limit of 10 cells per mL, so the density is recorded as zero
-and the specific growth rate is *undefined* rather than negative. Those rows
-are flagged `sgr_source == "substituted"` in `alga`, 16 on `r_salina` and 4 on
+and the specific growth rate is *undefined* rather than negative. Those rows are
+flagged `sgr_source == "substituted"` in `alga`, 16 on `r_salina` and 4 on
 `r_salina2`. The two *Cladocopium* tests have none, and their negative values
 are measurements.
 
 There is no measured value to retain in those rows, so every convention must
-substitute something. The `measured` convention uses the growth rate implied by the
-counting limit, which is itself a substitution, and on those two datasets it is
-therefore not a true analysis of the measurements. The comparison is
+substitute something. The `measured` convention uses the growth rate implied by
+the counting limit, which is itself a substitution, and on those two datasets it
+is therefore not a true analysis of the measurements. The comparison is
 correspondingly weaker there. This is a common situation with real algal data
-and one of the reasons left-censoring is useful: it can express "at or below
-the limit" without inventing a value.
+and one of the reasons left-censoring is useful: it can express "at or below the
+limit" without inventing a value.
 
 It also determines what `censored` means on those two datasets. Left-censoring
 declares that the truth lies at or below a bound, so the bound should be the
@@ -1182,156 +1175,115 @@ test does establish about that row.
 
 ## 6.2 Estimates from each convention
 
-Each dataset is prepared by each convention exactly as in Section 5.1 and then
-passed to `bnec()` with package defaults, so the case studies and the
-simulation run the same six conventions.
+Each dataset is prepared by each convention exactly as in Section 5.1 and passed
+to `bnec()` with package defaults, so the case studies and the simulation run
+the same six conventions over the same candidate set.
 
-```{r, results = "hide"}
-fit_arms <- function(d) {
-  # The retaining conventions restore the counting-limit rate where the source
-  # substituted a zero. On the two Cladocopium tests nothing is substituted and
-  # this is the measured series unchanged.
-  d$y <- ifelse(d$below_limit, d$bound, d$sgr)
-
-  d_floored <- transform(d, y = pmax(y, 0))
-  d_deleted <- d[d$y >= 0, , drop = FALSE]
-  # For a measured negative the tightest defensible bound is zero -- withdrawing
-  # the magnitude is the convention under test. For a row whose population fell
-  # below the counting limit it is the limit itself; censoring such a row at
-  # zero would discard the one thing the test does tell you about it. See the
-  # Limits of the censored likelihood section of the Single model usage
-  # vignette.
-  d_cens <- transform(d,
-    cens = ifelse(below_limit | y < 0, "left", "none"),
-    y = ifelse(below_limit, bound, pmax(y, 0)))
-  d_beta <- transform(d_floored, y = y / max(y))
-
-  gauss <- function(dd, form = y ~ crf(dose, "decline")) {
-    bnec(form, data = dd, family = gaussian(link = "identity"), seed = 333)
-  }
-  list(
-    measured = gauss(d),
-    censored = gauss(d_cens, y | cens(cens) ~ crf(dose, "decline")),
-    deleted  = gauss(d_deleted),
-    floored  = gauss(d_floored),
-    beta     = bnec(y ~ crf(dose, "decline"), data = d_beta,
-                    family = Beta(link = "identity"), seed = 333),
-    gamma    = bnec(y ~ crf(dose, "decline"), data = d_floored,
-                    family = Gamma(link = "identity"), seed = 333))
+```{r, eval = FALSE}
+# Every convention takes bnec()'s own default priors here, unlike the
+# simulation, where one prior is fixed per cell and convention so that repeated
+# realisations compile one Stan program rather than a hundred. Each dataset is
+# fitted once, so there is nothing for a fixed prior to save, and taking the
+# defaults is the practice under examination.
+fit_case <- function(d, convention) {
+  d$y <- ifelse(d$below_limit, d$limit_rate, d$sgr)
+  gauss <- gaussian(link = "identity")
+  switch(convention,
+    measured = bnec(y ~ crf(dose, "decline"), data = d, family = gauss),
+    floored  = bnec(y ~ crf(dose, "decline"), data = transform(d, y = pmax(y, 0)),
+                    family = gauss),
+    deleted  = bnec(y ~ crf(dose, "decline"), data = d[d$y >= 0, ],
+                    family = gauss),
+    # Zero for a measured negative; the counting limit for a row that fell below
+    # it, which is what the test actually establishes about that row.
+    censored = bnec(y | cens(cens) ~ crf(dose, "decline"),
+                    data = transform(d,
+                      cens = ifelse(below_limit | y < 0, "left", "none"),
+                      y = ifelse(below_limit, limit_rate, pmax(y, 0))),
+                    family = gauss),
+    beta     = bnec(y ~ crf(dose, "decline"),
+                    data = transform(d, y = pmax(y, 0) / max(pmax(y, 0))),
+                    family = Beta(link = "identity")),
+    gamma    = bnec(y ~ crf(dose, "decline"), data = transform(d, y = pmax(y, 0)),
+                    family = Gamma(link = "identity")))
 }
-
-real_fits <- lapply(split(alga, alga$dataset), fit_arms)
 ```
 
-```{r}
-# ErC50 and NSEC from every fit, with the tested concentration range recorded
-# alongside so that an interval running to the edge of the design can be
-# flagged rather than read as an estimate.
-real_estimates <- do.call(rbind, lapply(names(real_fits), function(ds) {
-  rng <- range(alga$dose[alga$dataset == ds & alga$dose > 0])
-  do.call(rbind, lapply(names(real_fits[[ds]]), function(a) {
-    f <- real_fits[[ds]][[a]]
-    e <- ecx(f, ecx_val = 50, type = "absolute")
-    n <- nsec(f)
-    rbind(data.frame(dataset = ds, arm = a, estimate = "ErC50",
-                     val = e[1], lo = e[2], hi = e[3]),
-          data.frame(dataset = ds, arm = a, estimate = "NSEC",
-                     val = n[1], lo = n[2], hi = n[3])) |>
-      transform(x_min = rng[1], x_max = rng[2])
-  }))
-}))
+Those 24 fits are not run when this vignette is built. Each is an average over
+thirteen or fourteen equations, and together they take about fifteen hours,
+which is more machine time than a package build can use. They are run in the
+same compendium as the simulation, against the same pinned version of
+`bayesnec`, and their results are transcribed here. Section 9 records what that
+means for reading them.
+
+```{r, echo = FALSE}
+# ErC10, ErC50 and NSEC from each convention on each dataset, transcribed from
+# results/case_estimates.csv in the compendium at the commit named in Section 9.
+# `w_zero_asymptote` is the combined weight on the six equations whose lower
+# asymptote is fixed at zero, and `w_failing_ess` the weight held by equations
+# whose tail effective sample size fell below 400 -- reported because a
+# diagnostic is only readable against the weight its equation holds.
+cases <- read.csv(text = "
+@@CASES@@
+")
+cases$arm <- factor(cases$arm, levels = arm_levels)
+cases$estimate <- factor(cases$estimate, levels = c("ErC10", "ErC50", "NSEC"))
+cases$dataset <- factor(cases$dataset,
+  levels = c("c_proliferum", "c_proliferum2", "r_salina", "r_salina2"))
 
 # Expressed as a ratio to the `measured` analysis on the same dataset, because
 # the four tests are on undisclosed and mutually incomparable concentration
-# scales. An estimate is flagged unusable where its interval has collapsed to a
-# point or has run to an edge of the tested range, where the bound is the design
-# rather than the data.
-real_ratios <- real_estimates |>
+# scales. An estimate is flagged unusable where it could not be identified, or
+# where its interval reached an edge of the tested range -- there the bound is
+# the design rather than the data -- or collapsed to a point.
+case_ratios <- cases |>
   group_by(dataset, estimate) |>
-  mutate(ref = val[arm == "measured"],
-         r = val / ref, rlo = lo / ref, rhi = hi / ref,
-         # An estimate that could not be identified comes back NA rather than
-         # erroring, and counts as unusable here: a convention that fails to
-         # return a value on a real dataset is a result, not a gap in the table.
+  mutate(ref = value[arm == "measured"],
+         r = value / ref, rlo = lower / ref, rhi = upper / ref,
          usable = !is.na(r) & !is.na(rlo) & !is.na(rhi) &
-                  !(lo <= x_min | hi >= x_max |
-                      hi - lo < .Machine$double.eps^0.5)) |>
-  ungroup() |>
-  select(dataset, arm, estimate, r, rlo, rhi, usable)
-```
+                  !(lower <= x_min | upper >= x_max |
+                      upper - lower < .Machine$double.eps^0.5)) |>
+  ungroup()
 
-```{r, echo = FALSE}
-# The weight each fit gives the equations that hold the lower asymptote at zero,
-# which is the quantity Section 5.6 reports on the simulated data. Computed here
-# so the case studies can be checked against it rather than assumed to agree.
-zero_asymptote <- c("nec3param", "ecxexp", "ecxsigm", "ecxwb1p3", "ecxwb2p3",
-                    "ecxll3")
-real_weights <- do.call(rbind, lapply(names(real_fits), function(ds) {
-  do.call(rbind, lapply(names(real_fits[[ds]]), function(a) {
-    f <- real_fits[[ds]][[a]]
-    # A model-averaged fit reports one weight per surviving equation. Where only
-    # one equation survives, `bnec()` returns a single fit with no `mod_stats`,
-    # and that equation holds all of the weight.
-    w <- if (inherits(f, "bayesmanecfit")) {
-      setNames(f$mod_stats$wi, rownames(f$mod_stats))
-    } else {
-      setNames(1, f$model)
-    }
-    data.frame(dataset = ds, arm = a,
-               w_zero_asymptote = sum(w[names(w) %in% zero_asymptote]),
-               top_model = names(w)[which.max(w)],
-               top_weight = max(w))
-  }))
-}))
-```
-
-```{r, echo = FALSE}
-# Every figure the prose below quotes is computed here rather than typed, so a
-# refit cannot leave the text describing an earlier one.
 rr <- function(ds, a, est = "ErC50", what = "r") {
-  real_ratios[[what]][real_ratios$dataset == ds & real_ratios$arm == a &
-                        real_ratios$estimate == est]
+  case_ratios[[what]][case_ratios$dataset == ds & case_ratios$arm == a &
+                        case_ratios$estimate == est]
 }
-zw <- function(ds, a) real_weights$w_zero_asymptote[
-  real_weights$dataset == ds & real_weights$arm == a]
-# The range across every convention other than the reference, and the single
-# convention lying furthest from it on a log scale. Computed over all five
-# rather than over the three that replace the measurement: on these datasets the
-# retaining conventions do not always sit with the reference, and quoting only
-# the replacing ones would imply a separation the data do not show.
 others <- setdiff(arm_levels, "measured")
-# Both drop an estimate that could not be identified rather than propagating it:
-# a missing value is reported by `unusable_note()` above, and letting it through
-# here would turn every quoted range into NA.
-rng_ratio <- function(ds, est = "ErC50") {
-  range(sapply(others, rr, ds, est), na.rm = TRUE)
+# Written with an explicit function rather than sapply(others, rr, ds, est):
+# sapply passes the element as the FIRST argument, so that form silently swaps
+# the convention and the dataset and every lookup returns nothing.
+each_other <- function(ds, est) {
+  vapply(others, function(a) {
+    v <- rr(ds, a, est)
+    if (length(v) == 1L) v else NA_real_
+  }, numeric(1))
 }
+rng_ratio <- function(ds, est = "ErC50") range(each_other(ds, est), na.rm = TRUE)
 furthest <- function(ds, est = "ErC50") {
-  v <- sapply(others, rr, ds, est)
+  v <- each_other(ds, est)
   v <- v[is.finite(v) & v > 0]
   if (!length(v)) return(NA_real_)
   unname(v[which.max(abs(log(v)))])
 }
-# Written as a computed phrase rather than a bare count: which estimates are
-# flagged depends on the fits, "0 of 48" reads badly, and a number typed into
-# the prose goes stale silently the next time the vignette is precompiled.
+zw <- function(ds, a) unique(cases$w_zero_asymptote[cases$dataset == ds &
+                                                      cases$arm == a])
+# Written as a computed phrase rather than a bare count: "0 of 72" reads badly
+# and a number typed into the prose goes stale the next time the study is run.
 unusable_note <- function() {
-  n <- sum(!real_ratios$usable)
-  m <- sum(is.na(real_ratios$r))
+  n <- sum(!case_ratios$usable)
   if (n == 0) {
-    return(paste("No estimate in Figure 6 is flagged unusable: every interval",
-                 "lies inside the tested concentration range."))
+    paste("No estimate in Figure 6 is flagged unusable: every interval lies",
+          "inside the tested concentration range.")
+  } else {
+    sprintf(paste("%d of the %d estimates in Figure 6 are flagged unusable,",
+                  "their intervals having reached an edge of the tested",
+                  "concentration range or collapsed to a point."),
+            n, nrow(case_ratios))
   }
-  s <- sprintf(paste("%d of the %d estimates in Figure 6 are flagged unusable,",
-                     "their intervals having reached an edge of the tested",
-                     "concentration range or collapsed to a point"),
-               n, nrow(real_ratios))
-  if (m > 0) {
-    s <- paste0(s, sprintf(", and %d could not be identified at all", m))
-  }
-  paste0(s, ".")
 }
 pc <- function(x) sprintf("%.0f%%", 100 * x)
+f2c <- function(x) if (!length(x) || any(is.na(x))) "—" else sprintf("%.2f", x)
 ```
 
 Because the four datasets have toxicity values on completely different
@@ -1339,21 +1291,21 @@ concentration scales, each estimate is shown as a ratio: the convention's
 estimate divided by the `measured` estimate on the same dataset. A ratio of 1
 is exact agreement.
 
-```{r real-ratios, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.cap = "**Figure 6.** Estimated ErC50 and NSEC from each convention on the four real datasets, expressed as a ratio to the `measured` analysis of the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement. Open symbols mark estimates flagged as unusable, meaning the interval reached an edge of the tested concentration range, where the bound is the design rather than the data, or collapsed to a point. Intervals extending past the plotted range are clipped at the panel edge."}
-real_ratios$arm <- factor(real_ratios$arm, levels = rev(arm_levels))
+```{r real-ratios, fig.width = 9, fig.height = 5.5, out.width = "100%", fig.cap = "**Figure 6.** Estimated ErC10, ErC50 and NSEC from each convention on the four real datasets, expressed as a ratio to the `measured` analysis of the same dataset, with 95% credible intervals. The vertical line at 1 is exact agreement. Open symbols mark estimates flagged as unusable, meaning the interval reached an edge of the tested concentration range, where the bound is the design rather than the data, or collapsed to a point. Intervals extending past the plotted range are clipped at the panel edge."}
 # Clipping by pmax/pmin on the data rather than a scale limit, to avoid
 # depending on `scales` for an out-of-bounds handler. An interval that runs past
 # the panel is already flagged unusable and is drawn with an open symbol.
 ratio_lim <- c(0.1, 4)
-real_ratios$rlo_p <- pmax(real_ratios$rlo, ratio_lim[1])
-real_ratios$rhi_p <- pmin(real_ratios$rhi, ratio_lim[2])
+case_ratios$rlo_p <- pmax(case_ratios$rlo, ratio_lim[1])
+case_ratios$rhi_p <- pmin(case_ratios$rhi, ratio_lim[2])
 
-ggplot(real_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
+ggplot(case_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
   geom_vline(xintercept = 1, linetype = "dashed", colour = "grey40") +
   geom_errorbar(aes(xmin = rlo_p, xmax = rhi_p), orientation = "y",
                 width = 0, linewidth = 0.6) +
   geom_point(size = 2.2, fill = "white") +
   scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 21), guide = "none") +
+  scale_y_discrete(limits = rev(arm_levels)) +
   scale_x_log10(breaks = c(0.25, 0.5, 1, 2, 4), limits = ratio_lim) +
   facet_grid(estimate ~ dataset) +
   labs(x = "Estimate as a ratio to the `measured` analysis (log scale)",
@@ -1367,59 +1319,51 @@ ggplot(real_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
 
 Three features of Figure 6 require care in what they do and do not establish.
 
-The choice of convention changes the reported value substantially, and on one
-of the four datasets it changes it in the same direction for every convention
-at once. On `c_proliferum` all five conventions other than `measured` return an
-ErC50 between `r f2(rng_ratio("c_proliferum")[1])` and
-`r f2(rng_ratio("c_proliferum")[2])` times the `measured` estimate. These are
+The choice of convention changes the reported value substantially. On
+`c_proliferum` the five conventions other than `measured` return an ErC50
+between `r f2c(rng_ratio("c_proliferum")[1])` and
+`r f2c(rng_ratio("c_proliferum")[2])` times the `measured` estimate. These are
 not rounding differences; they are the difference between one regulatory value
 and another.
 
-The size of that difference varies between datasets and cannot be predicted
-from the data alone. On the other three datasets the convention lying furthest
-from the `measured` estimate on ErC50 is at
-`r f2(furthest("c_proliferum2"))` times it on `c_proliferum2`,
-`r f2(furthest("r_salina"))` on `r_salina` and
-`r f2(furthest("r_salina2"))` on `r_salina2`. Nor does the departure fall only
-on the conventions the simulation identifies: on `c_proliferum` the two
-retaining conventions are displaced with the rest. A single real dataset cannot
-separate the effect of a convention from the error of the analysis it is being
-compared against, because the `measured` analysis of that dataset has its own
-error and there is no truth to score either of them by.
-
-The weight on the zero-asymptote equations is the diagnostic Section 5.6
-identifies for flooring under an unbounded family, and it is computable here
-because it needs no truth.
+The size of that difference varies between datasets and cannot be predicted from
+the data alone. On the other three datasets the convention lying furthest from
+the `measured` estimate on ErC50 is at `r f2c(furthest("c_proliferum2"))` times
+it on `c_proliferum2`, `r f2c(furthest("r_salina"))` on `r_salina` and
+`r f2c(furthest("r_salina2"))` on `r_salina2`. Nor does the departure
+necessarily fall on the conventions the simulation identifies. A single real
+dataset cannot separate the effect of a convention from the error of the
+analysis it is compared against, because the `measured` analysis of that dataset
+has its own error and there is no truth to score either of them by.
 
 ```{r, echo = FALSE}
 knitr::kable(
-  real_weights |>
-    mutate(arm = factor(arm, levels = arm_levels)) |>
+  cases |>
+    filter(estimate == "ErC50") |>
     select(dataset, arm, w_zero_asymptote) |>
     pivot_wider(names_from = dataset, values_from = w_zero_asymptote) |>
-    arrange(arm) |>
-    select(arm, all_of(levels(alga$dataset))),
+    arrange(arm),
   digits = 2,
-  col.names = c("Convention", levels(alga$dataset)),
-  caption = "**Table 4.** Total model weight on the six equations whose lower asymptote is fixed at zero, for each convention on each dataset. In the simulation at the highest precision tested this weight is 0.98 under `floored` and 0.00 under `measured` and `censored`."
+  col.names = c("Convention", levels(cases$dataset)),
+  caption = "**Table 4.** Total model weight on the six equations whose lower asymptote is fixed at zero, for each convention on each dataset."
 )
 ```
 
-Averaged over the four datasets `floored` puts
-`r pc(mean(sapply(names(real_fits), zw, "floored")))`
-of its weight on those equations, against
-`r pc(mean(sapply(names(real_fits), zw, "measured")))`
-under `measured` and
-`r pc(mean(sapply(names(real_fits), zw, "censored")))`
-under `censored`. The separation is in the direction the simulation gives and
-is much smaller. Two things differ. In the simulation the generating equation
-is in the candidate set and is known to be correct, so a retaining convention
-recovers it and a floored one visibly cannot; on real data no candidate is
-known to be correct. And these growth-rate curves decline toward zero whatever
-is done to the data, so a zero-asymptote shape is a defensible description of
-all four datasets rather than an artefact of one convention. The case studies
-establish that the choice of convention changes the reported value. They do not
-confirm the mechanism, and without a known truth they cannot.
+The weight on those equations is the diagnostic Section 5.6 identifies for
+flooring under an unbounded family, and it is computable here because it needs
+no truth. Averaged over the four datasets `floored` puts
+`r pc(mean(sapply(levels(cases$dataset), zw, "floored")))` of its weight on
+them, against `r pc(mean(sapply(levels(cases$dataset), zw, "measured")))` under
+`measured` and `r pc(mean(sapply(levels(cases$dataset), zw, "censored")))` under
+`censored`. In the simulation the same comparison runs from near zero to near
+one. Two things differ. There the generating equation is in the candidate set
+and is known to be correct, so a retaining convention recovers it and a floored
+one visibly cannot; on real data no candidate is known to be correct. And these
+growth-rate curves decline toward zero whatever is done to the data, so a
+zero-asymptote shape is a defensible description of all four datasets rather
+than an artefact of one convention. The case studies establish that the choice
+of convention changes the reported value. They do not confirm the mechanism, and
+without a known truth they cannot.
 
 # 7 Recommendations
 
@@ -1516,19 +1460,19 @@ that cell, so that the Stan programs are identical between realisations and
 compile once. Holding them fixed removes realisation-to-realisation prior
 jitter, which is nuisance variation; each convention still keeps its own prior
 derived from its own prepared data, so the contrast between conventions is
-unaffected. Two properties of those defaults constrain what the study can
-claim. The default `nec` prior places the true `nec` of 1.3 between the 6th and
-the 82nd percentile depending on the cell, which is unremarkable. The same
-family of prior applied to the `ec50` parameter places the true ErC50 above the
-99th percentile in every cell, which is tight. Equations parameterised by
-`ec50` take about a fifth of the weight under the conventions that retain the
-measurement but
-86% to 87% of it under `beta` and `gamma`, so some part of
-the displacement reported for those two could be prior-driven rather than
-convention-driven. The reported ErC50 is read off the fitted curve by
-`ecx(type = "absolute")` rather than from the `ec50` parameter, which weakens
-but does not remove that route. This is the first thing to check if these
-results change under a revised default prior.
+unaffected. Under the pinned version the default `nec` prior is a lognormal on
+the log of the predictor whose central 95% interval covers the concentrations
+tested, and it places the true `nec` of 1.3 between the 23rd and the 63rd
+percentile depending on the cell, and the true ErC50 between the 80th and the
+95th. Both are comfortably inside.
+
+That was not true of the version of this study published before. Its default
+`nec` and `ec50` prior was a gamma whose spread is tied to its shape, so its
+central 95% interval covered a fraction of a logarithmically spaced series
+however the series was designed, and it placed the true ErC50 above the 99th
+percentile in every cell. Anyone comparing the two versions should expect the
+equations parameterised by `ec50` to behave differently between them for that
+reason alone.
 
 Each cell was simulated 100 times. The Monte Carlo standard error of the
 reported bias is a median of 0.4% of the true value for ErC50, 1.2% for ErC10
@@ -1551,25 +1495,39 @@ the measurements, as Section 6.1 records.
 
 # 9 Provenance of the reported results
 
-The simulation in Section 5 is not run when this vignette is built. It is 4,200
-model-averaged fits over 52,533 individual equation fits, run as a job array on
-a cluster, which is far more machine time than a package build can use. It is a separate research compendium,
+Neither the simulation nor the case studies are run when this vignette is built.
+Together they are 4,224 model-averaged fits, which is far more machine time than
+a package build can use, and they run instead in a separate research compendium,
 [open-AIMS/negative-response-conventions](https://github.com/open-AIMS/negative-response-conventions)
-[@negresponse2026], which contains the generating code, the runner, the
-container definition pinning every package version, the fixed priors as
-tracked files, and the result tables.
+[@negresponse2026]. It holds the generating code, the runners, the fixed priors
+as tracked files, the container the fits ran in, and the result tables every
+figure here is transcribed from.
 
-Every figure quoted from the simulation is transcribed from that compendium's
-output at the commit named in the bibliography entry. The metrics table is
-`results/metrics_100iter.csv` and the model weights of Table 2 are derived from
-the per-unit records under `results/<cell>/`. The fits were run against
-`bayesnec` at commit `0976caca`, version 2.1.3.33, built into the container
-defined by `hpc/negative-response-conventions.def`. That is a development
-commit rather than a CRAN release, so the default priors used are those of the
-2.2.0 development line rather than of 2.1.3.1.
+Every figure quoted is transcribed from that compendium's output at the commit
+named in the bibliography entry: `results/metrics.csv` for the simulation,
+`results/weights.csv` for the model weights of Table 2, and
+`results/case_estimates.csv` for Section 6. The fits ran against `bayesnec` at
+the commit recorded in the compendium's `hpc/bayesnec.lock`, inside the
+container that repository's `hpc/image.lock` identifies, which holds the
+toolchain and installs the package from that pinned source.
 
-The case studies in Section 6 are computed when the vignette is built, from the
-`alga` data that ship with `bayesnec`, so they track the current version of the
-package while the simulation figures describe it as it behaved at that commit.
+That commit is on the development branch rather than a CRAN release, and here
+the difference matters more than it usually would, because what this vignette
+measures is what package defaults do. Two of the changes between that commit and
+the 2.1.3.1 release are the subject of results reported above: the `nec` and
+`ec50` priors are now built on the log of the predictor, and the initial-value
+search accepts chains individually. An analysis run under the CRAN release will
+not reproduce these numbers exactly.
+
+The case studies were computed when this vignette was built until the
+conventions became model-averaged over the whole declining set. Four datasets by
+six conventions, each an average over thirteen or fourteen equations, is about
+fifteen hours, which is not something to run on a workstation whenever a
+sentence changes. Moving them into the compendium has a cost, and it is stated
+here rather than left to be discovered: the case-study estimates no longer track
+whatever version of `bayesnec` they are published beside. They describe the
+pinned commit, exactly as the simulation does. What Table 3 reports — the four
+datasets themselves — is still computed at build time from the `alga` data that
+ship with the package, so that much does track your installation.
 
 # 10 References
