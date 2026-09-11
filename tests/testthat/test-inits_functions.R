@@ -117,8 +117,10 @@ run_init_test <- function(model, prior_type = "uninformative") {
                                     response_link,
                                     prior_type = prior_type)
   set.seed(42)
+  # The family is passed because fit_bayesnec() passes it: it is what tells the
+  # search that the mean of this response lives in (0, 1). See #309.
   inits <- bayesnec:::make_good_inits(
-    model, bb_predictor, response_link,
+    model, bb_predictor, response_link, family = bb_family,
     priors = priors, chains = 4, seed = 42
   )
   inits
@@ -324,7 +326,9 @@ test_that("the fixed value is kept for the curve check, not dropped", {
   priors <- bayesnec:::define_prior("nec4param",
                                     validate_family("gaussian"), x, y)
   priors$prior[priors$nlpar == "bot"] <- "constant(0)"
-  inits <- bayesnec:::make_good_inits("nec4param", x, y, priors = priors,
+  inits <- bayesnec:::make_good_inits("nec4param", x, y,
+                                     family = validate_family("Beta"),
+                                     priors = priors,
                                       chains = 2, seed = 42)
   expect_false(is.character(inits))   # i.e. not the "random" fallback
   expect_true("b_bot" %in% names(inits[[1]]))
@@ -950,8 +954,8 @@ test_that("the search is deterministic given a seed", {
   )
   run <- function() {
     suppressMessages(
-      make_good_inits("nec4param", x, y, n_trials = 20, seed = 42,
-                      priors = pr, chains = 2)
+      make_good_inits("nec4param", x, y, family = validate_family("Beta"),
+                      n_trials = 20, seed = 42, priors = pr, chains = 2)
     )
   }
   expect_equal(run(), run())
@@ -968,7 +972,9 @@ test_that("a long search says it is still running", {
     brms::prior_string("normal(1e6, 1)", nlpar = "nec")
   msg <- capture.output(
     make_good_inits("nec3param", x = c(1, 5, 20, 100),
-                    y = c(0.9, 0.6, 0.3, 0.1), priors = priors, chains = 2,
+                    y = c(0.9, 0.6, 0.3, 0.1),
+                    family = validate_family("gaussian"),
+                    priors = priors, chains = 2,
                     n_trials = 3, report_after = 0),
     type = "message"
   )
@@ -1035,4 +1041,553 @@ test_that("surrounding whitespace in a prior string is tolerated", {
                                priors = lognormal_prior_df(" lognormal(0, 1)"),
                                chains = 1)
   expect_gt(as.numeric(out[[1]]$b_nec), 0)
+})
+
+# #309: the initial-value search required all chains to pass at the same time,
+# and tested the initial curve against range(y).
+
+alga_a <- function() {
+  d <- alga[alga$species == "c_proliferum" & alga$contaminant == "A", ]
+  list(x = d$dose, y = d$sgr)
+}
+
+test_that("group_spread pools within groups and stands in where none repeat", {
+  x <- rep(c(0, 1, 2), each = 5)
+  set.seed(11)
+  y <- c(rnorm(5, 1, 0.1), rnorm(5, 2, 0.1), rnorm(5, 3, 0.1))
+  v <- vapply(split(y, factor(x)), var, numeric(1))
+  expect_equal(group_spread(x, y), sqrt(mean(v)))
+  # No replication leaves no within-group variation to pool, and the spread of
+  # the whole response stands in.
+  expect_equal(group_spread(1:6, c(1, 2, 3, 4, 5, 6)), sd(1:6))
+})
+
+test_that("replicated_group_means ignores predictor values seen once", {
+  # An unreplicated value's "mean" is that observation, and admitting those
+  # would put the band back on the extrema it exists to leave.
+  x <- c(0, 0, 0, 1, 2, 2)
+  y <- c(1, 2, 3, 99, 4, 6)
+  expect_equal(sort(replicated_group_means(x, y)), c(2, 5))
+})
+
+test_that("the upper reference is a group mean, not a single observation", {
+  # One aberrant control observation raises max(y) by the whole of it and the
+  # control mean by a sixth of it. The band widens as well, because a variance
+  # estimate is not robust either and the observation is evidence that the
+  # response varies more than the other groups suggested -- but that is the
+  # spread responding, not the reference.
+  x <- rep(c(0, 1, 5, 20), each = 6)
+  set.seed(309)
+  y <- c(rnorm(6, 1, 0.02), rnorm(6, 0.8, 0.02), rnorm(6, 0.4, 0.02),
+         rnorm(6, 0.1, 0.02))
+  y2 <- y
+  y2[1] <- 3
+  ref <- function(z) regularizing_location(x, z, "top")[["location"]]
+  expect_lt(ref(y2) - ref(y), (3 - y[1]) / 6 + 1e-8)
+  expect_gt(max(y2) - max(y), 1.9)
+  # The band widens, because a variance estimate follows an outlier too. That
+  # is the permissive direction -- the spiked band contains the clean one, so
+  # every starting value the clean band accepted is still accepted -- and it is
+  # the reason the assertion is on containment rather than on width.
+  clean <- init_limits(x, y)
+  spiked <- init_limits(x, y2)
+  expect_lte(spiked[1], clean[1])
+  expect_gte(spiked[2], clean[2])
+})
+
+test_that("the band does not get looser as replicates are added", {
+  # range(y) drifts outward with sample size, so the released check was more
+  # permissive on the larger design. The band is a mean plus a spread and is
+  # not a function of n in that way.
+  set.seed(310)
+  gen <- function(reps) {
+    x <- rep(c(0, 1, 5, 20), each = reps)
+    y <- rnorm(length(x), rep(c(1, 0.8, 0.4, 0.1), each = reps), 0.1)
+    list(x = x, y = y)
+  }
+  small <- gen(5)
+  large <- gen(200)
+  band_growth <- diff(init_limits(large$x, large$y)) /
+    diff(init_limits(small$x, small$y))
+  range_growth <- diff(range(large$y)) / diff(range(small$y))
+  expect_lt(band_growth, range_growth)
+  expect_lt(band_growth, 1.3)
+})
+
+test_that("the band contains every group mean of the packaged alga series", {
+  # A curve whose asymptote sits at a level the design recorded is not a
+  # starting value the search should reject. That series is heteroscedastic and
+  # is not monotone at its lower end, which is why every level mean is a centre
+  # of the band and not only the two anchors read at the ends of the series.
+  d <- alga_a()
+  gm <- vapply(split(d$y, factor(d$x)), mean, numeric(1))
+  lim <- init_limits(d$x, d$y)
+  expect_true(all(gm >= lim[1] & gm <= lim[2]))
+  expect_true(which.min(gm) != length(gm))
+})
+
+test_that("a degenerate response falls back to the observed range", {
+  x <- rep(c(0, 1), each = 3)
+  y <- rep(2, 6)
+  expect_equal(init_limits(x, y), range(y))
+})
+
+test_that("zero_bounded_family names the families define_prior scales on zero", {
+  # Read at two places that must agree: the gamma-scaled branch of
+  # define_prior() and the band the init search uses.
+  expect_true(zero_bounded_family(validate_family("Gamma")))
+  expect_true(zero_bounded_family(validate_family("poisson")))
+  expect_true(zero_bounded_family(validate_family("negbinomial")))
+  expect_false(zero_bounded_family(validate_family("gaussian")))
+  expect_false(zero_bounded_family(validate_family("Beta")))
+})
+
+test_that("a chain is accepted on its own, so a low per-chain rate still succeeds", {
+  # The released rule required four chains to pass at the same time and re-drew
+  # the complete set when any one failed, which raises the number of proposals
+  # to the fourth power of the per-chain rate. Both rules are run here under
+  # the same band so the comparison is of the structure alone.
+  skip_on_cran()
+  d <- alga_a()
+  pr <- suppressMessages(
+    define_prior("nec3param", validate_family("gaussian"), d$x, d$y)
+  )
+  limits <- init_limits(d$x, d$y)
+  pf <- pred_nec3param
+  fa <- setdiff(names(unlist(as.list(args(pf)))), "x")
+  ok <- function(init) {
+    check_init_predictions(
+      get_init_predictions(init, sort(d$x), pf, fa), limits)
+  }
+  # The released rule, reimplemented here so the comparison does not depend on
+  # a second working tree.
+  released_drawn <- function(seed, cap = 2000) {
+    set.seed(seed)
+    n <- 0
+    passed <- FALSE
+    while (!passed && n < cap) {
+      n <- n + 1
+      passed <- all(vapply(make_inits("nec3param", fa, pr, 4), ok, logical(1)))
+    }
+    # The success flag is returned with the count, so a capped run is not read
+    # as a measured one: at this per-chain rate the released rule usually does
+    # not succeed inside the cap at all.
+    c(drawn = 4 * n, ok = passed)
+  }
+  changed_drawn <- function(seed, cap = 2000) {
+    set.seed(seed)
+    filled <- rep(FALSE, 4)
+    drawn <- 0
+    n <- 0
+    while (any(!filled) && n < cap) {
+      need <- sum(!filled)
+      got <- vapply(make_inits("nec3param", fa, pr, need), ok, logical(1))
+      filled[which(!filled)[got]] <- TRUE
+      drawn <- drawn + need
+      n <- n + 1
+    }
+    if (any(!filled)) NA_integer_ else drawn
+  }
+  seeds <- c(11, 22, 33)
+  a <- vapply(seeds, released_drawn, numeric(2))
+  b <- vapply(seeds, changed_drawn, numeric(1))
+  expect_false(anyNA(b))
+  expect_lt(max(b), 200)
+  expect_gt(median(a["drawn", ]) / median(b), 20)
+  # Both counts are measurements rather than floors: the released rule does
+  # succeed inside the cap here, so the ratio is a like-for-like comparison of
+  # the two structures. The sibling test below uses ecxlin, where it does not.
+  expect_true(all(a["ok", ] == 1))
+})
+
+test_that("only the empty chain slots are re-drawn", {
+  # The property that makes the change free: an accepted chain is kept, so the
+  # search draws the number of proposals a per-chain rate implies rather than
+  # its fourth power.
+  skip_on_cran()
+  d <- alga_a()
+  pr <- suppressMessages(
+    define_prior("nec4param", validate_family("gaussian"), d$x, d$y)
+  )
+  drawn <- 0
+  # The original is captured before the binding is replaced; calling
+  # bayesnec:::make_inits() from inside the mock would resolve to the mock.
+  real_make_inits <- bayesnec:::make_inits
+  with_mocked_bindings(
+    make_inits = function(model, fct_args, priors, chains) {
+      drawn <<- drawn + chains
+      real_make_inits(model, fct_args, priors, chains)
+    },
+    {
+      inits <- suppressMessages(
+        make_good_inits("nec4param", d$x, d$y,
+                        family = validate_family("gaussian"),
+                        priors = pr, chains = 4, n_trials = 500, seed = 99)
+      )
+    }
+  )
+  expect_length(inits, 4)
+  # Four chains at a per-chain rate near a fifth need of the order of tens of
+  # proposals. The released rule drew four per round and needed thousands of
+  # rounds on this series.
+  expect_lt(drawn, 400)
+})
+
+test_that("every chain the search returns satisfies the check", {
+  skip_on_cran()
+  d <- alga_a()
+  for (m in c("nec3param", "ecx4param", "ecxlin")) {
+    pr <- suppressMessages(
+      define_prior(m, validate_family("gaussian"), d$x, d$y)
+    )
+    lim <- init_limits(d$x, d$y)
+    pf <- get(paste0("pred_", m))
+    fa <- setdiff(names(unlist(as.list(args(pf)))), "x")
+    inits <- suppressMessages(
+      make_good_inits(m, d$x, d$y, family = validate_family("gaussian"),
+                      priors = pr, chains = 4, seed = 7)
+    )
+    expect_false("random" %in% names(inits), info = m)
+    expect_true(
+      all(vapply(inits, function(i) check_init_predictions(
+        get_init_predictions(i, sort(d$x), pf, fa), lim), logical(1))),
+      info = m
+    )
+  }
+})
+
+test_that("the band is bounded by the support of the mean", {
+  # Under the identity link bnec() assigns, an initial curve outside the
+  # interval the likelihood permits is invalid rather than merely poor: Stan
+  # rejects it and the fit ends on "Initialization failed". range(y) kept the
+  # curve inside the support by accident, because a response is inside its own
+  # support; a band built from a location and a spread has no such guarantee.
+  x <- rep(c(0, 1, 5, 20), each = 5)
+  set.seed(162)
+  y <- pmin(pmax(rep(c(0.98, 0.8, 0.4, 0.1), each = 5) + rnorm(20, 0, 0.05),
+                 0.001), 0.999)
+  unconstrained <- init_limits(x, y)
+  bounded <- init_limits(x, y, support = mu_support(validate_family("Beta")))
+  expect_gt(unconstrained[2], 1)
+  # Inside the support, and inside it strictly: where the band reaches the
+  # boundary it stops at the nearest value the response takes.
+  expect_lt(bounded[2], 1)
+  expect_gt(bounded[1], 0)
+  # a tenth of the way from the boundary towards the nearest observed value, so
+  # outside the observed range and inside the support
+  expect_gte(bounded[2], max(y))
+  expect_lte(bounded[1], min(y))
+  # and gaussian is not bounded, so the band is left alone
+  expect_equal(init_limits(x, y, support = mu_support(validate_family("gaussian"))),
+               unconstrained)
+})
+
+test_that("make_good_inits keeps a bounded family's curve inside its support", {
+  skip_on_cran()
+  x <- rep(c(0, 1, 5, 20), each = 5)
+  set.seed(163)
+  y <- pmin(pmax(rep(c(0.98, 0.8, 0.4, 0.1), each = 5) + rnorm(20, 0, 0.05),
+                 0.001), 0.999)
+  fam <- validate_family("Beta")
+  pr <- suppressMessages(define_prior("nec4param", fam, x, y))
+  inits <- suppressMessages(
+    make_good_inits("nec4param", x, y, family = fam, priors = pr,
+                    chains = 4, seed = 5)
+  )
+  expect_false("random" %in% names(inits))
+  fa <- setdiff(names(unlist(as.list(args(pred_nec4param)))), "x")
+  for (i in seq_along(inits)) {
+    preds <- get_init_predictions(inits[[i]], sort(x), pred_nec4param, fa)
+    expect_true(all(preds > 0 & preds < 1))
+  }
+})
+
+test_that("a case that exhausted the cap now succeeds well inside it", {
+  # ecxlin on the alga c_proliferum contaminant A series is one of the searches
+  # that reached n_trials under the released rule and fell through to Stan's
+  # own initialisation. Both rules are run here, each under its own criterion,
+  # because that is the pair of states the change moves between.
+  skip_on_cran()
+  d <- alga_a()
+  pr <- suppressMessages(
+    define_prior("ecxlin", validate_family("gaussian"), d$x, d$y)
+  )
+  fa <- setdiff(names(unlist(as.list(args(pred_ecxlin)))), "x")
+  ok <- function(init, limits) {
+    check_init_predictions(
+      get_init_predictions(init, sort(d$x), pred_ecxlin, fa), limits)
+  }
+  cap <- 2000
+  for (s in c(11, 22, 33)) {
+    set.seed(s)
+    rounds <- 0
+    passed <- FALSE
+    while (!all(passed) && rounds < cap) {
+      rounds <- rounds + 1
+      passed <- vapply(make_inits("ecxlin", fa, pr, 4), ok, logical(1),
+                       range(d$y))
+    }
+    expect_gte(rounds, cap)
+    # Reached the cap without succeeding, rather than succeeding on the last
+    # round, which expect_gte() alone would also admit.
+    expect_false(all(passed))
+    inits <- suppressMessages(
+      make_good_inits("ecxlin", d$x, d$y,
+                      family = validate_family("gaussian"),
+                      priors = pr, chains = 4, n_trials = cap, seed = s)
+    )
+    expect_false("random" %in% names(inits), info = paste("seed", s))
+    expect_length(inits, 4)
+  }
+})
+
+test_that("prior_family_tag applies both rewrites define_prior depends on", {
+  # Two rewrites stand between the family name and the tag the response-scaled
+  # priors are keyed on, and both were inline in define_prior() where the init
+  # search could not read them. Reading family$family directly instead broke
+  # the zero-inflated counts outright and reintroduced the #229 failure for a
+  # log link, so each is asserted here rather than left to the caller.
+  expect_equal(prior_family_tag(validate_family("zero_inflated_poisson")),
+               "poisson")
+  expect_equal(prior_family_tag(validate_family("zero_inflated_negbinomial")),
+               "negbinomial")
+  expect_equal(prior_family_tag(stats::Gamma(link = "log")), "gaussian")
+  expect_equal(prior_family_tag(brms::Beta(link = "logit")), "gaussian")
+  expect_equal(prior_family_tag(validate_family("Gamma")), "Gamma")
+  expect_true(zero_bounded_family(validate_family("zero_inflated_poisson")))
+  expect_false(zero_bounded_family(stats::Gamma(link = "log")))
+})
+
+test_that("a zero-inflated count still gets its response-scaled priors", {
+  # The failure the tag rewrite prevents: with no gamma-scaled entry the NA
+  # reaches brms as "Cannot coerce 'prior' to a single character value", and
+  # neither zero-inflated count family can be fitted at all.
+  skip_on_cran()
+  set.seed(309)
+  d <- data.frame(x = rep(c(0, 1, 5, 20), each = 5),
+                  y = rpois(20, rep(c(20, 15, 6, 2), each = 5)))
+  for (pt in c("uninformative", "regularizing")) {
+    pr <- suppressMessages(
+      get_priors(y ~ crf(x, "nec3param"), data = d,
+                 family = "zero_inflated_poisson", prior_type = pt)
+    )
+    expect_true(all(nzchar(pr$prior[pr$nlpar %in% c("top", "bot")])), info = pt)
+  }
+})
+
+test_that("the support is mapped onto the scale the curve is on", {
+  # pred_<model>() returns the linear predictor and the band is built from the
+  # response on the link scale, so clamping to the support of the mean is only
+  # correct under the identity link. Under logit it would admit means between
+  # 0.5 and 0.73 alone.
+  expect_equal(init_support(validate_family("Beta")), c(0, 1))
+  expect_equal(init_support(brms::Beta(link = "logit")), c(-Inf, Inf))
+  expect_equal(init_support(stats::Gamma(link = "log")), c(-Inf, Inf))
+  expect_equal(init_support(validate_family("Gamma")), c(0, Inf))
+  expect_equal(init_support(validate_family("gaussian")), c(-Inf, Inf))
+})
+
+test_that("an unreplicated design uses the successive differences, not sd(y)", {
+  # sd(y) grows with the size of the effect, which is the reason it is not the
+  # spread on a replicated design either. The successive differences of a
+  # smooth curve have twice the noise variance.
+  x <- c(0, 0.5, 1, 2, 4, 8, 16, 32)
+  y <- c(0.98, 0.95, 0.88, 0.70, 0.42, 0.20, 0.08, 0.04)
+  expect_equal(group_spread(x, y), successive_difference_spread(x, y))
+  expect_lt(group_spread(x, y), sd(y) / 3)
+  # and the band it gives is a small multiple of the response range, where
+  # sd(y) gave more than four times it
+  expect_lt(diff(init_limits(x, y)) / diff(range(y)), 2)
+  # fewer than three observations leave too few differences to read
+  expect_equal(group_spread(c(1, 2), c(1, 2)), sd(c(1, 2)))
+})
+
+test_that("make_good_inits requires the family", {
+  # A default would silently drop the support clamp, which is the constraint
+  # range(y) supplied for free.
+  expect_error(
+    suppressMessages(
+      make_good_inits("nec3param", c(1, 5, 20), c(0.9, 0.5, 0.1),
+                      priors = define_prior("nec3param",
+                                            validate_family("gaussian"),
+                                            c(1, 5, 20), c(0.9, 0.5, 0.1)),
+                      chains = 2, n_trials = 2)
+    ),
+    "family"
+  )
+})
+
+test_that("ecxsigm succeeds on the alga c_proliferum series", {
+  # Named in #309 as one of the equations that exhausted the cap and fell
+  # through to Stan's initialisation on this series.
+  skip_on_cran()
+  d <- alga_a()
+  fam <- validate_family("gaussian")
+  pr <- suppressMessages(define_prior("ecxsigm", fam, d$x, d$y))
+  inits <- suppressMessages(
+    make_good_inits("ecxsigm", d$x, d$y, family = fam, priors = pr,
+                    chains = 4, n_trials = 500, seed = 8)
+  )
+  expect_false("random" %in% names(inits))
+  expect_length(inits, 4)
+  fa <- setdiff(names(unlist(as.list(args(pred_ecxsigm)))), "x")
+  lim <- init_limits(d$x, d$y, support = init_support(fam))
+  expect_true(all(vapply(inits, function(i) check_init_predictions(
+    get_init_predictions(i, sort(d$x), pred_ecxsigm, fa), lim), logical(1))))
+})
+
+test_that("the band stops short of the support boundary", {
+  # A mean at the boundary is one the likelihood cannot evaluate. Where the
+  # band reaches it the band stops at the nearest value the response takes, so
+  # that a bounded response cannot be started at a mean no design resolves.
+  x <- rep(c(0, 1, 5, 20), each = 5)
+  set.seed(164)
+  y <- pmin(pmax(rep(c(0.98, 0.6, 0.2, 0.02), each = 5) + rnorm(20, 0, 0.05),
+                 0.002), 0.998)
+  lim <- init_limits(x, y, support = c(0, 1))
+  expect_gt(lim[1], 0)
+  expect_lt(lim[2], 1)
+  # it never crosses a level mean, so every level the design measured is still
+  # inside the band
+  gm <- vapply(split(y, factor(x)), mean, numeric(1))
+  expect_true(all(gm >= lim[1] & gm <= lim[2]))
+  # and an unbounded support is left alone
+  expect_equal(init_limits(x, y), init_limits(x, y, support = c(-Inf, Inf)))
+})
+
+test_that("the second block of a hurdle fit is not started at zero survival", {
+  # The second block is primed from one survival proportion per concentration,
+  # which is an unreplicated series of a few points, so the spread read from its
+  # successive differences is a third of the response range and the band spans
+  # the whole of (0, 1). A curve accepted at a survival of 1e-66 makes the joint
+  # log likelihood -Inf and the fit ends on "Initialization failed".
+  skip_on_cran()
+  set.seed(11)
+  nec3 <- function(x, top, beta, nec) {
+    top * exp(-exp(beta) * (x - nec) * (x > nec))
+  }
+  conc <- rep(c(0, 0.5, 1, 2, 3, 4, 5), each = 12)
+  mu <- nec3(conc, 25, log(0.55), 1)
+  pa <- nec3(conc, 0.97, log(0.9), 2)
+  y <- ifelse(rbinom(length(conc), 1, pa) == 1,
+              rgamma(length(conc), 12, 12 / mu), 0)
+  fam <- validate_family("hurdle_gamma")
+  parts <- split_hurdle_response(conc, y)
+  hu_band <- init_limits(parts$hu$x, parts$hu$y, support = c(0, 1))
+  # Two orders of magnitude above the 1e-66 that failed, and below the smallest
+  # proportion the design records, so the band still contains every level.
+  expect_gt(hu_band[1], 1e-5)
+  expect_lte(hu_band[1], min(parts$hu$y))
+  pr <- suppressMessages(define_prior("nec3param", fam, conc, y))
+  inits <- suppressMessages(
+    make_good_hurdle_inits("nec3param", conc, y, priors = pr, chains = 2,
+                           seed = 7, family = fam)
+  )
+  skip_if(length(inits) == 1 && "random" %in% names(inits),
+          "init search fell back to random")
+  fa <- setdiff(names(unlist(as.list(args(pred_nec3param)))), "x")
+  for (i in seq_along(inits)) {
+    hu <- inits[[i]][c("b_hutop", "b_hubeta", "b_hunec")]
+    names(hu) <- sub("^b_hu", "b_", names(hu))
+    surv <- get_init_predictions(hu, sort(parts$hu$x), pred_nec3param, fa)
+    expect_gt(min(surv), min(parts$hu$y) / 2)
+  }
+})
+
+test_that("the boundary inset does not exclude a zero-bounded asymptote", {
+  # Stopping the band at the nearest observed value was measured and is too
+  # strict on a count response with structural zeros: it put the floor above the
+  # generating bot, which is the error the width exists to avoid. A tenth of the
+  # distance from the boundary keeps the floor below anything the design
+  # resolves.
+  set.seed(2)
+  x <- rep(c(0, 1, 2, 4, 8, 16), each = 8)
+  mu <- c(20, 18, 12, 5, 1, 0.3)[match(x, c(0, 1, 2, 4, 8, 16))]
+  y <- rpois(length(x), mu) * rbinom(length(x), 1, 0.8)
+  lim <- init_limits(x, y, zero_bounded = TRUE, support = c(0, Inf))
+  expect_gt(lim[1], 0)
+  expect_lt(lim[1], 0.3)
+  expect_lt(lim[1], min(y[y > 0]))
+})
+
+test_that("the spread is not decided by a single repeated observation", {
+  # One repeated predictor value contributes a variance on one degree of
+  # freedom. Preferring it to the differences the rest of the design offers made
+  # the band a function of that one pair.
+  set.seed(7)
+  x <- 1:24
+  y <- 1 - 0.03 * x + rnorm(24, 0, 0.03)
+  x2 <- c(x, 12)
+  y2 <- c(y, y[12])
+  expect_lt(abs(group_spread(x2, y2) / group_spread(x, y) - 1), 0.2)
+  # and with enough replication the pooled estimate is used
+  xr <- rep(c(0, 1, 5, 20), each = 5)
+  yr <- rnorm(20, rep(c(1, 0.8, 0.4, 0.1), each = 5), 0.05)
+  v <- vapply(split(yr, factor(xr)), var, numeric(1))
+  expect_equal(group_spread(xr, yr), sqrt(mean(v)))
+})
+
+test_that("a band with nothing to anchor on rejects every draw", {
+  # check_init_predictions() reads the band through min() and max(), which
+  # reorder it, so an inverted pair is read as the whole line and accepts
+  # everything. range(y) on an all-missing response did exactly that.
+  lim <- init_limits(rep(c(0, 1), each = 3), rep(NA_real_, 6))
+  expect_true(all(is.na(lim)))
+  expect_false(check_init_predictions(c(1, 0.5, 0.2, 0.1), lim))
+  expect_false(check_init_predictions(c(1e9, 1e5, -1e5, -1e9), lim))
+})
+
+test_that("the count floor tracks the level means, not the integer scale", {
+  # min(y[y > 0]) is 1 for any integer response, so a floor read from an
+  # observation is the same for eight replicates as for eight hundred. Read from
+  # the level means it is a tenth of the smallest of them, which is a quantity
+  # the design can say something about. Replication concentrates it rather than
+  # lowering it, so the assertion is on the spread and not on the level.
+  floor_at <- function(reps, seed) {
+    set.seed(seed)
+    x <- rep(c(0, 1, 2, 4, 8, 16), each = reps)
+    mu <- c(20, 18, 12, 5, 1, 0.3)[match(x, c(0, 1, 2, 4, 8, 16))]
+    y <- rpois(length(x), mu) * rbinom(length(x), 1, 0.8)
+    init_limits(x, y, zero_bounded = TRUE, support = c(0, Inf))[1]
+  }
+  seeds <- 1:40
+  small <- vapply(seeds, function(s) floor_at(8, s), numeric(1))
+  large <- vapply(seeds, function(s) floor_at(80, s), numeric(1))
+  # Well below both the integer granularity and the generating asymptote.
+  expect_lt(median(small), 0.1)
+  expect_lt(median(large), 0.1)
+  expect_lt(median(large), 0.3)
+  # The level is the same; what replication removes is the spread and the
+  # seeds whose top group is entirely zero, which disable the inset.
+  expect_lt(abs(median(large) - median(small)), 0.02)
+  expect_lt(IQR(large), IQR(small))
+  expect_lt(sum(large == 0), sum(small == 0))
+})
+
+test_that("the inset is no stricter than range(y) where the response reaches in", {
+  # The gap is capped at the distance to the closest value the response takes
+  # strictly inside the boundary, so on a response that does not touch the
+  # boundary the criterion is not tightened past the released one.
+  set.seed(22)
+  x <- rep(c(0, 1, 5, 20), each = 5)
+  y <- pmin(pmax(rep(c(0.9, 0.6, 0.25, 0.05), each = 5) + rnorm(20, 0, 0.03),
+                 0.002), 0.998)
+  lim <- init_limits(x, y, support = c(0, 1))
+  expect_lte(lim[1], min(y))
+  expect_gte(lim[2], max(y))
+})
+
+test_that("the spread threshold prefers the differences at two degrees of freedom", {
+  set.seed(23)
+  x <- 1:24
+  y <- 1 - 0.03 * x + rnorm(24, 0, 0.03)
+  # two tied pairs give two degrees of freedom, which is below the threshold
+  x2 <- c(x, 5, 12)
+  y2 <- c(y, y[5] + 0.01, y[12] - 0.01)
+  expect_equal(group_spread(x2, y2), successive_difference_spread(x2, y2))
+  # a third takes it to three, and the pooled estimate is used
+  x3 <- c(x, 5, 12, 18)
+  y3 <- c(y, y[5] + 0.01, y[12] - 0.01, y[18] + 0.02)
+  expect_false(isTRUE(all.equal(group_spread(x3, y3),
+                                successive_difference_spread(x3, y3))))
 })
