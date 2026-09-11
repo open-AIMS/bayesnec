@@ -858,12 +858,12 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' cells of the audit, against none at 0.8 and 2 at 0.75. The room to narrow is
 #' therefore the difference between covering the series at one confidence level
 #' and covering it at another. 0.99 is the level chosen because it is the one a
-#' user supplying concentrations as recorded already receives, and because it is
-#' the last level at which the audit's log-transformed cells all stay inside the
-#' central 95\% of their own prior: at \code{q} of 0.995 and 0.999 the
-#' \code{log_unit} \code{ec50} cell sits at 0.9823 and 0.9929. The margin at
-#' 0.99 is not large --- that cell sits at 0.9743 --- so a narrower entry is a
-#' change to the gate, not only to the spread.
+#' user supplying concentrations as recorded already receives, and because the
+#' audit's log-transformed cells stop staying inside the central 95\% of their
+#' own prior just above it: the \code{log_unit} \code{ec50} cell crosses 0.975
+#' at \code{q} of 0.9905, and sits at 0.9823 at 0.995 and 0.9929 at 0.999. The
+#' margin at 0.99 is not large --- that cell sits at 0.9743 --- so a narrower
+#' entry is a change to the gate, not only to the spread.
 #'
 #' \strong{Why the rule is stated rather than applied as a factor.} Until #305
 #' the entry was identical under both sets, which made \code{prior_type} inert
@@ -872,14 +872,15 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' On the lognormal branch the \code{qnorm(0.975)} cancels and the product is
 #' the coverage rule above, so that branch is unchanged by #314. The two
 #' expressions are the same quantity but not always the same double: the factor
-#' form rounds three times and the stated form once, so they differ by at most
-#' one unit in the last place. Measured over 200,000 randomly generated dilution
-#' series the largest relative difference was 2.22e-16, exactly one ulp, and the
-#' 15 significant digits \code{paste0()} writes differed on 1.6\% of them. Two
-#' cells of the 30-cell audit are affected, both of them the nassarius
-#' contaminant A series: read on the recorded scale sigma is 1.93333703285197
-#' against 1.93333703285198, and on the square-root scale 0.966668516425987
-#' against 0.966668516425988.
+#' form rounds three times and the stated form once, which bounds the difference
+#' at about two units in the last place. One is what is observed. Measured over
+#' 200,000 randomly generated dilution series the largest relative difference
+#' was 2.22e-16, exactly one ulp, and the 15 significant digits
+#' \code{paste0()} writes differed on 1.6\% of them. Two prior strings of the
+#' audit are affected, both of them the nassarius contaminant A series: read on
+#' the recorded scale sigma is 1.93333703285197 against 1.93333703285198, and on
+#' the square-root scale 0.966668516425987 against 0.966668516425988. That is
+#' four of the 30 cells, since \code{nec} and \code{ec50} share a string.
 #' On the branch for a predictor the user has already
 #' logged it does not cancel, because the spread there is the constant
 #' \code{10 sd(z)} rather than a coverage width. On a 0.1 to 100 series over

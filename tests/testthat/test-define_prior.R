@@ -1017,15 +1017,19 @@ test_that("the regularizing entry is unchanged for recorded doses (#314)", {
   # a predictor on the recorded concentration scale receives the entry it
   # already received.
   #
-  # Compared as numbers, not as literal strings. The two expressions agree to
-  # about 20 units in the last place rather than bit for bit: over 5,000
-  # randomly generated dilution series the largest relative difference in sigma
-  # was 4.5e-15 and the 15 significant digits paste0() writes differed in 36 of
-  # them. One cell of the #302 audit is affected -- the nassarius contaminant A
-  # series read on the recorded and on the square-root scale, where sigma is
-  # 1.93333703285197 against 1.93333703285198 -- so a literal string here would
-  # pin the formatting of a double, which is what the note at the top of this
-  # block of tests says these helpers exist to avoid.
+  # Compared as numbers, not as literal strings. The two expressions are the
+  # same quantity but not always the same double: the factor form rounds three
+  # times and the stated form once. Measured over 200,000 randomly generated
+  # dilution series the largest relative difference was 2.22e-16, exactly one
+  # unit in the last place, and the 15 significant digits paste0() writes
+  # differed on 1.6% of them. Two prior strings of the #302 audit are affected,
+  # both the nassarius contaminant A series: 1.93333703285197 against
+  # 1.93333703285198 read on the recorded scale and 0.966668516425987 against
+  # 0.966668516425988 on the square-root scale, which is four of its 30 design
+  # by transform by parameter cells because nec and ec50 share a string. A
+  # literal string here would therefore pin the formatting of a double, which is
+  # what the note at the top of this block of tests says these helpers exist to
+  # avoid.
   factor_form <- function(x) {
     z <- prior_scale(x)
     reg_spread(z, 0.975) * (qnorm(0.975) / qnorm(0.99))
