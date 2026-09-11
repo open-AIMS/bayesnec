@@ -26,13 +26,17 @@ with_parallel_plan <- function(code, workers = 2) {
 # stderr. None of that is exercised by multisession, so on the platforms where
 # forking works it is worth checking that the same guarantees hold.
 with_fork_plan <- function(code, workers = 2) {
-  skip_if_not_installed("parallelly")
-  skip_if_not(parallelly::supportsMulticore(),
-              "forking is not available on this platform")
   old_limit <- options(parallelly.maxWorkers.localhost = Inf)
   on.exit(options(old_limit), add = TRUE)
-  old <- future::plan(future::multicore, workers = workers)
+  old <- suppressWarnings(future::plan(future::multicore, workers = workers))
   on.exit(future::plan(old), add = TRUE)
+  # future falls back to evaluating in the parent where forking is
+  # unavailable, and reports one worker when it does, so the worker count is
+  # the test for whether this platform actually forks. Asked of future rather
+  # than of supportsMulticore() in parallelly, a namespaced call to which is an
+  # undeclared import and fails R CMD check under error_on = "warning".
+  skip_if(future::nbrOfWorkers() < workers,
+          "forking is not available on this platform")
   code
 }
 
@@ -185,11 +189,15 @@ test_that("a forking plan gives the same guarantees as a socket one", {
     stats::runif(3)
   }
   sequential <- bnec_model_lapply(1:4, draw, parallel = FALSE)
-  set.seed(9)
-  before <- get(".Random.seed", envir = globalenv())
-  parallel <- with_fork_plan(bnec_model_lapply(1:4, draw, parallel = TRUE))
-  expect_identical(parallel, sequential)
-  expect_identical(get(".Random.seed", envir = globalenv()), before)
+  res <- with_fork_plan({
+    set.seed(9)
+    before <- get(".Random.seed", envir = globalenv())
+    out <- bnec_model_lapply(1:4, draw, parallel = TRUE)
+    list(out = out, before = before,
+         after = get(".Random.seed", envir = globalenv()))
+  })
+  expect_identical(res$out, sequential)
+  expect_identical(res$after, res$before)
   # And the failure contract, which under forking returns the try-error
   # through shared memory rather than through serialisation.
   out <- with_fork_plan(bnec_model_lapply(1:3, function(i) {
@@ -216,21 +224,31 @@ test_that("a parallel run leaves the caller's RNG stream where it was", {
   # parallel runs of one call would not agree with each other. It does not make
   # the draw match the sequential run's, which advances the stream by running
   # every init search in the parent; see ?bnec.
-  set.seed(9)
-  before <- get(".Random.seed", envir = globalenv())
-  out <- with_parallel_plan({
+  #
+  # The baseline is taken inside the plan and after the skip check, not before
+  # it. skip_unless_worker_sees_internals() calls future_lapply() itself, which
+  # advances the parent's stream; a baseline taken ahead of it is a state the
+  # loop was never given, and the comparison then fails for that reason alone.
+  # It did, on macOS, at 2026-09-11.
+  res <- with_parallel_plan({
     skip_unless_worker_sees_internals()
-    bnec_model_lapply(1:4, function(i) i, parallel = TRUE)
+    set.seed(9)
+    before <- get(".Random.seed", envir = globalenv())
+    out <- bnec_model_lapply(1:4, function(i) i, parallel = TRUE)
+    list(out = out, before = before,
+         after = get(".Random.seed", envir = globalenv()))
   })
-  expect_length(out, 4)
-  expect_identical(get(".Random.seed", envir = globalenv()), before)
-  # And with no stream to begin with, none is left behind.
-  suppressWarnings(rm(".Random.seed", envir = globalenv()))
-  with_parallel_plan({
+  expect_length(res$out, 4)
+  expect_identical(res$after, res$before)
+  # And with no stream to begin with, none is left behind. The removal comes
+  # after the skip check for the same reason.
+  left_behind <- with_parallel_plan({
     skip_unless_worker_sees_internals()
+    suppressWarnings(rm(".Random.seed", envir = globalenv()))
     bnec_model_lapply(1:2, function(i) i, parallel = TRUE)
+    exists(".Random.seed", envir = globalenv(), inherits = FALSE)
   })
-  expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+  expect_false(left_behind)
 })
 
 test_that("a one-worker parallel plan does not take chains away from brms", {
