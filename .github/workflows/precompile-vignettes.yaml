@@ -152,6 +152,21 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       NOT_CRAN: true
+      # precompile.R defaults to the cmdstanr backend, because the HPC path it
+      # was written for depends on cmdstan's compiled-program cache (#306).
+      # This runner has neither cmdstanr, which is not on CRAN and not in
+      # DESCRIPTION, nor a cmdstan installation, so every fit would fail
+      # require_backend() and bnec() would report only "None of the models fit
+      # successfully". Held at rstan, which is what this workflow has always
+      # used.
+      #
+      # The consequence is that a vignette precompiled here and one precompiled
+      # on the HPC are sampled by different back ends. That is a real difference
+      # and it is not resolved by this line: resolving it means installing
+      # cmdstanr and cmdstan on the runner and caching them, which is a change
+      # to this workflow that has not been exercised. Until then, treat the HPC
+      # as the path for a render whose numbers will be quoted.
+      BAYESNEC_BACKEND: rstan
 
     steps:
       - uses: actions/checkout@v4
@@ -167,21 +182,23 @@ jobs:
           extra-packages: any::knitr, any::purrr, any::rmarkdown, local::.
           needs: check
 
-      # NOT cached: compiled Stan models. brms defaults to the rstan backend and
-      # nothing in this package sets `backend = "cmdstanr"`, so models are
-      # compiled in-process and nothing is written to ~/.cmdstan -- an earlier
-      # cache step on that path stored and restored an empty directory on every
-      # run while reading as though compilation were cached. Recompilation is a
-      # real per-run cost; making it cacheable means moving to cmdstanr and
-      # pointing `cmdstanr_write_stan_file_dir` at a cached path, which is a
-      # bigger change than this one. See #230, #251.
+      # NOT cached: compiled Stan models. This job pins the rstan backend in
+      # `env:` above, so models are compiled in-process and nothing is written
+      # to ~/.cmdstan -- an earlier cache step on that path stored and restored
+      # an empty directory on every run while reading as though compilation were
+      # cached. Recompilation is a real per-run cost; making it cacheable means
+      # installing cmdstanr and cmdstan here and pointing
+      # `cmdstanr_write_stan_file_dir` at a cached path, which is what
+      # `hpc/run.precompile` does and what would also make this runner agree
+      # with the HPC on the sampler. See #230, #251, #306.
 
-      # Held back rather than passed as an argument because precompile.R globs
-      # the directory. Nothing is restored afterwards: this checkout is thrown
-      # away, and only the tarball built below leaves the job. That retires the
-      # hold-back/restore dance from #230, which had to be keyed off a directory
-      # because on.exit() never fires at `Rscript {0}` top level and
-      # precompile.R opens with `rm(list = ls())`.
+      # precompile.R now takes the vignette name as an argument (#306), so this
+      # step is no longer the only way to rebuild one vignette. It is kept
+      # because it is what this workflow has been running, and the argument is
+      # passed as well, below: the two agree, and the hold-back also keeps a
+      # stale rendered .Rmd out of the tarball. Nothing is restored afterwards:
+      # this checkout is thrown away, and only the tarball built below leaves
+      # the job.
       - name: Hold back every vignette but ${{ matrix.vignette }}
         if: matrix.vignette != 'dry-run'
         run: |
@@ -197,7 +214,7 @@ jobs:
 
       - name: Precompile ${{ matrix.vignette }}
         if: matrix.vignette != 'dry-run'
-        run: Rscript vignettes/precompile.R
+        run: Rscript vignettes/precompile.R '${{ matrix.vignette }}'
 
       # Nothing is fitted. A real PNG under the name below gives the
       # pull-request step an actual diff to commit, and it is covered by the

@@ -2,6 +2,107 @@
 
 ## Default priors
 
+- **The `"regularizing"` prior set is now one statement applied to every
+  family.** `prior_type = "regularizing"` was written out branch by branch, and
+  the branches had drifted apart, so the word did not describe one thing:
+  measured over 420 `top` and `bot` entries built from one simulated response
+  each --- five designs, three predictor transforms, seven families, two links
+  --- the ratio of the regularizing prior standard deviation to the
+  uninformative one ran from 0.032 to 2.18, and the regularizing prior was the
+  *wider* of the two in 17 of them. The set is now defined once, by a location
+  and a spread, and each family's entry is derived from it using whichever
+  distribution matches the parameter's support, with its **mode** at the
+  location and its standard deviation at the spread. On the same measurement the
+  ratio is `0.4` exactly in 385 of the 420 entries and is never above 1 (#305).
+
+  **The location is now read at the end of the predictor.** `top` is the level
+  of the response before the curve responds and `bot` the level after it stops
+  changing, so each is estimated from the observations at the corresponding end
+  of the concentration series --- the control group for `top` --- rather than
+  from the extreme, or an extreme quantile, of the response pooled over the
+  whole design. A pooled quantile is a proxy for the level of one plateau whose
+  quality depends on what share of the design sits on that plateau, and it is
+  biased in opposite directions for a discrete and for an over-dispersed
+  response: against a true `bot` of 5 the smallest count observed ran 1 to 3,
+  while against a true `top` of 40 the 95th percentile of an over-dispersed
+  count reached 72. Over the 720 `top` and `bot` cells of the prior audit the
+  released set placed the true value outside the central 95% of its own prior in
+  65; the set adopted here does so in 1. The `"uninformative"` set does so in
+  none and is unchanged.
+
+  **The spread is floored at the standard error of the location.** A mean of six
+  control observations is not a precise estimate of a plateau, and a prior
+  narrower than the noise in its own anchor states a precision the data do not
+  supply. The spread is therefore `0.4` of the uninformative width or the
+  standard error of the location, whichever is larger, and never more than the
+  uninformative width. The floor binds in 35 of the 420 entries measured, on the
+  responses whose anchor is least precise: a `bernoulli` one, where a single
+  observation states only whether one individual responded, and an
+  over-dispersed count.
+
+  **Two designs the earlier prior sweep did not contain were measured
+  separately**: complete effect at the highest concentration, so that the
+  top-dose group is entirely zero, and a hurdle or zero-inflated fit whose
+  survival declines with concentration. Over 420 such cells --- ten seeds, three
+  designs, five families --- the true value falls outside the central 95% of its
+  own prior in 12 cells, against 31 for the released `"regularizing"` set and
+  127 for the `"uninformative"` set; and the prior density at the true value is
+  below 0.15 of the prior's own maximum in 1 cell, against 60 and 61. The second
+  measure is reported alongside the first because a beta prior whose maximum
+  density is at 0.014 has nearly all its mass above it, so the interval measure
+  penalises a well-placed prior on a bounded parameter near its boundary.
+
+  All 12 of those cells are sampling error rather than a property of the rule.
+  Eleven are a six-replicate binary group: six replicates resolve a survival of
+  0.014 only to the nearest sixth, at least one individual survives 8.1% of the
+  time, and the prior then follows the observed proportion of 0.167. The twelfth
+  is the same thing on a mu block whose highest surviving concentration held two
+  survivors. That is the one respect in which reading the response is a
+  liability: the `"uninformative"` entry for those families is a constant and is
+  unaffected.
+
+  Three properties of the anchor come from those designs. A zero at the highest
+  concentration is the endpoint responding and is kept in the average, where a
+  zero at the control is a structural one and is excluded; where every
+  observation at the highest concentration is zero the location is a tenth of
+  the smallest positive observation, and at the control it is the extreme
+  quantile of the positive part; and the subset never extends past a fifth of
+  the concentrations tested, which is what keeps the second block of a hurdle
+  fit, primed from one survival proportion per concentration, from averaging
+  half the design. The scripts are archived at
+  `notes/scripts/prior_hard_cases.R`.
+
+  **The 0-1 bounded families now read the response.** `beta(5, 1)` against
+  `beta(5, 2)` changed the width of the `top` prior by 12 per cent and did not
+  change what the prior was anchored to, because it had no anchor. The
+  regularizing entry for the `bernoulli`, `binomial`, `beta_binomial` and `Beta`
+  families is now a beta distribution whose mode is the observed control level
+  and whose standard deviation follows the same rule as every other branch. The
+  `"uninformative"` entries for those families remain the fixed `beta(5, 2)` and
+  `beta(2, 5)` that Fisher et al. (2024) describe.
+
+  **`nec` and `ec50` are narrowed under `"regularizing"` as well**, which they
+  were not: the predictor-scaled prior was identical under both sets, so
+  selecting the narrower set did nothing for the two parameters a user most
+  often selects it for. It is narrowed by `qnorm(0.975) / qnorm(0.99)`, which is
+  `0.84`, and not by `0.4` like the response-scaled entries. Its width is not a
+  free choice --- it is set to the smallest width whose central 95% interval
+  still reaches the farthest concentration tested, which is what #302 exists to
+  guarantee --- so the only room to narrow it is the confidence level at which
+  it covers the series. Narrowing it by `0.4` instead puts the true threshold
+  outside the central 95% of the prior in 8 of the 30 design by transform by
+  parameter cells of the audit, against none at `0.84`.
+
+  **Group-level scales take the same factor**, `0.4`, rather than the one half
+  they took before, and the cap on the `ogl` log-scale conversion now scales
+  with the prior type. It was a constant, so on a response whose range is more
+  than 25 times its mean both prior types returned `student_t(3, 0, 1)` and
+  selecting the narrower set changed nothing for the parameter that prompted the
+  choice --- the defect #294 removed for a parameter-level term, left in place
+  on this branch. Nothing here changes a released number: `prior_type` does not
+  exist on `master` (2.1.3.1, the CRAN release), so the whole `"regularizing"`
+  set is unreleased.
+
 - **The `nec` and `ec50` prior is now a normal on the log of the predictor.**
   The three entries selected by the predictor's support --- `gamma(5, 4/m)`
   where the predictor was non-negative and reached above 1, `beta(2, 2)` where
@@ -215,6 +316,51 @@
   while the mu family was rebuilt on the identity link (#302).
 
 ## Sampler behaviour
+
+- **The initial-value search accepts each chain on its own, and tests the
+  initial curve against a band read from the level means rather than against
+  `range(y)`.** The four chains are drawn independently, so requiring all of
+  them to pass at the same time --- and re-drawing the complete set whenever
+  one failed --- left the accepted values unchanged and raised the number of
+  proposals to the fourth power of the per-chain rate. Measured over the
+  fourteen equations of the `decline` set at five seeds, the released rule
+  drew 148,397 proposals on the packaged `alga` `c_proliferum` contaminant A
+  series against 237, and 334,178 on a small unreplicated design against 308;
+  both counts exclude the single-parameter rescue `refine_inits()` makes on a
+  failing round, which the released rule ran far more often.
+  Of the 340 searches measured, 71 exhausted the 10,000-attempt cap under the
+  released rule and none do now; a search that exhausts the cap falls through
+  to Stan's own initialisation, so that budget was spent to reach the outcome
+  available at the first attempt. `n_trials` is unchanged (#309).
+
+  **`range(y)` was the wrong reference for the curve.** It compared the
+  initial curve's upper asymptote, an estimate of the mean control response,
+  against the largest single observation; it was tied to the prior it
+  filtered, because both `max(y)` and the location of the `top` prior are read
+  from the control, so on the `c_proliferum` series the threshold sat 0.021
+  prior standard deviations from the centre of the `top` prior; and it got
+  *looser* as replicates were added, because an extremum drifts outward with
+  sample size. Initial values are a draw from the prior restricted to the
+  region the criterion admits, so a threshold at the centre of the `top` prior
+  did not only reject draws --- it put every accepted `top` on one side of it.
+  Over three designs and fourteen equations the accepted `top` sat 0.149 prior
+  standard deviations below the prior median; it now sits within 0.01 of it.
+
+  **The band is every mean response the design estimates**, widened by four
+  within-group standard deviations, intersected with the support of the mean
+  mapped through the link, and stopped short of the boundary of that support.
+  Its two outermost centres come from `regularizing_location()`, the anchor
+  the `"regularizing"` prior uses for `top` and `bot`; on a replicated design
+  the ends come from the level means themselves. The width is the smallest
+  that covers the true asymptotes in every one of 270 in-scope simulated
+  cells, over gaussian, Beta and poisson responses. Where the highest
+  concentration has not reached that asymptote the band sits above the true
+  `bot` and no width reaches it, which is the same limitation the regularizing
+  prior records.
+
+  **A fit at a given seed is not bit-identical to one from 2.1.x**, because
+  the initial values a seed produces change. Two runs at the same seed still
+  agree.
 
 - **A group-level deviation on the whole curve, `ogl()`, is now applied
   multiplicatively rather than as an additive offset**, wherever the likelihood

@@ -165,9 +165,13 @@ add_hu_block <- function(brms_bf, model, x_var, dpar) {
 survival_by_x <- function(predictor, response) {
   ux <- sort(unique(predictor))
   p <- vapply(ux, function(z) mean(response[predictor == z] > 0), numeric(1))
-  # Stan needs mu strictly inside (0, 1) under an identity link, and the
-  # init-finder validates candidates against range(y); exact 0 and 1 make that
-  # unsatisfiable. Clamp exactly as response_link_scale() does elsewhere.
+  # Stan needs mu strictly inside (0, 1) under an identity link, and a
+  # proportion of exactly 0 or 1 makes that unsatisfiable. Clamp exactly as
+  # response_link_scale() does elsewhere. Note that eps is now also the floor
+  # of the band this block's initial curve is tested against: init_limits()
+  # sets its band back from the boundary of the support by a tenth of the
+  # distance to the nearest observed value, and on this block the nearest
+  # observed value is eps wherever a proportion was clamped. See #309.
   eps <- 1 / (2 * length(response))
   list(x = ux, y = pmin(pmax(p, eps), 1 - eps))
 }
