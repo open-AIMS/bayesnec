@@ -282,9 +282,10 @@ test_that("update() keeps the weighting method the set was built with", {
     suppressWarnings()
   expect_equal(attr(changed$mod_stats$wi, "method"), "pseudobma")
   # loo_controls names `fitting` and `weights` separately, so a call changing a
-  # LOO fitting argument names no method. Reading that as a request to reweight
-  # made the set stacking-weighted as a side effect of asking for something
-  # else, on the route this change is about.
+  # LOO fitting argument names no method. Reading the argument's presence as a
+  # request to reweight replaced the recorded method with the default, so this
+  # call returned a pseudo-BMA-weighted set as a side effect of asking for
+  # something else.
   fitting_only <- update(stacked, recompile = FALSE,
                          loo_controls = list(fitting = list(reloo = FALSE))) |>
     suppressMessages() |>

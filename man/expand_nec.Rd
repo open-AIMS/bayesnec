@@ -33,16 +33,10 @@ significance of the predicted posterior values against the lowest observed
 concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements
-("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
-containing the desired arguments to be passed on to \code{\link[brms]{loo}}
-(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If no \code{method} is named in "weights", \pkg{bayesnec} sets the
-\code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma", whichever function assembles the model set. A function that
-operates on an existing set instead keeps the method that set was built
-with, unless the caller names another. See
-?\code{\link[loo]{loo_model_weights}} for further info.}
+\item{loo_controls}{A named \code{\link[base]{list}} whose "fitting"
+element holds arguments to be passed on to \code{\link[brms]{loo}}. A
+single model is not weighted, so a "weights" element is accepted and not
+read. See \code{\link{bnec}}.}
 
 \item{...}{Further arguments to internal function.}
 }

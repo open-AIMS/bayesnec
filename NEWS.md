@@ -638,9 +638,11 @@
   reaches (#320).
 
   Where the set being operated on records a method, that method is kept unless
-  the caller names another. `amend()` and `pull_out()` already preserved it,
-  but passed an unknown method on as `method = NULL`, which `loo` resolves to
-  stacking; an unknown method is now left for the default to fill. `update()`
+  the caller names another --- `pull_out()` excepted, which takes no weighting
+  method at all and reports and ignores one given to it. `amend()` and
+  `pull_out()` already preserved the recorded method, but passed an unknown one
+  on as `method = NULL`, which `loo` resolves to stacking; an unknown method is
+  now left for the default to fill. `update()`
   did not preserve it at all and now does, since refitting a set is not a
   request to reweight it. Because `loo_controls` names its `fitting` and
   `weights` arguments separately, both `amend()` and `update()` read a call

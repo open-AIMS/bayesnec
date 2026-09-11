@@ -29,10 +29,12 @@
 #' (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
 #' If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 #' \code{method} argument of \code{\link[loo]{loo_model_weights}} to
-#' "pseudobma", whichever function assembles the model set. A function that
-#' operates on an existing set instead keeps the method that set was built
-#' with, unless the caller names another. See
-#' ?\code{\link[loo]{loo_model_weights}} for further info.
+#' "pseudobma", whichever function assembles the model set.
+#' \code{\link{amend}}, \code{update} and \code{\link[base]{c}} operate on
+#' an existing set and keep the method that set was built with, unless the
+#' caller names another. \code{\link{pull_out}} takes no weighting method at
+#' all: it reports and ignores one given in "weights" and always keeps the
+#' set's own. See ?\code{\link[loo]{loo_model_weights}} for further info.
 #' @param x_var Removed in version 2.0. Use formula instead. Used to be a
 #' \code{\link[base]{character}} indicating the column heading
 #' containing the predictor (concentration) variable.

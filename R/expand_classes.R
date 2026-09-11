@@ -3,6 +3,10 @@
 #' @inheritParams bnec
 #'
 #' @param object An object of class \code{\link{prebayesnecfit}}.
+#' @param loo_controls A named \code{\link[base]{list}} whose "fitting"
+#' element holds arguments to be passed on to \code{\link[brms]{loo}}. A
+#' single model is not weighted, so a "weights" element is accepted and not
+#' read. See \code{\link{bnec}}.
 #' @param ... Further arguments to internal function.
 #'
 #' @return A \code{\link[base]{list}} of model statistical output derived from
