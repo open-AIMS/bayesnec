@@ -514,9 +514,12 @@ runs agree. And a parallel call does not move your session's RNG stream on,
 where a sequential one does; if you are drawing from that stream after the
 fit, the two plans leave you in different places.
 
-Supplying \code{init} yourself skips the search altogether, so a sequential
-run does not advance the stream then either and its averaging draw answers
-to your session's seed in the same way.
+Supplying \code{init} and a \code{seed} yourself skips the search
+altogether, so a sequential run does not advance the stream then either and
+its averaging draw answers to your session's seed in the same way. Both are
+needed: \pkg{brms} defaults \code{seed} to \code{NA} and \pkg{rstan}
+then draws one itself, from your stream, once per \code{\link[brms]{brm}}
+call.
 
 Console output from a worker is not ordered. The per-model
 messages \code{\link{bnec}} emits come from a worker process and arrive
@@ -548,7 +551,10 @@ environment, which is sent by reference and adds nothing. Written inside a
 function it is that function's frame, and everything in the frame goes with
 it -- measured at 6.18 MiB for a formula built in a frame holding a 6.2 MB
 matrix. So if a limit is reached and the data are not large, look at where
-the formula was created.
+the formula was created. The same holds for any \emph{function} passed
+through \code{...} -- \code{init} most likely. Families, priors, stanvars
+and a \code{control} list do not behave this way: their closures bind to
+\pkg{stats} and \pkg{brms}, not to where you wrote them.
 
 \code{\link{bnec_group}} fits one model set per level of the grouping
 variable, so under a parallel plan each level is parallelised in turn and

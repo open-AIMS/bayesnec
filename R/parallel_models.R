@@ -57,7 +57,7 @@ bnec_plan_is_parallel <- function() {
 #' not what stands between the user and sixteen processes; \pkg{future}
 #' already does that. It is kept because it makes what \pkg{brms} is asked to
 #' do a property of this package rather than of an implementation detail of
-#' another, and because it is what a supplied \code{cores} then overrides. A
+#' another. A
 #' \code{cores} the user passed to \code{\link{bnec}}, which arrives here in
 #' \code{brm_args} by way of its \code{...}, is left alone: nesting the two
 #' levels is a legitimate thing to want where there are cores to spare, and
@@ -110,10 +110,10 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
       # be beside the point. What is true of every one-worker plan is that the
       # models are fitted one at a time and that nothing here is clamped.
       paste0("The future plan in effect resolves to a single worker, so the ",
-             n_models, " models are fitted one at a time and nothing is",
-             " changed about how brms samples its chains. plan(multicore)",
-             " resolves this way wherever forking is unavailable, which",
-             " includes Windows and most IDEs.")
+             n_models, " models are fitted one at a time and bayesnec applies",
+             " no cores limit here. plan(multicore) resolves this way",
+             " wherever forking is unavailable, which includes Windows,",
+             " RStudio and Positron.")
     } else {
       paste0(
         "Fitting ", n_models, " models in parallel over ", workers,
