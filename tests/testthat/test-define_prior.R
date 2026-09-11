@@ -878,19 +878,68 @@ test_that("the nec prior is chosen from the predictor, not the response", {
                target)
 })
 
-test_that("prior_type narrows the nec and ec50 prior and nothing else (#305)", {
+# The design list of notes/scripts/prior_audit.R, with the true nec and ec50 of
+# each. Repeated here so that the cells the audit scores can be scored without
+# running it; the two lists must be changed together.
+audit_designs <- function() {
+  list(
+    linear = list(x = seq(0, 10, length.out = 11), nec = 4, ec50 = 5),
+    linear_unit = list(x = seq(0, 1, length.out = 11), nec = 0.4, ec50 = 0.5),
+    log_2fold = list(x = c(0, 0.078, 0.156, 0.3125, 0.625, 1.25, 2.5, 5, 10),
+                     nec = 1.25, ec50 = 2.5),
+    log_unit = list(x = c(0, 0.0039, 0.0078, 0.0156, 0.0312, 0.0625, 0.125,
+                          0.25, 0.5, 1), nec = 0.25, ec50 = 0.5),
+    log_wide = list(x = c(0, 0.01, 0.02, 0.04, 0.08, 0.16, 0.31, 0.63, 1.25,
+                          2.5, 20), nec = 1.25, ec50 = 2)
+  )
+}
+
+# The spread the regularizing set states, read from the predictor on the scale
+# the prior is written on. Stated here as the rule rather than taken from the
+# package, so that the tests say what the spread should be and not how
+# predictor_prior() arrives at it.
+reg_spread <- function(z, q = 0.99) {
+  z <- unique(z)
+  max(median(z) - min(z), max(z) - median(z)) / qnorm(q)
+}
+# The predictor on that scale: the distinct positive values logged where
+# concentrations are supplied as recorded, and the distinct values themselves
+# where the user supplied them logged.
+prior_scale <- function(x) {
+  u <- unique(x)
+  if (min(u) < 0) u else log(u[u > 0])
+}
+# The prior truncated to the tested range, as define_prior() truncates it.
+trunc_prior_cdf <- function(s, x) {
+  p <- prior_pars(s)
+  cdf <- if (prior_dist(s) == "normal") {
+    function(q) pnorm(q, p[1], p[2])
+  } else {
+    function(q) plnorm(q, p[1], p[2])
+  }
+  lo <- if (prior_dist(s) == "normal") min(x) else max(min(x), 0)
+  flo <- cdf(lo)
+  mass <- cdf(max(x)) - flo
+  function(q) (cdf(q) - flo) / mass
+}
+
+test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
   # The predictor-scaled prior was identical under both prior types, so
   # selecting the regularizing set left the two parameters a user most often
-  # selects it for untouched. It now takes regularizing_predictor_factor of the
-  # spread, with the location, the distribution and the truncation unchanged.
-  narrow <- bayesnec:::regularizing_predictor_factor
+  # selects it for untouched (#305). The regularizing spread is now stated as
+  # its own coverage rule -- the width whose central 98% interval reaches the
+  # farthest concentration tested -- with the location, the distribution and the
+  # truncation unchanged. #305 stated it as a multiple of the uninformative
+  # spread instead, which meant one thing on each of the two branches; see the
+  # tests below.
   for (x in list(rep(c(0, 25, 50, 75, 100), each = 6),
                  rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6))) {
     u <- bayesnec:::predictor_prior(x)
     r <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
     expect_equal(prior_dist(r), prior_dist(u))
     expect_equal(prior_pars(r)[1], prior_pars(u)[1])
-    expect_equal(prior_pars(r)[2], prior_pars(u)[2] * narrow)
+    expect_equal(prior_pars(r)[2], reg_spread(prior_scale(x)))
+    expect_lt(prior_pars(r)[2], prior_pars(u)[2])
   }
   # and it reaches both nec and ec50 through define_prior(), with the bounds
   # left at the predictor range so that no part of the tested series is excluded
@@ -904,6 +953,227 @@ test_that("prior_type narrows the nec and ec50 prior and nothing else (#305)", {
   expect_equal(reg$prior[reg$nlpar == "ec50"], target)
   expect_equal(as.numeric(reg$lb[reg$nlpar == "ec50"]), 0)
   expect_equal(as.numeric(reg$ub[reg$nlpar == "ec50"]), 100)
+})
+
+# The uninformative entry for every cell of the #302 audit: five designs by
+# three predictor transforms. Written out as the strings predictor_prior()
+# returns, so that the gate is a pin on the released entry and not a
+# restatement of the rule that produces it. The log column substitutes half the
+# lowest non-zero dose for the zero control, as prior_audit.R does.
+audit_uninformative <- c(
+  linear_identity = "lognormal(1.70059869083108, 0.867668336890465)",
+  linear_sqrt = "lognormal(0.850299345415539, 0.433834168445233)",
+  linear_log = "normal(1.6094379124341, 9.61783829511775)",
+  linear_unit_identity = "lognormal(-0.601986402162968, 0.867668336890465)",
+  linear_unit_sqrt = "lognormal(-0.300993201081484, 0.433834168445233)",
+  linear_unit_log = "normal(-0.693147180559945, 9.61783829511775)",
+  log_2fold_identity = "lognormal(-0.123430038965763, 1.23860256233049)",
+  log_2fold_sqrt = "lognormal(-0.0617150194828814, 0.619301281165244)",
+  log_2fold_log = "normal(-0.470003629245736, 18.9891958061889)",
+  log_unit_identity = "lognormal(-2.77258872223978, 1.41542907190602)",
+  log_unit_sqrt = "lognormal(-1.38629436111989, 0.707714535953011)",
+  log_unit_log = "normal(-3.11996295320324, 20.993419114392)",
+  log_wide_identity = "lognormal(-1.50188222262563, 2.29474344001024)",
+  log_wide_sqrt = "lognormal(-0.750941111312814, 1.14737172000512)",
+  log_wide_log = "normal(-1.83258146374831, 25.2367970797139)"
+)
+
+# The predictor of one audit cell, on the transform named.
+audit_x <- function(d, transform) {
+  xr <- d$x
+  if (transform == "log") {
+    nz <- min(xr[xr > 0])
+    xr[xr == 0] <- nz / 2
+  }
+  rep(switch(transform, identity = xr, sqrt = sqrt(xr), log = log(xr)),
+      each = 6)
+}
+
+test_that("the uninformative nec and ec50 entry is unchanged (#314)", {
+  # The regression gate of #314, as literal prior strings: the claim is that the
+  # released entry did not change at all, on either branch. It is asserted over
+  # every cell of the #302 audit rather than the two transforms whose
+  # regularizing entry is also unchanged, because the log column is the normal
+  # branch, and that is the branch #314 refactors -- half_width is now computed
+  # before the branch rather than inside the lognormal arm.
+  pp <- bayesnec:::predictor_prior
+  for (dn in names(audit_designs())) {
+    for (tn in c("identity", "sqrt", "log")) {
+      x <- audit_x(audit_designs()[[dn]], tn)
+      expect_equal(pp(x), unname(audit_uninformative[[paste0(dn, "_", tn)]]))
+    }
+  }
+  # and two designs outside that list, one per branch.
+  expect_equal(pp(rep(c(0, 25, 50, 75, 100), each = 6)),
+               "lognormal(4.11475555948223, 0.457089896386165)")
+  expect_equal(pp(rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6)),
+               "normal(0, 31.7284345811794)")
+})
+
+test_that("the regularizing entry is unchanged for recorded doses (#314)", {
+  # The cancellation identity. #305 multiplied half_width / qnorm(0.975) by
+  # qnorm(0.975) / qnorm(0.99); the rule is now stated as half_width /
+  # qnorm(0.99), which is the same quantity with the qnorm(0.975) cancelled, so
+  # a predictor on the recorded concentration scale receives the entry it
+  # already received.
+  #
+  # Compared as numbers, not as literal strings. The two expressions are the
+  # same quantity but not always the same double: the factor form rounds three
+  # times and the stated form once. Measured over 200,000 randomly generated
+  # dilution series the largest relative difference was 2.22e-16, exactly one
+  # unit in the last place, and the 15 significant digits paste0() writes
+  # differed on 1.6% of them. Two prior strings of the #302 audit are affected,
+  # both the nassarius contaminant A series: 1.93333703285197 against
+  # 1.93333703285198 read on the recorded scale and 0.966668516425987 against
+  # 0.966668516425988 on the square-root scale, which is four of its 30 design
+  # by transform by parameter cells because nec and ec50 share a string. A
+  # literal string here would therefore pin the formatting of a double, which is
+  # what the note at the top of this block of tests says these helpers exist to
+  # avoid.
+  factor_form <- function(x) {
+    z <- prior_scale(x)
+    reg_spread(z, 0.975) * (qnorm(0.975) / qnorm(0.99))
+  }
+  for (d in audit_designs()) {
+    for (f in list(identity, sqrt)) {
+      x <- rep(f(d$x), each = 6)
+      r <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
+      expect_equal(prior_dist(r), "lognormal")
+      expect_equal(prior_pars(r)[2], factor_form(x))
+    }
+  }
+})
+
+test_that("both routes agree below a lowest dose of 1 and not above (#314)", {
+  # prior_type is a statement about belief, not about which column the user
+  # passed. Under #305 the first series here received a spread of 20.96 supplied
+  # as log(conc) against 1.51 supplied as conc, because the uninformative spread
+  # it was a multiple of is the constant 10 sd(z) on that branch rather than a
+  # coverage width.
+  #
+  # Two conditions are needed for the routes to agree and both are pinned here,
+  # because neither is a property of the rule. Neither series has a zero
+  # control, which is the first: the lognormal branch drops non-positive values
+  # and a logged series must substitute for a control, so a design with one is
+  # not the same predictor on the two routes.
+  #
+  # The second is the discriminator. spans_negative is min(u) < 0, so a logged
+  # series whose lowest tested concentration is at or above 1 stays
+  # non-negative, is not recognised as logged, and is logged a second time. The
+  # location then differs as well as the spread, and both are asserted rather
+  # than left to be rediscovered;
+  # the discriminator is out of scope for #314 because correcting it would also
+  # change the uninformative entry for those users.
+  pp <- bayesnec:::predictor_prior
+  below_one <- c(0.1, 0.3, 1, 3, 10, 30, 100)
+  raw <- pp(rep(below_one, each = 6), "regularizing")
+  logged <- pp(rep(log(below_one), each = 6), "regularizing")
+  expect_equal(prior_dist(raw), "lognormal")
+  expect_equal(prior_dist(logged), "normal")
+  expect_equal(prior_pars(logged), prior_pars(raw))
+
+  above_one <- round(exp(seq(log(10), log(10000), length.out = 7)), 3)
+  raw2 <- pp(rep(above_one, each = 6), "regularizing")
+  logged2 <- pp(rep(log(above_one), each = 6), "regularizing")
+  # the logged series is taken for concentrations, so both are lognormal
+  expect_equal(prior_dist(logged2), "lognormal")
+  expect_equal(prior_dist(raw2), "lognormal")
+  expect_false(isTRUE(all.equal(prior_pars(logged2), prior_pars(raw2))))
+  expect_lt(prior_pars(logged2)[1], prior_pars(raw2)[1])
+  expect_lt(prior_pars(logged2)[2], prior_pars(raw2)[2])
+  # and the misclassified entry is still peaked inside the tested range and is
+  # still narrowed by prior_type, which is why this is second-order against the
+  # uniform prior #314 removes.
+  lx <- rep(log(above_one), each = 6)
+  mode <- exp(prior_pars(logged2)[1] - prior_pars(logged2)[2]^2)
+  expect_gt(mode, min(lx))
+  expect_lt(mode, max(lx))
+  expect_lt(prior_pars(logged2)[2], prior_pars(pp(lx))[2])
+})
+
+test_that("the regularizing prior is not uniform once logged (#314)", {
+  # The defect #314 removes. On a 0.1 to 100 series supplied as log(conc) the
+  # #305 entry had a spread of 20.96 against a tested range of 6.91, so the
+  # truncated prior CDF at each dose was that dose's position within the range,
+  # which is what a uniform prior gives, to three decimal places.
+  conc <- c(0.1, 0.3, 1, 3, 10, 30, 100)
+  x <- rep(log(conc), each = 6)
+  z <- log(conc)
+  position <- (z - min(z)) / (max(z) - min(z))
+  old <- paste0("normal(", median(z), ", ",
+                10 * sd(z) * qnorm(0.975) / qnorm(0.99), ")")
+  new <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
+  expect_lt(max(abs(trunc_prior_cdf(old, x)(z) - position)), 1e-3)
+  # and the stated rule is not uniform: it puts 0.052 below the second dose,
+  # which is at 0.158 of the range, and 0.945 below the sixth, which is at
+  # 0.826.
+  got <- trunc_prior_cdf(new, x)(z)
+  expect_lt(got[2], position[2] / 2)
+  expect_gt(got[6], position[6] * 1.1)
+})
+
+test_that("the regularizing prior admits a low threshold (#314)", {
+  # Why q = 0.99 and not a larger quantile: the prior mass below the
+  # second-lowest concentration tested is what keeps a true threshold at the
+  # bottom of the series admissible, and #302 exists because an entry that
+  # excluded one shipped. Four designs, each supplied both ways.
+  #
+  # Each design is divided by its highest dose before being logged. That shifts
+  # the prior, its truncation bounds and the doses together, so every
+  # probability below is unchanged, and it puts min(log(x)) below zero, which is
+  # what selects the branch for a predictor supplied logged.
+  designs <- list(
+    wide = c(0.1, 0.3, 1, 3, 10, 30, 100),
+    narrow = round(exp(seq(log(1), log(20), length.out = 5)), 3),
+    decade = round(exp(seq(log(1), log(1000), length.out = 7)), 3),
+    linear = 1:10
+  )
+  for (conc in designs) {
+    scaled <- conc / max(conc)
+    for (x in list(rep(conc, each = 6), rep(log(scaled), each = 6))) {
+      r <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
+      d2 <- sort(unique(x))[2]
+      expect_gt(trunc_prior_cdf(r, x)(d2), 0.025)
+    }
+  }
+})
+
+test_that("the regularizing prior keeps a true threshold inside it (#314)", {
+  # The change gate of #314. The ten cells of the #302 audit whose regularizing
+  # entry changes are its five designs read on the log scale, by nec and ec50,
+  # and none may put the true value outside the central 95% of the truncated
+  # prior. Measured here rather than by rerunning notes/scripts/prior_audit.R,
+  # which builds the same priors through get_priors() over 12 families and both
+  # links; the prior is a function of the predictor alone, so the families add
+  # no cells. Measured range: 0.536 to 0.974, against 0.626 to 0.890 under #305.
+  #
+  # The gate has two halves and both are asserted: the ten cells must change,
+  # and none may put the true value outside the central 95%. Without the first,
+  # an implementation that changed nothing would pass, because the #305 entry
+  # covers those cells as well -- it covers them by being uniform across the
+  # tested range, which is the defect.
+  for (dn in names(audit_designs())) {
+    d <- audit_designs()[[dn]]
+    x <- audit_x(d, "log")
+    r <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
+    before <- 10 * sd(unique(x)) * (qnorm(0.975) / qnorm(0.99))
+    expect_lt(prior_pars(r)[2], before / 5)
+    for (truth in log(c(d$nec, d$ec50))) {
+      p <- trunc_prior_cdf(r, x)(truth)
+      expect_gt(p, 0.025)
+      expect_lt(p, 0.975)
+    }
+  }
+  # q = 0.99 rather than a larger quantile is settled by this gate and not only
+  # by the prior mass below the lowest dose: at q = 0.995 and q = 0.999 the
+  # log_unit ec50 cell sits at 0.9823 and 0.9929, outside the central 95%.
+  d <- audit_designs()$log_unit
+  x <- audit_x(d, "log")
+  for (q in c(0.995, 0.999)) {
+    narrow <- paste0("normal(", median(unique(x)), ", ",
+                     reg_spread(prior_scale(x), q), ")")
+    expect_gt(trunc_prior_cdf(narrow, x)(log(d$ec50)), 0.975)
+  }
 })
 
 test_that("a degenerate predictor scale is not narrowed by prior_type (#305)", {
