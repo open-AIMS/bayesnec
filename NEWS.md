@@ -606,6 +606,19 @@
   because the plate reader applies auto-scale gain adjustment and the value at
   which it stops resolving is therefore a plate property (#6, #33).
 
+- New datasets `coral_colour` and `coral_pam`: colour score and photosystem II
+  effective quantum yield for *Acropora millepora* exposed to the herbicide
+  diuron under three climate scenarios, from Flores et al. (2021), the study the
+  JSS article cites for `compare_posterior()`. Both are within-concentration
+  designs --- a chamber sits at one concentration and so admits only a
+  displacement --- with 45 chambers of four fragments for colour and 54 chambers
+  of five to eight readings for yield. `coral_colour` has five concentrations,
+  which is the conventional minimum, and `vignette("example8")` uses it to show
+  that equations of four curve parameters do not sample reliably against a design
+  that small while equations of three do (#301). Exactly one colour observation
+  sits on the `Beta` boundary, the signature of a score normalised to the largest
+  value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
+
 ## Bug fixes
 
 - `dispersion()` no longer discards the statistic where a single observation is

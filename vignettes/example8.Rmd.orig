@@ -569,11 +569,76 @@ autoplot(fit_plate)
 
 # Design and model complexity
 
-<!-- DRAFT NOTE: blocked. The plan specifies `CoralColour` and `pamdat` from
-     Flores et al. (2021) for this section, but both live in ignore/ and are not
-     package data, so a shipped vignette cannot load them. Three options: ship
-     one of them as a dataset, substitute a demonstration built on shipped data,
-     or transcribe the result with a provenance note. Needs a decision. -->
+A concentration-response design has to be wide enough for the curve being asked
+of it. Five concentrations is the conventional minimum, and at that minimum the
+number of parameters in an equation matters: the design has enough information
+to place a threshold or a midpoint but not enough to place both asymptotes as
+well. The failure is a sampler failure rather than an error, so a set fitted
+without checking diagnostics returns an answer that looks ordinary.
+
+`coral_colour` and `coral_pam` are two endpoints of one 14-day exposure of
+*Acropora millepora* to the herbicide diuron under three climate scenarios
+[@flores2021]. Both are within-concentration designs --- a chamber sits at one
+concentration --- and they differ in exactly the way this section needs.
+
+```{r}
+data(coral_colour)
+data(coral_pam)
+rbind(
+  colour = c(rows = nrow(coral_colour), concentrations = n_distinct(coral_colour$diuron),
+             chambers = n_distinct(coral_colour$chamber)),
+  pam    = c(rows = nrow(coral_pam), concentrations = n_distinct(coral_pam$diuron),
+             chambers = n_distinct(coral_pam$chamber))
+)
+```
+
+The yield endpoint has six concentrations and 54 chambers of five to eight
+readings, and `ogl(chamber)` on it is well conditioned:
+
+```{r}
+fit_pam <- bnec(yield ~ crf(diuron, eqs) + ogl(chamber),
+                data = coral_pam, family = Beta(link = "identity"),
+                chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                control = list(adapt_delta = 0.99))
+summary(fit_pam)
+```
+
+The colour endpoint has five concentrations and 45 chambers of four fragments.
+Fitting equations of three and of four curve parameters to it separately shows
+where the design runs out:
+
+```{r}
+three_par <- bnec(proportion ~ crf(diuron, c("ecxll3", "ecxwb1p3")) + ogl(chamber),
+                  data = coral_colour, family = Beta(link = "identity"),
+                  chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                  control = list(adapt_delta = 0.99))
+
+four_par <- bnec(proportion ~ crf(diuron, c("nec4param", "ecx4param")) + ogl(chamber),
+                 data = coral_colour, family = Beta(link = "identity"),
+                 chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                 control = list(adapt_delta = 0.99))
+```
+
+```{r}
+rhat(three_par)
+rhat(four_par)
+```
+
+<!-- DRAFT NOTE: the conclusion is not written. Screened at 2 chains and 800
+     draws on 2026-09-09 the four-parameter equations gave 291 and 150 divergent
+     transitions of 800 against 0 for every three-parameter equation, and the
+     group-level sd was 0.42 to 0.45 under every equation that sampled, so the
+     effect estimated is stable while the curve is not. Raising adapt_delta to
+     0.99 at 8000 iterations reduced nec4param's divergence rate from 36 to 1.4
+     per cent but left R-hat at 1.381 and minimum ESS at 5, which is the evidence
+     that the cause is the design rather than the step size. Re-measure before
+     writing; #301 proposes restricting a set by parameter count. -->
+
+One further point belongs here. The colour score has exactly one observation on
+the `Beta` boundary, which is the signature of a response normalised to the
+largest value in the dataset, and the yield endpoint has 63 readings at zero.
+Neither is a defect in the data; both are decisions about the response that have
+to be made before the family is chosen, and `vignette("example6")` covers them.
 
 # Factor covariates
 

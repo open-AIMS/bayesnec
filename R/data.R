@@ -360,3 +360,135 @@ NULL
 #' Environmental Toxicology. doi: 10.1002/tox.70003.
 #'
 NULL
+
+#' Coral colour score under diuron and three climate scenarios
+#'
+#' Colour score of the reef-building coral \emph{Acropora millepora} after a
+#' 14-day exposure to the photosystem II herbicide diuron, crossed with three
+#' climate scenarios, from Flores et al. (2021). The scenarios are the
+#' temperature and partial pressure of carbon dioxide projected for 2018, 2050
+#' and 2100.
+#'
+#' The design is three climate scenarios by five diuron concentrations by three
+#' chambers, with four coral fragments in each chamber: 45 chambers and 180
+#' fragments. A chamber sits at one concentration, so it spans no part of the
+#' concentration-response curve and admits only a displacement --- the
+#' within-concentration structure \code{vignette("example8")} demonstrates with
+#' \code{ogl(chamber)}.
+#'
+#' Five concentrations is at the conventional minimum for a
+#' concentration-response design, and this dataset exists partly to show what
+#' that limit does. Equations of four curve parameters do not sample reliably
+#' against five concentrations while equations of three do, and the failure
+#' appears as divergent transitions rather than as an error.
+#'
+#' Colour was scored from image pixel intensity before and after the exposure,
+#' reported here as \code{t0_pixel} and \code{t14_pixel}. \code{intensity} is a
+#' derived score on the unit interval and \code{proportion} is exactly its
+#' complement. How \code{intensity} was derived is not recorded, and it is not
+#' any of the obvious normalisations of the two pixel columns, so it is shipped
+#' as supplied rather than reconstructed. Exactly one fragment has an
+#' \code{intensity} of 1 and therefore a \code{proportion} of 0, which is the
+#' signature of a score normalised to the largest value in the dataset and is a
+#' boundary a \code{Beta} likelihood cannot represent. See
+#' \code{vignette("example6")} for what to do with a value on a boundary.
+#'
+#' The control concentration is reported as \code{0}. The source file also
+#' holds a column substituting \code{0.1} for it so that a log predictor can be
+#' taken; that substitution is not shipped, because substituting at a boundary
+#' is the practice \code{vignette("example6")} argues against and a user who
+#' wants it can make it and say so.
+#'
+#' The columns are as follows:
+#'
+#' \describe{
+#' \item{climate}{Climate scenario (fct), \code{"2018"}, \code{"2050"} or
+#'   \code{"2100"}.}
+#' \item{diuron}{Diuron concentration in \eqn{\mu}g/L (dbl), one of 0, 0.29,
+#'   0.96, 2.9 and 29.}
+#' \item{chamber}{Exposure chamber (fct), 45 levels, each at one climate
+#'   scenario and one concentration.}
+#' \item{fragment}{Coral fragment within chamber (int), 1 to 4.}
+#' \item{t0_pixel}{Mean image pixel intensity at the start of the exposure
+#'   (dbl).}
+#' \item{t14_pixel}{Mean image pixel intensity after 14 days (dbl).}
+#' \item{intensity}{Derived colour intensity on the unit interval (dbl).
+#'   Exactly one observation is 1.}
+#' \item{proportion}{\code{1 - intensity} (dbl), the response used in
+#'   \code{vignette("example8")}. Exactly one observation is 0.}
+#' }
+#'
+#' @name coral_colour
+#' @docType data
+#' @format An object of class `data.frame` with 180 rows and 8 columns.
+#' @keywords datasets
+#' @examples
+#' head(coral_colour)
+#' with(coral_colour, table(climate, diuron))
+#'
+#' @references
+#' Flores F, Marques JA, Uthicke S, Fisher R, Patel F, Kaserzon S, Negri AP
+#' (2021) Combined effects of climate change and the herbicide diuron on the
+#' coral Acropora millepora. Marine Pollution Bulletin, 169: 112582.
+#' doi: 10.1016/j.marpolbul.2021.112582.
+#'
+NULL
+
+#' Coral photosynthetic yield under diuron and three climate scenarios
+#'
+#' Effective quantum yield of photosystem II in the reef-building coral
+#' \emph{Acropora millepora} exposed to the herbicide diuron, crossed with
+#' three climate scenarios, from the same 14-day experiment as
+#' \code{\link{coral_colour}}.
+#'
+#' The design is three climate scenarios by six diuron concentrations by three
+#' chambers: 54 chambers. Yield was read repeatedly on the fragments in each
+#' chamber, so the chambers hold five to eight readings each and the rows are
+#' not balanced. As with \code{\link{coral_colour}} a chamber sits at one
+#' concentration and admits only a displacement, and 54 chambers of several
+#' readings is the better conditioned of the two for a
+#' \code{ogl(chamber)} term.
+#'
+#' Chamber was numbered 1 to 3 within each climate-by-concentration cell in the
+#' source records rather than across the experiment, so \code{chamber} here
+#' combines the three to give a unique identifier.
+#'
+#' Yield is a proportion and 63 of the 414 readings are exactly 0, all of them
+#' at the higher concentrations where photosynthesis had stopped. These are
+#' measurements at a boundary rather than substitutions, and a \code{Beta}
+#' likelihood cannot represent them; \code{vignette("example6")} covers the
+#' options.
+#'
+#' The control concentration is reported as \code{0}, and the substitution the
+#' source file holds for it is not shipped, for the reason given under
+#' \code{\link{coral_colour}}.
+#'
+#' The columns are as follows:
+#'
+#' \describe{
+#' \item{climate}{Climate scenario (fct), \code{"2018"}, \code{"2050"} or
+#'   \code{"2100"}.}
+#' \item{diuron}{Diuron concentration in \eqn{\mu}g/L (dbl), one of 0, 0.29,
+#'   0.96, 2.9, 9.6 and 29.}
+#' \item{chamber}{Exposure chamber (fct), 54 levels, each at one climate
+#'   scenario and one concentration.}
+#' \item{fragment}{Coral fragment within chamber (int).}
+#' \item{yield}{Effective quantum yield of photosystem II (dbl), a proportion.
+#'   63 readings are exactly 0.}
+#' }
+#'
+#' @name coral_pam
+#' @docType data
+#' @format An object of class `data.frame` with 414 rows and 5 columns.
+#' @keywords datasets
+#' @examples
+#' head(coral_pam)
+#' with(coral_pam, table(climate, diuron))
+#'
+#' @references
+#' Flores F, Marques JA, Uthicke S, Fisher R, Patel F, Kaserzon S, Negri AP
+#' (2021) Combined effects of climate change and the herbicide diuron on the
+#' coral Acropora millepora. Marine Pollution Bulletin, 169: 112582.
+#' doi: 10.1016/j.marpolbul.2021.112582.
+#'
+NULL
