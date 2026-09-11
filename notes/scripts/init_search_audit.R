@@ -137,13 +137,28 @@ band_of <- function(dg, y, width = formals(init_limits)$width) {
               support = init_support(dg$family))
 }
 
+# check_models() reads its data argument through retrieve_var(), which looks up
+# the column by the "bnec_pop" attribute a bayesnecformula model frame has. A
+# bare list has no such attribute, so retrieve_var() returns NULL, and the
+# exclusion keyed on a negative predictor is skipped without saying so. That
+# made no difference while every design here was on the recorded concentration
+# scale; on the design supplied logged it retained ecxsigm, which raises the
+# predictor to a fractional power and so returns NaN at every x below zero for
+# every parameter draw. The cell therefore accepted nothing and ran every search
+# to the cap, and it measured a candidate bnec() would have dropped.
+bnec_frame <- function(x, y) {
+  d <- data.frame(x = x, y = y)
+  attr(d, "bnec_pop") <- c(x_var = "x", y_var = "y")
+  d
+}
+
 design_parts <- function(dg) {
   yl <- response_link_scale(dg$y, dg$family)
   list(x = dg$x, y = yl,
        released = range(yl, na.rm = TRUE),
        band = band_of(dg, yl),
        models = suppressMessages(
-         check_models(DECLINE, dg$family, list(predictor = dg$x))))
+         check_models(DECLINE, dg$family, bnec_frame(dg$x, dg$y))))
 }
 
 # ------------------------------------------------- 1. acceptance per chain ----
