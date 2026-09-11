@@ -1044,19 +1044,51 @@ test_that("the regularizing entry is unchanged for recorded doses (#314)", {
   }
 })
 
-test_that("the regularizing spread ignores how x was supplied (#314)", {
+test_that("both routes agree below a lowest dose of 1 and not above (#314)", {
   # prior_type is a statement about belief, not about which column the user
-  # passed. Under #305 the same series received a spread of 20.96 supplied as
-  # log(conc) against 1.51 supplied as conc, because the uninformative spread it
-  # was a multiple of is the constant 10 sd(z) on that branch rather than a
-  # coverage width. The series has no zero control, so log() takes it whole and
-  # the two routes describe the same experiment.
-  conc <- c(0.1, 0.3, 1, 3, 10, 30, 100)
-  raw <- bayesnec:::predictor_prior(rep(conc, each = 6), "regularizing")
-  logged <- bayesnec:::predictor_prior(rep(log(conc), each = 6), "regularizing")
+  # passed. Under #305 the first series here received a spread of 20.96 supplied
+  # as log(conc) against 1.51 supplied as conc, because the uninformative spread
+  # it was a multiple of is the constant 10 sd(z) on that branch rather than a
+  # coverage width.
+  #
+  # Two conditions are needed for the routes to agree and both are pinned here,
+  # because neither is a property of the rule. Neither series has a zero
+  # control, which is the first: the lognormal branch drops non-positive values
+  # and a logged series must substitute for a control, so a design with one is
+  # not the same predictor on the two routes.
+  #
+  # The second is the discriminator. spans_negative is min(u) < 0, so a logged
+  # series whose lowest tested concentration is at or above 1 stays
+  # non-negative, is not recognised as logged, and is logged a second time. The
+  # location then differs as well as the spread, and both are asserted rather
+  # than left to be rediscovered;
+  # the discriminator is out of scope for #314 because correcting it would also
+  # change the uninformative entry for those users.
+  pp <- bayesnec:::predictor_prior
+  below_one <- c(0.1, 0.3, 1, 3, 10, 30, 100)
+  raw <- pp(rep(below_one, each = 6), "regularizing")
+  logged <- pp(rep(log(below_one), each = 6), "regularizing")
   expect_equal(prior_dist(raw), "lognormal")
   expect_equal(prior_dist(logged), "normal")
   expect_equal(prior_pars(logged), prior_pars(raw))
+
+  above_one <- round(exp(seq(log(10), log(10000), length.out = 7)), 3)
+  raw2 <- pp(rep(above_one, each = 6), "regularizing")
+  logged2 <- pp(rep(log(above_one), each = 6), "regularizing")
+  # the logged series is taken for concentrations, so both are lognormal
+  expect_equal(prior_dist(logged2), "lognormal")
+  expect_equal(prior_dist(raw2), "lognormal")
+  expect_false(isTRUE(all.equal(prior_pars(logged2), prior_pars(raw2))))
+  expect_lt(prior_pars(logged2)[1], prior_pars(raw2)[1])
+  expect_lt(prior_pars(logged2)[2], prior_pars(raw2)[2])
+  # and the misclassified entry is still peaked inside the tested range and is
+  # still narrowed by prior_type, which is why this is second-order against the
+  # uniform prior #314 removes.
+  lx <- rep(log(above_one), each = 6)
+  mode <- exp(prior_pars(logged2)[1] - prior_pars(logged2)[2]^2)
+  expect_gt(mode, min(lx))
+  expect_lt(mode, max(lx))
+  expect_lt(prior_pars(logged2)[2], prior_pars(pp(lx))[2])
 })
 
 test_that("the regularizing prior is not uniform once logged (#314)", {

@@ -907,16 +907,39 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' 0.8425 where concentrations are supplied as recorded, and about sixteenfold
 #' on the series measured above where they are supplied logged.
 #'
-#' The two routes now agree on the spread for a series with no zero control,
-#' which is the strongest statement available and is weaker than route
-#' equivalence. Where the design has a control the two routes do not describe
-#' the same predictor at all: this branch drops non-positive values through
+#' The two routes now agree on the spread where the series has no zero control
+#' \emph{and} its lowest tested concentration is below 1. Both conditions are
+#' needed, and neither is a property of the rule: they are the conditions under
+#' which the two routes describe the same predictor at all.
+#'
+#' The zero control is the first. This branch drops non-positive values through
 #' \code{u[u > 0]}, while a user who logs the series must substitute something
 #' for the zero first and that substituted value is then read. On
 #' \code{c(0, 0.1, 0.3, 1, 3, 10, 30, 100)} with the usual half-lowest-dose
 #' substitution the entries are \code{lognormal(1.0986, 1.5073)} and
-#' \code{normal(0.5493, 1.7434)}. That difference is a property of the
-#' substitution, not of the rule, and no choice of spread removes it. See #314.
+#' \code{normal(0.5493, 1.7434)}.
+#'
+#' The lowest concentration is the second, and follows from the discriminator
+#' rather than from the data. \code{spans_negative} is \code{min(u) < 0}, so a
+#' logged series whose lowest tested concentration is at or above 1 stays
+#' non-negative, is not recognised as logged, and is logged a second time.
+#' Measured on three series none of which has a zero control, under
+#' \code{"regularizing"}: 0.1 to 100 over seven doses gives
+#' \code{lognormal(1.0986, 1.5073)} and \code{normal(1.0986, 1.5073)}, which
+#' agree; 1 to 1000 gives \code{lognormal(3.4539, 1.4847)} and
+#' \code{lognormal(1.3833, 0.5341)}; 10 to 10000 gives
+#' \code{lognormal(5.7565, 1.4847)} and \code{lognormal(1.7503, 0.3939)}. The
+#' location differs as well as the spread.
+#'
+#' The discriminator is not corrected here, for the reason the comment on
+#' \code{spans_negative} records and because correcting it would change the
+#' \code{"uninformative"} entry for those users as well, which #314 excludes.
+#' The remaining error is also second-order against what this entry fixes: on
+#' the 10 to 10000 series supplied logged the misclassified regularizing prior
+#' still has its mode inside the tested range, at 4.94 against a series median
+#' of 5.76, and \code{prior_type} still narrows it. What is removed here is an
+#' entry that was uniform across the tested range and on which \code{prior_type}
+#' did nothing at all. See #314.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
 #' was supplied.

@@ -106,10 +106,15 @@
   tested series on that branch --- its truncated CDF at each dose was that
   dose's position within the range to three decimal places --- so `prior_type`
   was inert for `nec` and `ec50` for a user who had logged the predictor. The
-  two routes now agree on the spread for a series with no zero control. They
-  cannot agree for one with a control, because the two are then not the same
-  predictor: the recorded-concentration route drops the zero, while a user who
-  logs the series must substitute a value for it and that substitute is read.
+  two routes now agree on the spread where the series has no zero control and
+  its lowest tested concentration is below 1. Both conditions are needed,
+  because outside them the two are not the same predictor. A series with a
+  control is read differently on each route: the recorded-concentration route
+  drops the zero, while a user who logs the series must substitute a value for
+  it and that substitute is read. And the route is selected by whether the
+  predictor spans negative values, so a logged series whose lowest tested
+  concentration is at or above 1 stays non-negative, is not recognised as
+  logged, and is logged a second time.
   Both `"uninformative"` entries are unchanged, and so is the regularizing entry
   where concentrations are supplied as recorded (#314).
 
