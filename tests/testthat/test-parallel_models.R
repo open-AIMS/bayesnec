@@ -151,6 +151,73 @@ test_that("the initial-value search draws the same values in a worker", {
   expect_identical(parallel, sequential)
 })
 
+test_that("a parallel run leaves the caller's RNG stream where it was", {
+  skip_unless_future()
+  # expand_manec() draws w_draw_seed from the ambient stream immediately after
+  # the model loop, and through it the index deciding which draws each equation
+  # contributes to the model-averaged estimate. A parallel loop advances that
+  # stream by generating its per-element seeds, so without this restore two
+  # parallel runs of one call would not agree with each other. It does not make
+  # the draw match the sequential run's, which advances the stream by running
+  # every init search in the parent; see ?bnec.
+  set.seed(9)
+  before <- get(".Random.seed", envir = globalenv())
+  out <- with_parallel_plan({
+    skip_unless_worker_sees_internals()
+    bnec_model_lapply(1:4, function(i) i, parallel = TRUE)
+  })
+  expect_length(out, 4)
+  expect_identical(get(".Random.seed", envir = globalenv()), before)
+  # And with no stream to begin with, none is left behind.
+  suppressWarnings(rm(".Random.seed", envir = globalenv()))
+  with_parallel_plan({
+    skip_unless_worker_sees_internals()
+    bnec_model_lapply(1:2, function(i) i, parallel = TRUE)
+  })
+  expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+})
+
+test_that("a one-worker parallel plan does not take chains away from brms", {
+  skip_unless_future()
+  # plan(multicore) resolves to a single worker wherever forking is
+  # unavailable -- Windows, and RStudio or Positron on Linux and macOS. Setting
+  # cores = 1 there would fit one model at a time with its chains in sequence,
+  # which for a user who has set mc.cores is slower than fitting sequentially,
+  # while the message claimed models were being fitted in parallel.
+  old_limit <- options(parallelly.maxWorkers.localhost = Inf)
+  on.exit(options(old_limit), add = TRUE)
+  old <- future::plan(future::multisession, workers = 1)
+  on.exit(future::plan(old), add = TRUE)
+  out <- suppressMessages(plan_model_set(list(chains = 4), 5))
+  expect_null(out$brm_args$cores)
+  expect_message(plan_model_set(list(chains = 4), 5),
+                 "resolves to a single worker")
+  # More than one worker still gets the clamp.
+  many <- suppressMessages(with_parallel_plan(plan_model_set(list(), 5)))
+  expect_identical(many$brm_args$cores, 1)
+})
+
+test_that("only what the applied function names travels to a worker", {
+  # future exports the applied function with its enclosing environment, so an
+  # ordinary closure written inside bnec() or amend_model_set() would ship
+  # every object those functions have built -- for amend(), every fit already
+  # in the set. narrow_environment() is what stops that, and it is applied on
+  # the sequential path too so that a name left out of its list fails on the
+  # first ordinary call rather than only for whoever sets a plan.
+  bulky <- matrix(0, 500, 500)
+  build <- function() {
+    hidden <- bulky
+    wanted <- 1:3
+    narrow_environment(function(m) wanted[m], list(wanted = wanted))
+  }
+  fn <- build()
+  expect_identical(fn(2), 2L)
+  expect_identical(ls(environment(fn)), "wanted")
+  expect_false(exists("hidden", envir = environment(fn)))
+  # Package internals still resolve, because the namespace is the parent.
+  expect_identical(parent.env(environment(fn)), asNamespace("bayesnec"))
+})
+
 test_that("future's own seeding would have changed those draws", {
   skip_unless_future()
   # The evidence for restoring RNGkind inside the worker, kept as a test
@@ -174,11 +241,6 @@ test_that("future's own seeding would have changed those draws", {
     future.apply::future_lapply(1:4, draw, future.seed = TRUE)
   })
   expect_false(isTRUE(all.equal(unrestored, sequential)))
-  kind <- with_parallel_plan(
-    future.apply::future_lapply(1, function(i) RNGkind()[1],
-                                future.seed = TRUE)[[1]]
-  )
-  expect_identical(kind, "L'Ecuyer-CMRG")
 })
 
 test_that("a failing element yields its condition and the rest still run", {
@@ -215,9 +277,6 @@ test_that("a failing element yields its condition and the rest still run", {
 })
 
 test_that("a model set fitted in parallel reproduces the sequential fit", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
   skip_unless_future()
   # The acceptance criterion end to end, on the smallest set that exercises it:
   # two models, two chains, 200 iterations, one seed. Asserted on the posterior
@@ -249,6 +308,11 @@ test_that("a model set fitted in parallel reproduces the sequential fit", {
   })
   expect_s3_class(parallel, "bayesmanecfit")
   expect_identical(names(parallel$mod_fits), names(sequential$mod_fits))
+  # The fitted models are what reproduces. w_draw_seed and w_draw_index do not,
+  # and are deliberately not asserted here: expand_manec() draws them from the
+  # ambient RNG stream, which the parallel loop cannot leave in the state the
+  # sequential loop leaves it in. The test above pins what is true instead --
+  # that the loop does not disturb the caller's stream at all.
   for (m in names(sequential$mod_fits)) {
     expect_equal(
       brms::as_draws_matrix(parallel$mod_fits[[m]]$fit),
@@ -259,9 +323,6 @@ test_that("a model set fitted in parallel reproduces the sequential fit", {
 })
 
 test_that("a timeout ends a parallel run exactly as it ends a sequential one", {
-  if (Sys.getenv("NOT_CRAN") == "") {
-    skip_on_cran()
-  }
   skip_unless_future()
   skip_if_not_installed("R.utils")
   # timeout is the only way to make a model fail on demand without inventing

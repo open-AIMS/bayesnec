@@ -607,19 +607,33 @@
   **Chains are sampled in sequence inside each worker.** `brm()` parallelises
   across chains already, so models in parallel on top of that would request
   `workers x chains` processes --- sixteen for four workers and the default
-  `chains = 4`. Under a parallel plan `bnec()` passes `cores = 1` to `brm()`,
-  which also stops a `mc.cores` set in a profile from applying per worker.
-  Supplying `cores` in `brm_args` is left alone and is how the two levels are
-  nested deliberately.
+  `chains = 4`. Under a parallel plan of more than one worker `bnec()` passes
+  `cores = 1` to `brm()`, which also stops a `mc.cores` set in a profile from
+  applying per worker. Passing `cores` yourself is left alone and is how the two
+  levels are nested deliberately. A plan that names a parallel strategy but
+  resolves to a single worker --- `plan(multicore)` wherever forking is
+  unavailable, which includes Windows --- is clamped in neither respect, and
+  says so.
 
-  **A parallel run reproduces the sequential run exactly for the same `seed`.**
-  This needed making true rather than being inherited: `future.seed = TRUE`
-  installs an L'Ecuyer-CMRG generator in each worker, `set.seed()` does not
-  restore the generator kind, and the initial-value search would therefore have
-  drawn different starting values in a worker from the same seed --- silently,
-  with no error and no warning. The worker restores the parent's RNG kind before
-  fitting. Without a `seed` the search reseeds from entropy and no run repeats,
-  under a plan or otherwise, which is unchanged.
+  **Each fitted model reproduces exactly under a parallel plan, for the same
+  `seed`.** This needed making true rather than being inherited:
+  `future.seed = TRUE` installs an L'Ecuyer-CMRG generator in each worker,
+  `set.seed()` does not restore the generator kind, and the initial-value search
+  would therefore have drawn different starting values in a worker from the same
+  seed --- silently, with no error and no warning. The worker restores the
+  parent's RNG kind before fitting. Without a `seed` the search reseeds from
+  entropy and no run repeats, under a plan or otherwise, which is unchanged.
+
+  **The model-averaged quantities are the exception.** `expand_manec()` draws
+  the seed for the weighted posterior draw from the session's RNG stream after
+  the models are fitted. Fitted in sequence that stream has been advanced by
+  every model's initial-value search and so is fixed by `seed`; fitted in
+  parallel those searches run in workers and it is not. The averaged `nec`, its
+  interval and the stored prediction grid therefore differ between the two
+  plans, as two valid realisations of the same weighting. `bnec()` leaves the
+  stream undisturbed under a parallel plan, so `set.seed()` in the calling
+  session fixes that draw and two parallel runs agree --- which is what
+  `expand_manec()` intends it to answer to (#216).
 
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
   the candidate set as requested, the set attempted, the equations excluded with

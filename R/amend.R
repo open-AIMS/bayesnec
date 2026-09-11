@@ -248,8 +248,10 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   }, logical(1))
   # Carried over here, in the parent, rather than returned from the applied
   # function. Under a parallel plan the alternative serialises every existing
-  # fit out to a worker and straight back again, for a model that is not
-  # refitted -- the memory hazard #184 raises, incurred for nothing.
+  # fit out to a worker and straight back again for a model that is not
+  # refitted, which is the memory multiplication #184 raises. Doing it here is
+  # necessary and not sufficient: old_fits also has to stay out of what the
+  # applied function exports, which is what narrow_environment() below is for.
   for (m in which(!needs_fit)) {
     mod_fits[[model_set[m]]] <- old_fits[[model_set[m]]]
   }
@@ -257,61 +259,75 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   # taking one from the user, so what plan_model_set() decides has to be
   # passed into the loop body and merged there.
   set_plan <- plan_model_set(list(), sum(needs_fit), caller = "amend")
-  attempts <- bnec_model_lapply(which(needs_fit), function(m) {
-    model <- model_set[m]
-    # No `init`. This branch is reached only for a model that is not already
-    # in the set, and simdat$init holds the stanfit initial values of a model
-    # that is -- values named for another equation's parameters, which are
-    # meaningless here. add_brm_defaults() overwrote them with its own search
-    # in every case, so omitting them changes nothing that happened; what it
-    # changes is that the search is now requested by the absence of `init`
-    # rather than compelled by skip_check. See #290.
-    brm_args <- c(
-      list(
-        family = family, iter = simdat$iter, thin = simdat$thin,
-        warmup = simdat$warmup, chains = simdat$chains,
-        sample_prior = simdat$sample_prior
-      ),
-      set_plan$brm_args
-    )
-    brm_args$prior <- priors
-    model_priors <- try(validate_priors(brm_args$prior, model),
-                        silent = TRUE)
-    if (inherits(model_priors, "try-error")) {
-      x <- retrieve_var(bdat, "x_var", error = TRUE)
-      y <- retrieve_var(bdat, "y_var", error = TRUE)
-      custom_name <- check_custom_name(family)
-      if (family$family == "binomial" || family$family == "beta_binomial") {
-        tr <- retrieve_var(bdat, "trials_var", error = TRUE)
-        y <- y / tr
-      }
-      # The rate denominator, for the same reason as trials above: this path
-      # rebuilds priors for a model added to an existing set, and they have to
-      # be on the same scale as the ones the original fit used. See #136.
-      denom <- retrieve_var(bdat, "rate_var")
-      if (!is.null(denom)) {
-        y <- y / denom
-      }
-      # Note this path still does not pass disp_spec, which predates #245
-      # and is left alone here rather than changed as a side effect.
-      brm_args$prior <- define_prior(
-        model, family, x, y, prior_type = prior_type,
-        group_spec = parse_group_terms(formula, model)
+  # narrow_environment(), for the reason bnec() gives at its own call: future
+  # exports the applied function with its enclosing environment, and this frame
+  # holds old_fits and the partly filled mod_fits. Carrying existing fits over
+  # in the parent saves nothing unless they are also kept out of what is
+  # exported, which is what this does.
+  fit_one <- narrow_environment(
+    function(m) {
+      model <- model_set[m]
+      # No `init`. This branch is reached only for a model that is not already
+      # in the set, and simdat$init holds the stanfit initial values of a model
+      # that is -- values named for another equation's parameters, which are
+      # meaningless here. add_brm_defaults() overwrote them with its own search
+      # in every case, so omitting them changes nothing that happened; what it
+      # changes is that the search is now requested by the absence of `init`
+      # rather than compelled by skip_check. See #290.
+      brm_args <- c(
+        list(
+          family = family, iter = simdat$iter, thin = simdat$thin,
+          warmup = simdat$warmup, chains = simdat$chains,
+          sample_prior = simdat$sample_prior
+        ),
+        set_plan$brm_args
       )
-    } else {
-      brm_args$prior <- model_priors
-    }
-    try(
-      fit_bayesnec(
-        formula = formula, data = data, model = model,
-        brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
-        timeout = timeout
-      ),
-      silent = FALSE
-    )
-  }, parallel = set_plan$parallel)
+      brm_args$prior <- priors
+      model_priors <- try(validate_priors(brm_args$prior, model),
+                          silent = TRUE)
+      if (inherits(model_priors, "try-error")) {
+        x <- retrieve_var(bdat, "x_var", error = TRUE)
+        y <- retrieve_var(bdat, "y_var", error = TRUE)
+        custom_name <- check_custom_name(family)
+        if (family$family == "binomial" || family$family == "beta_binomial") {
+          tr <- retrieve_var(bdat, "trials_var", error = TRUE)
+          y <- y / tr
+        }
+        # The rate denominator, for the same reason as trials above: this path
+        # rebuilds priors for a model added to an existing set, and they have to
+        # be on the same scale as the ones the original fit used. See #136.
+        denom <- retrieve_var(bdat, "rate_var")
+        if (!is.null(denom)) {
+          y <- y / denom
+        }
+        # Note this path still does not pass disp_spec, which predates #245
+        # and is left alone here rather than changed as a side effect.
+        brm_args$prior <- define_prior(
+          model, family, x, y, prior_type = prior_type,
+          group_spec = parse_group_terms(formula, model)
+        )
+      } else {
+        brm_args$prior <- model_priors
+      }
+      try(
+        fit_bayesnec(
+          formula = formula, data = data, model = model,
+          brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
+          timeout = timeout
+        ),
+        silent = FALSE
+      )
+    },
+    list(model_set = model_set, family = family, simdat = simdat,
+         set_plan = set_plan, priors = priors, bdat = bdat,
+         formula = formula, data = data, prior_type = prior_type,
+         timeout = timeout)
+  )
+  attempts <- bnec_model_lapply(which(needs_fit), fit_one,
+                                parallel = set_plan$parallel)
   # Assembled in the parent, as in bnec(): what the applied function returns is
-  # the fit, or the try-error holding its condition, and failure_record() then
+  # the fit, or the try-error whose condition attribute records it, and
+  # failure_record() then
   # reads the same object whichever plan produced it.
   for (i in seq_along(attempts)) {
     model <- model_set[which(needs_fit)[i]]

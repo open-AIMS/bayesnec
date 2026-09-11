@@ -468,16 +468,39 @@ most machines it runs slower than fitting in sequence. Under a parallel plan
 \code{\link{bnec}} therefore passes \code{cores = 1} to
 \code{\link[brms]{brm}}. Nest the two levels deliberately by passing
 \code{cores} yourself, which is left alone: \code{bnec(..., cores = 2)}
-with \code{workers = 4} uses up to eight processes. Note that this is also
-the only way \code{getOption("mc.cores")} stops applying: without it a value
-set in a profile would give every worker four chains at once without having
-been asked for.
+with \code{workers = 4} runs four worker processes sampling eight chains
+between them. Passing \code{cores} is also what makes
+\code{getOption("mc.cores")} irrelevant: bayesnec's own \code{cores = 1}
+already overrides it, and without either, a value set in a profile would
+give every worker four chains at once without having been asked for.
 
-\strong{Supply a seed if the run has to be reproducible.} A parallel run
-reproduces the sequential run exactly for the same \code{seed} passed on to
-\code{\link[brms]{brm}}, and that is tested. Without one the initial-value
-search reseeds from entropy, so neither a sequential nor a parallel run
-repeats -- which is true of this package with or without a plan set.
+A plan that names a parallel strategy but resolves to one worker gets
+neither treatment: nothing is clamped and \code{\link{bnec}} says so.
+\code{plan(multicore)} resolves that way wherever forking is unavailable,
+which is Windows, and \pkg{RStudio} or \pkg{Positron} on Linux and macOS.
+\code{plan(multisession)} works everywhere.
+
+\strong{Reproducibility, and the one place it stops.} Each fitted model
+reproduces exactly under a parallel plan, given the same \code{seed} passed
+on to \code{\link[brms]{brm}}, and that is tested. Without a \code{seed}
+the initial-value search reseeds from entropy and nothing repeats under
+either plan, which is what this package does today with or without one.
+
+The model-averaged quantities are the exception, and the reason is worth
+stating because nothing announces it. Once the models are fitted,
+\code{expand_manec()} draws a seed from the session's RNG stream and uses
+it to decide which posterior draws each equation contributes to the averaged
+estimate. Fitted in sequence, the loop leaves that stream in a state fixed
+by \code{seed}, because every initial-value search ran in this process;
+fitted in parallel the searches run in workers and the stream is untouched.
+The averaged \code{nec}, its interval and the stored prediction grid
+therefore differ between the two plans -- as two valid realisations of the
+same weighting, not as one being wrong.
+
+\code{\link{bnec}} does not disturb the stream under a parallel plan, so
+\code{set.seed()} in your session before the call fixes that draw, and two
+parallel runs agree. That is what \code{expand_manec()} intends the draw to
+answer to.
 
 \strong{Console output from a worker is not ordered.} The per-model
 messages \code{\link{bnec}} emits come from a worker process and arrive
@@ -487,9 +510,32 @@ is still recorded as an \code{NA} entry, the remaining models still fit, and
 beyond the running commentary. \code{timeout} continues to apply per model
 inside its worker.
 
-Every worker is sent the data and the formula. \pkg{future} refuses to
-export more than 500 MB by default and says so; raise
-\code{options(future.globals.maxSize = )} if a large dataset trips it.
+One failure is not caught that way. A worker killed from outside R, which in
+practice means the operating system reclaiming memory, cannot raise a
+condition for \code{try()} to catch, and \pkg{future} reports it in the
+parent as an error that ends the whole call rather than one model of it.
+Fewer workers is the remedy, and it is the reason to think about how many
+before setting a plan: memory, not cores, is usually what binds on a set of
+this kind.
+
+Each model is sent to a worker with the data, the formula, the priors and
+the \pkg{brms} arguments, and nothing else \code{\link{bnec}} or
+\code{\link{amend}} has built -- in particular not the fits an
+\code{\link{amend}} call already holds. \pkg{future} refuses to export
+more than 500 MiB by default and says so, naming the applied function rather
+than what is inside it; raise
+\code{options(future.globals.maxSize = )} if a large dataset reaches it.
+
+\code{\link{bnec_group}} fits one model set per level of the grouping
+variable, so under a parallel plan each level is parallelised in turn and
+the note above is printed once per level.
+
+Starting a worker is not free for this package. A \code{multisession} or
+\code{cluster} worker is a fresh R process that has to load \pkg{bayesnec}
+and with it \pkg{brms}, \pkg{Rcpp} and \pkg{rstan} before it can fit
+anything, which took about three seconds per worker on an idle machine and
+considerably longer on a busy one. It is paid once per worker, so it is
+negligible against a 23-model set and is not against two or three models.
 
 Two things to be aware of when developing against the package rather than
 using it. A \code{multisession} or \code{cluster} worker loads the

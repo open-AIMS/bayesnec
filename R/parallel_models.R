@@ -41,7 +41,8 @@ bnec_plan_is_parallel <- function() {
 #' fit slower than it is today. \code{\link{amend}} reaches this case whenever
 #' every model in the amended set is carried over from the object.
 #'
-#' \bold{Under a parallel plan each model samples its chains in sequence.}
+#' \bold{Under a parallel plan of more than one worker, each model samples its
+#' chains in sequence.}
 #' \code{\link[brms]{brm}} already parallelises across chains, so fitting
 #' models in parallel on top of that requests \code{workers x chains}
 #' processes. bayesnec passes no \code{cores} argument of its own, so
@@ -77,31 +78,53 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
     return(list(parallel = FALSE, brm_args = brm_args))
   }
   workers <- try(future::nbrOfWorkers(), silent = TRUE)
-  if (inherits(workers, "try-error")) {
+  if (inherits(workers, "try-error") || !is.numeric(workers)) {
     workers <- NA_integer_
   }
+  # The clamp is on the worker count, not on the strategy. A plan can name a
+  # parallel strategy and still resolve to one worker -- plan(multicore) does
+  # exactly that on Windows, and on Linux and macOS inside RStudio or Positron,
+  # where parallelly::supportsMulticore() is FALSE and future falls back to
+  # evaluating in the parent. Clamping there would fit one model at a time with
+  # its chains in sequence, which for a user who has set mc.cores is slower
+  # than the release, while the message said the opposite. Unknown reads as
+  # more than one, since the risk being guarded is oversubscription.
+  one_worker <- isTRUE(workers == 1)
   supplied_cores <- "cores" %in% names(brm_args)
-  if (!supplied_cores) {
+  if (!supplied_cores && !one_worker) {
     brm_args$cores <- 1
   }
   message(
-    "Fitting ", n_models, " models in parallel over ", workers,
-    " workers, under the future plan already set.\n",
-    if (supplied_cores) {
-      paste0("Each model samples its chains over cores = ", brm_args$cores,
-             ", as you supplied, so up to ", workers, " x ", brm_args$cores,
-             " processes may run at once.")
+    if (one_worker) {
+      paste0("The future plan in effect resolves to a single worker, so the ",
+             n_models, " models are fitted one at a time and chain",
+             " parallelism is left as it is. plan(multicore) does this",
+             " wherever forking is unavailable; plan(multisession) works",
+             " everywhere.")
     } else {
-      paste0("Each model samples its chains in sequence (cores = 1);",
-             if (identical(caller, "amend")) {
-               paste0(" amend() takes no brms arguments, so to nest the two",
-                      " levels of parallelism refit the set with bnec().")
-             } else {
-               " pass `cores` to bnec() to nest the two levels of parallelism."
-             })
-    },
-    "\nPer-model messages from a worker may arrive out of order, or not at",
-    " all. A model that fails is recorded either way; see ?failed_models."
+      paste0(
+        "Fitting ", n_models, " models in parallel over ", workers,
+        " workers, under the future plan already set.\n",
+        if (supplied_cores) {
+          paste0("Each model samples its chains over cores = ",
+                 brm_args$cores, ", as you supplied, so up to ", workers,
+                 " x ", brm_args$cores, " chains may sample at once.")
+        } else {
+          paste0("Each model samples its chains in sequence (cores = 1);",
+                 if (identical(caller, "amend")) {
+                   paste0(" amend() takes no brms arguments, so to nest the",
+                          " two levels of parallelism refit the set with",
+                          " bnec().")
+                 } else {
+                   paste0(" pass `cores` to bnec() to nest the two levels of",
+                          " parallelism.")
+                 })
+        },
+        "\nPer-model messages from a worker may arrive out of order, or not",
+        " at all. A model that fails is recorded either way; see",
+        " ?failed_models."
+      )
+    }
   )
   list(parallel = TRUE, brm_args = brm_args)
 }
@@ -127,6 +150,27 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' both places. \code{weighted_draw_index()} records the same trap on the
 #' post-fit side.
 #'
+#' \bold{The caller's RNG stream is left where it was found.} A parallel loop
+#' advances the parent's \code{.Random.seed} by generating the per-element
+#' streams, and initialises it from entropy where the session had not yet used
+#' the RNG, so what \code{expand_manec()} draws next -- \code{w_draw_seed},
+#' and through it which draws each equation contributes to the model-averaged
+#' estimate -- would otherwise differ between two parallel runs of the same
+#' call. Restoring makes that draw answer to a \code{set.seed()} in the
+#' caller's session, which is what \code{expand_manec()} says it is for, and
+#' stops a fit resetting a user's simulation seed. \code{weighted_draw_index()}
+#' restores for the same reason and in the same order: the kind first, because
+#' the generator is encoded in \code{.Random.seed[1]}.
+#'
+#' It does not make the model-averaging draw match the sequential run's. Run in
+#' sequence the loop advances the parent's stream, because every model's
+#' \code{set.seed(brm_args$seed)} and initial-value search happen there; run in
+#' parallel they happen in a worker and nothing can replay them. The fitted
+#' models reproduce exactly; \code{w_draw_seed} and \code{w_draw_index} do not.
+#' Closing that gap means deriving the draw from \code{brm_args$seed} rather
+#' than from the ambient stream, which is a change to \code{expand_manec()} and
+#' to what \#216 decided deliberately.
+#'
 #' \code{future.seed = TRUE} is kept rather than dropped to \code{NULL}, even
 #' though the stream it installs is then discarded. \code{NULL} leaves the
 #' worker's RNG state to the backend, which makes correctness a property of
@@ -148,6 +192,16 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' which reseeds from entropy, so the run is not reproducible under either plan
 #' -- which is what it does today, with or without a plan set.
 #'
+#' \bold{One model per chunk.} \code{future_lapply()} otherwise divides the set
+#' into one chunk per worker and runs each chunk in sequence, which for
+#' bayesnec is wrong twice over. The 23 equations differ in fitting time by an
+#' order of magnitude, so a worker that draws the slow ones sets the wall clock
+#' while the others idle; and a worker holds every fit in its chunk until the
+#' chunk ends, which is the memory multiplication \#184 warns about in its
+#' worst form. One element per future gives the assignment dynamically and
+#' holds one fit at a time. The extra exports this implies are what the narrow
+#' environment above is for.
+#'
 #' @param X A \code{\link[base]{vector}} to apply over.
 #' @param FUN A \code{\link[base]{function}} taking one element of \code{X}.
 #' @param parallel A \code{\link[base]{logical}} vector of length 1, as
@@ -161,12 +215,64 @@ bnec_model_lapply <- function(X, FUN, parallel = FALSE) {
     return(lapply(X, FUN))
   }
   rng_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (has_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    suppressWarnings(do.call(RNGkind, as.list(rng_kind)))
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
   future.apply::future_lapply(
     X,
     function(x) {
-      do.call(RNGkind, as.list(rng_kind))
+      # suppressWarnings for the sample.kind = "Rounding" notice, which a
+      # session set to the pre-3.6.0 sampler would otherwise have relayed once
+      # per model. weighted_draw_index() suppresses it at its own restore.
+      suppressWarnings(do.call(RNGkind, as.list(rng_kind)))
       FUN(x)
     },
-    future.seed = TRUE
+    future.seed = TRUE,
+    future.chunk.size = 1
   )
+}
+
+#' Rebuild a function so that only what it names travels to a worker
+#'
+#' \pkg{future} exports the applied function together with its enclosing
+#' environment, and that environment is by default the frame of
+#' \code{\link{bnec}} or \code{amend_model_set()}. Those frames hold
+#' everything the function has computed by that point -- for \code{amend()},
+#' every fit already in the set -- so a closure that reads a handful of small
+#' objects serialises all of it, once per future. Measured on the two-equation
+#' \code{manec_example}, 2026-09-11: the applied function reported 14.1 MiB
+#' against 75 bytes for the arguments it actually reads, and the same closure
+#' over a 32 MB object was refused outright at
+#' \code{future.globals.maxSize = 10 MiB}, naming \code{FUN}, which tells the
+#' user nothing about the cause.
+#'
+#' The replacement environment's parent is the package namespace, so package
+#' internals resolve as before and are exported by reference rather than by
+#' value.
+#'
+#' Applied on the sequential path as well as the parallel one, deliberately. A
+#' name left out of \code{vars} then fails on the first ordinary call rather
+#' than only for whoever sets a plan.
+#'
+#' @param fn A \code{\link[base]{function}}.
+#' @param vars A named \code{\link[base]{list}} of everything \code{fn}
+#' reads from its enclosing scope.
+#'
+#' @return \code{fn}, with its environment replaced.
+#'
+#' @noRd
+narrow_environment <- function(fn, vars) {
+  environment(fn) <- list2env(vars, parent = asNamespace("bayesnec"))
+  fn
 }
