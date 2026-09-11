@@ -487,21 +487,21 @@ nrow(one_plate)
 n_distinct(one_plate$conc_group)
 ```
 
-The fits below use a reduced set of equations and shorter chains than an
-analysis would. The full set at production settings is reported in the closing
-section with the settings that produced it. The set is written out in each call
-rather than held in a variable, because `crf()` resolves its model argument in
-the global environment only.
+The fits below use `model = "all"`, which `bnec()` filters to the equations
+valid for the family and predictor. Chains are shorter than an analysis would
+use --- 5000 iterations with 4000 warmup, against the 10000 and 8000 `bnec()`
+defaults --- which halves the draws retained while leaving the warmup long
+enough to adapt.
 
 ```{r}
-fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), c("nec3param", "ecxll3", "ecxll4")) + disp("power"),
+fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
                   data = one_plate, family = gfam,
-                  chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                  chains = 4, iter = 5000, warmup = 4000, seed = 228,
                   control = list(adapt_delta = 0.99))
 
-fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), c("nec3param", "ecxll3", "ecxll4")) + ogl(conc_group) + disp("power"),
+fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(conc_group) + disp("power"),
                 data = one_plate, family = gfam,
-                chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                chains = 4, iter = 5000, warmup = 4000, seed = 228,
                 control = list(adapt_delta = 0.99))
 ```
 
@@ -527,14 +527,14 @@ and the plates of one arm are that case. Each plate is a complete test, and the
 gain differences shown above mean the plates are not on a common vertical scale.
 
 ```{r}
-fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), c("nec3param", "ecxll3", "ecxll4")) + disp("power"),
+fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + disp("power"),
                    data = zn15, family = gfam,
-                   chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                   chains = 4, iter = 5000, warmup = 4000, seed = 228,
                    control = list(adapt_delta = 0.99))
 
-fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), c("nec3param", "ecxll3", "ecxll4")) + ogl(plate) + disp("power"),
+fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
                   data = zn15, family = gfam,
-                  chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                  chains = 4, iter = 5000, warmup = 4000, seed = 228,
                   control = list(adapt_delta = 0.99))
 ```
 
@@ -596,9 +596,9 @@ The yield endpoint has six concentrations and 54 chambers of five to eight
 readings, and `ogl(chamber)` on it is well conditioned:
 
 ```{r}
-fit_pam <- bnec(yield ~ crf(diuron, c("nec3param", "ecxll3", "ecxll4")) + ogl(chamber),
+fit_pam <- bnec(yield ~ crf(diuron, "all") + ogl(chamber),
                 data = coral_pam, family = Beta(link = "identity"),
-                chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                chains = 4, iter = 5000, warmup = 4000, seed = 228,
                 control = list(adapt_delta = 0.99))
 summary(fit_pam)
 ```
@@ -610,12 +610,12 @@ where the design runs out:
 ```{r}
 three_par <- bnec(proportion ~ crf(diuron, c("ecxll3", "ecxwb1p3")) + ogl(chamber),
                   data = coral_colour, family = Beta(link = "identity"),
-                  chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                  chains = 4, iter = 5000, warmup = 4000, seed = 228,
                   control = list(adapt_delta = 0.99))
 
 four_par <- bnec(proportion ~ crf(diuron, c("nec4param", "ecx4param")) + ogl(chamber),
                  data = coral_colour, family = Beta(link = "identity"),
-                 chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                 chains = 4, iter = 5000, warmup = 4000, seed = 228,
                  control = list(adapt_delta = 0.99))
 ```
 
@@ -649,10 +649,10 @@ different question from the one being asked, and their functional forms may
 differ. `bnec_group()` fits each level separately and returns one object.
 
 ```{r}
-fits_herb <- bnec_group(fvfm ~ crf(log(concentration), c("nec3param", "ecxll3", "ecxll4")),
+fits_herb <- bnec_group(fvfm ~ crf(log(concentration), "decline"),
                         data = herbicide, group_var = "herbicide",
                         family = Beta(link = "identity"),
-                        chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                        chains = 4, iter = 5000, warmup = 4000, seed = 228,
                         control = list(adapt_delta = 0.99))
 ```
 
@@ -678,9 +678,9 @@ a dispersion sub-model.
 zn_cu_15 <- droplevels(subset(lum31, minutes == 15))
 
 fits_tox <- bnec_group(
-  rlu_cens | cens(censoring) ~ crf(log(conc), c("nec3param", "ecxll3", "ecxll4")) + ogl(plate) + disp("power"),
+  rlu_cens | cens(censoring) ~ crf(log(conc), "all") + ogl(plate) + disp("power"),
   data = zn_cu_15, group_var = "toxicant", family = gfam,
-  chains = 2, iter = 2000, warmup = 1000, seed = 228,
+  chains = 4, iter = 5000, warmup = 4000, seed = 228,
   control = list(adapt_delta = 0.99))
 ```
 

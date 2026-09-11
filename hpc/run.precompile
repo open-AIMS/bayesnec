@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32GB
-#SBATCH --time=24:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --output=logs/precompile-%A_%a.log
 # No separate --error: R's message(), knitr's progress and cmdstan's output all
 # go to stderr, so splitting the streams leaves the .log nearly empty and the
@@ -26,11 +26,15 @@
 # hours into a run. example7 holds 24 model-averaged fits over thirteen
 # equations in memory at once.
 #
-# --time=24:00:00: example7 took 309 min end to end on a cold Stan cache and
+# --time=3-00:00:00: example7 took 309 min end to end on a cold Stan cache and
 # was still running at 4 h 31 m on a warm one, of which over two hours was
-# ecx() and nsec() extraction rather than sampling (#306). A day is generous
-# for the largest vignette in the repository and a task that exceeds it has
-# gone wrong rather than been slow.
+# ecx() and nsec() extraction rather than sampling (#306). A day was generous
+# for that, but example8 fits 189 models across five datasets -- two model
+# averaged sets on 748 rows with a group-level term and a dispersion sub-model,
+# and two bnec_group() calls -- and scales from the measured runs to 10 to 20
+# hours depending on how much faster cmdstanr is than rstan. Three days leaves
+# margin without approaching the 14-day partition limit. The request does not
+# reserve the time, so a shorter run is not penalised.
 
 set -euo pipefail
 
