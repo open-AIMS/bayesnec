@@ -293,11 +293,19 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   } else if (any(success_models %in% mod_groups$ecx) & any(success_models %in% mod_groups$nec)) {
     ne_lab <- "N(S)EC"
   }
-  if (missing(loo_controls)) {
-    loo_controls <- list(fitting = list(), weights = list())
+  # define_loo_controls() rather than validate_loo_controls(), and on both
+  # branches. Validation alone leaves `weights` empty, `method` is then NULL in
+  # the do.call() below, and loo::loo_model_weights() applies its own default of
+  # "stacking" -- so a set assembled by c(), `+`, amend() or update() was
+  # weighted by stacking while the same set fitted by bnec() was weighted by
+  # pseudo-BMA, and attr(wi, "method") recorded nothing. This is the single
+  # point every route reaches, so the default is supplied here rather than at
+  # each entry point. See #320.
+  fam_tag <- object[[1]]$fit$family$family
+  loo_controls <- if (missing(loo_controls)) {
+    define_loo_controls(family_str = fam_tag)
   } else {
-    fam_tag <- object[[1]]$fit$family$family
-    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
+    define_loo_controls(loo_controls, fam_tag)
   }
   loo_w_controls <- loo_controls$weights
   for (i in seq_along(object)) {

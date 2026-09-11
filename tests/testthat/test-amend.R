@@ -90,3 +90,19 @@ test_that("amend.bayesnecfit adds models and promotes to bayesmanecfit", {
   expect_identical(fixef(added$mod_fits$nec4param$fit),
                    fixef(nec4param$fit))
 })
+
+test_that("an object that records no weighting method gets the default", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The shape of a set assembled by c() before #320, and of any set whose
+  # attribute was dropped by row-subsetting of mod_stats. amend() preserves the
+  # method the set was built with, and an unknown method used to be preserved
+  # as NULL, which loo::loo_model_weights() resolves to stacking.
+  unrecorded <- manec_example
+  attr(unrecorded$mod_stats$wi, "method") <- NULL
+  out <- amend(unrecorded, loo_controls = list(fitting = list(reloo = FALSE))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(out$mod_stats$wi, "method"), "pseudobma")
+})

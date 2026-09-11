@@ -618,6 +618,35 @@
 
 ## Bug fixes
 
+- A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
+  by pseudo-BMA, the documented default, rather than by stacking.
+  `expand_manec()` validated the `loo_controls` it was given but supplied no
+  default where the caller named no method, so `method` reached
+  `loo::loo_model_weights()` as `NULL`, `loo` applied its own default of
+  `"stacking"`, and `attr(mod_stats$wi, "method")` recorded nothing. The same
+  set fitted in a single `bnec()` call was weighted by pseudo-BMA, so the
+  weighting method --- and with it the model-averaged NEC, NSEC and ECx
+  estimates --- depended on how the set was assembled rather than on what was
+  requested. Combining single fits with `c()` is a documented workflow and is
+  how the training material introduces model averaging, so this was a common
+  path. Measured on the two packaged `manec_example` fits pulled out and
+  recombined (R 4.6.1, `loo` 2.8.0): stacking placed 0.892 of the weight on
+  `nec4param`, while pseudo-BMA placed between 0.821 and 0.862 over twenty
+  repeats --- it uses a Bayesian bootstrap and so is not deterministic ---
+  against the 0.827 recorded by the `bnec()` call that fitted them. The default
+  is supplied in `expand_manec()`, which is the one point every assembly route
+  reaches (#320).
+
+  Where the set being operated on records a method, that method is kept rather
+  than replaced by the default. `amend()` and `pull_out()` already preserved
+  it, but passed an unknown method on as `method = NULL`, which `loo` resolves
+  to stacking; an unknown method is now left for the default to fill.
+  `update()` did not preserve it at all and now does, since refitting a set is
+  not a request to reweight it. `c()` and `+` take no `loo_controls` argument,
+  so they inherit the method where every object being combined that records one
+  names the same method, and report the fallback to the default where two
+  disagree.
+
 - `dispersion()` no longer discards the statistic where a single observation is
   reproduced exactly. The Pearson denominator is the fitted standard deviation,
   which underflows to exactly zero for a curve that decays fast enough --- `mu
