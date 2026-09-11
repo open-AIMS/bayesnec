@@ -494,12 +494,12 @@ section with the settings that produced it.
 ```{r}
 eqs <- c("nec3param", "ecxll3", "ecxll4")
 
-fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs),
+fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + disp("power"),
                   data = one_plate, family = gfam,
                   chains = 2, iter = 2000, warmup = 1000, seed = 228,
                   control = list(adapt_delta = 0.99))
 
-fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + ogl(conc_group),
+fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + ogl(conc_group) + disp("power"),
                 data = one_plate, family = gfam,
                 chains = 2, iter = 2000, warmup = 1000, seed = 228,
                 control = list(adapt_delta = 0.99))
@@ -527,12 +527,12 @@ and the plates of one arm are that case. Each plate is a complete test, and the
 gain differences shown above mean the plates are not on a common vertical scale.
 
 ```{r}
-fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs),
+fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + disp("power"),
                    data = zn15, family = gfam,
                    chains = 2, iter = 2000, warmup = 1000, seed = 228,
                    control = list(adapt_delta = 0.99))
 
-fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + ogl(plate),
+fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + ogl(plate) + disp("power"),
                   data = zn15, family = gfam,
                   chains = 2, iter = 2000, warmup = 1000, seed = 228,
                   control = list(adapt_delta = 0.99))
@@ -668,11 +668,34 @@ autoplot(fits_herb)
 compare_posterior(fits_herb, comparison = "nec")
 ```
 
-<!-- DRAFT NOTE: the lum31-by-toxicant arm is not drafted. It is the last use of
-     the case study and should use whatever structure sections 3 to 5 establish,
-     which is not settled: the dispersion sub-model, and a plate term within each
-     toxicant level rather than pooled plates. Fitting it on pooled plates would
-     reproduce exactly the bias section 5 measures. -->
+The same call answers the question the case study opened with. Copper and zinc
+are two contaminants of interest, not a sample from a population of metals, so
+they are levels rather than a grouping, and each is fitted with the structure
+sections 3 to 5 arrived at: the censored response, a plate term for the gain, and
+a dispersion sub-model.
+
+```{r}
+zn_cu_15 <- droplevels(subset(lum31, minutes == 15))
+
+fits_tox <- bnec_group(
+  rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + ogl(plate) + disp("power"),
+  data = zn_cu_15, group_var = "toxicant", family = gfam,
+  chains = 2, iter = 2000, warmup = 1000, seed = 228,
+  control = list(adapt_delta = 0.99))
+```
+
+```{r}
+summary(fits_tox)
+```
+
+```{r}
+compare_posterior(fits_tox, comparison = "nec")
+```
+
+<!-- DRAFT NOTE: the conclusion is not written. Note when writing it that the
+     ECx values are on the log(conc) scale and need xform = exp, and that the
+     first quantity is a model-averaged N(S)EC rather than a NEC because the set
+     mixes threshold and smooth equations. -->
 
 # Provenance
 
