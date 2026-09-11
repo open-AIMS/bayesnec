@@ -209,10 +209,16 @@ in Fisher et al. 2024) or <code>"regularizing"</code> (narrower priors, with the
 no-effect <code>top</code> parameter placed at the mean response over the lowest
 concentrations tested and <code>bot</code> at the mean over the highest). The
 regularizing set narrows the response-scaled and group-level priors to 0.4 of
-the width of the uninformative set, and the <code>nec</code> and <code>ec50</code> prior
-to 0.84 of it; see <code><a href="../articles/example3.html">vignette("example3")</a></code> for why the two factors
-differ. Ignored when priors are supplied directly via the <code>prior</code>
-argument.</p></dd>
+the width of the uninformative set. The <code>nec</code> and <code>ec50</code> prior is
+not derived from that width at all: its spread is the one whose central 98\<!-- % -->
+interval reaches the farthest concentration tested. Under
+<code>"uninformative"</code> that prior is the one Fisher et al. (2024) describe,
+which is a coverage width at the 95\<!-- % level where concentrations are supplied -->
+as recorded and the constant <code>10 sd(x)</code> where the predictor is supplied
+already logged, so how much narrower the regularizing entry is depends on
+which of the two the data are on. See <code><a href="../articles/example3.html">vignette("example3")</a></code> for why the
+two rules differ. Ignored when priors are supplied directly via the
+<code>prior</code> argument.</p></dd>
 
 
 <dt id="arg-timeout">timeout<a class="anchor" aria-label="anchor" href="#arg-timeout"></a></dt>
