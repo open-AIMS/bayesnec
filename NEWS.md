@@ -317,6 +317,51 @@
 
 ## Sampler behaviour
 
+- **The initial-value search accepts each chain on its own, and tests the
+  initial curve against a band read from the level means rather than against
+  `range(y)`.** The four chains are drawn independently, so requiring all of
+  them to pass at the same time --- and re-drawing the complete set whenever
+  one failed --- left the accepted values unchanged and raised the number of
+  proposals to the fourth power of the per-chain rate. Measured over the
+  fourteen equations of the `decline` set at five seeds, the released rule
+  drew 148,397 proposals on the packaged `alga` `c_proliferum` contaminant A
+  series against 237, and 334,178 on a small unreplicated design against 308;
+  both counts exclude the single-parameter rescue `refine_inits()` makes on a
+  failing round, which the released rule ran far more often.
+  Of the 340 searches measured, 71 exhausted the 10,000-attempt cap under the
+  released rule and none do now; a search that exhausts the cap falls through
+  to Stan's own initialisation, so that budget was spent to reach the outcome
+  available at the first attempt. `n_trials` is unchanged (#309).
+
+  **`range(y)` was the wrong reference for the curve.** It compared the
+  initial curve's upper asymptote, an estimate of the mean control response,
+  against the largest single observation; it was tied to the prior it
+  filtered, because both `max(y)` and the location of the `top` prior are read
+  from the control, so on the `c_proliferum` series the threshold sat 0.021
+  prior standard deviations from the centre of the `top` prior; and it got
+  *looser* as replicates were added, because an extremum drifts outward with
+  sample size. Initial values are a draw from the prior restricted to the
+  region the criterion admits, so a threshold at the centre of the `top` prior
+  did not only reject draws --- it put every accepted `top` on one side of it.
+  Over three designs and fourteen equations the accepted `top` sat 0.149 prior
+  standard deviations below the prior median; it now sits within 0.01 of it.
+
+  **The band is every mean response the design estimates**, widened by four
+  within-group standard deviations, intersected with the support of the mean
+  mapped through the link, and stopped short of the boundary of that support.
+  Its two outermost centres come from `regularizing_location()`, the anchor
+  the `"regularizing"` prior uses for `top` and `bot`; on a replicated design
+  the ends come from the level means themselves. The width is the smallest
+  that covers the true asymptotes in every one of 270 in-scope simulated
+  cells, over gaussian, Beta and poisson responses. Where the highest
+  concentration has not reached that asymptote the band sits above the true
+  `bot` and no width reaches it, which is the same limitation the regularizing
+  prior records.
+
+  **A fit at a given seed is not bit-identical to one from 2.1.x**, because
+  the initial values a seed produces change. Two runs at the same seed still
+  agree.
+
 - **A group-level deviation on the whole curve, `ogl()`, is now applied
   multiplicatively rather than as an additive offset**, wherever the likelihood
   constrains the mean and the equation's mean is provably strictly inside its

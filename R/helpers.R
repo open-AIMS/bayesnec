@@ -330,15 +330,32 @@ get_init_predictions <- function(y, x, fct, .args) {
   do.call("fct", y)
 }
 
+#' Whether one chain's initial curve is a usable starting point
+#'
+#' @param x A \code{\link[base]{numeric}} vector, the initial curve evaluated
+#' over the sorted predictor.
+#' @param limits A \code{\link[base]{numeric}} vector of length 2, the band
+#' from \code{\link{init_limits}}.
+#'
+#' @details \code{isTRUE()} because the first two clauses are \code{NA} on a
+#' curve containing \code{NA}, and the value is read in an \code{if} by
+#' \code{\link{refine_inits}}. The finiteness clauses below make the
+#' conjunction \code{FALSE} in every case reachable today, so this is a
+#' guard rather than a fix for an observed failure.
+#'
+#' @return A \code{\link[base]{logical}} of length 1.
+#'
 #' @noRd
 check_init_predictions <- function(x, limits) {
-  min(x) > min(limits) &
-    max(x) < max(limits) &
-    !any(is.na(x)) &
-    !any(is.infinite(x)) &
-    !any(is.nan(x)) &
-    x[1] > x[length(x)] &
-    length(unique(x)) > 3
+  isTRUE(
+    min(x) > min(limits) &
+      max(x) < max(limits) &
+      !any(is.na(x)) &
+      !any(is.infinite(x)) &
+      !any(is.nan(x)) &
+      x[1] > x[length(x)] &
+      length(unique(x)) > 3
+  )
 }
 
 #' @noRd
@@ -917,6 +934,7 @@ add_brm_defaults <- function(
         response,
         priors = init_priors,
         chains = brm_args$chains,
+        family = family,
         dpar = hurdle_dpar(family),
         seed = init_seed,
         model_survival = model_survival
@@ -926,6 +944,7 @@ add_brm_defaults <- function(
         model,
         predictor,
         response_link,
+        family = family,
         priors = init_priors,
         chains = brm_args$chains,
         seed = init_seed

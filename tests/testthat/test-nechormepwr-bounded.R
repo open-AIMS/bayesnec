@@ -96,8 +96,8 @@ test_that("initialisation confirms why they are excluded", {
       priors <- define_prior(model, fam, x, y)
     }
     ii <- suppressMessages(
-      bayesnec:::make_good_inits(model, x, y, n_trials = 200, seed = 1,
-                                 priors = priors, chains = 2)
+      bayesnec:::make_good_inits(model, x, y, family = fam, n_trials = 200,
+                                 seed = 1, priors = priors, chains = 2)
     )
     if (length(ii) == 1 && identical(ii$random, "random")) {
       return(NULL)
