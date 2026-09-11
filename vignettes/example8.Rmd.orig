@@ -338,7 +338,8 @@ whose curve is `top` times a function of the predictor the two coincide.
 
 A divisor that is one constant for the whole dataset is only a change of units.
 It uses no estimate and induces no correlation, so it is not what @ritz2026
-object to. It is worth asking why this assay does not simply use one.
+object to. This assay nonetheless does not use one, and the reason is a
+property of the instrument rather than a preference.
 
 The benefit of normalisation is not the divisor itself. It is that every curve's
 control lands near the top of a bounded scale, where a `Beta` variance
