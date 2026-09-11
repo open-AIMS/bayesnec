@@ -857,8 +857,13 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' central 95\% of the prior in 8 of the 30 design by transform by parameter
 #' cells of the audit, against none at 0.8 and 2 at 0.75. The room to narrow is
 #' therefore the difference between covering the series at one confidence level
-#' and covering it at another, and 0.99 is the level chosen because it is the
-#' one a user supplying concentrations as recorded already receives.
+#' and covering it at another. 0.99 is the level chosen because it is the one a
+#' user supplying concentrations as recorded already receives, and because it is
+#' the last level at which the audit's log-transformed cells all stay inside the
+#' central 95\% of their own prior: at \code{q} of 0.995 and 0.999 the
+#' \code{log_unit} \code{ec50} cell sits at 0.9823 and 0.9929. The margin at
+#' 0.99 is not large --- that cell sits at 0.9743 --- so a narrower entry is a
+#' change to the gate, not only to the spread.
 #'
 #' \strong{Why the rule is stated rather than applied as a factor.} Until #305
 #' the entry was identical under both sets, which made \code{prior_type} inert
@@ -866,23 +871,39 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' multiplied the spread by \code{qnorm(0.975) / qnorm(0.99)}, which is 0.8425.
 #' On the lognormal branch the \code{qnorm(0.975)} cancels and the product is
 #' the coverage rule above, so that branch is unchanged by #314. The two
-#' expressions are the same quantity but not the same double: they agree to
-#' about 20 units in the last place, and over 5,000 randomly generated dilution
-#' series the 15 significant digits \code{paste0()} writes differed in 36 of
-#' them, the nassarius contaminant A series among them.
+#' expressions are the same quantity but not always the same double: the factor
+#' form rounds three times and the stated form once, so they differ by at most
+#' one unit in the last place. Measured over 200,000 randomly generated dilution
+#' series the largest relative difference was 2.22e-16, exactly one ulp, and the
+#' 15 significant digits \code{paste0()} writes differed on 1.6\% of them. Two
+#' cells of the 30-cell audit are affected, both of them the nassarius
+#' contaminant A series: read on the recorded scale sigma is 1.93333703285197
+#' against 1.93333703285198, and on the square-root scale 0.966668516425987
+#' against 0.966668516425988.
 #' On the branch for a predictor the user has already
 #' logged it does not cancel, because the spread there is the constant
 #' \code{10 sd(z)} rather than a coverage width. On a 0.1 to 100 series over
 #' seven doses that spread is 24.87 against a tested range of 6.91 on the log
-#' scale, so the truncated prior has a density ratio of 1.0008 across the tested
-#' range and 0.8425 of it has one of 1.0006. Measured on that series, the
+#' scale. The prior is then all but flat over that range: the ratio of its
+#' density at one end of the series to its density at the other is 1.000588 at
+#' a spread of 24.87 and 1.000829 at 0.8425 of it, against 1.1737 under the
+#' stated rule. Measured on that series, the
 #' truncated prior CDF at the doses 0.3, 1, 3, 10 and 30 is 0.158, 0.333, 0.492,
 #' 0.667 and 0.827 under #305, which are the positions of those doses within the
 #' range and so are what a uniform prior gives, and 0.052, 0.226, 0.499, 0.793
-#' and 0.945 under the stated rule. The same experiment therefore received a
-#' different regularizing prior according to whether the user logged the
-#' predictor before calling \code{\link{bnec}}, and \code{prior_type} was inert
-#' on one of the two routes. See #314.
+#' and 0.945 under the stated rule. \code{prior_type} was therefore inert for
+#' these two parameters on one of the two routes.
+#'
+#' The two routes now agree on the spread for a series with no zero control,
+#' which is the strongest statement available and is weaker than route
+#' equivalence. Where the design has a control the two routes do not describe
+#' the same predictor at all: this branch drops non-positive values through
+#' \code{u[u > 0]}, while a user who logs the series must substitute something
+#' for the zero first and that substituted value is then read. On
+#' \code{c(0, 0.1, 0.3, 1, 3, 10, 30, 100)} with the usual half-lowest-dose
+#' substitution the entries are \code{lognormal(1.0986, 1.5073)} and
+#' \code{normal(0.5493, 1.7434)}. That difference is a property of the
+#' substitution, not of the rule, and no choice of spread removes it. See #314.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
 #' was supplied.

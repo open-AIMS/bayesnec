@@ -66,10 +66,14 @@
 #' regularizing set narrows the response-scaled and group-level priors to 0.4 of
 #' the width of the uninformative set. The \code{nec} and \code{ec50} prior is
 #' not derived from that width at all: its spread is the one whose central 98\%
-#' interval reaches the farthest concentration tested, against the central 95\%
-#' under \code{"uninformative"}. See \code{vignette("example3")} for why the two
-#' rules differ. Ignored when priors are supplied directly via the \code{prior}
-#' argument.
+#' interval reaches the farthest concentration tested. Under
+#' \code{"uninformative"} that prior is the one Fisher et al. (2024) describe,
+#' which is a coverage width at the 95\% level where concentrations are supplied
+#' as recorded and the constant \code{10 sd(x)} where the predictor is supplied
+#' already logged, so how much narrower the regularizing entry is depends on
+#' which of the two the data are on. See \code{vignette("example3")} for why the
+#' two rules differ. Ignored when priors are supplied directly via the
+#' \code{prior} argument.
 #' @param timeout A positive \code{\link[base]{numeric}} giving the maximum
 #' number of seconds allowed for fitting any single model, passed to
 #' \code{\link[R.utils]{withTimeout}}. This is useful when fitting multiple

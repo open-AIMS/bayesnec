@@ -13,8 +13,8 @@
 # Seven measurements, each printed with the numbers quoted in the pull request:
 #
 #   1. acceptance   per-chain acceptance and the contribution of each clause,
-#                   released criterion and band, over five designs and the
-#                   declining set;
+#                   released criterion and band, over six designs, both prior
+#                   sets and the declining set;
 #   2. width        the width and the spread the band uses, chosen against
 #                   coverage of the asymptotes of a known curve, and the
 #                   robustness of each spread to one aberrant observation;
@@ -50,13 +50,24 @@ CAP <- 1e4
 # whose predictor is supplied already logged. The simulated ones are generated
 # under a fixed seed so the script is reproducible.
 #
-# log_supplied is appended last so that the five designs #312 measured keep the
-# draws they had: each design consumes the stream in turn, so a design added at
-# the end changes nothing before it. It exists because the nec and ec50 prior is
-# the only entry prior_type changes for these parameters, and the branch #314
-# changes is the one a predictor spanning negative values takes. Without it
-# every design here is on the recorded concentration scale, where the
-# regularizing entry is the same before and after #314.
+# log_supplied exists because the nec and ec50 prior is the only entry
+# prior_type changes for these parameters, and the branch #314 changes is the
+# one a predictor spanning negative values takes. Without it every design here
+# is on the recorded concentration scale, where the regularizing entry is the
+# same before and after #314.
+#
+# Its response is drawn from a separate stream and the global state is restored
+# afterwards, which is what keeps the five designs #312 measured on the draws
+# they had. Appending it to the list would not have been enough. designs() calls
+# set.seed() itself and the measurement loops call designs() once per design
+# iteration, so every design starts from the same state, and any draw added
+# inside designs() shifts that state for all of them rather than only for the
+# design it belongs to. Measured: without the restore, the first three normals
+# drawn in each of the five shared design iterations change from
+# -0.7693, 0.9019, 0.8418 to -0.0003, -0.2092, -0.8552.
+#
+# The same property makes the list order and length immaterial: because every
+# iteration reseeds, adding or reordering a design changes no other design.
 designs <- function() {
   d_a <- alga[alga$species == "c_proliferum" & alga$contaminant == "A", ]
   d_b <- alga[alga$species == "r_salina" & alga$contaminant == "B", ]
@@ -66,7 +77,10 @@ designs <- function() {
   log_conc <- log(rep(c(0.1, 0.3, 1, 3, 10, 30, 100), each = 6))
   log_mu <- pred_nec3param(x = log_conc, b_top = 0.9, b_beta = log(0.6),
                            b_nec = log(3))
+  shared_state <- .Random.seed
+  set.seed(20260911)
   log_y <- rnorm(length(log_mu), log_mu, 0.05)
+  assign(".Random.seed", shared_state, envir = globalenv())
   list(
     alga_cp_A = list(x = d_a$dose, y = d_a$sgr,
                      family = validate_family("gaussian")),
@@ -146,6 +160,11 @@ band_of <- function(dg, y, width = formals(init_limits)$width) {
 # predictor to a fractional power and so returns NaN at every x below zero for
 # every parameter draw. The cell therefore accepted nothing and ran every search
 # to the cap, and it measured a candidate bnec() would have dropped.
+# The response is passed as recorded rather than on the link scale, which is
+# what bnec() passes and what check_data() expects. Every design here is
+# gaussian on the identity link, so the two are the same today; they will not be
+# for a design added on another link, and check_models() reads the response for
+# the exclusions keyed on zeros and on bounds.
 bnec_frame <- function(x, y) {
   d <- data.frame(x = x, y = y)
   attr(d, "bnec_pop") <- c(x_var = "x", y_var = "y")
@@ -422,7 +441,7 @@ measure_proposals <- function(seeds = 1:5, prior_type = "uninformative") {
 # where the kept part sits, in units of the prior's own standard deviation.
 measure_truncation <- function(n_draw = 6000,
                                which_designs = c("alga_cp_A", "alga_rs_B",
-                                                 "small_rep", "log_supplied"),
+                                                 "small_rep"),
                                seed = 30912,
                                prior_type = "uninformative") {
   set.seed(seed)
@@ -750,7 +769,12 @@ if (run_this("proposals")) {
 }
 
 if (run_this("truncation")) {
+  # The three designs #312 measured, so that the uninformative pass reproduces
+  # its medians, and the design supplied logged separately rather than pooled
+  # into them: a median taken over four designs is not the quantity #312
+  # reported.
   tr <- by_prior_type(measure_truncation)
+  tr_log <- by_prior_type(measure_truncation, which_designs = "log_supplied")
   cat("\n=== 4. what each criterion keeps of the prior ===\n")
   for (pt in PRIOR_TYPES) {
     cat("\n ", pt, ":\n")
@@ -763,10 +787,10 @@ if (run_this("truncation")) {
         median(s$shift_released), median(s$shift_band)))
     }
   }
-  cat("\n  the predictor-scaled parameters on the design supplied logged,",
-      "which is the only one whose nec and ec50 prior #314 changes:\n")
-  print(tr[tr$design == "log_supplied" & tr$par %in% c("b_nec", "b_ec50"), ],
-        digits = 3, row.names = FALSE)
+  cat("\n  the design supplied logged, the only one whose nec and ec50 prior",
+      "#314 changes:\n")
+  print(tr_log[tr_log$par %in% c("b_nec", "b_ec50"), ], digits = 3,
+        row.names = FALSE)
   cat("\n  b_top, by design and equation:\n")
   print(tr[tr$par == "b_top", ], digits = 3, row.names = FALSE)
 }

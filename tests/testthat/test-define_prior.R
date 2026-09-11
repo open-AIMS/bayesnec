@@ -955,26 +955,59 @@ test_that("prior_type narrows the nec and ec50 prior and nothing else (#314)", {
   expect_equal(as.numeric(reg$ub[reg$nlpar == "ec50"]), 100)
 })
 
+# The uninformative entry for every cell of the #302 audit: five designs by
+# three predictor transforms. Written out as the strings predictor_prior()
+# returns, so that the gate is a pin on the released entry and not a
+# restatement of the rule that produces it. The log column substitutes half the
+# lowest non-zero dose for the zero control, as prior_audit.R does.
+audit_uninformative <- c(
+  linear_identity = "lognormal(1.70059869083108, 0.867668336890465)",
+  linear_sqrt = "lognormal(0.850299345415539, 0.433834168445233)",
+  linear_log = "normal(1.6094379124341, 9.61783829511775)",
+  linear_unit_identity = "lognormal(-0.601986402162968, 0.867668336890465)",
+  linear_unit_sqrt = "lognormal(-0.300993201081484, 0.433834168445233)",
+  linear_unit_log = "normal(-0.693147180559945, 9.61783829511775)",
+  log_2fold_identity = "lognormal(-0.123430038965763, 1.23860256233049)",
+  log_2fold_sqrt = "lognormal(-0.0617150194828814, 0.619301281165244)",
+  log_2fold_log = "normal(-0.470003629245736, 18.9891958061889)",
+  log_unit_identity = "lognormal(-2.77258872223978, 1.41542907190602)",
+  log_unit_sqrt = "lognormal(-1.38629436111989, 0.707714535953011)",
+  log_unit_log = "normal(-3.11996295320324, 20.993419114392)",
+  log_wide_identity = "lognormal(-1.50188222262563, 2.29474344001024)",
+  log_wide_sqrt = "lognormal(-0.750941111312814, 1.14737172000512)",
+  log_wide_log = "normal(-1.83258146374831, 25.2367970797139)"
+)
+
+# The predictor of one audit cell, on the transform named.
+audit_x <- function(d, transform) {
+  xr <- d$x
+  if (transform == "log") {
+    nz <- min(xr[xr > 0])
+    xr[xr == 0] <- nz / 2
+  }
+  rep(switch(transform, identity = xr, sqrt = sqrt(xr), log = log(xr)),
+      each = 6)
+}
+
 test_that("the uninformative nec and ec50 entry is unchanged (#314)", {
-  # The regression gate of #314, stated as literal prior strings because the
-  # claim is that the released entry did not change at all. Both branches: a
-  # series of concentrations as recorded, and one the user supplied logged.
-  # Literal here and nowhere else in this file, since the code path these two
-  # take is untouched and the formatting of the double cannot have changed.
+  # The regression gate of #314, as literal prior strings: the claim is that the
+  # released entry did not change at all, on either branch. It is asserted over
+  # every cell of the #302 audit rather than the two transforms whose
+  # regularizing entry is also unchanged, because the log column is the normal
+  # branch, and that is the branch #314 refactors -- half_width is now computed
+  # before the branch rather than inside the lognormal arm.
   pp <- bayesnec:::predictor_prior
+  for (dn in names(audit_designs())) {
+    for (tn in c("identity", "sqrt", "log")) {
+      x <- audit_x(audit_designs()[[dn]], tn)
+      expect_equal(pp(x), unname(audit_uninformative[[paste0(dn, "_", tn)]]))
+    }
+  }
+  # and two designs outside that list, one per branch.
   expect_equal(pp(rep(c(0, 25, 50, 75, 100), each = 6)),
                "lognormal(4.11475555948223, 0.457089896386165)")
   expect_equal(pp(rep(log(c(0.05, 0.1, 1, 10, 100)), each = 6)),
                "normal(0, 31.7284345811794)")
-  # and the whole of the #302 audit's design list, on the two transforms whose
-  # regularizing entry #314 leaves alone as well.
-  for (d in audit_designs()) {
-    for (f in list(identity, sqrt)) {
-      x <- rep(f(d$x), each = 6)
-      expect_equal(pp(x), pp(x, prior_type = "uninformative"))
-      expect_equal(prior_pars(pp(x))[2], reg_spread(prior_scale(x), 0.975))
-    }
-  }
 })
 
 test_that("the regularizing entry is unchanged for recorded doses (#314)", {
@@ -1077,17 +1110,33 @@ test_that("the regularizing prior keeps a true threshold inside it (#314)", {
   # which builds the same priors through get_priors() over 12 families and both
   # links; the prior is a function of the predictor alone, so the families add
   # no cells. Measured range: 0.536 to 0.974, against 0.626 to 0.890 under #305.
-  for (d in audit_designs()) {
-    xr <- d$x
-    nz <- min(xr[xr > 0])
-    xr[xr == 0] <- nz / 2          # log() cannot take the zero control
-    x <- rep(log(xr), each = 6)
+  #
+  # The gate has two halves and both are asserted: the ten cells must change,
+  # and none may put the true value outside the central 95%. Without the first,
+  # an implementation that changed nothing would pass, because the #305 entry
+  # covers those cells as well -- it covers them by being uniform across the
+  # tested range, which is the defect.
+  for (dn in names(audit_designs())) {
+    d <- audit_designs()[[dn]]
+    x <- audit_x(d, "log")
     r <- bayesnec:::predictor_prior(x, prior_type = "regularizing")
+    before <- 10 * sd(unique(x)) * (qnorm(0.975) / qnorm(0.99))
+    expect_lt(prior_pars(r)[2], before / 5)
     for (truth in log(c(d$nec, d$ec50))) {
       p <- trunc_prior_cdf(r, x)(truth)
       expect_gt(p, 0.025)
       expect_lt(p, 0.975)
     }
+  }
+  # q = 0.99 rather than a larger quantile is settled by this gate and not only
+  # by the prior mass below the lowest dose: at q = 0.995 and q = 0.999 the
+  # log_unit ec50 cell sits at 0.9823 and 0.9929, outside the central 95%.
+  d <- audit_designs()$log_unit
+  x <- audit_x(d, "log")
+  for (q in c(0.995, 0.999)) {
+    narrow <- paste0("normal(", median(unique(x)), ", ",
+                     reg_spread(prior_scale(x), q), ")")
+    expect_gt(trunc_prior_cdf(narrow, x)(log(d$ec50)), 0.975)
   }
 })
 

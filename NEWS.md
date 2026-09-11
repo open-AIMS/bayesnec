@@ -84,10 +84,12 @@
   **`nec` and `ec50` are narrowed under `"regularizing"` as well**, which they
   were not: the predictor-scaled prior was identical under both sets, so
   selecting the narrower set did nothing for the two parameters a user most
-  often selects it for. The two entries differ in the confidence level at which
-  the prior reaches the farthest concentration tested and in nothing else: the
-  central 95% interval reaches it under `"uninformative"` and the central 98%
-  interval does under `"regularizing"`. That width is not a free choice --- #302
+  often selects it for. The regularizing entry is now the width whose central
+  98% interval reaches the farthest concentration tested, with the location, the
+  distribution and the truncation the same under both sets. Where concentrations
+  are supplied as recorded the `"uninformative"` entry is the same rule at the
+  95% level, so on that route the two sets differ in the confidence level and in
+  nothing else. That width is not a free choice --- #302
   exists because an entry that did not reach the farthest concentration tested
   shipped --- so the confidence level is the only room there is to narrow it.
   Narrowing it by `0.4` like the response-scaled entries instead puts the true
@@ -103,11 +105,13 @@
   on the log scale. The regularizing prior was therefore uniform across the
   tested series on that branch --- its truncated CDF at each dose was that
   dose's position within the range to three decimal places --- so `prior_type`
-  was inert for `nec` and `ec50` for a user who had logged the predictor, and
-  the same experiment received a different regularizing prior according to which
-  column was passed to `bnec()`. Both `"uninformative"` entries are unchanged,
-  and so is the regularizing entry where concentrations are supplied as
-  recorded (#314).
+  was inert for `nec` and `ec50` for a user who had logged the predictor. The
+  two routes now agree on the spread for a series with no zero control. They
+  cannot agree for one with a control, because the two are then not the same
+  predictor: the recorded-concentration route drops the zero, while a user who
+  logs the series must substitute a value for it and that substitute is read.
+  Both `"uninformative"` entries are unchanged, and so is the regularizing entry
+  where concentrations are supplied as recorded (#314).
 
   **Group-level scales take the same factor**, `0.4`, rather than the one half
   they took before, and the cap on the `ogl` log-scale conversion now scales
