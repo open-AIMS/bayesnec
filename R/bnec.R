@@ -462,6 +462,66 @@
 #' \code{loo_controls} argument. Individual model fits can be pulled out
 #' for examination using function \code{\link{pull_out}}.
 #'
+#' \bold{Fitting a model set in parallel}
+#'
+#' A model set is fitted one model at a time by default, which is what every
+#' earlier version did. Fitting the models at the same time is asked for by
+#' setting a \pkg{future} plan before the call, and \code{\link{bnec}} then
+#' uses it:
+#'
+#' \preformatted{
+#' library(future)
+#' plan(multisession, workers = 4)
+#' fit <- bnec(y ~ crf(x, model = "decline"), data = my_data, seed = 17)
+#' plan(sequential)
+#' }
+#'
+#' There is no \code{cores} or \code{parallel} argument, because the plan
+#' already holds that state and two ways of setting it would disagree. The
+#' \pkg{future} and \pkg{future.apply} packages are Suggests: with either
+#' absent, or with no plan set, the models are fitted in sequence exactly as
+#' before. \code{\link{amend}} uses the plan in the same way, over the models
+#' it has to fit rather than over the whole set.
+#'
+#' \strong{Chains are sampled in sequence inside each worker.}
+#' \code{\link[brms]{brm}} already parallelises across chains, so models in
+#' parallel on top of that would request \code{workers x chains} processes;
+#' with four workers and the default \code{chains = 4} that is sixteen, and on
+#' most machines it runs slower than fitting in sequence. Under a parallel plan
+#' \code{\link{bnec}} therefore passes \code{cores = 1} to
+#' \code{\link[brms]{brm}}. Nest the two levels deliberately by passing
+#' \code{cores} yourself, which is left alone: \code{bnec(..., cores = 2)}
+#' with \code{workers = 4} uses up to eight processes. Note that this is also
+#' the only way \code{getOption("mc.cores")} stops applying: without it a value
+#' set in a profile would give every worker four chains at once without having
+#' been asked for.
+#'
+#' \strong{Supply a seed if the run has to be reproducible.} A parallel run
+#' reproduces the sequential run exactly for the same \code{seed} passed on to
+#' \code{\link[brms]{brm}}, and that is tested. Without one the initial-value
+#' search reseeds from entropy, so neither a sequential nor a parallel run
+#' repeats -- which is true of this package with or without a plan set.
+#'
+#' \strong{Console output from a worker is not ordered.} The per-model
+#' messages \code{\link{bnec}} emits come from a worker process and arrive
+#' out of order, or not at all, depending on the backend. A model that fails
+#' is still recorded as an \code{NA} entry, the remaining models still fit, and
+#' \code{\link{failed_models}} reports what happened, so nothing is lost
+#' beyond the running commentary. \code{timeout} continues to apply per model
+#' inside its worker.
+#'
+#' Every worker is sent the data and the formula. \pkg{future} refuses to
+#' export more than 500 MB by default and says so; raise
+#' \code{options(future.globals.maxSize = )} if a large dataset trips it.
+#'
+#' Two things to be aware of when developing against the package rather than
+#' using it. A \code{multisession} or \code{cluster} worker loads the
+#' \emph{installed} \pkg{bayesnec}, not one loaded with
+#' \code{pkgload::load_all()}; \code{multicore}, which forks, inherits the
+#' loaded one. And \pkg{future} sets the plan inside a worker to sequential,
+#' so a \code{\link{bnec}} call made from within one does not parallelise
+#' again.
+#'
 #' \bold{Additional technical notes}
 #'
 #' A zero concentration is fitted as recorded. No family constrains the values
@@ -670,20 +730,35 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
     mod_fits <- vector(mode = "list", length = length(model))
     names(mod_fits) <- model
     failed <- list()
-    for (m in seq_along(model)) {
-      model_m <- model[m]
-      fit_m <- try(
-        fit_bayesnec(formula = formula, data = data, model = model_m,
+    set_plan <- plan_model_set(brm_args, length(model))
+    brm_args <- set_plan$brm_args
+    # try() stays inside the applied function, not around the call to it. The
+    # NA-on-failure contract is what several downstream functions read, and
+    # under a parallel plan an error escaping the worker aborts the whole batch
+    # rather than one model of it. silent = FALSE is kept so the failure is
+    # reported where it happens; from a worker that report reaches the parent
+    # only if the backend relays stderr, which is why the failure is recorded
+    # in the returned object as well.
+    attempts <- bnec_model_lapply(seq_along(model), function(m) {
+      try(
+        fit_bayesnec(formula = formula, data = data, model = model[m],
                      brm_args = brm_args, prior_type = prior_type,
                      timeout = timeout, model_survival = model_survival),
         silent = FALSE
       )
+    }, parallel = set_plan$parallel)
+    # Assembled in the parent rather than in the worker so that what a worker
+    # returns is exactly what the sequential path returns: the fit, or the
+    # try-error holding its condition. failure_record() then reads the same
+    # object either way.
+    for (m in seq_along(model)) {
+      fit_m <- attempts[[m]]
       if (!inherits(fit_m, "try-error")) {
         mod_fits[[m]] <- fit_m
       } else {
         mod_fits[[m]] <- NA
-        failed[[model_m]] <- failure_record(model_m,
-                                            attr(fit_m, "condition"))
+        failed[[model[m]]] <- failure_record(model[m],
+                                             attr(fit_m, "condition"))
       }
     }
     formulas <- lapply(mod_fits, extract_formula)
