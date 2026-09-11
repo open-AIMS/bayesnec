@@ -181,32 +181,128 @@ respectively.</p>
 </h3>
 <p>The parameters <strong>nec</strong> and <strong>ec50</strong> scale
 with respect to the predictor because both of these are parameters in
-concentration-response curves the are estimated in units of
+concentration-response curves that are estimated in units of
 concentration. To stabilise model fitting the <strong>nec</strong> and
 <strong>ec50</strong> parameters are bounded to the upper and lower
 observed range in the predictor, under the assumption that the range of
-concentrations in the experiment were sufficient to cover the full range
-of the response outcomes. The priors used reflect the characteristics of
-the observed data that are used to guess the appropriate distribution.
-If the predictor data are bounded to <code>0</code> and
-<code>&gt;1</code>, a <code>Gamma</code> prior is used, with a shape
-parameter of 5 and a rate of <code>2 / m</code>, where <em>m</em> is the
-median of the <em>distinct</em> predictor values. That places the mean
-of the untruncated prior at <code>2.5 * m</code> and its maximum density
-at <code>2 * m</code>. The prior is then truncated to the observed
-predictor range, and for some designs the maximum density falls on or
-beyond the upper bound. For a series spaced evenly from zero,
-<code>2 * m</code> is the largest concentration tested, so the truncated
-prior rises across the whole range it permits. The distinct values are
-used rather than the observations themselves so that the prior describes
-the series of concentrations that was tested and not how many replicates
-each of them received; the two are the same wherever replication is
-balanced. If the predictor data are bounded to <code>0</code> and
-<code>1</code> a <code>beta(2, 2)</code> prior is used. For predictor
-data ranging from <code>+Inf</code> to <code>-Inf</code> a
-<code>normal</code> prior is used, with a mean set at the median of the
-predictor values and a standard deviation of 10 times the standard
-deviation of the predictor values.</p>
+concentrations in the experiment was sufficient to cover the full range
+of the response outcomes. Within those bounds the prior is a
+<code>normal</code> distribution on the <em>logarithm</em> of the
+predictor, which is the scale a dilution series is designed on. Where
+the predictor is supplied on the concentration scale the prior is
+written as a <code>lognormal</code>; where it spans negative values, and
+has therefore already been log transformed by the user, it is written as
+a <code>normal</code>. The two are the same rule stated on two
+scales.</p>
+<p>For a predictor supplied on the concentration scale, the mean of the
+prior on the log scale is the median of the <em>distinct</em> positive
+predictor values, logged. Distinct values are used rather than the
+observations themselves so that the prior describes the series of
+concentrations that was tested and not how many replicates each of them
+received. Taking the median after logging returns the log of the median
+concentration where the number of distinct positive concentrations is
+odd, and the log of the geometric mean of the two central concentrations
+where it is even, that being their midpoint on the log axis rather than
+on the concentration axis. This places the maximum density of the prior
+at that concentration measured on the log scale, and makes the median of
+the untruncated prior on the concentration scale that same
+concentration, which is the convention Fisher et al. (2024) describe.
+Both statements describe the untruncated prior; truncation at the
+highest concentration removes part of the upper tail and so pulls the
+median down, to <code>0.58</code> against a median concentration of
+<code>0.88</code> on <code>nec_data</code>. The standard deviation is
+set so that the central 95% interval of the untruncated prior covers
+every concentration tested: it is the larger of the two half-widths from
+the mean to the ends of the logged series, divided by
+<code>qnorm(0.975)</code>. A prior on a threshold should not exclude a
+concentration the experiment applied, at either end, and that criterion
+is the whole of the rule. The width is therefore stated rather than
+chosen, and it adapts to the design: expressed as a multiple of
+<code>sd(log(x))</code> it lands between <code>0.73</code> and
+<code>1.18</code> across five designs, at <code>0.92</code> to
+<code>1.03</code> on the four <code>nassarius</code> series, and at
+<code>1.75</code> on <code>nec_data</code>, whose predictor is
+continuous and densely sampled. Because the width is set by the two
+extreme concentrations rather than by the spread of the series between
+them, it responds to how a control is recorded. The prior is built from
+the concentrations as recorded, so a control entered as a nominal small
+positive value states that the value was applied and the prior widens to
+cover it; on the <code>nassarius</code> contaminant A series the
+standard deviation is <code>2.30</code> with the control recorded as
+<code>0</code>, <code>2.59</code> with it recorded as <code>0.001</code>
+and <code>6.11</code> with it recorded as <code>1e-6</code>. Record a
+control as <code>0</code>.</p>
+<p>For a predictor supplied already logged, the prior is
+<code>normal</code> with a mean at the median of the distinct predictor
+values and a standard deviation of <code>10</code> times their standard
+deviation. The multiplier of <code>10</code> is the one Fisher et
+al. (2024) describe and it is unchanged. The mean and the standard
+deviation are read from the distinct values rather than from the
+observations, as on the concentration-scale branch, so that replication
+has no effect on the prior; that part of the entry does differ from
+earlier versions. Over the pooled
+<code>log(herbicide$concentration)</code> column, 580 rows and 9
+distinct values, the mean changes from <code>1.10</code> to
+<code>2.30</code> and the standard deviation from <code>26.3</code> to
+<code>31.5</code>.</p>
+<p>Up to version 2.1.4 the predictor-scaled prior took one of three
+forms, selected by the range of the predictor: a <code>Gamma</code>
+prior with shape <code>5</code> and rate <code>2 / m</code> where the
+predictor was non-negative and reached above <code>1</code>, a fixed
+<code>beta(2, 2)</code> where it lay within <code>0</code> and
+<code>1</code>, and the <code>normal</code> prior above where it spanned
+negative values. The rate was first corrected to <code>4 / m</code>,
+moving the maximum density of the <code>Gamma</code> prior from
+<code>2 * m</code> to <em>m</em> (issue #273), before the entry was
+replaced altogether. Both rates share a defect that no rate can remove.
+The spread of a <code>Gamma</code> distribution is tied to its shape, so
+<code>gamma(5, 4 / m)</code> places its central 95% interval at
+<code>0.41 * m</code> to <code>2.56 * m</code> whatever the data are,
+and the prior therefore reaches the highest concentration tested only
+where that concentration is within about <code>2.6</code> times the
+median. That ratio is a property of the experimental design: it is
+<code>2.0</code> for a series spaced evenly from zero and between
+<code>13</code> and <code>125</code> for the four <code>nassarius</code>
+series, which are spaced logarithmically as most ecotoxicological
+designs are. No shape serves both, and the shape that would is not
+usable. Solving for the shape whose maximum density is at <em>m</em> and
+whose 97.5<sup>th</sup> percentile is the highest concentration gives
+<code>8.6</code> for a series spaced evenly from zero and
+<code>1.03</code> for the contaminant A series. At <code>1.03</code> the
+mode is still at <em>m</em>, by construction, but that is all that is:
+the density rises <code>5.7</code>% from the lowest concentration to the
+mode and then falls to <code>2.8</code>% of its peak at the highest, and
+the median of that prior is <code>3.85</code>, twenty-four times
+<em>m</em> and above every concentration tested but the top one. On a
+response simulated from a <strong>nec4param</strong> curve with a known
+<em>NEC</em> of <code>1.25</code> over the <code>nassarius</code>
+contaminant A concentration series, the truncated prior placed only
+<code>1.2</code> parts in <code>10^9</code> of its mass above that
+value, so the estimate was determined by the prior rather than by the
+data, and the sampler reported no difficulty. Selecting on the range of
+the predictor was a second defect: the range is a property of the units
+a concentration is recorded in, so the same experiment received priors
+differing roughly 600-fold in width according to whether the dose was
+recorded in mg/L, in g/L, or logged: measured on the
+<code>nassarius</code> contaminant A series, the central 95% interval
+covered <code>1.7</code>% of the predictor range under the
+<code>Gamma</code> entry, <code>81</code>% under <code>beta(2, 2)</code>
+rescaled to that range and <code>1097</code>% under the
+<code>normal</code> entry before truncation. Both defects are removed by
+using one construction on whichever scale the predictor is supplied on.
+Note that the prior now used also has a monotonically decreasing density
+on the concentration scale over the whole tested range of the
+<code>nassarius</code> series. It is not the same defect: a
+<code>lognormal</code> has its mode at <code>exp(mu - sigma^2)</code> on
+the concentration scale, so the density falls because the change of
+variable from the log scale redistributes it, and where the mass lies is
+what separates the two. On the contaminant A series the median of the
+untruncated prior used here is <code>0.223</code>, which is the location
+the rule specifies exactly; that series has an even number of positive
+concentrations, so the location is the geometric mean of the two central
+ones rather than one of the concentrations itself. The
+shape-<code>1.03</code> <code>Gamma</code> has a median of
+<code>3.85</code>. See issue #302.</p>
 </div>
 <div class="section level3">
 <h3 id="priors-for-other-parameters">Priors for other parameters<a class="anchor" aria-label="anchor" href="#priors-for-other-parameters"></a>
@@ -241,12 +337,15 @@ parameter lives on. That is the response range for <strong>top</strong>,
 <strong>nec</strong> and <strong>ec50</strong>, and <code>0.5</code> for
 <strong>beta</strong>, <strong>slope</strong>, <strong>d</strong> and
 <strong>f</strong>, which are estimated on a log scale and take
-<code>normal(0, 5)</code> of their own. The
-<code>student_t(3, 0, .)</code> shape is the <code>brms</code> default
-for this class; only its scale, which is not otherwise derived from the
-data, is changed. The <strong>ogl</strong> offset itself is given a
-zero-centred <code>normal</code> prior on the response scale, because it
-enters as an offset on the whole curve and is therefore confounded with
+<code>normal(0, 5)</code> of their own. Where the deviation is applied
+multiplicatively, described below, it acts on a log or log-odds scale
+rather than on the response scale, and <em>s</em> is converted onto that
+scale at the mean of the response. The <code>student_t(3, 0, .)</code>
+shape is the <code>brms</code> default for this class; only its scale,
+which is not otherwise derived from the data, is changed. The
+<strong>ogl</strong> offset itself is given a zero-centred
+<code>normal</code> prior on the response scale, because it enters as an
+offset on the whole curve and is therefore confounded with
 <strong>top</strong> and <strong>bot</strong> unless it is centred.</p>
 <p>Note that <em>s</em> is derived from the observed data, not from the
 spread of the parameter’s own prior. The two are not the same, and the
@@ -273,17 +372,84 @@ group-level deviation cannot be constrained in the same way, because
 distribution restricts the range of the mean—every family except
 Gaussian, under an identity link—a proposal that carries the mean
 outside that range is rejected by Stan and counted as a divergent
-transition. <strong>A grouped fit on such a family should therefore
-always be checked for divergent transitions.</strong> The proportion
-observed depends strongly on the number of groups and on the size of the
-group-level effect, and measured rates range from below one per cent to
-more than forty per cent. <code><a href="../reference/bnec.html">bnec()</a></code> sets
-<code>control = list(adapt_delta = 0.99)</code> for these fits, which
-reduces the rate substantially and does not remove it; an
-<code>adapt_delta</code> supplied by the user is left unchanged. This is
-a property of adding an unconstrained deviation to a constrained mean
-rather than of the priors above; see issue #257 for the proposed change
-that removes it.</p>
+transition.</p>
+<p><code>bayesnec</code> now avoids this rather than mitigating it.
+Where the deviation applies to the whole curve, through
+<code>ogl()</code>, it is applied <em>multiplicatively</em> rather than
+as an offset added to the mean: on a <code>0</code> to <code>1</code>
+response the deviation scales the odds of the mean, and on a positive
+response it scales the mean itself. The deviation is centred on zero and
+a deviation of zero leaves the curve exactly as it was, so
+<strong>top</strong>, <strong>bot</strong>, <strong>nec</strong> and
+<strong>beta</strong> keep their meanings, while the mean can no longer
+leave its support however far a proposal travels. The prior on the
+deviation is widened to match the scale it now acts on. Measured on a
+simulated <code>beta_binomial</code> design across three seeds, this
+gives <strong>no divergent transitions at all</strong>, against 70 to 95
+per cent for the additive form on the same data, and it samples about
+twice as fast.</p>
+<p>The same construction is applied to a deviation placed on
+<strong>top</strong> or <strong>bot</strong>, through <code>pgl()</code>
+or an explicit <code>(par | group)</code> term. Those two parameters are
+on the response scale and their own priors bound them to the support of
+the mean, so an unconstrained deviation added to either of them can put
+the parameter outside the region in which the likelihood is defined.
+<strong>bot</strong> is where this occurs in practice, because it is the
+lower asymptote and is routinely estimated close to zero. The parameter
+itself keeps its name, its prior and its meaning; what the term now adds
+is a deviation applied multiplicatively to it, with no population-level
+term of its own, so the fit has exactly the parameters the additive form
+had and <strong>bot</strong> remains the asymptote the population-level
+curve declines towards. One consequence for a user supplying their own
+priors: a prior on <strong>top</strong> or <strong>bot</strong> that
+does not bound the parameter to the range the mean is defined on is
+refused where a group-level term on it would be transformed, because the
+multiplicative form is only defined inside that range. Measured on the
+<code>herbicide</code> data with <code>Beta(link = "identity")</code>
+and <strong>nec4param</strong>, two chains and 2000 iterations, a
+<code>(bot | herbicide)</code> term gave 51 divergent transitions of
+2000 at <code>adapt_delta = 0.95</code> under the additive form and
+gives none at Stan’s default of <code>0.8</code> under the
+multiplicative one. The same term on a <code>gaussian</code> response,
+where the mean is unconstrained and the parameter is therefore not
+against a boundary, gave none either way.</p>
+<p>A deviation on <strong>nec</strong>, <strong>ec50</strong>,
+<strong>beta</strong>, <strong>slope</strong>, <strong>d</strong> or
+<strong>f</strong> still adds to that parameter directly. Those
+parameters are on the predictor scale or are estimated on a log scale,
+so none of them is bounded by the likelihood and there is no excursion
+to prevent; a <code>(nec | herbicide)</code> term on the fixture above
+gave 0 divergent transitions of 2000 at <code>adapt_delta = 0.8</code>.
+A <code>pgl()</code> term places a deviation on every parameter of the
+equation at once and therefore generates a mixture of the two forms.</p>
+<p>One restriction remains on <code>ogl()</code>. The transformation of
+the <em>mean</em> is only defined where the mean is provably strictly
+inside its range, so it is not used for <strong>neclin</strong>,
+<strong>neclinhorme</strong> and <strong>ecxlin</strong>, whose mean is
+unbounded below, nor for the hormesis equations, whose mean can reach or
+exceed <code>1</code>. The transformation of a <em>parameter</em> is not
+restricted in that way, because <strong>top</strong> and
+<strong>bot</strong> are bounded by their own priors whatever equation
+they appear in.</p>
+<p><code><a href="../reference/bnec.html">bnec()</a></code> sets
+<code>control = list(adapt_delta = 0.99)</code> where a group-level term
+can still take the mean outside its support, which reduces the
+divergence rate substantially without removing it, and <strong>such a
+fit should always be checked for divergent transitions</strong>. With
+every deviation applied on a scale it cannot leave, that condition is
+decided by the equation: for one whose mean lies between
+<strong>bot</strong> and <strong>top</strong> no group-level term can
+put the mean outside the support, and the setting is not made. It is
+made for <strong>neclin</strong>, <strong>neclinhorme</strong> and
+<strong>ecxlin</strong>, and for the hormesis equations, whose mean can
+leave the support with every parameter inside it — on every family,
+because an excess term in <code>exp(slope) * x</code> makes the mean
+negative for a sufficiently negative predictor, and
+<code>crf(log(concentration), ...)</code> supplies one as a matter of
+course. An <code>adapt_delta</code> supplied by the user is left
+unchanged. The setting is not made where it is not needed because it
+requires roughly fourteen times the gradient evaluations per
+iteration.</p>
 </div>
 <div class="section level3">
 <h3 id="selecting-the-default-prior-set">Selecting the default prior set<a class="anchor" aria-label="anchor" href="#selecting-the-default-prior-set"></a>
@@ -347,15 +513,13 @@ on the <code>"identity"</code> link) under each prior set. Note
 <span><span class="va">exmp_uninformative</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>                           family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>                           prior_type <span class="op">=</span> <span class="st">"uninformative"</span>,</span>
-<span>                           iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span>,</span>
-<span>                           open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>                           iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exmp_regularizing</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>                          family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,</span>
 <span>                          prior_type <span class="op">=</span> <span class="st">"regularizing"</span>,</span>
-<span>                          iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span>,</span>
-<span>                          open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span>                          iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Comparing the priors that <code>bnec</code> built for each fit with
 <code>pull_prior</code> shows the change in the response-scaled
 <strong>top</strong> parameter: <code>beta(5, 2)</code> under the
@@ -366,41 +530,41 @@ unchanged.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_uninformative</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt;                       prior class      coef group resp dpar nlpar               lb               ub tag</span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b                            beta                                      </span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b Intercept                  beta                                      </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556    </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556    </span></span>
-<span><span class="co">#&gt;                  beta(5, 2)     b                             top                0                1    </span></span>
-<span><span class="co">#&gt;                  beta(5, 2)     b Intercept                   top                0                1    </span></span>
-<span><span class="co">#&gt;           gamma(0.01, 0.01)   phi                                                0                     </span></span>
-<span><span class="co">#&gt;        source</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;       default</span></span></code></pre></div>
+<span><span class="co">#&gt;                                            prior class      coef group resp</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b                     </span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept           </span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b                     </span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b Intercept           </span></span>
+<span><span class="co">#&gt;                                       beta(5, 2)     b                     </span></span>
+<span><span class="co">#&gt;                                       beta(5, 2)     b Intercept           </span></span>
+<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                     </span></span>
+<span><span class="co">#&gt;  dpar nlpar               lb               ub tag       source</span></span>
+<span><span class="co">#&gt;        beta                                               user</span></span>
+<span><span class="co">#&gt;        beta                                       (vectorized)</span></span>
+<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556             user</span></span>
+<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556     (vectorized)</span></span>
+<span><span class="co">#&gt;         top                0                1             user</span></span>
+<span><span class="co">#&gt;         top                0                1     (vectorized)</span></span>
+<span><span class="co">#&gt;                            0                           default</span></span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_regularizing</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt;                       prior class      coef group resp dpar nlpar               lb               ub tag</span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b                            beta                                      </span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b Intercept                  beta                                      </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556    </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556    </span></span>
-<span><span class="co">#&gt;                  beta(5, 1)     b                             top                0                1    </span></span>
-<span><span class="co">#&gt;                  beta(5, 1)     b Intercept                   top                0                1    </span></span>
-<span><span class="co">#&gt;           gamma(0.01, 0.01)   phi                                                0                     </span></span>
-<span><span class="co">#&gt;        source</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;       default</span></span></code></pre></div>
+<span><span class="co">#&gt;                                            prior class      coef group resp</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b                     </span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept           </span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b                     </span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b Intercept           </span></span>
+<span><span class="co">#&gt;                                       beta(5, 1)     b                     </span></span>
+<span><span class="co">#&gt;                                       beta(5, 1)     b Intercept           </span></span>
+<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                     </span></span>
+<span><span class="co">#&gt;  dpar nlpar               lb               ub tag       source</span></span>
+<span><span class="co">#&gt;        beta                                               user</span></span>
+<span><span class="co">#&gt;        beta                                       (vectorized)</span></span>
+<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556             user</span></span>
+<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556     (vectorized)</span></span>
+<span><span class="co">#&gt;         top                0                1             user</span></span>
+<span><span class="co">#&gt;         top                0                1     (vectorized)</span></span>
+<span><span class="co">#&gt;                            0                           default</span></span></code></pre></div>
 <p>Plotting the prior and posterior densities with
 <code>check_priors</code> makes the difference in the
 <strong>top</strong> prior clear: the <code>"regularizing"</code> prior
@@ -459,8 +623,7 @@ the prior.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exmp_a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>,</span>
-<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span>,</span>
-<span>               open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "bayesnecfit" "bnecfit"</span></span></code></pre></div>
@@ -484,28 +647,29 @@ those priors to be more desirable.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/pull_prior.html">pull_prior</a></span><span class="op">(</span><span class="va">exmp_a</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [[1]]</span></span>
-<span><span class="co">#&gt;                       prior class      coef group resp dpar nlpar               lb               ub tag</span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b                            beta                                      </span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b Intercept                  beta                                      </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b                             nec 0.03234801324009 3.22051966293556    </span></span>
-<span><span class="co">#&gt;  gamma(5, 2.28313180499098)     b Intercept                   nec 0.03234801324009 3.22051966293556    </span></span>
-<span><span class="co">#&gt;                  beta(5, 2)     b                             top                0                1    </span></span>
-<span><span class="co">#&gt;                  beta(5, 2)     b Intercept                   top                0                1    </span></span>
-<span><span class="co">#&gt;           gamma(0.01, 0.01)   phi                                                0                     </span></span>
-<span><span class="co">#&gt;        source</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;          user</span></span>
-<span><span class="co">#&gt;  (vectorized)</span></span>
-<span><span class="co">#&gt;       default</span></span></code></pre></div>
-<p><code>bnec</code> chose a <code>gamma</code> prior on the
+<span><span class="co">#&gt;                                            prior class      coef group resp</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b                     </span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b Intercept           </span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b                     </span></span>
+<span><span class="co">#&gt;  lognormal(-0.132723577442522, 1.68292842267636)     b Intercept           </span></span>
+<span><span class="co">#&gt;                                       beta(5, 2)     b                     </span></span>
+<span><span class="co">#&gt;                                       beta(5, 2)     b Intercept           </span></span>
+<span><span class="co">#&gt;                                gamma(0.01, 0.01)   phi                     </span></span>
+<span><span class="co">#&gt;  dpar nlpar               lb               ub tag       source</span></span>
+<span><span class="co">#&gt;        beta                                               user</span></span>
+<span><span class="co">#&gt;        beta                                       (vectorized)</span></span>
+<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556             user</span></span>
+<span><span class="co">#&gt;         nec 0.03234801324009 3.22051966293556     (vectorized)</span></span>
+<span><span class="co">#&gt;         top                0                1             user</span></span>
+<span><span class="co">#&gt;         top                0                1     (vectorized)</span></span>
+<span><span class="co">#&gt;                            0                           default</span></span></code></pre></div>
+<p><code>bnec</code> chose a <code>lognormal</code> prior on the
 <em>NEC</em> parameter of <strong>nec3param</strong> because the
-predictor <code>nec_data$x</code> is non-zero positive. However, imagine
-that in theory the predictor could have had negative values, it just
-happened to not have in this particular dataset. So let’s go ahead and
-specify something else, say a normal with larger variance.</p>
+predictor <code>nec_data$x</code> is non-zero positive, so the prior is
+built on the log of the concentration. However, imagine that in theory
+the predictor could have had negative values, it just happened to not
+have in this particular dataset. So let’s go ahead and specify something
+else, say a normal with larger variance.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">my_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(5, 1)"</span>, nlpar <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span>,</span>
@@ -513,8 +677,7 @@ specify something else, say a normal with larger variance.</p>
 <span>              <span class="fu"><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"gamma(0.5, 2)"</span>, nlpar <span class="op">=</span> <span class="st">"beta"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">exmp_b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_prior</span>,</span>
-<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span>,</span>
-<span>               open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Two things are of note. If the user is specifying their own priors,
 <code>bnec</code> requires them to specify priors for
 <strong>all</strong> parameters. The <code>pull_prior</code> function
@@ -547,8 +710,7 @@ models are being fitted to the same dataset.</p>
 <span>                                <span class="fu"><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(1, 5)"</span>, nlpar <span class="op">=</span> <span class="st">"bot"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">exmp_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_priors</span>,</span>
-<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span>,</span>
-<span>               open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><code>pull_prior</code> also works for an object of class
 <code>bayesmanecfit</code>, as does <code>check_priors</code> which
 allows an option of passing a filename to save the prior and posterior
@@ -593,8 +755,7 @@ specify priors for a particular model, e.g.</p>
 <span>                                <span class="fu"><a href="https://paulbuerkner.com/brms/reference/set_prior.html" class="external-link">prior_string</a></span><span class="op">(</span><span class="st">"beta(1, 5)"</span>, nlpar <span class="op">=</span> <span class="st">"bot"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">exmp_d</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nec3param"</span>, <span class="st">"nec4param"</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">nec_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">my_priors</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span>,</span>
-<span>               open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><code>prior = my_priors[[1]]</code> would also have worked because
 the argument priors can either take a <code>brmsprior</code> object
 directly, or a named list containing model-specific
@@ -641,25 +802,28 @@ one row.</p>
 <span>                          family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fixed_prior</span><span class="op">$</span><span class="va">prior</span><span class="op">[</span><span class="va">fixed_prior</span><span class="op">$</span><span class="va">nlpar</span> <span class="op">==</span> <span class="st">"top"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"constant(0.5)"</span></span>
 <span><span class="va">fixed_prior</span></span>
-<span><span class="co">#&gt;                       prior class coef group resp dpar nlpar   lb   ub tag source</span></span>
-<span><span class="co">#&gt;                normal(0, 5)     b                       beta &lt;NA&gt; &lt;NA&gt;       user</span></span>
-<span><span class="co">#&gt;               constant(0.5)     b                        top    0    1       user</span></span>
-<span><span class="co">#&gt;  gamma(5, 1.42857142857143)     b                        nec 0.04    3       user</span></span></code></pre></div>
+<span><span class="co">#&gt;                                            prior class coef group resp dpar</span></span>
+<span><span class="co">#&gt;                                     normal(0, 5)     b                     </span></span>
+<span><span class="co">#&gt;                                    constant(0.5)     b                     </span></span>
+<span><span class="co">#&gt;  lognormal(0.470003629245736, 0.707306038302134)     b                     </span></span>
+<span><span class="co">#&gt;  nlpar   lb   ub tag source</span></span>
+<span><span class="co">#&gt;   beta &lt;NA&gt; &lt;NA&gt;       user</span></span>
+<span><span class="co">#&gt;    top    0    1       user</span></span>
+<span><span class="co">#&gt;    nec    0    3       user</span></span></code></pre></div>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exmp_f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">avoid_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, prior <span class="op">=</span> <span class="va">fixed_prior</span>,</span>
-<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span>,</span>
-<span>               open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span>               iter <span class="op">=</span> <span class="fl">1e4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><code>top</code> is reported with an estimate of exactly 0.5 and no
 error, because it was never sampled. Stan does not declare a parameter
 whose prior is constant, so it contributes nothing to the posterior.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">exmp_f</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                 Estimate  Est.Error      Q2.5     Q97.5</span></span>
-<span><span class="co">#&gt; beta_Intercept 0.3246147 0.10357683 0.1528344 0.5660183</span></span>
-<span><span class="co">#&gt; nec_Intercept  1.1573505 0.08058667 1.0324421 1.3454333</span></span>
-<span><span class="co">#&gt; top_Intercept  0.5000000 0.00000000 0.5000000 0.5000000</span></span></code></pre></div>
+<span><span class="co">#&gt;                 Estimate  Est.Error      Q2.5    Q97.5</span></span>
+<span><span class="co">#&gt; beta_Intercept 0.3046734 0.09441713 0.1430319 0.542110</span></span>
+<span><span class="co">#&gt; nec_Intercept  1.1396885 0.07174540 1.0234336 1.323081</span></span>
+<span><span class="co">#&gt; top_Intercept  0.5000000 0.00000000 0.5000000 0.500000</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="consequences-of-fixing-an-asymptote">Consequences of fixing an asymptote<a class="anchor" aria-label="anchor" href="#consequences-of-fixing-an-asymptote"></a>
 </h3>
@@ -677,13 +841,13 @@ it.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">exmp_g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"nec3param"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">avoid_data</span>,</span>
 <span>               family <span class="op">=</span> <span class="fu"><a href="https://paulbuerkner.com/brms/reference/brmsfamily.html" class="external-link">Beta</a></span><span class="op">(</span>link <span class="op">=</span> <span class="st">"identity"</span><span class="op">)</span>, iter <span class="op">=</span> <span class="fl">1e4</span>,</span>
-<span>               control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span>, open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span>               control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>adapt_delta <span class="op">=</span> <span class="fl">0.99</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/nlme/man/fixed.effects.html" class="external-link">fixef</a></span><span class="op">(</span><span class="fu"><a href="../reference/pull_brmsfit.html">pull_brmsfit</a></span><span class="op">(</span><span class="va">exmp_g</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                 Estimate  Est.Error      Q2.5     Q97.5</span></span>
-<span><span class="co">#&gt; top_Intercept  0.4866778 0.01599596 0.4565644 0.5187876</span></span>
-<span><span class="co">#&gt; beta_Intercept 0.3616477 0.11439282 0.1625305 0.5940797</span></span>
-<span><span class="co">#&gt; nec_Intercept  1.2103936 0.09888118 1.0471197 1.3913469</span></span></code></pre></div>
+<span><span class="co">#&gt; top_Intercept  0.4885838 0.01631940 0.4568980 0.5210170</span></span>
+<span><span class="co">#&gt; beta_Intercept 0.3451862 0.11206883 0.1543009 0.5852214</span></span>
+<span><span class="co">#&gt; nec_Intercept  1.1919980 0.09776449 1.0351256 1.3855128</span></span></code></pre></div>
 <p>That check only works while <code>top</code> is free, and here it
 passes: the interval covers 0.5, so this assay was unbiased at dose
 zero. The point is what it would have cost to be unable to ask. Had the
@@ -699,8 +863,8 @@ generated from.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="../reference/nec.html">nec</a></span><span class="op">(</span><span class="va">exmp_f</span><span class="op">)</span>, free <span class="op">=</span> <span class="fu"><a href="../reference/nec.html">nec</a></span><span class="op">(</span><span class="va">exmp_g</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;            Q50     Q2.5    Q97.5</span></span>
-<span><span class="co">#&gt; fixed 1.139718 1.032442 1.345433</span></span>
-<span><span class="co">#&gt; free  1.197039 1.047120 1.391347</span></span></code></pre></div>
+<span><span class="co">#&gt; fixed 1.128614 1.023434 1.323081</span></span>
+<span><span class="co">#&gt; free  1.168571 1.035126 1.385513</span></span></code></pre></div>
 <p>The second is uncertainty. A constant asserts the value is known
 exactly, so none of it propagates into ECx or the <em>NEC</em>, and the
 credible intervals narrow. That reads as a better analysis and is the
