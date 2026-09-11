@@ -642,12 +642,12 @@
   method at all and reports and ignores one given to it. `amend()` and
   `pull_out()` already preserved the recorded method, but passed an unknown one
   on as `method = NULL`, which `loo` resolves to stacking; an unknown method is
-  now left for the default to fill. `update()`
-  did not preserve it at all and now does, since refitting a set is not a
-  request to reweight it. Because `loo_controls` names its `fitting` and
-  `weights` arguments separately, both `amend()` and `update()` read a call
-  that names only a LOO fitting argument as naming no method, so changing one
-  does not reweight the set as a side effect. `c()` and `+` take no
+  now left for the default to fill. `update()` did not preserve it at all and
+  now does, since refitting a set is not a request to reweight it. Because
+  `loo_controls` names its `fitting` and `weights` arguments separately, both
+  `amend()` and `update()` read a call that names only a LOO fitting argument
+  as naming no method, so changing one does not reweight the set as a side
+  effect. `c()` and `+` take no
   `loo_controls` argument, so they inherit the method where every object being
   combined that records one names the same method, and report the fallback to
   the default where two disagree.
