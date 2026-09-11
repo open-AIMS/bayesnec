@@ -225,557 +225,396 @@ different question from the one being asked, and their functional forms may
 differ from one another. `bnec_group()` fits each level separately and is the
 route for these.
 
-# The data
+# The assay
 
-The `coral` dataset carries both structures in one experiment, so this vignette
-does not have to move between datasets to demonstrate them. It records a
-seven-day flow-through exposure of the reef-building coral *Acropora millepora*
-to 1-methylnaphthalene, reported by @brinkman2023.
-
-```{r}
-data(coral)
-str(coral[, 1:5])
-```
-
-Three variables carry structure, and they are of three different kinds:
+The `lum31` dataset records acute copper and zinc toxicity tests using the
+Lum-31 bioluminescent bacterial assay of @luter2025. A suspension of marine
+bacteria is dosed in a microplate well and its light output read after a fixed
+exposure; light falls as the cells are inhibited, so luminescence in relative
+light units is the response and no separate endpoint is scored.
 
 ```{r}
-coral |>
-  summarise(
-    chambers = n_distinct(chamber),
-    colonies = n_distinct(colony),
-    light_levels = n_distinct(light),
-    concentrations = n_distinct(nominal)
-  )
+data(lum31)
+str(lum31)
 ```
 
-- **`chamber`** is *within* concentration. Each of the 32 chambers held one
-  concentration under one light regime, so a chamber spans no part of the
-  curve.
-- **`colony`** is *across* concentration. Fragments were cut from five colonies
-  and distributed over the whole series, so each colony is represented at every
-  concentration.
-- **`light`** is a *factor covariate* rather than a grouping. Two levels ---
-  visible light alone, or visible light with ultraviolet --- both of interest in
-  their own right.
-
-The design is what makes this readable directly from the data:
+The design supplies replication at three scales, and the rest of this vignette
+uses each in turn.
 
 ```{r}
-with(coral, table(colony, nominal))
-coral |>
-  group_by(chamber) |>
-  summarise(concentrations = n_distinct(nominal), .groups = "drop") |>
-  count(concentrations)
+lum31 |>
+  group_by(toxicant, minutes) |>
+  summarise(plates = n_distinct(plate), conc_groups = n_distinct(conc_group),
+            wells = n_distinct(well), rows = n(), .groups = "drop")
 ```
 
-Every colony appears at all eight concentrations; every chamber holds exactly
-one. That is the within/across distinction in two lines, and it is worth
-checking on your own data before choosing a route.
+A plate is a complete test: eleven measured concentrations with four replicate
+wells at each, read at 15 and 30 minutes. `conc_group` identifies the four wells
+at one concentration on one plate, and `well` the individual well, which is read
+at both exposure times. Concentrations are measured dissolved metal rather than
+nominal, and each batch was dosed separately, so the concentration values differ
+between batches and the plates are not on a common grid.
 
-## Choice of response and of day
+# Normalising to a control
 
-The response is `surv_d*`, the proportion of live coral tissue relative to total
-area, measured from images. This is a proportion in $[0, 1]$ and is modelled
-with a `Beta` family.
+The analysis published with these data divides each plate twice before fitting.
+From `bayesNEC_30m_final.R` in the accompanying repository:
 
-The day matters more than it looks. A concentration-response curve needs
-observations away from the extremes, and a response sitting at its floor or
-ceiling carries no information about curve shape whatever the design looks
-like. Counting observations strictly between 0 and 1:
+```r
+Rep1B_y30_qtox  = (1 - (median(CuDat1[1:4, 4]) - Rep1B_y30) / median(CuDat1[1:4, 4]))
+Rep1B_y30_qtoxB = Rep1B_y30_qtox / max(Rep1B_y30_qtox)
+```
+
+The first line simplifies to the reading divided by the median of the plate's
+four control wells. The second divides by the plate maximum, which forces
+exactly one observation to 1.000.
+
+Dividing by a control mean is standard practice in ecotoxicology, and on this
+assay the first division has a clear physical motivation. The plate reader
+applies auto-scale gain adjustment, set per read, so absolute luminescence is a
+property of the read rather than of the assay. Median control-well luminescence
+differs several-fold between plates of the same batch:
 
 ```{r}
-vapply(paste0("surv_d", 1:7),
-       function(v) sum(coral[[v]] > 0 & coral[[v]] < 1, na.rm = TRUE),
-       integer(1))
+lum31 |>
+  filter(toxicant == "Zn", minutes == 15) |>
+  group_by(batch, plate) |>
+  filter(conc == min(conc)) |>
+  summarise(control_rlu = median(rlu_cens), .groups = "drop_last") |>
+  summarise(plates = n(), lowest = min(control_rlu), highest = max(control_rlu),
+            ratio = round(max(control_rlu) / min(control_rlu), 1), .groups = "drop")
 ```
 
-Day 1 has none --- nothing has died yet --- and by day 7 the response is close
-to a step. Days 3 and 4 carry the most information, and they differ in what
-they cost: day 3 is complete and balanced, while day 4 loses ten fragments to
-image quality.
+Gain is a per-plate multiplicative constant, so dividing by a per-plate quantity
+does remove it. The difficulty is what the divisor is.
+
+@ritz2026 show that dividing a response by an *estimated* control mean induces
+correlation between every observation sharing the denominator, and that ignoring
+it biases effect doses downwards and gives intervals that are too narrow. In
+their simulation, fitting the normalised response as though the observations
+were independent gave ED10 bias of 2.6 to 6.8 per cent and coverage of 0.88 to
+0.91 against a nominal 0.95, while modelling the raw rates gave 0.7 to 2.1 per
+cent and 0.94 to 0.96. They state that weights do not remedy it, and that
+per-curve normalisation on few control measurements is the worst configuration.
+This assay normalises each plate by four control wells.
+
+Their recommended approach is to model the raw response and derive inhibition
+from the fitted control, treating the control level as a parameter. In
+`bayesnec` that parameter is `top`, and `ecx()` is measured from the modelled
+control, so a `bnec()` fit on raw luminescence is that approach.
+
+## A group-level term as the division
+
+A group-level term on the control parameter targets the same per-plate constant
+the division removes, and propagates its uncertainty instead of conditioning on
+a point estimate. Generating the `brms` formula shows the form directly:
 
 ```{r}
-vapply(paste0("surv_d", 1:7), function(v) sum(is.na(coral[[v]])), integer(1))
+gfam <- Gamma(link = "identity")
+make_brmsformula(
+  bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + (top | plate)),
+  data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
+)
 ```
 
-Completeness is not the deciding property here. Day 4 descends more gradually
-through the middle of the range, and that is what determines a curve:
+`bnectop ~ top * exp(topgl)` with `topgl ~ 0 + (1 | plate)` is a per-plate
+multiplicative factor on the curve, which is the form gain takes. `ogl()` gives
+the same multiplicative structure applied to the whole fitted value rather than
+to `top` alone:
 
 ```{r}
-round(sapply(c(day3 = "surv_d3", day4 = "surv_d4"), function(v)
-  tapply(coral[[v]], coral$nominal, mean, na.rm = TRUE)), 3)
+make_brmsformula(
+  bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") + ogl(plate)),
+  data = subset(lum31, toxicant == "Zn" & minutes == 15), family = gfam
+)
 ```
 
-Day 3 falls from 0.65 straight to 0 between the fifth and sixth concentrations.
-Day 4 passes through 0.70 and 0.46 on the way. Fitted, day 3 gives a maximum
-R-hat of 1.11 and 50 divergent transitions where day 4 gives 1.007 and none, so
-day 4 is used throughout. The ten missing values at day 4 sit at the control and
-the second concentration, where every fragment survived to the following day, so
-dropping them removes nothing informative --- which is worth confirming rather
-than assuming, because missingness concentrated at the steep part of a curve
-would not be benign.
+The distinction matters once the equation has a lower asymptote. Gain multiplies
+the whole curve, `bot` included, so `ogl()` is the match; `(top | plate)` scales
+`top` and leaves `bot` common between plates. For a three-parameter equation
+whose curve is `top` times a function of the predictor the two coincide.
+
+## A global divisor
+
+A divisor that is one constant for the whole dataset is only a change of units.
+It uses no estimate and induces no correlation, so it is not what @ritz2026
+object to. It is worth asking why this assay does not simply use one.
+
+The benefit of normalisation is not the divisor itself. It is that every curve's
+control lands near the top of a bounded scale, where a `Beta` variance
+`mu * (1 - mu) / (1 + phi)` is small, so the upper asymptote is well determined
+and any effect concentration measured from it is stable. That requires the
+curves to share a scale, and under per-read gain they do not:
 
 ```{r}
-coral |>
-  filter(is.na(surv_d4)) |>
-  count(nominal, alive_next_day = surv_d5 > 0)
+lum31 |>
+  filter(toxicant == "Zn", minutes == 15) |>
+  group_by(plate) |>
+  filter(conc == min(conc)) |>
+  summarise(control_share = median(rlu_cens) / max(lum31$rlu), .groups = "drop") |>
+  summarise(plates = n(), lowest = round(min(control_share), 3),
+            highest = round(max(control_share), 3),
+            middle_of_scale = sum(control_share < 0.61))
 ```
+
+Dividing by the largest reading in the dataset leaves most plates in the middle
+of the interval, where a `Beta` variance is at its largest, so the stability a
+normalised analysis relies on is not obtained. No universal ceiling in luminance
+exists for the same reason: the supplementary material of @luter2025 measures 44
+technical replicates of undosed cells, but at one gain, so it bounds that read
+only.
+
+## Limits of the plate term
+
+Gain and genuine plate-to-plate biological variation are confounded in the
+estimated per-plate factor, and nothing in these data separates them. This does
+not affect the *NEC* or an ECx, for which both are nuisance plate effects, but
+the plate-level standard deviation is not a biological quantity and should not
+be reported as one.
+
+A related caution from @ritz2026 applies to the scope of the term. Normalising,
+or sharing a plate term, is legitimate only within curves of the same treatment.
+Plates within one toxicant-by-exposure-time arm qualify. A plate term is not
+placed across the copper-versus-zinc or 15-versus-30-minute contrasts; those are
+handled by `bnec_group()` below.
+
+The argument for modelling the predictor on a transformed scale is made in
+`vignette("example3")` and is not repeated here.
+
+# Preparing the response
+
+Two properties of the recorded response have to be settled before any fit, and
+both follow from how the instrument works.
+
+## Floored readings
+
+Readings were blank-corrected against wells of artificial seawater, so a well
+emitting less light than the blank gives a negative value. The source records
+replaced such a value by zero. `rlu` reports every reading as it stands,
+including one that escaped the replacement:
 
 ```{r}
-d4 <- coral |>
-  filter(!is.na(surv_d4)) |>
-  mutate(live = as.integer(round(surv_d4 * 20)), tot = 20L) |>
-  select(conc = conc_d4, live, tot, surv = surv_d4, chamber, colony, light,
-         nominal)
-head(d4)
+lum31 |>
+  group_by(toxicant, minutes) |>
+  summarise(rows = n(), zero = sum(rlu == 0), negative = sum(rlu < 0),
+            per_cent = round(100 * mean(rlu <= 0), 1), .groups = "drop")
 ```
 
-```{r exmp8-data}
-ggplot(d4, aes(x = conc, y = surv)) +
-  geom_point(aes(colour = colony, shape = light), size = 2, alpha = 0.8) +
-  labs(x = expression(paste("1-methylnaphthalene (", mu, "g ", L^-1, ")")),
-       y = "proportion of live tissue", colour = "colony", shape = "light") +
-  theme_classic()
-```
+That surviving negative is the evidence for how the zeros arise. Luminescence
+cannot be negative, so a zero here is a blank-corrected negative rather than an
+absence of light, and the process generating it is measurement noise about a
+small positive value. These readings are therefore left-censored. A hurdle would
+assert a distinct zero-generating process, which is not what happened.
 
-The two features that decide the rest of the vignette are both visible here: a
-substantial number of fragments sit exactly at 1 or exactly at 0, and the
-colonies are spread through the whole series rather than concentrated in part of
-it.
-
-# Group-level terms
-
-## Offsets on the whole curve: `ogl()`
-
-`ogl()` gives each level of the grouping its own offset: the whole curve shifts
-up or down and its shape is unchanged. This is the right term for a
-within-concentration grouping, where the group cannot have a curve of its own.
+A `Gamma` likelihood requires a strictly positive response and `brms` refuses
+the fit at data validation otherwise, so the censoring bound cannot be zero.
+`rlu_cens` and `censoring` supply the censored form, with the bound set to the
+smallest positive reading on the plate --- a plate property, because gain is set
+per plate, and pooled over the two exposure times because the two reads of one
+plate share a gain setting.
 
 ```{r}
-form_ogl <- live | trials(tot) ~ crf(conc, "nec4param") + ogl(chamber)
-check_formula(bayesnecformula(form_ogl), data = d4, run_par_checks = TRUE)
+lum31 |>
+  filter(toxicant == "Zn", minutes == 15) |>
+  count(censoring)
 ```
 
-```{r, results = "hide"}
-fit_ogl <- bnec(form_ogl, data = d4, family = "beta_binomial",
-                iter = 2000, warmup = 1000, chains = 2, seed = 245,
+The estimates are more sensitive to this bound where more readings reach the
+floor, which is 0.9 per cent for zinc at 15 minutes and 28 per cent for copper
+at 30. No detection limit is recorded for the instrument, so the bound is an
+inference from the readings rather than a stated resolution.
+
+## Non-constant dispersion
+
+A `Gamma` with an identity link has a constant coefficient of variation, and
+these data do not. Within-cell variation, pooled over the seventeen plates at
+each concentration, rises steadily as the response falls:
+
+```{r}
+zn15 <- droplevels(subset(lum31, toxicant == "Zn" & minutes == 15))
+zn15 |>
+  mutate(rank = as.integer(sub(".*-c", "", as.character(conc_group)))) |>
+  group_by(rank, plate) |>
+  summarise(mean_rlu = mean(rlu_cens), cv = sd(rlu_cens) / mean(rlu_cens),
+            .groups = "drop_last") |>
+  group_by(rank) |>
+  summarise(mean_rlu = signif(mean(mean_rlu), 3), cv = round(median(cv), 3),
+            .groups = "drop")
+```
+
+One shape parameter cannot serve a series whose own coefficient of variation
+runs from about 0.05 at the control to about 0.36 at the bottom, and the
+compromise it reaches is dominated by the noisy low end. The consequence falls
+on the control, where the fitted variance is then far larger than the data show.
+That matters for two reasons: `nsec()` is defined against the control's lower
+quantile, and the relative fit of the candidate equations --- and so the model
+weights --- depends on how the variance is apportioned along the series.
+
+`disp()` models the dispersion parameter rather than holding it constant.
+`disp("power")` writes `log(shape)` as a linear function of `log(mu)`, a
+variance function of the fitted mean, which is a statement about the measurement
+process rather than about the dose axis:
+
+```{r}
+make_brmsformula(
+  bayesnecformula(rlu_cens | cens(censoring) ~ crf(log(conc), "nec3param") +
+                    ogl(plate) + disp("power")),
+  data = zn15, family = gfam
+)
+```
+
+The alternative form, `disp(~log(conc))`, is an ordinary distributional formula
+and describes noise as a function of the dose axis instead. Both are used below,
+and `vignette("example1")` covers the dispersion machinery in general.
+
+# Within-concentration grouping
+
+The commonest structure in ecotoxicology is replication within a concentration:
+several vessels, chambers or wells at each exposure level, each sitting at one
+point on the dose axis. Such a level spans no part of the curve, so only a
+displacement is estimable and `ogl()` is the term.
+
+In `lum31` that unit is `conc_group`, the four wells at one concentration on one
+plate. This section fits a single plate. A plate is the only portion of these
+data free of the gain differences between plates, which the next section is
+about, and fitting the whole arm here would let a concentration-group term
+absorb plate structure as well.
+
+```{r}
+one_plate <- droplevels(subset(lum31, plate == "Zn 23Apr24 Rep6B" & minutes == 15))
+nrow(one_plate)
+n_distinct(one_plate$conc_group)
+```
+
+The fits below use a reduced set of equations and shorter chains than an
+analysis would. The full set at production settings is reported in the closing
+section with the settings that produced it.
+
+```{r}
+eqs <- c("nec3param", "ecxll3", "ecxll4")
+
+fit_plain <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs),
+                  data = one_plate, family = gfam,
+                  chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                  control = list(adapt_delta = 0.99))
+
+fit_ogl <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + ogl(conc_group),
+                data = one_plate, family = gfam,
+                chains = 2, iter = 2000, warmup = 1000, seed = 228,
                 control = list(adapt_delta = 0.99))
 ```
 
-A single model is fitted rather than the full candidate set, to keep the
-vignette's run time reasonable. In an analysis you would fit a set and average
-over it; see `vignette("example2")`.
-
-```{r exmp8-ogl}
-autoplot(fit_ogl)
-```
-
-`adapt_delta` is raised from its default of 0.8 because at the default this fit
-reports divergent transitions, and they have two structural causes rather than
-being noise. The first is that `ogl` enters as an offset added to the whole
-curve, so its population intercept is confounded with `top` and `bot`: a
-constant added to one can be taken back out of the others with no change to the
-likelihood. `bayesnec` gives that intercept a prior centred on zero, which
-penalises the ridge but does not remove it. The second is the more common one:
-where a group-level standard deviation is estimated close to zero, the geometry
-the sampler has to explore narrows sharply, and that is what most of the
-divergences here report. Raising `adapt_delta` addresses both, and at 0.99 they
-disappear.
-
-## Curves that differ by group: `pgl()` and `(par | group)`
-
-`pgl()` puts a group-level term on **every** parameter of the model at once, so
-each level gets its own version of the whole curve, shrunk towards a common
-one. `(par | group)` does the same for one named parameter, which is the more
-usual thing to want: it says *this* feature of the curve varies between groups
-and the rest does not.
-
-Colony is the across-concentration grouping here, so it is the one that can
-carry a curve.
-
-```{r, results = "hide"}
-fit_pgl <- bnec(live | trials(tot) ~ crf(conc, "nec4param") + pgl(colony),
-                data = d4,
-                family = "beta_binomial",
-                iter = 2000, warmup = 1000, chains = 2, seed = 245)
-```
-
-`pgl()` asks every parameter of the curve to vary by colony at once, which is
-the widest version of the claim. Five colonies is not many from which to
-estimate four separate group-level standard deviations, so it is worth looking
-at what the fit says about each of them before relying on it:
+What the term estimates is one deviation per concentration group, so its
+standard deviation summarises how much the four wells at a concentration depart
+from the fitted curve beyond what the family allows:
 
 ```{r}
-summary(fit_pgl$fit)$random$colony
-```
-
-```{r exmp8-pgl}
-autoplot(fit_pgl)
-```
-
-```{r, results = "hide"}
-fit_par <- bnec(live | trials(tot) ~ crf(conc, "nec4param") + (nec | colony),
-                data = d4,
-                family = "beta_binomial",
-                iter = 2000, warmup = 1000, chains = 2, seed = 245)
-```
-
-`(nec | colony)` says that the threshold varies between colonies while the
-control level and the rate of decline do not. It is a narrower claim than
-`pgl()`, it is usually the one actually of interest, and it is far easier for
-the data to support --- here it fits without difficulty.
-
-```{r}
-nec(fit_par)
-summary(fit_par$fit)$random$colony
-```
-
-```{r exmp8-par}
-autoplot(fit_par)
-```
-
-## Priors for the group-level standard deviations
-
-Every group-level term introduces a standard deviation, and on a bounded
-response those priors do real work. `bayesnec` fits every family with an
-identity link so that `top`, `bot` and `nec` stay on the scale of the response
-and remain directly interpretable. The cost is that there is no inverse link to
-pull a group-level offset back into the response range: on a proportion, an
-offset drawn at an inappropriate scale puts the mean outside $[0, 1]$, where the
-likelihood is undefined.
-
-`get_priors()` reports what will be used, including the group-level rows:
-
-```{r}
-get_priors(form_ogl, data = d4, family = "beta_binomial")
-```
-
-The `sd` prior is scaled to the parameter it belongs to --- one tenth of the
-range the parameter's own prior spans --- so it adapts to the response rather
-than assuming one. As with any other prior, it can be replaced; see
-`vignette("example3")`.
-
-## What a group-level term should be checked against
-
-Hierarchical structure on non-linear parameters is easy to specify and hard to
-identify, and a fit that samples is not on its own evidence that the term is
-supported. Three patterns say that it is not:
-
-- a group-level standard deviation whose posterior piles up against zero --- the
-  data do not distinguish the groups;
-- a posterior essentially equal to its prior --- the prior is doing the work;
-- a widened interval with an unchanged point estimate --- uncertainty has been
-  added without structure.
-
-The check that matters is against the fit **without** the term:
-
-```{r, results = "hide"}
-fit_plain <- bnec(live | trials(tot) ~ crf(conc, "nec4param"), data = d4,
-                  family = "beta_binomial",
-                  iter = 2000, warmup = 1000, chains = 2, seed = 245)
-```
-
-```{r exmp8-plain}
-autoplot(fit_plain)
-```
-
-Set against the grouped fit above the two curves are hard to tell apart,
-which is the first half of the comparison. The second half is the estimate
-itself:
-
-```{r}
-rbind(ungrouped = nec(fit_plain),
-      `ogl(chamber)` = nec(fit_ogl))
-```
-
-And at the group-level standard deviation itself, which is the quantity the
-term was added to estimate:
-
-```{r}
-summary(fit_ogl$fit)$random$chamber
-```
-
-Both diagnostics point the same way. The standard deviation is a small fraction
-of the response range, with an interval running down to zero --- the first of
-the three patterns above --- and the chamber term barely moves the threshold.
-
-That is not an argument for having omitted the term. The chambers are real, the
-design requires the non-independence to be represented, and a standard
-deviation estimated at nearly zero is a *result*, where an unmodelled one is an
-assumption. But it does mean the grouped and ungrouped analyses should be
-reported as agreeing, rather than the grouped fit presented as though it had
-found something.
-
-# Fitting each level separately
-
-`bnec_group()` takes the second route: split the data by a factor and fit a
-complete model set within each level. Nothing is shared between levels, so the
-functional form itself may differ --- one level fitted by a threshold model and
-another by a smooth decline.
-
-Light is the factor here. Ultraviolet was included in this experiment as a
-co-factor precisely because it can increase the toxicity of some aromatic
-hydrocarbons to corals [@brinkman2023], so the question is a real one rather
-than a demonstration.
-
-```{r, results = "hide"}
-fits_light <- bnec_group(live | trials(tot) ~ crf(conc, c("nec4param", "ecx4param")),
-                         data = d4, group_var = "light",
-                         family = "beta_binomial",
-                         iter = 2000, warmup = 1000, chains = 2, seed = 245)
-```
-
-A two-model set is used rather than a single model, because the weights are the
-point of what follows.
-
-`bnec_group()` returns an object with a `plot()` method of its own, which
-draws one panel per level:
-
-```{r exmp8-group, fig.asp = 0.55, out.width = "90%"}
-plot(fits_light)
+summary(fit_ogl)
 ```
 
 ```{r}
-sapply(fits_light$fits, nec)
+rbind(
+  data.frame(fit = "ungrouped", t(ecx(fit_plain, ecx_val = 10, xform = exp))),
+  data.frame(fit = "ogl(conc_group)", t(ecx(fit_ogl, ecx_val = 10, xform = exp)))
+)
 ```
 
-The estimates for the two light regimes are compared through their posteriors
-rather than through their intervals:
+# Across-concentration grouping
+
+A grouping whose levels each span the whole series admits a difference in shape,
+and the plates of one arm are that case. Each plate is a complete test, and the
+gain differences shown above mean the plates are not on a common vertical scale.
 
 ```{r}
-compare_estimates(fits_light$fits)$prob_diff
-```
-
-`prob` is the posterior probability that the first level's estimate exceeds the
-second's. A value near 0.5 means the two posteriors sit on top of each other;
-values near 0 or 1 mean they are separated. What is reported here is a
-difference the data do not resolve cleanly in either direction.
-
-That conclusion is consistent with the published analysis, though it is not the
-same quantity and should not be read as reproducing it: @brinkman2023 tested the
-effect of UVR on **seven-day survival**, found none, and pooled the replicates
-for the concentration-response analysis on that basis. The comparison here is
-between **day-four** thresholds, and it is a posterior probability rather than a
-significance test.
-
-## Crossed model weights
-
-When each level carries its own model set, the weights are per level.
-`crossed_group_weights()` reports them together, so the model set chosen in one
-level can be read against the other:
-
-```{r}
-crossed_group_weights(fits_light)
-```
-
-`per_level` holds each level's own weights; `best_combination` names the model
-that carried most weight in each; `diagonal` is the weight of the combination in
-which both levels use the same model, which is the quantity to look at if you
-intend to report one functional form for the whole experiment.
-
-## Comparing the fitted curves
-
-```{r}
-comp <- compare_posterior(fits_light$fits, comparison = "fitted")
-```
-
-`compare_posterior()` pairs posterior draws between fits. Where the fits are
-independent --- as they are here, since each level was fitted separately --- the
-pairing is arbitrary, and it is currently an unseeded permutation (see issue
-#218). Set a seed if you need the comparison to be reproducible exactly.
-
-# Grouping on a joint hurdle structure
-
-The two routes above each used a response that one family could describe. The
-harder and more common case is a response with two processes in it: whether the
-organism survived at all, and how it performed if it did. `bnec_hurdle()` and
-the hurdle families fit both at once; see [`vignette("example6")`][e6].
-
-Growth is that response here. It is missing for every fragment that died:
-
-```{r}
-coral |>
-  summarise(died = sum(is.na(growth_rate)),
-            alive_no_growth = sum(growth_rate == 0, na.rm = TRUE),
-            alive_growing = sum(growth_rate > 0, na.rm = TRUE))
-```
-
-Two things follow, and both have to be said before the fit rather than after.
-
-Note that growth is measured over the full seven days, where the analyses above
-used day four. The two are not interchangeable: the endpoint dictates the window,
-and by day seven the live-tissue proportion is close to a step function, which is
-why it was not used for the curves earlier.
-
-**Growth conditions on survival.** At the top three concentrations not one
-fragment has a growth rate at all:
-
-```{r}
-tapply(coral$growth_rate, coral$nominal, function(z) sum(!is.na(z)))
-```
-
-Those three concentrations vanish from a growth analysis entirely, and what
-remains is a survivorship-selected sample. Modelling growth on survivors alone
-would therefore describe the wrong population *and* lose the top of the
-concentration range --- which is what the joint structure exists to avoid.
-
-**The zeros are not all of one kind.** Beyond the fragments that died, a further
-group lived without measurably growing, and they sit in the middle of the
-concentration range where the curve is descending, so they are informative
-rather than incidental:
-
-```{r}
-coral |>
-  filter(!is.na(growth_rate), growth_rate == 0) |>
-  count(nominal)
-```
-
-A `hurdle_gamma` fit treats *every* zero as the hurdle process, so it attributes
-these to mortality as well. That is a simplification, and it is stated here
-rather than hidden: distinguishing the two kinds of zero is a question about
-where the zeros came from, which [`vignette("example6")`][e6] deals with
-directly.
-
-```{r}
-hurdle_dat <- coral |>
-  mutate(growth = ifelse(is.na(growth_rate), 0, growth_rate)) |>
-  select(conc = conc_d7, growth, chamber, colony, light)
-```
-
-It is worth looking at how the two components divide the data before fitting
-them together:
-
-```{r}
-table(concentration = round(hurdle_dat$conc), growing = hurdle_dat$growth > 0)
-```
-
-The second block --- whether a fragment grew at all --- has information at every
-concentration. The first --- how much it grew, given that it did --- has none
-above the fifth. That asymmetry is the honest description of what a joint fit
-buys here: it recovers the top of the concentration range for the *survival*
-component, which a survivors-only analysis would have lost altogether, while the
-growth component remains informed only by the lower half of the series. Expect
-the growth threshold to be the less well determined of the two, and report it
-that way.
-
-```{r, results = "hide"}
-fit_hurdle <- bnec(growth ~ crf(conc, "nec3param"), data = hurdle_dat,
-                   family = "hurdle_gamma", iter = 4000, warmup = 2000,
-                   chains = 2, seed = 245,
+fit_pooled <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs),
+                   data = zn15, family = gfam,
+                   chains = 2, iter = 2000, warmup = 1000, seed = 228,
                    control = list(adapt_delta = 0.99))
+
+fit_plate <- bnec(rlu_cens | cens(censoring) ~ crf(log(conc), eqs) + ogl(plate),
+                  data = zn15, family = gfam,
+                  chains = 2, iter = 2000, warmup = 1000, seed = 228,
+                  control = list(adapt_delta = 0.99))
 ```
 
-```{r exmp8-hurdle}
-autoplot(fit_hurdle)
+The comparison of interest is between the estimates each gives, and between the
+model weights each assigns, since pooling curves that differ in scale changes
+which functional form fits best:
+
+```{r}
+summary(fit_pooled)
+summary(fit_plate)
 ```
 
 ```{r}
-nec(fit_hurdle)
+rbind(
+  data.frame(fit = "pooled", t(ecx(fit_pooled, ecx_val = 10, xform = exp))),
+  data.frame(fit = "ogl(plate)", t(ecx(fit_plate, ecx_val = 10, xform = exp)))
+)
 ```
 
-The threshold is estimated, but loosely, and the fit reports divergent
-transitions that raising `adapt_delta` reduces without removing --- 229 of 4000
-here. R-hat is 1.01 and the smallest effective sample size is around 240, so the
-chains have converged; the divergences say the posterior has a difficult
-geometry rather than that the answer is wrong. Both facts belong in a methods
-section. This is already a fit to report with its caveats attached, before any
-grouping is added to it.
-
-## What happens when a group-level term is added anyway
-
-The obvious next step is to carry the chamber structure into the joint fit, the
-way `ogl()` was used in the first half of this vignette:
-
-```{r, eval = FALSE}
-bnec(growth ~ crf(conc, "nec3param") + ogl(chamber), data = hurdle_dat,
-     family = "hurdle_gamma", iter = 4000, warmup = 2000, chains = 2,
-     seed = 245, control = list(adapt_delta = 0.99))
+```{r}
+autoplot(fit_plate)
 ```
 
-That chunk is shown rather than run, because it does not work and it is more
-useful to say why. With those settings it returns a maximum R-hat of **1.24** and
-a smallest effective sample size of **19**. The chains have not converged, and no
-amount of `adapt_delta` fixes it: at the default the same fit gives 511 divergent
-transitions, at 0.99 it gives 124 with the R-hat above unchanged.
+<!-- DRAFT NOTE: the conclusion of this section is not yet written, and is not
+     to be written from the exploratory runs. Measured without a dispersion
+     sub-model, a plate term narrowed the ECx intervals and widened the N(S)EC,
+     and moved EC10 by 31 to 57 per cent depending on the term. Those runs also
+     showed the fitted variance at the control to be about eight times the
+     observed value, which a dispersion sub-model largely removes, so the
+     comparison has to be remade with `disp("power")` in both fits before the
+     direction is stated. See prompts/grouping-vignette-dataset.md. -->
 
-The reason is in the table above rather than in the sampler. The second block
-has information at every concentration, but the first has none above the fifth,
-and a chamber effect is being asked for on top of that. Fitting it is not
-prevented; it simply is not supported, and the diagnostics say so clearly.
+# Design and model complexity
 
-This is the same comparison the first half of the vignette made with
-`ogl(chamber)` on the live-tissue response, and it is worth making in the same
-order every time: fit without the group-level term, fit with it, and let the
-difference in the diagnostics --- not the plausibility of the structure ---
-decide what is reported.
+<!-- DRAFT NOTE: blocked. The plan specifies `CoralColour` and `pamdat` from
+     Flores et al. (2021) for this section, but both live in ignore/ and are not
+     package data, so a shipped vignette cannot load them. Three options: ship
+     one of them as a dataset, substitute a demonstration built on shipped data,
+     or transcribe the result with a provenance note. Needs a decision. -->
 
-## One constraint to know before trying it on better data
+# Factor covariates
 
-A group-level term supplied to a hurdle fit reaches the **response block only**
---- the block describing growth among survivors --- and not the block describing
-whether the fragment grew at all. A single chamber effect shared across both
-blocks is not available, and the factorised weighting the joint fit uses depends
-on that separation. If the grouping is expected to act on both processes, the
-two blocks have to be fitted separately and compared rather than joined.
+Levels that are fixed and of interest in themselves are not a random grouping.
+Seven herbicides, or two metals, are not a sample from a population of
+herbicides or metals, so shrinking them towards a common curve answers a
+different question from the one being asked, and their functional forms may
+differ. `bnec_group()` fits each level separately and returns one object.
 
-# Choosing between the two approaches
-
-| | group-level term | `bnec_group()` |
-|---|---|---|
-| structure | within **or** across concentration | across concentration only |
-| what varies | the parameters named | everything, including the model form |
-| shared information | levels shrink toward a common curve | nothing shared |
-| levels needed | few is workable; three is thin | enough to fit each level alone |
-| gives | one fit | one fit per level |
-| natural question | does this feature vary? | does this level behave differently? |
-
-A within-concentration grouping leaves no choice: `bnec_group()` cannot be used,
-because a group that spans no concentrations has no curve to fit. An
-across-concentration grouping admits both, and the decision is whether the
-levels should inform each other. Few levels, or levels that are a sample from
-some larger population, favour the group-level term. Levels that are the point
-of the experiment, and that might not even share a functional form, favour
-separate fits.
-
-## Combining the two routes
-
-The two are not alternatives in a real analysis, and this experiment is the
-ordinary case: light is a factor whose levels are of interest, and chambers are
-a nuisance structure sitting inside every one of them. Both belong in the
-analysis at once --- the factor handled by fitting each level separately, and
-the chambers by a group-level term *within* each of those fits.
-
-```{r, results = "hide"}
-fits_both <- bnec_group(live | trials(tot) ~ crf(conc, "nec4param") + ogl(chamber),
-                        data = d4, group_var = "light",
-                        family = "beta_binomial",
-                        iter = 2000, warmup = 1000, chains = 2, seed = 245,
+```{r}
+fits_herb <- bnec_group(fvfm ~ crf(log(concentration), eqs),
+                        data = herbicide, group_var = "herbicide",
+                        family = Beta(link = "identity"),
+                        chains = 2, iter = 2000, warmup = 1000, seed = 228,
                         control = list(adapt_delta = 0.99))
 ```
 
-```{r exmp8-both, fig.asp = 0.55, out.width = "90%"}
-plot(fits_both)
+```{r}
+summary(fits_herb)
 ```
 
 ```{r}
-sapply(fits_both$fits, nec)
+autoplot(fits_herb)
 ```
 
 ```{r}
-lapply(fits_both$fits, function(f) summary(f$fit)$random$chamber)
+compare_posterior(fits_herb, comparison = "nec")
 ```
 
-The chamber standard deviations are small within both levels, with intervals
-running down towards zero --- the same reading as the pooled fit earlier, now
-established separately within each light regime rather than assumed to be
-common to them. And the two thresholds overlap substantially --- the
-same conclusion the posterior comparison reached earlier, by a different route,
-and the same one @brinkman2023 reached on the seven-day survival data.
+<!-- DRAFT NOTE: the lum31-by-toxicant arm is not drafted. It is the last use of
+     the case study and should use whatever structure sections 3 to 5 establish,
+     which is not settled: the dispersion sub-model, and a plate term within each
+     toxicant level rather than pooled plates. Fitting it on pooled plates would
+     reproduce exactly the bias section 5 measures. -->
 
-That agreement is worth checking rather than assuming. A grouping structure the
-data do not resolve should look the same whichever way it is asked; where two
-routes disagree, the disagreement is information about the models rather than
-about the biology.
+# Provenance
+
+<!-- DRAFT NOTE: to be written last. Must record: the package version and commit
+     the fits were made under; that the vignette's own chunks use a reduced
+     equation set and 2 chains at 2000 iterations, against the full retained set
+     at 4 chains and 8000 with adapt_delta 0.99 for any result quoted from the
+     study runs; the seed; and the source of lum31, including that the workbooks
+     are not redistributed. -->
 
 # References
