@@ -99,9 +99,11 @@ in Fisher et al. 2024) or \code{"regularizing"} (narrower priors, with the
 no-effect \code{top} parameter placed at the mean response over the lowest
 concentrations tested and \code{bot} at the mean over the highest). The
 regularizing set narrows the response-scaled and group-level priors to 0.4 of
-the width of the uninformative set, and the \code{nec} and \code{ec50} prior
-to 0.84 of it; see \code{vignette("example3")} for why the two factors
-differ. Ignored when priors are supplied directly via the \code{prior}
+the width of the uninformative set. The \code{nec} and \code{ec50} prior is
+not derived from that width at all: its spread is the one whose central 98\\%
+interval reaches the farthest concentration tested, against the central 95\\%
+under \code{"uninformative"}. See \code{vignette("example3")} for why the two
+rules differ. Ignored when priors are supplied directly via the \code{prior}
 argument.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum

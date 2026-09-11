@@ -84,14 +84,30 @@
   **`nec` and `ec50` are narrowed under `"regularizing"` as well**, which they
   were not: the predictor-scaled prior was identical under both sets, so
   selecting the narrower set did nothing for the two parameters a user most
-  often selects it for. It is narrowed by `qnorm(0.975) / qnorm(0.99)`, which is
-  `0.84`, and not by `0.4` like the response-scaled entries. Its width is not a
-  free choice --- it is set to the smallest width whose central 95% interval
-  still reaches the farthest concentration tested, which is what #302 exists to
-  guarantee --- so the only room to narrow it is the confidence level at which
-  it covers the series. Narrowing it by `0.4` instead puts the true threshold
-  outside the central 95% of the prior in 8 of the 30 design by transform by
-  parameter cells of the audit, against none at `0.84`.
+  often selects it for. The two entries differ in the confidence level at which
+  the prior reaches the farthest concentration tested and in nothing else: the
+  central 95% interval reaches it under `"uninformative"` and the central 98%
+  interval does under `"regularizing"`. That width is not a free choice --- #302
+  exists because an entry that did not reach the farthest concentration tested
+  shipped --- so the confidence level is the only room there is to narrow it.
+  Narrowing it by `0.4` like the response-scaled entries instead puts the true
+  threshold outside the central 95% of the prior in 8 of the 30 design by
+  transform by parameter cells of the audit, against none at `0.84` (#305).
+
+  **That rule is stated directly rather than as a multiple of the
+  `"uninformative"` width**, so that it means the same thing whichever way the
+  predictor is supplied. As a multiple it did not. The uninformative width is a
+  coverage width where concentrations are supplied as recorded, but the constant
+  `10 sd(x)` where the user supplies `log(concentration)`, and on a 0.1 to 100
+  series over seven doses that constant is 24.87 against a tested range of 6.91
+  on the log scale. The regularizing prior was therefore uniform across the
+  tested series on that branch --- its truncated CDF at each dose was that
+  dose's position within the range to three decimal places --- so `prior_type`
+  was inert for `nec` and `ec50` for a user who had logged the predictor, and
+  the same experiment received a different regularizing prior according to which
+  column was passed to `bnec()`. Both `"uninformative"` entries are unchanged,
+  and so is the regularizing entry where concentrations are supplied as
+  recorded (#314).
 
   **Group-level scales take the same factor**, `0.4`, rather than the one half
   they took before, and the cap on the `ogl` log-scale conversion now scales
