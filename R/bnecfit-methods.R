@@ -5,11 +5,11 @@
 #' @details The combined set is weighted by the method the objects being
 #' combined were weighted by, where every input that records one names the same
 #' method. Where none records a method --- combining two
-#' \code{\link{bayesnecfit}} objects, for instance --- or where two inputs
-#' disagree, the \pkg{bayesnec} default of "pseudobma" is used and the
-#' disagreement is reported. \code{\link[base]{c}} takes no
-#' \code{loo_controls} argument; use \code{\link{amend}} to set the
-#' weighting method explicitly.
+#' \code{\link{bayesnecfit}} objects, for instance --- the \pkg{bayesnec}
+#' default of "pseudobma" is used. Where two inputs name different methods the
+#' default is used and a message reports the disagreement.
+#' \code{\link[base]{c}} takes no \code{loo_controls} argument; use
+#' \code{\link{amend}} to set the weighting method explicitly.
 #'
 #' @param x An object of class \code{\link{bnecfit}}.
 #' @param ... Additional objects of class \code{\link{bnecfit}}.
@@ -175,17 +175,30 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   # bnec_record() then returned NULL for a fit this version had recorded --
   # which is the one thing the documented NULL is supposed to rule out.
   bnec_rec <- attr(object, "bnec_record")
-  # Read here for the same reason as the record above, and used only where the
-  # caller named no loo_controls of their own. update() refits an existing set;
-  # it is not a request to reweight it, so the method the set was built with is
-  # the one it keeps. Without this the method was whatever loo defaulted to,
-  # so a set the caller had asked to weight by stacking came back weighted by
-  # something else. See #320.
+  # Read here for the same reason as the record above. update() refits an
+  # existing set; it is not a request to reweight it, so the method the set was
+  # built with is the one it keeps unless the caller names another. Without
+  # this the method was whatever loo defaulted to, so a set the caller had
+  # asked to weight by stacking came back weighted by something else. See #320.
   old_method <- fit_weights_method(object)
   object <- recover_prebayesnecfit(object)
+  # Filled in on both branches, not only where loo_controls is absent
+  # altogether: loo_controls names `fitting` and `weights` separately, so a
+  # call changing a LOO fitting argument names no method and would otherwise
+  # have the set reweighted as a side effect of asking for something else.
+  # amend_model_set() fills old_method in the same way, and the two have to
+  # agree.
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(),
                          weights = weights_controls(old_method))
+  } else {
+    loo_controls <- validate_loo_controls(loo_controls,
+                                          object[[1]]$fit$family$family)
+    if (is.null(loo_controls$weights$method)) {
+      # Assigned into the existing list rather than replacing it, so any other
+      # loo_model_weights() argument the caller set is kept.
+      loo_controls$weights$method <- old_method
+    }
   }
   dot_args <- list(...)
   # The family is validated at this entry point rather than forwarded untouched

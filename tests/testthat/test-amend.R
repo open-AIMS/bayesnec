@@ -101,8 +101,22 @@ test_that("an object that records no weighting method gets the default", {
   # as NULL, which loo::loo_model_weights() resolves to stacking.
   unrecorded <- manec_example
   attr(unrecorded$mod_stats$wi, "method") <- NULL
-  out <- amend(unrecorded, loo_controls = list(fitting = list(reloo = FALSE))) |>
+  ctrl <- list(fitting = list(reloo = FALSE))
+  out <- amend(unrecorded, loo_controls = ctrl) |>
     suppressMessages() |>
     suppressWarnings()
   expect_equal(attr(out$mod_stats$wi, "method"), "pseudobma")
+  # A method named but NULL is not a request for a method. amend_model_set()
+  # read the name alone, so this reweighted the set while
+  # define_loo_controls() two calls later read the same value as unspecified.
+  stacked <- amend(manec_example,
+                   loo_controls = list(weights = list(method = "stacking"))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  kept <- amend(stacked,
+                loo_controls = list(weights = list(method = NULL),
+                                    fitting = list(reloo = FALSE))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(kept$mod_stats$wi, "method"), "stacking")
 })

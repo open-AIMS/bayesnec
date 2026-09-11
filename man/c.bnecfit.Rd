@@ -25,11 +25,11 @@ statistics.
 The combined set is weighted by the method the objects being
 combined were weighted by, where every input that records one names the same
 method. Where none records a method --- combining two
-\code{\link{bayesnecfit}} objects, for instance --- or where two inputs
-disagree, the \pkg{bayesnec} default of "pseudobma" is used and the
-disagreement is reported. \code{\link[base]{c}} takes no
-\code{loo_controls} argument; use \code{\link{amend}} to set the
-weighting method explicitly.
+\code{\link{bayesnecfit}} objects, for instance --- the \pkg{bayesnec}
+default of "pseudobma" is used. Where two inputs name different methods the
+default is used and a message reports the disagreement.
+\code{\link[base]{c}} takes no \code{loo_controls} argument; use
+\code{\link{amend}} to set the weighting method explicitly.
 }
 \examples{
 \dontrun{

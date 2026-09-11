@@ -173,7 +173,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }
 
-#' The weighting method a fit actually used
+#' The weighting method a fit was built with
 #'
 #' \code{expand_manec()} stamps it on the weight vector. The attribute does not
 #' survive row-subsetting of \code{mod_stats}, and a single-model fit is a

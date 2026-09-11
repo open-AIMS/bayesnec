@@ -194,7 +194,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   if (!is.null(loo_controls)) {
     fam_tag <- mod_fits[[1]]$fit$family$family
     loo_controls <- validate_loo_controls(loo_controls, fam_tag)
-    if (!"method" %in% names(loo_controls$weights)) {
+    # is.null() rather than a name test, for the reason define_loo_controls()
+    # gives: a name present with a NULL value is not a request for a method,
+    # and reading it as one had the two functions disagree about the same
+    # argument.
+    if (is.null(loo_controls$weights$method)) {
       loo_controls$weights$method <- old_method
     }
     is_new_method_old <- identical(loo_controls$weights$method, old_method)

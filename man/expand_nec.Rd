@@ -39,11 +39,9 @@ containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
 If no \code{method} is named in "weights", \pkg{bayesnec} sets the
 \code{method} argument of \code{\link[loo]{loo_model_weights}} to
-"pseudobma". This applies to every route that assembles a model set, not
-only to \code{\link{bnec}}: \code{\link{amend}}, \code{\link{pull_out}}
-and \code{update} preserve the method the set being operated on was built
-with, and \code{\link[base]{c}} and \code{+} inherit it where the objects
-being combined agree, falling back to "pseudobma" otherwise. See
+"pseudobma", whichever function assembles the model set. A function that
+operates on an existing set instead keeps the method that set was built
+with, unless the caller names another. See
 ?\code{\link[loo]{loo_model_weights}} for further info.}
 
 \item{...}{Further arguments to internal function.}

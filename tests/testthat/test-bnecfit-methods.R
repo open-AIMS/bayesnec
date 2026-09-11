@@ -281,4 +281,23 @@ test_that("update() keeps the weighting method the set was built with", {
     suppressMessages() |>
     suppressWarnings()
   expect_equal(attr(changed$mod_stats$wi, "method"), "pseudobma")
+  # loo_controls names `fitting` and `weights` separately, so a call changing a
+  # LOO fitting argument names no method. Reading that as a request to reweight
+  # made the set stacking-weighted as a side effect of asking for something
+  # else, on the route this change is about.
+  fitting_only <- update(stacked, recompile = FALSE,
+                         loo_controls = list(fitting = list(reloo = FALSE))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(fitting_only$mod_stats$wi, "method"), "stacking")
+  # The same call on a set that records no method takes the default rather
+  # than passing method = NULL down to loo.
+  unrecorded <- manec_example
+  attr(unrecorded$mod_stats$wi, "method") <- NULL
+  defaulted_fitting <- update(unrecorded, recompile = FALSE,
+                              loo_controls =
+                                list(fitting = list(reloo = FALSE))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(defaulted_fitting$mod_stats$wi, "method"), "pseudobma")
 })
