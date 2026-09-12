@@ -238,16 +238,27 @@ fit_reduced <- bnec(fvfm ~ crf(log(concentration), model = "decline"),
 ```
 
 The sampler settings above are deliberately below `bnec()`'s defaults, and that
-is a decision made for this document rather than advice. `bnec()` defaults to
-`chains = 4` and `iter = 1e4`, and sets `warmup` to `floor(iter / 5) * 4`, so it
-retains 8000 draws. The call above retains
-`r (4000 - floor(4000 / 5) * 4) * 2`. These data are well behaved at the
-defaults and every equation the design supports passes the screen there, so a
-vignette fitted at the defaults would reach step 3 with nothing to demonstrate.
-Running short guarantees that some equations fail, which is what makes steps 3
-and 5 a demonstration rather than an assertion. The settings are raised to the
-defaults in step 3, and every estimate reported in step 5 comes from the fit
-made there.
+is a decision made for this document rather than advice.
+
+Compare the retained draws and not `iter`. `iter` counts warmup as well as
+sampling, and the fraction discarded is a choice each layer makes for itself.
+`bnec()` takes `chains = 4` and `iter = 1e4`, and sets `warmup` to
+`floor(iter / 5) * 4`, discarding four fifths and retaining 8000 draws. The call
+above sets `iter` to `r 4000` with two chains, and the same warmup rule leaves
+`r (4000 - floor(4000 / 5) * 4) * 2`. The two `iter` values differ by a factor of
+`r 1e4 / 4000` and the draws they retain by a factor of
+`r 8000 / ((4000 - floor(4000 / 5) * 4) * 2)`. For comparison, `brms` discards
+half rather than four fifths, so its own defaults of `iter = 2000` over four
+chains retain 4000 --- more than this call, from a quarter of the iterations.
+A number of iterations means nothing until the warmup rule and the chain count
+are stated beside it.
+
+These data are well behaved at the defaults, and every equation the design
+supports passes the screen there, so a vignette fitted at the defaults would
+reach step 3 with nothing to demonstrate. Running short guarantees that some
+equations fail, which is what makes steps 3 and 5 a demonstration rather than an
+assertion. The settings are raised to the defaults in step 3, and every estimate
+reported in step 5 comes from the fit made there.
 
 An analysis does not do this. Two arguments matter once a real fit is marginal:
 
@@ -853,8 +864,14 @@ value is; the point is set out in step 4.
 ctrl_pos <- min(surv$dose[surv$dose > 0]) / 2
 surv$dose_plot <- ifelse(surv$dose == 0, ctrl_pos, surv$dose)
 dose_breaks <- c(ctrl_pos, 0.01, 0.04, 0.16, 0.63, 2.5, 20)
+# Most tanks sit at exactly 1 or exactly 0, so the points overplot and the
+# number of tanks at each dose cannot be read. The vertical jitter is a display
+# device and the seed is set so the figure is reproducible; no value shown is
+# the value recorded, and the fit uses the recorded proportions.
+set.seed(17)
 ggplot(surv, aes(x = dose_plot, y = suc / tot)) +
-  geom_point(size = 2, alpha = 0.7) +
+  geom_point(size = 2, alpha = 0.6,
+             position = position_jitter(width = 0, height = 0.015)) +
   # Axis spacing only: the transform is applied to the scale, so the spacing is
   # logarithmic while the labels stay in recorded units. Transforming the breaks
   # instead would relabel the axis without respacing it.
