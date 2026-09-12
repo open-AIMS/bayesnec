@@ -28,6 +28,8 @@ Suggests:
     knitr,
     rmarkdown,
     R.utils,
+    future,
+    future.apply,
     testthat (>= 3.1.8)
 VignetteBuilder: knitr
 URL: https://open-aims.github.io/bayesnec/

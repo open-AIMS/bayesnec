@@ -595,6 +595,48 @@
 
 ## New
 
+- **A model set can now be fitted in parallel.** `bnec()` and `amend()` fit
+  their models under whatever `future` plan is set when they are called, so
+  `plan(multisession, workers = 4)` before the call fits four models at a time
+  and `plan(sequential)`, or no plan at all, fits them one at a time exactly as
+  every earlier version did. There is no new argument: the plan already holds
+  that state, and a `cores` argument beside it would be ambiguous the moment a
+  user set both. `future` and `future.apply` are Suggests, so a session without
+  them takes the sequential path and reports nothing (#184).
+
+  **Chains are sampled in sequence inside each worker.** `brm()` parallelises
+  across chains already, so models in parallel on top of that would request
+  `workers x chains` processes --- sixteen for four workers and the default
+  `chains = 4`. Under a parallel plan of more than one worker `bnec()` passes
+  `cores = 1` to `brm()`. Passing `cores` yourself is left alone and is how the
+  two levels are nested deliberately. A plan that names a parallel strategy but
+  resolves to a single worker --- `plan(multicore)` wherever forking is
+  unavailable, which includes Windows --- is clamped in neither respect, and
+  says so. Note that `future` already sets `mc.cores` to 1 inside a worker, so
+  a value set in a profile does not reach `brms` there in any case; `cores = 1`
+  makes that a property of this package rather than of `future`'s internals.
+
+  **Each fitted model reproduces exactly under a parallel plan, for the same
+  `seed`.** This needed making true rather than being inherited:
+  `future.seed = TRUE` installs an L'Ecuyer-CMRG generator in each worker,
+  `set.seed()` does not restore the generator kind, and the initial-value search
+  would therefore have drawn different starting values in a worker from the same
+  seed --- silently, with no error and no warning. The worker restores the
+  parent's RNG kind before fitting. Without a `seed` the search reseeds from
+  entropy and no run repeats, under a plan or otherwise, which is unchanged.
+
+  **The model-averaged quantities are the exception.** `expand_manec()` draws
+  the seed for the weighted posterior draw from the session's RNG stream after
+  the models are fitted. A sequential run advances that stream, through the
+  `set.seed(seed)` each initial-value search makes, so the draw is fixed by
+  `seed`; under a parallel plan the model loop leaves the stream alone. The
+  averaged `nec`, its interval and the stored prediction grid therefore differ
+  between the two plans, as two valid realisations of the same weighting.
+  `set.seed()` in the calling session fixes that draw under a parallel plan, so
+  two parallel runs agree --- which is what `expand_manec()` intends it to
+  answer to (#216). One further consequence: a parallel call does not advance
+  the calling session's RNG stream, where a sequential one does.
+
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
   the candidate set as requested, the set attempted, the equations excluded with
   the reason for each, and any substitution made in the response. Both were

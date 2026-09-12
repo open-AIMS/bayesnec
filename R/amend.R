@@ -239,10 +239,34 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   mod_fits <- vector(mode = "list", length = length(model_set))
   names(mod_fits) <- model_set
   failed <- list()
-  for (m in seq_along(model_set)) {
-    model <- model_set[m]
-    mod_m <- try(old_fits[[model]], silent = TRUE)
-    if (!inherits(mod_m, "prebayesnecfit")) {
+  # Which models this call has to fit. A model already in the set is carried
+  # over from old_fits without a brm() call, so a set of twenty with one
+  # addition is a one-model run, and only the additions decide whether a
+  # parallel plan is worth using.
+  needs_fit <- !vapply(model_set, function(model) {
+    inherits(try(old_fits[[model]], silent = TRUE), "prebayesnecfit")
+  }, logical(1))
+  # Carried over here, in the parent, rather than returned from the applied
+  # function. Under a parallel plan the alternative serialises every existing
+  # fit out to a worker and straight back again for a model that is not
+  # refitted, which is the memory multiplication #184 raises. Doing it here is
+  # necessary and not sufficient: old_fits also has to stay out of what the
+  # applied function exports, which is what narrow_environment() below is for.
+  for (m in which(!needs_fit)) {
+    mod_fits[[model_set[m]]] <- old_fits[[model_set[m]]]
+  }
+  # amend() rebuilds brm_args per model from the stored simdat rather than
+  # taking one from the user, so what plan_model_set() decides has to be
+  # passed into the loop body and merged there.
+  set_plan <- plan_model_set(list(), sum(needs_fit), caller = "amend")
+  # narrow_environment(), for the reason bnec() gives at its own call: future
+  # exports the applied function with its enclosing environment, and this frame
+  # holds old_fits and the partly filled mod_fits. Carrying existing fits over
+  # in the parent saves nothing unless they are also kept out of what is
+  # exported, which is what this does.
+  fit_one <- narrow_environment(
+    function(m) {
+      model <- model_set[m]
       # No `init`. This branch is reached only for a model that is not already
       # in the set, and simdat$init holds the stanfit initial values of a model
       # that is -- values named for another equation's parameters, which are
@@ -250,10 +274,13 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       # in every case, so omitting them changes nothing that happened; what it
       # changes is that the search is now requested by the absence of `init`
       # rather than compelled by skip_check. See #290.
-      brm_args <- list(
-        family = family, iter = simdat$iter, thin = simdat$thin,
-        warmup = simdat$warmup, chains = simdat$chains,
-        sample_prior = simdat$sample_prior
+      brm_args <- c(
+        list(
+          family = family, iter = simdat$iter, thin = simdat$thin,
+          warmup = simdat$warmup, chains = simdat$chains,
+          sample_prior = simdat$sample_prior
+        ),
+        set_plan$brm_args
       )
       brm_args$prior <- priors
       model_priors <- try(validate_priors(brm_args$prior, model),
@@ -282,7 +309,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       } else {
         brm_args$prior <- model_priors
       }
-      fit_m <- try(
+      try(
         fit_bayesnec(
           formula = formula, data = data, model = model,
           brm_args = brm_args, skip_check = TRUE, prior_type = prior_type,
@@ -290,14 +317,26 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
         ),
         silent = FALSE
       )
-      if (!inherits(fit_m, "try-error")) {
-        mod_fits[[model]] <- fit_m
-      } else {
-        mod_fits[[model]] <- NA
-        failed[[model]] <- failure_record(model, attr(fit_m, "condition"))
-      }
+    },
+    list(model_set = model_set, family = family, simdat = simdat,
+         set_plan = set_plan, priors = priors, bdat = bdat,
+         formula = formula, data = data, prior_type = prior_type,
+         timeout = timeout)
+  )
+  attempts <- bnec_model_lapply(which(needs_fit), fit_one,
+                                parallel = set_plan$parallel)
+  # Assembled in the parent, as in bnec(): what the applied function returns is
+  # the fit, or the try-error whose condition attribute records it, and
+  # failure_record() then
+  # reads the same object whichever plan produced it.
+  for (i in seq_along(attempts)) {
+    model <- model_set[which(needs_fit)[i]]
+    fit_m <- attempts[[i]]
+    if (!inherits(fit_m, "try-error")) {
+      mod_fits[[model]] <- fit_m
     } else {
-      mod_fits[[m]] <- mod_m
+      mod_fits[[model]] <- NA
+      failed[[model]] <- failure_record(model, attr(fit_m, "condition"))
     }
   }
   formulas <- lapply(mod_fits, extract_formula)
