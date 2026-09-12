@@ -59,17 +59,18 @@ thing that can be wrong. `rhat()`, `check_chains()` and `check_sampling()` ask
 whether the sampler explored the posterior. `loo` and `waic` rank the candidate
 equations against one another. None of them asks whether the variability the
 fitted model implies matches the variability in the data, and a threshold
-estimate is exposed to that assumption more than to any other.
+estimate depends on that assumption more than on any other.
 
-*NSEC* is exposed first. `nsec()` sets its reference at a quantile of the
+*NSEC* depends on it most directly. `nsec()` sets its reference at a quantile of the
 posterior of the control mean, and the width of that posterior is set by the
 dispersion the fit estimated at the control. A model simulating more variability
 at the control than the data show places the reference lower, so the curve
 crosses it further along and the reported concentration is higher and less
-protective. A model simulating less places it the other way. The direction is not
+protective. A model simulating less variability places the reference higher and
+returns a lower concentration. The direction is not
 known in advance, and no convergence diagnostic reveals it. [*Single model usage*](https://open-aims.github.io/bayesnec/articles/example1.html)
 makes the same point for the choice between constant and non-constant dispersion.
-ECx is less exposed, being read from the fitted curve relative to that curve's own
+ECx depends on it less, being read from the fitted curve relative to that curve's own
 asymptotes: an error in the variance widens or narrows its interval rather than
 relocating it.
 
@@ -89,13 +90,13 @@ hold for convergence. A model that has not sampled contributes to the averaged
 prediction on the strength of a posterior the sampler never explored, and its
 weight is computed from that same posterior, so the weight is no evidence that
 keeping it is safe. Removing it changes the candidate set, and `amend()` then
-recomputes the weights across what remains rather than rescaling the survivors,
+recomputes the weights across what remains rather than rescaling those retained,
 so the reported *N(S)EC* changes with it.
 
 Which models a screen removes is not predictable before it is run, and the
 reasons differ between them. An equation given too few draws, an equation whose
 posterior the sampler cannot traverse, and an equation the design does not
-support all arrive as the same word in the same column. Step 3 separates them,
+support are all reported as the same value in the same column. Step 3 separates them,
 because the right response to each is different.
 
 ## Coverage
@@ -159,8 +160,8 @@ No value lies on a boundary, which matters because a `Beta` response is supporte
 interval (0, 1), so a value recorded as exactly 0 or 1 lies outside the family's
 support. `bayesnec` substitutes for both: a zero becomes one tenth of the
 smallest non-zero value, which is relative to the scale of the response, and a
-one is reduced by an absolute 0.001. A series that spends several concentrations
-at a boundary is then being modelled through that substitution rather than as
+one is reduced by an absolute 0.001. A series with several concentrations at a
+boundary is then being modelled through that substitution rather than as
 recorded.
 
 ```{r boundaries}
@@ -169,15 +170,15 @@ range(simazine$fvfm)
 
 `simazine` reaches neither boundary. Several of the other herbicides in this
 dataset do: `irgarol` records ten zeros, eight of its twelve replicates at the
-highest concentration, so the family for these data depends on inspecting the
-response first. Where zeros are part of the process rather than a recording
+highest concentration, so the family cannot be chosen without inspecting the
+response. Where zeros are part of the process rather than a recording
 floor, see [*Hurdle and zero-inflated concentration-response models*](https://open-aims.github.io/bayesnec/articles/example6.html), which covers the families that
 model them explicitly.
 
 ## The form of the family question
 
 The family question has a different form for a continuous bounded response than
-for a count, and `bayesnec` provides a different tool for each.
+for a count, and `bayesnec` provides a different check for each.
 
 `Beta` estimates a dispersion parameter, `phi`, from the data. There is
 therefore no over-dispersion decision to take: the family already has a free
@@ -241,7 +242,7 @@ The sampler settings above are deliberately below `bnec()`'s defaults, and that
 is a decision made for this document rather than advice.
 
 Compare the retained draws and not `iter`. `iter` counts warmup as well as
-sampling, and the fraction discarded is a choice each layer makes for itself.
+sampling, and the fraction discarded is a choice each package makes for itself.
 `bnec()` takes `chains = 4` and `iter = 1e4`, and sets `warmup` to
 `floor(iter / 5) * 4`, discarding four fifths and retaining 8000 draws. The call
 above sets `iter` to `r 4000` with two chains, and the same warmup rule leaves
@@ -278,8 +279,8 @@ reduce it. Some equations are excluded before fitting, because they are invalid
 for the family or the predictor; [*Model details*](https://open-aims.github.io/bayesnec/articles/example2b.html) sets out the equations and
 the rules that govern them. Others are attempted and fail to sample.
 
-`bnec_record()` reports both, so the accounting does not have to be
-reconstructed from the fitted object:
+`bnec_record()` reports both, so neither has to be reconstructed from the fitted
+object:
 
 ```{r set-fitted}
 rec <- bnec_record(fit_reduced)
@@ -332,7 +333,7 @@ unreliable at those points, which belongs in a methods statement alongside the
 weights themselves.
 
 The weights are not what step 3 reads. For the reason given in the Overview, a
-weight is no evidence that a model is fit to keep, so the screen is applied to
+weight is no evidence that a model should be retained, so the screen is applied to
 the diagnostics.
 
 A model that fails to fit at all is a third outcome, distinct from being
@@ -344,14 +345,14 @@ given, which are built inside `bnec()` and otherwise unrecoverable:
 names(failed_models(fit_reduced))
 ```
 
-Every equation the design admits fitted at these settings, so there is nothing
+Every equation the design admits was fitted at these settings, so there is nothing
 to report here.
 
 # 3. Sampler diagnostics and screening
 
 The sampler diagnostics are read per candidate model, and the candidates that
-did not sample are then removed from the set, so that everything after this
-concerns a set worth averaging. Whether a model fits the data is a separate
+did not sample are then removed from the set, so that steps 4 and 5 concern a
+set worth averaging. Whether a model fits the data is a separate
 question, answered in step 4.
 
 `check_sampling()` reports per candidate model, so the whole set is screened in
@@ -366,8 +367,8 @@ Rhat, the smallest effective sample size, and the number of divergent
 transitions.
 
 All three cutoffs are arguments. The Rhat default of 1.01 and the ESS default of
-400 follow published recommendations [@Vehtari2021]; **the divergence default of
-10 does not**. Stan's own guidance is that *any* divergence means the sampler
+400 follow published recommendations [@Vehtari2021]; the divergence default of
+10 does not. Stan's own guidance is that *any* divergence means the sampler
 failed to explore the posterior. The default of ten is a package convention
 rather than a published recommendation: these non-linear models commonly produce
 a small number of divergent transitions near a parameter boundary, and
@@ -455,14 +456,14 @@ Only models that pass the sampler diagnostics are retained.
 screened_reduced <- screen_models(fit_reduced)
 ```
 
-`screen_models()` runs the same diagnostics as the table above, drops what
-failed, and **reports which models were removed and why**: one line per model,
+`screen_models()` runs the same diagnostics as `check_sampling()`, drops what
+failed, and reports which models were removed and why: one line per model,
 naming every threshold it missed rather than only the first. An exclusion step
 that leaves no record is not reproducible, which is why the message is on by
 default and why `quiet = TRUE`, which suppresses it, should not be used in an
 analysis that will be reported.
 
-It screens on the **sampler only**. Whether a model reproduces the data is a
+It screens on the sampler only. Whether a model reproduces the data is a
 modelling result rather than a reason the fit is unusable, and dropping on it
 silently would hide what step 4 exists to show.
 
@@ -494,8 +495,7 @@ check_sampling(fit)
 names(failed_models(fit))
 ```
 
-Of the `r sum(check_sampling(fit_reduced)$failed)` equations the screen removed at the reduced settings, `r length(setdiff(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], c(names(failed_models(fit)), check_sampling(fit)$model[check_sampling(fit)$failed])))` now pass, on the same data and the same priors, because they were given more draws. Their failures were failures of the run, and the remedy was the obvious
-one.
+Of the `r sum(check_sampling(fit_reduced)$failed)` equations the screen removed at the reduced settings, `r length(setdiff(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], c(names(failed_models(fit)), check_sampling(fit)$model[check_sampling(fit)$failed])))` now pass, on the same data and the same priors, because they were given more draws. Their failures were failures of the run, and more draws corrected them.
 
 The screen still removes `r paste(intersect(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], check_sampling(fit)$model[check_sampling(fit)$failed]), collapse = ", ")`, and on divergent transitions rather than on Rhat or effective sample size, which are estimated more precisely from more draws. That is the second kind: more sampling does not
 change the shape of a posterior, and a divergence count is a statement about that
@@ -529,8 +529,8 @@ statement that says some models exceeded a cutoff does not say whether more
 sampling would have made them pass. One that says the sampling was increased, and
 reports which models then passed and which did not, does.
 
-The set that follows from here is the one fitted at the defaults. Everything
-reported in steps 4 and 5 comes from it.
+The set used from this point is the one fitted at the defaults, and every
+estimate reported in steps 4 and 5 comes from it.
 
 ```{r screen-final, message = TRUE}
 fit_screened <- screen_models(fit)
@@ -557,7 +557,7 @@ rather than a sampler one, and belongs to step 4.
 
 Chain mixing has to be inspected as well, and for every model rather than for
 the worst one. Poor mixing occurs at an acceptable Rhat, and there is no
-established scalar that catches what rank-normalised split-Rhat and bulk and
+established scalar that detects what rank-normalised split-Rhat and bulk and
 tail effective sample size miss. `check_chains()` takes a filename and writes
 one page per model, which keeps the output out of a report while leaving a
 record that can be inspected and archived:
@@ -628,8 +628,8 @@ estimated from `r sum(simazine$concentration == min(simazine$concentration))`
 observations, which resolves individual values as separate modes, and not
 evidence against the fit.
 
-What the display shows is location, and it shows no discrepancy in location
-anywhere. Width is harder to judge by eye from `r sum(simazine$concentration == min(simazine$concentration))`
+The display shows location, and no panel departs from it. Width is harder to
+judge by eye from `r sum(simazine$concentration == min(simazine$concentration))`
 observations per group, and it is where these data do depart from the fit: in one
 panel the observed density is visibly narrower than the simulated ones.
 `check_fit()` identifies the group and puts a number on it.
@@ -722,7 +722,7 @@ the message the table printed. It does not: the two use different criteria. The
 message flags a posterior predictive p-value outside [0.05, 0.95], and the bars
 are the 95% span, which is [0.025, 0.975]. A group can fall beyond the first and
 inside the second, and that is the case here. Read the message as a prompt to
-look at the group, not as a verdict against the fit.
+look at the group, not as a finding that the fit is inadequate.
 
 # 5. Reporting
 
@@ -931,9 +931,9 @@ replicate-to-replicate simulation noise rather than by uncertainty about a
 dispersion parameter. At a design of this size --- `r nrow(surv)` tanks across
 `r length(unique(surv$dose))` doses --- its power to separate a genuine departure
 from noise is low, and a rule that asks only whether the interval excludes 1 will
-fire on gross over-dispersion and on nothing else. `P(>1)` is what the interval
-cannot give: the share of the posterior lying above the null value, which is a
-statement of evidence rather than a verdict. It is also symmetric, so
+detect gross over-dispersion and nothing else. `P(>1)` is what the interval
+cannot give: the share of the posterior lying above the null value, which
+measures the evidence rather than settling the question. It is also symmetric, so
 `1 - P(>1)` is the posterior probability of *under*-dispersion. `?dispersion`
 sets this out.
 
@@ -955,8 +955,8 @@ workflow requires is that the number behind it is reported.
 
 This is a pre-check, and it is model-conditional: it reads dispersion from one
 shape, and a dispersion ratio cannot separate over-dispersion from a shape that
-fits badly. The screening fit therefore has to sample adequately before its
-verdict is used.
+fits badly. The screening fit therefore has to sample adequately before the
+dispersion it reports is used.
 
 ```{r nass-screen-sampling}
 check_sampling(screen)$failed
