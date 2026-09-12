@@ -33,14 +33,10 @@ significance of the predicted posterior values against the lowest observed
 concentration (assumed to be the control), to estimate NEC as an
 interpolated NOEC value from smooth ECx curves.}
 
-\item{loo_controls}{A named \code{\link[base]{list}} of two elements
-("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
-containing the desired arguments to be passed on to \code{\link[brms]{loo}}
-(via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If "weights" is
-not provided by the user, \code{\link{bnec}} will set the default
-\code{method} argument in \code{\link[loo]{loo_model_weights}} to
-"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
+\item{loo_controls}{A named \code{\link[base]{list}} whose "fitting"
+element holds arguments to be passed on to \code{\link[brms]{loo}}. A
+single model is not weighted, so a "weights" element is accepted and not
+read. See \code{\link{bnec}}.}
 
 \item{...}{Further arguments to internal function.}
 }

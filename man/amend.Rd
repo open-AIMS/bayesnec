@@ -35,10 +35,16 @@ model types you which to include to the modified fit. Adding models to a
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If "weights" is
-not provided by the user, \code{\link{bnec}} will set the default
-\code{method} argument in \code{\link[loo]{loo_model_weights}} to
-"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
+If no \code{method} is named in "weights", \pkg{bayesnec} sets the
+\code{method} argument of \code{\link[loo]{loo_model_weights}} to
+"pseudobma", whichever function assembles the model set.
+\code{\link{amend}} and \code{update} operate on an existing set and keep
+the method that set was built with, unless the caller names another.
+\code{\link{pull_out}} takes no weighting method at all: it reports and
+ignores one given in "weights" and always keeps the set's own.
+\code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
+see \code{\link{c.bnecfit}} for how they decide the method. See
+?\code{\link[loo]{loo_model_weights}} for further info.}
 
 \item{x_range}{A range of predictor values over which to consider extracting
 ECx.}

@@ -639,17 +639,52 @@ retrieve_valid_family <- function(named_list, data, link_source = "none") {
   validate_family(family, link_source = link_source)
 }
 
+#' The LOO controls a model-averaged fit is built with
+#'
+#' Supplies the documented default weighting method wherever the caller has
+#' not named one. Every route that assembles a model set passes its
+#' \code{loo_controls} through here, so the method a set is weighted by depends
+#' on what was asked for rather than on which function assembled it. See #320.
+#'
+#' @param loo_controls The caller's \code{loo_controls}, which may be missing.
+#' @param family_str A \code{\link[base]{character}} string naming the family,
+#' used only by \code{validate_loo_controls()}.
+#'
+#' @return A named \code{\link[base]{list}} of two elements, whose
+#' \code{weights$method} is always set.
+#'
 #' @noRd
 define_loo_controls <- function(loo_controls, family_str) {
   if (missing(loo_controls)) {
     loo_controls <- list(fitting = list(), weights = list(method = "pseudobma"))
   } else {
     loo_controls <- validate_loo_controls(loo_controls, family_str)
-    if (!"method" %in% names(loo_controls$weights)) {
+    # is.null() rather than a name test: pull_out() and update.bnecfit() pass
+    # the method they read off the object being operated on, which is NULL for
+    # an object that recorded none. The name is then present with a NULL value,
+    # loo::loo_model_weights() resolves that through match.arg() to its own
+    # first choice of "stacking", and the caller gets stacking without having
+    # asked for it -- which is #320 reached by a second route.
+    if (is.null(loo_controls$weights$method)) {
       loo_controls$weights$method <- "pseudobma"
     }
   }
   loo_controls
+}
+
+#' \code{loo_controls$weights} for a method that may be unknown
+#'
+#' An empty list where the method is \code{NULL}, so that
+#' \code{define_loo_controls()} supplies the default rather than the
+#' caller passing \code{method = NULL} down to \code{loo}.
+#'
+#' @param method A length-1 \code{\link[base]{character}}, or \code{NULL}.
+#'
+#' @return A named \code{\link[base]{list}}, possibly empty.
+#'
+#' @noRd
+weights_controls <- function(method) {
+  if (is.null(method)) list() else list(method = method)
 }
 
 #' @noRd

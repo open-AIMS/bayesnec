@@ -82,7 +82,7 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
 
   amend_model_set(
     object = object, mod_fits = object$mod_fits,
-    old_method = attributes(object$mod_stats$wi)$method,
+    old_method = fit_weights_method(object),
     drop = if (missing(drop)) NULL else drop,
     add = if (missing(add)) NULL else add,
     loo_controls = if (missing(loo_controls)) NULL else loo_controls,
@@ -194,7 +194,11 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   if (!is.null(loo_controls)) {
     fam_tag <- mod_fits[[1]]$fit$family$family
     loo_controls <- validate_loo_controls(loo_controls, fam_tag)
-    if (!"method" %in% names(loo_controls$weights)) {
+    # is.null() rather than a name test, for the reason define_loo_controls()
+    # gives: a name present with a NULL value is not a request for a method,
+    # and reading it as one had the two functions disagree about the same
+    # argument.
+    if (is.null(loo_controls$weights$method)) {
       loo_controls$weights$method <- old_method
     }
     is_new_method_old <- identical(loo_controls$weights$method, old_method)
@@ -207,10 +211,12 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
       }
     }
   } else {
-    # A bayesnecfit carries no weighting method, so leave `weights` empty
-    # rather than passing method = NULL down to loo_model_weights().
-    old_weights <- if (is.null(old_method)) list() else list(method = old_method)
-    loo_controls <- list(fitting = list(), weights = old_weights)
+    # A bayesnecfit records no weighting method, so leave `weights` empty
+    # rather than passing method = NULL down to loo_model_weights(), which
+    # resolves it to stacking. expand_manec() fills an empty `weights` with the
+    # documented default. See #320.
+    loo_controls <- list(fitting = list(),
+                         weights = weights_controls(old_method))
   }
   bnec_rec <- attr(object, "bnec_record")
   model_set <- names(mod_fits)
