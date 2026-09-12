@@ -140,7 +140,8 @@ ggplot(simazine, aes(x = concentration, y = fvfm)) +
   theme_classic()
 ```
 
-Look at the data before fitting anything. The response is flat across the two
+The first step of any analysis is to look at the data before fitting anything.
+The response is flat across the two
 lowest concentrations, declines from `r min(simazine$concentration[simazine$concentration > 1])`
 onwards, and is still falling at the highest concentration tested.
 
@@ -174,10 +175,21 @@ response. Where zeros are part of the process rather than a recording
 floor, see [*Hurdle and zero-inflated concentration-response models*](https://open-aims.github.io/bayesnec/articles/example6.html), which covers the families that
 model them explicitly.
 
-## The form of the family question
+## The scale of the response
 
-The family question has a different form for a continuous bounded response than
-for a count, and `bayesnec` provides a different check for each.
+Choosing a family is a statement about what kind of quantity the response is:
+the values it can take, the bounds it cannot cross, and how its variance behaves
+as its mean changes. A proportion measured on a continuous scale, a count of
+successes out of a known number of trials, and a strictly positive measurement
+are three different kinds of quantity, and each has a family that can represent
+it. [*Single model usage*](https://open-aims.github.io/bayesnec/articles/example1.html) sets out the families `bayesnec` supports and what
+each assumes.
+
+The question therefore takes a different form for each kind of response, and
+`bayesnec` provides a different check for each. Here the response is a
+continuous proportion, so the family is `Beta`, and the two things to establish
+are whether any value lies outside its support and whether its variance needs a
+free parameter.
 
 `Beta` estimates a dispersion parameter, `phi`, from the data. There is
 therefore no over-dispersion decision to take: the family already has a free
@@ -241,7 +253,7 @@ is a decision made for this document rather than advice.
 
 Compare the retained draws and not `iter`. `iter` counts warmup as well as
 sampling, and the fraction discarded is a choice each package makes for itself.
-`bnec()` takes `chains = 4` and `iter = 1e4`, and sets `warmup` to
+`bayesnec` takes `chains = 4` and `iter = 1e4`, and sets `warmup` to
 `floor(iter / 5) * 4`, discarding four fifths and retaining 8000 draws. The call
 above sets `iter` to `r 4000` with two chains, and the same warmup rule leaves
 `r (4000 - floor(4000 / 5) * 4) * 2`. The two `iter` values differ by a factor of
@@ -259,7 +271,9 @@ equations fail, which is what makes steps 3 and 5 a demonstration rather than an
 assertion. The settings are raised to the defaults in step 3, and every estimate
 reported in step 5 comes from the fit made there.
 
-An analysis does not do this. Two arguments matter once a real fit is marginal:
+Running short is done here to produce a screen failure to examine, and is not
+something an analysis should copy. Where a fit is genuinely marginal, two
+arguments are the ones to reach for:
 
 - `iter` and `warmup`. A model with a poorly identified parameter may need more
   draws. Raise `iter` first when Rhat is marginal or the effective sample size
@@ -272,10 +286,15 @@ An analysis does not do this. Two arguments matter once a real fit is marginal:
 ## The set as fitted
 
 `model = "decline"` requests the equations that describe a declining response,
-of which `r length(models()$decline)` are in the group. Two mechanisms then
-reduce it. Some equations are excluded before fitting, because they are invalid
+of which there are `r length(models()$decline)` currently in `bayesnec`. The
+remaining equations in the package describe hormesis, a response that rises
+above the control before it falls. There is no evidence of hormesis in these
+data, so they are not considered here. Two mechanisms then reduce it from this
+original set. Some equations are excluded before fitting, because they are invalid
 for the family or the predictor; [*Model details*](https://open-aims.github.io/bayesnec/articles/example2b.html) sets out the equations and
-the rules that govern them. Others are attempted and fail to fit.
+the rules that govern them. Others are attempted and fail to fit, which happens
+with complex non-linear models, and particularly with those that have many
+parameters.
 
 `bnec_record()` reports both, so neither has to be reconstructed from the fitted
 object:
@@ -283,6 +302,7 @@ object:
 ```{r set-fitted}
 rec <- bnec_record(fit_reduced)
 rec$excluded
+rec$attempted
 ```
 
 `requested` is partitioned exactly by `attempted` and `excluded$model`. An
@@ -356,15 +376,17 @@ check_sampling(fit_reduced)
 
 The table gives one row per fitted model, with three diagnostics: the largest
 Rhat, the smallest effective sample size, and the number of divergent
-transitions.
+transitions. Each is compared against a cutoff, and `failed` is `TRUE` where any
+of the three is missed.
 
-All three cutoffs are arguments. The Rhat default of 1.01 and the ESS default of
+The cutoffs are arguments to `check_sampling()` and can be changed. The Rhat
+default of 1.01 and the ESS default of
 400 follow published recommendations [@Vehtari2021]; the divergence default of
 10 does not. Stan's own guidance is that *any* divergence means the sampler
 failed to explore the posterior. The default of ten is a package convention
 rather than a published recommendation: these non-linear models commonly produce
-a small number of divergent transitions near a parameter boundary, and
-`?check_sampling` says the same. The value 1.01 is the `bayesnec` default
+a small number of divergent transitions near a parameter boundary, as described
+in `?check_sampling`. The value 1.01 is the `bayesnec` default
 throughout: `rhat()`, `summary()` and `check_sampling()` agree on it.
 
 Read `min_ess` rather than `min_ess_ratio` when deciding. The 400 is an absolute
@@ -382,7 +404,8 @@ cent at the default. At an equal divergence rate the same fit therefore produces
 more of them at the defaults, and the divergence cutoff is harder to clear
 there.
 Neither setting is uniformly stricter, and a screen result is therefore a
-property of the settings as much as of the model. State the settings with it.
+property of the settings as much as of the model. It is always important to
+state the settings used.
 
 The ratio is reported beside the count because it answers a different question
 from the one the cutoff answers: it separates a model that cleared 400 because
@@ -404,14 +427,15 @@ failed
 An equation that misses the effective sample size or Rhat threshold with no
 divergent transitions has been sampled from a posterior the sampler could
 traverse. It was not sampled for long enough to describe that posterior, and both
-diagnostics are themselves estimated less precisely from fewer draws. More draws
-are the remedy, and such an equation is expected to pass once it has them, so
-excluding it on this evidence would be premature.
+diagnostics are themselves estimated less precisely from fewer draws. Refitting
+with a higher `iter` is what such an equation needs, and it is expected to pass
+once it has them, so excluding it on this evidence would be premature.
 
-An equation that reports divergent transitions is reporting the shape of its
-posterior. A divergence records a trajectory the sampler could not follow at the
-step size it adapted to, and taking more draws does not change the shape being
-sampled from. Where such an equation is also the most heavily parameterised in
+Divergent transitions are different, because they describe the posterior rather
+than the run. A divergence is recorded when the sampler's trajectory through
+parameter space goes numerically unstable, which happens where the posterior has
+curvature too sharp for the step size adapted during warmup. Taking more draws
+samples the same surface for longer and does not smooth it. Where such an equation is also the most heavily parameterised in
 the set, the usual explanation is that the design does not support it:
 
 ```{r parameters}
@@ -443,7 +467,10 @@ only the first.
 
 ## Screening the model set
 
-Only models that pass the sampler diagnostics are retained.
+Only models that pass the sampler diagnostics are retained. The screen reads the
+sampler and nothing else: whether an equation reproduces the data is a separate
+question, and removing an equation for that silently would hide the
+discrepancies the fit checks exist to show.
 
 ```{r exclude, message = TRUE}
 screened_reduced <- screen_models(fit_reduced)
@@ -455,10 +482,6 @@ naming every threshold it missed rather than only the first. An exclusion step
 that leaves no record is not reproducible, which is why the message is on by
 default and why `quiet = TRUE`, which suppresses it, should not be used in an
 analysis that will be reported.
-
-It screens on the sampler only. Whether a model reproduces the data is a
-modelling result rather than a reason the fit is unusable, and dropping on it
-silently would hide the discrepancies the fit checks detect.
 
 If every candidate fails, `screen_models()` stops with an error listing the
 reasons rather than returning a meaningless average, which signals a return to
@@ -490,13 +513,11 @@ names(failed_models(fit))
 
 Of the `r sum(check_sampling(fit_reduced)$failed)` equations the screen removed at the reduced settings, `r length(setdiff(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], c(names(failed_models(fit)), check_sampling(fit)$model[check_sampling(fit)$failed])))` now pass, on the same data and the same priors, because they were given more draws. Their failures were failures of the run, and more draws corrected them.
 
-The screen still removes `r paste(intersect(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], check_sampling(fit)$model[check_sampling(fit)$failed]), collapse = ", ")`, and on divergent transitions rather than on Rhat or effective sample size, which are estimated more precisely from more draws. That is the second kind: more sampling does not
-change the shape of a posterior, and a divergence count is a statement about that
-shape. The divergence cutoff is an absolute count, so a longer run
+The screen still removes `r paste(intersect(check_sampling(fit_reduced)$model[check_sampling(fit_reduced)$failed], check_sampling(fit)$model[check_sampling(fit)$failed]), collapse = ", ")`, and on divergent transitions rather than on Rhat or effective sample size, which are estimated more precisely from more draws. This is the second kind of failure, the one that describes the posterior rather than the run: more sampling does not change the curvature the sampler could not traverse. The divergence cutoff is an absolute count, so a longer run
 reports proportionally more divergences at an unchanged rate --- raising the
 settings makes this failure easier to see, not harder.
 
-And `r paste(names(failed_models(fit)), collapse = ", ")` now fails to fit at all. More sampling did not make it fit. That is the third kind, and it agrees with the parameter count.
+And `r paste(names(failed_models(fit)), collapse = ", ")` now fails to fit at all. More sampling did not make it fit, and would not be expected to: an equation with more free parameters than the design can determine has a posterior that is flat in some direction, and sampling a flat direction for longer does not locate a maximum that is not there. This is the third kind of failure, the one the parameter count anticipated.
 
 The priors and initial values `ecxll5` was given are retained on the failed fit,
 and are the starting point for an adjustment if one is wanted, as
@@ -513,14 +534,17 @@ bnec(fvfm ~ crf(log(concentration), model = names(failed_models(fit))[1]),
 ```
 
 [*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html) covers how the defaults are built and what a sensible
-adjustment looks like. It is not done here, for the reason the parameter count
-gave: the equation is not failing because it was run badly.
+adjustment looks like. It is not attempted here: a prior wide enough to let
+`ecxll5` fit would be doing the work the data cannot, and the estimate it
+produced would be a property of that prior.
 
-Running short and then correcting it is a more useful demonstration than either
-on its own, because the correction is what distinguishes the three. A methods
-statement that says some models exceeded a cutoff does not say whether more
-sampling would have made them pass. One that says the sampling was increased, and
-reports which models then passed and which did not, does.
+Fitting twice, once short and once at the defaults, is what separates the three
+kinds of failure from one another. One fit cannot: an equation that missed a
+cutoff might have passed with more draws, and the table alone does not say which
+would have. A methods statement has the same difficulty. Saying that some
+equations exceeded a cutoff leaves open whether more sampling would have changed
+that, and saying that the sampling was increased and reporting which equations
+then passed does not.
 
 The set used from this point is the one fitted at the defaults, and every
 estimate reported in steps 4 and 5 comes from it.
@@ -529,41 +553,52 @@ estimate reported in steps 4 and 5 comes from it.
 fit_screened <- screen_models(fit)
 ```
 
+Chain mixing has to be inspected as well, and for every equation rather than for
+the worst one. Poor mixing occurs at an acceptable Rhat, and there is no
+established scalar that detects what rank-normalised split-Rhat and bulk and
+tail effective sample size miss.
+
+```{r exmp9-chains, out.width = "90%", fig.asp = 0.75}
+# One equation is shown here as an example. check_chains() on the whole set
+# writes one page per model to a file, which is the form worth archiving.
+ms <- fit_screened$mod_stats
+check_chains(pull_out(fit_screened, model = ms$model[which.max(ms$wi)]))
+```
+
+Each row is one parameter of the equation. The right column is the trace, one
+line per chain, and the left column is the autocorrelation of each chain against
+lag. What to look for in the trace: chains overlapping one another across its
+whole width, with no drift and no excursion that one chain makes and the others
+do not. A chain that wanders into a region the others never visit is the visual
+form of a failed Rhat. In the autocorrelation, look for a fall to near zero
+within a few lags; a slow decay is the visual form of a low effective sample
+size. These chains overlap throughout and their autocorrelation is gone by about
+the fifth lag.
+
+For the whole set, `check_chains()` takes a filename and writes one page per
+model, which keeps the output out of a report while leaving a record that can be
+inspected and archived:
+
+```{r chains, eval = FALSE}
+check_chains(fit_screened, filename = "simazine_check_chains")
+```
+
 ```{r exmp9-plot-after}
 # autoplot() returns the predictor on the scale it was recorded on, having
 # back-transformed the log the formula applied, so the spacing is asked of the
 # scale and the breaks are the measured concentrations. Transforming the breaks
-# instead would relabel the axis without respacing it. nec = FALSE suppresses
-# the plot's own annotation, which is drawn on the fitted scale and would
-# contradict the back-transformed value reported in step 5.
-autoplot(fit_screened, nec = FALSE) +
+# instead would relabel the axis without respacing it.
+autoplot(fit_screened) +
   scale_x_continuous(transform = "log", breaks = conc_breaks)
 ```
 
-The averaged curve with its credible band, over the retained set. `autoplot()`
-back-transforms the predictor, so the axis is in the units the experiment was run
-in even though the fit used `log(concentration)`; the estimates in step 5 are not
-back-transformed unless `xform` is supplied, which is why the two are reported
-together there. The band should contain the bulk of the observations and widen
-where the data are sparse; a band that excludes whole groups is a fit problem
-rather than a sampler one, and belongs to step 4.
-
-Chain mixing has to be inspected as well, and for every model rather than for
-the worst one. Poor mixing occurs at an acceptable Rhat, and there is no
-established scalar that detects what rank-normalised split-Rhat and bulk and
-tail effective sample size miss. `check_chains()` takes a filename and writes
-one page per model, which keeps the output out of a report while leaving a
-record that can be inspected and archived:
-
-```{r chains, eval = FALSE}
-check_chains(fit, filename = "simazine_check_chains")
-```
-
-What to look for: chains overlapping one another across the whole trace, with no
-drift and no excursion that one chain makes and the others do not. A chain that
-wanders into a region the others never visit is the visual form of a failed
-Rhat, and a chain that moves slowly through the same region is the visual form
-of a low effective sample size.
+The averaged curve with its credible band, over the retained set, with the
+model-averaged *N(S)EC* marked. `autoplot()` back-transforms both the predictor
+and the annotation, so the axis is in the units the experiment was run in even
+though the fit used `log(concentration)`, and the marked value is the one step 5
+reports with `xform = exp`. The band should contain the bulk of the observations
+and widen where the data are sparse; a band that excludes whole groups is a fit
+problem rather than a sampler one, and belongs to step 4.
 
 # 4. Fit diagnostics
 
@@ -640,8 +675,9 @@ analysis reports, not only the no-effect concentration. An experiment whose
 lowest treatment is not a control is being analysed on that assumption and
 should say so.
 
-Defining the control by position rather than by value is what makes the
-convention robust to a common preparation. Analysis is often done on a log scale,
+Identifying the control by its position rather than by its value keeps the
+convention intact under a common preparation. Analysis is often done on a log
+scale,
 and a small constant is added to the concentrations so that a zero control can be
 plotted and fitted there. Whether the control is entered as 0, or as 0.001, or as
 one tenth of the lowest exposure, it remains the lowest value in the series and
@@ -749,13 +785,14 @@ What to state in a methods section:
 - **the estimates with their credible intervals**, and the weights of the
   retained models.
 
+`summary()` returns the retained equations with their weights and the
+model-averaged estimate. The set mixes threshold and smooth equations, so that
+estimate is a mixture of *NEC* and *NSEC* draws --- the *N(S)EC* --- and should
+not be reported as a *NEC*.
+
 ```{r report}
 summary(fit_screened)
 ```
-
-`summary()` reports the model-averaged *N(S)EC*: the set mixes threshold and
-smooth equations, so the averaged estimate is a mixture of *NEC* and *NSEC*
-draws and should not be reported as a *NEC*.
 
 The predictor was logged in the formula, so the threshold is returned on that
 scale, and `nec()`, `nsec()` and `ecx()` all take an `xform` argument to put it
@@ -766,9 +803,12 @@ rbind(log_scale = nec(fit_screened),
       measured  = nec(fit_screened, xform = exp))
 ```
 
-Both rows are plausible as concentrations in a series running from
-`r min(simazine$concentration)` to `r max(simazine$concentration)`, which is why
-a reported value has to state its scale. Only the second is one.
+Both rows fall inside the tested range of `r min(simazine$concentration)` to
+`r max(simazine$concentration)`, so neither is obviously wrong on inspection.
+Only the second is a concentration: the first is its natural logarithm, and
+reporting it as though it were a concentration would understate the threshold by
+a factor of `r round(exp(1), 1)` for every unit on the logged scale. A reported
+value has to state the scale it is on.
 
 ECx values are the other commonly required endpoint, read from the same screened
 set:
