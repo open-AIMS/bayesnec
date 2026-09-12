@@ -44,9 +44,22 @@
 #' against the fitted range and computed by three different formulas that
 #' agreed only for a monotonic curve.
 #'
-#' Where the curve does not fall to the reference anywhere in the predictor
-#' range the NSEC is not identified and \code{NA} is returned, with a warning
-#' reporting how many draws were affected.
+#' Two consequences follow from the reference being a quantile of the control
+#' posterior. A \code{sig_val} share of the draws have a control at or below the
+#' reference, and each of those reaches it at the control itself, so the control
+#' concentration is that draw's NSEC. Fisher and Fox (2023) report the same
+#' behaviour: the lower credible bound of the NSEC is the lowest concentration
+#' whenever \code{sig_val} is above the quantile the bound is read at, 0.025
+#' under the default \code{prob_vals}. And the crossing is sought from the
+#' control upward, so extending \code{x_range} below the data does not place an
+#' estimate at a concentration lower than any tested.
+#'
+#' Where a draw's curve does not reach the reference at any tested concentration
+#' its NSEC is above the highest concentration in the prediction grid. Such a
+#' draw returns \code{NA} and is excluded from the summary, which is therefore
+#' censored above that concentration, and a warning reports how many draws were
+#' affected. Extending \code{x_range} will estimate it, at the price of reading
+#' the curve where there are no data.
 #' 
 #' Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 #' \code{\link{compare_fitted}} do not require the same level of flexibility
@@ -180,9 +193,8 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   # of the predicted curve when hormesis_def was "max". The control is now
   # always the reference, so the branch selects nothing and hormesis_def has
   # been removed. See D15 rulings 1 and 4.
-  nsec_out <- vapply(seq_len(nrow(p_samples)), function(i) {
-    crossing_x(p_samples[i, ], reference, x_vec)
-  }, numeric(1))
+  x_control <- control_x(object)
+  nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, x_control)
   n_missing <- sum(is.na(nsec_out))
   nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
   bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
@@ -367,10 +379,8 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
     reference <- quantile(control, sig_val)
     ecnsecP <- as.numeric((control - reference) / control * 100)
     ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-    nsec_out <- vapply(seq_len(nrow(p_samples)), function(i) {
-      crossing_x(p_samples[i, ], reference, x_vec)
-    }, numeric(1))
-    
+    nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec))
+
   } else {
     groups <-  unlist(unique(object$data[group_var]))
     out_vals <- lapply(groups, FUN = function(g){
@@ -383,9 +393,7 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
       reference <- quantile(control, sig_val)
       ecnsecP <- as.numeric((control - reference) / control * 100)
       ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-      nsec_out <- vapply(seq_len(nrow(p_samples)), function(i) {
-        crossing_x(p_samples[i, ], reference, x_vec)
-      }, numeric(1))
+      nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec))
       nsec_out <- unlist(nsec_out)
       attr(nsec_out, "ecnsec_relativeP") <- ecnsec
       nsec_out
@@ -499,7 +507,7 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
     control <- p_samples[1, "Prediction"]
     ecnsec <- as.numeric((control - reference) / control * 100)
     nsec_out <- apply(p_samples, 2, function(col) {
-      crossing_x(col, reference, x_vec)
+      crossing_x(col, reference, x_vec, x_start = min(x_vec))
     })
     if (inherits(xform, "function")) {
       xform(nsec_out)
@@ -529,7 +537,7 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
       control <- p_samples[1, "Prediction"]
       ecnsec <- as.numeric((control - reference) / control * 100)
       nsec_out <- apply(p_samples, 2, function(col) {
-        crossing_x(col, reference, x_vec)
+        crossing_x(col, reference, x_vec, x_start = min(x_vec))
       })
 
       if (inherits(xform, "function")) {

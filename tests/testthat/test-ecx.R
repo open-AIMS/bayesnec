@@ -233,10 +233,14 @@ test_that("the ecx reference is the control, not the maximum of the curve", {
   # 13.5, which the curve reaches while still rising and again while falling.
   expect_true(all(out > x_vec[which.max(curve)]))
   expect_equal(out[1], out[2])
-  # The same curve read from its maximum crosses 13.5 on the rising limb, at
-  # an x below the peak. This is what the estimator used to return.
+  # The same curve read from its maximum has a target of 13.5, which it is below
+  # where the grid begins: it rises through that level rather than declining to
+  # it. Up to #325 the estimator returned that rising-limb crossing, at an x
+  # below the peak; it now reports no estimate, x_start being NA for an ECx. The
+  # point either way is that the maximum-anchored reference does not give the
+  # descending crossing the estimate is meant to be.
   from_max <- ecx_from_posterior(p, x_vec, 10, "absolute", c(15, 15), NA_real_)
-  expect_true(all(from_max < x_vec[which.max(curve)]))
+  expect_true(all(is.na(from_max)))
 })
 
 

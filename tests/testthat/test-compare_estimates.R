@@ -62,12 +62,27 @@ test_that("prob_diff is computed over the identified draws", {
   # headline output and NA is a value rather than an error.
   skip_on_cran()
   x <- list(a = ecx4param, b = nec4param)
+  # x_range stops short of where nec4param's curve reaches the reference, which
+  # is what leaves a draw with no crossing to find; ecx4param's curve reaches it
+  # within the same range, so the comparison keeps a few identified pairs to
+  # compute the probability from. Over the full range these fixtures have no
+  # censored draw at all: one at or below the reference at the control reaches
+  # it there and returns the control rather than NA, so the censored class is
+  # only the curves that never reach the reference (#325).
   out <- suppressWarnings(
-    compare_estimates(x, comparison = "nsec", resolution = 50)
+    compare_estimates(x, comparison = "nsec", resolution = 50,
+                      x_range = c(0, 1.4))
   )
   expect_false(anyNA(out$prob_diff$prob))
   expect_true(all(out$prob_diff$prob >= 0 & out$prob_diff$prob <= 1))
   # The posteriors this was computed from do contain censored draws, so the
   # assertion above is testing the path it is meant to.
   expect_true(any(vapply(out$posterior_list, anyNA, logical(1))))
+  # And over the full range there are none to exclude, which is the other half
+  # of the same statement.
+  full <- suppressWarnings(
+    compare_estimates(x, comparison = "nsec", resolution = 50)
+  )
+  expect_false(any(vapply(full$posterior_list, anyNA, logical(1))))
+  expect_false(anyNA(full$prob_diff$prob))
 })

@@ -210,8 +210,22 @@ test_that("crossing_x interpolates, and returns NA where there is no crossing", 
   expect_false(crossing_x(y, 5.5, x) %in% x)
   # A target the curve never reaches. This is the case that used to return the
   # nearest grid point: for a curve that never declines to the target that is
-  # x[1], the lowest concentration, reported as the ECx.
+  # x[11], the highest concentration, reported as an interpolated estimate.
   expect_true(is.na(crossing_x(y, -5, x)))
+  # x_start does not reach that case: the curve begins above the target, so the
+  # search is the thing that failed.
+  expect_true(is.na(crossing_x(y, -5, x, x_start = x[1])))
+  # A series already at or below the target where the grid begins. There is no
+  # sign change to find, and the estimate is at or below x[1] rather than above
+  # x[11], so the caller says which value it takes. The default is NA, which is
+  # what an ECx target requires; the NSEC callers pass the control concentration.
+  # Equality counts, which is the drc case: nsec.drc reads the reference off the
+  # control's own lower confidence limit, so the lower curve begins exactly on
+  # it. See #325.
+  expect_true(is.na(crossing_x(y, 10, x)))
+  expect_equal(crossing_x(y, 10, x, x_start = x[1]), x[1])
+  expect_equal(crossing_x(y, 12, x, x_start = x[1]), x[1])
+  expect_equal(crossing_x(y, 12, x, x_start = -1), -1)
   expect_true(is.na(crossing_x(rep(NA_real_, 11), 5, x)))
   expect_true(is.na(crossing_x(y, NA_real_, x)))
   # A hormetic curve: the target is below the control, so the rising limb

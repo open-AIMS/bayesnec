@@ -66,9 +66,13 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    out <- vapply(seq_len(nrow(post)), function(i) {
-      crossing_x(post[i, ], reference, pred_data$x)
-    }, numeric(1))
+    # The reference and the start of the search are the same grid point by
+    # construction, so a draw at or below the reference there takes that point
+    # as its NSEC. Unlike nsec.bayesnecfit() this is the first column of the
+    # grid rather than the lowest observed predictor value; the two differ only
+    # where bnec() was given an x_range, which this path has never honoured
+    # (D15 ruling 2). See #325.
+    out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1])
     n_missing <- sum(is.na(out))
     if (n_missing > 0) {
       # Names the equation. bnec() calls this once per model, so on the default

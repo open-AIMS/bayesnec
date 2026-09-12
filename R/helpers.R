@@ -1549,20 +1549,51 @@ sub_x_transformation <- function(value, formula) {
 #' Anchoring the target on the control is what makes the first crossing the
 #' right one for a hormetic curve as well: the target is below the control, the
 #' rising limb sits above it, so the only crossing is on the descending limb.
+#' That holds for a draw whose curve starts above the target, which is every
+#' draw for an ECx target and all but the lower \code{sig_val} tail for an NSEC
+#' reference; \code{x_start} decides the remainder.
+#'
+#' A search for a sign change cannot distinguish a curve that never reaches the
+#' target from one that has already reached it at the first grid point, and the
+#' two are opposite statements about the estimate: one places it above the end
+#' of the grid, the other at or below its start. \code{x_start} is the value the
+#' second case takes, so that the caller rather than \code{zero_crossings()}
+#' decides it. See #325.
+#'
+#' One case changes for a hormetic curve. Where such a curve begins below the
+#' target it rises through it and declines through it again, and the first sign
+#' change is the rising one --- the concentration at which the response reaches
+#' the target on the way up, which is not an estimate of anything. That is now
+#' \code{x_start} instead. For an NSEC the draw is at or below the reference at
+#' the control, so the control is its estimate; for an ECx the case is reachable
+#' only under \code{type = "direct"} with a target above the curve, and
+#' \code{NA} says so.
 #'
 #' @param y A \code{\link[base]{numeric}} vector, one draw's predicted curve
 #' over \code{x_vec}.
 #' @param target A \code{\link[base]{numeric}} value, the response level
 #' sought.
 #' @param x_vec A \code{\link[base]{numeric}} vector of predictor values.
+#' @param x_start The value returned where the curve has already reached the
+#' target at the first grid point. Defaults to \code{NA_real_}, which is what
+#' an ECx target requires: it is derived from the draw's own control and cannot
+#' be met before the grid begins, so a curve starting at or below it is a
+#' failure of the search rather than an estimate. The NSEC callers pass the
+#' control concentration, which is the estimate for such a draw.
 #'
 #' @return A \code{\link[base]{numeric}} value, or \code{NA}.
 #'
 #' @importFrom modelbased zero_crossings
 #' @noRd
-crossing_x <- function(y, target, x_vec) {
+crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   if (all(is.na(y)) || is.na(target)) {
     return(NA_real_)
+  }
+  # y[1] rather than the first value that is not NA: x_start means the target is
+  # already met where the grid begins, and a curve whose first prediction is
+  # missing says nothing about that, so it falls through to the search.
+  if (!is.na(y[1]) && y[1] <= target) {
+    return(x_start)
   }
   val <- suppressWarnings(min(zero_crossings(y - target)))
   if (!is.finite(val)) {
@@ -1571,6 +1602,79 @@ crossing_x <- function(y, target, x_vec) {
   floor_x <- x_vec[floor(val)]
   ceiling_x <- x_vec[ceiling(val)]
   floor_x + (val - floor(val)) * (ceiling_x - floor_x)
+}
+
+#' The predictor value the control is read at
+#'
+#' The lowest \emph{observed} value of the predictor named in \code{crf()}, on
+#' the scale the user supplied it on. \code{bayesnec} treats that value as the
+#' control: the design's zero concentration, or the small value substituted for
+#' it where the predictor is modelled on a log scale.
+#'
+#' Read from the data rather than from the prediction grid so that supplying
+#' \code{x_range} does not change it, and therefore does not change the
+#' reference or any estimate anchored on it. See D15 ruling 2.
+#'
+#' For a \code{\link{bayesnechurdlefit}} the value is taken from the survival
+#' component, matching \code{hurdle_component_preds()}, which takes its
+#' predictor range from that side because the growth fit is built on survivors
+#' only and so does not see every concentration that was tested.
+#'
+#' @param object A \code{\link{bayesnecfit}}, \code{\link{bayesmanecfit}} or
+#' \code{\link{bayesnechurdlefit}}.
+#'
+#' @return A \code{\link[base]{numeric}} value.
+#'
+#' @importFrom stats model.frame
+#' @noRd
+control_x <- function(object) {
+  grid_obj <- object
+  if (is_bayesnechurdlefit(grid_obj)) {
+    grid_obj <- grid_obj$survival
+  }
+  if (inherits(grid_obj, "bayesmanecfit")) {
+    grid_obj <- suppressMessages(
+      pull_out(grid_obj, model = names(grid_obj$mod_fits)[1])
+    )
+  }
+  mod_dat <- model.frame(grid_obj$bayesnecformula, grid_obj$fit$data)
+  x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
+  min(grid_obj$fit$data[[x_var]])
+}
+
+#' The NSEC of each draw
+#'
+#' The concentration at which each draw's curve reaches the reference, sought
+#' from the control upward.
+#'
+#' Two things follow from the reference being a quantile of the control
+#' posterior. A draw whose own control lies at or below it -- \code{sig_val} of
+#' them, by construction of the quantile -- reaches the reference at the
+#' control, and the control concentration is its NSEC rather than a failure to
+#' estimate one. This is the behaviour Fisher and Fox (2023) describe and
+#' report: their Table 3 gives a lower credible bound of zero at every
+#' significance level above the 0.025 quantile the bound is read at, and those
+#' draws are what produces it. And the grid is searched only at or above the
+#' control, because the reference is defined there: a crossing below it would be
+#' read off an extrapolation into concentrations the design did not cover, and
+#' would make the estimate depend on how far \code{x_range} extends. See #325.
+#'
+#' @param post A draws by grid \code{\link[base]{matrix}} of predicted means.
+#' @param reference A \code{\link[base]{numeric}} value, the \code{sig_val}
+#' quantile of the control posterior.
+#' @param x_vec A \code{\link[base]{numeric}} vector of predictor values, the
+#' columns of \code{post}.
+#' @param x_control A \code{\link[base]{numeric}} value, the predictor value
+#' the control is read at, from \code{control_x()}.
+#'
+#' @return A \code{\link[base]{numeric}} vector, one value per draw, \code{NA}
+#' where the curve does not reach the reference at any tested concentration.
+#' @noRd
+nsec_from_posterior <- function(post, reference, x_vec, x_control) {
+  keep <- x_vec >= x_control
+  vapply(seq_len(nrow(post)), function(i) {
+    crossing_x(post[i, keep], reference, x_vec[keep], x_start = x_control)
+  }, numeric(1))
 }
 
 #' Does the family have a lower bound on the response?
@@ -1628,32 +1732,10 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   control_nd <- newdata[1, , drop = FALSE]
   if (is.null(x_at)) {
-    x_at <- min(grid_obj$fit$data[[x_var]])
+    x_at <- control_x(object)
   }
   control_nd[[x_var]] <- x_at
   epred_fun(control_nd)[, 1]
-}
-
-#' The lowest observed concentration of a hurdle fit
-#'
-#' Taken from the \emph{survival} component, matching
-#' \code{hurdle_component_preds()}, which takes its predictor range from that
-#' side because the growth fit is built on survivors only and so does not see
-#' every concentration that was tested.
-#'
-#' @param object A \code{\link{bayesnechurdlefit}}.
-#'
-#' @return A \code{\link[base]{numeric}} value.
-#'
-#' @importFrom stats model.frame
-#' @noRd
-hurdle_control_x <- function(object) {
-  part <- object$survival
-  if (inherits(part, "bayesmanecfit")) {
-    part <- suppressMessages(pull_out(part, model = names(part$mod_fits)[1]))
-  }
-  mod_dat <- model.frame(part$bayesnecformula, part$fit$data)
-  min(part$fit$data[[attr(mod_dat, "bnec_pop")[["x_var"]]]])
 }
 
 #' Bring an estimate onto the scale the predictor axis is drawn on
