@@ -780,10 +780,29 @@ bias falls from `r f1(val("gamma", "ErC50", "p1"))`% to
 displaced by `r f1(val("gamma", "ErC10", "p1"))`% at the noisiest and
 `r f1(val("gamma", "ErC10", "p4"))`% at the most precise — it gets worse as the
 experiment improves, which is the signature of misspecification rather than of
-estimation error. An identity-link Gamma fixes the coefficient of variation along the whole
-curve, so a single value has to cover both the control scatter and the block of
-near-identical values that flooring creates, and the compromise falls on the
-shoulder of the curve where ErC10 is read. Its intervals are
+estimation error.
+
+The reason is in the variance rather than in the mean, and it is visible in a
+posterior predictive check. These data are generated with a residual standard
+deviation that is constant along the curve, so what each family should predict
+is known exactly. On the saved fit for the noisiest cell, the two Gaussian
+conventions do predict it: `measured` and `floored` both return a predicted
+spread of 0.86 to 0.93 times the generated 0.0114 at every concentration, and
+the ratio of their predicted spread at the top of the curve to that at the
+bottom is 1.02 and 0.98 against a true value of 1. An identity-link Gamma
+cannot, because it ties the residual standard deviation to the mean: it
+over-states the spread at the control by a factor of 3.5, understates it at the
+shoulder, and collapses it to zero at the floored values, a top-to-bottom ratio
+of five thousand. The floored block therefore carries almost all of the weight
+in the likelihood and the control scatter almost none, and the shoulder — which
+is where a 10% decline is read — is what gives way.
+
+That also locates what flooring does and does not damage. Under a Gaussian
+family the floored data are described by a correctly specified variance model;
+what the substitution changes is the mean structure, which is what Section 5.6
+reports. Under a Gamma the two failures compound.
+
+The Gamma's intervals are
 `r f2(val("gamma", "ErC50", "p4", "width") / val("measured", "ErC50", "p4", "width"))`
 times as wide as those of `measured` on ErC50, which is what keeps its ErC50
 coverage nominal while its point estimate for ErC10 is a fifth low.
@@ -1633,6 +1652,12 @@ the 2.1.3.1 release are the subject of results reported above: the `nec` and
 `ec50` priors are now built on the log of the predictor, and the initial-value
 search accepts chains individually. An analysis run under the CRAN release will
 not reproduce these numbers exactly.
+
+The posterior predictive figures quoted in Section 5.3 come from the saved fits.
+The study keeps one fitted object per cell and convention, and all 24 case fits,
+chosen by a seed fixed on the cell and convention names before any result was
+seen. They are not in the compendium's repository — 66 model-averaged fits is
+too much to track — and are fetched from the cluster with `hpc/fetch-fits.sh`.
 
 The case studies were computed when this vignette was built until the
 conventions became model-averaged over the whole declining set. Four datasets by
