@@ -481,21 +481,31 @@
 #' plan(sequential)
 #' }
 #'
-#' There is no \code{cores} or \code{parallel} argument: the plan already holds
-#' that state. \pkg{future} and \pkg{future.apply} are Suggests, so with either
-#' absent, or no plan set, the models are fitted in sequence exactly as before.
-#' \code{\link{amend}} uses the plan the same way, over the models it has to
-#' fit.
+#' No argument turns this on or off: the plan already holds that state.
+#' \code{cores} is a different matter -- it reaches \code{\link[brms]{brm}}
+#' through \code{...} as it always has, and under a plan it is honoured rather
+#' than overridden. \pkg{future} and \pkg{future.apply} are Suggests, so with
+#' either absent, or no plan set, the models are fitted in sequence exactly as
+#' before. \code{\link{amend}} uses the plan the same way, over the models it
+#' has to fit.
 #'
-#' Three things to know before setting one. Under a plan of more than one
-#' worker each model samples its chains in sequence, so \code{workers = 4} uses
-#' four cores in total and is no faster than the four \code{\link[brms]{brm}}
-#' already uses for chains; a plan is worth setting only where the models are
-#' slow enough for the fitting to dominate, which on a small set it is not.
-#' Measured on the thirteen-model set of \code{vignette("example2")}, two
-#' workers were 15 per cent slower than no plan at all, and twenty cores
-#' returned six per cent. Supply a \code{seed} if the run has to be
-#' reproducible. And the model-averaged quantities -- the averaged
+#' Three things to know before setting one.
+#'
+#' Chains and models compete for the same cores. Unless you pass \code{cores}
+#' yourself, each model in a parallel plan samples its chains one after another,
+#' so \code{workers = 4} uses four cores in total -- the same four
+#' \code{\link[brms]{brm}} already uses for the chains of one model. Only
+#' above that is a plan asking for anything more.
+#'
+#' Which run you are timing decides whether that matters. A first fit builds a
+#' Stan program for every model, and building them divides across workers
+#' cleanly: measured on the \code{"decline"} set of
+#' \code{vignette("example2")}, a cold run took 300 s with no plan and 150 s
+#' over eight workers. Run again with the programs already built, the same
+#' comparison is 99 s against 101 s -- nothing, because what a plan was
+#' overlapping has already been done.
+#'
+#' Supply a \code{seed} if the run has to be reproducible. And the model-averaged quantities -- the averaged
 #' \code{nec}, its interval, the stored prediction grid -- are not reproduced
 #' between a sequential and a parallel run, because \code{expand_manec()} draws
 #' from the session's RNG stream, which a sequential run advances and a parallel

@@ -68,7 +68,7 @@ y <- make_ecx_data(x = x, bot = 0, top = 1, beta = 0.5, ec50 = 5)
 set.seed(333)
 df_ <- data.frame(x = rep(x, 15), y = rnorm(15 * length(x), y, 0.2))
 exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3,
-              cores = 4)
+              cores = getOption("mc.cores", 1))
 ```
 
 Here we run `bnec` using `model =  "decline"` using a simulated data example for a Beta-distributed response variable. We are using the `"decline"` set here because we are not going to consider hormesis (these allow an initial increase in the response), largely to save time in fitting this example. Moreover, you might want to consider saving the output as an `.RData` file---doing so can be a useful way of fitting large model sets (ie `model = "all"`, or `model = "decline"`) at a convenient time (this can be very slow, and may be run overnight for example) so you can reload them later to explore, plot, extract values, and amend the model set as required.
@@ -234,58 +234,73 @@ autoplot(exp_5, nec = FALSE, all = FALSE) +
 
 ## Fitting the model set in parallel
 
-Every fit above passed `cores = 4`, which tells `brms` to sample the model's four chains at the same time. That is one of two things in a model set that can be done at once, and it is the narrower one: the chains of a single model. A model set is a second opportunity, because the models do not depend on one another and there are usually more of them than there are chains.
+The fit above passed `cores = 4`, which tells `brms` to sample that model's four chains at the same time; `chains` defaults to four. That is one of two things in a model set that can be done at once, and it is the narrower one: the chains of a single model. A model set is a second opportunity, because the models do not depend on one another and there are usually more of them than there are chains.
 
 `bayesnec` fits the models one at a time unless a [`future`](https://cran.r-project.org/package=future) plan says otherwise. Setting one before the call is all that is required:
 
 ```{r exmp2-parallel-basic, eval = FALSE}
 library(future)
 plan(multisession, workers = 8)
-exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3,
-              seed = 322)
+exp_5_par <- bnec(y ~ crf(x, model = "decline"), data = df_,
+                  iter = 2e3, seed = 322)
 plan(sequential)
 ```
 
-There is no `cores` or `parallel` argument to `bnec`. The plan already records how much of the machine you are willing to use, and a second way of saying it would only disagree with the first. `future` and `future.apply` are suggested rather than required packages: without them, or without a plan, the models are fitted in sequence exactly as they were before this feature existed. `amend` uses the plan in the same way, over whichever models it has to fit.
+There is no argument to `bnec` that turns this on or off: the plan already records how much of the machine you are willing to use, and a second way of saying it would only disagree with the first. A `cores` is different, and is passed through to `brms` as any other of its arguments is; what it does under a plan is the subject of *Chains within models* below. `future` and `future.apply` are suggested rather than required packages: without them, or without a plan, the models are fitted in sequence exactly as they were before this feature existed. `amend` uses the plan in the same way, over whichever models it has to fit, and `bnec_group` fits each level of the grouping variable in turn with that level's model set fitted in parallel.
 
-### Choosing the number of workers
+### Choosing a plan
 
-Under a plan of more than one worker each model samples its chains in sequence. `brms` parallelises across chains on its own account, so models in parallel on top of that would ask for `workers` times `chains` processes, and `bayesnec` passes `cores = 1` inside each worker to stop that happening by accident.
+`plan(multisession)` is the portable choice: it starts fresh R processes that talk to the parent over local sockets, and it is available on every platform. `plan(multicore)` forks the current process instead, which starts faster and shares memory rather than copying it, but forking is unavailable on Windows and inside RStudio and Positron, where the plan silently resolves to a single worker. `bnec` reports the number of workers it was given, so a plan that has collapsed to one is visible rather than merely slow.
 
-The arithmetic that follows is the part worth understanding. The sequential fit above already uses four cores, one for each chain. A plan with two workers uses two cores in total, so it is doing less work at once than the fit it replaces; four workers is the same four cores rearranged, one chain each of four models rather than four chains of one. Only above four workers is a plan asking the machine for something it was not already doing.
+Check that a plan works before committing a long run to it. Fit two models with a small `iter` under the plan you intend to use, and confirm it returns. The socket layer `multisession` depends on is outside R's control, and where it misbehaves the symptom is a run that neither finishes nor errors.
 
-| plan | cores in use | seconds | against no plan |
-|---|---|---|---|
-| no plan | 4, one per chain | 99 | -- |
-| `workers = 2` | 2, one per model | 114 | 0.87x |
-| `workers = 4` | 4, one per model | 108 | 0.92x |
-| `workers = 8` | 8, one per model | 101 | 0.98x |
-| `workers = 5`, `cores = 4` | 20, four per model | 94 | 1.06x |
+On the WSL2 machine these notes were written on, a two-model fit completed under `multicore` in five runs out of five, taking 84 to 90 seconds, and completed under `multisession` in none of four, each attempt producing no output at all before being killed. A separate thirteen-model run under `multisession` failed differently again: both workers stopped with `error writing to connection` and the parent then waited indefinitely.
 
-Measured 2026-09-12 on an otherwise idle 22-core workstation under WSL2, R 4.6.1, with the `cmdstanr` backend and `plan(multicore)`: the 13 models of the `"decline"` set that fit on this data, at `iter = 2e3` and `chains = 4`, each configuration in a fresh R session. The Stan programs were compiled once before timing began and reused, so these are sampling and overhead rather than a first run; compiling the set takes several minutes on top. One model, `ecxll5`, fails to initialise at this seed in every configuration alike.
+The cause is not established here and is very likely below R. The Windows subsystem logged name-resolution failures during these runs, which fits a problem in the socket layer that `multisession` relies on and `multicore` does not use; and the same code passes under `multisession` on Linux, macOS and Windows in this package's continuous integration, so whatever it is, it is not general. 
 
-Which is a disappointing result, and it is the honest one for a set this size. Two workers cost 15 per cent. Four and eight were still marginally behind the sequential fit. Only the nested configuration, using twenty cores against the baseline's four, came out ahead, and it did so by six per cent.
+The general lesson is the check, not the backend. If `multisession` stalls on your machine and you are on Linux or macOS, `multicore` avoids sockets altogether and is worth trying.
+### The Stan backend
 
-What that bounds is how much of the run a plan can touch at all. Twenty cores in place of four returned six per cent, so on this example at most a few per cent of the elapsed time is fitting that a plan can overlap; the rest is work it cannot. Some of that is the model weights, the leave-one-out comparisons and the prediction grid, which are computed after the models are fitted, in this process, whatever plan was set. How the remainder divides was not measured and is not claimed here.
+Under a forked plan, use the `cmdstanr` backend. The default, `rstan`, compiles each model into the session's temporary directory, which a forked worker shares with the process it was forked from; thirteen models compiling at once in eight forked workers failed, every one of them, with `cannot open the connection` from `stanc`. A `multisession` worker is a separate R session with a temporary directory of its own, so `rstan` is not affected there. `cmdstanr` names a compiled program after a hash of its Stan code and keeps it in a cache directory, so concurrent compiles of different models do not collide and a repeated run reuses what is already built. Set it with `options(brms.backend = "cmdstanr")`, which is what this package's vignettes are built with. `cmdstanr` is not on CRAN and is not a dependency of `bayesnec`; see [its installation instructions](https://mc-stan.org/cmdstanr/) if you do not already have it.
 
-So the question to ask is not how many workers to use but whether these models are slow enough to be worth parallelising at all. The models here take seconds. Where a single model takes minutes --- a large data set, a hurdle or group-level structure, many more draws --- the fitting is the run, the arithmetic above applies, and a plan with more workers than chains repays itself. Where a model set looks like this one, it will not.
+Two models in two forked workers did not collide and thirteen in eight did, so a small trial does not reveal this, and the two-model check below does not cover it. The explanation offered here is consistent with the shared temporary directory but was not isolated --- eight compilers running at once is also eight times the memory --- and it was seen on one machine.
 
-### Nesting the two levels
+### Run times
+
+The sequential fit above already uses four cores, one for each chain. A plan with two workers uses two cores in total, so it is doing less at once than the fit it replaces; four workers is the same four cores rearranged, one chain each of four models rather than four chains of one. Only above four is a plan asking the machine for more than it was already using.
+
+That reasoning describes the sampling and misses what dominates a first run, which is compilation. Each of these models is a separate Stan program and has to be built before it can be sampled, and building them is work that divides across workers as cleanly as anything could.
+
+| plan | cores in use | runs | median s | range | change vs no plan |
+|---|---|---|---|---|---|
+| no plan | 4, one per chain | 2 | 300 | 294-305 | -- |
+| `workers = 2` | 2, one per model | 3 | 226 | 216-240 | -24% |
+| `workers = 4` | 4, one per model | 2 | 174 | 168-181 | -42% |
+| `workers = 8` | 8, one per model | 2 | 150 | 147-153 | -50% |
+| `workers = 5`, `cores = 4` | 20, four per model | 2 | 154 | 150-157 | -49% |
+
+Measured 2026-09-12 on an otherwise idle 22-core workstation under WSL2, R 4.6.1, `cmdstanr`, `plan(multicore)`: the 13 of the 14 `"decline"` models that fit this data, `iter = 2e3`, `chains = 4`, each run in a fresh R session with the compiled-program cache emptied first, so every run builds all 13 programs. Runs during which any other R process appeared were discarded and repeated; three were.
+
+Against that, the same five configurations run again with the programs already built take 99, 114, 108, 101 and 94 seconds in the same order. Every plan is then level with the sequential fit or behind it, and two workers is 15 per cent worse. Compilation is what the plan was overlapping; once it is done there is little left to divide, because these models sample in seconds and the per-model overhead of handing work to a worker is of the same order.
+
+So the advice is about which run you are timing. A first fit of a model set, on a machine where the programs are not already built, is compilation-bound and parallelises well: halving the elapsed time at eight workers, on the measurement above. A repeat of the same set against a warm cache is sampling-bound, and for models as small as these the per-model overhead is of the same order as the sampling, so nothing is gained and a plan with too few workers loses. Where a single model takes minutes rather than seconds the sampling dominates in both cases and the first table's shape applies to the repeat run too.
+
+### Chains within models
 
 The two levels are not exclusive. Passing `cores` yourself is left alone by `bayesnec`, and nests deliberately:
 
 ```{r exmp2-parallel-nested, eval = FALSE}
 plan(multisession, workers = 5)
-exp_5 <- bnec(y ~ crf(x, model = "decline"), data = df_, iter = 2e3,
-              cores = 4, seed = 322)
+exp_5_nested <- bnec(y ~ crf(x, model = "decline"), data = df_,
+                     iter = 2e3, cores = 4, seed = 322)
 plan(sequential)
 ```
 
-That runs five models at a time with four chains each: twenty processes. It is the shape that suits a cluster allocation, where the number of cores is known in advance and is larger than any one model can use. Divide the allocation between the two levels rather than giving it all to either.
+That runs five models at a time with four chains each, so twenty chains are sampling at once. It is the shape that suits a cluster allocation, where the number of cores is known in advance and is larger than any one model can use. Divide the allocation between the two levels rather than giving it all to either.
 
 ### Reproducibility
 
-Each fitted model reproduces exactly under a parallel plan, given the same `seed`. That equality is not automatic. `future` gives each worker its own random number generator, `bayesnec`'s initial-value search seeds itself with `set.seed`, and `set.seed` does not restore the generator *kind*, so the same seed would otherwise have produced different starting values in a worker than in the parent. The worker restores the parent's generator before fitting, and the equality is tested.
+Each fitted model reproduces exactly under a parallel plan, given the same `seed`. That equality is not automatic. `future` gives each worker its own random number generator, `bayesnec`'s initial-value search seeds itself with `set.seed`, and `set.seed` does not restore the generator *kind*, so the same seed would otherwise have produced different starting values in a worker than in the parent. The worker restores the parent's generator kind before fitting, and the equality is tested.
 
 The model-averaged quantities are the exception, and the reason is mechanical. Once the models are fitted, `bayesnec` draws a seed from the session's random number stream and uses it to decide which posterior draws each model contributes to the averaged estimate. A sequential run has advanced that stream, by way of the `set.seed` each initial-value search performs; a parallel run leaves it untouched, so that models fitted in workers cannot disturb whatever the session was doing. The averaged `nec`, its credible interval and the stored prediction grid therefore differ between the two plans. Neither is wrong: they are two draws from the same weighting. Calling `set.seed` in your own session before `bnec` fixes that draw under a plan, and two parallel runs then agree.
 
@@ -293,26 +308,8 @@ The model-averaged quantities are the exception, and the reason is mechanical. O
 
 Each worker holds a complete fit while it is working, and fits are large. Eight workers on a large data set can exhaust memory where eight cores would have been fine, and a worker killed by the operating system ends the whole call rather than the one model it was fitting. If a run dies without an R error, reduce the worker count before looking anywhere else.
 
-Two smaller effects go with it. A worker is a fresh R process that loads `bayesnec`, and with it `brms` and `rstan`, before it can fit anything: about three seconds each, paid once per worker, which matters for a set of three models and not for a set of twenty-three. And everything the fit needs -- the data, the formula, the priors -- is sent to each worker, so a very large data set may reach `future`'s export limit. Raise it with `options(future.globals.maxSize = )`.
+Two smaller effects go with it. A `multisession` or `cluster` worker is a fresh R process that loads `bayesnec`, and with it `brms` and the Stan backend, before it can fit anything: about three seconds each, paid once per worker, which matters for a set of three models and not for a set of twenty-three. A forked `multicore` worker inherits what the parent has already loaded and does not pay this. And everything the fit needs -- the data, the formula, the priors -- is sent to each worker, so a very large data set may reach `future`'s export limit. Raise it with `options(future.globals.maxSize = )`. If that limit is reached and the data are not large, look at where the formula was written: a formula keeps the environment it was created in, so one built inside a function sends that function's variables to every worker too.
 
 Progress reporting changes too. The per-model messages `bnec` prints come from worker processes, and arrive out of order or not at all depending on the platform. Nothing is lost: a model that fails is still recorded, the remaining models still fit, and `failed_models` reports what happened.
-
-### The Stan backend
-
-Use the `cmdstanr` backend for a parallel run. The default, `rstan`, compiles each model into the session's temporary directory, and a forked worker shares that directory with the process it was forked from; thirteen models compiling at once in eight workers collided there and every one of them failed with `cannot open the connection` from `stanc`. `cmdstanr` names a compiled program after a hash of its Stan code and keeps it in a cache directory, so concurrent compiles of different models do not collide and a repeated run reuses what is already built. Set it with `options(brms.backend = "cmdstanr")`, which is what this package's vignettes are built with.
-
-Two models in two workers did not trigger the collision and thirteen in eight did, so a small trial will not reveal this. It is a property of forking rather than of any one platform: a forked worker shares the parent's temporary directory wherever forking is available.
-
-### Choosing a plan
-
-`plan(multisession)` is the portable choice: it starts fresh R processes that talk to the parent over local sockets, and it is available on every platform. `plan(multicore)` forks the current process instead, which starts faster and shares memory rather than copying it, but forking is unavailable on Windows and inside RStudio and Positron, where the plan silently resolves to a single worker. `bnec` reports the number of workers it actually got, so a plan that has collapsed to one is visible rather than merely slow.
-
-Check that a plan works before committing a long run to it. Fit two models with a small `iter` under the plan you intend to use, and confirm it returns. The socket layer `multisession` depends on is outside R's control, and where it misbehaves the symptom is a run that neither finishes nor errors.
-
-That is not hypothetical. On the WSL2 machine these notes were written on, a two-model fit completed under `multicore` in five runs out of five, taking 84 to 90 seconds, and completed under `multisession` in none of four, each attempt producing no output at all before being killed. A separate thirteen-model run under `multisession` failed differently again: both workers stopped with `error writing to connection` and the parent then waited indefinitely.
-
-The cause is not established here and is very likely below R. The Windows subsystem logged name-resolution failures during these runs, which fits a problem in the socket layer that `multisession` relies on and `multicore` does not use; and the same code passes under `multisession` on Linux, macOS and Windows in this package's continuous integration, so whatever it is, it is not general. The timings below were taken with `multicore` for this reason.
-
-The general lesson is the check, not the backend. If `multisession` stalls on your machine and you are on Linux or macOS, `multicore` avoids sockets altogether and is worth trying.
 
 # References
