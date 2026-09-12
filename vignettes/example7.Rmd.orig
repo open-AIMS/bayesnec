@@ -556,132 +556,132 @@ ggplot(subset(point_data, x > 0), aes(x = x, y = y)) +
 # the cell, and is what stops coverage being read on its own.
 sim <- read.csv(text = "
 cell,arm,estimate,rel_bias,coverage,width,rmse
-p1,measured,ErC10,-4,0.98,1.4686,0.396
-p1,censored,ErC10,-2.73,1,1.4432,0.3356
-p1,deleted,ErC10,-2.35,0.98,1.3589,0.2881
-p1,floored,ErC10,-3.45,0.98,1.3296,0.3057
-p1,beta,ErC10,-4.82,0.95,1.5561,0.3
-p1,gamma,ErC10,-19.37,0.83,3.3629,0.6734
-p2,measured,ErC10,0.86,0.96,0.9997,0.1546
-p2,censored,ErC10,-0.46,0.97,0.9504,0.1472
-p2,deleted,ErC10,-1.04,0.98,0.882,0.1439
-p2,floored,ErC10,-2.69,0.98,0.9707,0.1888
-p2,beta,ErC10,-0.67,0.99,1.1305,0.1954
-p2,gamma,ErC10,-22.31,0.7,2.4296,0.562
-p3,measured,ErC10,0.86,0.92,0.3028,0.0811
-p3,censored,ErC10,-0.07,0.94,0.3668,0.0868
-p3,deleted,ErC10,-0.38,0.96,0.375,0.0868
-p3,floored,ErC10,-0.54,0.96,0.4634,0.0907
-p3,beta,ErC10,5.9,0.92,0.54,0.1606
-p3,gamma,ErC10,-21.58,0.22,0.6912,0.601
-p4,measured,ErC10,0.3,0.95,0.1686,0.0399
-p4,censored,ErC10,0.12,0.95,0.2071,0.0469
-p4,deleted,ErC10,-0.18,0.97,0.2212,0.0483
-p4,floored,ErC10,-0.19,0.96,0.2442,0.0448
-p4,beta,ErC10,8.88,0.57,0.3967,0.1913
-p4,gamma,ErC10,-24.3,0.02,0.3069,0.5711
-d2,measured,ErC10,-15.76,0.98,1.8346,0.6608
-d2,censored,ErC10,-12.13,0.99,1.9165,0.6256
-d2,deleted,ErC10,-8.8,0.98,1.8749,0.5372
-d2,floored,ErC10,-9.52,0.97,1.8733,0.5136
-d2,beta,ErC10,-0.73,1,2.1548,0.301
-d2,gamma,ErC10,-3.65,0.88,5.0289,1.339
-d8,measured,ErC10,-0.78,0.99,0.8028,0.14
-d8,censored,ErC10,-0.4,0.99,0.8072,0.1312
-d8,deleted,ErC10,-0.61,0.99,0.7808,0.1396
-d8,floored,ErC10,0.96,0.97,0.8062,0.1657
-d8,beta,ErC10,-4.04,0.99,1.1871,0.2438
-d8,gamma,ErC10,-21.37,0.86,2.2437,0.4847
-ctl,measured,ErC10,-1.42,0.99,1.2615,0.2453
-ctl,censored,ErC10,-1.47,0.98,1.2635,0.2462
-ctl,deleted,ErC10,-2.8,0.96,1.264,0.2555
-ctl,floored,ErC10,-1.94,0.98,1.2585,0.2476
-ctl,beta,ErC10,-9.31,0.99,1.4052,0.3085
-ctl,gamma,ErC10,11.21,0.99,3.1209,0.8333
-p1,measured,ErC50,-0.77,0.99,0.981,0.185
-p1,censored,ErC50,-1.26,0.98,0.922,0.1984
-p1,deleted,ErC50,-2.46,0.95,1.0375,0.27
-p1,floored,ErC50,-4.44,0.83,0.8605,0.3157
-p1,beta,ErC50,-6.27,0.94,1.4515,0.3809
-p1,gamma,ErC50,0.02,0.96,2.1229,0.3474
-p2,measured,ErC50,-0.54,0.97,0.6337,0.1304
-p2,censored,ErC50,-0.77,0.99,0.6669,0.1405
-p2,deleted,ErC50,-1.93,0.98,0.7529,0.1747
-p2,floored,ErC50,-3.55,0.79,0.6574,0.2343
-p2,beta,ErC50,-5.44,0.97,1.2386,0.3197
-p2,gamma,ErC50,0.01,0.94,1.4117,0.2286
-p3,measured,ErC50,-0.19,0.92,0.2114,0.0575
-p3,censored,ErC50,0,0.98,0.3607,0.083
-p3,deleted,ErC50,-0.23,0.99,0.3986,0.0973
-p3,floored,ErC50,-2.25,0.65,0.3033,0.1329
-p3,beta,ErC50,-4.79,0.9,0.7483,0.2597
-p3,gamma,ErC50,0.68,0.91,0.475,0.1632
-p4,measured,ErC50,-0.16,0.97,0.1342,0.0314
-p4,censored,ErC50,-0.22,0.99,0.2712,0.0642
-p4,deleted,ErC50,-0.04,0.99,0.3003,0.0748
-p4,floored,ErC50,-2.34,0.24,0.1982,0.1243
-p4,beta,ErC50,-5.96,0.48,0.5494,0.3053
-p4,gamma,ErC50,0.07,0.94,0.2957,0.1028
-d2,measured,ErC50,-0.31,1,1.3809,0.2619
-d2,censored,ErC50,-0.37,1,1.6104,0.3141
-d2,deleted,ErC50,-1.75,0.96,1.8746,0.3991
-d2,floored,ErC50,-4.91,0.82,1.4566,0.5015
-d2,beta,ErC50,-6.55,0.97,2.5801,0.6066
-d2,gamma,ErC50,2.94,0.91,3.5877,0.8545
-d8,measured,ErC50,0.82,0.94,0.455,0.1088
-d8,censored,ErC50,-0.23,0.95,0.5209,0.1182
-d8,deleted,ErC50,-1.67,0.94,0.6079,0.1507
-d8,floored,ErC50,-2.75,0.89,0.5433,0.1676
-d8,beta,ErC50,-5.26,0.91,0.8692,0.2177
-d8,gamma,ErC50,1.73,0.92,1.1278,0.1917
-ctl,measured,ErC50,-1.11,0.99,0.9525,0.1999
-ctl,censored,ErC50,-1.28,0.98,0.9559,0.2073
-ctl,deleted,ErC50,-0.17,0.97,1.0685,0.2413
-ctl,floored,ErC50,-0.68,0.99,0.9949,0.2215
-ctl,beta,ErC50,-3.2,0.99,1.5411,0.2768
-ctl,gamma,ErC50,-4.47,0.98,2.7623,0.5561
-p1,measured,NSEC,13.78,0.96,1.6898,0.4581
-p1,censored,NSEC,13.35,0.99,1.6802,0.4092
-p1,deleted,NSEC,9.46,1,1.5763,0.3223
-p1,floored,NSEC,-10.53,0.98,1.6472,0.3575
-p1,beta,NSEC,-6.83,0.97,1.7646,0.3748
-p1,gamma,NSEC,10.06,0.93,3.7445,0.703
-p2,measured,NSEC,15.22,0.88,1.1534,0.2838
-p2,censored,NSEC,9.28,0.95,1.3294,0.2691
-p2,deleted,NSEC,2.45,0.99,1.3245,0.2232
-p2,floored,NSEC,-26.82,0.86,1.4364,0.4234
-p2,beta,NSEC,-19.28,0.86,1.5313,0.4034
-p2,gamma,NSEC,-19.11,0.76,2.8707,0.5449
-p3,measured,NSEC,6.78,0.75,0.4144,0.149
-p3,censored,NSEC,2.87,0.97,0.8555,0.1581
-p3,deleted,NSEC,-2.05,0.99,0.9444,0.204
-p3,floored,NSEC,-47,0.05,0.7173,0.6183
-p3,beta,NSEC,-42.8,0.39,1.1307,0.5934
-p3,gamma,NSEC,-56.52,0.25,1.0074,0.8661
-p4,measured,NSEC,3.88,0.79,0.2549,0.0695
-p4,censored,NSEC,2.13,0.98,0.4601,0.0939
-p4,deleted,NSEC,1.22,0.98,0.5399,0.1123
-p4,floored,NSEC,-52.88,0,0.5108,0.6883
-p4,beta,NSEC,-43.2,0.21,0.8938,0.5784
-p4,gamma,NSEC,-69.53,0.07,0.5537,0.9552
-d2,measured,NSEC,2.47,0.99,2.3264,0.6098
-d2,censored,NSEC,9.8,0.99,2.3533,0.6164
-d2,deleted,NSEC,14.01,0.99,2.236,0.5466
-d2,floored,NSEC,-4.56,0.98,2.2212,0.445
-d2,beta,NSEC,11.94,1,2.211,0.3851
-d2,gamma,NSEC,76.55,0.92,5.6182,1.8015
-d8,measured,NSEC,8.43,0.97,1.0021,0.202
-d8,censored,NSEC,6.78,0.95,1.1214,0.2024
-d8,deleted,NSEC,3.57,1,1.0486,0.1655
-d8,floored,NSEC,-7.45,0.99,1.2621,0.2736
-d8,beta,NSEC,-8.19,0.96,1.4261,0.3426
-d8,gamma,NSEC,-17.32,0.84,2.5613,0.4831
-ctl,measured,NSEC,9.9,0.97,1.3788,0.2793
-ctl,censored,NSEC,9.54,0.96,1.4021,0.2805
-ctl,deleted,NSEC,6.24,1,1.4761,0.2972
-ctl,floored,NSEC,6.9,0.99,1.4319,0.2738
-ctl,beta,NSEC,-18.95,1,1.6983,0.3771
-ctl,gamma,NSEC,81.65,0.95,3.2731,1.3085
+p1,measured,ErC10,-9.11,0.97,1.4341,0.4207
+p1,censored,ErC10,-8.33,0.96,1.3641,0.3805
+p1,deleted,ErC10,-4.56,0.97,1.34,0.3234
+p1,floored,ErC10,-3.11,0.97,1.2488,0.3059
+p1,beta,ErC10,-0.86,1,1.6497,0.2843
+p1,gamma,ErC10,-8.65,0.84,3.7037,0.6915
+p2,measured,ErC10,-1.47,0.96,1.037,0.1812
+p2,censored,ErC10,-2.34,0.95,0.947,0.1739
+p2,deleted,ErC10,-1.51,0.98,0.9001,0.1664
+p2,floored,ErC10,-2.2,0.98,0.936,0.1921
+p2,beta,ErC10,1.86,0.99,1.1829,0.193
+p2,gamma,ErC10,-17.03,0.71,2.7338,0.5184
+p3,measured,ErC10,0.58,0.93,0.3019,0.0796
+p3,censored,ErC10,-0.31,0.94,0.3704,0.0881
+p3,deleted,ErC10,-0.35,0.94,0.3788,0.0887
+p3,floored,ErC10,-0.51,0.96,0.4525,0.0903
+p3,beta,ErC10,6.59,0.9,0.5326,0.1713
+p3,gamma,ErC10,-24.59,0.26,0.7357,0.5447
+p4,measured,ErC10,0.23,0.95,0.17,0.04
+p4,censored,ErC10,-0.06,0.96,0.2083,0.0469
+p4,deleted,ErC10,-0.16,0.96,0.2229,0.0497
+p4,floored,ErC10,-0.18,0.96,0.2437,0.0446
+p4,beta,ErC10,9.29,0.55,0.4,0.1989
+p4,gamma,ErC10,-25.03,0.01,0.281,0.5561
+d2,measured,ErC10,-17.11,0.94,1.6431,0.603
+d2,censored,ErC10,-14.02,0.97,1.7019,0.5435
+d2,deleted,ErC10,-9.47,0.97,1.7905,0.4787
+d2,floored,ErC10,-7.32,0.97,1.7752,0.4405
+d2,beta,ErC10,2.81,0.99,2.2815,0.3192
+d2,gamma,ErC10,5.4,0.89,5.8336,1.1131
+d8,measured,ErC10,-0.88,0.99,0.9115,0.1551
+d8,censored,ErC10,-1.04,0.99,0.8523,0.1609
+d8,deleted,ErC10,1.03,0.98,0.8354,0.1575
+d8,floored,ErC10,1.83,0.96,0.8108,0.1715
+d8,beta,ErC10,-0.13,0.99,1.2669,0.2221
+d8,gamma,ErC10,-12.46,0.88,2.424,0.4068
+ctl,measured,ErC10,-2.39,0.98,1.3113,0.294
+ctl,censored,ErC10,-2.1,0.97,1.3099,0.2949
+ctl,deleted,ErC10,-2.41,0.96,1.3046,0.3002
+ctl,floored,ErC10,-2.36,0.96,1.2973,0.2941
+ctl,beta,ErC10,0.12,1,1.5124,0.2357
+ctl,gamma,ErC10,13.83,0.99,4.4668,0.7218
+p1,measured,ErC50,-0.45,1,0.8615,0.1696
+p1,censored,ErC50,-0.67,0.97,0.9241,0.2041
+p1,deleted,ErC50,-2.36,0.95,0.9968,0.2648
+p1,floored,ErC50,-3.42,0.85,0.8835,0.2916
+p1,beta,ErC50,-4.44,0.99,1.5571,0.3146
+p1,gamma,ErC50,4.31,0.9,2.3384,0.4144
+p2,measured,ErC50,-0.56,0.97,0.5902,0.1305
+p2,censored,ErC50,-0.63,0.99,0.6712,0.1427
+p2,deleted,ErC50,-1.74,0.98,0.7373,0.1722
+p2,floored,ErC50,-3.11,0.87,0.6746,0.2184
+p2,beta,ErC50,-4.4,1,1.2906,0.2769
+p2,gamma,ErC50,2.28,0.91,1.557,0.2527
+p3,measured,ErC50,-0.22,0.92,0.212,0.0579
+p3,censored,ErC50,-0.06,0.99,0.3574,0.0811
+p3,deleted,ErC50,-0.2,0.99,0.3941,0.096
+p3,floored,ErC50,-2.22,0.66,0.304,0.132
+p3,beta,ErC50,-4.42,0.92,0.7619,0.2439
+p3,gamma,ErC50,0.57,0.95,0.4778,0.1046
+p4,measured,ErC50,-0.17,0.97,0.1346,0.0318
+p4,censored,ErC50,-0.23,0.99,0.2693,0.061
+p4,deleted,ErC50,-0.05,0.99,0.3005,0.0755
+p4,floored,ErC50,-2.34,0.24,0.1981,0.1242
+p4,beta,ErC50,-5.75,0.52,0.5583,0.2953
+p4,gamma,ErC50,0.17,0.96,0.2878,0.0867
+d2,measured,ErC50,0.04,0.99,1.4338,0.2773
+d2,censored,ErC50,0.12,1,1.5672,0.3133
+d2,deleted,ErC50,-1.53,0.96,1.7945,0.3831
+d2,floored,ErC50,-3.97,0.89,1.5254,0.4622
+d2,beta,ErC50,-5,1,2.8024,0.5382
+d2,gamma,ErC50,7.83,0.79,3.9883,0.9427
+d8,measured,ErC50,1.1,0.95,0.4755,0.115
+d8,censored,ErC50,0.57,0.97,0.5582,0.1295
+d8,deleted,ErC50,-1.02,0.96,0.5995,0.1455
+d8,floored,ErC50,-1.97,0.91,0.5565,0.1612
+d8,beta,ErC50,-3.15,0.97,0.9268,0.1742
+d8,gamma,ErC50,4.62,0.84,1.2433,0.2185
+ctl,measured,ErC50,-0.66,0.99,0.9497,0.2086
+ctl,censored,ErC50,-0.78,0.99,0.9479,0.2125
+ctl,deleted,ErC50,-0.42,0.97,1.0405,0.2382
+ctl,floored,ErC50,-0.54,0.98,0.971,0.2243
+ctl,beta,ErC50,-0.68,1,1.6145,0.2304
+ctl,gamma,ErC50,0.93,0.98,2.9828,0.3944
+p1,measured,NSEC,3.95,1,1.6996,0.4401
+p1,censored,NSEC,-0.22,0.99,1.6707,0.4242
+p1,deleted,NSEC,-0.12,0.99,1.6419,0.3579
+p1,floored,NSEC,-11.46,0.96,1.6274,0.3702
+p1,beta,NSEC,-1.03,0.99,1.8036,0.3513
+p1,gamma,NSEC,25.51,0.93,4.0713,0.8988
+p2,measured,NSEC,11.12,0.94,1.2683,0.2724
+p2,censored,NSEC,5.69,0.97,1.3587,0.2739
+p2,deleted,NSEC,-0.8,0.99,1.4011,0.2554
+p2,floored,NSEC,-26.47,0.87,1.4269,0.421
+p2,beta,NSEC,-15.52,0.91,1.5391,0.3695
+p2,gamma,NSEC,-12.72,0.74,3.2062,0.5883
+p3,measured,NSEC,5.79,0.76,0.419,0.1512
+p3,censored,NSEC,2.52,0.99,0.8599,0.1475
+p3,deleted,NSEC,-1.92,0.99,0.9501,0.2047
+p3,floored,NSEC,-46.93,0.03,0.7016,0.6172
+p3,beta,NSEC,-42,0.42,1.1417,0.5851
+p3,gamma,NSEC,-62.66,0.24,1.0207,0.8548
+p4,measured,NSEC,3.29,0.84,0.2696,0.0712
+p4,censored,NSEC,2.5,0.97,0.4636,0.0734
+p4,deleted,NSEC,0.82,0.98,0.5503,0.1181
+p4,floored,NSEC,-52.76,0,0.5077,0.6867
+p4,beta,NSEC,-42.54,0.2,0.8865,0.5703
+p4,gamma,NSEC,-71.47,0.04,0.5217,0.9632
+d2,measured,NSEC,-0.26,0.99,2.0539,0.496
+d2,censored,NSEC,4.64,0.99,2.0906,0.4665
+d2,deleted,NSEC,9.28,1,2.1095,0.4562
+d2,floored,NSEC,-3.11,0.98,2.0689,0.3984
+d2,beta,NSEC,19.43,1,2.2064,0.4304
+d2,gamma,NSEC,94.3,0.88,6.4274,1.8292
+d8,measured,NSEC,8.09,0.96,1.1557,0.2133
+d8,censored,NSEC,3.82,0.95,1.2223,0.2514
+d8,deleted,NSEC,3.24,1,1.2024,0.2237
+d8,floored,NSEC,-6.87,1,1.2906,0.2767
+d8,beta,NSEC,-3.68,0.96,1.5041,0.3112
+d8,gamma,NSEC,-6.66,0.84,2.7313,0.501
+ctl,measured,NSEC,1.08,0.98,1.6416,0.346
+ctl,censored,NSEC,1.42,0.98,1.6424,0.3505
+ctl,deleted,NSEC,1.1,0.99,1.634,0.3616
+ctl,floored,NSEC,0.45,0.98,1.6337,0.3479
+ctl,beta,NSEC,-6.63,1,1.808,0.2761
+ctl,gamma,NSEC,90.3,0.96,4.4393,1.3625
 ")
 sim$handling <- factor(arm_handling[sim$arm], levels = handling_levels)
 sim$arm <- factor(sim$arm, levels = arm_levels)
@@ -765,19 +765,22 @@ the truth at the highest precision tested.
 
 Flooring does not converge. Its ErC50 bias falls from
 `r f1(val("floored", "ErC50", "p1"))`% to
-`r f1(val("floored", "ErC50", "p4"))`% and then stops, and the Beta stays at
-about `r f1(val("beta", "ErC50", "p4"))`% throughout. Both make the substance
+`r f1(val("floored", "ErC50", "p4"))`% and then stops, and the Beta holds
+between `r f1(val("beta", "ErC50", "p1"))`% and
+`r f1(val("beta", "ErC50", "p4"))`% throughout. Both make the substance
 appear more toxic than it is. The residual bias is smaller than the 8 to 15%
 reported for the same conventions under a fixed `nec4param`, and the reason is
 Section 4: the enlarged candidate set now contains the zero-asymptote shapes
 that floored data resemble, and averaging over them absorbs part of the
 distortion. It does not absorb all of it.
 
-The Gamma is the exception on ErC50 and the worst of the six on ErC10. Its ErC50 bias
-is within one per cent in every precision cell, but its ErC10 is displaced by
-`r f1(val("gamma", "ErC10", "p1"))`% to
-`r f1(val("gamma", "ErC10", "p4"))`% and does not improve as the experiment
-does. An identity-link Gamma fixes the coefficient of variation along the whole
+The Gamma converges on ErC50 and is the worst of the six on ErC10. Its ErC50
+bias falls from `r f1(val("gamma", "ErC50", "p1"))`% to
+`r f1(val("gamma", "ErC50", "p4"))`% across the sweep, while its ErC10 is
+displaced by `r f1(val("gamma", "ErC10", "p1"))`% at the noisiest and
+`r f1(val("gamma", "ErC10", "p4"))`% at the most precise — it gets worse as the
+experiment improves, which is the signature of misspecification rather than of
+estimation error. An identity-link Gamma fixes the coefficient of variation along the whole
 curve, so a single value has to cover both the control scatter and the block of
 near-identical values that flooring creates, and the compromise falls on the
 shoulder of the curve where ErC10 is read. Its intervals are
@@ -884,13 +887,13 @@ should be reported without the other.
 
 ErC10 and the NSEC are the two estimates commonly used as a no-effect value,
 and the conventions do not affect them in the same way. As Section 2.3 sets
-out, the expected NSEC at any finite level of noise is larger than the true
-`nec`, so the sweep rather than any single cell is what identifies an
-approach: the true `nec` is the NSEC's limiting value as the residual error
-goes to zero, and a correctly specified approach must converge on it from
-above.
+out, the true `nec` is the NSEC's limiting value as the residual error goes to
+zero rather than its expected value at any finite noise, so the sweep rather
+than any single cell is what identifies an approach: a correctly specified one
+sits on the truth and stays there as the experiment improves, and a
+misspecified one departs further the more precise the experiment becomes.
 
-```{r nsec-precision, fig.width = 9, fig.height = 5.4, out.width = "100%", fig.cap = "**Figure 5.** Relative bias in the estimated NSEC against the true `nec` of 1.3 (upper row) and the proportion of 95% credible intervals containing it (lower row), against the control coefficient of variation. The dashed lines are zero bias and nominal coverage. An approach that is correctly specified approaches zero bias from above as the residual error falls."}
+```{r nsec-precision, fig.width = 9, fig.height = 5.4, out.width = "100%", fig.cap = "**Figure 5.** Relative bias in the estimated NSEC against the true `nec` of 1.3 (upper row) and the proportion of 95% credible intervals containing it (lower row), against the control coefficient of variation. The dashed lines are zero bias and nominal coverage. A correctly specified approach stays on zero bias as the residual error falls; a misspecified one departs further the more precise the experiment becomes."}
 # Bias and coverage in one figure, as two rows of a facet rather than two plots
 # stacked by a layout package: the reference line differs between the rows, so
 # it is supplied as data rather than as a constant.
@@ -922,14 +925,24 @@ ggplot(nsec_long, aes(x = cv_f, y = value, colour = arm, group = arm)) +
         legend.position = "bottom", legend.title = element_blank(),
         legend.key.width = unit(1.4, "lines"))
 ```
-The retaining conventions converge from above, as the definition requires.
-Across `p1` to `p4` the NSEC bias of `measured` falls from
-`r f1(val("measured", "NSEC", "p1"))`% to
-`r f1(val("measured", "NSEC", "p4"))`%, of `censored` from
-`r f1(val("censored", "NSEC", "p1"))`% to
-`r f1(val("censored", "NSEC", "p4"))`%, and of `deleted` from
-`r f1(val("deleted", "NSEC", "p1"))`% to
-`r f1(val("deleted", "NSEC", "p4"))`%.
+The retaining conventions stay near the true `nec` across the sweep, and show no
+trend in either direction. At the highest precision the NSEC bias of `measured`
+is `r f1(val("measured", "NSEC", "p4"))`%, of `censored`
+`r f1(val("censored", "NSEC", "p4"))`% and of `deleted`
+`r f1(val("deleted", "NSEC", "p4"))`%. They are not flat along the way — the
+largest single departure any of the three shows is
+`r f1(max(abs(sapply(c("p1","p2","p3","p4"), function(cl) sapply(c("measured","censored","deleted"), val, "NSEC", cl)))))`%,
+by `measured` at a 6.7% control coefficient of variation — but the departures do
+not grow as the experiment improves, which is what distinguishes estimation
+error from misspecification.
+
+Section 2.3 gives the reason to expect an overestimate at finite noise, and
+under the priors used here that overshoot is small enough to be lost in the
+Monte Carlo error of 100 realisations rather than being visible as a trend. It
+was visible under the superseded prior, where the same three conventions ran
+from about +14% down to +4%. What identifies a correctly specified approach here
+is therefore that it stays on the truth as the residual error falls, not the
+direction it approaches from.
 
 The conventions that replace the measurement diverge downward instead. The NSEC
 of `floored` runs from `r f1(val("floored", "NSEC", "p1"))`% to
@@ -956,11 +969,13 @@ the next dataset either.
 The one convention whose NSEC coverage falls without its bias diverging is `measured`,
 from `r f2(val("measured", "NSEC", "p1", "coverage"))` to
 `r f2(val("measured", "NSEC", "p4", "coverage"))`. That is the property of the
-metric described in Section 2.3 rather than a failure of the convention: the
-NSEC's expected value approaches the true `nec` from above, and by `p4` the
+metric described in Section 2.3 rather than a failure of the convention. The
+NSEC overshoots the true `nec` slightly at finite noise, and by `p4` the
 interval has narrowed faster than the remaining
-`r f1(val("measured", "NSEC", "p4"))`% has closed. `censored` and `deleted`
-hold nominal coverage over the same range with intervals
+`r f1(val("measured", "NSEC", "p4"))`% has closed, so an interval that is
+correctly placed to within a few per cent stops containing the truth.
+`censored` and `deleted` hold nominal coverage over the same range with
+intervals
 `r f2(val("censored", "NSEC", "p4", "width") / val("measured", "NSEC", "p4", "width"))`
 and
 `r f2(val("deleted", "NSEC", "p4", "width") / val("measured", "NSEC", "p4", "width"))`
@@ -981,48 +996,48 @@ the substance, and it is reported because it explains the biases above.
 # cell and arm.
 weights <- read.csv(text = "
 cell,arm,w_nec4param,w_zero_asymptote,n_models,top_model,top_weight
-p1,measured,0.565,0,12.9,nec4param,0.565
-p1,censored,0.31,0.006,13.3,neclin,0.381
-p1,deleted,0.14,0.405,13.3,neclin,0.305
-p1,floored,0.07,0.686,13.3,ecxsigm,0.274
-p1,beta,0.071,0.075,11.1,ecx4param,0.254
-p1,gamma,0.043,0.031,11.1,ecxwb1,0.817
-p2,measured,0.749,0,12.9,nec4param,0.749
-p2,censored,0.354,0.003,13.3,neclin,0.413
-p2,deleted,0.199,0.3,13.3,neclin,0.374
-p2,floored,0.063,0.688,13.3,ecxsigm,0.346
-p2,beta,0.054,0.063,11.1,ecx4param,0.264
-p2,gamma,0.015,0.012,11.1,ecxwb1,0.867
-p3,measured,0.883,0,13,nec4param,0.883
-p3,censored,0.361,0.001,13.2,neclin,0.486
-p3,deleted,0.257,0.134,13.3,neclin,0.522
-p3,floored,0.004,0.896,13.2,ecxsigm,0.8
-p3,beta,0.017,0.035,11.1,ecxwb2,0.534
-p3,gamma,0,0,11,ecxwb1,0.958
-p4,measured,0.878,0,13,nec4param,0.878
-p4,censored,0.46,0,13.4,nec4param,0.46
-p4,deleted,0.362,0.028,13.4,neclin,0.519
-p4,floored,0,0.979,13.4,ecxsigm,0.962
-p4,beta,0.01,0.042,11.1,ecxwb2,0.813
-p4,gamma,0,0,11.1,ecxwb1,0.982
-d2,measured,0.435,0,13,nec4param,0.435
-d2,censored,0.255,0.005,13.3,nec4param,0.255
-d2,deleted,0.138,0.364,13.4,neclin,0.207
-d2,floored,0.076,0.67,13.3,ecxsigm,0.265
-d2,beta,0.061,0.125,11,ecx4param,0.271
-d2,gamma,0.039,0.036,11,ecxwb1,0.825
-d8,measured,0.404,0,13,neclin,0.474
-d8,censored,0.33,0.004,13.4,neclin,0.377
-d8,deleted,0.157,0.42,13.3,neclin,0.282
-d8,floored,0.093,0.642,13.4,ecxsigm,0.202
-d8,beta,0.12,0.066,11.2,ecxwb2,0.254
-d8,gamma,0.044,0.024,11.1,ecxwb1,0.789
-ctl,measured,0.194,0.233,13,neclin,0.464
-ctl,censored,0.195,0.247,13.3,neclin,0.447
-ctl,deleted,0.217,0.411,13.2,neclin,0.251
-ctl,floored,0.233,0.294,13.3,neclin,0.35
-ctl,beta,0.023,0.876,11.2,ecxwb1p3,0.363
-ctl,gamma,0.034,0.819,11.1,ecxsigm,0.55
+p1,measured,0.506,0,12.9,nec4param,0.533
+p1,censored,0.3,0.006,12.9,neclin,0.392
+p1,deleted,0.111,0.432,13,neclin,0.275
+p1,floored,0.066,0.631,12.9,ecxsigm,0.283
+p1,beta,0.066,0.078,10.8,ecx4param,0.391
+p1,gamma,0.036,0.033,11.1,ecxwb1,0.756
+p2,measured,0.714,0,12.9,nec4param,0.717
+p2,censored,0.355,0.003,13,neclin,0.506
+p2,deleted,0.191,0.31,13.2,neclin,0.382
+p2,floored,0.061,0.658,13,ecxsigm,0.362
+p2,beta,0.05,0.064,10.8,ecxwb2,0.43
+p2,gamma,0.021,0.013,11.1,ecxwb1,0.803
+p3,measured,0.849,0,12.9,nec4param,0.865
+p3,censored,0.344,0.001,13.1,neclin,0.599
+p3,deleted,0.254,0.135,13.4,neclin,0.608
+p3,floored,0.003,0.891,13.1,ecxsigm,0.805
+p3,beta,0.017,0.035,10.8,ecxwb2,0.631
+p3,gamma,0,0,11.2,ecxwb1,0.891
+p4,measured,0.852,0,13,nec4param,0.861
+p4,censored,0.469,0,13,nec4param,0.62
+p4,deleted,0.363,0.031,13.4,neclin,0.646
+p4,floored,0,0.978,13,ecxsigm,0.962
+p4,beta,0.01,0.041,10.8,ecxwb2,0.822
+p4,gamma,0,0,11.2,ecxwb1,0.915
+d2,measured,0.455,0,13,nec4param,0.467
+d2,censored,0.271,0.006,12.9,neclin,0.355
+d2,deleted,0.127,0.391,13.1,neclin,0.263
+d2,floored,0.071,0.636,12.9,ecxsigm,0.287
+d2,beta,0.06,0.133,10.8,ecx4param,0.36
+d2,gamma,0.036,0.037,11,ecxwb1,0.781
+d8,measured,0.376,0,13,neclin,0.609
+d8,censored,0.319,0.003,13.1,neclin,0.418
+d8,deleted,0.138,0.407,13.1,neclin,0.28
+d8,floored,0.095,0.62,13.1,ecxsigm,0.27
+d8,beta,0.101,0.066,10.9,ecxwb2,0.401
+d8,gamma,0.037,0.025,11.1,ecxwb1,0.736
+ctl,measured,0.162,0.275,12.9,neclin,0.375
+ctl,censored,0.163,0.288,13,neclin,0.367
+ctl,deleted,0.169,0.443,12.9,neclin,0.293
+ctl,floored,0.193,0.33,13,neclin,0.34
+ctl,beta,0.014,0.795,10.9,ecxwb1p3,0.366
+ctl,gamma,0.033,0.716,11.1,ecxwb1p3,0.292
 ")
 ```
 
@@ -1224,7 +1239,79 @@ means for reading them.
 # whose tail effective sample size fell below 400 -- reported because a
 # diagnostic is only readable against the weight its equation holds.
 cases <- read.csv(text = "
-@@CASES@@
+dataset,arm,estimate,value,lower,upper,x_min,x_max,w_zero_asymptote,w_failing_ess
+c_proliferum,measured,ErC10,7.9287,5.2453,9.901,0.01,20,0,0.151
+c_proliferum,measured,ErC50,9.4133,8.2551,9.9753,0.01,20,0,0.151
+c_proliferum,measured,NSEC,7.7926,4.7839,9.9038,0.01,20,0,0.151
+c_proliferum,censored,ErC10,3.4463,1.4137,4.2828,0.01,20,0.005,0
+c_proliferum,censored,ErC50,6.8181,6.2331,7.4524,0.01,20,0.005,0
+c_proliferum,censored,NSEC,2.8417,0.5601,3.8504,0.01,20,0.005,0
+c_proliferum,deleted,ErC10,3.3967,2.5183,4.2437,0.01,20,0.505,0
+c_proliferum,deleted,ErC50,6.9444,6.218,7.6572,0.01,20,0.505,0
+c_proliferum,deleted,NSEC,2.7796,1.1764,3.8711,0.01,20,0.505,0
+c_proliferum,floored,ErC10,3.5301,2.5406,4.3692,0.01,20,0.606,0
+c_proliferum,floored,ErC50,6.7953,6.0807,7.4276,0.01,20,0.606,0
+c_proliferum,floored,NSEC,2.3276,0.8357,4.0511,0.01,20,0.606,0
+c_proliferum,beta,ErC10,3.6293,2.448,4.8836,0.01,20,0.053,0.01
+c_proliferum,beta,ErC50,6.8628,5.8203,7.5428,0.01,20,0.053,0.01
+c_proliferum,beta,NSEC,2.3001,0.7755,4.0342,0.01,20,0.053,0.01
+c_proliferum,gamma,ErC10,3.4293,1.0317,7.8512,0.01,20,0.191,0
+c_proliferum,gamma,ErC50,7.2294,5.2634,8.9169,0.01,20,0.191,0
+c_proliferum,gamma,NSEC,3.9002,1.2266,7.7635,0.01,20,0.191,0
+c_proliferum2,measured,ErC10,154.4071,121.7981,246.1596,1,1000,0,0
+c_proliferum2,measured,ErC50,368.3586,354.3552,380.9968,1,1000,0,0
+c_proliferum2,measured,NSEC,63.9231,21.5235,225.2871,1,1000,0,0
+c_proliferum2,censored,ErC10,205.8064,156.4626,225.1702,1,1000,0.001,0
+c_proliferum2,censored,ErC50,356.748,343.317,370.3292,1,1000,0.001,0
+c_proliferum2,censored,NSEC,176.2069,48.4896,199.2165,1,1000,0.001,0
+c_proliferum2,deleted,ErC10,202.2045,163.4463,224.6987,1,1000,0.406,0
+c_proliferum2,deleted,ErC50,355.4588,340.3339,369.2767,1,1000,0.406,0
+c_proliferum2,deleted,NSEC,158.7781,57.418,200.2643,1,1000,0.406,0
+c_proliferum2,floored,ErC10,187.852,159.8978,215.0895,1,1000,0.74,0
+c_proliferum2,floored,ErC50,356.5631,343.761,369.1501,1,1000,0.74,0
+c_proliferum2,floored,NSEC,101.4079,38.6609,156.4153,1,1000,0.74,0
+c_proliferum2,beta,ErC10,207.1596,173.9584,238.7471,1,1000,0.009,0
+c_proliferum2,beta,ErC50,353.7685,328.2035,375.9422,1,1000,0.009,0
+c_proliferum2,beta,NSEC,123.1622,54.0809,191.4479,1,1000,0.009,0
+c_proliferum2,gamma,ErC10,181.5501,164.3281,203.029,1,1000,0,0
+c_proliferum2,gamma,ErC50,362.8644,355.2419,370.4479,1,1000,0,0
+c_proliferum2,gamma,NSEC,84.8421,27.6136,120.2562,1,1000,0,0
+r_salina,measured,ErC10,4.2554,3.5881,4.9099,0.01,20,0,0.524
+r_salina,measured,ErC50,5.0666,5.0107,5.1724,0.01,20,0,0.524
+r_salina,measured,NSEC,3.2514,1.2831,4.8351,0.01,20,0,0.524
+r_salina,censored,ErC10,3.5934,3.2351,4.8626,0.01,20,0,0
+r_salina,censored,ErC50,5.1258,5.0192,5.2022,0.01,20,0,0
+r_salina,censored,NSEC,1.5879,0.7473,4.7766,0.01,20,0,0
+r_salina,deleted,ErC10,2.9008,2.5394,3.978,0.01,20,0.433,0.576
+r_salina,deleted,ErC50,4.9932,4.9802,4.9975,0.01,20,0.433,0.576
+r_salina,deleted,NSEC,2.2108,1.287,3.6976,0.01,20,0.433,0.576
+r_salina,floored,ErC10,3.4517,3.0983,4.8089,0.01,20,0.644,0.01
+r_salina,floored,ErC50,5.1686,5.0407,5.2531,0.01,20,0.644,0.01
+r_salina,floored,NSEC,1.3148,0.5322,4.7278,0.01,20,0.644,0.01
+r_salina,beta,ErC10,3.3557,2.8869,4.8017,0.01,20,0,0
+r_salina,beta,ErC50,5.1624,5.0017,5.3808,0.01,20,0,0
+r_salina,beta,NSEC,1.3022,0.5337,4.7241,0.01,20,0,0
+r_salina,gamma,ErC10,3.5214,3.2295,4.8857,0.01,20,0,0.065
+r_salina,gamma,ErC50,5.1594,5.0193,5.2222,0.01,20,0,0.065
+r_salina,gamma,NSEC,1.6287,0.7567,4.8293,0.01,20,0,0.065
+r_salina2,measured,ErC10,27.8622,21.6498,52.08,0.1,1000,0,0
+r_salina2,measured,ErC50,123.7675,110.9175,141.1856,0.1,1000,0,0
+r_salina2,measured,NSEC,25.1448,10.0263,44.1069,0.1,1000,0,0
+r_salina2,censored,ErC10,63.3976,48.9521,73.3471,0.1,1000,0,0.001
+r_salina2,censored,ErC50,116.0957,108.4235,123.3656,0.1,1000,0,0.001
+r_salina2,censored,NSEC,56.2973,41.6484,66.1243,0.1,1000,0,0.001
+r_salina2,deleted,ErC10,75.0957,56.9037,91.7599,0.1,1000,0.598,0.028
+r_salina2,deleted,ErC50,109.0589,102.9999,116.006,0.1,1000,0.598,0.028
+r_salina2,deleted,NSEC,61.9212,32.4321,89.4543,0.1,1000,0.598,0.028
+r_salina2,floored,ErC10,73.3012,57.2026,89.259,0.1,1000,0.437,0.01
+r_salina2,floored,ErC50,109.8085,105.1082,116.0773,0.1,1000,0.437,0.01
+r_salina2,floored,NSEC,57.7843,24.5281,86.3023,0.1,1000,0.437,0.01
+r_salina2,beta,ErC10,76.4282,62.2218,91.8963,0.1,1000,0,0
+r_salina2,beta,ErC50,109.1174,102.6149,117.5185,0.1,1000,0,0
+r_salina2,beta,NSEC,62.599,32.2218,87.9103,0.1,1000,0,0
+r_salina2,gamma,ErC10,58.7203,19.3318,96.1619,0.1,1000,0,0
+r_salina2,gamma,ErC50,107.9371,87.3501,120.0164,0.1,1000,0,0
+r_salina2,gamma,NSEC,62.6606,15.0493,96.139,0.1,1000,0,0
 ")
 cases$arm <- factor(cases$arm, levels = arm_levels)
 cases$estimate <- factor(cases$estimate, levels = c("ErC10", "ErC50", "NSEC"))
@@ -1319,22 +1406,23 @@ ggplot(case_ratios, aes(x = r, y = arm, colour = arm, shape = usable)) +
 
 Three features of Figure 6 require care in what they do and do not establish.
 
-The choice of convention changes the reported value substantially. On
-`c_proliferum` the five conventions other than `measured` return an ErC50
-between `r f2c(rng_ratio("c_proliferum")[1])` and
-`r f2c(rng_ratio("c_proliferum")[2])` times the `measured` estimate. These are
-not rounding differences; they are the difference between one regulatory value
-and another.
+The choice of convention changes the reported value substantially on one of the
+four datasets and hardly at all on the other three. On `c_proliferum` the five
+conventions other than `measured` return an ErC50 between
+`r f2c(rng_ratio("c_proliferum")[1])` and `r f2c(rng_ratio("c_proliferum")[2])`
+times the `measured` estimate — the difference between one regulatory value and
+another. On `c_proliferum2`, `r_salina` and `r_salina2` the convention lying
+furthest from `measured` is at `r f2c(furthest("c_proliferum2"))`,
+`r f2c(furthest("r_salina"))` and `r f2c(furthest("r_salina2"))` times it.
 
-The size of that difference varies between datasets and cannot be predicted from
-the data alone. On the other three datasets the convention lying furthest from
-the `measured` estimate on ErC50 is at `r f2c(furthest("c_proliferum2"))` times
-it on `c_proliferum2`, `r f2c(furthest("r_salina"))` on `r_salina` and
-`r f2c(furthest("r_salina2"))` on `r_salina2`. Nor does the departure
-necessarily fall on the conventions the simulation identifies. A single real
-dataset cannot separate the effect of a convention from the error of the
-analysis it is compared against, because the `measured` analysis of that dataset
-has its own error and there is no truth to score either of them by.
+So the size of the effect cannot be predicted from the data alone, and on three
+of these four datasets a reader choosing between conventions would have seen
+almost no difference. That is not evidence that the choice is safe. The
+simulation is unambiguous about the direction and about the fact that the error
+does not shrink as an experiment improves; what a single real dataset cannot do
+is separate the effect of a convention from the error of the analysis it is
+compared against, because the `measured` analysis has its own error and there is
+no truth to score either of them by.
 
 ```{r, echo = FALSE}
 knitr::kable(
@@ -1345,12 +1433,38 @@ knitr::kable(
     arrange(arm),
   digits = 2,
   col.names = c("Convention", levels(cases$dataset)),
-  caption = "**Table 4.** Total model weight on the six equations whose lower asymptote is fixed at zero, for each convention on each dataset."
+  caption = "**Table 5.** Total model weight on the six equations whose lower asymptote is fixed at zero, for each convention on each dataset."
 )
 ```
 
-The weight on those equations is the diagnostic Section 5.6 identifies for
-flooring under an unbounded family, and it is computable here because it needs
+One feature of these fits has to be read alongside the ratios. Each is an
+average over thirteen or fourteen equations, and on two datasets a substantial
+share of the weight sits on equations that mixed poorly. The transcribed table
+records, for each fit, the weight held by equations whose tail effective sample
+size fell below 400, the level at which a 95% interval's bounds stop being
+reliably estimated.
+
+```{r, echo = FALSE}
+knitr::kable(
+  cases |>
+    filter(estimate == "ErC50", w_failing_ess > 0.01) |>
+    select(dataset, arm, w_failing_ess) |>
+    arrange(desc(w_failing_ess)),
+  digits = 3,
+  col.names = c("Dataset", "Convention", "weight on tail ESS < 400"),
+  caption = "**Table 4.** Model weight held by equations whose tail effective sample size fell below 400, for the fits where it exceeds 0.01. Fits not listed hold essentially none. In the simulation the largest such figure in any cell and convention is under 0.005."
+)
+```
+
+That is a limitation of these four fits rather than of the conventions. It falls
+on `measured` and `deleted` on `r_salina`, which are reference analyses rather
+than the conventions under test, so the ratios on that dataset should be read as
+the weaker evidence. The simulation does not have this problem: across all 4,200
+fits the largest mean weight on an equation failing either diagnostic is under
+half a per cent, so nothing there rests on an equation that did not converge.
+
+The weight on the zero-asymptote equations is the diagnostic Section 5.6
+identifies for flooring under an unbounded family, and it is computable here because it needs
 no truth. Averaged over the four datasets `floored` puts
 `r pc(mean(sapply(levels(cases$dataset), zw, "floored")))` of its weight on
 them, against `r pc(mean(sapply(levels(cases$dataset), zw, "measured")))` under
@@ -1369,8 +1483,9 @@ without a known truth they cannot.
 
 Analyse the growth rates as measured and let the model set decide the shape.
 Nothing in a Gaussian concentration-response fit requires the response to be
-positive. In the simulation this recovers the true ErC50 to within half a per
-cent at every level of measurement precision, holds nominal interval coverage,
+positive. In the simulation this recovers the true ErC50 to within
+`r f1(max(abs(sapply(c("p1","p2","p3","p4"), function(cl) val("measured","ErC50",cl)))))`%
+at every level of measurement precision tested, holds nominal interval coverage,
 and gives the generating equation
 `r f2(weights$w_nec4param[weights$cell == "p4" & weights$arm == "measured"])`
 of the model weight at the highest precision tested.
@@ -1379,8 +1494,8 @@ If the negative values were never recorded, declare them censored rather than
 substituting a value. At the highest precision tested it matches the
 measurements themselves on ErC50, `r f1(val("censored", "ErC50", "p4"))`%
 against `r f1(val("measured", "ErC50", "p4"))`%, and it is the only option when
-the underlying values are gone. It is also the one
-convention that holds nominal coverage for all three toxicity estimates across
+the underlying values are gone. It is also, with `deleted`, one of only two
+conventions that hold nominal coverage for all three toxicity estimates across
 the whole precision sweep.
 
 Deleting the negative rows is better than replacing them and worse than keeping
@@ -1404,7 +1519,7 @@ is the most common response to negative growth rates and it does not work. The
 Beta holds an ErC50 bias near
 `r f1(val("beta", "ErC50", "p4"))`% at every precision and an ErC10 bias that
 grows to `r f1(val("beta", "ErC10", "p4"))`% as the experiment improves. The
-Gamma is unbiased on ErC50 and displaces ErC10 by
+Gamma converges on ErC50 and displaces ErC10 by
 `r f1(val("gamma", "ErC10", "p4"))`%, with coverage of
 `r f2(val("gamma", "ErC10", "p4", "coverage"))`. Neither gives any outward sign
 of trouble: every one of the 1,400 fits in those two conventions converged and
@@ -1523,8 +1638,8 @@ The case studies were computed when this vignette was built until the
 conventions became model-averaged over the whole declining set. Four datasets by
 six conventions, each an average over thirteen or fourteen equations, is about
 fifteen hours, which is not something to run on a workstation whenever a
-sentence changes. Moving them into the compendium has a cost, and it is stated
-here rather than left to be discovered: the case-study estimates no longer track
+sentence changes. Moving them into the compendium gives something up, and it is
+stated here rather than left to be discovered: the case-study estimates no longer track
 whatever version of `bayesnec` they are published beside. They describe the
 pinned commit, exactly as the simulation does. What Table 3 reports — the four
 datasets themselves — is still computed at build time from the `alga` data that
