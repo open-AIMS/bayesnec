@@ -1674,7 +1674,17 @@ control_x <- function(object) {
 #' below the reference \emph{there}, which where \code{x_range} begins above the
 #' control is a different and much larger set: those draws reached the reference
 #' somewhere below the range asked for, they are not identified within it, and
-#' they are \code{NA} with the draws that never reach it.
+#' they are \code{NA}.
+#'
+#' Where the grid reaches the control the control is made its first point, the
+#' control posterior supplying the predictions there, rather than the points
+#' below the control being dropped and the search beginning at the first point
+#' above it. Dropping them left a gap of one grid step between the control and
+#' the start of the search, and a draw crossing inside that gap was lost: with
+#' \code{x_range = c(0, 100)} on \code{ecx4param} at \code{sig_val = 0.05},
+#' 11 of 100 draws whose NSEC over the observed range is 0.064 to 0.484, the
+#' first searched point being 0.503. Prepending closes the gap, so the estimate
+#' is the same whatever \code{x_range} adds below the data.
 #'
 #' @param post A draws by grid \code{\link[base]{matrix}} of predicted means.
 #' @param reference A \code{\link[base]{numeric}} value, the \code{sig_val}
@@ -1691,22 +1701,51 @@ control_x <- function(object) {
 #' where the curve does not reach the reference at any tested concentration.
 #' @noRd
 nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
-  keep <- x_vec >= x_control
-  if (!any(keep)) {
-    stop("The prediction range lies entirely below ", signif(x_control, 3),
-         ", the lowest observed value of the predictor, so there is no ",
-         "concentration at or above the control at which to read the NSEC.",
-         call. = FALSE)
+  if (length(control) != nrow(post)) {
+    stop("The control posterior has ", length(control), " values and the ",
+         "prediction has ", nrow(post), " draws.", call. = FALSE)
   }
-  x_kept <- x_vec[keep]
-  post <- post[, keep, drop = FALSE]
-  control <- rep_len(control, nrow(post))
-  vapply(seq_len(nrow(post)), function(i) {
+  keep <- x_vec > x_control
+  if (!any(keep)) {
+    # Both ways of producing a grid with nothing above the control: an x_range
+    # at or below the lowest observed value, and a resolution of 1, which puts
+    # the single point on it. Refused rather than left to return a vector of NA
+    # under a warning about curves that never reach the reference, or a summary
+    # computed from whichever draws needed no search. resolution = 1 is a valid
+    # request of bnec_newdata(), which is why this is refused here rather than
+    # in check_args_newdata(). See #325.
+    stop("The prediction grid holds no concentration above ",
+         signif(x_control, 3), ", the lowest observed value of the predictor, ",
+         "so there is nothing above the control to read the NSEC from. Check ",
+         "x_range, and that resolution is at least 2.", call. = FALSE)
+  }
+  if (min(x_vec) <= x_control) {
+    # The grid reaches the control, so the search starts there: the control
+    # posterior is the prediction at x_control and becomes the first column.
+    # Dropping the points below the control instead would start the search one
+    # grid step above it and lose any draw crossing in between.
+    x_kept <- c(x_control, x_vec[keep])
+    post <- cbind(control, post[, keep, drop = FALSE])
+  } else {
+    # The grid begins above the control. The stretch between the two was not
+    # asked for, so it is not searched and not interpolated across: a draw that
+    # crossed there is NA, reported separately from the draws that never cross.
+    x_kept <- x_vec
+  }
+  below_range <- logical(nrow(post))
+  out <- vapply(seq_len(nrow(post)), function(i) {
     if (!is.na(control[i]) && control[i] <= reference) {
       return(x_control)
     }
-    crossing_x(post[i, ], reference, x_kept)
+    val <- crossing_x(post[i, ], reference, x_kept)
+    if (is.na(val) && !is.na(post[i, 1]) && post[i, 1] <= reference) {
+      below_range[i] <<- TRUE
+    }
+    val
   }, numeric(1))
+  attr(out, "n_below_range") <- sum(below_range)
+  attr(out, "x_searched_from") <- x_kept[1]
+  out
 }
 
 #' Does the family have a lower bound on the response?
@@ -1885,8 +1924,18 @@ check_removed_args <- function(dots) {
 #'
 #' @return \code{NULL}, invisibly. Called for the warning.
 #' @noRd
-warn_censored_draws <- function(values, estimate = "estimate") {
-  n_missing <- sum(is.na(values))
+warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
+                               x_from = NULL) {
+  if (n_below > 0) {
+    msg <- paste0("The ", estimate, " is not identified for ", n_below, " of ",
+                  length(values), " draws, whose curve reached the reference ",
+                  "below ", signif(x_from, 3), ", the lowest concentration in ",
+                  "the prediction range. Those draws return NA and are ",
+                  "excluded from the summary.")
+    warning(structure(class = c("bayesnec_censored", "warning", "condition"),
+                      list(message = msg, call = NULL)))
+  }
+  n_missing <- sum(is.na(values)) - n_below
   if (n_missing > 0) {
     # Classed, so that a method which reports its own censoring can muffle the
     # reports of the calls it makes internally without also muffling anything

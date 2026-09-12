@@ -208,21 +208,37 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   x_control <- control_x(object)
   nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, x_control,
                                   control)
-  n_missing <- sum(is.na(nsec_out))
+  # The two classes of draw that return NA are opposite statements about where
+  # the estimate is, and one message for both would say of each the thing that
+  # is true of the other. Counted before sub_x_transformation(), which returns a
+  # bare value.
+  n_below <- attr(nsec_out, "n_below_range")
+  searched_from <- attr(nsec_out, "x_searched_from")
+  n_above <- sum(is.na(nsec_out)) - n_below
   nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
   bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
-  # xform reaches the censoring bound as well as the estimates, and the warning
-  # follows both, so that the bound is on the scale the caller reads the
+  lower <- sub_x_transformation(searched_from, object$bayesnecformula)
+  # xform reaches the censoring bounds as well as the estimates, and the
+  # warnings follow both, so that a bound is on the scale the caller reads the
   # estimate on. See the same reordering in ecx.bayesnecfit.
   if (inherits(xform, "function")) {
     nsec_out <- xform(nsec_out)
     bound <- xform(bound)
+    lower <- xform(lower)
   }
-  if (n_missing > 0) {
+  if (n_above > 0) {
     warning("The ", object$model, " curve does not fall below the control's ",
             sig_val, " quantile anywhere in the predictor range for ",
-            n_missing, " of ", length(nsec_out), " draws, which return NA. ",
+            n_above, " of ", length(nsec_out), " draws, which return NA. ",
             "The NSEC is censored above ", signif(bound, 3), ".",
+            call. = FALSE)
+  }
+  if (n_below > 0) {
+    warning("The ", object$model, " curve falls below the control's ", sig_val,
+            " quantile before ", signif(lower, 3), ", the lowest concentration ",
+            "in the prediction range, for ", n_below, " of ", length(nsec_out),
+            " draws, which return NA. Their NSEC lies between the control and ",
+            signif(lower, 3), ", which this x_range does not cover.",
             call. = FALSE)
   }
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals, na.rm = TRUE)
@@ -562,6 +578,7 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                                             level = 1-(sig_val*2))["Lower"])
       control <- p_samples[1, "Prediction"]
       ecnsec <- as.numeric((control - reference) / control * 100)
+      # x_start as in the branch above, for the same reason.
       nsec_out <- apply(p_samples, 2, function(col) {
         crossing_x(col, reference, x_vec, x_start = min(x_vec))
       })

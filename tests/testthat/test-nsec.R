@@ -184,10 +184,13 @@ test_that("an x_range above the control does not report the control", {
   skip_on_cran()
   x_control <- min(nec_data$x)
   n_draws <- brms::ndraws(ecx4param$fit)
+  # Reported by a warning of its own: these curves do fall to the reference, and
+  # saying they do not anywhere in the predictor range would state the opposite
+  # of their situation, which is the defect #325 was opened for.
   expect_warning(
     out <- nsec(ecx4param, resolution = 200, x_range = c(1, 3),
                 posterior = TRUE),
-    "does not fall below"
+    "falls below the control's 0.01 quantile before 1"
   )
   # The draws whose own control is at or below the reference keep the control,
   # because that is a property of the fit and not of the range asked for. Every
@@ -195,38 +198,44 @@ test_that("an x_range above the control does not report the control", {
   expect_equal(sum(out == x_control, na.rm = TRUE), 0.01 * n_draws)
   expect_true(sum(is.na(out)) > 0.01 * n_draws)
   expect_true(all(out >= 1 | out == x_control, na.rm = TRUE))
-  # And the estimate does not depend on x_range: extending it below the data,
-  # which moves the grid off the control, leaves the same draws at the control.
-  low <- suppressWarnings(
-    nsec(ecx4param, resolution = 200, x_range = c(0, max(nec_data$x)),
-         posterior = TRUE)
-  )
-  full <- nsec(ecx4param, resolution = 200, posterior = TRUE)
-  expect_equal(sum(low == x_control, na.rm = TRUE),
-               sum(full == x_control, na.rm = TRUE))
+  # And the estimate does not depend on x_range where the grid reaches the
+  # control. Extending it below the data moves the grid off the control, and
+  # extending it far above coarsens the grid so that the next point after the
+  # control is well beyond it; the control is made the first point searched, so
+  # neither loses a draw. Measured at sig_val = 0.05, where the class is large
+  # enough to be countable on a 100 draw fixture.
+  full <- nsec(ecx4param, resolution = 200, sig_val = 0.05, posterior = TRUE)
+  for (x_range in list(c(0, max(nec_data$x)), c(0, 100))) {
+    wide <- nsec(ecx4param, resolution = 200, sig_val = 0.05,
+                 x_range = x_range, posterior = TRUE)
+    expect_false(anyNA(wide))
+    expect_equal(sum(wide == x_control), sum(full == x_control))
+  }
 })
 
-test_that("a range leaving one grid point at or above the control is not an error", {
-  # The grid is searched at or above the control, which can leave a single point,
-  # and a single value has no interval for a sign change to fall in. It reports
-  # nothing rather than stopping on zero_crossings(). A range entirely below the
-  # control is refused by name instead of returning a vector of NA with a warning
-  # that names the wrong cause.
+test_that("a range with no concentration above the control is refused", {
+  # Rather than returning a vector of NA under a warning that names the wrong
+  # cause. A single grid point is refused earlier still, by check_args_newdata:
+  # it defines no interval to read anything from.
   skip_on_cran()
+  expect_error(
+    nsec(ecx4param, resolution = 5, x_range = c(0, 0.02)),
+    "holds no concentration above"
+  )
+  # The other way to the same grid. resolution = 1 stays a valid request of
+  # bnec_newdata(), which test-bayesmanec_methods.R uses to pin a prediction
+  # shape, so it is refused here rather than there.
+  expect_error(nsec(ecx4param, resolution = 1), "holds no concentration above")
+  # A range that does reach past the control is estimated over what it covers:
+  # here only the draws at the control are identified, and the rest are reported
+  # as never reaching the reference, which over this range they do not.
   expect_warning(
     out <- nsec(ecx4param, resolution = 5, x_range = c(0, 0.04),
                 posterior = TRUE),
     "does not fall below"
   )
-  # The draws whose control is at or below the reference still take the control,
-  # which needs no search; every other draw has no interval to search and is NA.
   expect_equal(sum(out == min(nec_data$x), na.rm = TRUE),
                0.01 * brms::ndraws(ecx4param$fit))
-  expect_true(all(is.na(out[out != min(nec_data$x)])))
-  expect_error(
-    nsec(ecx4param, resolution = 5, x_range = c(0, 0.02)),
-    "lies entirely below"
-  )
 })
 
 test_that("the draws at the control are not reported", {

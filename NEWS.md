@@ -560,8 +560,9 @@
   with a warning naming how many draws were affected.** Both estimators
   previously returned the grid point whose prediction was nearest the target,
   which for a curve that never declines to the target is the *highest*
-  concentration in the series, reported as an estimate with nothing said. The crossing is now found by interpolation between the bracketing grid
-  points rather than snapped to the nearer of them (#39). Every function that
+  concentration in the series, reported as an estimate with nothing said. The
+  crossing is now found by interpolation between the bracketing grid points
+  rather than snapped to the nearer of them (#39). Every function that
   summarises such a posterior reports the censoring and excludes the affected
   draws, `nec()` and the `bayesnechurdlefit` methods included; they previously
   stopped with "missing values and NaN's not allowed" on a posterior the package
@@ -581,12 +582,19 @@
   reports zero concentration; the two agree where the control of the design is a
   true zero and the predictor is untransformed, and otherwise a reader comparing
   with Table 3 sees a small positive bound in place of its 0. And it applies only
-  where the prediction grid begins at the control, which is where `x_range` is
-  `NA` or extends below the data; where `x_range` begins at a higher
-  concentration such a draw reached the reference below the requested range and
-  is reported as unidentified, with the draws that never reach it. The crossing
-  is also sought at or above the control, so extending `x_range` below the data
-  cannot place an estimate at a concentration lower than any tested (#325).
+  where the prediction grid reaches the control. Where `x_range` begins at a
+  higher concentration, a draw that reached the reference below that range is
+  not identified within it and returns `NA`, reported by a warning of its own
+  rather than by the one about curves that never reach the reference. The
+  crossing is sought from the control upward, the control being made the first
+  point of the searched grid, so no estimate is placed below the lowest tested
+  concentration and none is lost between the control and the first grid point
+  above it (#325).
+
+- **An NSEC asked for over a grid holding no concentration above the control is
+  refused by name**, rather than returning a vector of `NA` under a warning about
+  curves that never reach the reference. An `x_range` at or below the lowest
+  observed value produces such a grid, and so does `resolution = 1` (#325).
 
 - **An ECx is unchanged except where the curve has already reached its target
   where the grid begins**, which the default `type = "absolute"` cannot produce:
