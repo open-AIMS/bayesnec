@@ -514,6 +514,125 @@ posterior predictions, with weights derived using functions
 <span class="pkg">brms</span>. Argument to both these functions can be passed via the
 <code>loo_controls</code> argument. Individual model fits can be pulled out
 for examination using function <code><a href="pull_out.html">pull_out</a></code>.</p>
+<p><b>Fitting a model set in parallel</b></p>
+<p>A model set is fitted one model at a time by default, which is what every
+earlier version did. Fitting the models at the same time is asked for by
+setting a <span class="pkg">future</span> plan before the call, and <code>bnec</code> then
+uses it:</p>
+<div class="sourceCode"><pre><code><span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">my_data</span>, seed <span class="op">=</span> <span class="fl">17</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">sequential</span><span class="op">)</span></span></code></pre></div>
+
+<p>There is no <code>cores</code> or <code>parallel</code> argument, because the plan
+already holds that state and two ways of setting it would disagree. The
+<span class="pkg">future</span> and <span class="pkg">future.apply</span> packages are Suggests: with either
+absent, or with no plan set, the models are fitted in sequence exactly as
+before. <code><a href="amend.html">amend</a></code> uses the plan in the same way, over the models
+it has to fit rather than over the whole set.</p>
+<p>Each model samples its chains in sequence inside its worker.
+<code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code> parallelises across chains on its own account, and
+models in parallel on top of that would ask for <code>workers x chains</code>
+processes, which on most machines is slower than fitting in sequence. Under
+a parallel plan of more than one worker <code>bnec</code> therefore passes
+<code>cores = 1</code> to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>. Nest the two levels
+deliberately by passing <code>cores</code> yourself, which is left alone:
+<code>bnec(..., cores = 2)</code> with <code>workers = 4</code> runs four worker
+processes sampling eight chains between them.</p>
+<p><span class="pkg">future</span> sets <code>mc.cores</code> to 1 inside a worker of its own accord,
+so a value set in your profile does not in fact reach <span class="pkg">brms</span> there –
+measured at 1 under <code>multisession</code>, <code>multicore</code> and
+<code>cluster</code> with <code>options(mc.cores = 7)</code> in
+<code>R_PROFILE_USER</code>. The <code>cores = 1</code> above is therefore belt and
+braces rather than the only thing standing between you and sixteen
+processes. It is kept because it makes what <span class="pkg">brms</span> is asked to do a
+property of this package rather than of <span class="pkg">future</span>'s internals.</p>
+<p>A plan that names a parallel strategy but resolves to a single worker is
+clamped in neither respect, and <code>bnec</code> says which case it is
+in. <code>plan(multicore)</code> resolves that way wherever forking is
+unavailable, which is Windows, and <span class="pkg">RStudio</span> or <span class="pkg">Positron</span> on
+Linux and macOS; <code>plan(multisession)</code> works everywhere. A
+<code>cluster</code> plan naming one node also reports one worker, and there the
+fitting does happen in another process.</p>
+<p>Each fitted model reproduces exactly under a parallel plan, given the
+same <code>seed</code> passed on to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>, and that is tested.
+Without a <code>seed</code> the initial-value search reseeds from entropy and
+nothing repeats under either plan, which is what this package does today
+with or without one.</p>
+<p>The model-averaged quantities are the exception, and the reason needs
+stating because nothing announces it. Once the models are fitted,
+<code><a href="expand_manec.html">expand_manec()</a></code> draws a seed from the session's RNG stream and uses it
+to decide which posterior draws each equation contributes to the averaged
+estimate. Fitted in sequence the loop advances that stream, because
+<code>set.seed(seed)</code> and the initial-value search it governs run in this
+process, and the state the draw is taken from is therefore fixed by
+<code>seed</code>. Under a parallel plan the loop leaves the stream alone. The
+averaged <code>nec</code>, its interval and the stored prediction grid therefore
+differ between the two plans – as two valid realisations of the same
+weighting, not as one being wrong.</p>
+<p>Two consequences follow from that, and they are properties of the plan
+rather than of where the fitting happened, so they hold for a parallel plan
+that resolves to a single worker as much as for one with eight.
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> in your session before the call fixes the averaging draw,
+which is what <code><a href="expand_manec.html">expand_manec()</a></code> intends it to answer to, so two parallel
+runs agree. And a parallel call does not move your session's RNG stream on,
+where a sequential one does; if you are drawing from that stream after the
+fit, the two plans leave you in different places.</p>
+<p>Supplying <code>init</code> yourself skips the search altogether. With a
+<code>seed</code> supplied as well, a sequential run then does not advance the
+stream either, and its averaging draw answers to your session's seed in the
+same way a parallel run's does. The <code>seed</code> is what makes that second
+part true: <span class="pkg">brms</span> defaults it to <code>NA</code> and <span class="pkg">rstan</span> then draws
+one itself, from your stream, once per <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code> call.</p>
+<p>Console output from a worker is not ordered. The per-model
+messages <code>bnec</code> emits come from a worker process and arrive
+out of order, or not at all, depending on the backend. A model that fails
+is still recorded as an <code>NA</code> entry, the remaining models still fit, and
+<code><a href="failed_models.html">failed_models</a></code> reports what happened, so nothing is lost
+beyond the running commentary. <code>timeout</code> continues to apply per model
+inside its worker.</p>
+<p>One failure is not caught that way. A worker killed from outside R, which in
+practice means the operating system reclaiming memory, cannot raise a
+condition for <code><a href="https://rdrr.io/r/base/try.html" class="external-link">try()</a></code> to catch, and <span class="pkg">future</span> reports it in the
+parent as an error that ends the whole call rather than one model of it.
+Fewer workers is the remedy, and it is the reason to think about how many
+before setting a plan: memory, not cores, is usually what binds on a set of
+this kind.</p>
+<p>Each model is sent to a worker with the data, the formula, the priors and
+the <span class="pkg">brms</span> arguments, and nothing else <code>bnec</code> or
+<code><a href="amend.html">amend</a></code> has built – in particular not the fits an
+<code><a href="amend.html">amend</a></code> call already holds. <span class="pkg">future</span> refuses to export
+more than 500 MiB by default and says so, naming the applied function rather
+than what is inside it; raise <code>options(future.globals.maxSize = )</code> if
+a large dataset reaches it.</p>
+<p>A formula is the one thing sent that brings more than itself: it keeps the
+environment it was written in. Written at the top level that is the global
+environment, which is sent by reference and adds nothing. Written inside a
+function it is that function's frame, and everything in the frame goes with
+it – measured at 6.18 MiB for a formula built in a frame holding a 6.2 MB
+matrix. So if a limit is reached and the data are not large, look at where
+the formula was created. The same holds for any <em>function</em> passed
+through <code>...</code> – <code>init</code> most likely. Families, priors, stanvars
+and a <code>control</code> list do not behave this way: a family's closures bind
+to <span class="pkg">stats</span> or <span class="pkg">brms</span> rather than to where you wrote it, and the
+other three hold no closure at all.</p>
+<p><code><a href="bnec_group.html">bnec_group</a></code> fits one model set per level of the grouping
+variable, so under a parallel plan each level is parallelised in turn and
+the note above is printed once per level.</p>
+<p>Starting a worker is not free for this package. A <code>multisession</code> or
+<code>cluster</code> worker is a fresh R process that has to load <span class="pkg">bayesnec</span>
+and with it <span class="pkg">brms</span>, <span class="pkg">Rcpp</span> and <span class="pkg">rstan</span> before it can fit
+anything, which took about three seconds per worker on an idle machine and
+considerably longer on a busy one. It is paid once per worker, so it is
+negligible against a 23-model set and is not against two or three models.</p>
+<p>Two things to be aware of when developing against the package rather than
+using it. A <code>multisession</code> or <code>cluster</code> worker loads the
+<em>installed</em> <span class="pkg">bayesnec</span>, not one loaded with
+<code><a href="https://pkgload.r-lib.org/reference/load_all.html" class="external-link">pkgload::load_all()</a></code>; <code>multicore</code>, which forks, inherits the
+loaded one. And <span class="pkg">future</span> sets the plan inside a worker to sequential,
+so a <code>bnec</code> call made from within one does not parallelise
+again.</p>
 <p><b>Additional technical notes</b></p>
 <p>A zero concentration is fitted as recorded. No family constrains the values
 a predictor may take, so a control needs no offset, and earlier versions of
