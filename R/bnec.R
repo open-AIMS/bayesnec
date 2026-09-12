@@ -490,9 +490,12 @@
 #' Three things to know before setting one. Under a plan of more than one
 #' worker each model samples its chains in sequence, so \code{workers = 4} uses
 #' four cores in total and is no faster than the four \code{\link[brms]{brm}}
-#' already uses for chains; pass \code{cores} yourself to nest the two levels,
-#' and the speed-up starts above that. Supply a \code{seed} if the run has to
-#' be reproducible. And the model-averaged quantities -- the averaged
+#' already uses for chains; a plan is worth setting only where the models are
+#' slow enough for the fitting to dominate, which on a small set it is not.
+#' Measured on the thirteen-model set of \code{vignette("example2")}, two
+#' workers were 15 per cent slower than no plan at all, and twenty cores
+#' returned six per cent. Supply a \code{seed} if the run has to be
+#' reproducible. And the model-averaged quantities -- the averaged
 #' \code{nec}, its interval, the stored prediction grid -- are not reproduced
 #' between a sequential and a parallel run, because \code{expand_manec()} draws
 #' from the session's RNG stream, which a sequential run advances and a parallel
