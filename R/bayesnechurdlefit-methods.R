@@ -259,8 +259,8 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
   # first column of the grid, so supplying x_range does not change the reference
   # and therefore the estimate, exactly as in nsec.bayesnecfit. See D15 ruling 2.
   reference <- quantile(preds$control[[hurdle_check_which(which)]], sig_val)
-  out <- nsec_from_posterior(p_samples, reference, preds$x,
-                             control_x(object))
+  out <- nsec_from_posterior(p_samples, reference, preds$x, control_x(object),
+                             preds$control[[hurdle_check_which(which)]])
   out <- hurdle_xform_x(object, out)
   warn_censored_draws(out, "NSEC")
   if (inherits(xform, "function")) {

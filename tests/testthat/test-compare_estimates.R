@@ -62,27 +62,35 @@ test_that("prob_diff is computed over the identified draws", {
   # headline output and NA is a value rather than an error.
   skip_on_cran()
   x <- list(a = ecx4param, b = nec4param)
-  # x_range stops short of where nec4param's curve reaches the reference, which
-  # is what leaves a draw with no crossing to find; ecx4param's curve reaches it
-  # within the same range, so the comparison keeps a few identified pairs to
-  # compute the probability from. Over the full range these fixtures have no
-  # censored draw at all: one at or below the reference at the control reaches
-  # it there and returns the control rather than NA, so the censored class is
-  # only the curves that never reach the reference (#325).
-  out <- suppressWarnings(
-    compare_estimates(x, comparison = "nsec", resolution = 50,
-                      x_range = c(0, 1.4))
-  )
-  expect_false(anyNA(out$prob_diff$prob))
-  expect_true(all(out$prob_diff$prob >= 0 & out$prob_diff$prob <= 1))
-  # The posteriors this was computed from do contain censored draws, so the
-  # assertion above is testing the path it is meant to.
-  expect_true(any(vapply(out$posterior_list, anyNA, logical(1))))
-  # And over the full range there are none to exclude, which is the other half
-  # of the same statement.
+  # Over the full range these fixtures have no censored draw at all: one at or
+  # below the reference at the control reaches it there and returns the control
+  # rather than NA, so the censored class is only the curves that never reach the
+  # reference (#325). That is asserted unconditionally.
   full <- suppressWarnings(
     compare_estimates(x, comparison = "nsec", resolution = 50)
   )
   expect_false(any(vapply(full$posterior_list, anyNA, logical(1))))
   expect_false(anyNA(full$prob_diff$prob))
+  expect_true(all(full$prob_diff$prob >= 0 & full$prob_diff$prob <= 1))
+  # The na.rm path itself needs one component censored and the other identified
+  # over the same range, which depends on where the packaged fixture's curves sit
+  # rather than on anything this test controls. The precondition is measured and
+  # the case skipped if a regenerated fixture no longer meets it, rather than
+  # asserted and left to fail for the wrong reason.
+  censored_range <- c(0, 1.4)
+  post_n <- suppressWarnings(nsec(nec4param, resolution = 50,
+                                  x_range = censored_range, posterior = TRUE))
+  post_e <- suppressWarnings(nsec(ecx4param, resolution = 50,
+                                  x_range = censored_range, posterior = TRUE))
+  skip_if_not(
+    anyNA(post_n) && sum(!is.na(post_n) & !is.na(post_e)) > 0,
+    "the packaged fixture no longer gives a partially censored comparison"
+  )
+  out <- suppressWarnings(
+    compare_estimates(x, comparison = "nsec", resolution = 50,
+                      x_range = censored_range)
+  )
+  expect_true(any(vapply(out$posterior_list, anyNA, logical(1))))
+  expect_false(anyNA(out$prob_diff$prob))
+  expect_true(all(out$prob_diff$prob >= 0 & out$prob_diff$prob <= 1))
 })

@@ -1595,6 +1595,13 @@ crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   if (!is.na(y[1]) && y[1] <= target) {
     return(x_start)
   }
+  # A single value has no interval for a sign change to fall in, and
+  # zero_crossings() stops on it with "`lower` is not smaller than `upper`"
+  # rather than returning nothing. Reachable from nsec_from_posterior() where
+  # x_range leaves one grid point at or above the control.
+  if (length(y) < 2) {
+    return(NA_real_)
+  }
   val <- suppressWarnings(min(zero_crossings(y - target)))
   if (!is.finite(val)) {
     return(NA_real_)
@@ -1659,6 +1666,16 @@ control_x <- function(object) {
 #' read off an extrapolation into concentrations the design did not cover, and
 #' would make the estimate depend on how far \code{x_range} extends. See #325.
 #'
+#' Which draws those are is read from the control posterior rather than from the
+#' grid: the draw's own control value against the reference, both of which are
+#' read at \code{x_control}. That is the definition, and it makes the value
+#' independent of \code{x_range}, as D15 ruling 2 requires. Testing the curve at
+#' the first grid point instead would claim the control for every draw already
+#' below the reference \emph{there}, which where \code{x_range} begins above the
+#' control is a different and much larger set: those draws reached the reference
+#' somewhere below the range asked for, they are not identified within it, and
+#' they are \code{NA} with the draws that never reach it.
+#'
 #' @param post A draws by grid \code{\link[base]{matrix}} of predicted means.
 #' @param reference A \code{\link[base]{numeric}} value, the \code{sig_val}
 #' quantile of the control posterior.
@@ -1666,14 +1683,29 @@ control_x <- function(object) {
 #' columns of \code{post}.
 #' @param x_control A \code{\link[base]{numeric}} value, the predictor value
 #' the control is read at, from \code{control_x()}.
+#' @param control A \code{\link[base]{numeric}} vector, the control posterior,
+#' one value per row of \code{post}, being the predicted mean at
+#' \code{x_control} and the vector \code{reference} is a quantile of.
 #'
 #' @return A \code{\link[base]{numeric}} vector, one value per draw, \code{NA}
 #' where the curve does not reach the reference at any tested concentration.
 #' @noRd
-nsec_from_posterior <- function(post, reference, x_vec, x_control) {
+nsec_from_posterior <- function(post, reference, x_vec, x_control, control) {
   keep <- x_vec >= x_control
+  if (!any(keep)) {
+    stop("The prediction range lies entirely below ", signif(x_control, 3),
+         ", the lowest observed value of the predictor, so there is no ",
+         "concentration at or above the control at which to read the NSEC.",
+         call. = FALSE)
+  }
+  x_kept <- x_vec[keep]
+  post <- post[, keep, drop = FALSE]
+  control <- rep_len(control, nrow(post))
   vapply(seq_len(nrow(post)), function(i) {
-    crossing_x(post[i, keep], reference, x_vec[keep], x_start = x_control)
+    if (!is.na(control[i]) && control[i] <= reference) {
+      return(x_control)
+    }
+    crossing_x(post[i, ], reference, x_kept)
   }, numeric(1))
 }
 
@@ -1732,7 +1764,10 @@ control_posterior <- function(object, newdata, epred_fun, x_at = NULL) {
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
   control_nd <- newdata[1, , drop = FALSE]
   if (is.null(x_at)) {
-    x_at <- control_x(object)
+    # The same value control_x() returns. Read from grid_obj, which is already
+    # resolved here, rather than by calling control_x() and repeating the
+    # pull_out() and model.frame() this function has just done.
+    x_at <- min(grid_obj$fit$data[[x_var]])
   }
   control_nd[[x_var]] <- x_at
   epred_fun(control_nd)[, 1]

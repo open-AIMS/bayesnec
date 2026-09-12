@@ -316,9 +316,9 @@ range returns `NA` with a warning. Today the nearest grid point is returned,
 which for a curve that never declines to the target can report the control
 concentration itself as the ECx."
 
-**Two of the three statements in that rationale are wrong.** Measured on
-`x = seq(0, 10, 11)` and `y = 10 - x`: for a target below the whole curve, which
-is the case a curve that never declines to the target presents,
+**One of the three statements in that rationale is wrong.** Measured on
+`x = seq(0, 10, length.out = 11)` and `y = 10 - x`: for a target below the whole
+curve, which is the case a curve that never declines to the target presents,
 `which.min(abs(y - target))` returns the *highest* concentration, not the
 control. The nearest grid point is the control only where the target lies
 *above* the curve at the first grid point. For an ECx that requires
@@ -331,8 +331,13 @@ answer rather than a defect.
 the control posterior, so `sig_val` of the draws have a control at or below it by
 construction of the quantile, and each of those reaches the reference at the
 control itself. Fisher and Fox (2023) obtain every draw's NSEC by backward
-interpolation, solving the inverse of the fitted equation analytically, and
-exclude none; at p. 2026 they state that the lower bound of the credible interval
+interpolation, solving the inverse of the fitted equation analytically, with no
+crossing search and no exclusion step. Their printed code,
+`(-log(p/b0)/b1)^(1/b2)`, does not itself return zero for such a draw: the base
+is negative where `b0 < p` and a fractional exponent of it is `NaN` in R, exactly
+zero arising only at `b0 == p`. What the paper *reports* for those draws is zero,
+and the text says so twice: at p. 2026 that the lower bound of the credible
+interval
 "will be 0 for any significance level greater than the 0.025 quantile", and in
 the discussion that such an outcome "potentially validly reflects the underlying
 fact that the confidence bounds of a true no-effect value may in fact contain 0
@@ -351,15 +356,18 @@ that value is the control.
 
 | | ruling |
 |---|---|
-| 1 | A draw whose curve is at or below the reference where the search begins returns the control concentration. `crossing_x()` takes an `x_start` argument, defaulting to `NA_real_` so that the ECx callers are unchanged, and the NSEC callers pass `control_x()` |
+| 1 | A draw whose **control** is at or below the reference returns the control concentration. The test is on the control posterior, the same vector `reference` is a quantile of, not on the curve at the first grid point: `sig_val` of the draws satisfy it by construction, and the value is then independent of `x_range` as D15 ruling 2 requires. A draw whose control is above the reference but whose curve is already below it where a supplied `x_range` begins reached the reference below the range asked for; that is not identified within the range, so it is `NA` and is reported with the draws that never reach the reference. The first implementation tested the curve at the first grid point instead, which on `nsec(ecx4param, x_range = c(1, 3))` reported the control --- a concentration below the whole grid --- for 65 of 100 draws, 64 of them not in the `sig_val` tail, with no warning |
+| 1a | `crossing_x()` takes an `x_start` argument for the same case, defaulting to `NA_real_` so that the ECx callers are unchanged. `nsec.drc()` uses it, having no per-draw control posterior to test |
 | 2 | Those draws are not reported. They are `sig_val` of the draws of every fit by construction, so a message about them restates the definition of the quantile |
 | 3 | `NA` and the warning are kept for a draw whose curve does not reach the reference at any tested concentration, and the wording is theirs alone. This is a departure from Fisher and Fox (2023), whose analytic inversion is unbounded above and returns an extrapolated concentration; declining to extrapolate is a package decision and is documented as one |
-| 4 | The NSEC crossing is sought at or above the control, because the reference is defined there. A crossing below it would be read off an extrapolation into concentrations the design did not cover, and would make the estimate depend on how far `x_range` extends, which ruling 2 of D15 removed |
+| 4 | The NSEC crossing is sought at or above the control, because the reference is defined there. A crossing below it would be read off an extrapolation into concentrations the design did not cover, and would make the estimate depend on how far `x_range` extends, which ruling 2 of D15 removed. Where that leaves a single grid point there is no interval for a sign change to fall in and the draw is `NA`; `modelbased::zero_crossings()` stops on a single value with "`lower` is not smaller than `upper`", so `crossing_x()` guards the length. Where it leaves none, the call is refused by name rather than returning a vector of `NA` under a warning that names the wrong cause |
 | 5 | `hurdle_control_x()` is removed. `control_x()` resolves a hurdle fit to its survival component and returns the same value |
-| 6 | A hormetic curve that begins below the target takes `x_start` as well. Its first sign change is the rising limb --- the concentration at which the response reaches the target on the way up --- which estimates nothing. For an NSEC the draw is at or below the reference at the control and the control is its estimate. For an ECx the case is reachable only under `type = "direct"` with a target above the curve, so `NA` is returned, which is the one change this makes to any ECx |
+| 6 | The value is the lowest *observed* concentration, which is where this departs from the paper at the lower end as ruling 3 departs from it at the upper. Fisher and Fox (2023) report zero, extrapolating from `b0` to zero concentration; `bayesnec` reports the control, 0.0323 on `nec_data`. The two agree where the design's control is a true zero and the predictor is untransformed, and a reader checking against Table 3 will otherwise see a small positive bound where the paper reports 0. Documented in `?nsec` |
+| 7 | A hormetic curve that begins below the target takes `x_start` as well. Its first sign change is the rising limb --- the concentration at which the response reaches the target on the way up --- which estimates nothing. For an NSEC the draw is at or below the reference at the control and the control is its estimate. For an ECx the case is reachable only under `type = "direct"` with a target above the curve, so `NA` is returned, which is the one change this makes to any ECx |
 
-**What was measured, and on what.** `cache/logworkflow/fit_log_regularizing.rds`,
-the `example9` workflow fit, `suc | trials(tot) ~ crf(log(dose_adj), model =
+**What was measured, and on what.** `cache/logworkflow/fit_log_regularizing.rds`
+--- a local cache, not in the repository, so these numbers cannot be re-run from
+the record alone --- the `example9` workflow fit, `suc | trials(tot) ~ crf(log(dose_adj), model =
 "decline")`, 8000 draws. Of the draws `crossing_x()` discarded, every one reached
 the reference and none failed to: 80 of 80 on `ecxll3`, `ecxwb1` and
 `ecx4param`, 79 of 79 on `nec3param`. The count is `sig_val × n_draws` at each of

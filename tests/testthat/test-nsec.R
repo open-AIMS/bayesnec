@@ -175,6 +175,60 @@ test_that("a draw at or below the reference at the control returns the control",
   expect_gt(quantile(out, 0.025), x_control)
 })
 
+test_that("an x_range above the control does not report the control", {
+  # The control is the estimate only where the search begins at the control. With
+  # x_range starting higher, a draw already at or below the reference at the first
+  # grid point reached it below the range asked for, and reporting the control
+  # would name a concentration below the whole grid. It is NA and is reported with
+  # the draws that never reach the reference. See D17 ruling 1.
+  skip_on_cran()
+  x_control <- min(nec_data$x)
+  n_draws <- brms::ndraws(ecx4param$fit)
+  expect_warning(
+    out <- nsec(ecx4param, resolution = 200, x_range = c(1, 3),
+                posterior = TRUE),
+    "does not fall below"
+  )
+  # The draws whose own control is at or below the reference keep the control,
+  # because that is a property of the fit and not of the range asked for. Every
+  # other draw already below the reference at the first grid point is NA.
+  expect_equal(sum(out == x_control, na.rm = TRUE), 0.01 * n_draws)
+  expect_true(sum(is.na(out)) > 0.01 * n_draws)
+  expect_true(all(out >= 1 | out == x_control, na.rm = TRUE))
+  # And the estimate does not depend on x_range: extending it below the data,
+  # which moves the grid off the control, leaves the same draws at the control.
+  low <- suppressWarnings(
+    nsec(ecx4param, resolution = 200, x_range = c(0, max(nec_data$x)),
+         posterior = TRUE)
+  )
+  full <- nsec(ecx4param, resolution = 200, posterior = TRUE)
+  expect_equal(sum(low == x_control, na.rm = TRUE),
+               sum(full == x_control, na.rm = TRUE))
+})
+
+test_that("a range leaving one grid point at or above the control is not an error", {
+  # The grid is searched at or above the control, which can leave a single point,
+  # and a single value has no interval for a sign change to fall in. It reports
+  # nothing rather than stopping on zero_crossings(). A range entirely below the
+  # control is refused by name instead of returning a vector of NA with a warning
+  # that names the wrong cause.
+  skip_on_cran()
+  expect_warning(
+    out <- nsec(ecx4param, resolution = 5, x_range = c(0, 0.04),
+                posterior = TRUE),
+    "does not fall below"
+  )
+  # The draws whose control is at or below the reference still take the control,
+  # which needs no search; every other draw has no interval to search and is NA.
+  expect_equal(sum(out == min(nec_data$x), na.rm = TRUE),
+               0.01 * brms::ndraws(ecx4param$fit))
+  expect_true(all(is.na(out[out != min(nec_data$x)])))
+  expect_error(
+    nsec(ecx4param, resolution = 5, x_range = c(0, 0.02)),
+    "lies entirely below"
+  )
+})
+
 test_that("the draws at the control are not reported", {
   # They are sig_val * n_draws of every fit by construction, so a warning about
   # them restates the definition of the quantile.
@@ -206,7 +260,8 @@ test_that("nsec_from_posterior puts the lower sig_val tail at the control", {
     top - (top - 0.05) * (x - min(x)) / diff(range(x))
   }, numeric(length(x))))
   reference <- stats::quantile(post[, 1], 0.05)
-  out <- nsec_from_posterior(post, reference, x, x_control = x[1])
+  out <- nsec_from_posterior(post, reference, x, x_control = x[1],
+                             control = post[, 1])
   expect_false(anyNA(out))
   expect_equal(sum(out == x[1]), 5)
   expect_true(all(out >= x[1]))
@@ -214,9 +269,23 @@ test_that("nsec_from_posterior puts the lower sig_val tail at the control", {
   # estimate does not change. D15 ruling 2.
   x_low <- c(x[1] / 2, x)
   post_low <- cbind(controls + 0.05, post)
-  expect_equal(nsec_from_posterior(post_low, reference, x_low,
-                                   x_control = x[1]), out)
+  expect_equal(nsec_from_posterior(post_low, reference, x_low, x_control = x[1],
+                                   control = post[, 1]), out)
+  # Nor does a grid that begins above the control: the five draws whose control
+  # is at or below the reference keep the control, and the rest are searched over
+  # what was asked for. The control is read from the control posterior, not from
+  # the first column of the grid, which is what makes that true.
+  keep_high <- x >= x[10]
+  high <- nsec_from_posterior(post[, keep_high, drop = FALSE], reference,
+                              x[keep_high], x_control = x[1],
+                              control = post[, 1])
+  expect_equal(sum(high == x[1], na.rm = TRUE), 5)
+  expect_true(all(high >= x[10] | high == x[1], na.rm = TRUE))
+  # The draws that are NA there are the ones that reached the reference between
+  # the control and the start of the range, which is not identified within it.
+  expect_true(anyNA(high))
   # A reference no curve reaches is still NA, and is still the case the warning
   # reports.
-  expect_true(all(is.na(nsec_from_posterior(post, 0.01, x, x_control = x[1]))))
+  expect_true(all(is.na(nsec_from_posterior(post, 0.01, x, x_control = x[1],
+                                            control = post[, 1]))))
 })

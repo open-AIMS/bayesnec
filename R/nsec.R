@@ -50,9 +50,21 @@
 #' concentration is that draw's NSEC. Fisher and Fox (2023) report the same
 #' behaviour: the lower credible bound of the NSEC is the lowest concentration
 #' whenever \code{sig_val} is above the quantile the bound is read at, 0.025
-#' under the default \code{prob_vals}. And the crossing is sought from the
-#' control upward, so extending \code{x_range} below the data does not place an
-#' estimate at a concentration lower than any tested.
+#' under the default \code{prob_vals}. And the crossing is sought at or above the
+#' control, so extending \code{x_range} below the data does not place an estimate
+#' at a concentration lower than any tested.
+#'
+#' Two limits on that. The value is the lowest \emph{observed} concentration,
+#' where Fisher and Fox (2023) report zero concentration, which they reach by
+#' extrapolating the fitted curve below the data. The two agree where the control
+#' of the design is a true zero and the predictor is untransformed; otherwise the
+#' bound reported here is the control rather than the 0 of their Table 3, and a
+#' transformed predictor returns it on the transformed scale like any other
+#' estimate. And it applies where the prediction grid begins at the control. Where
+#' \code{x_range} begins at a higher concentration, a draw already at or below
+#' the reference at the first grid point reached it somewhere below the range
+#' asked for, which is not identified within that range: such a draw returns
+#' \code{NA} and is reported with those that never reach the reference.
 #'
 #' Where a draw's curve does not reach the reference at any tested concentration
 #' its NSEC is above the highest concentration in the prediction grid. Such a
@@ -194,7 +206,8 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   # always the reference, so the branch selects nothing and hormesis_def has
   # been removed. See D15 rulings 1 and 4.
   x_control <- control_x(object)
-  nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, x_control)
+  nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, x_control,
+                                  control)
   n_missing <- sum(is.na(nsec_out))
   nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
   bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
@@ -379,7 +392,8 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
     reference <- quantile(control, sig_val)
     ecnsecP <- as.numeric((control - reference) / control * 100)
     ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-    nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec))
+    nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec),
+                                    control)
 
   } else {
     groups <-  unlist(unique(object$data[group_var]))
@@ -393,7 +407,8 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
       reference <- quantile(control, sig_val)
       ecnsecP <- as.numeric((control - reference) / control * 100)
       ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-      nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec))
+      nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec),
+                                      control)
       nsec_out <- unlist(nsec_out)
       attr(nsec_out, "ecnsec_relativeP") <- ecnsec
       nsec_out
@@ -506,6 +521,17 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                          level = 1-(sig_val*2))["Lower"])
     control <- p_samples[1, "Prediction"]
     ecnsec <- as.numeric((control - reference) / control * 100)
+    # p_samples holds the fitted curve and its two confidence limits rather than
+    # posterior draws, and the reference is the control's lower limit at
+    # level = 1 - 2 * sig_val while the curves are drawn at
+    # prob_vals[3] - prob_vals[2]. The lower curve therefore begins at or below
+    # the reference for any sig_val at or above half the excluded probability --
+    # 0.025 under the default prob_vals -- and returned NA for those. The
+    # crossing of a curve that begins on the reference is the control, which is
+    # what x_start supplies. drc is not a dependency of this package, so no test
+    # covers this method; the interval this construction builds is not from
+    # Fisher and Fox (2023), whose frequentist NSEC is the fitted-mean crossing
+    # alone. See #325.
     nsec_out <- apply(p_samples, 2, function(col) {
       crossing_x(col, reference, x_vec, x_start = min(x_vec))
     })

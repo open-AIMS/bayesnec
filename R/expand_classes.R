@@ -72,7 +72,8 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     # grid rather than the lowest observed predictor value; the two differ only
     # where bnec() was given an x_range, which this path has never honoured
     # (D15 ruling 2). See #325.
-    out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1])
+    out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
+                               post[, 1])
     n_missing <- sum(is.na(out))
     if (n_missing > 0) {
       # Names the equation. bnec() calls this once per model, so on the default

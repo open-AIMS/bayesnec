@@ -238,7 +238,11 @@ test_that("the ecx reference is the control, not the maximum of the curve", {
   # it. Up to #325 the estimator returned that rising-limb crossing, at an x
   # below the peak; it now reports no estimate, x_start being NA for an ECx. The
   # point either way is that the maximum-anchored reference does not give the
-  # descending crossing the estimate is meant to be.
+  # descending crossing the estimate is meant to be. This is the internal
+  # estimator called with a control a user cannot supply through ecx(); the
+  # user-reachable routes to the same case are type = "direct" with a target above
+  # the curve, type = "range" where the curve's minimum is at the control, and
+  # type = "relative" for a hormetic draw whose bot exceeds its control.
   from_max <- ecx_from_posterior(p, x_vec, 10, "absolute", c(15, 15), NA_real_)
   expect_true(all(is.na(from_max)))
 })
