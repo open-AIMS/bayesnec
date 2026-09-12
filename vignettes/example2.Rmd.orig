@@ -234,7 +234,7 @@ autoplot(exp_5, nec = FALSE, all = FALSE) +
 
 ## Fitting the model set in parallel
 
-The fit above passed `cores = 4`, which tells `brms` to sample that model's four chains at the same time; `chains` defaults to four. That is one of two things in a model set that can be done at once, and it is the narrower one: the chains of a single model. A model set is a second opportunity, because the models do not depend on one another and there are usually more of them than there are chains.
+The fit above passed `cores = getOption("mc.cores", 1)`, which takes the number of chains sampled at once from the `mc.cores` option. `chains` defaults to four and `brms` samples at most `chains` at a time, so on the machine this vignette was built on that is four chains together; in a session where `mc.cores` is unset it is one after another. Set `mc.cores`, or pass `cores` directly, to choose. That is one of two things in a model set that can be done at once, and it is the narrower one: the chains of a single model. A model set is a second opportunity, because the models do not depend on one another and there are usually more of them than there are chains.
 
 `bayesnec` fits the models one at a time unless a [`future`](https://cran.r-project.org/package=future) plan says otherwise. Setting one before the call is all that is required:
 
@@ -252,13 +252,12 @@ There is no argument to `bnec` that turns this on or off: the plan already recor
 
 `plan(multisession)` is the portable choice: it starts fresh R processes that talk to the parent over local sockets, and it is available on every platform. `plan(multicore)` forks the current process instead, which starts faster and shares memory rather than copying it, but forking is unavailable on Windows and inside RStudio and Positron, where the plan silently resolves to a single worker. `bnec` reports the number of workers it was given, so a plan that has collapsed to one is visible rather than merely slow.
 
-Check that a plan works before committing a long run to it. Fit two models with a small `iter` under the plan you intend to use, and confirm it returns. The socket layer `multisession` depends on is outside R's control, and where it misbehaves the symptom is a run that neither finishes nor errors.
+Check that a plan works before committing a long run to it. Fit two models with a small `iter` under the plan you intend to use, and confirm it returns. The socket layer `multisession` depends on is outside R's control, and where it misbehaves the symptom is a run that neither finishes nor errors. The lesson is the check rather than a particular backend: if `multisession` stalls and you are on Linux or macOS, `multicore` uses no sockets and is the thing to try.
 
 On the WSL2 machine these notes were written on, a two-model fit completed under `multicore` in five runs out of five, taking 84 to 90 seconds, and completed under `multisession` in none of four, each attempt producing no output at all before being killed. A separate thirteen-model run under `multisession` failed differently again: both workers stopped with `error writing to connection` and the parent then waited indefinitely.
 
-The cause is not established here and is very likely below R. The Windows subsystem logged name-resolution failures during these runs, which fits a problem in the socket layer that `multisession` relies on and `multicore` does not use; and the same code passes under `multisession` on Linux, macOS and Windows in this package's continuous integration, so whatever it is, it is not general. 
+The cause is not established here and is very likely below R. The Windows subsystem logged name-resolution failures during these runs, which fits a problem in the socket layer that `multisession` relies on and `multicore` does not use; and the same code passes under `multisession` on Linux, macOS and Windows in this package's continuous integration, so whatever it is, it is not general.
 
-The general lesson is the check, not the backend. If `multisession` stalls on your machine and you are on Linux or macOS, `multicore` avoids sockets altogether and is worth trying.
 ### The Stan backend
 
 Under a forked plan, use the `cmdstanr` backend. The default, `rstan`, compiles each model into the session's temporary directory, which a forked worker shares with the process it was forked from; thirteen models compiling at once in eight forked workers failed, every one of them, with `cannot open the connection` from `stanc`. A `multisession` worker is a separate R session with a temporary directory of its own, so `rstan` is not affected there. `cmdstanr` names a compiled program after a hash of its Stan code and keeps it in a cache directory, so concurrent compiles of different models do not collide and a repeated run reuses what is already built. Set it with `options(brms.backend = "cmdstanr")`, which is what this package's vignettes are built with. `cmdstanr` is not on CRAN and is not a dependency of `bayesnec`; see [its installation instructions](https://mc-stan.org/cmdstanr/) if you do not already have it.
@@ -267,23 +266,21 @@ Two models in two forked workers did not collide and thirteen in eight did, so a
 
 ### Run times
 
-The sequential fit above already uses four cores, one for each chain. A plan with two workers uses two cores in total, so it is doing less at once than the fit it replaces; four workers is the same four cores rearranged, one chain each of four models rather than four chains of one. Only above four is a plan asking the machine for more than it was already using.
+The whole `"decline"` set was fitted five ways, from a fresh session each time with nothing compiled in advance, to see what a plan changes.
 
-That reasoning describes the sampling and misses what dominates a first run, which is compilation. Each of these models is a separate Stan program and has to be built before it can be sampled, and building them is work that divides across workers as cleanly as anything could.
-
-| plan | cores in use | runs | median s | range | change vs no plan |
+| plan | cores in use | runs | seconds | range | change vs no plan |
 |---|---|---|---|---|---|
-| no plan | 4, one per chain | 2 | 300 | 294-305 | -- |
-| `workers = 2` | 2, one per model | 3 | 226 | 216-240 | -24% |
-| `workers = 4` | 4, one per model | 2 | 174 | 168-181 | -42% |
-| `workers = 8` | 8, one per model | 2 | 150 | 147-153 | -50% |
-| `workers = 5`, `cores = 4` | 20, four per model | 2 | 154 | 150-157 | -49% |
+| no plan | 4, one per chain | 2 | 299.5 | 293.7-305.3 | -- |
+| `workers = 2` | 2, one per model | 3 | 226.4 | 216.3-240.5 | -24% |
+| `workers = 4` | 4, one per model | 2 | 174.2 | 167.8-180.6 | -42% |
+| `workers = 8` | 8, one per model | 2 | 149.9 | 146.7-153.2 | -50% |
+| `workers = 5`, `cores = 4` | 20, four per model | 2 | 153.5 | 149.7-157.3 | -49% |
 
-Measured 2026-09-12 on an otherwise idle 22-core workstation under WSL2, R 4.6.1, `cmdstanr`, `plan(multicore)`: the 13 of the 14 `"decline"` models that fit this data, `iter = 2e3`, `chains = 4`, each run in a fresh R session with the compiled-program cache emptied first, so every run builds all 13 programs. Runs during which any other R process appeared were discarded and repeated; three were.
+Measured 2026-09-12 on an otherwise idle 22-core workstation under WSL2, R 4.6.1, `cmdstanr`, `plan(multicore)`: the 13 of the 14 `"decline"` models that fit this data, `iter = 2e3`, `chains = 4`, each run in a fresh R session with the compiled-program cache emptied first, so every run builds all 13 programs. The cores named are those sampling: compilation is single-threaded per program, so a run with no plan compiles the thirteen one after another on one core while a plan of n workers compiles n at a time, which is why two workers beat a nominally four-core baseline here. Where a row has two runs the figure is their midpoint. Runs during which any other R process appeared were discarded and repeated; three were. These runs used the development version of the package, in which 13 of the 14 `"decline"` models fit this data and `ecxll5` does not initialise; the output shown earlier in this vignette was rendered from an older version, has eight models, and gives `ecxll5` the second-largest weight. The two do not correspond, and the timings are a separate measurement rather than a description of the fit above.
 
-Against that, the same five configurations run again with the programs already built take 99, 114, 108, 101 and 94 seconds in the same order. Every plan is then level with the sequential fit or behind it, and two workers is 15 per cent worse. Compilation is what the plan was overlapping; once it is done there is little left to divide, because these models sample in seconds and the per-model overhead of handing work to a worker is of the same order.
+Against that, the same five configurations run again with the programs already built take 99, 114, 108, 101 and 94 seconds in the same order. Every plan is then level with the sequential fit or behind it, and two workers is 15 per cent worse. Compilation is what the plan was overlapping, and the core arithmetic shows through once it is gone: the sequential fit samples four chains on four cores, so two workers of one chain each is less of the machine than it replaces and four workers is the same amount rearranged. Only above four does a plan ask for more than the fit was already using. Once it is done, what remains is sampling that takes seconds per model, and the work the calling process does whatever plan is set: the model weights, the leave-one-out comparisons and the prediction grid are all computed there, after the fits come back. How the remainder divides between those was not measured and is not claimed here.
 
-So the advice is about which run you are timing. A first fit of a model set, on a machine where the programs are not already built, is compilation-bound and parallelises well: halving the elapsed time at eight workers, on the measurement above. A repeat of the same set against a warm cache is sampling-bound, and for models as small as these the per-model overhead is of the same order as the sampling, so nothing is gained and a plan with too few workers loses. Where a single model takes minutes rather than seconds the sampling dominates in both cases and the first table's shape applies to the repeat run too.
+So the advice is about which run you are timing. A first fit of a model set, on a machine where the programs are not already built, is compilation-bound and parallelises well: halving the elapsed time at eight workers, on the measurement above. A repeat of the same set against a warm cache is sampling-bound, so for models as small as these nothing is gained and a plan with too few workers loses. Where a single model takes minutes rather than seconds the sampling dominates in both cases and the first table's shape applies to the repeat run too.
 
 ### Chains within models
 

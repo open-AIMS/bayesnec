@@ -500,12 +500,14 @@
 #' Which run you are timing decides whether that matters. A first fit builds a
 #' Stan program for every model, and building them divides across workers
 #' cleanly: measured on the \code{"decline"} set of
-#' \code{vignette("example2")}, a cold run took 300 s with no plan and 150 s
+#' \code{vignette("example2")}, a first run took 300 s with no plan and 150 s
 #' over eight workers. Run again with the programs already built, the same
 #' comparison is 99 s against 101 s -- nothing, because what a plan was
 #' overlapping has already been done.
 #'
-#' Supply a \code{seed} if the run has to be reproducible. And the model-averaged quantities -- the averaged
+#' Supply a \code{seed} if the run has to be reproducible.
+#'
+#' The model-averaged quantities -- the averaged
 #' \code{nec}, its interval, the stored prediction grid -- are not reproduced
 #' between a sequential and a parallel run, because \code{expand_manec()} draws
 #' from the session's RNG stream, which a sequential run advances and a parallel
