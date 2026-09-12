@@ -699,6 +699,16 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  prior = NULL, prior_type = "uninformative",
                  timeout = Inf, model_survival = NULL, ...) {
   chk_number(resolution)
+  # A grid of one point defines no interval, so the no-effect estimate of any
+  # smooth equation in the set cannot be read off it and expand_nec() stops.
+  # Raised here rather than left to arrive from there: it is a property of the
+  # call, fixed before any model is fitted, and from expand_nec() it arrives
+  # after every model in the set has compiled and sampled. The same placement
+  # reasoning as check_complete_cases() below. See #325.
+  if (resolution < 2) {
+    stop("Argument `resolution` must be at least 2; a single grid point ",
+         "defines no interval to read an estimate from.", call. = FALSE)
+  }
   chk_number(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   chk_number(timeout)

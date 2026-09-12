@@ -1683,8 +1683,11 @@ control_x <- function(object) {
 #' the start of the search, and a draw crossing inside that gap was lost: with
 #' \code{x_range = c(0, 100)} on \code{ecx4param} at \code{sig_val = 0.05},
 #' 11 of 100 draws whose NSEC over the observed range is 0.064 to 0.484, the
-#' first searched point being 0.503. Prepending closes the gap, so the estimate
-#' is the same whatever \code{x_range} adds below the data.
+#' first searched point being 0.503. Prepending closes the gap, so which draws
+#' are identified does not depend on what \code{x_range} adds below the data.
+#' Their values still move with the grid spacing as any interpolated estimate
+#' does --- 0.0001 at \code{c(0, 3.22)} against the observed range, 0.096 at
+#' \code{c(0, 100)}, on that fit --- which is what \code{resolution} controls.
 #'
 #' @param post A draws by grid \code{\link[base]{matrix}} of predicted means.
 #' @param reference A \code{\link[base]{numeric}} value, the \code{sig_val}
@@ -1926,16 +1929,17 @@ check_removed_args <- function(dots) {
 #' @noRd
 warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
                                x_from = NULL) {
-  if (n_below > 0) {
+  n_missing <- sum(is.na(values)) - n_below
+  below_msg <- function() {
     msg <- paste0("The ", estimate, " is not identified for ", n_below, " of ",
                   length(values), " draws, whose curve reached the reference ",
                   "below ", signif(x_from, 3), ", the lowest concentration in ",
                   "the prediction range. Those draws return NA and are ",
-                  "excluded from the summary.")
+                  "excluded from the summary, which lies between the control ",
+                  "and ", signif(x_from, 3), " for them.")
     warning(structure(class = c("bayesnec_censored", "warning", "condition"),
                       list(message = msg, call = NULL)))
   }
-  n_missing <- sum(is.na(values)) - n_below
   if (n_missing > 0) {
     # Classed, so that a method which reports its own censoring can muffle the
     # reports of the calls it makes internally without also muffling anything
@@ -1950,6 +1954,12 @@ warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
                   "prediction grid.")
     warning(structure(class = c("bayesnec_censored", "warning", "condition"),
                       list(message = msg, call = NULL)))
+  }
+  # After the above-range report, matching the order nsec.bayesnecfit() raises
+  # the two in, so a call producing both reads the same way whichever method it
+  # came through.
+  if (n_below > 0) {
+    below_msg()
   }
   invisible(NULL)
 }

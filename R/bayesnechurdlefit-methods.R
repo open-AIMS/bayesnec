@@ -263,6 +263,8 @@ nsec.bayesnechurdlefit <- function(object, sig_val = 0.01, resolution = 200,
                              preds$control[[hurdle_check_which(which)]])
   n_below <- attr(out, "n_below_range")
   x_from <- hurdle_xform_x(object, attr(out, "x_searched_from"))
+  attr(out, "n_below_range") <- NULL
+  attr(out, "x_searched_from") <- NULL
   out <- hurdle_xform_x(object, out)
   warn_censored_draws(out, "NSEC", n_below = n_below, x_from = x_from)
   if (inherits(xform, "function")) {

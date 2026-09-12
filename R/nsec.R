@@ -241,6 +241,12 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
             signif(lower, 3), ", which this x_range does not cover.",
             call. = FALSE)
   }
+  # sub_x_transformation() returns the vector with its attributes, so the two
+  # nsec_from_posterior() left for the warnings would otherwise reach the caller,
+  # and only on this class: the bayesmanecfit path subsets by draw index and
+  # drops them.
+  attr(nsec_out, "n_below_range") <- NULL
+  attr(nsec_out, "x_searched_from") <- NULL
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals, na.rm = TRUE)
   names(nsec_estimate) <- clean_names(nsec_estimate)
   attr(nsec_estimate, "resolution") <- resolution
