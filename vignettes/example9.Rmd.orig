@@ -396,19 +396,18 @@ failed <- cs[cs$failed, c("model", "max_rhat", "min_ess", "n_divergent")]
 failed
 ```
 
-A failure on effective sample size, or on Rhat, without divergent transitions is
-a property of the run rather than of the model. The sampler traversed the
-posterior; it simply did not take enough draws to describe it, and Rhat and ESS
-are both estimated less precisely from fewer draws. The remedy is more draws, and
-the model is expected to pass once it has them. Reading such a failure as a
-reason to discard the equation would be wrong.
+An equation that misses the effective sample size or Rhat threshold with no
+divergent transitions has been sampled from a posterior the sampler could
+traverse. It was not sampled for long enough to describe that posterior, and both
+diagnostics are themselves estimated less precisely from fewer draws. More draws
+are the remedy, and such an equation is expected to pass once it has them, so
+excluding it on this evidence would be premature.
 
-A failure that includes divergent transitions is a property of the posterior
-instead. Divergences say the sampler could not traverse the shape of the
-posterior at the step size it adapted to, and more draws do not change that
-shape. Where such an equation is also the most heavily
-parameterised in the set, the explanation is usually that the design does not
-support it:
+An equation that reports divergent transitions is reporting the shape of its
+posterior. A divergence records a trajectory the sampler could not follow at the
+step size it adapted to, and taking more draws does not change the shape being
+sampled from. Where such an equation is also the most heavily parameterised in
+the set, the usual explanation is that the design does not support it:
 
 ```{r parameters}
 n_par <- vapply(cs$model, function(m) length(names(show_params(m)[[1]]$pforms)),
@@ -423,19 +422,19 @@ parameter `phi` is estimated alongside them. The series has
 `r length(unique(simazine$concentration))` distinct concentrations. The
 parameter that distinguishes `ecxll5` from `ecxll4` is `f`, an exponent
 governing the asymmetry of the curve, and asymmetry is identified from the shape
-of the shoulder --- which is exactly what a six-point series with an incomplete
-lower limb does not resolve. Chasing settings to retain an equation in that
-position is not the right call: the fit is not failing because it was run badly,
-it is failing because the experiment does not contain the information the
-equation needs. Report it as excluded and say why.
+of the shoulder, which a series of
+`r length(unique(simazine$concentration))` concentrations with an incomplete
+lower limb does not resolve. Adjusting the settings further to retain an equation
+in that position does not address the problem: the fit is not failing because it
+was run badly, but because the experiment does not contain the information the
+equation needs. Report it as excluded, and say why.
 
-A failure decided at the cutoff is a decision rather than a finding. Where an
-equation's Rhat or effective sample size sits against the threshold, which side
-it falls is sensitive to the seed, and a different run may place it on the other
-side. That is not a defect in the screen; it is what a threshold applied to an
-estimated quantity does. It is the reason the thresholds have to be reported
-with the result, and the reason the screen's message names every threshold a
-model missed rather than only the first.
+Where an equation's Rhat or effective sample size sits at the threshold, which
+side of it the equation falls on is sensitive to the seed, and another run may
+place it on the other side. Any threshold applied to an estimated quantity
+behaves this way. It is why the thresholds have to be reported with the result,
+and why the screen's message names every threshold an equation missed rather than
+only the first.
 
 ## Screening the model set
 
@@ -467,9 +466,9 @@ screened fit rather than rescaled by hand.
 
 ## Raising the settings
 
-The screen has identified the models that did not sample. For the failures that
-are a property of the run rather than of the model, the remedy is the one step 2
-deferred: fit again at `bnec()`'s defaults.
+The screen has identified the equations that did not sample. For those that
+reported no divergent transitions, the remedy is the one step 2 deferred: fit
+again at `bnec()`'s defaults.
 
 ```{r refit, results = "hide"}
 fit <- bnec(fvfm ~ crf(log(concentration), model = "decline"),
@@ -603,8 +602,26 @@ pp_check(best_fit, type = "dens_overlay_grouped", group = "concentration")
 The dark line is the observed density of the response within each concentration
 group and the light lines are the same quantity simulated from the fit. The
 response is continuous, so a density overlay is the appropriate display; a
-discrete response takes `type = "bars_grouped"` instead, as the count example
-below does.
+discrete response takes `type = "bars_grouped"` instead, which is what the count
+response uses.
+
+The fit reproduces these data well. The observed density lies within the spread
+of the simulated ones in all `r length(unique(simazine$concentration))` panels,
+and its location follows the decline, from a mode near
+`r sprintf("%.2f", mean(simazine$fvfm[simazine$concentration == min(simazine$concentration)]))`
+at the lowest concentration to
+`r sprintf("%.2f", mean(simazine$fvfm[simazine$concentration == max(simazine$concentration)]))`
+at the highest. The observed curves are the more irregular of the two, with a
+secondary bump in several panels; that is a property of a kernel density
+estimated from `r sum(simazine$concentration == min(simazine$concentration))`
+observations, which resolves individual values as separate modes, and not
+evidence against the fit.
+
+What the display shows is location, and it shows no discrepancy in location
+anywhere. Width is harder to judge by eye from `r sum(simazine$concentration == min(simazine$concentration))`
+observations per group, and it is where these data do depart from the fit: in one
+panel the observed density is visibly narrower than the simulated ones.
+`check_fit()` identifies the group and puts a number on it.
 
 `check_fit()` tests something narrower: whether the model reproduces the
 observed variability and the observed level *locally*, within each concentration
@@ -655,19 +672,46 @@ The second view is the full table for a single model, read when one candidate is
 in question:
 
 ```{r checkfit-one}
-check_fit(best_fit)
+cf_best <- check_fit(best_fit)
+cf_best
 ```
 
+Location is reproduced at every concentration: `mean_ratio` runs from
+`r sprintf("%.3f", min(cf_best$mean_ratio))` to
+`r sprintf("%.3f", max(cf_best$mean_ratio))`, and no `ppp_mean` is near either
+bound. The departure is in scale, and it is what the message reports. At a
+concentration of `r paste(cf_best$group[cf_best$ppp_sd > 0.95 | cf_best$ppp_sd < 0.05], collapse = " and ")`
+the observed spread is
+`r sprintf("%.2f", cf_best$sd_ratio[which.max(abs(cf_best$ppp_sd - 0.5))])` times
+what the model simulates, on
+`r sprintf("%.0f", cf_best$n[which.max(abs(cf_best$ppp_sd - 0.5))])` observations,
+at which a residual standard deviation is not well determined.
+
+The control row is the one the Overview singled out, because `nsec()` reads its
+reference from the posterior of the control mean and the width of that posterior
+is the dispersion estimated there. It is among the closest to agreement of any
+group, at a `sd_ratio` of
+`r sprintf("%.3f", cf_best$sd_ratio[cf_best$control])` and a `ppp_sd` of
+`r sprintf("%.3f", cf_best$ppp_sd[cf_best$control])`. The assumption the *NSEC*
+depends on most is supported at the concentration where it matters.
+
 ```{r exmp9-checkfit-plot}
-plot(check_fit(best_fit))
+plot(cf_best)
 ```
 
 The plot shows what the table does not: the magnitude and direction of any
-discrepancy. Each panel gives the observed statistic against the 95% span of
-what the model simulates; a point outside its bar is a group the model does not
+discrepancy. Each panel gives the observed statistic against the 95% span of what
+the model simulates; a point outside its bar is a group the model does not
 reproduce. Location and scale are separate panels because they fail
 independently. A model can reproduce every group's mean while simulating far too
 much spread, which is the discrepancy this check is designed to detect.
+
+Here no point lies outside its bar in either panel, which appears to contradict
+the message the table printed. It does not: the two use different criteria. The
+message flags a posterior predictive p-value outside [0.05, 0.95], and the bars
+are the 95% span, which is [0.025, 0.975]. A group can fall beyond the first and
+inside the second, and that is the case here. Read the message as a prompt to
+look at the group, not as a verdict against the fit.
 
 # 5. Reporting
 
@@ -793,14 +837,30 @@ surv <- surv[surv$contaminant == "A", ]
 head(surv)
 ```
 
+A concentration series laid out as a dilution ladder is read on a logarithmic
+axis, which is what spaces its steps evenly. A logarithm is undefined at zero, so
+the control has to be given a plotting position. Half the lowest tested dose is
+used here, marked on the axis as the control rather than as a number, so that
+nothing on the figure claims the control was a dose it was not.
+
+The substitution is made for the figure alone. The fit below uses the recorded
+dose, the control included, and every estimate is reported in those units. That
+the two can differ safely is a consequence of `bayesnec`'s control convention,
+which takes the control to be the lowest value of the predictor whatever that
+value is; the point is set out in step 4.
+
 ```{r exmp9-nass-data}
-dose_breaks <- c(0, 0.16, 0.63, 1.25, 2.5, 5, 10, 20)
-ggplot(surv, aes(x = dose, y = suc / tot)) +
+ctrl_pos <- min(surv$dose[surv$dose > 0]) / 2
+surv$dose_plot <- ifelse(surv$dose == 0, ctrl_pos, surv$dose)
+dose_breaks <- c(ctrl_pos, 0.01, 0.04, 0.16, 0.63, 2.5, 20)
+ggplot(surv, aes(x = dose_plot, y = suc / tot)) +
   geom_point(size = 2, alpha = 0.7) +
-  # Axis spacing only: the transform is applied to the scale, so the data and
-  # every estimate stay on the recorded dose. Transforming the breaks instead
-  # would relabel the axis without respacing it.
-  scale_x_continuous(transform = "sqrt", breaks = dose_breaks) +
+  # Axis spacing only: the transform is applied to the scale, so the spacing is
+  # logarithmic while the labels stay in recorded units. Transforming the breaks
+  # instead would relabel the axis without respacing it.
+  scale_x_continuous(transform = "log", breaks = dose_breaks,
+                     labels = c("0\n(control)", "0.01", "0.04", "0.16", "0.63",
+                                "2.5", "20")) +
   labs(x = "Dose", y = "Proportion surviving") +
   theme_classic()
 ```
@@ -808,7 +868,9 @@ ggplot(surv, aes(x = dose, y = suc / tot)) +
 Survival is at or near complete for most of the series and falls away over the
 top two doses. Nine of the eleven doses have survival at or above 0.875, and the
 whole of the decline happens between 1.25 and 2.5, with no dose tested in
-between.
+between. The logarithmic axis is what makes that gap visible: on a linear axis
+the nine doses up to 1.25 occupy the leftmost six per cent of the plot and
+overlap into a single stack.
 
 ## The dispersion screen
 
