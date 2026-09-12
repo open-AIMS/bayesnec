@@ -52,12 +52,57 @@ The workflow is:
 A prior check belongs between steps 2 and 3. [*Priors*](https://open-aims.github.io/bayesnec/articles/example3.html) covers
 `check_priors()` and the construction of the defaults.
 
+## The assumptions the diagnostics test
+
+Convergence is what a Bayesian fit is usually judged on, and it is not the only
+thing that can be wrong. `rhat()`, `check_chains()` and `check_sampling()` ask
+whether the sampler explored the posterior. `loo` and `waic` rank the candidate
+equations against one another. None of them asks whether the variability the
+fitted model implies matches the variability in the data, and a threshold
+estimate is exposed to that assumption more than to any other.
+
+*NSEC* is exposed first. `nsec()` sets its reference at a quantile of the
+posterior of the control mean, and the width of that posterior is set by the
+dispersion the fit estimated at the control. A model simulating more variability
+at the control than the data show places the reference lower, so the curve
+crosses it further along and the reported concentration is higher and less
+protective. A model simulating less places it the other way. The direction is not
+known in advance, and no convergence diagnostic reveals it. [*Single model usage*](https://open-aims.github.io/bayesnec/articles/example1.html)
+makes the same point for the choice between constant and non-constant dispersion.
+ECx is less exposed, being read from the fitted curve relative to that curve's own
+asymptotes: an error in the variance widens or narrows its interval rather than
+relocating it.
+
+One statistic for the whole fit does not detect this. Every family with a free
+dispersion parameter --- `gaussian`, `Gamma`, `negbinomial`, `Beta` and
+`beta_binomial` --- estimates that parameter from the same residuals such a
+statistic summarises, so the parameter absorbs the discrepancy and the fit
+reports a ratio near 1 while simulating the wrong spread at the concentrations
+that determine the estimate. The check is therefore made within concentration
+groups, which is what `check_fit()` does and what step 4 reads.
+
+## The effect of exclusion
+
 [*Multi model usage*](https://open-aims.github.io/bayesnec/articles/example2.html) notes that there is little harm in leaving a poorly
-*shaped* model in the set with low weight, which is true, but non-convergence is
-a different failure. Steps 1 to 5 are worked in full on one dataset. Two others
-follow, each demonstrating what the first cannot: a count response, where the
-family question takes a different form and where the sampler screen removes most
-of the set; and a set that passes the screen unchanged.
+*shaped* model in the set with a low weight. That holds for shape and it does not
+hold for convergence. A model that has not sampled contributes to the averaged
+prediction on the strength of a posterior the sampler never explored, and its
+weight is computed from that same posterior, so the weight is no evidence that
+keeping it is safe. Removing it changes the candidate set, and `amend()` then
+recomputes the weights across what remains rather than rescaling the survivors,
+so the reported *N(S)EC* changes with it.
+
+Which models a screen removes is not predictable before it is run, and the
+reasons differ between them. An equation given too few draws, an equation whose
+posterior the sampler cannot traverse, and an equation the design does not
+support all arrive as the same word in the same column. Step 3 separates them,
+because the right response to each is different.
+
+## Coverage
+
+Steps 1 to 5 are worked in full on one dataset. A count response follows, where
+the family question takes a different form and where the sampler screen removes
+most of the set for a reason that is a property of the experiment.
 
 The threshold estimates themselves --- *NEC*, *NSEC*, ECx, and the
 model-averaged *N(S)EC* reported when a set mixes both kinds --- are defined in
@@ -275,10 +320,9 @@ options. The weights are usable and the estimates behind them are flagged as
 unreliable at those points, which belongs in a methods statement alongside the
 weights themselves.
 
-The weights are not the subject of step 3. A model that has not sampled has a
-weight computed from a posterior the sampler never explored, so its weight says
-nothing about whether it should be retained. That is why the screen reads the
-diagnostics and not the weights.
+The weights are not what step 3 reads. For the reason given in the Overview, a
+weight is no evidence that a model is fit to keep, so the screen is applied to
+the diagnostics.
 
 A model that fails to fit at all is a third outcome, distinct from being
 excluded before fitting and from failing the sampler screen. `failed_models()`
@@ -343,8 +387,8 @@ decision is taken on `min_ess`; the ratio is read alongside it.
 
 ## Kinds of failure
 
-The failures in the table are not all the same kind, and the right response
-differs between them.
+The three kinds of failure are distinguished by which thresholds an equation
+missed, and whether divergent transitions are among them.
 
 ```{r failure-kinds}
 cs <- check_sampling(fit_reduced)
@@ -395,10 +439,7 @@ model missed rather than only the first.
 
 ## Screening the model set
 
-Model averaging combines the candidates in proportion to their weights, so a
-model that has not sampled contributes to the reported estimate on the strength
-of a posterior the sampler never explored. Only models that pass the sampler
-diagnostics should be retained.
+Only models that pass the sampler diagnostics are retained.
 
 ```{r exclude, message = TRUE}
 screened_reduced <- screen_models(fit_reduced)
@@ -420,10 +461,9 @@ reasons rather than returning a meaningless average, which signals a return to
 step 2 rather than a loosened threshold. If none fails, it says so and returns
 the set unchanged.
 
-`amend()` does the work, recomputing the weights over the reduced set, and it is
-the only route by which a model leaves a `bayesmanecfit`. The weights of a
-screened set therefore have to be read from the screened fit rather than
-rescaled by hand.
+`amend()` does the work, and it is the only route by which a model leaves a
+`bayesmanecfit`. The weights of a screened set therefore have to be read from the
+screened fit rather than rescaled by hand.
 
 ## Raising the settings
 
