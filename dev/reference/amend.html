@@ -18,7 +18,7 @@ object, for example, by adding or removing fitted models."><meta property="og:im
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.33</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.34</span>
       </span>
     </div>
 
@@ -124,10 +124,16 @@ model types you which to include to the modified fit. Adding models to a
 ("fitting" and/or "weights"), each being a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>
 containing the desired arguments to be passed on to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code>
 (via "fitting") or to <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> (via "weights").
-If "weights" is
-not provided by the user, <code><a href="bnec.html">bnec</a></code> will set the default
-<code>method</code> argument in <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
-"pseudobma". See ?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>
+If no <code>method</code> is named in "weights", <span class="pkg">bayesnec</span> sets the
+<code>method</code> argument of <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
+"pseudobma", whichever function assembles the model set.
+<code>amend</code> and <code>update</code> operate on an existing set and keep
+the method that set was built with, unless the caller names another.
+<code><a href="pull_out.html">pull_out</a></code> takes no weighting method at all: it reports and
+ignores one given in "weights" and always keeps the set's own.
+<code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> and <code>+</code> take no <code>loo_controls</code> argument;
+see <code><a href="c.bnecfit.html">c.bnecfit</a></code> for how they decide the method. See
+?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>
 
 
 <dt id="arg-x-range">x_range<a class="anchor" aria-label="anchor" href="#arg-x-range"></a></dt>

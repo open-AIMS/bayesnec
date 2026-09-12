@@ -19,7 +19,7 @@ statistics."><meta property="og:image" content="https://open-aims.github.io/baye
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.33</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.34</span>
       </span>
     </div>
 
@@ -104,6 +104,17 @@ statistics.</p>
     <div id="value">
     <h2>Value</h2>
     <p>An object of class <code><a href="bayesmanecfit-class.html">bayesmanecfit</a></code>.</p>
+    </div>
+    <div id="details">
+    <h2>Details</h2>
+    <p>The combined set is weighted by the method the objects being
+combined were weighted by, where every input that records one names the same
+method. Where none records a method — combining two
+<code><a href="bayesnecfit-class.html">bayesnecfit</a></code> objects, for instance — the <span class="pkg">bayesnec</span>
+default of "pseudobma" is used. Where two inputs name different methods the
+default is used and a message reports the disagreement.
+<code><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></code> takes no <code>loo_controls</code> argument; use
+<code><a href="amend.html">amend</a></code> to set the weighting method explicitly.</p>
     </div>
 
     <div id="ref-examples">

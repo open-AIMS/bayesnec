@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">bayesnec</a>
-        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.33</span>
+        <span class="version label label-danger" data-toggle="tooltip" data-placement="bottom" title="In-development version">2.1.3.34</span>
       </span>
     </div>
 
@@ -125,14 +125,10 @@ interpolated NOEC value from smooth ECx curves.</p></dd>
 
 
 <dt id="arg-loo-controls">loo_controls<a class="anchor" aria-label="anchor" href="#arg-loo-controls"></a></dt>
-<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of two elements
-("fitting" and/or "weights"), each being a named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code>
-containing the desired arguments to be passed on to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code>
-(via "fitting") or to <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> (via "weights").
-If "weights" is
-not provided by the user, <code><a href="bnec.html">bnec</a></code> will set the default
-<code>method</code> argument in <code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> to
-"pseudobma". See ?<code><a href="https://mc-stan.org/loo/reference/loo_model_weights.html" class="external-link">loo_model_weights</a></code> for further info.</p></dd>
+<dd><p>A named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> whose "fitting"
+element holds arguments to be passed on to <code><a href="https://mc-stan.org/loo/reference/loo.html" class="external-link">loo</a></code>. A
+single model is not weighted, so a "weights" element is accepted and not
+read. See <code><a href="bnec.html">bnec</a></code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
