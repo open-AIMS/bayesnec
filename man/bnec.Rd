@@ -466,7 +466,7 @@ either absent, or no plan set, the models are fitted in sequence exactly as
 before. \code{\link{amend}} uses the plan the same way, over the models it
 has to fit.
 
-Three things to know before setting one.
+Some things to know before setting one.
 
 Chains and models compete for the same cores. Unless you pass \code{cores}
 yourself, each model in a parallel plan samples its chains one after another,
@@ -491,8 +491,9 @@ from the session's RNG stream, which a sequential run advances and a parallel
 one leaves alone; \code{set.seed()} in your session fixes that draw under a
 plan.
 
-The worked treatment -- measured run times, how many workers to ask for, why
-memory binds before cores do -- is in \code{vignette("example2")}.
+The worked treatment -- measured run times, which backend a forked plan
+needs, how to tell a plan that has stalled, and what memory does -- is in
+\code{vignette("example2")}.
 
 \bold{Additional technical notes}
 
