@@ -1611,6 +1611,28 @@ crossing_x <- function(y, target, x_vec, x_start = NA_real_) {
   floor_x + (val - floor(val)) * (ceiling_x - floor_x)
 }
 
+#' Refuse a resolution that defines no interval
+#'
+#' A grid of one point has no interval, so no crossing can be found on it and no
+#' estimate read off it. Raised wherever a call that will build such a grid is
+#' first seen, rather than left to arrive from \code{nsec_from_posterior()},
+#' which for \code{bnec()} and \code{update()} is after every model has
+#' compiled and sampled. \code{check_args_newdata()} is deliberately not the
+#' place: \code{resolution = 1} is a valid request of \code{bnec_newdata()},
+#' which is used to pin the shape of a single-column prediction. See #325.
+#'
+#' @param resolution The number of grid points requested.
+#'
+#' @return \code{NULL}, invisibly.
+#' @noRd
+check_resolution <- function(resolution) {
+  if (resolution < 2) {
+    stop("Argument `resolution` must be at least 2; a single grid point ",
+         "defines no interval to read an estimate from.", call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' The predictor value the control is read at
 #'
 #' The lowest \emph{observed} value of the predictor named in \code{crf()}, on
@@ -1935,8 +1957,8 @@ warn_censored_draws <- function(values, estimate = "estimate", n_below = 0,
                   length(values), " draws, whose curve reached the reference ",
                   "below ", signif(x_from, 3), ", the lowest concentration in ",
                   "the prediction range. Those draws return NA and are ",
-                  "excluded from the summary, which lies between the control ",
-                  "and ", signif(x_from, 3), " for them.")
+                  "excluded from the summary. Their ", estimate, " lies ",
+                  "between the control and ", signif(x_from, 3), ".")
     warning(structure(class = c("bayesnec_censored", "warning", "condition"),
                       list(message = msg, call = NULL)))
   }

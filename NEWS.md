@@ -594,10 +594,11 @@
 - **An NSEC asked for over a grid holding no concentration above the control is
   refused by name**, rather than returning a vector of `NA` under a warning about
   curves that never reach the reference. An `x_range` at or below the lowest
-  observed value produces such a grid, and so does `resolution = 1`. `bnec()`
-  refuses a `resolution` below 2 up front, because the no-effect estimate of any
-  smooth equation in the set is read off that grid and the refusal would
-  otherwise arrive only after every model had compiled and sampled (#325).
+  observed value produces such a grid, and so does `resolution = 1`. `bnec()`,
+  `amend()` and `update()` refuse a `resolution` below 2 up front, because the
+  no-effect estimate of any smooth equation in the set is read off that grid and
+  the refusal would otherwise arrive only after every model had compiled and
+  sampled (#325).
 
 - **An ECx is unchanged except where the curve has already reached its target
   where the grid begins**, which the default `type = "absolute"` cannot produce:

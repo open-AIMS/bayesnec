@@ -169,6 +169,10 @@ update.bnecfit <- function(object, newdata = NULL, recompile = NULL,
   if (!original_class %in% c("bayesnecfit", "bayesmanecfit")) {
     stop("Object is not of class bayesnecfit or bayesmanecfit.")
   }
+  # Before the refit, not after it: this method samples every model in the set
+  # again, and a resolution the no-effect estimate cannot be read off would
+  # otherwise stop the call once that work was already done. See #325.
+  check_resolution(resolution)
   # Read before recover_prebayesnecfit() replaces `object` with the list of
   # prebayesnecfits. expand_manec() and expand_nec() build a new object, so an
   # attribute not re-attached at the end of this method is lost, and

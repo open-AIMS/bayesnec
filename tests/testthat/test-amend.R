@@ -120,3 +120,13 @@ test_that("an object that records no weighting method gets the default", {
     suppressWarnings()
   expect_equal(attr(kept$mod_stats$wi, "method"), "stacking")
 })
+
+
+test_that("amend refuses a resolution below 2", {
+  # Both methods forward resolution to expand_nec(), where the no-effect
+  # estimate of a smooth equation is read off the grid. Refused here so the
+  # message names the argument rather than the grid. See #325.
+  skip_on_cran()
+  expect_error(amend(manec_example, drop = "nec4param", resolution = 1),
+               "must be at least 2")
+})
