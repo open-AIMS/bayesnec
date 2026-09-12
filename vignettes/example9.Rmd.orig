@@ -45,7 +45,7 @@ The workflow is:
 
 1. Prepare the data and choose the family.
 2. Fit the candidate set.
-3. Check the sampler, and screen out the models that did not sample.
+3. Check the sampler, and screen out the models that did not sample adequately.
 4. Check the fit of the models that remain.
 5. Report.
 
@@ -77,9 +77,9 @@ relocating it.
 One statistic for the whole fit does not detect this. Every family with a free
 dispersion parameter --- `gaussian`, `Gamma`, `negbinomial`, `Beta` and
 `beta_binomial` --- estimates that parameter from the same residuals such a
-statistic summarises, so the parameter absorbs the discrepancy and the fit
-reports a ratio near 1 while simulating the wrong spread at the concentrations
-that determine the estimate. The check is therefore made within concentration
+statistic summarises. The parameter absorbs the discrepancy, so the fit reports a
+ratio near 1 while simulating the wrong spread at the concentrations that
+determine the estimate. The check is therefore made within concentration
 groups, which is what `check_fit()` does and what step 4 reads.
 
 ## The effect of exclusion
@@ -277,7 +277,7 @@ An analysis does not do this. Two arguments matter once a real fit is marginal:
 of which `r length(models()$decline)` are in the group. Two mechanisms then
 reduce it. Some equations are excluded before fitting, because they are invalid
 for the family or the predictor; [*Model details*](https://open-aims.github.io/bayesnec/articles/example2b.html) sets out the equations and
-the rules that govern them. Others are attempted and fail to sample.
+the rules that govern them. Others are attempted and fail to fit.
 
 `bnec_record()` reports both, so neither has to be reconstructed from the fitted
 object:
@@ -288,8 +288,7 @@ rec$excluded
 ```
 
 `requested` is partitioned exactly by `attempted` and `excluded$model`. An
-equation that was attempted and failed to fit stays in `attempted`, and
-`failed_models()` names those separately.
+equation that was attempted and failed to fit stays in `attempted`.
 
 Two rules apply here. `neclin` and `ecxlin` decay by subtraction rather than by
 an exponential factor, so their fitted mean is unbounded below and cannot be
@@ -298,6 +297,17 @@ And the predictor is `log(concentration)`, which is negative below a
 concentration of 1, so the equations that raise the predictor to a fractional
 power cannot be evaluated; `ecxsigm` is among them. `?models` sets out these
 rules and the others.
+
+`failed_models()` names the equations that were attempted and did not fit, and
+records the priors and initial values each was given, which are built inside
+`bnec()` and otherwise unrecoverable:
+
+```{r failed}
+names(failed_models(fit_reduced))
+```
+
+Every equation the design admits was fitted at these settings, so there is
+nothing to report here.
 
 ```{r substitutions}
 rec$substitutions
@@ -310,10 +320,10 @@ with nothing shifted off a boundary. On a series that does reach 0 or 1 this
 element names each altered value, so a methods section can state what was
 modelled rather than leaving a reader to assume it was the data as measured.
 
-The set as requested, the set attempted, the reason for the difference, and what
-was altered in the data are what a methods section has to state, and reading
-them from the returned object rather than from console output means a knitted
-document keeps them.
+A methods section has to state the equations requested, those excluded before
+fitting and why, and any change made to the response. `bnec_record()` returns
+each of them, so a knitted document records them without depending on console
+output.
 
 ## Model weights
 
@@ -332,28 +342,12 @@ options. The weights are usable and the estimates behind them are flagged as
 unreliable at those points, which belongs in a methods statement alongside the
 weights themselves.
 
-The weights are not what step 3 reads. For the reason given in the Overview, a
-weight is no evidence that a model should be retained, so the screen is applied to
-the diagnostics.
-
-A model that fails to fit at all is a third outcome, distinct from being
-excluded before fitting and from failing the sampler screen. `failed_models()`
-names those, and records the priors and initial values the failed attempt was
-given, which are built inside `bnec()` and otherwise unrecoverable:
-
-```{r failed}
-names(failed_models(fit_reduced))
-```
-
-Every equation the design admits was fitted at these settings, so there is nothing
-to report here.
-
 # 3. Sampler diagnostics and screening
 
-The sampler diagnostics are read per candidate model, and the candidates that
-did not sample are then removed from the set, so that steps 4 and 5 concern a
-set worth averaging. Whether a model fits the data is a separate
-question, answered in step 4.
+Every equation in the fitted set produced draws; the ones that did not are in
+`failed_models()`. The diagnostics here establish whether those draws describe
+the posterior adequately. Whether a model fits the data is a separate question,
+answered in step 4.
 
 `check_sampling()` reports per candidate model, so the whole set is screened in
 one call rather than model by model.
@@ -386,8 +380,9 @@ to clear 400, against `r sprintf("%.3f", 400 / 8000)` at the default 8000, so th
 ESS cutoff is harder to clear at these settings. Ten divergent transitions, on
 the other hand, is `r sprintf("%.2f", 100 * 10 / ((4000 - floor(4000 / 5) * 4) * 2))`
 per cent of the retained draws here and `r sprintf("%.3f", 100 * 10 / 8000)` per
-cent at the default, so at an equal divergence rate the same fit produces more
-divergences at the defaults and the divergence cutoff is harder to clear there.
+cent at the default. At an equal divergence rate the same fit therefore produces
+more of them at the defaults, and the divergence cutoff is harder to clear
+there.
 Neither setting is uniformly stricter, and a screen result is therefore a
 property of the settings as much as of the model. State the settings with it.
 
@@ -465,7 +460,7 @@ analysis that will be reported.
 
 It screens on the sampler only. Whether a model reproduces the data is a
 modelling result rather than a reason the fit is unusable, and dropping on it
-silently would hide what step 4 exists to show.
+silently would hide the discrepancies step 4 detects.
 
 If every candidate fails, `screen_models()` stops with an error listing the
 reasons rather than returning a meaningless average, which signals a return to
@@ -478,7 +473,7 @@ screened fit rather than rescaled by hand.
 
 ## Raising the settings
 
-The screen has identified the equations that did not sample. For those that
+The screen has identified the equations that did not sample adequately. For those that
 reported no divergent transitions, the remedy is the one step 2 deferred: fit
 again at `bnec()`'s defaults.
 
@@ -854,8 +849,8 @@ the control has to be given a plotting position. Half the lowest tested dose is
 used here, marked on the axis as the control rather than as a number, so that
 nothing on the figure claims the control was a dose it was not.
 
-The substitution is made for the figure alone. The fit below uses the recorded
-dose, the control included, and every estimate is reported in those units. That
+The substitution is made for the figure alone. The fit uses the recorded dose,
+the control included, and every estimate is reported in those units. That
 the two can differ safely is a consequence of `bayesnec`'s control convention,
 which takes the control to be the lowest value of the predictor whatever that
 value is; the point is set out in step 4.
@@ -1019,9 +1014,9 @@ The three outcomes have three different causes, and separating them is what the
 step is for. An equation that fails on effective sample size alone has not been
 given enough draws, and the remedy is to give it more. An equation that fails on
 divergent transitions, or that fails to fit at all, is reporting something about
-the posterior; where it is also the most heavily parameterised equation in the
+the posterior. Where it is also the most heavily parameterised equation in the
 set and the design has few distinct concentrations, the explanation is that the
-experiment does not contain the information it needs, and adjusting the settings
+experiment does not contain the information it needs. Adjusting the settings
 further to retain it is not the right response. An equation that fails at the cutoff is a
 decision the analyst has taken, and it has to be reported as one.
 
