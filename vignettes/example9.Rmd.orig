@@ -80,7 +80,7 @@ dispersion parameter --- `gaussian`, `Gamma`, `negbinomial`, `Beta` and
 statistic summarises. The parameter absorbs the discrepancy, so the fit reports a
 ratio near 1 while simulating the wrong spread at the concentrations that
 determine the estimate. The check is therefore made within concentration
-groups, which is what `check_fit()` does and what step 4 reads.
+groups, which is what `check_fit()` does.
 
 ## The effect of exclusion
 
@@ -96,14 +96,13 @@ so the reported *N(S)EC* changes with it.
 Which models a screen removes is not predictable before it is run, and the
 reasons differ between them. An equation given too few draws, an equation whose
 posterior the sampler cannot traverse, and an equation the design does not
-support are all reported as the same value in the same column. Step 3 separates them,
-because the right response to each is different.
+support are all reported as the same value in the same column. The right response
+to each is different.
 
 ## Coverage
 
-Steps 1 to 5 are worked in full on one dataset. A count response follows, where
-the family question takes a different form and where the sampler screen removes
-most of the set for a reason that is a property of the experiment.
+Steps 1 to 5 are worked in full on one dataset. A count response follows, for
+which the family question and the sampler screen both take a different form.
 
 The threshold estimates themselves --- *NEC*, *NSEC*, ECx, and the
 model-averaged *N(S)EC* reported when a set mixes both kinds --- are defined in
@@ -185,12 +184,12 @@ therefore no over-dispersion decision to take: the family already has a free
 parameter for the spread, and the fit will estimate it. `dispersion()` is
 defined only for `poisson` and `binomial`, the two families whose variance is
 fixed by the mean, and returns an empty vector otherwise. For those families a
-pre-fit screen is worth running, and it is demonstrated on the count response in
-[the second dataset](#a-count-response) below.
+pre-fit screen is available, and it is run on
+[the count response](#a-count-response).
 
 What has to be checked is the one thing `Beta` cannot accommodate, which is a
 value outside its support. `bnec_record()` reports after the fit whether anything
-was altered, and that element is read in step 2.
+was altered.
 
 ```{r family-choice}
 fam <- Beta(link = "identity")
@@ -224,9 +223,8 @@ dilution, and a logarithm is what makes its steps even.
 A logged predictor spanning
 `r round(log(min(simazine$concentration)), 2)` to
 `r round(log(max(simazine$concentration)), 2)` takes negative values, which
-excludes the equations that raise the predictor to a fractional power (step 2).
-And every estimate is returned on the logged scale unless `xform` is supplied
-(step 5).
+excludes the equations that raise the predictor to a fractional power.
+And every estimate is returned on the logged scale unless `xform` is supplied.
 
 # 2. Fitting the candidate set
 
@@ -255,8 +253,8 @@ A number of iterations means nothing until the warmup rule and the chain count
 are stated beside it.
 
 These data are well behaved at the defaults, and every equation the design
-supports passes the screen there, so a vignette fitted at the defaults would
-reach step 3 with nothing to demonstrate. Running short guarantees that some
+supports passes the screen there, so a fit made at the defaults produces no
+screen failure to examine. Running short guarantees that some
 equations fail, which is what makes steps 3 and 5 a demonstration rather than an
 assertion. The settings are raised to the defaults in step 3, and every estimate
 reported in step 5 comes from the fit made there.
@@ -460,7 +458,7 @@ analysis that will be reported.
 
 It screens on the sampler only. Whether a model reproduces the data is a
 modelling result rather than a reason the fit is unusable, and dropping on it
-silently would hide the discrepancies step 4 detects.
+silently would hide the discrepancies the fit checks detect.
 
 If every candidate fails, `screen_models()` stops with an error listing the
 reasons rather than returning a meaningless average, which signals a return to
