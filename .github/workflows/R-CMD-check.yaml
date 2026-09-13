@@ -129,20 +129,16 @@ jobs:
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
-      # No worker count is set on an ordinary run, so testthat uses its own
-      # default of two and this matrix is configured exactly as dev is. Raising it
-      # was tried and abandoned; #328 records the measurement and why the question
-      # is closed rather than deferred. The short version: on one paired
-      # comparison, same tree and same window, three workers cost 18 minutes more
-      # CPU on ubuntu-latest (release) and were a minute SLOWER in elapsed time,
-      # which is the only thing the change was for.
+      # Nothing here sets a worker count on an ordinary run: testthat takes its
+      # own default of two and this matrix is configured exactly as dev is.
       #
-      # The step survives for one reason: the count could not be varied for
-      # measurement while it was computed here, because varying it meant editing
-      # this file and editing it changed the tree being measured. Holding one
-      # setting through workflow_dispatch is what made the paired comparison
-      # possible, and it is the instrument to reach for if the question is ever
-      # reopened. It does nothing unless an input is supplied.
+      # The step exists as an instrument, not a policy. While the count was
+      # computed in this file it could not be varied for measurement, because
+      # varying it meant editing the file and editing the file changed the tree
+      # being measured. Holding one setting through workflow_dispatch is what made
+      # a paired comparison possible, and #328 records what that comparison found
+      # and why the question is closed rather than deferred. It does nothing
+      # unless an input is supplied.
       - name: Override the testthat worker count, if one was requested
         if: github.event.inputs.testthat_cpus != ''
         env:
