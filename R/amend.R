@@ -75,6 +75,7 @@ amend.bayesmanecfit <- function(object, drop, add, loo_controls, x_range = NA,
   if (!missing(add)) {chk_character(add)}
   if (!is.na(x_range[1])) {chk_numeric(x_range)}
   chk_numeric(resolution)
+  check_resolution(resolution)
   chk_numeric(sig_val)
   if(!inherits(object, "bayesmanecfit")){
     stop("object is not of class bayesmanecfit")
@@ -138,6 +139,7 @@ amend.bayesnecfit <- function(object, drop, add, loo_controls, x_range = NA,
   if (!missing(add)) {chk_character(add)}
   if (!is.na(x_range[1])) {chk_numeric(x_range)}
   chk_numeric(resolution)
+  check_resolution(resolution)
   chk_numeric(sig_val)
   # Promote the single fit to a one-element model set and hand it to the same
   # worker the bayesmanecfit method uses, so the two cannot drift apart. This

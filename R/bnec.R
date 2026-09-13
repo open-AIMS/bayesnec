@@ -699,6 +699,12 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
                  prior = NULL, prior_type = "uninformative",
                  timeout = Inf, model_survival = NULL, ...) {
   chk_number(resolution)
+  # Raised here rather than left to arrive from expand_nec(), where the
+  # no-effect estimate of a smooth equation is read off the grid: it is a
+  # property of the call, fixed before any model is fitted, and from there it
+  # arrives after every model in the set has compiled and sampled. The same
+  # placement reasoning as check_complete_cases() below. See #325.
+  check_resolution(resolution)
   chk_number(sig_val)
   prior_type <- match.arg(prior_type, c("uninformative", "regularizing"))
   chk_number(timeout)

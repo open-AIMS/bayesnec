@@ -44,9 +44,34 @@
 #' against the fitted range and computed by three different formulas that
 #' agreed only for a monotonic curve.
 #'
-#' Where the curve does not fall to the reference anywhere in the predictor
-#' range the NSEC is not identified and \code{NA} is returned, with a warning
-#' reporting how many draws were affected.
+#' Two consequences follow from the reference being a quantile of the control
+#' posterior. A \code{sig_val} share of the draws have a control at or below the
+#' reference, and each of those reaches it at the control itself, so the control
+#' concentration is that draw's NSEC. Fisher and Fox (2023) report the same
+#' behaviour: the lower credible bound of the NSEC is the lowest concentration
+#' whenever \code{sig_val} is above the quantile the bound is read at, 0.025
+#' under the default \code{prob_vals}. And the crossing is sought at or above the
+#' control, so extending \code{x_range} below the data does not place an estimate
+#' at a concentration lower than any tested.
+#'
+#' Two limits on that. The value is the lowest \emph{observed} concentration,
+#' where Fisher and Fox (2023) report zero concentration, which they reach by
+#' extrapolating the fitted curve below the data. The two agree where the control
+#' of the design is a true zero and the predictor is untransformed; otherwise the
+#' bound reported here is the control rather than the 0 of their Table 3, and a
+#' transformed predictor returns it on the transformed scale like any other
+#' estimate. And it applies where the prediction grid begins at the control. Where
+#' \code{x_range} begins at a higher concentration, a draw already at or below
+#' the reference at the first grid point reached it somewhere below the range
+#' asked for, which is not identified within that range: such a draw returns
+#' \code{NA} and is reported with those that never reach the reference.
+#'
+#' Where a draw's curve does not reach the reference at any tested concentration
+#' its NSEC is above the highest concentration in the prediction grid. Such a
+#' draw returns \code{NA} and is excluded from the summary, which is therefore
+#' censored above that concentration, and a warning reports how many draws were
+#' affected. Extending \code{x_range} will estimate it, at the price of reading
+#' the curve where there are no data.
 #' 
 #' Calls to functions \code{\link{ecx}} and \code{\link{nsec}} and
 #' \code{\link{compare_fitted}} do not require the same level of flexibility
@@ -180,26 +205,48 @@ nsec.bayesnecfit <- function(object, sig_val = 0.01, resolution = 200,
   # of the predicted curve when hormesis_def was "max". The control is now
   # always the reference, so the branch selects nothing and hormesis_def has
   # been removed. See D15 rulings 1 and 4.
-  nsec_out <- vapply(seq_len(nrow(p_samples)), function(i) {
-    crossing_x(p_samples[i, ], reference, x_vec)
-  }, numeric(1))
-  n_missing <- sum(is.na(nsec_out))
+  x_control <- control_x(object)
+  nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, x_control,
+                                  control)
+  # The two classes of draw that return NA are opposite statements about where
+  # the estimate is, and one message for both would say of each the thing that
+  # is true of the other. Counted before sub_x_transformation(), which returns a
+  # bare value.
+  n_below <- attr(nsec_out, "n_below_range")
+  searched_from <- attr(nsec_out, "x_searched_from")
+  n_above <- sum(is.na(nsec_out)) - n_below
   nsec_out <- sub_x_transformation(nsec_out, object$bayesnecformula)
   bound <- sub_x_transformation(max(x_vec), object$bayesnecformula)
-  # xform reaches the censoring bound as well as the estimates, and the warning
-  # follows both, so that the bound is on the scale the caller reads the
+  lower <- sub_x_transformation(searched_from, object$bayesnecformula)
+  # xform reaches the censoring bounds as well as the estimates, and the
+  # warnings follow both, so that a bound is on the scale the caller reads the
   # estimate on. See the same reordering in ecx.bayesnecfit.
   if (inherits(xform, "function")) {
     nsec_out <- xform(nsec_out)
     bound <- xform(bound)
+    lower <- xform(lower)
   }
-  if (n_missing > 0) {
+  if (n_above > 0) {
     warning("The ", object$model, " curve does not fall below the control's ",
             sig_val, " quantile anywhere in the predictor range for ",
-            n_missing, " of ", length(nsec_out), " draws, which return NA. ",
+            n_above, " of ", length(nsec_out), " draws, which return NA. ",
             "The NSEC is censored above ", signif(bound, 3), ".",
             call. = FALSE)
   }
+  if (n_below > 0) {
+    warning("The ", object$model, " curve falls below the control's ", sig_val,
+            " quantile before ", signif(lower, 3), ", the lowest concentration ",
+            "in the prediction range, for ", n_below, " of ", length(nsec_out),
+            " draws, which return NA. Their NSEC lies between the control and ",
+            signif(lower, 3), ", which this x_range does not cover.",
+            call. = FALSE)
+  }
+  # sub_x_transformation() returns the vector with its attributes, so the two
+  # nsec_from_posterior() left for the warnings would otherwise reach the caller,
+  # and only on this class: the bayesmanecfit path subsets by draw index and
+  # drops them.
+  attr(nsec_out, "n_below_range") <- NULL
+  attr(nsec_out, "x_searched_from") <- NULL
   nsec_estimate <- quantile(unlist(nsec_out), probs = prob_vals, na.rm = TRUE)
   names(nsec_estimate) <- clean_names(nsec_estimate)
   attr(nsec_estimate, "resolution") <- resolution
@@ -367,10 +414,9 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
     reference <- quantile(control, sig_val)
     ecnsecP <- as.numeric((control - reference) / control * 100)
     ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-    nsec_out <- vapply(seq_len(nrow(p_samples)), function(i) {
-      crossing_x(p_samples[i, ], reference, x_vec)
-    }, numeric(1))
-    
+    nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec),
+                                    control)
+
   } else {
     groups <-  unlist(unique(object$data[group_var]))
     out_vals <- lapply(groups, FUN = function(g){
@@ -383,9 +429,8 @@ nsec.brmsfit <- function(object, sig_val = 0.01, resolution = 200,
       reference <- quantile(control, sig_val)
       ecnsecP <- as.numeric((control - reference) / control * 100)
       ecnsec <- quantile(ecnsecP, probs = prob_vals, na.rm = TRUE)
-      nsec_out <- vapply(seq_len(nrow(p_samples)), function(i) {
-        crossing_x(p_samples[i, ], reference, x_vec)
-      }, numeric(1))
+      nsec_out <- nsec_from_posterior(p_samples, reference, x_vec, min(x_vec),
+                                      control)
       nsec_out <- unlist(nsec_out)
       attr(nsec_out, "ecnsec_relativeP") <- ecnsec
       nsec_out
@@ -498,8 +543,19 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                          level = 1-(sig_val*2))["Lower"])
     control <- p_samples[1, "Prediction"]
     ecnsec <- as.numeric((control - reference) / control * 100)
+    # p_samples holds the fitted curve and its two confidence limits rather than
+    # posterior draws, and the reference is the control's lower limit at
+    # level = 1 - 2 * sig_val while the curves are drawn at
+    # prob_vals[3] - prob_vals[2]. The lower curve therefore begins at or below
+    # the reference for any sig_val at or above half the excluded probability --
+    # 0.025 under the default prob_vals -- and returned NA for those. The
+    # crossing of a curve that begins on the reference is the control, which is
+    # what x_start supplies. drc is not a dependency of this package, so no test
+    # covers this method; the interval this construction builds is not from
+    # Fisher and Fox (2023), whose frequentist NSEC is the fitted-mean crossing
+    # alone. See #325.
     nsec_out <- apply(p_samples, 2, function(col) {
-      crossing_x(col, reference, x_vec)
+      crossing_x(col, reference, x_vec, x_start = min(x_vec))
     })
     if (inherits(xform, "function")) {
       xform(nsec_out)
@@ -528,8 +584,9 @@ nsec.drc <- function(object, sig_val = 0.01, resolution = 200,
                                             level = 1-(sig_val*2))["Lower"])
       control <- p_samples[1, "Prediction"]
       ecnsec <- as.numeric((control - reference) / control * 100)
+      # x_start as in the branch above, for the same reason.
       nsec_out <- apply(p_samples, 2, function(col) {
-        crossing_x(col, reference, x_vec)
+        crossing_x(col, reference, x_vec, x_start = min(x_vec))
       })
 
       if (inherits(xform, "function")) {

@@ -210,8 +210,30 @@ test_that("crossing_x interpolates, and returns NA where there is no crossing", 
   expect_false(crossing_x(y, 5.5, x) %in% x)
   # A target the curve never reaches. This is the case that used to return the
   # nearest grid point: for a curve that never declines to the target that is
-  # x[1], the lowest concentration, reported as the ECx.
+  # x[11], the highest concentration, reported with nothing said.
   expect_true(is.na(crossing_x(y, -5, x)))
+  # x_start does not reach that case: the curve begins above the target, so the
+  # search is the thing that failed.
+  expect_true(is.na(crossing_x(y, -5, x, x_start = x[1])))
+  # A series already at or below the target where the grid begins. There is no
+  # sign change to find, and the estimate is at or below x[1] rather than above
+  # x[11], so the caller says which value it takes. The default is NA, which is
+  # what an ECx target requires; the NSEC callers pass the control concentration.
+  # Equality counts as reached: it is what type = "range" produces where the
+  # curve's lowest predicted response is at the control, and what nsec.drc
+  # produces at any sig_val for which the lower confidence curve begins on the
+  # reference. See #325.
+  expect_true(is.na(crossing_x(y, 10, x)))
+  expect_equal(crossing_x(y, 10, x, x_start = x[1]), x[1])
+  expect_equal(crossing_x(y, 12, x, x_start = x[1]), x[1])
+  expect_equal(crossing_x(y, 12, x, x_start = -1), -1)
+  # A single grid point has no interval for a sign change to fall in, and
+  # zero_crossings() stops rather than returning nothing. Reachable where
+  # x_range leaves one point at or above the control. Two points are enough.
+  expect_true(is.na(crossing_x(y[1], 5.5, x[1])))
+  expect_true(is.na(crossing_x(y[1], 5.5, x[1], x_start = x[1])))
+  expect_equal(crossing_x(y[1], 10, x[1], x_start = x[1]), x[1])
+  expect_equal(crossing_x(c(10, 0), 5, c(0, 1)), 0.5, tolerance = 1e-8)
   expect_true(is.na(crossing_x(rep(NA_real_, 11), 5, x)))
   expect_true(is.na(crossing_x(y, NA_real_, x)))
   # A hormetic curve: the target is below the control, so the rising limb

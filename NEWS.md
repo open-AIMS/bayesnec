@@ -559,14 +559,59 @@
 - **A target the curve never reaches within the predictor range returns `NA`,
   with a warning naming how many draws were affected.** Both estimators
   previously returned the grid point whose prediction was nearest the target,
-  which for a curve that never declines to the target is the *lowest*
-  concentration in the series --- the furthest possible value from the truth,
-  reported as an ECx with nothing said. The crossing is now found by
-  interpolation between the bracketing grid points rather than snapped to the
-  nearer of them (#39). Every function that summarises such a posterior reports
-  the censoring and excludes the affected draws, `nec()` and the
-  `bayesnechurdlefit` methods included; they previously stopped with "missing
-  values and NaN's not allowed" on a posterior the package had itself written.
+  which for a curve that never declines to the target is the *highest*
+  concentration in the series, reported as an estimate with nothing said. The
+  crossing is now found by interpolation between the bracketing grid points
+  rather than snapped to the nearer of them (#39). Every function that
+  summarises such a posterior reports the censoring and excludes the affected
+  draws, `nec()` and the `bayesnechurdlefit` methods included; they previously
+  stopped with "missing values and NaN's not allowed" on a posterior the package
+  had itself written.
+
+- **A draw that has already reached the reference at the control is the opposite
+  case, and returns the control concentration.** The NSEC reference is the
+  `sig_val` quantile of the control posterior, so `sig_val` of the draws have a
+  control at or below it and reach it at the control itself. The control
+  concentration is the NSEC of each of those draws, which is what Fisher and Fox
+  (2023) report: their Table 3 gives a lower credible bound of zero at every
+  significance level above the 0.025 quantile the bound is read at, and those
+  draws are what produces it. A search for a sign change cannot tell that case
+  from a curve that never reaches the reference, so which value it takes is now
+  decided by the caller rather than by the search. Two limits of the range this
+  holds over. The value is the lowest *observed* concentration, where the paper
+  reports zero concentration; the two agree where the control of the design is a
+  true zero and the predictor is untransformed, and otherwise a reader comparing
+  with Table 3 sees a small positive bound in place of its 0. And it applies only
+  where the prediction grid reaches the control. Where `x_range` begins at a
+  higher concentration, a draw that reached the reference below that range is
+  not identified within it and returns `NA`, reported by a warning of its own
+  rather than by the one about curves that never reach the reference. The
+  crossing is sought from the control upward, the control being made the first
+  point of the searched grid, so no estimate is placed below the lowest tested
+  concentration and none is lost between the control and the first grid point
+  above it (#325).
+
+- **An NSEC asked for over a grid holding no concentration above the control is
+  refused by name**, rather than returning a vector of `NA` under a warning about
+  curves that never reach the reference. An `x_range` at or below the lowest
+  observed value produces such a grid, and so does `resolution = 1`. `bnec()`,
+  `amend()` and `update()` refuse a `resolution` below 2 up front, because the
+  no-effect estimate of any smooth equation in the set is read off that grid and
+  the refusal would otherwise arrive only after every model had compiled and
+  sampled (#325).
+
+- **An ECx is unchanged except where the curve has already reached its target
+  where the grid begins**, which the default `type = "absolute"` cannot produce:
+  the target is derived from the draw's own control, so the curve begins above
+  it. Three routes reach it, all degenerate, and each now returns `NA` in place
+  of a value: `type = "direct"` with a supplied target above the curve at the
+  control; `type = "range"` where the curve's lowest predicted response is at the
+  control, which makes the target equal to it exactly; and `type = "relative"` on
+  a hormetic equation for a draw whose `bot` exceeds its control. Where the curve
+  is hormetic the value returned before was the crossing on the *rising* limb ---
+  the concentration at which the response reaches the target on the way up, which
+  estimates nothing --- and otherwise it was the lowest concentration in the
+  series (#325).
 
 - **The default `resolution` is reduced from 1000 to 200** in `ecx()`,
   `nsec()`, `ecnsec()` and `average_estimates()`. The value of 1000 was
