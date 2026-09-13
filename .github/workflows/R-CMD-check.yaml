@@ -14,7 +14,17 @@ on:
   push:
     branches: [master, dev]
   pull_request:
+  # The worker count is computed on the runner, which means it cannot be varied
+  # for measurement without editing this file -- and editing it changes the tree
+  # being measured. The input exists so one setting can be held while everything
+  # else stays fixed. Blank means "use the computed value", so an ordinary push or
+  # pull_request run takes exactly the same path it would without the input.
   workflow_dispatch:
+    inputs:
+      testthat_cpus:
+        description: 'testthat worker count; blank uses the value computed from the runner'
+        required: false
+        default: ''
 
 # Supersede rather than queue. Pushing a correction to a branch whose check is
 # still running made both run to completion, and only the second was ever read.
@@ -155,10 +165,22 @@ jobs:
       # step that set it. Hence the explicit branch: neither min() nor max()
       # excludes NA.
       - name: Set the testthat worker count from the runner
+        env:
+          WORKER_OVERRIDE: ${{ github.event.inputs.testthat_cpus }}
         run: |
           cores <- parallel::detectCores(logical = TRUE)
           workers <- if (is.na(cores)) 2L else max(2L, min(as.integer(cores) - 1L, 4L))
-          cat("detected", cores, "cores; using", workers, "testthat workers\n")
+          override <- Sys.getenv("WORKER_OVERRIDE", "")
+          if (nzchar(override)) {
+            workers <- as.integer(override)
+            if (is.na(workers) || workers < 1L) {
+              stop("testthat_cpus must be a positive integer, not '", override, "'")
+            }
+            cat("detected", cores, "cores; overridden to", workers,
+                "testthat workers by workflow_dispatch\n")
+          } else {
+            cat("detected", cores, "cores; using", workers, "testthat workers\n")
+          }
           cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)
         shell: Rscript {0}
