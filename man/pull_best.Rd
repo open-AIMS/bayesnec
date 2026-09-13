@@ -28,8 +28,8 @@ so the caller does not have to test the class first.
 }
 \details{
 The highest-weighted candidate contributes most to the
-model-averaged estimate, so it is the candidate whose fit is worth inspecting
-with \code{\link{pp_check}} and \code{\link{check_fit}}. Selecting it by hand
+model-averaged estimate, so its fit is the one normally inspected with
+\code{\link{pp_check}} and \code{\link{check_fit}}. Selecting it by hand
 requires two things that are not obvious. The weights are held in
 \code{mod_stats} and \code{\link{pull_out}} takes a model name, so the name
 has to be found before it can be passed; and \code{mod_stats} exists on a

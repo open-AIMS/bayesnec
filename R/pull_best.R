@@ -12,8 +12,8 @@
 #' it to \code{\link{expand_nec}}.
 #'
 #' @details The highest-weighted candidate contributes most to the
-#' model-averaged estimate, so it is the candidate whose fit is worth inspecting
-#' with \code{\link{pp_check}} and \code{\link{check_fit}}. Selecting it by hand
+#' model-averaged estimate, so its fit is the one normally inspected with
+#' \code{\link{pp_check}} and \code{\link{check_fit}}. Selecting it by hand
 #' requires two things that are not obvious. The weights are held in
 #' \code{mod_stats} and \code{\link{pull_out}} takes a model name, so the name
 #' has to be found before it can be passed; and \code{mod_stats} exists on a
@@ -90,8 +90,8 @@ pull_best.bayesnecfit <- function(object, ...) {
 pull_best.bayesmanecfit <- function(object, ...) {
   model <- best_weighted_model(object$mod_stats)
   # Delegated rather than reimplemented: pull_out() rebuilds the object's
-  # weighted quantities and carries the record of failed models across, and a
-  # direct expand_nec() call here would have to repeat both. It returns a
+  # weighted quantities and copies the record of failed models onto the object
+  # it returns, and a direct expand_nec() call here would repeat both. It returns a
   # bayesnecfit for every set reachable through the public API, since bnec(),
   # amend(), update() and screen_models() each collapse a set reduced to one
   # model to that class rather than leaving a one-model bayesmanecfit.

@@ -697,8 +697,8 @@
 
 - **`pull_best()`** returns the highest-weighted candidate of a
   `bayesmanecfit` as a `bayesnecfit`, and returns a `bayesnecfit` unchanged.
-  That candidate contributes most to the model-averaged estimate, so it is the
-  one whose fit is worth inspecting with `pp_check()` and `check_fit()`, and
+  That candidate contributes most to the model-averaged estimate, so its fit is
+  the one normally inspected with `pp_check()` and `check_fit()`, and
   selecting it previously meant reading the weights out of `mod_stats` and
   passing the name to `pull_out()` --- under a class test, because
   `screen_models()` returns a `bayesnecfit` whenever the screen leaves one
