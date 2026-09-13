@@ -229,13 +229,41 @@ if (length(stale)) {
 # rebuild against vignettes it had not touched and was not shipping, so one
 # known-bad vignette sitting in the tree would fail every partial rebuild, at
 # the last step, after the compute had been spent. See #251.
+#
+# One `#> Error` line is not a chunk error. `bnec()` fits a set and reports any
+# equation it could not fit, then returns the fit for the rest -- that is what
+# `failed_models()` is for -- and `try()` prints that report as
+# `#> Error : Failed to fit model <name>.`. Matching on `^#> Error` alone
+# therefore refuses to ship a vignette whose chunks all succeeded, which is what
+# stopped example8 on 2026-09-12 after 23 h of fitting: `ecxhormebc5` does not
+# initialise on a Gamma identity fit with a log predictor, and the other
+# fourteen equations of the set fitted normally.
+#
+# The exemption is written to the exact text and no wider. `bnec()` stopping
+# because nothing fitted reports "None of the models fit successfully", and an
+# ordinary chunk failure is `#> Error in ...`; both still fail here. A reported
+# model failure is announced rather than passed over in silence, because a
+# vignette in which many equations fail is worth looking at even though it is
+# shippable.
+model_failure <- "^#> Error : Failed to fit model [^ ]+\\.$"
 rendered <- file_path_sans_ext(orig_files)
-errored <- Filter(function(f) any(grepl("^#> Error", readLines(f, warn = FALSE))),
-                  rendered)
+error_lines <- lapply(rendered, function(f) {
+  grep("^#> Error", readLines(f, warn = FALSE), value = TRUE)
+})
+names(error_lines) <- rendered
+reported <- lapply(error_lines, function(x) x[grepl(model_failure, x)])
+genuine <- lapply(error_lines, function(x) x[!grepl(model_failure, x)])
+
+for (f in rendered[lengths(reported) > 0]) {
+  message("Equations reported as not fitted in ", basename(f), ": ",
+          length(reported[[f]]), " (", paste(unique(reported[[f]]), collapse = "; "),
+          "). Shippable, but check they are the ones you expect.")
+}
+
+errored <- rendered[lengths(genuine) > 0]
 if (length(errored)) {
   detail <- vapply(errored, function(f) {
-    hits <- grep("^#> Error", readLines(f, warn = FALSE), value = TRUE)
-    paste0("  ", basename(f), " (", length(hits), "): ", hits[1])
+    paste0("  ", basename(f), " (", length(genuine[[f]]), "): ", genuine[[f]][1])
   }, character(1))
   stop("Chunks errored while knitting:\n", paste(detail, collapse = "\n"),
        "\nFix the vignette source and re-run; do not ship this output.",

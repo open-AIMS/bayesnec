@@ -661,7 +661,7 @@ summary(fits_herb)
 ```
 
 ```{r}
-autoplot(fits_herb)
+plot(fits_herb)
 ```
 
 ```{r}
