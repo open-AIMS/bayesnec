@@ -70,7 +70,8 @@
 #' the control group. For the mixture families it also carries the observed and
 #' simulated proportion of zeros.
 #'
-#' @seealso \code{\link{pp_check}}, \code{\link{dispersion}},
+#' @seealso \code{\link{pp_check}}, \code{\link{pull_best}},
+#' \code{\link{dispersion}},
 #' \code{\link{check_chains}}, \code{\link{check_priors}}
 #'
 #' @examples

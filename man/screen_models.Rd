@@ -92,5 +92,5 @@ screen_models(manec_example)
 }
 \seealso{
 \code{\link{check_sampling}}, \code{\link{check_fit}},
-\code{\link{amend}}
+\code{\link{amend}}, \code{\link{pull_best}}
 }
