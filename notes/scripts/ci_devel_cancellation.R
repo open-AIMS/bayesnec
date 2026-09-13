@@ -60,14 +60,19 @@ mins_between <- function(from, to) {
 }
 
 message("fetching the last ", n_runs, " pull_request runs of ", workflow)
-runs <- do.call(rbind, lapply(seq_len(ceiling(n_runs / 100)), function(page) {
+pages <- lapply(seq_len(ceiling(n_runs / 100)), function(page) {
   gh_tsv(c(
     "api", "-X", "GET",
     sprintf("repos/%s/actions/workflows/%s/runs", repo, workflow),
     "-f", "event=pull_request", "-f", "per_page=100", "-f", paste0("page=", page),
     "--jq", ".workflow_runs[] | [.id, .head_branch, .created_at] | @tsv"
   ), c("run_id", "branch", "created_at"))
-}))
+})
+# A page returning fewer than 100 rows is the end of the listing, so a short
+# result there is the repository having fewer runs than were asked for rather
+# than the pages disagreeing. The two are distinguished below.
+exhausted <- any(vapply(pages, nrow, integer(1)) < 100L)
+runs <- do.call(rbind, pages)
 # The two pages are separate requests, so a run entering between them can appear
 # on both. A duplicated run would give a duplicated (run_id, job) cell and turn
 # every reshape below into a list matrix.
@@ -78,8 +83,14 @@ runs <- do.call(rbind, lapply(seq_len(ceiling(n_runs / 100)), function(page) {
 before <- nrow(runs)
 runs <- runs[!duplicated(runs$run_id), ]
 if (nrow(runs) < n_runs) {
-  stop("asked for ", n_runs, " runs; the API returned ", before, " rows and ",
-       nrow(runs), " distinct. The pages were inconsistent -- re-run.")
+  if (exhausted) {
+    message("only ", nrow(runs), " pull_request runs exist; using all of them")
+    n_runs <- nrow(runs)
+  } else {
+    stop("asked for ", n_runs, " runs; every page was full yet the API returned ",
+         before, " rows and ", nrow(runs), " distinct. The pages were ",
+         "inconsistent -- re-run.")
+  }
 }
 runs <- utils::head(runs, n_runs)
 if (as.numeric(diff(range(as_time(runs$created_at))), units = "days") > 365) {
@@ -183,15 +194,29 @@ print(by_day)
 # Two rates the argument rests on. #333 measured its last 36 runs; the onset is
 # the earliest day from which every later day has a non-zero rate, and the rate
 # since then is the regime rather than the most recent window.
-recent36 <- utils::head(runs$run_id[runs$run_id %in% settled], 36L)
-nonzero <- by_day$cancelled_pct > 0
-onset <- rownames(by_day)[max(which(!nonzero)) + 1L]
-since <- devel[devel$day >= onset, ]
-cat(sprintf(
-  "\nmost recent 36 runs: %.1f%% cancelled, the window #333 measured\nfrom the onset at %s (n = %d): %.1f%%\n",
-  100 * mean(devel$conclusion[devel$run_id %in% recent36] == "cancelled"),
-  onset, nrow(since), 100 * mean(since$conclusion == "cancelled")
-))
+n_recent <- min(36L, length(settled))
+recent <- utils::head(runs$run_id[runs$run_id %in% settled], n_recent)
+cat(sprintf("\nmost recent %d runs: %.1f%% cancelled, the window #333 measured\n",
+            n_recent,
+            100 * mean(devel$conclusion[devel$run_id %in% recent] == "cancelled")))
+# The onset is the earliest day after the last day on which nothing was
+# cancelled. Where every day has a non-zero rate the whole window is one regime,
+# and where the last day is zero there is no second regime to report.
+zero_days <- which(by_day$cancelled_pct == 0)
+onset <- if (!length(zero_days)) {
+  rownames(by_day)[1]
+} else if (max(zero_days) == nrow(by_day)) {
+  NA_character_
+} else {
+  rownames(by_day)[max(zero_days) + 1L]
+}
+if (is.na(onset)) {
+  cat("no onset: the most recent sampled day cancelled nothing\n")
+} else {
+  since <- devel[devel$day >= onset, ]
+  cat(sprintf("from the onset at %s (n = %d): %.1f%%\n",
+              onset, nrow(since), 100 * mean(since$conclusion == "cancelled")))
+}
 
 # The claim that cancellation follows push frequency is measured rather than
 # asserted: how long after each run the next run on the same branch was created.
