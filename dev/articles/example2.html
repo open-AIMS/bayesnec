@@ -200,7 +200,7 @@ package:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">333</span><span class="op">)</span></span>
 <span><span class="va">df_</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">15</span><span class="op">)</span>, y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">15</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">y</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">exp_5</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df_</span>, iter <span class="op">=</span> <span class="fl">2e3</span>,</span>
-<span>              open_progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<span>              cores <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"mc.cores"</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>Here we run <code>bnec</code> using <code>model =  "decline"</code>
 using a simulated data example for a Beta-distributed response variable.
 We are using the <code>"decline"</code> set here because we are not
@@ -501,6 +501,289 @@ relevant thresholds.</p>
 plot of chunk exmp2-pretty
 </p>
 </div>
+</div>
+</div>
+<div class="section level3">
+<h3 id="fitting-the-model-set-in-parallel">Fitting the model set in parallel<a class="anchor" aria-label="anchor" href="#fitting-the-model-set-in-parallel"></a>
+</h3>
+<p>The fit above passed <code>cores = getOption("mc.cores", 1)</code>,
+which takes the number of chains sampled at once from the
+<code>mc.cores</code> option. <code>chains</code> defaults to four and
+<code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> samples at most <code>chains</code> at a time, so on
+the machine this vignette was built on that is four chains together; in
+a session where <code>mc.cores</code> is unset it is one after another.
+Set <code>mc.cores</code>, or pass <code>cores</code> directly, to
+choose. That is one of two things in a model set that can be done at
+once, and it is the narrower one: the chains of a single model. A model
+set is a second opportunity, because the models do not depend on one
+another and there are usually more of them than there are chains.</p>
+<p><code><a href="../reference/bnec.html">bnec()</a></code> fits the models one at a time unless a <a href="https://cran.r-project.org/package=future" class="external-link"><code>future</code></a>
+plan says otherwise. Setting one before the call is all that is
+required:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://future.futureverse.org" class="external-link">future</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
+<span><span class="va">exp_5_par</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df_</span>,</span>
+<span>                  iter <span class="op">=</span> <span class="fl">2e3</span>, seed <span class="op">=</span> <span class="fl">322</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">sequential</span><span class="op">)</span></span></code></pre></div>
+<p>There is no argument to <code><a href="../reference/bnec.html">bnec()</a></code> that turns this on or
+off: the plan already records how much of the machine you are willing to
+use, and a second way of saying it would only disagree with the first. A
+<code>cores</code> is different, and is passed through to
+<code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm()</a></code> as any other of its arguments is; what it does under
+a plan is the subject of <em>Chains within models</em> below.
+<code>future</code> and <code>future.apply</code> are suggested rather
+than required packages: without them, or without a plan, the models are
+fitted in sequence exactly as they were before this feature existed.
+<code><a href="../reference/amend.html">amend()</a></code> uses the plan in the same way, over whichever
+models it has to fit, and <code><a href="../reference/bnec_group.html">bnec_group()</a></code> fits each level of
+the grouping variable in turn with that level’s model set fitted in
+parallel.</p>
+<div class="section level4">
+<h4 id="choosing-a-plan">Choosing a plan<a class="anchor" aria-label="anchor" href="#choosing-a-plan"></a>
+</h4>
+<p><code>plan(multisession)</code> is the portable choice: it starts
+fresh R processes that talk to the parent over local sockets, and it is
+available on every platform. <code>plan(multicore)</code> forks the
+current process instead, which starts faster and shares memory rather
+than copying it, but forking is unavailable on Windows and inside
+RStudio and Positron, where the plan silently resolves to a single
+worker. <code><a href="../reference/bnec.html">bnec()</a></code> reports the number of workers it was given,
+so a plan that has collapsed to one is visible rather than merely
+slow.</p>
+<p>Check that a plan works before committing a long run to it. Fit two
+models with a small <code>iter</code> under the plan you intend to use,
+and confirm it returns. The socket layer <code>multisession</code>
+depends on is outside R’s control, and where it misbehaves the symptom
+is a run that neither finishes nor errors. The lesson is the check
+rather than a particular backend: if <code>multisession</code> stalls
+and you are on Linux or macOS, <code>multicore</code> uses no sockets
+and is the thing to try.</p>
+<p>On the WSL2 machine these notes were written on, a two-model fit
+completed under <code>multicore</code> in five runs out of five, taking
+84 to 90 seconds, and completed under <code>multisession</code> in none
+of four, each attempt producing no output at all before being killed. A
+separate thirteen-model run under <code>multisession</code> failed
+differently again: both workers stopped with
+<code>error writing to connection</code> and the parent then waited
+indefinitely.</p>
+<p>The cause is not established here and is very likely below R. The
+Windows subsystem logged name-resolution failures during these runs,
+which fits a problem in the socket layer that <code>multisession</code>
+relies on and <code>multicore</code> does not use; and the same code
+passes under <code>multisession</code> on Linux, macOS and Windows in
+this package’s continuous integration, so whatever it is, it is not
+general.</p>
+</div>
+<div class="section level4">
+<h4 id="the-stan-backend">The Stan backend<a class="anchor" aria-label="anchor" href="#the-stan-backend"></a>
+</h4>
+<p>Under a forked plan, use the <code>cmdstanr</code> backend. The
+default, <code>rstan</code>, compiles each model into the session’s
+temporary directory, which a forked worker shares with the process it
+was forked from; thirteen models compiling at once in eight forked
+workers failed, every one of them, with
+<code>cannot open the connection</code> from <code>stanc</code>. A
+<code>multisession</code> worker is a separate R session with a
+temporary directory of its own, so compilation under <code>rstan</code>
+does not collide there. <code>cmdstanr</code> names a compiled program
+after a hash of its Stan code and keeps it in a cache directory, so
+concurrent compiles of different models do not collide and a repeated
+run reuses what is already built. Set it with
+<code>options(brms.backend = "cmdstanr")</code>, which is what this
+package’s vignettes are built with. <code>cmdstanr</code> is not on CRAN
+and is not a dependency of <code>bayesnec</code>; see <a href="https://mc-stan.org/cmdstanr/" class="external-link">its installation instructions</a>
+if you do not already have it.</p>
+<p>Two models in two forked workers did not collide and thirteen in
+eight did, so a small trial does not reveal this, and the two-model
+check in <em>Choosing a plan</em> does not cover it. The explanation
+offered here is consistent with the shared temporary directory but was
+not isolated — eight compilers running at once is also eight times the
+memory — and it was seen on one machine.</p>
+</div>
+<div class="section level4">
+<h4 id="run-times">Run times<a class="anchor" aria-label="anchor" href="#run-times"></a>
+</h4>
+<p>The whole <code>"decline"</code> set was fitted five ways, from a
+fresh session each time with nothing compiled in advance, to see what a
+plan changes.</p>
+<table style="width:100%;" class="table">
+<colgroup>
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+<col width="16%">
+</colgroup>
+<thead><tr class="header">
+<th>plan</th>
+<th>cores in use</th>
+<th>runs</th>
+<th>seconds</th>
+<th>range</th>
+<th>change vs no plan</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>no plan</td>
+<td>4, one per chain</td>
+<td>2</td>
+<td>299.5</td>
+<td>293.7-305.3</td>
+<td>–</td>
+</tr>
+<tr class="even">
+<td><code>workers = 2</code></td>
+<td>2, one per model</td>
+<td>3</td>
+<td>226.4</td>
+<td>216.3-240.5</td>
+<td>-24%</td>
+</tr>
+<tr class="odd">
+<td><code>workers = 4</code></td>
+<td>4, one per model</td>
+<td>2</td>
+<td>174.2</td>
+<td>167.8-180.6</td>
+<td>-42%</td>
+</tr>
+<tr class="even">
+<td><code>workers = 8</code></td>
+<td>8, one per model</td>
+<td>2</td>
+<td>149.9</td>
+<td>146.7-153.2</td>
+<td>-50%</td>
+</tr>
+<tr class="odd">
+<td>
+<code>workers = 5</code>, <code>cores = 4</code>
+</td>
+<td>20, four per model</td>
+<td>2</td>
+<td>153.5</td>
+<td>149.7-157.3</td>
+<td>-49%</td>
+</tr>
+</tbody>
+</table>
+<p>Measured 2026-09-12 on an otherwise idle 22-core workstation under
+WSL2, R 4.6.1, <code>cmdstanr</code>, <code>plan(multicore)</code>: the
+<code>"decline"</code> models that fit this data,
+<code>iter = 2e3</code>, <code>chains = 4</code>, each run in a fresh R
+session with the compiled-program cache emptied first, so every run
+builds all 13 programs. The cores named are those sampling: compilation
+is single-threaded per program, so a run with no plan compiles the
+thirteen one after another on one core while a plan of <em>n</em>
+workers compiles <em>n</em> at a time, which is why two workers complete
+in 24 per cent less time than a nominally four-core baseline here. Where
+a row has two runs the figure is their midpoint. Runs during which any
+other R process appeared were discarded and repeated; three were. These
+runs used the development version of the package, in which 13 of the 14
+<code>"decline"</code> models fit this data and <code>ecxll5</code> does
+not initialise; the output shown earlier in this vignette was rendered
+from an older version, has eight models, and gives <code>ecxll5</code>
+the second-largest weight. The two do not correspond, and the timings
+are a separate measurement rather than a description of the fit
+above.</p>
+<p>Against that, the same five configurations run again with the
+programs already built take 99, 114, 108, 101 and 94 seconds in the same
+order, one run each. Two workers then take 15 per cent longer than no
+plan, which is outside the spread these configurations show; the other
+three land within a few per cent of the sequential fit, which one run
+each cannot separate from it. Compilation is what the plan was
+overlapping, and the core arithmetic shows through once it is gone: the
+sequential fit samples four chains on four cores, so two workers of one
+chain each is less of the machine than it replaces and four workers is
+the same amount rearranged. Only above four does a plan ask for more
+than the fit was already using. Once it is done, what remains is
+sampling that takes seconds per model, and the work the calling process
+does whatever plan is set: the model weights, the leave-one-out
+comparisons and the prediction grid are all computed there, after the
+fits come back. How the remainder divides between those was not measured
+and is not claimed here.</p>
+<p>So the advice is about which run you are timing. A first fit of a
+model set, on a machine where the programs are not already built, is
+compilation-bound and parallelises well: halving the elapsed time at
+eight workers, on the measurement above. A repeat of the same set
+against a warm cache is sampling-bound, so for models as small as these
+nothing is gained and a plan with too few workers adds time. Where a
+single model takes minutes rather than seconds the sampling dominates in
+both cases and the first table’s shape applies to the repeat run
+too.</p>
+</div>
+<div class="section level4">
+<h4 id="chains-within-models">Chains within models<a class="anchor" aria-label="anchor" href="#chains-within-models"></a>
+</h4>
+<p>The two levels are not exclusive. Passing <code>cores</code> yourself
+is left alone by <code><a href="../reference/bnec.html">bnec()</a></code>, and nests deliberately:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">multisession</span>, workers <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">exp_5_nested</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bnec.html">bnec</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="fu">crf</span><span class="op">(</span><span class="va">x</span>, model <span class="op">=</span> <span class="st">"decline"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">df_</span>,</span>
+<span>                     iter <span class="op">=</span> <span class="fl">2e3</span>, cores <span class="op">=</span> <span class="fl">4</span>, seed <span class="op">=</span> <span class="fl">322</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://future.futureverse.org/reference/plan.html" class="external-link">plan</a></span><span class="op">(</span><span class="va">sequential</span><span class="op">)</span></span></code></pre></div>
+<p>That runs five models at a time with four chains each, so twenty
+chains are sampling at once. It is the shape that suits a cluster
+allocation, where the number of cores is known in advance and is larger
+than any one model can use. Divide the allocation between the two levels
+rather than giving it all to either.</p>
+</div>
+<div class="section level4">
+<h4 id="reproducibility">Reproducibility<a class="anchor" aria-label="anchor" href="#reproducibility"></a>
+</h4>
+<p>Each fitted model reproduces exactly under a parallel plan, given the
+same <code>seed</code>. That equality is not automatic.
+<code>future</code> gives each worker its own random number generator,
+the initial-value search in <code><a href="../reference/bnec.html">bnec()</a></code> seeds itself with
+<code>set.seed</code>, and <code>set.seed</code> does not restore the
+generator <em>kind</em>, so the same seed would otherwise have produced
+different starting values in a worker than in the parent. The worker
+restores the parent’s generator kind before fitting, and the equality is
+tested.</p>
+<p>The model-averaged quantities are the exception, and the reason is
+mechanical. Once the models are fitted, <code><a href="../reference/bnec.html">bnec()</a></code> draws a seed
+from the session’s random number stream and uses it to decide which
+posterior draws each model contributes to the averaged estimate. A
+sequential run has advanced that stream, by way of the
+<code>set.seed</code> each initial-value search performs; a parallel run
+leaves it untouched, so that models fitted in workers cannot disturb
+whatever the session was doing. The averaged <code>nec</code>, its
+credible interval and the stored prediction grid therefore differ
+between the two plans. Neither is wrong: they are two draws from the
+same weighting. Calling <code>set.seed</code> in your own session before
+<code><a href="../reference/bnec.html">bnec()</a></code> fixes that draw under a plan, and two parallel runs
+then agree.</p>
+</div>
+<div class="section level4">
+<h4 id="memory">Memory<a class="anchor" aria-label="anchor" href="#memory"></a>
+</h4>
+<p>Each worker holds a complete fit while it is working, and fits are
+large. Eight workers on a large data set can exhaust memory where eight
+cores would have been fine, and a worker killed by the operating system
+ends the whole call rather than the one model it was fitting. If a run
+dies without an R error, reduce the worker count before looking anywhere
+else.</p>
+<p>Two smaller effects go with it. A <code>multisession</code> or
+<code>cluster</code> worker is a fresh R process that loads
+<code>bayesnec</code>, and with it <code>brms</code> and the Stan
+backend, before it can fit anything: about three seconds each, paid once
+per worker, which matters for a set of three models and not for a set of
+twenty-three. A forked <code>multicore</code> worker inherits what the
+parent has already loaded and does not pay this. And everything the fit
+needs – the data, the formula, the priors – is sent to each worker, so a
+very large data set may reach <code>future</code>’s export limit. Raise
+it with <code>options(future.globals.maxSize = )</code>. If that limit
+is reached and the data are not large, look at where the formula was
+written: a formula keeps the environment it was created in, so one built
+inside a function sends that function’s variables to every worker
+too.</p>
+<p>Progress reporting changes too. The per-model messages
+<code><a href="../reference/bnec.html">bnec()</a></code> prints come from worker processes, and arrive out of
+order or not at all depending on the platform. Nothing is lost: a model
+that fails is still recorded, the remaining models still fit, and
+<code><a href="../reference/failed_models.html">failed_models()</a></code> reports what happened.</p>
 </div>
 </div>
 </div>
