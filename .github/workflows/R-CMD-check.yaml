@@ -111,34 +111,45 @@ jobs:
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
-      # testthat runs its files over two worker processes unless it is told
-      # otherwise: testthat:::default_num_cpus() reads getOption("Ncpus"), then
-      # TESTTHAT_CPUS, and returns 2 if neither is set. The test suite is very
-      # nearly the whole check -- dependencies are cached and install in under a
-      # minute, examples are 12 to 21 seconds plus 44 to 83 seconds with
-      # --run-donttest, and the precompiled vignettes rebuild in 8 to 20 seconds
-      # -- so the worker count sets the length of the job.
+      # testthat runs two worker processes unless told otherwise:
+      # testthat:::default_num_cpus() reads getOption("Ncpus"), then
+      # TESTTHAT_CPUS, and returns 2 if neither is set. Neither was set here, so
+      # every job ran two workers whatever the runner provided, and the test
+      # suite is very nearly the whole check. The measurements are in #328 and in
+      # run 34740649976 rather than here, because a figure in a comment goes
+      # stale while an issue keeps its date and its run id.
       #
-      # On run 34696507417 the test phase reported 51, 42 and 33 minutes of CPU
-      # against 26, 24 and 21 minutes elapsed on the three jobs that report
-      # both. Those ratios, 1.96, 1.75 and 1.57, are two workers scaling close
-      # to perfectly, which means elapsed time is bound by total work divided by
-      # the worker count and not by the longest single file.
+      # Four decisions, which are the durable part.
       #
-      # The count is read from the runner rather than written here as a
-      # constant, so that a change to the hosted runner sizes is followed
-      # instead of ignored, and it is clamped at four because the memory each
-      # worker needs is not small: one Stan program compiling peaks at about
-      # 1.2 GB resident, measured on R 4.6.1 with brms 2.23.0, and the smallest
-      # runner in this matrix has 7 GB.
+      # Set here and not in DESCRIPTION. CRAN runs its checks within two cores
+      # and testthat's default already gives that, so raising the count is a
+      # property of these runners rather than of the package. --as-cran does not
+      # decide it either way: it sets _R_CHECK_LIMIT_CORES_, which is read by
+      # parallelly and future, not by base R or testthat.
       #
-      # It is set here and not in DESCRIPTION on purpose. CRAN runs its checks
-      # within two cores and testthat's default already gives that; raising the
-      # count is a property of these runners, not of the package.
+      # Read from the runner rather than written as a constant, so a change to
+      # the hosted runner sizes is followed instead of ignored. The step prints
+      # what it found and what it chose, so the basis is in the log.
+      #
+      # One fewer than the cores, never fewer than two and never more than four.
+      # A worker per core measured worse than this: each worker spawns its own
+      # compiler for every Stan program, so claiming every core leaves nothing
+      # for those children or for the parent check process, and the one run that
+      # tried it inflated CPU on ubuntu-release and lost ubuntu-devel mid-phase.
+      # Two is the floor because two is what testthat would have used unasked, so
+      # a small or unreadable runner falls back to the behaviour this step
+      # replaces rather than to something slower. Four is an upper bound against
+      # a future larger runner; nothing in this matrix reaches it.
+      #
+      # detectCores() returns NA where it cannot determine the count, and NA
+      # reaches testthat as the string "NA" and aborts the whole test phase with
+      # "`TESTTHAT_CPUS` must be an integer" -- naming the variable and not the
+      # step that set it. Hence the explicit branch: neither min() nor max()
+      # excludes NA.
       - name: Set the testthat worker count from the runner
         run: |
           cores <- parallel::detectCores(logical = TRUE)
-          workers <- max(1L, min(as.integer(cores), 4L))
+          workers <- if (is.na(cores)) 2L else max(2L, min(as.integer(cores) - 1L, 4L))
           cat("detected", cores, "cores; using", workers, "testthat workers\n")
           cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)
