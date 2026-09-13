@@ -3,30 +3,20 @@
 # variability in one region, because a free dispersion parameter absorbs exactly
 # the discrepancy the global statistic measures.
 
-# The fixtures below are built once and reused, following degenerate_fit() in
-# test-dispersion.R. Each was previously rebuilt in every test_that() block that
-# needed it, and each is deterministic, so the reused object is the one those
-# blocks built for themselves: setup.R's `nec4param` is pull_out() of the
-# packaged model set, and check_fit() takes `seed = 10` by default and draws
-# from a stored posterior. Safe here only because no test modifies the object it
-# is handed --- every one of them reads it. A test that needs to modify a
-# fixture must build its own.
+# Each checkfit table below is computed once and reused by the blocks that read
+# it, following degenerate_fit() in test-dispersion.R. The reused object is the
+# one those blocks built for themselves: check_fit() takes `seed = 10` by
+# default and calls set.seed() before the only stochastic step it runs
+# (R/check_fit.R:168), so its result does not depend on the stream it is entered
+# with, and setup.R's `nec4param` is the pull_out() call these blocks used to
+# make for themselves. Safe only because no test modifies the object it is
+# handed --- every one reads it. A test that needs to modify one must build its
+# own.
 #
-# check_fit() on the packaged example warns that the predictor is not a design
-# point. The accessor suppresses it, as every call site here already did; the
-# block that asserts that warning calls check_fit() directly and must keep
-# doing so, because a memoised accessor emits it on the first call only.
-manec_check <- local({
-  cached <- NULL
-  function() {
-    if (is.null(cached)) {
-      cached <<- suppressWarnings(check_fit(manec_example))
-    }
-    cached
-  }
-})
-
-check_fit_g4 <- local({
+# Whichever block runs first pays for the build, so each accessor is called as
+# the first statement after skip_on_cran() in every block that uses it. No block
+# can then skip while another still needs the table.
+nec4param_checkfit_g4 <- local({
   cached <- NULL
   function() {
     if (is.null(cached)) {
@@ -38,7 +28,7 @@ check_fit_g4 <- local({
 
 test_that("check_fit returns a row per group with both statistics", {
   skip_on_cran()
-  out <- check_fit_g4()
+  out <- nec4param_checkfit_g4()
   expect_s3_class(out, "checkfit")
   expect_equal(nrow(out), 4)
   for (nm in c("group", "n", "obs_mean", "sim_mean", "mean_ratio", "ppp_mean",
@@ -54,14 +44,14 @@ test_that("exactly one group is flagged as the control, and it is the lowest", {
   # observed control is y[x == min(x)] -- the package's own convention. The
   # flag has to agree with that or it points at the wrong row.
   skip_on_cran()
-  out <- check_fit_g4()
+  out <- nec4param_checkfit_g4()
   expect_equal(sum(out$control), 1)
   expect_true(out$control[1])
 })
 
 test_that("posterior predictive p-values are probabilities", {
   skip_on_cran()
-  out <- check_fit_g4()
+  out <- nec4param_checkfit_g4()
   for (nm in c("ppp_mean", "ppp_sd")) {
     expect_true(all(out[[nm]] >= 0 & out[[nm]] <= 1, na.rm = TRUE), info = nm)
   }
@@ -144,9 +134,23 @@ test_that("check_fit reproduces the local finding a global statistic misses", {
 # table answers whether a group is off; the plot answers by how much and in
 # which direction, which is what decides whether it matters.
 
+# check_fit() on the packaged model set warns that the predictor is not a design
+# point, and all four blocks below already suppressed it. The accessor does the
+# same; the block that asserts that warning calls check_fit() directly and has
+# to keep doing so, because a memoised accessor emits it on the first call only.
+manec_checkfit <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      cached <<- suppressWarnings(check_fit(manec_example))
+    }
+    cached
+  }
+})
+
 test_that("plot.checkfit returns a ggplot with both statistics panelled", {
   skip_on_cran()
-  cf <- manec_check()
+  cf <- manec_checkfit()
   p <- plot(cf)
   expect_s3_class(p, "ggplot")
   # both panels present -- location and scale fail independently, so a single
@@ -159,7 +163,7 @@ test_that("plot.checkfit returns a ggplot with both statistics panelled", {
 
 test_that("the control is distinguished in the plot data", {
   skip_on_cran()
-  cf <- manec_check()
+  cf <- manec_checkfit()
   p <- plot(cf)
   expect_true("control" %in% p$data$role)
   expect_true("exposed" %in% p$data$role)
@@ -172,7 +176,7 @@ test_that("the control is distinguished in the plot data", {
 
 test_that("the simulated intervals are on the object but not printed", {
   skip_on_cran()
-  cf <- manec_check()
+  cf <- manec_checkfit()
   expect_true(all(c("sim_mean_lo", "sim_mean_hi", "sim_sd_lo", "sim_sd_hi")
                   %in% names(as.data.frame(cf))))
   # print() drops them: they are for plot(), and including them takes the
@@ -183,7 +187,7 @@ test_that("the simulated intervals are on the object but not printed", {
 
 test_that("the interval brackets the simulated median", {
   skip_on_cran()
-  d <- as.data.frame(manec_check())
+  d <- as.data.frame(manec_checkfit())
   expect_true(all(d$sim_mean_lo <= d$sim_mean & d$sim_mean <= d$sim_mean_hi))
   expect_true(all(d$sim_sd_lo <= d$sim_sd & d$sim_sd <= d$sim_sd_hi))
 })
@@ -194,7 +198,8 @@ test_that("the interval brackets the simulated median", {
 
 # Fitted once and reused across the five blocks below. bnec_hurdle() fits two
 # brms models, so a call per block compiled the same two Stan programs five
-# times each: 10 of the 29 compilations the suite ran. See #328.
+# times each: 10 compilations of which 8 were redundant, in a file that compiled
+# 10 in total. See #328.
 hurdle_fixture <- local({
   cached <- NULL
   function() {

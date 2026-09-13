@@ -57,6 +57,11 @@ test_that("dispersion recovers a value near one for Poisson-simulated data", {
   expect_lt(disp[["Q97.5"]], 2.5)
 })
 
+# This block compiles the same Stan program poisson_fit() does -- nec4param with
+# a poisson family -- on different data, so it cannot share that fit and keeps a
+# compilation of its own. Refitting through update() would reuse the program but
+# puts the family and its link back through a path that has been a source of
+# defects here (#247), which is not a trade worth making to save 80 seconds.
 test_that("dispersion detects genuine overdispersion", {
   set.seed(247)
   x <- runif(60, 0, 3.2)
