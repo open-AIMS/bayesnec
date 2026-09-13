@@ -5,6 +5,7 @@
 #   ./hpc/precompile-hpc.sh example2 example3       # several, in sequence
 #   ./hpc/precompile-hpc.sh --no-wait example7      # submit and return the id
 #   ./hpc/precompile-hpc.sh --fetch example7        # collect a finished run
+#   ./hpc/precompile-hpc.sh --workers 16 example8   # fit each model set in parallel
 #   ./hpc/precompile-hpc.sh                         # every vignette
 #
 # Run from the repository root. It copies the working tree, not the commit, so
@@ -35,15 +36,31 @@ POLL="${POLL:-60}"
 
 wait_for_job=1
 fetch_only=0
+# --workers N fits the models of one set in parallel, under a future plan set by
+# precompile.R. Unset, a vignette is rendered exactly as it was before #184, with
+# the allocation spent on chains. The useful width is the number of equations in
+# one call rather than the number of fits in the vignette, because bnec_group()
+# fits its levels in sequence; see hpc/run.precompile.
+workers=""
 args=()
+want_workers=0
 for a in "$@"; do
+  if [ "$want_workers" -eq 1 ]; then workers="$a"; want_workers=0; continue; fi
   case "$a" in
     --no-wait) wait_for_job=0 ;;
     --fetch) fetch_only=1 ;;
+    --workers) want_workers=1 ;;
+    --workers=*) workers="${a#*=}" ;;
     -*) echo "unknown option: $a" >&2; exit 2 ;;
     *) args+=("$a") ;;
   esac
 done
+[ "$want_workers" -eq 0 ] || { echo "--workers needs a number" >&2; exit 2; }
+if [ -n "$workers" ]; then
+  case "$workers" in
+    ''|*[!0-9]*) echo "--workers must be a positive integer, got: $workers" >&2; exit 2 ;;
+  esac
+fi
 
 mapfile -t available < <(cd vignettes && ls -1 *.Rmd.orig | sed 's/\.Rmd\.orig$//')
 [ "${#available[@]}" -gt 0 ] || {
@@ -259,10 +276,18 @@ fi
 # wall-clock only on the first, cold run; afterwards the tasks are reading the
 # cache rather than writing it. Raise it deliberately, once the cache is warm.
 n=${#args[@]}
+# sbatch exports the submitting environment, and that environment is the remote
+# shell this ssh opens, so the variable is set there rather than passed as an
+# sbatch option.
+WORKERS_EXPORT=""
+if [ -n "$workers" ]; then
+  WORKERS_EXPORT="export BAYESNEC_VIGNETTE_WORKERS=$workers; "
+  echo "==> model sets fitted across $workers worker(s)"
+fi
 echo "==> submitting $n task(s)"
 JOB=$(ssh "$HOST" "bash -lc 'cd $DEST && chmod +x hpc/run.precompile && \
   module load slurm >/dev/null 2>&1; \
-  sbatch --parsable --array=1-$n%1 hpc/run.precompile'")
+  ${WORKERS_EXPORT}sbatch --parsable --array=1-$n%1 hpc/run.precompile'")
 echo "job $JOB: ${args[*]}"
 
 if [ "$wait_for_job" -eq 0 ]; then

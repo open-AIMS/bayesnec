@@ -112,6 +112,34 @@ if (is.na(.cpus) || .cpus < 1) {
 options(mc.cores = .cpus)
 message("Chains run on ", .cpus, " core(s)")
 
+# Fit the models of a set in parallel, where the job asks for it -------------
+# Since #184 `bnec()` fits its model set under whatever `future` plan is set, and
+# passes `cores = 1` to `brm()` under a plan of more than one worker. The two
+# arrangements spend the same cores: N workers with chains serial, or N/4 workers
+# each given `cores = 4`. The first needs no change to a vignette's fit calls.
+#
+# The useful width is the number of equations in one call, not the number of fits
+# in the vignette, because the parallelism is inside `bnec()` and `bnec_group()`
+# still fits its levels in sequence. example8's largest set is 18 equations and
+# most are 15, so workers beyond about 16 have nothing to take.
+#
+# Off unless BAYESNEC_VIGNETTE_WORKERS is set, so every other vignette keeps the
+# behaviour it was last rendered under and #190 is not silently a different run.
+.workers <- suppressWarnings(as.integer(Sys.getenv("BAYESNEC_VIGNETTE_WORKERS")))
+if (!is.na(.workers) && .workers > 1) {
+  if (!requireNamespace("future", quietly = TRUE)) {
+    stop("BAYESNEC_VIGNETTE_WORKERS is set but the future package is not installed",
+         call. = FALSE)
+  }
+  # Each worker holds a fitted model on return, so the default 500 MB ceiling on
+  # what may cross between processes is too low for a set on 1452 rows.
+  options(future.globals.maxSize = 4 * 1024^3)
+  # Not reset afterwards: on.exit() outside a function never fires, and the
+  # workers go with the process this script runs in.
+  future::plan(future::multisession, workers = .workers)
+  message("Model sets fitted across ", .workers, " worker(s)")
+}
+
 # Where cmdstanr writes the .stan files it names by hash, and therefore where
 # the compiled executables live. Unset, it is the session tempdir and nothing
 # survives the run. The HPC job points it at shared scratch; see hpc/README.md.
