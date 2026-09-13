@@ -1174,6 +1174,29 @@
 
 ## Documentation
 
+- New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
+  running a single analysis from data to reportable estimate: choosing the
+  family from the support of the response, fitting the candidate set, sampler
+  diagnostics per candidate equation, fit diagnostics through `pp_check()` and
+  `check_fit()`, exclusion of the equations that fail the screen, and reporting.
+  It works through the step the other vignettes state but do not demonstrate,
+  which is choosing the family from the data, and it separates the kinds of
+  sampler failure the screen returns: an equation given too few draws, which
+  passes once it is given more; an equation the design does not support, which
+  more sampling makes worse; and an equation decided at the cutoff, which is a
+  choice the analyst has to report. A count response follows, where the family
+  question becomes a dispersion screen and where the screen removes most of the
+  set for a reason that is a property of the experiment rather than of the fit.
+
+  The family screen reads `P(>1)` from `dispersion()`, the posterior probability
+  of over-dispersion, rather than thresholding the point estimate or the lower
+  bound of the interval. The exclusion step is worked on three datasets ---
+  `nassarius`, `simazine` and `diuron` --- because the share of the model weight
+  removed and the change in the model-averaged *N(S)EC* are separate
+  consequences, and neither is predictable before the screen is run. That is the
+  argument for the step being obligatory. The screening uses `check_sampling()`
+  and `screen_models()` rather than code written for the vignette. See #219.
+
 - `?bnec` and `?models` now state that a model group names the shape of the
   response and not the set of equations admissible for it. `mod_groups$decline`
   includes `neclin` and `ecxlin`, whose mean decays by subtraction and is
