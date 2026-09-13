@@ -126,12 +126,20 @@ test_that("RNGkind at the same kind derives the state, it does not reseed", {
       assign(".Random.seed", old_seed, envir = globalenv())
     }
   }, add = TRUE)
-  once <- function() {
-    set.seed(42)
-    suppressWarnings(do.call(RNGkind, as.list(RNGkind())))
+  once <- function(from, to) {
+    set.seed(42, kind = from)
+    suppressWarnings(do.call(RNGkind, as.list(to)))
     stats::runif(1)
   }
-  expect_identical(once(), once())
+  mt <- c("Mersenne-Twister", "Inversion", "Rejection")
+  # The same-kind call, which is what bnec_model_lapply() makes in the parent's
+  # own kind, and the L'Ecuyer-CMRG to Mersenne-Twister change, which is what
+  # it makes inside a worker. Three calls rather than two: two clock-seeded
+  # draws could in principle collide.
+  expect_identical(once(mt[1], mt), once(mt[1], mt))
+  expect_identical(once(mt[1], mt), once(mt[1], mt))
+  expect_identical(once("L'Ecuyer-CMRG", mt), once("L'Ecuyer-CMRG", mt))
+  expect_identical(once("L'Ecuyer-CMRG", mt), once("L'Ecuyer-CMRG", mt))
 })
 
 test_that("no plan and no future leaves brm_args untouched", {

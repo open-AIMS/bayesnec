@@ -485,11 +485,16 @@
 #' \code{threads = threading(n, static = TRUE)} where a threaded run has to
 #' repeat.
 #'
-#' A run under a \pkg{future} plan reproduces as a sequential one does, on the
-#' one backend and R version this has been measured on; \code{seed} is the way
-#' to fix a run that has to repeat regardless. It does not reproduce the
-#' \emph{sequential} run's model-averaged quantities, which is a separate
-#' matter and is covered below.
+#' A \pkg{future} plan raises two separate questions, and only the second
+#' needs anything of you. A run under a plan repeats itself under a session
+#' \code{\link[base]{set.seed}} exactly as a sequential run does, measured on
+#' one backend and one R version. But a parallel run does not give the same
+#' answer as a sequential run of the same call unless you pass \code{seed}:
+#' each model is fitted in a worker whose random number stream is its own, so
+#' the initial values differ. Measured under
+#' \code{plan(multicore, workers = 3)} on three equations, sequential and
+#' parallel agreed with a \code{seed} and disagreed without one. Pass one if
+#' you intend to compare the two.
 #'
 #' \bold{Fitting a model set in parallel}
 #'
@@ -528,14 +533,16 @@
 #' comparison is 99 s against 101 s -- nothing, because what a plan was
 #' overlapping has already been done.
 #'
-#' Supply a \code{seed} if the run has to be reproducible.
+#' Supply a \code{seed} if the run has to match a sequential one; see
+#' \emph{Reproducing a fit} above for what a plan does and does not repeat.
 #'
 #' The model-averaged quantities -- the averaged
 #' \code{nec}, its interval, the stored prediction grid -- are not reproduced
-#' between a sequential and a parallel run, because \code{expand_manec()} draws
-#' from the session's RNG stream, which a sequential run advances and a parallel
-#' one leaves alone; \code{set.seed()} in your session fixes that draw under a
-#' plan.
+#' between a sequential and a parallel run even with a \code{seed}, because
+#' \code{expand_manec()} draws from the session's RNG stream, which a
+#' sequential run advances and a parallel one leaves alone;
+#' \code{set.seed()} in your session fixes that draw under a plan, so a
+#' parallel run repeats itself.
 #'
 #' The worked treatment -- measured run times, which backend a forked plan
 #' needs, how to tell a plan that has stalled, and what memory does -- is in

@@ -151,9 +151,9 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #'
 #' \bold{The RNG kind is restored inside the worker}, and this is the part that
 #' fails silently if it is left out. \code{future.seed = TRUE} installs an
-#' L'Ecuyer-CMRG stream in each worker so that draws are parallel-safe.
-#' bayesnec then seeds its own initial-value search with
-#' \code{set.seed(brm_args$seed)} in \code{make_good_inits()}, and
+#' L'Ecuyer-CMRG stream in each worker so that draws are parallel-safe. Where
+#' a \code{seed} was supplied, bayesnec then seeds its own initial-value search
+#' with \code{set.seed(brm_args$seed)} in \code{make_good_inits()}, and
 #' \code{\link[base]{set.seed}} called with \code{kind = NULL} -- the default --
 #' leaves the current generator kind in place. The same seed therefore draws
 #' from L'Ecuyer-CMRG in a worker and from the session's kind, normally
@@ -179,14 +179,26 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' sequence the loop advances the parent's stream, because every model's
 #' initial-value search --- and, where a \code{seed} was supplied, its
 #' \code{set.seed(brm_args$seed)} --- happens there; run in parallel they
-#' happen in a worker and nothing can replay them. The fitted
-#' models reproduce exactly; \code{w_draw_seed} and \code{w_draw_index} do not.
-#' Closing that gap means deriving the draw from \code{brm_args$seed} rather
-#' than from the ambient stream, which is a change to \code{expand_manec()} and
-#' to what \#216 decided deliberately.
+#' happen in a worker and nothing can replay them.
 #'
-#' \code{future.seed = TRUE} is kept rather than dropped to \code{NULL}, even
-#' though the stream it installs is then discarded. \code{NULL} leaves the
+#' Whether the \emph{fits} match a sequential run is a question of the seed,
+#' and the answer changed with #310. Where a \code{seed} is supplied they match
+#' exactly, because \code{make_good_inits()} seeds itself with it wherever it
+#' runs; \code{w_draw_seed} and \code{w_draw_index} still do not. Where none
+#' is supplied they do not match either, because the search draws from the
+#' stream it is handed and a worker's is not the parent's. Measured on R 4.6.1
+#' under \code{plan(multicore, workers = 3)}, three equations, the body being
+#' \code{add_brm_defaults()} and so the search itself, \code{set.seed(777)}
+#' before each run: sequential and parallel agreed with a seed and disagreed
+#' without one. So \code{seed} is what a user comparing the two runs needs, and
+#' \code{\link{bnec}} says so.
+#'
+#' Closing the \code{w_draw_seed} gap means deriving the draw from
+#' \code{brm_args$seed} rather than from the ambient stream, which is a change
+#' to \code{expand_manec()} and to what \#216 decided deliberately.
+#'
+#' \code{future.seed = TRUE} is kept rather than dropped to \code{NULL}.
+#' \code{NULL} leaves the
 #' worker's RNG state to the backend, which makes correctness a property of
 #' every code path inside \code{fit_bayesnec()} seeding itself rather than of
 #' the dispatcher, and that is not something anyone maintains. \code{TRUE}
@@ -202,9 +214,10 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' what \code{?Random} documents and what makes \code{set.seed(NULL)} the
 #' cause of #310; where a seed is already present, which inside a
 #' \code{future.seed = TRUE} worker it always is, the new state is derived
-#' from the current one. Measured on R 4.6.1: \code{set.seed(42)} then
-#' \code{RNGkind()} at the same kind gives one state and one first draw over
-#' three calls in one process and again in a second process. What makes the
+#' from the current one. Measured on R 4.6.1, both the same-kind call and the
+#' L'Ecuyer-CMRG to Mersenne-Twister change made inside a worker:
+#' \code{set.seed(42)} then \code{RNGkind()} gives one state and one first
+#' draw over three calls in one process and again in a second process. What makes the
 #' workers differ is therefore the per-element L'Ecuyer-CMRG stream
 #' \code{future.seed = TRUE} installs, not the clock. The 2026-09-11
 #' measurement under \code{plan(multicore, workers = 3)} --- three of three

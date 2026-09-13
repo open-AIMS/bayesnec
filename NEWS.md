@@ -767,20 +767,19 @@
   did. In the measurement above the stream state after the fit now agrees
   between the two calls.
 
-  A run under a `future` plan reproduces the same way. `future.seed = TRUE`
-  gives each element an L'Ecuyer-CMRG stream derived from the parent's, and
-  `bnec_model_lapply()`'s restore of the parent's generator kind inside the
-  worker derives from that stream rather than discarding it. The reason
-  recorded in `bnec_model_lapply()` said otherwise --- that `RNGkind()`
-  re-initialises `.Random.seed` from the clock and the process id --- and that
-  is true only where no seed exists yet, which inside such a worker it never
-  does. Measured on R 4.6.1 under `plan(multicore, workers = 3)`, three
-  equations, the body being the initial-value search itself and no `seed`
-  supplied: two runs at one `set.seed()` gave identical initial values and a
-  third at another seed gave different ones. One backend and one R version, so
-  `seed` remains the way to fix a run that has to repeat regardless. What a
-  plan still does not reproduce is a *sequential* run's model-averaged
-  quantities, which is unchanged and documented at `?bnec`.
+  A run under a `future` plan repeats itself the same way. Measured on R 4.6.1
+  under `plan(multicore, workers = 3)`, three equations, the body being the
+  initial-value search itself and no `seed` supplied: two runs at one
+  `set.seed()` gave identical initial values and a third at another seed gave
+  different ones. One backend and one R version, so `seed` remains the way to
+  fix a run that has to repeat regardless.
+
+  A parallel run does not give the same answer as a *sequential* run of the
+  same call unless `seed` is passed, and that is new: each model is now fitted
+  from the stream of the worker it runs in. On the same measurement sequential
+  and parallel agreed with a `seed` and disagreed without one. `?bnec` says so,
+  alongside the model-averaged quantities, which a plan does not reproduce
+  either way.
 
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.
