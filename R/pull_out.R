@@ -17,7 +17,8 @@
 #' of class \code{\link{bayesnecfit}}; If \code{model} is instead a string
 #' depicting a suite of models, and object of class \code{\link{bayesmanecfit}}.
 #'
-#' @seealso \code{\link{bnec}}, \code{\link{models}}.
+#' @seealso \code{\link{bnec}}, \code{\link{models}},
+#' \code{\link{pull_best}}.
 #'
 #' @examples
 #' \dontrun{

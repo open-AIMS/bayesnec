@@ -695,6 +695,29 @@
   partitioned exactly by `attempted` and `excluded$model`. The record is kept
   through `update()`, and rebuilt by `amend()` for the set that call produced.
 
+- **`pull_best()`** returns the highest-weighted candidate of a
+  `bayesmanecfit` as a `bayesnecfit`, and returns a `bayesnecfit` unchanged.
+  That candidate contributes most to the model-averaged estimate, so its fit is
+  the one normally inspected with `pp_check()` and `check_fit()`, and
+  selecting it previously meant reading the weights out of `mod_stats` and
+  passing the name to `pull_out()` --- under a class test, because
+  `screen_models()` returns a `bayesnecfit` whenever the screen leaves one
+  equation and such an object has no `mod_stats` to read. The weight selected on
+  is reported with the number of candidates it was selected from, since a weight
+  of 0.15 among twenty candidates describes the model-averaged estimate hardly
+  at all; no warning is raised against a threshold, because what counts as a
+  small weight depends on the size of the set. An exact tie returns the first
+  candidate in the order of the set and reports the tie. Which equation was
+  selected is reported on both branches, the pass-through included, so a
+  workflow leaves the same record whether or not the set had already been
+  reduced to one equation. The object is the only argument: `x_range`,
+  `resolution`, `sig_val` and `loo_controls` re-specify a fit rather than select
+  one, and are refused rather than ignored, since honouring them where
+  `pull_out()` rebuilds the fit and ignoring them where nothing is rebuilt would
+  make the returned object depend on the class the caller was told not to test
+  for. A `bayesnechurdlefit` is selected from one component at a time, so its
+  two components may end on different equations (#324).
+
 - `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
   over-dispersion, alongside the median and the interval. It uses the whole
   posterior rather than a point estimate or one tail quantile, and it is
