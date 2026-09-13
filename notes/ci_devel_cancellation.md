@@ -141,11 +141,11 @@ Censoring is not symmetric: 12 pairs were censored because devel was cancelled
 and the release job concluded, against 1 the other way. Those 12 cannot be
 recovered, because a cancelled job has no duration. They can be bounded. In each,
 devel had already been running when it was stopped, and comparing that against
-what the release job took gives a median of +1.6 minutes with 9 of the 12
-positive. Each of those is a value the pair's true difference lies above. Nine
-of twelve are positive at their bounds, so the censored pairs cannot be what
-makes the estimate positive. Where the pooled estimate would go if they were
-admitted is not settled by a bound, and no claim is made about it.
+what the release job took gives a median of +1.6 minutes. Each of those is a
+value the pair's true difference lies above, and 9 of the 12 are positive at
+their bounds, so the censored pairs cannot be what makes the estimate positive.
+Where the pooled estimate would go if they were admitted is not settled by a
+bound, and no claim is made about it.
 
 Widening the criterion to admit failures as well as successes adds 13 different
 pairs, none of them censored ones, and takes the estimate from +2.57 to +3.07
@@ -249,3 +249,12 @@ later run rather than read directly. And the run listing is fetched as two pages
 of 100, which have been observed to disagree: one fetch returned 113 distinct
 runs spanning nine months. The script stops rather than reporting the short
 sample.
+
+One further caveat is not the API's. The window contains this measurement's own
+pull request, and pushing to a stacked branch supersedes its runs, so some of the
+cancellations counted here were produced by the work of counting them. The
+recency figures are where that matters, because they are the concession to #333.
+It is not circular: those runs are cancelled by the same mechanism as any other,
+and they are an instance of the push-frequency relation measured above rather
+than an exception to it. Removing them would understate a rate the repository
+genuinely ran at over those days.

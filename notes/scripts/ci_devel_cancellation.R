@@ -70,8 +70,20 @@ pages <- lapply(seq_len(ceiling(n_runs / 100)), function(page) {
 })
 # A page returning fewer than 100 rows is the end of the listing, so a short
 # result there is the repository having fewer runs than were asked for rather
-# than the pages disagreeing. The two are distinguished below.
-exhausted <- any(vapply(pages, nrow, integer(1)) < 100L)
+# than the pages disagreeing. That holds only if nothing follows it: pages come
+# back newest first and in order, so a short page with a non-empty page after it
+# is incoherent however plausible the total looks. The observed anomaly -- 113
+# runs over 264 days -- presents that way if the short page was the first, and
+# passes every other check here, including the span bound below.
+n_page <- vapply(pages, nrow, integer(1))
+first_short <- which(n_page < 100L)[1]
+if (!is.na(first_short) && first_short < length(pages) &&
+    any(n_page[(first_short + 1):length(pages)] > 0L)) {
+  stop("page ", first_short, " returned ", n_page[first_short],
+       " rows while a later page was not empty; the listing is incoherent ",
+       "-- re-run")
+}
+exhausted <- !is.na(first_short)
 runs <- do.call(rbind, pages)
 # The two pages are separate requests, so a run entering between them can appear
 # on both. A duplicated run would give a duplicated (run_id, job) cell and turn

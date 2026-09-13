@@ -82,12 +82,14 @@ jobs:
     #
     # This was set against a 42-minute maximum, which #333 superseded: the
     # longest devel job to reach a conclusion took 72.7 minutes, and five ran
-    # past 70. Against that maximum the margin is 1.24 times; against the 95th
-    # centile of 59.8 minutes, which is where the routine work sits, it is 1.5.
-    # It is left at 90. Nothing of any cell has reached it in 583 completed
-    # observations, seven of the eight longest devel jobs started on one day and
-    # six of those failed, and the `if: always()` log dump below makes a timeout
-    # diagnosable if one fires. See `notes/ci_devel_cancellation.md`.
+    # past 70. Against that maximum the margin is only about 1.24 times, but the
+    # maximum is one afternoon: seven of the eight longest devel jobs started on
+    # one day and six of those failed. Against the 95th centile of the
+    # distribution, which is where the routine work sits, 90 is roughly half as
+    # long again -- the centile itself drifts with the sample and is recorded,
+    # dated, in `notes/ci_devel_cancellation.md`. It is left at 90. Nothing of
+    # any cell has reached it in 583 completed observations, and the
+    # `if: always()` log dump below makes a timeout diagnosable if one fires.
     timeout-minutes: 90
 
     env:
