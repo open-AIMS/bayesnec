@@ -9,17 +9,26 @@ test_that("dispersion fails because family is gaussian", {
 # bnec() forces link = "identity", the linear predictor is already on the
 # response scale, so the value was transformed a second time.
 
-poisson_fit <- function() {
-  set.seed(247)
-  x <- runif(60, 0, 3.2)
-  mu <- 5 + (85 - 5) * exp(-exp(0.3) * (x - 1.5) * (x > 1.5))
-  d <- data.frame(x = x, y = as.integer(rpois(length(mu), mu)))
-  bnec(y ~ crf(x, model = "nec4param"), data = d, family = "poisson",
-       iter = 400, warmup = 200, chains = 2, seed = 247, refresh = 0,
-       open_progress = FALSE) |>
-    suppressMessages() |>
-    suppressWarnings()
-}
+# Fitted once and reused, as degenerate_fit() below already is: the two tests
+# that follow need the same fit, and a call in each compiled the same Stan
+# program twice. The fit is seeded and neither test modifies it. See #328.
+poisson_fit <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) {
+      set.seed(247)
+      x <- runif(60, 0, 3.2)
+      mu <- 5 + (85 - 5) * exp(-exp(0.3) * (x - 1.5) * (x > 1.5))
+      d <- data.frame(x = x, y = as.integer(rpois(length(mu), mu)))
+      cached <<- bnec(y ~ crf(x, model = "nec4param"), data = d,
+                      family = "poisson", iter = 400, warmup = 200, chains = 2,
+                      seed = 247, refresh = 0, open_progress = FALSE) |>
+        suppressMessages() |>
+        suppressWarnings()
+    }
+    cached
+  }
+})
 
 test_that("dispersion uses the link the model was fitted with", {
   fit <- poisson_fit()
