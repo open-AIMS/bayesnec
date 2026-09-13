@@ -4,10 +4,12 @@
 # `pull_request`, so an unfiltered trigger ran the four-job matrix twice for
 # every push. With a stacked set of pull requests that is eight runs for one
 # propagated fix, and the queue never drained. Every other workflow here already
-# filters; this one did not. (That was written when the repository appeared to
-# run one job at a time. It does not: up to 12 R-CMD-check jobs ran at once in
-# the window measured for #333. Halving the number of runs is worth doing either
-# way -- see `notes/ci_devel_cancellation.md`.)
+# filters; this one did not.
+#
+# The queue is not a serial one. A run's four jobs start a median 0.1 minutes
+# apart, so the cells run in parallel, and #333 measured more than twelve
+# R-CMD-check jobs running at once. Halving the number of runs is worth doing
+# whether or not they queue. See `notes/ci_devel_cancellation.md`.
 #
 # `push` is now limited to the integration branches, and a branch with a pull
 # request is still checked through `pull_request`. Nothing loses coverage: a
@@ -35,15 +37,15 @@ on:
 #
 # Do not read a cancelled `ubuntu-latest (devel)` job as evidence about the
 # branch it ran on. It records that a newer commit exists on that pull request,
-# and the newer commit is the one checked. Measured 2026-09-13 over 196 runs, 44
-# of the 62 cancellations stopped all four jobs before any had finished, and of
+# and the newer commit is the one checked. Measured 2026-09-13 over 197 runs, 44
+# of the 64 cancellations stopped all four jobs before any had finished, and of
 # the 30 most recently merged pull requests, 30 had a successful devel check on
 # the head commit completed before the merge. None merged without one.
 #
 # #333 proposed exempting devel from cancellation or shortening it. Both were
 # rejected: exemption adds nothing to that coverage, and devel is not the slowest
-# job here -- it runs 1.6 to 3.7 minutes longer than `ubuntu-latest (release)`
-# and 5.2 to 7.2 minutes shorter than `windows-latest`. Exempting devel would
+# job here -- it runs 1.5 to 3.6 minutes longer than `ubuntu-latest (release)`
+# and 5.3 to 7.4 minutes shorter than `windows-latest`. Exempting devel would
 # also take more than a per-cell concurrency group, because this workflow-level
 # `cancel-in-progress` stops the run before any job-level group applies.
 #
@@ -80,10 +82,12 @@ jobs:
     #
     # This was set against a 42-minute maximum, which #333 superseded: the
     # longest devel job to reach a conclusion took 72.7 minutes, and five ran
-    # past 70. The margin is 1.24 times, not the wide one the original figure
-    # implied. It is left at 90 because no job of any cell has reached it in 583
-    # completed observations, and because the `if: always()` log dump below makes
-    # a timeout diagnosable if it does. See `notes/ci_devel_cancellation.md`.
+    # past 70. Against that maximum the margin is 1.24 times; against the 95th
+    # centile of 59.8 minutes, which is where the routine work sits, it is 1.5.
+    # It is left at 90. Nothing of any cell has reached it in 583 completed
+    # observations, seven of the eight longest devel jobs started on one day and
+    # six of those failed, and the `if: always()` log dump below makes a timeout
+    # diagnosable if one fires. See `notes/ci_devel_cancellation.md`.
     timeout-minutes: 90
 
     env:

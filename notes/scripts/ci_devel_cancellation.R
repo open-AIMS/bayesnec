@@ -71,8 +71,22 @@ runs <- do.call(rbind, lapply(seq_len(ceiling(n_runs / 100)), function(page) {
 # The two pages are separate requests, so a run entering between them can appear
 # on both. A duplicated run would give a duplicated (run_id, job) cell and turn
 # every reshape below into a list matrix.
+# The dedup below would otherwise absorb an inconsistent pair of pages into a
+# short sample, which reports a plausible wrong answer at exit 0; a duplicate
+# run id used to crash the reshape instead. Observed once: two pages returned
+# 113 distinct runs spanning nine months rather than 200 spanning three weeks.
+before <- nrow(runs)
 runs <- runs[!duplicated(runs$run_id), ]
+if (nrow(runs) < n_runs) {
+  stop("asked for ", n_runs, " runs; the API returned ", before, " rows and ",
+       nrow(runs), " distinct. The pages were inconsistent -- re-run.")
+}
 runs <- utils::head(runs, n_runs)
+if (as.numeric(diff(range(as_time(runs$created_at))), units = "days") > 365) {
+  stop("the sampled runs span more than a year, which a coherent pair of pages ",
+       "cannot: ", format(min(as_time(runs$created_at))), " to ",
+       format(max(as_time(runs$created_at))))
+}
 
 # One `gh` call per run, eight at a time; serially this is several minutes. The
 # `{}` inside the jq filter is deliberate: xargs stamps the run id into every
@@ -155,7 +169,9 @@ print(round(100 * tapply(jobs$conclusion == "cancelled", jobs$job, mean), 1))
 # figure should not be quoted on its own.
 cat("\ndevel cancellation rate by day:\n")
 devel <- jobs[jobs$job == "ubuntu-latest (devel)", ]
-devel$day <- substr(devel$created_at, 1, 10)
+# The run's clock, not the job's: a re-run job is created later than its run, and
+# `window` above is on the run's clock, so the two must agree.
+devel$day <- substr(runs$created_at[match(devel$run_id, runs$run_id)], 1, 10)
 by_day <- data.frame(
   runs = as.vector(table(devel$day)),
   cancelled_pct = round(100 * tapply(devel$conclusion == "cancelled",
@@ -164,22 +180,41 @@ by_day <- data.frame(
 )
 print(by_day)
 
+# Two rates the argument rests on. #333 measured its last 36 runs; the onset is
+# the earliest day from which every later day has a non-zero rate, and the rate
+# since then is the regime rather than the most recent window.
+recent36 <- utils::head(runs$run_id[runs$run_id %in% settled], 36L)
+nonzero <- by_day$cancelled_pct > 0
+onset <- rownames(by_day)[max(which(!nonzero)) + 1L]
+since <- devel[devel$day >= onset, ]
+cat(sprintf(
+  "\nmost recent 36 runs: %.1f%% cancelled, the window #333 measured\nfrom the onset at %s (n = %d): %.1f%%\n",
+  100 * mean(devel$conclusion[devel$run_id %in% recent36] == "cancelled"),
+  onset, nrow(since), 100 * mean(since$conclusion == "cancelled")
+))
+
 # The claim that cancellation follows push frequency is measured rather than
 # asserted: how long after each run the next run on the same branch was created.
-gap <- unlist(lapply(split(runs[runs$run_id %in% settled, ], ~branch), function(d) {
-  d <- d[order(as_time(d$created_at)), ]
-  if (nrow(d) < 2) return(stats::setNames(numeric(0), character(0)))
-  stats::setNames(mins_between(d$created_at[-nrow(d)], d$created_at[-1]),
-                  d$run_id[-nrow(d)])
-}))
-names(gap) <- sub("^[^.]*\\.", "", names(gap))
+gaps <- do.call(rbind, lapply(
+  split(runs[runs$run_id %in% settled, ], ~branch), function(d) {
+    d <- d[order(as_time(d$created_at)), ]
+    if (nrow(d) < 2) return(NULL)
+    data.frame(run_id = d$run_id[-nrow(d)],
+               gap = mins_between(d$created_at[-nrow(d)], d$created_at[-1]))
+  }
+))
 cat("\nminutes to the next run on the same branch, by that run's devel outcome:\n")
 for (o in c("cancelled", "success")) {
-  v <- gap[names(gap) %in% devel$run_id[devel$conclusion == o]]
+  v <- gaps$gap[gaps$run_id %in% devel$run_id[devel$conclusion == o]]
   if (length(v)) {
     cat(sprintf("  %-10s n=%3d  median %6.1f min\n", o, length(v), stats::median(v)))
   }
 }
+# The last run on each branch has no successor inside the sample and is dropped.
+# Cancellations concentrate in the most recent runs, so this drops proportionally
+# more of the cancelled group, and understates the contrast rather than making it.
+cat(sprintf("  %d runs are the most recent on their branch and have no interval\n",
+            length(settled) - nrow(gaps)))
 
 cat("\n=== 3. elapsed minutes, paired within a run ===\n")
 wide <- function(field) {
@@ -202,11 +237,25 @@ cat(sprintf(
   "\nthe longest devel job that ran to a conclusion took %.1f minutes and ended '%s'\n",
   mins[longest, "ubuntu-latest (devel)"], concl[longest, "ubuntu-latest (devel)"]
 ))
+concluded_devel <- mins[concl[, "ubuntu-latest (devel)"] %in%
+                          c("success", "failure"), "ubuntu-latest (devel)"]
 cat(sprintf("devel jobs that ran to a conclusion past 60 minutes: %d; past 70: %d\n",
-            sum(mins[, "ubuntu-latest (devel)"] > 60 &
-                  concl[, "ubuntu-latest (devel)"] %in% c("success", "failure")),
-            sum(mins[, "ubuntu-latest (devel)"] > 70 &
-                  concl[, "ubuntu-latest (devel)"] %in% c("success", "failure"))))
+            sum(concluded_devel > 60), sum(concluded_devel > 70)))
+# The maximum is one excursion; a bound is set against the distribution. The
+# centiles say where the routine work sits and the dates say whether the tail is
+# a standing property of the job or one bad afternoon.
+cat("centiles of concluded devel duration (minutes):\n")
+print(round(stats::quantile(concluded_devel, c(0.5, 0.9, 0.95, 0.99, 1)), 1))
+top <- utils::head(sort(concluded_devel, decreasing = TRUE), 8)
+tops <- data.frame(
+  minutes = round(top, 1),
+  started = substr(jobs$started_at[match(
+    paste(names(top), "ubuntu-latest (devel)"), paste(jobs$run_id, jobs$job)
+  )], 1, 10),
+  ended = concl[names(top), "ubuntu-latest (devel)"]
+)
+cat("the eight longest, with the day each started:\n")
+print(tops, row.names = FALSE)
 
 # Paired within a run, which is the only way to compare two cells without the
 # between-run variation swamping the difference. The confidence interval, not
@@ -235,14 +284,28 @@ paired("windows-latest (release)", "ubuntu-latest (devel)", "success")
 # often than its release counterpart -- so the same comparison is repeated over
 # the wider set that also admits failures. If the conclusion depended on the
 # censoring, the two would disagree.
-cat("\nthe same, admitting failures as well, as a sensitivity check:\n")
+cat("\nthe same, admitting failures as well:\n")
 paired("ubuntu-latest (devel)", "ubuntu-latest (release)", c("success", "failure"))
+cat("  this adds pairs in which a job failed. It recovers no censored pair:\n")
+cat("  a cancelled job has no duration, so a pair containing one is absent from\n")
+cat("  both sets. What it shows is the direction a wider criterion takes the\n")
+cat("  estimate.\n")
+
+# The censored pairs are bounded rather than recovered. Where devel was cancelled
+# at c and the release job concluded at r, devel's true duration exceeds c, so
+# c - r is a lower bound on that pair's true difference.
+d_canc <- concl[, "ubuntu-latest (devel)"] == "cancelled" &
+  concl[, "ubuntu-latest (release)"] %in% c("success", "failure")
+r_canc <- concl[, "ubuntu-latest (release)"] == "cancelled" &
+  concl[, "ubuntu-latest (devel)"] %in% c("success", "failure")
+lower <- mins[d_canc, "ubuntu-latest (devel)"] - mins[d_canc, "ubuntu-latest (release)"]
 cat(sprintf(
-  "  pairs lost to a devel cancellation: %d; to a release cancellation: %d\n",
-  sum(concl[, "ubuntu-latest (devel)"] == "cancelled" &
-        concl[, "ubuntu-latest (release)"] != "cancelled"),
-  sum(concl[, "ubuntu-latest (release)"] == "cancelled" &
-        concl[, "ubuntu-latest (devel)"] != "cancelled")
+  "\npairs censored by a devel cancellation: %d; by a release cancellation: %d\n",
+  sum(d_canc), sum(r_canc)
+))
+cat(sprintf(
+  "in the %d devel-censored pairs devel had already run a median %+.2f minutes\nlonger than the release job took, %d of them positive. Each is a lower bound\nabove which that pair's true difference lies, so admitting them could only\nenlarge the estimate.\n",
+  sum(d_canc), stats::median(lower), sum(lower > 0)
 ))
 
 # Exempting devel from cancellation would run every cancelled devel job on to
@@ -250,14 +313,20 @@ cat(sprintf(
 # was cancelled and the median a completed devel job takes; at least, because a
 # job cancelled beyond that median would have run further still, and those
 # contribute nothing to the sum.
+# A job cancelled at c is known only to have exceeded c, so the time it had left
+# is estimated from the concluded jobs that also exceeded c, rather than by
+# subtracting c from an unconditional median and clamping the negative results.
+# The estimate is monotone in c and needs no floor.
 cancelled_devel <- mins[concl[, "ubuntu-latest (devel)"] == "cancelled",
                         "ubuntu-latest (devel)"]
-typical <- stats::median(mins[concl[, "ubuntu-latest (devel)"] %in%
-                                c("success", "failure"), "ubuntu-latest (devel)"])
+remaining <- vapply(cancelled_devel, function(c_at) {
+  longer <- concluded_devel[concluded_devel > c_at]
+  if (!length(longer)) return(max(0, max(concluded_devel) - c_at))
+  stats::median(longer) - c_at
+}, numeric(1))
 cat(sprintf(
-  "\n%d devel jobs were cancelled; running each on to the median %.1f minutes adds\nat least %.0f runner-minutes (%d were already past that median and add more).\n",
-  length(cancelled_devel), typical, sum(pmax(0, typical - cancelled_devel)),
-  sum(cancelled_devel > typical)
+  "\n%d devel jobs were cancelled. Estimating each one's remaining time from the\nconcluded jobs that ran longer than it had, exempting devel would add about\n%.0f runner-minutes over the window. Those minutes are unbilled on a public\nrepository, so the resource is queue latency rather than spend.\n",
+  length(cancelled_devel), sum(remaining)
 ))
 
 cat("\n=== 4. did the merged head commit have a devel result? ===\n")
@@ -332,8 +401,8 @@ cat("\n=== 6. how the four jobs are scheduled ===\n")
 # than in a queue, and that a run's span is not any single job's elapsed time.
 queue <- mins_between(jobs$created_at, jobs$started_at) * 60
 cat(sprintf(
-  "seconds from a job being created to starting: median %.0f, 90th centile %.0f, max %.0f\n",
-  stats::median(queue), stats::quantile(queue, 0.9), max(queue)
+  "over %d job rows, seconds from a job being created to starting:\n  all rows: median %.0f, 90th centile %.0f, max %.0f\n",
+  length(queue), stats::median(queue), stats::quantile(queue, 0.9), max(queue)
 ))
 if (any(queue < 0)) {
   # A re-run job reports a `started_at` earlier than its `created_at`. The
