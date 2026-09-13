@@ -46,7 +46,7 @@ test_that("weights that are absent or not finite are refused", {
     "ecx4param")
 })
 
-test_that("a bayesmanecfit yields its highest-weighted model as a bayesnecfit", {
+test_that("a bayesmanecfit yields its best-weighted model as a bayesnecfit", {
   best <- suppressMessages(pull_best(manec_example))
   ms <- manec_example$mod_stats
   expect_equal(ms$model[which.max(ms$wi)], "nec4param")
@@ -56,7 +56,7 @@ test_that("a bayesmanecfit yields its highest-weighted model as a bayesnecfit", 
   expect_equal(best, nec4param)
 })
 
-test_that("a bayesnecfit is returned unchanged, and says which model it holds", {
+test_that("a bayesnecfit is returned unchanged, naming the model it holds", {
   pull_best(nec4param) |>
     expect_identical(nec4param) |>
     expect_message("holds the single model nec4param")

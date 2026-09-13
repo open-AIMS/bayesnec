@@ -132,8 +132,8 @@ pull_best.bayesmanecfit <- function(object, ...) {
   model <- best_weighted_model(object$mod_stats)
   # Delegated rather than reimplemented: pull_out() rebuilds the object's
   # weighted quantities and copies the record of failed models onto the object
-  # it returns, and a direct expand_nec() call here would repeat both. It returns a
-  # bayesnecfit for every set reachable through the public API, since bnec(),
+  # it returns, and a direct expand_nec() call here would repeat both. It
+  # returns a bayesnecfit for every set reachable through the public API, since
   # amend(), update() and screen_models() each collapse a set reduced to one
   # model to that class rather than leaving a one-model bayesmanecfit. `...` is
   # empty by the time this runs: the generic refuses anything in it.
@@ -172,8 +172,8 @@ pull_best.bayesnechurdlefit <- function(object, ...) {
 #'
 #' @noRd
 best_weighted_model <- function(mod_stats) {
-  # The three refusals below are unreachable through the public API, and are
-  # here because the alternative is a failure several frames away from its
+  # The refusals below are unreachable through the public API, and are here
+  # because the alternative is a failure several frames away from its
   # cause: which.max() on an all-NA vector returns integer(0), and a missing
   # `model` column reports NA as the name and then reaches pull_out(), which
   # answers that NA is not in the set and returns the object it was given.
