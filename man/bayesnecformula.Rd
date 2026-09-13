@@ -6,13 +6,20 @@
 \title{Set up a model formula for use in
 \code{\link[bayesnec:bayesnec-package]{bayesnec}}}
 \usage{
-bayesnecformula(formula, ...)
+bayesnecformula(formula, ..., env = parent.frame())
 }
 \arguments{
 \item{formula}{Either a \code{\link[base]{character}} string defining an
 R formula or an actual \code{\link[stats]{formula}} object. See details.}
 
 \item{...}{Unused.}
+
+\item{env}{An \code{\link[base]{environment}} in which to resolve symbols
+that \code{formula} names but that are not columns of the data --- a
+variable holding the model set, or a function used to transform the
+predictor. Only used when \code{formula} is a character string, because a
+formula object already carries its own environment. Defaults to the calling
+environment.}
 }
 \value{
 An object of class \code{\link{bayesnecformula}} and
@@ -45,6 +52,13 @@ or a single string defining a particular group of models
 (or group of equations, see \code{\link{models}}). Internally
 this argument is substituted by an actual \code{\link[brms]{brmsformula}},
 which is then passed onto \code{\link[brms]{brm}} for model fitting.
+
+The \code{model} argument may be a variable rather than a literal, so that
+the set can be assembled before the formula is written --- \code{eqs <-
+c("nec3param", "ecxll3"); bnf(y ~ crf(x, eqs))}. It is resolved in the
+environment the formula was written in, which for a formula supplied as a
+character string means the environment given by \code{env}. The same applies
+to any function used to transform the predictor inside \code{crf}.
 
 \bold{Group-level terms: \code{glterms}}
 

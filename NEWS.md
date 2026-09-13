@@ -834,6 +834,24 @@
   alongside the model-averaged quantities, which are not reproduced between a
   sequential and a parallel run either way.
 
+- A model set held in a variable now resolves in the environment the formula
+  was written in, so a set built programmatically works inside a function,
+  inside a knitted chunk, and inside any environment that does not inherit from
+  the global environment. `crf()` evaluated its `model` argument without naming
+  an environment, which evaluates in `crf()`'s own frame; the lexical parent of
+  that frame is the package namespace, then the imports, then base, then the
+  global environment, and the caller's frame is on none of them. The same two
+  lines therefore succeeded at the console and failed once wrapped in a
+  function, and the message named neither `crf()` nor the cause: `object 'eqs'
+  not found`. The formula's own environment is now used, and a formula supplied
+  as a character string is given the environment of the call that converted it,
+  through a new `env` argument to `bayesnecformula()` and `bnf()`. The same
+  defect on the other half of the `crf()` term is fixed with it: the reduced
+  formula that `model.frame()` is built from lost the user's environment, so a
+  predictor transformation written with a locally defined function ---
+  `crf(squared(x), "nec3param")` --- was likewise found only at the console
+  (#319).
+
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.
   `expand_manec()` validated the `loo_controls` it was given but supplied no

@@ -11,6 +11,12 @@
 #' @param formula Either a \code{\link[base]{character}} string defining an
 #' R formula or an actual \code{\link[stats]{formula}} object. See details.
 #' @param ... Unused.
+#' @param env An \code{\link[base]{environment}} in which to resolve symbols
+#' that \code{formula} names but that are not columns of the data --- a
+#' variable holding the model set, or a function used to transform the
+#' predictor. Only used when \code{formula} is a character string, because a
+#' formula object already carries its own environment. Defaults to the calling
+#' environment.
 #'
 #' @importFrom stats as.formula
 #'
@@ -36,6 +42,13 @@
 #' (or group of equations, see \code{\link{models}}). Internally
 #' this argument is substituted by an actual \code{\link[brms]{brmsformula}},
 #' which is then passed onto \code{\link[brms]{brm}} for model fitting.
+#'
+#' The \code{model} argument may be a variable rather than a literal, so that
+#' the set can be assembled before the formula is written --- \code{eqs <-
+#' c("nec3param", "ecxll3"); bnf(y ~ crf(x, eqs))}. It is resolved in the
+#' environment the formula was written in, which for a formula supplied as a
+#' character string means the environment given by \code{env}. The same applies
+#' to any function used to transform the predictor inside \code{crf}.
 #' 
 #' \bold{Group-level terms: \code{glterms}}
 #' 
@@ -287,9 +300,14 @@
 #' try(bnf(y | trials(tr) ~ crf(scale(x, scale = TRUE), "nec3param")))
 #' }
 #' @export
-bayesnecformula <- function(formula, ...) {
+bayesnecformula <- function(formula, ..., env = parent.frame()) {
   if (is.character(formula)) {
-    formula <- as.formula(formula)
+    # A character formula carries no environment of its own, so one has to be
+    # supplied. as.formula()'s default would give the frame of this function,
+    # whose lexical parent is the package namespace and then the global
+    # environment, which is why a variable model set written in a character
+    # formula resolved only at the console. See #319.
+    formula <- as.formula(formula, env = env)
   } else if (!inherits(formula, "formula")) {
     stop("Your formula must be either a valid character or a formula object.")
   }
@@ -297,8 +315,8 @@ bayesnecformula <- function(formula, ...) {
 }
 
 #' @export
-bnf <- function(formula, ...) {
-  bayesnecformula(formula = formula, ...)
+bnf <- function(formula, ..., env = parent.frame()) {
+  bayesnecformula(formula = formula, ..., env = env)
 }
 
 #' Check if input model formula is appropriate to use with
@@ -655,8 +673,14 @@ simplify_formula <- function(formula, data, ...) {
                        rep("trials_var", length(t_var)),
                        names(c_vars),
                        rep("rate_var", length(ra_var)))
-  list(formula = as.formula(short_form), pop_vars = pop_vars,
-       group_vars = r_vars)
+  # The reduced formula is what model.frame() is given below, and model.frame()
+  # resolves anything that is not a column of the data in the formula's own
+  # environment. Without this argument as.formula() attaches the frame of this
+  # function, whose lexical parent is the package namespace, so a predictor
+  # transformation written with a locally defined function -- crf(sq(x), ...)
+  # with sq() defined in the caller -- was found only at the console. See #319.
+  list(formula = as.formula(short_form, env = formula_env(formula)),
+       pop_vars = pop_vars, group_vars = r_vars)
 }
 
 #' @noRd
@@ -1074,7 +1098,15 @@ get_model_from_formula <- function(formula) {
     stop("You must specify which non-linear function to use with crf")
   }
   x_str <- paste0(substr(x_str, 1, nchar(x_str) - 1), ", \"model\")")
-  expand_model_set(eval(parse(text = x_str)))
+  # Evaluated in a frame that binds crf() and inherits from the formula's own
+  # environment, so that a model set held in a variable is looked up where the
+  # user wrote it. Evaluating in environment(formula) directly would not work:
+  # crf() is internal and not exported, so it would not be found from a user
+  # frame. Both halves are needed -- crf() itself resolves its model argument
+  # in parent.frame(), which is this frame. See #319.
+  eval_env <- new.env(parent = formula_env(formula))
+  assign("crf", crf, envir = eval_env)
+  expand_model_set(eval(parse(text = x_str), envir = eval_env))
 }
 
 #' @noRd
@@ -1149,6 +1181,26 @@ split_calls <- function(formula_part) {
        ra_call = ra_call, ra_var = ra_var)
 }
 
+#' The environment in which a formula's symbols are resolved
+#'
+#' @param formula A \code{\link[stats]{formula}}.
+#'
+#' @details A formula carries the environment it was written in, and that is
+#' where a symbol the user put in it has to be looked up --- a variable holding
+#' the model set, or a function transforming the predictor. Evaluating without
+#' an environment instead uses the frame of whichever internal function is doing
+#' the evaluating, whose lexical parent is the package namespace and then the
+#' global environment, so the symbol is found only when the user happens to be
+#' working at the console. See #319.
+#'
+#' @return An \code{\link[base]{environment}}.
+#'
+#' @noRd
+formula_env <- function(formula) {
+  env <- environment(formula)
+  if (is.null(env)) globalenv() else env
+}
+
 #' @noRd
 crf <- function(x, model, arg_to_retrieve = "x") {
   mf <- match.call(expand.dots = FALSE)
@@ -1157,7 +1209,13 @@ crf <- function(x, model, arg_to_retrieve = "x") {
     deparse(substitute(a, list(a = mf[[m]])))
   } else if (arg_to_retrieve == "model") {
     m <- match("model", names(mf), 0L)
-    eval(mf[[m]])
+    # parent.frame() rather than eval()'s default, which is the frame of crf()
+    # itself. That frame's lexical parent is the package namespace, then the
+    # imports, then base, then the global environment; the caller's frame is
+    # never on that chain, which is why a variable model set was found only in
+    # the global environment. get_model_from_formula() supplies a calling frame
+    # that inherits from the formula's environment. See #319.
+    eval(mf[[m]], envir = parent.frame())
   } else {
     stop("arg_to_retrieve must be either \"x\" or \"model\".")
   }

@@ -78,7 +78,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # below dispatches to stats::model.frame, which evaluates crf(x, "nec3param")
   # as an ordinary call returning a length-1 string -- and reports "variable
   # lengths differ", which points nowhere near the actual cause.
-  formula <- bayesnecformula(formula)
+  formula <- bayesnecformula(formula, env = parent.frame())
   grp <- data[[group_var]]
   if (is.numeric(grp)) {
     stop("The grouping column \"", group_var, "\" is numeric. A factor",
