@@ -104,16 +104,14 @@ test_that("a hurdle fit selects within each component", {
                            y_var = "y"),
                       class = c("bayesnechurdlefit", "bnecfit"))
   # The labels are what tells the two components' reports apart, so they are
-  # asserted on the call that is made anyway rather than by calling twice. The
-  # assignment is inside the expectations because expect_message() returns the
-  # condition it matched, not the value of the expression, while the expression
-  # itself still runs to completion under its calling handler.
-  out <- NULL
-  expect_message(
-    expect_message(out <- pull_best(hurdle), "Growth component:"),
-    "Survival component:"
-  ) |>
-    suppressMessages()
+  # asserted on the call that is made anyway rather than by calling twice.
+  # capture_messages() rather than nested expect_message() calls: the latter
+  # returns the condition it matched rather than the value of the expression,
+  # so the fit would have to be bound by an assignment written inside the
+  # expectations.
+  msgs <- capture_messages(out <- pull_best(hurdle))
+  expect_match(msgs, "Growth component:", all = FALSE)
+  expect_match(msgs, "Survival component:", all = FALSE)
   expect_s3_class(out, "bayesnechurdlefit")
   expect_s3_class(out$growth, "bayesnecfit")
   expect_s3_class(out$survival, "bayesnecfit")

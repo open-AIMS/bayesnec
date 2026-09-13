@@ -165,9 +165,8 @@ pull_best.bayesnechurdlefit <- function(object, ...) {
 #' \code{data.frame(model = success_models)} takes automatic row names, since
 #' \code{success_models} is unnamed, and the model names reach the row names
 #' only at \code{cbind(mod_stats, disp)}, from the row names of the dispersion
-#' matrix. A change to the shape of that matrix, or to how those columns are
-#' attached, would drop the row names without touching the column or raising
-#' anything.
+#' matrix. A change to how those columns are attached would drop the row names
+#' without touching the column or raising anything.
 #'
 #' @return A \code{\link[base]{character}} string naming one model.
 #'
