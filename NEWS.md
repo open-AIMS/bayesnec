@@ -851,12 +851,15 @@
   reduced formula `model.frame()` is built from, the back-transform
   `sub_x_transformation()` applies in `ecx()`, `nsec()` and `expand_nec()`, the
   component formulas of a hurdle fit, the `disp()` term and the `brmsformula`
-  handed to \pkg{brms} each lost the environment the user wrote the formula in,
+  handed to `brms` each lost the environment the user wrote the formula in,
   so `crf(squared(x), "nec3param")` with `squared()` defined in the caller was
   likewise found only at the console. All of them now take it. The
   back-transform is the one that reached furthest: it runs after every model in
   the set has compiled and sampled, so the failure arrived at the end of a fit
-  rather than at the start.
+  rather than at the start. One of these has a further consequence: the check
+  that a `disp()` sub-model evaluates to finite values could not evaluate such
+  a term at all and skipped it, so a formula written this way now stops where
+  it previously fitted and failed in Stan.
 
   One consequence of binding an environment to a character formula: the
   formula is stored once per model, so a formula converted inside a function

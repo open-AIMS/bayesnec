@@ -1137,9 +1137,9 @@ get_model_from_formula <- function(formula) {
   # fail to resolve at all.
   if (!is.character(model) || length(model) == 0) {
     stop("The `model` argument of crf() must be a character vector naming one",
-         " or more equations or model groups; in this formula it is ",
-         class(model)[1], " of length ", length(model), ". See ?models.",
-         call. = FALSE)
+         " or more equations or model groups; here it resolved to an object of",
+         " class \"", class(model)[1], "\" and length ", length(model),
+         ". See ?models.", call. = FALSE)
   }
   expand_model_set(model)
 }
@@ -1233,7 +1233,11 @@ split_calls <- function(formula_part) {
 #' @noRd
 formula_env <- function(formula) {
   env <- environment(formula)
-  if (is.null(env)) globalenv() else env
+  # emptyenv() is tested alongside NULL because it is the other way a formula's
+  # environment is stripped, and it is the worse of the two to pass on: nothing
+  # at all resolves through it, not even base. Returned as the global
+  # environment, which is where such a formula resolved before #319.
+  if (is.null(env) || identical(env, emptyenv())) globalenv() else env
 }
 
 #' An evaluation frame chained to a formula's own environment
@@ -1254,12 +1258,10 @@ formula_env <- function(formula) {
 #'
 #' @noRd
 formula_eval_env <- function(formula, ...) {
-  env <- new.env(parent = formula_env(formula))
-  bindings <- list(...)
-  for (nm in names(bindings)) {
-    assign(nm, bindings[[nm]], envir = env)
-  }
-  env
+  # list2env() rather than a loop over names(), which binds nothing at all for
+  # an argument passed positionally and defers the failure to a "could not find
+  # function" a long way from the call. list2env() refuses an unnamed element.
+  list2env(list(...), envir = new.env(parent = formula_env(formula)))
 }
 
 #' @noRd

@@ -234,6 +234,38 @@ test_that("a model argument that is not character is named as the cause", {
   expect_error(build(), "must be a character vector")
 })
 
+test_that("the model frame resolves trials() off the global chain", {
+  # The reduced formula keeps trials() as a call and bayesnec does not export
+  # it, so taking the user's environment alone broke every binomial fit under
+  # an installed package. baseenv() as the parent puts both the global
+  # environment and the package namespace off the lookup chain, so this holds
+  # whether or not pkgload::load_all() has exported the internals -- which is
+  # what hid the defect from every local run.
+  d <- nec_data
+  d$tr <- 100L
+  d$count <- as.integer(round(d$y * 20))
+  env <- new.env(parent = baseenv())
+  assign("d", d, envir = env)
+  assign("bnf", bnf, envir = env)
+  assign("model.frame", model.frame, envir = env)
+  bdat <- evalq(
+    model.frame(bnf(count | trials(tr) ~ crf(x, "nec3param")), data = d), env
+  )
+  expect_identical(bdat[["trials(tr)"]], d$tr)
+})
+
+test_that("a formula whose environment was stripped still builds", {
+  # NULL and emptyenv() are the two ways an environment is stripped, and
+  # emptyenv() is the worse to pass on: nothing resolves through it, base
+  # included.
+  f_null <- y ~ crf(x, "nec3param")
+  environment(f_null) <- NULL
+  expect_s3_class(model.frame(bnf(f_null), data = nec_data), "data.frame")
+  f_empty <- y ~ crf(x, "nec3param")
+  environment(f_empty) <- emptyenv()
+  expect_s3_class(model.frame(bnf(f_empty), data = nec_data), "data.frame")
+})
+
 test_that("a knitted chunk resolves a variable model set", {
   # The reported failure: vignettes/precompile.R calls knitr::knit() from
   # inside knit_one(), so a variable assigned in a chunk lands in that frame
