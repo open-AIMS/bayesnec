@@ -454,11 +454,16 @@ fixes the fit, and two calls made after the same \code{set.seed()} return
 the same estimates. Passing \code{seed} through to \code{\link[brms]{brm}}
 fixes it too, and does so independently of the session's stream.
 
-Two qualifications. The estimates are fixed only for a given version of
+Three qualifications. The estimates are fixed only for a given version of
 \pkg{bayesnec}, \pkg{brms}, Stan and the compiler: a Stan program rebuilt
-by a different toolchain can differ in the last figures. And under a
+by a different toolchain can differ in the last figures. Under a
 \pkg{future} plan a \code{seed} is required, because each model is fitted
-in a worker with a stream of its own; see below.
+in a worker with a stream of its own; see below, and \code{\link{bnec}}
+says so when it finds a plan and no seed. And within-chain threading is
+adaptive by default, which \code{\link[brms]{threading}} records as
+preventing exact reproducibility even under a fixed seed; pass
+\code{threads = threading(n, static = TRUE)} where a threaded run has to
+repeat.
 
 \bold{Fitting a model set in parallel}
 

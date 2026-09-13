@@ -748,23 +748,33 @@
   rather than of the change, so it is a demonstration that the two runs are
   different fits and not a measure of how wrong the estimates were.
 
-  The second consequence was the larger one for the vignettes. How many
-  proposals the search makes depends on the stream it starts from, so a call
-  that reseeded from the clock also left the stream in a different place
-  afterwards, and every random operation later in the document differed. That
-  is why the three `check_priors()` figures of `vignette("example3")` differed
-  between renders while the fitted summaries above them did not: the plotting is
-  deterministic --- the issue records two `check_priors()` calls on one saved
-  fit giving byte-identical files --- and it was drawing from a stream the fit
-  had advanced by a different amount each time. In the same measurement the stream state after the fit is now equal
-  across the two calls.
+  `vignette("example3")` is the case #310 opened on. It runs `set.seed(333)`
+  before each of its eleven fitting chunks and passes no `seed` to `bnec()`, so
+  all eleven were discarded and every fit in the document was a fresh draw.
+  Both of the outputs that differed between renders follow from that directly.
+  The two `fixef()` tables are read off two of those fits. The three
+  `check_priors()` figures are pure functions of the fits they plot ---
+  `check_priors()` calls `brms::hypothesis()`, which uses the random number
+  stream only when given a seed of its own, and then `geom_density()` --- so a
+  figure differs exactly when its fit does. The issue records two
+  `check_priors()` calls on one saved fit giving byte-identical files, which is
+  the same statement.
+
+  The stream is a second consequence and stands on its own. How many proposals
+  the search makes depends on the stream it starts from, so a search begun from
+  the clock also left the stream in an unpredictable place, and any random
+  operation after the fit differed for that reason as well as because the fit
+  did. In the measurement above the stream state after the fit now agrees
+  between the two calls.
 
   Under a `future` plan a `seed` is still required. `future.seed = TRUE` gives
   each worker a stream derived from the parent's, but `bnec_model_lapply()`
-  restores the parent's generator kind inside the worker so that a supplied seed
-  means the same thing in both places, and setting the kind re-initialises the
-  worker's stream from the clock and the process id. Both vignette chunks that
-  set a plan pass a `seed`.
+  restores the parent's generator kind inside the worker so that a supplied
+  seed means the same thing in both places, and setting the kind
+  re-initialises the worker's stream from the clock and the process id. That
+  leaves two calls that look identical, only one of which repeats, so
+  `plan_model_set()` now says so where a plan is in effect and no `seed` was
+  given. Both vignette chunks that set a plan pass one.
 
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.

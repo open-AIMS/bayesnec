@@ -137,6 +137,17 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
         " at all. A model that fails is recorded either way; see",
         " ?failed_models."
       )
+    },
+    # Said on both branches. Since #310 a sequential fit reproduces under a
+    # set.seed() in the caller's session and one under a plan does not, because
+    # a worker's stream is re-initialised from the clock. That difference is
+    # invisible otherwise: the two calls are identical and only one of them
+    # repeats. Only where no seed was supplied, since supplying one closes it.
+    if (!("seed" %in% names(brm_args))) {
+      paste0("\nNo `seed` was supplied. A run under a plan does not reproduce",
+             " under set.seed() in this session, because each model is fitted",
+             " in a worker with a stream of its own; pass `seed` if the run",
+             " has to be reproducible.")
     }
   )
   list(parallel = TRUE, brm_args = brm_args)
@@ -177,8 +188,9 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #'
 #' It does not make the model-averaging draw match the sequential run's. Run in
 #' sequence the loop advances the parent's stream, because every model's
-#' \code{set.seed(brm_args$seed)} and initial-value search happen there; run in
-#' parallel they happen in a worker and nothing can replay them. The fitted
+#' initial-value search --- and, where a \code{seed} was supplied, its
+#' \code{set.seed(brm_args$seed)} --- happens there; run in parallel they
+#' happen in a worker and nothing can replay them. The fitted
 #' models reproduce exactly; \code{w_draw_seed} and \code{w_draw_index} do not.
 #' Closing that gap means deriving the draw from \code{brm_args$seed} rather
 #' than from the ambient stream, which is a change to \code{expand_manec()} and
@@ -197,7 +209,8 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' Discarding the stream does not leave the workers drawing in step.
 #' \code{\link[base]{RNGkind}} re-initialises \code{.Random.seed} from the
 #' clock and the process id, so each worker starts somewhere different, and
-#' bayesnec then seeds the search itself. Measured 2026-09-11 under
+#' where a \code{seed} was supplied bayesnec then seeds the search itself.
+#' Measured 2026-09-11 under
 #' \code{plan(multicore, workers = 3)}: three of three draws distinct with the
 #' restore in place, as without it.
 #'

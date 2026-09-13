@@ -937,11 +937,15 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' different state afterwards, so every later random operation differed too.
 #' Under this change both tables and both stream states agree exactly.
 #'
-#' The second consequence is why the three \code{check_priors()} figures of
-#' \code{vignette("example3")} differed between renders while the fitted
-#' summaries above them did not: the plotting is deterministic, and it was
-#' drawing from a stream the fit had advanced by a different amount each time.
-#' See #310.
+#' \code{vignette("example3")} is the case #310 opened on. It runs
+#' \code{set.seed(333)} before each of its eleven fitting chunks and passes no
+#' \code{seed}, so all eleven were discarded and every fit in it was a fresh
+#' draw. That alone accounts for both of the outputs that differed between
+#' renders: the two \code{fixef()} tables are read off two of those fits, and
+#' the three \code{check_priors()} figures are pure functions of the fits they
+#' plot, \code{brms::hypothesis()} using the stream only when given a seed of
+#' its own. The stream state is a second consequence and does not enter that
+#' explanation. See #310.
 #'
 #' Restoring the stream afterwards, as \code{weighted_draw_index()} does, would
 #' be wrong here. The search is part of fitting rather than a summary computed
@@ -1021,9 +1025,12 @@ make_good_inits <- function(model, x, y, family, n_trials = 1e4, seed = NULL,
   # operation that followed the fit. NA is brms's own way of saying "no seed",
   # and set.seed(NA) is an error, so it is read the same way as NULL here.
   # See #310.
-  # all(is.na()) rather than is.na(): a seed of length other than 1 is left to
-  # set.seed() to reject, rather than making the condition itself the error.
-  if (!is.null(seed) && !all(is.na(seed))) {
+  # Written on length 1 so that only NULL and a scalar NA are read as "no
+  # seed". all(is.na()) was tried and is wrong: all(is.na(integer(0))) is TRUE,
+  # so an empty seed was silently accepted as no seed. Anything else -- a seed
+  # of length 0 or 2 -- reaches set.seed() and is rejected there with R's own
+  # message rather than by the condition.
+  if (!is.null(seed) && !(length(seed) == 1 && is.na(seed))) {
     set.seed(seed)
   }
   accepted <- vector("list", chains)
