@@ -3,8 +3,8 @@
 #SBATCH --partition=cpuq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=128GB
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=32GB
 #SBATCH --time=3-00:00:00
 #SBATCH --output=logs/precompile-%A_%a.log
 # No separate --error: R's message(), knitr's progress and cmdstan's output all
@@ -14,7 +14,13 @@
 # Precompile one vignette. The vignette is this task's line of vignettes.txt,
 # which hpc/precompile-hpc.sh writes from the names given on its command line.
 #
-# --cpus-per-task=16: since #184 a model set is fitted under a future plan, so
+# --cpus-per-task=4: the default is no future plan, so a set is fitted one model
+# at a time and the only parallelism is the four chains within a fit. Where
+# --workers is given, precompile-hpc.sh overrides this directive and --mem on the
+# sbatch command line, which takes precedence over what is written here.
+#
+# What a future plan would give, once #322 is fixed: since #184 a set is fitted
+# under a plan, so
 # the models of one set run in parallel rather than in sequence. precompile.R
 # sets both mc.cores and, where BAYESNEC_VIGNETTE_WORKERS is set, the plan, from
 # this number. The useful width is the number of equations in one call --- the
@@ -23,11 +29,9 @@
 # gain nothing beyond that. A vignette rendered without the variable set uses
 # these cores for chains, as before.
 #
-# --mem=128GB. 32GB was ample while one model was fitted at a time --- example8
-# peaked at 10GB over 23 h on 2026-09-12 --- but under a parallel plan sixteen
-# fits are in flight at once and each holds its own working set, which earlier
-# measurement found to dominate the memory a finished fit retains. 128GB is a
-# quarter of the node and removes the risk of an OOM kill hours into a run.
+# --mem=32GB is ample while one model is fitted at a time: example8 peaked at
+# 10GB over 23 h on 2026-09-12. A parallel run needs far more, and gets it from
+# the sbatch override rather than from here.
 #
 # --time=3-00:00:00: example7 took 309 min end to end on a cold Stan cache and
 # was still running at 4 h 31 m on a warm one, of which over two hours was

@@ -280,14 +280,19 @@ n=${#args[@]}
 # shell this ssh opens, so the variable is set there rather than passed as an
 # sbatch option.
 WORKERS_EXPORT=""
+SBATCH_RES=""
 if [ -n "$workers" ]; then
   WORKERS_EXPORT="export BAYESNEC_VIGNETTE_WORKERS=$workers; "
-  echo "==> model sets fitted across $workers worker(s)"
+  # One core per worker, and memory to match: each worker holds its own fit.
+  # These override the directives in hpc/run.precompile, which are set for the
+  # sequential default.
+  SBATCH_RES="--cpus-per-task=$workers --mem=$((workers * 8))GB "
+  echo "==> model sets fitted across $workers worker(s), ${workers} core(s), $((workers * 8))GB"
 fi
 echo "==> submitting $n task(s)"
 JOB=$(ssh "$HOST" "bash -lc 'cd $DEST && chmod +x hpc/run.precompile && \
   module load slurm >/dev/null 2>&1; \
-  ${WORKERS_EXPORT}sbatch --parsable --array=1-$n%1 hpc/run.precompile'")
+  ${WORKERS_EXPORT}sbatch --parsable ${SBATCH_RES}--array=1-$n%1 hpc/run.precompile'")
 echo "job $JOB: ${args[*]}"
 
 if [ "$wait_for_job" -eq 0 ]; then
