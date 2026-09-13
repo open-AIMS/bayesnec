@@ -776,20 +776,14 @@
 
   A parallel run still does not give the same answer as a *sequential* run of
   the same call unless `seed` is passed, and that part is unchanged: each model
-  is fitted from the stream of the worker it runs in. On the same measurement,
-  against the released code and against this branch:
-
-  | | released | this branch |
-  |---|---|---|
-  | no seed, two sequential runs agree | no | yes |
-  | no seed, two parallel runs agree | no | yes |
-  | no seed, sequential agrees with parallel | no | no |
-  | `seed = 99`, sequential agrees with parallel | yes | yes |
-
-  So what changed is that each run repeats itself, where before none of them
-  repeated anything. `?bnec` states both, alongside the model-averaged
-  quantities, which are not reproduced between a sequential and a parallel run
-  either way.
+  is fitted from the stream of the worker it runs in. Running the same
+  measurement against the released code as well: without a seed neither a
+  sequential nor a parallel run repeated itself before and both do now, while
+  sequential and parallel agreed with each other only under a `seed`, on the
+  released code and on this branch alike. So what changed is that each run
+  repeats itself, not which runs agree with each other. `?bnec` states both,
+  alongside the model-averaged quantities, which are not reproduced between a
+  sequential and a parallel run either way.
 
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.

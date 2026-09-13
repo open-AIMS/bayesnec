@@ -110,7 +110,7 @@ test_that("a parallel set samples its chains in sequence unless told not to", {
   )
 })
 
-test_that("RNGkind at the same kind derives the state, it does not reseed", {
+test_that("RNGkind derives the state, it does not reseed from the clock", {
   # The reason bnec_model_lapply() recorded for restoring the kind was that
   # RNGkind() re-initialises .Random.seed from the clock. It does that only
   # where no seed exists yet. Pinned because the whole argument about what a
