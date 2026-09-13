@@ -11,8 +11,7 @@ pull_best(object, ...)
 \code{\link{bayesmanecfit}} or \code{\link{bayesnechurdlefit}} as returned by
 \code{\link{bnec}}.}
 
-\item{...}{Additional arguments passed to \code{\link{pull_out}}, and through
-it to \code{\link{expand_nec}}.}
+\item{...}{Not used. Any argument supplied here is refused; see Details.}
 }
 \value{
 For a \code{\link{bayesmanecfit}}, an object of class
@@ -52,6 +51,21 @@ Where two or more candidates hold exactly the same highest weight, the first
 in the order of the set is returned and the tie is reported. Only exact ties
 are detected; two weights differing in the last decimal place are not a tie
 and the larger is taken.
+
+The object is the only argument. This function selects a model rather than
+re-specifying a fit, so \code{x_range}, \code{resolution}, \code{sig_val}
+and \code{loo_controls} are not accepted and are refused rather than
+ignored: honouring them on the \code{\link{bayesmanecfit}} branch, where
+\code{\link{pull_out}} rebuilds the fit, and ignoring them on the
+\code{\link{bayesnecfit}} branch, where nothing is rebuilt, would make the
+returned object depend on the class the caller was told not to test for.
+\code{\link{pull_out}} takes them alongside a model name, and
+\code{\link{amend}} rebuilds a fit that already exists.
+
+Which equation was selected is reported on both branches, including the
+pass-through, so that a workflow leaves the same record whether or not the
+set had been reduced to one equation before the call. \code{suppressMessages}
+silences it.
 
 A \code{\link{bayesnechurdlefit}} is handled one component at a time and
 rewrapped, as \code{\link{screen_models}} and \code{\link{amend}} already do
