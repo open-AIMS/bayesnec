@@ -203,6 +203,37 @@ test_that("the hurdle component formulas keep the user's environment", {
   expect_identical(build(), c("nec3param", "ecxll3"))
 })
 
+test_that("the fitting entry points resolve a character formula", {
+  # bnec(), bnec_group(), bnec_hurdle(), bnec_joint(), get_priors.formula() and
+  # get_priors.character() each pass their own caller's frame down, and that is
+  # the only thing those six lines change. get_priors() is the one of them that
+  # reaches a result without sampling, so it is the one asserted here.
+  build <- function() {
+    eqs <- "nec3param"
+    get_priors("y ~ crf(x, eqs)", data = nec_data, family = gaussian())
+  }
+  expect_s3_class(build(), "brmsprior")
+})
+
+test_that("env must be an environment", {
+  # environment(formula) <- NULL is legal, so an unchecked NULL would pass and
+  # silently restore the global-environment-only behaviour.
+  expect_error(bnf("y ~ crf(x, \"nec3param\")", env = NULL),
+               "must be an environment")
+  expect_error(bayesnecformula("y ~ crf(x, \"nec3param\")", env = "globalenv"),
+               "must be an environment")
+})
+
+test_that("a model argument that is not character is named as the cause", {
+  # The symbol now resolves in more environments than it did, so a name bound
+  # to something else in the caller reaches expand_model_set(), which reported
+  # "'match' requires vector arguments".
+  build <- function() {
+    get_model_from_formula(bnf(y ~ crf(x, models)))
+  }
+  expect_error(build(), "must be a character vector")
+})
+
 test_that("a knitted chunk resolves a variable model set", {
   # The reported failure: vignettes/precompile.R calls knitr::knit() from
   # inside knit_one(), so a variable assigned in a chunk lands in that frame

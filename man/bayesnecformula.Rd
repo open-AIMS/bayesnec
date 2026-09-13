@@ -19,7 +19,10 @@ that \code{formula} names but that are not columns of the data --- a
 variable holding the model set, or a function used to transform the
 predictor. Only used when \code{formula} is a character string, because a
 formula object already carries its own environment. Defaults to the calling
-environment.}
+environment, so a character formula passed down through a wrapper function
+is bound at the last call rather than where the string was written; where
+that matters, convert it with \code{bnf(string, env = ...)} and pass the
+result on.}
 }
 \value{
 An object of class \code{\link{bayesnecformula}} and

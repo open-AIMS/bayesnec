@@ -568,3 +568,20 @@ test_that("the parameter-level generated terms are reserved too (#294)", {
     expect_null(check_reserved_names(dd))
   }
 })
+
+
+# ---- #319, the disp() check resolves in the formula's environment ------------
+
+test_that("a disp term written with a local function is still checked", {
+  # The evaluation used eval()'s default enclosure, a frame inside the
+  # namespace, so a term naming a function the user defined could not be
+  # evaluated and the try() around it skipped the term. The check then passed
+  # silently rather than checking anything.
+  d <- nec_data
+  d$z <- c(0, d$x[-1])
+  build <- function() {
+    lg <- function(v) log(v)
+    check_disp_finite(bnf(y ~ crf(x, "nec3param") + disp(~lg(z))), d)
+  }
+  expect_error(build(), "not finite")
+})

@@ -49,3 +49,22 @@ test_that("an unvalidated aterm in a chain is an error", {
     "aterms bayesnec does not support"
   )
 })
+
+
+# ---- #319, symbols resolve where the formula was written ---------------------
+
+test_that("make_brmsformula resolves symbols in its caller's frame", {
+  # Written inside a function on purpose: at the top level of a test file the
+  # lookup falls through to the global environment, which is where the defect
+  # did not show.
+  build_set <- function() {
+    eqs <- "nec3param"
+    names(make_brmsformula("y ~ crf(x, eqs)", nec_data))
+  }
+  expect_identical(build_set(), "nec3param")
+  build_x <- function() {
+    squared <- function(z) z^2
+    names(make_brmsformula("y ~ crf(squared(x), \"nec3param\")", nec_data))
+  }
+  expect_identical(build_x(), "nec3param")
+})
