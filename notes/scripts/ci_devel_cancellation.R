@@ -83,13 +83,16 @@ runs <- do.call(rbind, pages)
 before <- nrow(runs)
 runs <- runs[!duplicated(runs$run_id), ]
 if (nrow(runs) < n_runs) {
-  if (exhausted) {
-    message("only ", nrow(runs), " pull_request runs exist; using all of them")
+  if (before > nrow(runs)) {
+    stop("asked for ", n_runs, " runs; the pages returned ", before, " rows but ",
+         nrow(runs), " distinct, so they overlapped -- re-run.")
+  } else if (exhausted) {
+    message("only ", nrow(runs), " pull_request runs of ", workflow,
+            " exist; using all of them")
     n_runs <- nrow(runs)
   } else {
-    stop("asked for ", n_runs, " runs; every page was full yet the API returned ",
-         before, " rows and ", nrow(runs), " distinct. The pages were ",
-         "inconsistent -- re-run.")
+    stop("asked for ", n_runs, " runs; every page was full yet only ",
+         nrow(runs), " came back. The pages disagreed -- re-run.")
   }
 }
 runs <- utils::head(runs, n_runs)
@@ -302,7 +305,6 @@ paired <- function(a, b, keep) {
     return(invisible(NULL))
   }
   w <- suppressWarnings(stats::wilcox.test(d, conf.int = TRUE))
-  ties <- sum(d == 0)
   st <- stats::binom.test(sum(d > 0), sum(d != 0))
   cat(sprintf(
     "  %s minus %s\n    n=%d, median %+.1f min, Hodges-Lehmann %+.2f (95%% CI %.2f to %.2f)\n    longer in %d of %d untied pairs, sign test p=%.2g\n",
@@ -337,19 +339,18 @@ cat(sprintf(
   sum(d_canc), sum(r_canc)
 ))
 cat(sprintf(
-  "in the %d devel-censored pairs devel had already run a median %+.2f minutes\nlonger than the release job took, %d of them positive. Each is a lower bound\nabove which that pair's true difference lies, so admitting them could only\nenlarge the estimate.\n",
+  "in the %d devel-censored pairs devel had already run a median %+.1f minutes\nlonger than the release job took, %d of them positive. Each is a value that\npair's true difference lies above. Enough of them are positive at their bounds\nthat the censored pairs cannot be what makes the estimate positive; where the\npooled estimate would go if they were admitted is not determined by a bound.\n",
   sum(d_canc), stats::median(lower), sum(lower > 0)
 ))
 
-# Exempting devel from cancellation would run every cancelled devel job on to
-# completion. The additional runner time is at least the gap between where each
-# was cancelled and the median a completed devel job takes; at least, because a
-# job cancelled beyond that median would have run further still, and those
-# contribute nothing to the sum.
 # A job cancelled at c is known only to have exceeded c, so the time it had left
 # is estimated from the concluded jobs that also exceeded c, rather than by
 # subtracting c from an unconditional median and clamping the negative results.
-# The estimate is monotone in c and needs no floor.
+# It needs no floor. It is not monotone in c: conditioning on T > c can raise the
+# conditional median faster than c rises, and above about 60 minutes the only
+# concluded jobs longer than c are the 2026-09-06 cluster, so the estimate for a
+# job cancelled that late rests on one afternoon. The total is a rough figure on
+# an option rejected on other grounds.
 cancelled_devel <- mins[concl[, "ubuntu-latest (devel)"] == "cancelled",
                         "ubuntu-latest (devel)"]
 remaining <- vapply(cancelled_devel, function(c_at) {

@@ -30,9 +30,9 @@ Which jobs of a run were cancelled together, over 197 runs:
 | `windows-latest (release)` alone | 5 |
 | two or three jobs | 5 |
 
-The 44 runs whose four jobs went together were superseded a median 12.1 minutes
-in, range 0.6 to 24.4, measured as the span from the first job starting to the
-last one stopping. None of them had finished a job. They discard nothing that a
+The 44 runs whose four jobs were cancelled together were superseded a median of
+12.1 minutes in, range 0.6 to 24.4, measured as the span from the first job
+starting to the last one stopping. None of them had finished a job. They discard nothing that a
 later run does not supply, and they are what `cancel-in-progress` is for.
 
 The asymmetry #333 describes, three jobs reported and devel lost, is the ten runs
@@ -44,7 +44,7 @@ Cancellation rates over the 197 runs: `ubuntu-latest (devel)` 29.4 per cent,
 `windows-latest (release)` 27.4, `ubuntu-latest (release)` 23.9,
 `macOS-latest (release)` 23.4.
 
-That pooled figure describes no day in the window. By day:
+That pooled figure is the two regimes below averaged together. By day:
 
 | day | runs | devel cancelled |
 |---|---|---|
@@ -66,14 +66,13 @@ That pooled figure describes no day in the window. By day:
 
 No devel job was cancelled on any of the eight days to 2026-09-06. From
 2026-09-09 the rate runs between 33 and 70 per cent. That is a step change with
-an onset, not variation about a mean, and the pooled 29.4 per cent is the two
-regimes averaged together.
+an onset, not variation about a mean.
 
 Two figures describe the second regime, and they are not the same quantity. Over
 every run from the onset on 2026-09-09, 110 of them, the rate is 51.8 per cent.
 Over the 36 most recent runs, which is the window #333 sampled, it is 63.9 per
 cent. #333's 68 per cent is therefore an accurate reading of the days around its
-own measurement, and about twelve points above the regime rate.
+own measurement, which run about twelve points above the regime rate.
 
 What changed is how often the branches are pushed. Taking each run and the
 interval to the next run on the same branch: where the devel job was cancelled
@@ -142,9 +141,11 @@ Censoring is not symmetric: 12 pairs were censored because devel was cancelled
 and the release job concluded, against 1 the other way. Those 12 cannot be
 recovered, because a cancelled job has no duration. They can be bounded. In each,
 devel had already been running when it was stopped, and comparing that against
-what the release job took gives a median of +1.57 minutes with 9 of the 12
-positive. Each of those is a value the pair's true difference lies above, so
-admitting the censored pairs could only enlarge the estimate, never reverse it.
+what the release job took gives a median of +1.6 minutes with 9 of the 12
+positive. Each of those is a value the pair's true difference lies above. Nine
+of twelve are positive at their bounds, so the censored pairs cannot be what
+makes the estimate positive. Where the pooled estimate would go if they were
+admitted is not settled by a bound, and no claim is made about it.
 
 Widening the criterion to admit failures as well as successes adds 13 different
 pairs, none of them censored ones, and takes the estimate from +2.57 to +3.07
@@ -222,10 +223,13 @@ well: a job-level group does not override the workflow-level
 `cancel-in-progress`, which stops the whole run first, so every cell would need
 its own group and the workflow-level setting would have to be removed.
 
-Shortening devel would not change which job is unfinished when a supersede
-arrives, because devel is not the job that is still running. It is 1.5 to 3.6
-minutes longer than `ubuntu-latest (release)` and 5.3 to 7.4 minutes shorter than
-`windows-latest`.
+Shortening devel would change which job is lost, not whether one is. Devel is
+the most frequent sole casualty, cancelled alone in 10 runs against
+`windows-latest`'s 5, but it runs only 1.5 to 3.6 minutes longer than
+`ubuntu-latest (release)`, and
+`windows-latest` runs 5.3 to 7.4 minutes longer than devel, so closing devel's
+margin entirely would leave `windows-latest` as the job still running when a
+supersede arrives.
 
 ## Reproduction
 
