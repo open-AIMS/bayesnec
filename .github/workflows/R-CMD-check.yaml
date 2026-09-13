@@ -37,10 +37,10 @@ on:
 #
 # Do not read a cancelled `ubuntu-latest (devel)` job as evidence about the
 # branch it ran on. It records that a newer commit exists on that pull request,
-# and the newer commit is the one checked. Measured 2026-09-13 over 197 runs, 44
-# of the 64 cancellations stopped all four jobs before any had finished, and of
-# the 30 most recently merged pull requests, 30 had a successful devel check on
-# the head commit completed before the merge. None merged without one.
+# and the newer commit is the one checked. Measured 2026-09-13 over 197 runs,
+# about seven in ten cancellations stopped all four jobs before any had finished,
+# and of the 30 most recently merged pull requests, 30 had a successful devel
+# check on the head commit completed before the merge. None merged without one.
 #
 # #333 proposed exempting devel from cancellation or shortening it. Both were
 # rejected: exemption adds nothing to that coverage, and devel is not the slowest
@@ -88,8 +88,8 @@ jobs:
     # distribution, which is where the routine work sits, 90 is roughly half as
     # long again -- the centile itself drifts with the sample and is recorded,
     # dated, in `notes/ci_devel_cancellation.md`. It is left at 90. Nothing of
-    # any cell has reached it in 583 completed observations, and the
-    # `if: always()` log dump below makes a timeout diagnosable if one fires.
+    # any cell has reached it, and the `if: always()` log dump below makes a
+    # timeout diagnosable if one fires.
     timeout-minutes: 90
 
     env:
