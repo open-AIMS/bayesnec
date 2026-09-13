@@ -179,11 +179,11 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
 
 #' The curve parameters, in the order they are appended to a bayesnecfit
 #'
-#' The same set as \code{curve_par_names()}, which \code{\link{parameters}}
+#' The same set as \code{curve_par_names()}, which \code{\link{curve_params}}
 #' reports from, in a different order. The order is kept because the extracted
 #' elements are appended to the \code{\link{bayesnecfit}} in it, so anything
 #' indexing that object positionally would read a different element if it
-#' changed; \code{test-parameters.R} asserts that the two vectors hold the same
+#' changed; \code{test-curve_params.R} asserts that the two vectors hold the same
 #' parameters, so a parameter added for a new equation cannot reach one and not
 #' the other.
 #'

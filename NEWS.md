@@ -695,7 +695,7 @@
   partitioned exactly by `attempted` and `excluded$model`. The record is kept
   through `update()`, and rebuilt by `amend()` for the set that call produced.
 
-- **`parameters()`** reports the parameters of the fitted curve --- `top`,
+- **`curve_params()`** reports the parameters of the fitted curve --- `top`,
   `bot`, `beta`, `nec`, `ec50`, `slope`, `d` and `f` --- with their credible
   intervals, for a `bayesnecfit`, a `bayesmanecfit`, a `bayesnechurdlefit` and a
   `bayesnecgroupfit`. `summary()` reports the model weights, the per-equation
@@ -706,6 +706,16 @@
   estimates: `top` is the control level the curve is referenced to, `bot` the
   asymptote a `"relative"` ECx is measured against, and `beta` the decay rate
   (#297).
+
+  The name is neither of the two the issue proposed. `parameters()` is taken by
+  the `parameters` package, which reaches every install as a hard dependency of
+  `modelbased`, and `params()` by `ssdtools`, where it is a documentation stub
+  returning `NULL` --- so attaching `ssdtools` after `bayesnec` would have made
+  the call return nothing at all rather than fail. `curve_params()` is taken by
+  nothing, sits beside `show_params()`, which names the parameters of each
+  equation without fitting, and says what it returns: the parameters of the
+  equation, and not the family's dispersion parameter, a group-level term's
+  standard deviation or the `ogl` offset.
 
   **The estimates are per equation and are not averaged across the set.** The
   equations of a set do not share a parameter list: `ecxexp` has no `bot`, the

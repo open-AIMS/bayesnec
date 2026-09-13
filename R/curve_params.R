@@ -5,7 +5,7 @@
 #' \code{d} and \code{f} --- with their credible intervals, one row per
 #' parameter per equation.
 #'
-#' @name parameters
+#' @name curve_params
 #' @order 1
 #'
 #' @param object An object of class \code{\link{bayesnecfit}},
@@ -48,14 +48,8 @@
 #' that the weights do not support. See \code{\link{average_estimates}} for the
 #' estimates that are averaged.
 #'
-#' \bold{This is not the \code{parameters()} of the \pkg{parameters}
-#' package.} That one dispatches \code{model_parameters()} and describes a
-#' regression's coefficient table; this one returns the parameters of a
-#' concentration-response equation. Neither package attaches the other, so the
-#' two meet only in a session that attaches both, and there the package
-#' attached later supplies the definition: qualify the call as
-#' \code{bayesnec::parameters()} or \code{parameters::parameters()} to say
-#' which is meant.
+#' \code{\link{show_params}} names the parameters of each equation without
+#' fitting anything; this function reports their estimates from a fit.
 #'
 #' \bold{The parameters are on the scale the model was fitted on.}
 #' \code{\link{bnec}} assigns \code{link = "identity"}, so \code{top} and
@@ -129,26 +123,26 @@
 #' @examples
 #' library(bayesnec)
 #' data(manec_example)
-#' parameters(manec_example)
+#' curve_params(manec_example)
 #' nec4param <- pull_out(manec_example, "nec4param")
-#' parameters(nec4param)
+#' curve_params(nec4param)
 #'
 #' @export
-parameters <- function(object, summary = TRUE, xform = identity, ...) {
-  UseMethod("parameters")
+curve_params <- function(object, summary = TRUE, xform = identity, ...) {
+  UseMethod("curve_params")
 }
 
-#' @rdname parameters
+#' @rdname curve_params
 #' @order 2
 #'
-#' @method parameters bayesnecfit
+#' @method curve_params bayesnecfit
 #'
-#' @inherit parameters description details return seealso examples
+#' @inherit curve_params description details return seealso examples
 #'
 #' @importFrom chk chk_lgl
 #'
 #' @export
-parameters.bayesnecfit <- function(object, summary = TRUE, xform = identity,
+curve_params.bayesnecfit <- function(object, summary = TRUE, xform = identity,
                                    ...) {
   chk_lgl(summary)
   check_xform(xform)
@@ -158,21 +152,21 @@ parameters.bayesnecfit <- function(object, summary = TRUE, xform = identity,
   # holds the weight it had there -- pull_out() returns a fit in its own
   # right -- so reading a weight off it would be reporting a number the object
   # does not hold.
-  one_fit_parameters(object$fit, models = dpar_models(object), wi = 1,
+  one_fit_params(object$fit, models = dpar_models(object), wi = 1,
                      summary = summary, xform = xform)
 }
 
-#' @rdname parameters
+#' @rdname curve_params
 #' @order 3
 #'
-#' @method parameters bayesmanecfit
+#' @method curve_params bayesmanecfit
 #'
-#' @inherit parameters description details return seealso examples
+#' @inherit curve_params description details return seealso examples
 #'
 #' @importFrom chk chk_lgl
 #'
 #' @export
-parameters.bayesmanecfit <- function(object, summary = TRUE,
+curve_params.bayesmanecfit <- function(object, summary = TRUE,
                                      xform = identity, ...) {
   chk_lgl(summary)
   check_xform(xform)
@@ -182,9 +176,9 @@ parameters.bayesmanecfit <- function(object, summary = TRUE,
   # predictor transformation are properties of the set; reporting them per
   # equation would print the same paragraph 23 times on the default model set.
   # No gate is needed to achieve that: the loop below calls
-  # one_fit_parameters() directly rather than parameters(), so nothing inside
+  # one_fit_params() directly rather than curve_params(), so nothing inside
   # it reaches report_scales() a second time. The group and hurdle methods do
-  # dispatch parameters() per level and per component, and those set the gates.
+  # dispatch curve_params() per level and per component, and those set the gates.
   report_scales(object$mod_fits[[mods[1]]], xform, "fitted model set")
   # Ordered by weight, so the equation holding most of the model average is
   # read first. Which equation a reported parameter belongs to is the whole
@@ -195,7 +189,7 @@ parameters.bayesmanecfit <- function(object, summary = TRUE,
   wi <- model_weights_for(object, mods)
   ord <- order(wi, decreasing = TRUE)
   out <- lapply(ord, function(i) {
-    one_fit_parameters(object$mod_fits[[mods[i]]]$fit,
+    one_fit_params(object$mod_fits[[mods[i]]]$fit,
                        models = dpar_models(object$mod_fits[[mods[i]]]),
                        wi = wi[i], summary = summary, xform = xform)
   })
@@ -209,22 +203,22 @@ parameters.bayesmanecfit <- function(object, summary = TRUE,
   out
 }
 
-#' @rdname parameters
+#' @rdname curve_params
 #' @order 4
 #'
-#' @method parameters bayesnechurdlefit
+#' @method curve_params bayesnechurdlefit
 #'
-#' @inherit parameters description details return seealso examples
+#' @inherit curve_params description details return seealso examples
 #'
 #' @export
-parameters.bayesnechurdlefit <- function(object, summary = TRUE,
+curve_params.bayesnechurdlefit <- function(object, summary = TRUE,
                                          xform = identity, ...) {
   # Validated here as well as in the component methods, so that a bad argument
   # is an error before anything is printed rather than after the delegation
   # notice.
   chk_lgl(summary)
   check_xform(xform)
-  message(hurdle_no_combined("parameters"))
+  message(hurdle_no_combined("curve_params"))
   # The two components are separate fits with separate families --- growth
   # takes the family of the non-zero response and survival is bernoulli --- so
   # each link is reported. Reported here, named by component, rather than left
@@ -242,16 +236,16 @@ parameters.bayesnechurdlefit <- function(object, summary = TRUE,
   quiet <- options(bayesnec.link_reported = TRUE,
                    bayesnec.xform_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
-  hurdle_delegate(object, parameters, summary = summary, xform = xform, ...)
+  hurdle_delegate(object, curve_params, summary = summary, xform = xform, ...)
 }
 
-#' @rdname parameters
+#' @rdname curve_params
 #' @order 5
 #'
-#' @method parameters bayesnecgroupfit
+#' @method curve_params bayesnecgroupfit
 #'
 #' @export
-parameters.bayesnecgroupfit <- function(object, summary = TRUE,
+curve_params.bayesnecgroupfit <- function(object, summary = TRUE,
                                         xform = identity, ...) {
   chk_lgl(summary)
   check_xform(xform)
@@ -263,7 +257,7 @@ parameters.bayesnecgroupfit <- function(object, summary = TRUE,
   quiet <- options(bayesnec.link_reported = TRUE,
                    bayesnec.xform_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
-  out <- group_lapply(object, parameters, summary = summary, xform = xform,
+  out <- group_lapply(object, curve_params, summary = summary, xform = xform,
                       ...)
   if (!summary) {
     return(out)
@@ -286,7 +280,7 @@ parameters.bayesnecgroupfit <- function(object, summary = TRUE,
 #' \code{extract_par_order()}, because the elements it extracts are appended to
 #' the \code{\link{bayesnecfit}} in that order. The two are separate
 #' definitions and are held in step by an \code{expect_setequal()} in
-#' \code{test-parameters.R}, not by one reading the other: a parameter added
+#' \code{test-curve_params.R}, not by one reading the other: a parameter added
 #' for a new equation has to be added to both, and the test is what says so.
 #'
 #' Fixed rather than derived from \code{\link{show_params}} so that the row
@@ -561,7 +555,7 @@ select_curve_cols <- function(draws, prefix = "") {
 #' \code{\link[base]{list}} of one draws matrix.
 #'
 #' @noRd
-one_fit_parameters <- function(fit, models, wi, summary, xform) {
+one_fit_params <- function(fit, models, wi, summary, xform) {
   dpars <- fit_dpars(fit$family)
   links <- fit_links(fit)
   blocks <- lapply(names(dpars), function(d) {
@@ -604,13 +598,13 @@ one_fit_parameters <- function(fit, models, wi, summary, xform) {
     # Reached only for a fit holding none of the eight parameters, which no
     # equation bnec() fits produces. Returned as an empty frame of the right
     # shape rather than NULL so that rbind over a set does not drop a column.
-    out <- empty_parameter_table()
+    out <- empty_params_table()
   }
   out
 }
 
 #' @noRd
-empty_parameter_table <- function() {
+empty_params_table <- function() {
   data.frame(model = character(0), wi = numeric(0), dpar = character(0),
              link = character(0), parameter = character(0),
              Estimate = numeric(0), Q2.5 = numeric(0), Q97.5 = numeric(0),
@@ -656,7 +650,7 @@ report_absent_params <- function(found, model, dpar) {
 #' belongs to the family, and a model set and a group share one family while
 #' the two components of a \code{\link{bayesnechurdlefit}} do not. The inline
 #' transformation belongs to the formula, which all three share. Each gate is
-#' set by the method that dispatches \code{\link{parameters}} more than once,
+#' set by the method that dispatches \code{\link{curve_params}} more than once,
 #' after it has reported for itself, so the paragraph is printed once rather
 #' than once per equation, level or component. The same device
 #' \code{ecx.bayesmanecfit()} uses for the \code{"relative"} rename warning.

@@ -27,7 +27,7 @@ joint_mock <- function(model = "nec3param", model_survival = "ecx4param",
 }
 
 test_that("the table has the documented columns and one row per parameter", {
-  out <- parameters(manec_example)
+  out <- curve_params(manec_example)
   expect_s3_class(out, "data.frame")
   expect_named(out, c("model", "wi", "dpar", "link", "parameter", "Estimate",
                       "Q2.5", "Q97.5"))
@@ -45,9 +45,9 @@ test_that("the rows are in the documented parameter order", {
   # Promised by the Rd, and not implied by anything brms returns: fixef() lists
   # nec4param as bot, top, beta, nec. A table whose row order moved with the
   # formula would read differently from one fit to the next.
-  out <- parameters(nec4param)
+  out <- curve_params(nec4param)
   expect_equal(out$parameter, c("top", "bot", "beta", "nec"))
-  expect_equal(parameters(ecx4param)$parameter,
+  expect_equal(curve_params(ecx4param)$parameter,
                c("top", "bot", "beta", "ec50"))
 })
 
@@ -55,7 +55,7 @@ test_that("the estimates are the fit's own, not a recomputation of them", {
   # The same median and equal-tailed interval fixef(robust = TRUE) reports, and
   # the same nec() returns. A table that disagreed with either would be a
   # second set of numbers for one quantity.
-  out <- parameters(nec4param)
+  out <- curve_params(nec4param)
   fef <- brms::fixef(nec4param$fit, robust = TRUE)
   for (p in c("top", "bot", "beta", "nec")) {
     row <- out[out$parameter == p, ]
@@ -68,7 +68,7 @@ test_that("the estimates are the fit's own, not a recomputation of them", {
 })
 
 test_that("the weight is reported beside each equation and orders the table", {
-  out <- parameters(manec_example)
+  out <- curve_params(manec_example)
   wi <- manec_example$mod_stats$wi
   names(wi) <- manec_example$mod_stats$model
   expect_equal(out$wi, unname(as.numeric(wi[out$model])))
@@ -86,33 +86,33 @@ test_that("the weight is matched on the model column, not on row names", {
   # were ever absent, with nothing said.
   x <- manec_example
   rownames(x$mod_stats) <- NULL
-  out <- parameters(x)
+  out <- curve_params(x)
   expect_false(anyNA(out$wi))
-  expect_equal(out$wi, parameters(manec_example)$wi)
+  expect_equal(out$wi, curve_params(manec_example)$wi)
   # And a set whose table holds no row for a success model is an error rather
   # than a silent NA.
   y <- manec_example
   y$mod_stats$model[1] <- "not_a_model"
   rownames(y$mod_stats) <- NULL
-  expect_error(parameters(y), "holds no row for")
+  expect_error(curve_params(y), "holds no row for")
 })
 
 test_that("a single fit is reported at a weight of 1", {
-  out <- parameters(nec4param)
+  out <- curve_params(nec4param)
   expect_true(all(out$wi == 1))
   expect_true(all(out$model == "nec4param"))
 })
 
 test_that("summary = FALSE returns the draws the summary was computed from", {
-  draws <- parameters(manec_example, summary = FALSE)
+  draws <- curve_params(manec_example, summary = FALSE)
   expect_named(draws, c("nec4param", "ecx4param"))
   expect_equal(ncol(draws$nec4param), 4L)
   expect_equal(nrow(draws$nec4param), manec_example$sample_size)
   # A matrix of draws has no column for the link, so the list records it.
   expect_equal(attr(draws, "link"), c(mu = "identity"))
-  expect_equal(attr(parameters(nec4param, summary = FALSE), "link"),
+  expect_equal(attr(curve_params(nec4param, summary = FALSE), "link"),
                c(mu = "identity"))
-  out <- parameters(manec_example)
+  out <- curve_params(manec_example)
   for (p in colnames(draws$nec4param)) {
     row <- out[out$model == "nec4param" & out$parameter == p, ]
     expect_equal(row$Estimate, unname(median(draws$nec4param[, p])))
@@ -122,8 +122,8 @@ test_that("summary = FALSE returns the draws the summary was computed from", {
 })
 
 test_that("xform applies to the predictor-scale parameters and to no other", {
-  plain <- parameters(manec_example)
-  sq <- parameters(manec_example, xform = function(x) x^2)
+  plain <- curve_params(manec_example)
+  sq <- curve_params(manec_example, xform = function(x) x^2)
   on_x <- sq$parameter %in% c("nec", "ec50")
   expect_false(any(plain$Estimate[on_x] == sq$Estimate[on_x]))
   expect_equal(plain$Estimate[!on_x], sq$Estimate[!on_x])
@@ -134,26 +134,26 @@ test_that("xform is applied to the draws rather than to the summary", {
   # the transformed draws equals the transform of the median exactly. The
   # interval separates them, because quantile() interpolates between order
   # statistics, and a non-monotone xform separates them outright.
-  sq <- parameters(nec4param, xform = function(x) x^2)
-  drawn <- parameters(nec4param, summary = FALSE,
+  sq <- curve_params(nec4param, xform = function(x) x^2)
+  drawn <- curve_params(nec4param, summary = FALSE,
                       xform = function(x) x^2)$nec4param[, "nec"]
   wanted <- unname(quantile(drawn, 0.975))
   expect_equal(sq$Q97.5[sq$parameter == "nec"], wanted)
-  plain <- parameters(nec4param)
+  plain <- curve_params(nec4param)
   expect_false(isTRUE(all.equal(wanted,
                                 plain$Q97.5[plain$parameter == "nec"]^2)))
   # A non-monotone xform: the median of |nec - 1.45| is not |median - 1.45|.
-  fold <- parameters(nec4param, xform = function(x) abs(x - 1.45))
-  raw <- parameters(nec4param, summary = FALSE)$nec4param[, "nec"]
+  fold <- curve_params(nec4param, xform = function(x) abs(x - 1.45))
+  raw <- curve_params(nec4param, summary = FALSE)$nec4param[, "nec"]
   expect_equal(fold$Estimate[fold$parameter == "nec"],
                unname(median(abs(raw - 1.45))))
 })
 
 test_that("xform and summary are validated", {
-  expect_error(parameters(nec4param, xform = "sqrt"),
+  expect_error(curve_params(nec4param, xform = "sqrt"),
                "xform must be a function")
-  expect_error(parameters(nec4param, summary = "yes"), "summary")
-  expect_error(parameters(manec_example, xform = 2),
+  expect_error(curve_params(nec4param, summary = "yes"), "summary")
+  expect_error(curve_params(manec_example, xform = 2),
                "xform must be a function")
 })
 
@@ -234,7 +234,7 @@ test_that("a two-block fit reports both blocks, each under its own name", {
     }
   )
   out <- expect_silent(
-    bayesnec:::one_fit_parameters(o$fit, bayesnec:::dpar_models(o), 1, TRUE,
+    bayesnec:::one_fit_params(o$fit, bayesnec:::dpar_models(o), 1, TRUE,
                                   identity)
   )
   expect_equal(out$dpar, c(rep("mu", 3), rep("hu", 4)))
@@ -246,7 +246,7 @@ test_that("a two-block fit reports both blocks, each under its own name", {
   expect_true(all(out$link == "identity"))
   # The draws form names the second block's columns so that two blocks in one
   # matrix stay distinguishable, and is named for the response equation.
-  dr <- bayesnec:::one_fit_parameters(o$fit, bayesnec:::dpar_models(o), 1,
+  dr <- bayesnec:::one_fit_params(o$fit, bayesnec:::dpar_models(o), 1,
                                       FALSE, identity)
   expect_named(dr, "nec3param")
   expect_equal(colnames(dr$nec3param),
@@ -263,7 +263,7 @@ test_that("a parameter the posterior does not hold is reported, not dropped", {
   )
   fake <- list(family = stats::gaussian(link = "identity"))
   expect_message(
-    out <- bayesnec:::one_fit_parameters(fake, c(mu = "nec4param"), 1, TRUE,
+    out <- bayesnec:::one_fit_params(fake, c(mu = "nec4param"), 1, TRUE,
                                          identity),
     "bot, beta, nec"
   )
@@ -271,9 +271,9 @@ test_that("a parameter the posterior does not hold is reported, not dropped", {
 })
 
 test_that("the link is reported in a column and named when it is not identity", {
-  out <- parameters(manec_example)
+  out <- curve_params(manec_example)
   expect_true(all(out$link == "identity"))
-  expect_silent(parameters(nec4param))
+  expect_silent(curve_params(nec4param))
   fake <- list(family = brms::hurdle_gamma(link = "log", link_hu = "logit"))
   expect_equal(unname(bayesnec:::fit_links(fake)), c("log", "logit"))
   expect_message(bayesnec:::report_link(bayesnec:::fit_links(fake), "x fit"),
@@ -298,11 +298,11 @@ transformed_x_fit <- function(fit, model) {
 
 test_that("a predictor transformed inline is reported unless xform was given", {
   tf <- transformed_x_fit(nec4param, "nec4param")
-  expect_message(parameters(tf), "nec and ec50 are on that transformed scale")
-  expect_message(parameters(tf), "sqrt\\(x\\)")
+  expect_message(curve_params(tf), "nec and ec50 are on that transformed scale")
+  expect_message(curve_params(tf), "sqrt\\(x\\)")
   # A caller who supplied an inverse has already dealt with it.
-  expect_silent(parameters(tf, xform = function(x) x^2))
-  expect_silent(parameters(nec4param))
+  expect_silent(curve_params(tf, xform = function(x) x^2))
+  expect_silent(curve_params(nec4param))
 })
 
 fake_group <- function(fits = list(a = manec_example, b = nec4param)) {
@@ -324,7 +324,7 @@ fake_hurdle <- function(growth = nec4param, survival = nec4param) {
 
 test_that("a hurdle fit returns one table per component", {
   o <- fake_hurdle()
-  expect_message(out <- parameters(o), "one element per component")
+  expect_message(out <- curve_params(o), "one element per component")
   expect_named(out, c("growth", "survival"))
   expect_equal(out$growth, out$survival)
   expect_equal(nrow(out$growth), 4L)
@@ -336,10 +336,10 @@ test_that("a hurdle pair reports the transformation once, the link per fit", {
   # The link is not shared: growth takes the family of the non-zero response
   # and survival is bernoulli, so each component reports its own.
   tf <- transformed_x_fit(nec4param, "nec4param")
-  msgs <- capture_messages(parameters(fake_hurdle(tf, tf)))
+  msgs <- capture_messages(curve_params(fake_hurdle(tf, tf)))
   expect_equal(sum(grepl("transformed scale", msgs)), 1L)
   # The gate is restored, so the next call reports again.
-  expect_message(parameters(tf), "transformed scale")
+  expect_message(curve_params(tf), "transformed scale")
   # The half the split exists to protect: two components on different links
   # both report, and each paragraph names its component. Gating the link for
   # the pair, as the transformation is gated, would suppress one of them and
@@ -348,7 +348,7 @@ test_that("a hurdle pair reports the transformation once, the link per fit", {
   g$fit$family <- brms::brmsfamily("gaussian", link = "log")
   s <- nec4param
   s$fit$family <- brms::brmsfamily("bernoulli", link = "logit")
-  msgs <- capture_messages(parameters(fake_hurdle(g, s)))
+  msgs <- capture_messages(curve_params(fake_hurdle(g, s)))
   expect_equal(sum(grepl("link scale", msgs)), 2L)
   expect_true(any(grepl("growth component was made with mu: link = \"log\"",
                         msgs)))
@@ -359,20 +359,20 @@ test_that("a hurdle pair reports the transformation once, the link per fit", {
 test_that("the wrapper methods validate before they print", {
   # Both delegate, so without a check of their own a bad argument surfaced
   # after the delegation notice, or from inside a per-level call.
-  expect_error(parameters(fake_hurdle(), xform = "sqrt"),
+  expect_error(curve_params(fake_hurdle(), xform = "sqrt"),
                "xform must be a function")
-  expect_error(parameters(fake_hurdle(), summary = "yes"), "summary")
-  expect_error(parameters(fake_group(), summary = "yes"), "summary")
-  expect_error(parameters(fake_group(), xform = 2), "xform must be a function")
+  expect_error(curve_params(fake_hurdle(), summary = "yes"), "summary")
+  expect_error(curve_params(fake_group(), summary = "yes"), "summary")
+  expect_error(curve_params(fake_group(), xform = 2), "xform must be a function")
 })
 
 test_that("a group fit returns one table with a level column", {
-  out <- parameters(fake_group())
+  out <- curve_params(fake_group())
   expect_equal(names(out)[1], "level")
   expect_equal(unique(out$level), c("a", "b"))
   expect_equal(nrow(out), 12L)
   # The draws form keeps the levels apart rather than binding them.
-  dr <- parameters(fake_group(), summary = FALSE)
+  dr <- curve_params(fake_group(), summary = FALSE)
   expect_named(dr, c("a", "b"))
   expect_named(dr$b, "nec4param")
 })
@@ -383,8 +383,8 @@ test_that("the scale is reported once for a group, not once per level", {
   # a twelve-level fit.
   tf <- transformed_x_fit(nec4param, "nec4param")
   gf <- fake_group(list(a = tf, b = tf, c = tf))
-  msgs <- capture_messages(parameters(gf))
+  msgs <- capture_messages(curve_params(gf))
   expect_equal(sum(grepl("transformed scale", msgs)), 1L)
   # And the option it is gated on is restored, so the next call reports again.
-  expect_message(parameters(tf), "transformed scale")
+  expect_message(curve_params(tf), "transformed scale")
 })
