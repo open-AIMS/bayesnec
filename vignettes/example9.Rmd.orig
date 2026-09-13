@@ -561,8 +561,7 @@ tail effective sample size miss.
 ```{r exmp9-chains, out.width = "90%", fig.asp = 0.75}
 # One equation is shown here as an example. check_chains() on the whole set
 # writes one page per model to a file, which is the form worth archiving.
-ms <- fit_screened$mod_stats
-check_chains(pull_out(fit_screened, model = ms$model[which.max(ms$wi)]))
+check_chains(pull_best(fit_screened))
 ```
 
 Each row is one parameter of the equation. The right column is the trace, one
@@ -609,24 +608,19 @@ concentration groups.
 
 Both checks are applied to the highest-weighted model of the screened set, which
 contributes most to the reported estimate and is therefore the one whose fit
-matters most. `pull_out()` extracts it as a `bayesnecfit`.
+matters most. `pull_best()` returns it as a `bayesnecfit`, and returns a
+`bayesnecfit` unchanged, so a set that the screen reduced to a single equation
+needs no separate handling.
 
-If the screen leaves a single model, `screen_models()` returns a `bayesnecfit`
-directly rather than a one-model set, so code that reads `$mod_stats` has to
-allow for it. That is documented behaviour rather than an edge case: a set of one
-is not a model average, and the object says so.
-
-```{r best-model}
-# A screened set reduced to one model is returned as a bayesnecfit rather than a
-# bayesmanecfit, and has no mod_stats -- see ?screen_models.
-best_fit <- if (inherits(fit_screened, "bayesmanecfit")) {
-  ms <- fit_screened$mod_stats
-  pull_out(fit_screened, model = ms$model[which.max(ms$wi)])
-} else {
-  fit_screened
-}
-best_fit$model
+```{r best-model, message = TRUE}
+best_fit <- pull_best(fit_screened)
 ```
+
+The weight is reported with the number of candidates it was selected from,
+because the two together are what say whether the selection means anything. The
+highest weight of a flat set of ten is little more than the equal share of 0.1,
+and one such equation describes the model-averaged estimate hardly at all. Read
+it against the weights `summary()` reported in step 2.
 
 `pp_check()` asks whether data simulated from the fitted model resemble the data
 observed. Pooled over the whole dataset the comparison is weak for
