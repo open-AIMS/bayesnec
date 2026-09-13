@@ -714,16 +714,25 @@
   equations estimate it would average over a different subset for each
   parameter, under weights computed for the whole set, so the rows contributing
   to one number would hold a different share of the set from the rows
-  contributing to the next. The stacking weight is reported beside each row
+  contributing to the next. The model weight is reported beside each row
   instead, and `summary = FALSE` returns the draws the table was computed from.
+
+  **Each block of a two-block fit is named under its own equation.** The
+  response and survival blocks of a `bnec(family = "hurdle_gamma")` fit need not
+  use the same equation --- that is what `model_survival` and `bnec_joint()`
+  select --- so the table has a `dpar` column and names each block's equation
+  separately. The survival equation is not recorded on the fitted object, so it
+  is recovered from the fitted formula, and is reported as `NA` where it cannot
+  be identified rather than being reported as the response block's.
 
   **`xform` applies to `nec` and `ec50` and to no other parameter.** Those two
   are measured on the predictor axis, so where `crf()` transforms the predictor
   inline they are on the transformed scale, as the values `nec()` and `ecx()`
-  return are. The others are response levels or shape parameters, on which a
-  transformation of the predictor has no meaning. Where the caller named a link
-  --- `bnec()` assigns `link = "identity"` otherwise --- `top` and `bot` are on
-  the link scale, and a message says so.
+  return are, and a message says so where `xform` was left at its default. The
+  others are response levels or shape parameters, on which a transformation of
+  the predictor has no meaning. The link of each block is reported in a `link`
+  column: `bnec()` assigns `link = "identity"`, and where a caller named one
+  instead, `top` and `bot` are on the link scale.
 
 - `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
   over-dispersion, alongside the median and the interval. It uses the whole

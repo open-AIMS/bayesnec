@@ -29,8 +29,7 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   }
   object <- add_criteria(object, loo_controls$fitting, ...)
   fit <- object$fit
-  extract_params <- c("top", "beta", "nec", "f",
-                      "bot", "d", "slope", "ec50")
+  extract_params <- extract_par_order()
   extracted_params <- lapply(extract_params, extract_pars, fit)
   names(extracted_params) <- gsub("^nec$", "ne", extract_params)
   grid <- prediction_grid(fit, formula, x_range = x_range,
@@ -176,6 +175,22 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     out <- c(out, list(hurdle = hurdle_parts))
   }
   out
+}
+
+#' The curve parameters, in the order they are appended to a bayesnecfit
+#'
+#' The same set as \code{curve_par_names()}, which \code{\link{parameters}}
+#' reports from, in a different order. The order is kept because the extracted
+#' elements are appended to the \code{\link{bayesnecfit}} in it, and anything
+#' indexing that object positionally would move if it changed;
+#' \code{test-parameters.R} asserts that the two vectors hold the same
+#' parameters, so a parameter added for a new equation cannot reach one and not
+#' the other.
+#'
+#' @return A \code{\link[base]{character}} vector.
+#' @noRd
+extract_par_order <- function() {
+  c("top", "beta", "nec", "f", "bot", "d", "slope", "ec50")
 }
 
 #' The grid predictions are made over

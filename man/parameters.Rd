@@ -29,37 +29,55 @@ return the summary table (the default) or the underlying posterior draws.}
 \item{xform}{A function applied to \code{nec} and \code{ec50}, and to no
 other parameter. See Details.}
 
-\item{...}{Unused.}
+\item{...}{Passed to the per-component and per-level calls by the
+\code{\link{bayesnechurdlefit}} and \code{\link{bayesnecgroupfit}} methods,
+and unused by the other two.}
 }
 \value{
 With \code{summary = TRUE}, a \code{\link[base]{data.frame}} with
-columns \code{model}, \code{wi}, \code{dpar}, \code{parameter},
+columns \code{model}, \code{wi}, \code{dpar}, \code{link}, \code{parameter},
 \code{Estimate}, \code{Q2.5} and \code{Q97.5}, ordered by decreasing
-\code{wi} and then by the canonical parameter order. \code{Estimate} is the
-posterior median and the interval is equal-tailed, which is what
-\code{\link[brms]{fixef}(robust = TRUE)} reports for the same fit and what
-\code{\link{nec}} returns for \code{nec}. \code{wi} is the
-stacking weight, and is 1 for a \code{\link{bayesnecfit}}, which is the
-whole of its own set. \code{dpar} is the \pkg{brms} distributional
-parameter the row belongs to: \code{"mu"} for every ordinary fit, and
-additionally \code{"hu"} or \code{"zi"} for a joint two-block fit from
-\code{bnec(family = "hurdle_gamma")} or \code{"zero_inflated_beta"}.
+\code{wi} and then by the parameter order given above.
+
+\code{Estimate} is the posterior median and the interval is equal-tailed,
+which is what \code{\link[brms]{fixef}(robust = TRUE)} reports for the same
+fit. For a single-block threshold fit the \code{nec} row is therefore the
+same number \code{\link{nec}} returns; for a two-block fit \code{nec()}
+returns the combined threshold rather than either block's, and for a
+\code{\link{bayesmanecfit}} it returns the model-averaged estimate, neither
+of which is a row here.
+
+\code{wi} is the model weight \code{\link{summary}} reports, under whichever
+method the set was weighted by --- pseudo-BMA unless \code{loo_controls}
+asked for stacking. It is 1 for a \code{\link{bayesnecfit}}, which is the
+whole of its own set.
+
+\code{dpar} is the \pkg{brms} distributional parameter the row belongs to:
+\code{"mu"} for every ordinary fit, and additionally \code{"hu"} or
+\code{"zi"} for a joint two-block fit from
+\code{bnec(family = "hurdle_gamma")} or \code{"zero_inflated_beta"}. The two
+blocks of such a fit need not use the same equation --- see the
+\code{model_survival} argument of \code{\link{bnec}} --- so \code{model}
+names each block's own equation, and is \code{NA} for a second block whose
+equation cannot be identified from the fitted formula.
 
 With \code{summary = FALSE}, a named \code{\link[base]{list}} with one
 element per equation, each a draws-by-parameter
 \code{\link[base]{matrix}}. A two-block fit names the second block's columns
 with the distributional parameter, as \code{hu_top}; a single-block fit has
-no prefixed columns. A \code{\link{bayesnecgroupfit}} returns a list of
-those lists, one per level, because there is no column to keep the levels
-apart in a matrix of draws.
+no prefixed columns. For a \code{\link{bayesmanecfit}} these are each
+equation's own draws in full, not the weighted subset
+\code{\link{nec}(posterior = TRUE)} returns, so they should not be pooled. A
+\code{\link{bayesnecgroupfit}} returns a list of those lists, one per level,
+because a matrix of draws has no column to keep the levels apart.
 
-A \code{\link{bayesnechurdlefit}} returns one such object per component,
-as \code{\link{rhat}} and \code{\link{check_sampling}} do, because the two
+A \code{\link{bayesnechurdlefit}} returns one such object per component, as
+\code{\link{rhat}} and \code{\link{check_sampling}} do, because the two
 components are separate fits with separate parameters and the combined
 endpoint is not a curve with parameters of its own. A
-\code{\link{bayesnecgroupfit}} returns one table for the whole group, with
-a leading \code{level} column, matching \code{\link{nec}} and
-\code{\link{ecx}} on that class.
+\code{\link{bayesnecgroupfit}} returns one table for the whole group, with a
+leading \code{level} column and sorted by level before weight, matching
+\code{\link{nec}} and \code{\link{ecx}} on that class.
 }
 \description{
 Reports the parameters of the concentration-response equation itself ---
@@ -77,6 +95,13 @@ is the control level the whole curve is referenced to, \code{bot} the
 asymptote a \code{"relative"} ECx is measured against, and \code{beta} the
 decay rate.
 
+\bold{Only the parameters of the equation are reported.} The family's own
+dispersion parameter is \code{\link{dispersion}}'s and \code{summary}'s, and
+a group-level term's standard deviation, its per-level deviations and the
+\code{ogl} offset are not parameters of the curve. Use
+\code{\link[brms]{fixef}} or \code{\link[brms]{as_draws_df}} on
+\code{\link{pull_brmsfit}(x)} for those.
+
 \bold{The estimates are per equation and are not averaged across the set.}
 The equations of a set do not share a parameter list: \code{ecxexp} has no
 \code{bot}, the three-parameter equations have no \code{d}, and only the
@@ -85,26 +110,27 @@ parameter over whichever equations happen to estimate it would average over
 a different subset for each parameter, using weights that were computed for
 the whole set, so the weights of the rows contributing to one number would
 not sum to 1 and would sum to something different for the next number. The
-stacking weight is reported beside each row instead, so a reader can see
-what share of the model average each curve holds, and no quantity is
-reported that the weights do not support. See \code{\link{average_estimates}}
-for the estimates that are averaged.
+model weight is reported beside each row instead, so a reader can see what
+share of the model average each curve holds, and no quantity is reported
+that the weights do not support. See \code{\link{average_estimates}} for the
+estimates that are averaged.
 
 \bold{This is not the \code{parameters()} of the \pkg{parameters}
-package.} That one is an alias for \code{model_parameters()} and describes
-a regression's coefficient table; this one returns the parameters of a
+package.} That one dispatches \code{model_parameters()} and describes a
+regression's coefficient table; this one returns the parameters of a
 concentration-response equation. Neither package attaches the other, so the
-two meet only where a session attaches both, and there the later attachment
-wins: qualify the call as \code{bayesnec::parameters()} or
-\code{parameters::parameters()} to say which is meant.
+two meet only in a session that attaches both, and there the package
+attached later supplies the definition: qualify the call as
+\code{bayesnec::parameters()} or \code{parameters::parameters()} to say
+which is meant.
 
 \bold{The parameters are on the scale the model was fitted on.}
 \code{\link{bnec}} assigns \code{link = "identity"}, so \code{top} and
 \code{bot} are on the response scale for every fit that did not name a link
 of its own. Where a link was named, \pkg{brms} applies its inverse to the
 whole non-linear expression, so \code{top} and \code{bot} are on the link
-scale; the returned object records the link in its \code{"link"} attribute
-and a message names it.
+scale. The link of each block is reported in the \code{link} column, and a
+message names any that is not the identity.
 
 \bold{\code{xform} applies to \code{nec} and \code{ec50} only.} Those two
 are measured on the predictor axis, so where \code{crf()} transforms the
@@ -112,7 +138,10 @@ predictor inline --- \code{crf(sqrt(x), ...)} --- they are on the
 transformed scale, exactly as \code{\link{nec}} and \code{\link{ecx}} are,
 and \code{xform} is the inverse that brings them back. Every other
 parameter is a response level or a shape parameter and is not on the
-predictor axis at all, so \code{xform} is not applied to it.
+predictor axis at all, so \code{xform} is not applied to it. Where the
+predictor is transformed inline and \code{xform} was left at
+\code{identity}, a message says which parameters are on the transformed
+scale.
 }
 \examples{
 library(bayesnec)
