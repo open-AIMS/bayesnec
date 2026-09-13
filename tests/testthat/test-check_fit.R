@@ -13,9 +13,12 @@
 # handed --- every one reads it. A test that needs to modify one must build its
 # own.
 #
-# Whichever block runs first pays for the build, so each accessor is called as
-# the first statement after skip_on_cran() in every block that uses it. No block
-# can then skip while another still needs the table.
+# Whichever block runs first pays for the build, so the invariant that matters is
+# that every block reading an accessor carries the same skip guard: if one of
+# them can skip, all of them can, and none is left needing a table that was
+# never built. Calling the accessor as the first statement after skip_on_cran()
+# is the convention that makes this visible at a glance; it is not the invariant
+# itself, and a block that grows a second guard has to keep the first one true.
 nec4param_checkfit_g4 <- local({
   cached <- NULL
   function() {

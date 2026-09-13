@@ -115,9 +115,11 @@ jobs:
       # testthat:::default_num_cpus() reads getOption("Ncpus"), then
       # TESTTHAT_CPUS, and returns 2 if neither is set. Neither was set here, so
       # every job ran two workers whatever the runner provided, and the test
-      # suite is very nearly the whole check. The measurements are in #328 and in
-      # run 34740649976 rather than here, because a figure in a comment goes
-      # stale while an issue keeps its date and its run id.
+      # suite is very nearly the whole check. The measurements are in #328 rather
+      # than here, because a figure in a comment goes stale while an issue keeps
+      # its date and its run id. Run 34740649976 is the one that took a worker
+      # per core and motivated the backoff below; it does not measure this
+      # setting.
       #
       # Four decisions, which are the durable part.
       #
@@ -132,14 +134,20 @@ jobs:
       # what it found and what it chose, so the basis is in the log.
       #
       # One fewer than the cores, never fewer than two and never more than four.
-      # A worker per core measured worse than this: each worker spawns its own
-      # compiler for every Stan program, so claiming every core leaves nothing
-      # for those children or for the parent check process, and the one run that
-      # tried it inflated CPU on ubuntu-release and lost ubuntu-devel mid-phase.
+      # A worker per core measured worse: on ubuntu-latest (release) the test
+      # phase went from a 41-51 minute CPU range to 62 while elapsed fell only to
+      # 19 from 22-26. No mechanism is asserted for that here, because none has
+      # been established -- a worker blocks in system() while its compiler runs,
+      # so compiling workers are not additional runnable processes. What the
+      # figure does establish is that there was no headroom at one worker per
+      # core, and one core is left free for that reason.
+      #
       # Two is the floor because two is what testthat would have used unasked, so
-      # a small or unreadable runner falls back to the behaviour this step
-      # replaces rather than to something slower. Four is an upper bound against
-      # a future larger runner; nothing in this matrix reaches it.
+      # a one- or two-core runner reproduces the behaviour this step replaces
+      # rather than dropping below it. Four is an upper bound against a future
+      # larger runner and now needs five cores to bind, so nothing in this matrix
+      # reaches it; it is deliberately not derived from memory, which is not
+      # observable here before the fact.
       #
       # detectCores() returns NA where it cannot determine the count, and NA
       # reaches testthat as the string "NA" and aborts the whole test phase with
