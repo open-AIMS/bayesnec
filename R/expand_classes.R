@@ -78,12 +78,16 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
     if (n_missing > 0) {
       # Names the equation. bnec() calls this once per model, so on the default
       # 23-model set an unnamed message says only that something somewhere is
-      # censored, which is not enough to act on.
+      # censored, which is not enough to act on. It names the bound as a value
+      # rather than as "the highest concentration tested", which is the top of
+      # the prediction grid and is a higher concentration than any tested
+      # wherever bnec() was given an x_range above the data.
       message("The fitted ", object$model, " curve does not fall to the ",
               "control's ", sig_val, " quantile within the predictor range ",
               "for ", n_missing, " of ", length(out), " draws. Those draws ",
               "are excluded from the NSEC summary, which is therefore ",
-              "censored above the highest concentration tested.")
+              "censored above ",
+              signif(sub_x_transformation(max(pred_data$x), formula), 3), ".")
     }
     sub_x_transformation(out, formula)
   }
