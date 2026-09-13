@@ -14,7 +14,17 @@ on:
   push:
     branches: [master, dev]
   pull_request:
+  # The worker count is computed on the runner, which means it cannot be varied
+  # for measurement without editing this file -- and editing it changes the tree
+  # being measured. The input exists so one setting can be held while everything
+  # else stays fixed. Blank means "use the computed value", so an ordinary push or
+  # pull_request run takes exactly the same path it would without the input.
   workflow_dispatch:
+    inputs:
+      testthat_cpus:
+        description: 'testthat worker count; blank uses the value computed from the runner'
+        required: false
+        default: ''
 
 # Supersede rather than queue. Pushing a correction to a branch whose check is
 # still running made both run to completion, and only the second was ever read.
@@ -109,6 +119,70 @@ jobs:
       - name: Use Cmdstan to Fix
         run: |
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
+        shell: Rscript {0}
+
+      # testthat runs two worker processes unless told otherwise:
+      # testthat:::default_num_cpus() reads getOption("Ncpus"), then
+      # TESTTHAT_CPUS, and returns 2 if neither is set. Neither was set here, so
+      # every job ran two workers whatever the runner provided, and the test
+      # suite is very nearly the whole check. The measurements are in #328 rather
+      # than here, because a figure in a comment goes stale while an issue keeps
+      # its date and its run id. Run 34740649976 is the one that took a worker
+      # per core and motivated the backoff below; it does not measure this
+      # setting.
+      #
+      # Four decisions, which are the durable part.
+      #
+      # Set here and not in DESCRIPTION. CRAN runs its checks within two cores
+      # and testthat's default already gives that, so raising the count is a
+      # property of these runners rather than of the package. --as-cran does not
+      # decide it either way: it sets _R_CHECK_LIMIT_CORES_, which is read by
+      # parallelly and future, not by base R or testthat.
+      #
+      # Read from the runner rather than written as a constant, so a change to
+      # the hosted runner sizes is followed instead of ignored. The step prints
+      # what it found and what it chose, so the basis is in the log.
+      #
+      # One fewer than the cores, never fewer than two and never more than four.
+      # A worker per core measured worse: on ubuntu-latest (release) the test
+      # phase went from a 41-51 minute CPU range to 62 while elapsed fell only to
+      # 19 from 22-26. No mechanism is asserted for that here, because none has
+      # been established -- a worker blocks in system() while its compiler runs,
+      # so compiling workers are not additional runnable processes. What the
+      # figure does establish is that there was no headroom at one worker per
+      # core, and one core is left free for that reason.
+      #
+      # Two is the floor because two is what testthat would have used unasked, so
+      # a one- or two-core runner reproduces the behaviour this step replaces
+      # rather than dropping below it. Four is an upper bound against a future
+      # larger runner and now needs five cores to bind, so nothing in this matrix
+      # reaches it; it is deliberately not derived from memory, which is not
+      # observable here before the fact.
+      #
+      # detectCores() returns NA where it cannot determine the count, and NA
+      # reaches testthat as the string "NA" and aborts the whole test phase with
+      # "`TESTTHAT_CPUS` must be an integer" -- naming the variable and not the
+      # step that set it. Hence the explicit branch: neither min() nor max()
+      # excludes NA.
+      - name: Set the testthat worker count from the runner
+        env:
+          WORKER_OVERRIDE: ${{ github.event.inputs.testthat_cpus }}
+        run: |
+          cores <- parallel::detectCores(logical = TRUE)
+          workers <- if (is.na(cores)) 2L else max(2L, min(as.integer(cores) - 1L, 4L))
+          override <- Sys.getenv("WORKER_OVERRIDE", "")
+          if (nzchar(override)) {
+            workers <- as.integer(override)
+            if (is.na(workers) || workers < 1L) {
+              stop("testthat_cpus must be a positive integer, not '", override, "'")
+            }
+            cat("detected", cores, "cores; overridden to", workers,
+                "testthat workers by workflow_dispatch\n")
+          } else {
+            cat("detected", cores, "cores; using", workers, "testthat workers\n")
+          }
+          cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
+              file = Sys.getenv("GITHUB_ENV"), append = TRUE)
         shell: Rscript {0}
 
       # Vignettes ARE built and checked. They are precompiled -- precompile.R
