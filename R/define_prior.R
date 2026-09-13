@@ -95,9 +95,10 @@ positive_scale <- function(response, probs) {
 #'   \item \strong{Spread.} \code{regularizing_factor} times the standard
 #'     deviation of the \code{"uninformative"} prior for the same parameter on
 #'     the same family, floored at the standard error of the location and capped
-#'     at the uninformative width. For \code{nec} and \code{ec50} the factor is
-#'     \code{regularizing_predictor_factor} instead, for the reason recorded
-#'     there.
+#'     at the uninformative width. \code{nec} and \code{ec50} are not derived
+#'     from the \code{"uninformative"} spread at all. Their width is stated
+#'     directly, as the width whose central 98\% interval reaches the farthest
+#'     concentration tested, for the reason \code{predictor_prior()} records.
 #' }
 #'
 #' \strong{The two halves are not measured on the same thing, and that is
@@ -171,32 +172,6 @@ positive_scale <- function(response, probs) {
 #'
 #' @noRd
 regularizing_factor <- 0.4
-
-#' The factor by which the regularizing set narrows the nec and ec50 prior
-#'
-#' The response-scaled entries are narrowed by \code{regularizing_factor}. The
-#' predictor-scaled entry is not, and cannot be: its width is not a free choice.
-#' \code{predictor_prior()} sets it to the smallest width whose central 95\%
-#' interval still reaches the farthest concentration tested, and #302 exists
-#' because the entry it replaced did not reach it. Narrowing that width by 0.4
-#' puts the true threshold outside the central 95\% of the prior in 8 of the 30
-#' design by transform by parameter cells of the audit, against none at 0.8 and
-#' 2 at 0.75. The room to narrow is therefore the difference between covering
-#' the series at one confidence level and covering it at another, and that is
-#' how the two entries differ: the central 95\% interval reaches the farthest
-#' concentration under \code{"uninformative"} and the central 98\% interval
-#' does under \code{"regularizing"}.
-#'
-#' That argument is about the lognormal branch, whose width is derived from the
-#' series. On the branch for a predictor the user has already logged the width
-#' is \code{10 * sd(z)}, a constant Fisher et al. (2024) state rather than one
-#' derived from coverage, so the argument does not carry to it. The same factor
-#' is applied there, and the justification is the measurement rather than the
-#' derivation: the 30 cells above include the log-transformed designs, and a
-#' factor of 0.4 fails on them as well.
-#'
-#' @noRd
-regularizing_predictor_factor <- qnorm(0.975) / qnorm(0.99)
 
 #' Standard deviation of a beta distribution
 #'
@@ -864,14 +839,107 @@ regularizing_entry <- function(branch, location, uninformative_sd,
 #' set from half the range. See #302.
 #'
 #' \strong{prior_type.} The two default sets differ in the spread of this
-#' prior and in nothing else: \code{"regularizing"} multiplies \code{sigma} by
-#' \code{regularizing_predictor_factor}, leaving the location, the distribution
-#' and the truncation as they are. Until #305 the entry was identical under
-#' both sets, which made \code{prior_type} inert for the two parameters a user
-#' most often reaches for the narrower set because of. The prior remains
-#' truncated to \code{[min(predictor), max(predictor)]}, so narrowing it
+#' prior and in nothing else; the location, the distribution and the truncation
+#' are the same under both. The spread is stated as a coverage rule on each
+#' branch rather than as a multiple of the \code{"uninformative"} entry. Under
+#' \code{"regularizing"} it is \code{half_width / qnorm(0.99)} on both, so the
+#' central 98\% interval reaches the farthest concentration tested, against the
+#' central 95\% under \code{"uninformative"} on the lognormal branch. The prior
+#' remains truncated to \code{[min(predictor), max(predictor)]}, so narrowing it
 #' concentrates mass in the interior of the tested series and excludes no part
 #' of it.
+#'
+#' \strong{Why the spread is not narrowed by regularizing_factor.} The
+#' response-scaled entries are narrowed by \code{regularizing_factor}. This one
+#' is not, and cannot be: its width is not a free choice, and #302 exists
+#' because the entry it replaced did not reach the farthest concentration
+#' tested. Narrowing the width by 0.4 puts the true threshold outside the
+#' central 95\% of the prior in 8 of the 30 design by transform by parameter
+#' cells of the audit, against none at 0.8 and 2 at 0.75. The room to narrow is
+#' therefore the difference between covering the series at one confidence level
+#' and covering it at another. 0.99 is the level chosen because it is the one a
+#' user supplying concentrations as recorded already receives, and because the
+#' audit's log-transformed cells stop staying inside the central 95\% of their
+#' own prior just above it: the \code{log_unit} \code{ec50} cell crosses 0.975
+#' at \code{q} of 0.9905, and sits at 0.9823 at 0.995 and 0.9929 at 0.999. The
+#' margin at 0.99 is not large --- that cell sits at 0.9743 --- so a narrower
+#' entry is a change to the gate, not only to the spread.
+#'
+#' \strong{Why the rule is stated rather than applied as a factor.} Until #305
+#' the entry was identical under both sets, which made \code{prior_type} inert
+#' for the two parameters a user most often selects the narrower set for. #305
+#' multiplied the spread by \code{qnorm(0.975) / qnorm(0.99)}, which is 0.8425.
+#' On the lognormal branch the \code{qnorm(0.975)} cancels and the product is
+#' the coverage rule above, so that branch is unchanged by #314. The two
+#' expressions are the same quantity but not always the same double: the factor
+#' form rounds three times and the stated form once, which bounds the difference
+#' at about two units in the last place. One is what is observed. Measured over
+#' 200,000 randomly generated dilution series the largest relative difference
+#' was 2.22e-16, exactly one ulp, and the 15 significant digits
+#' \code{paste0()} writes differed on 1.6\% of them. Two prior strings of the
+#' audit are affected, both of them the nassarius contaminant A series: read on
+#' the recorded scale sigma is 1.93333703285197 against 1.93333703285198, and on
+#' the square-root scale 0.966668516425987 against 0.966668516425988. That is
+#' four of the 30 cells, since \code{nec} and \code{ec50} share a string.
+#' On the branch for a predictor the user has already
+#' logged it does not cancel, because the spread there is the constant
+#' \code{10 sd(z)} rather than a coverage width. On a 0.1 to 100 series over
+#' seven doses that spread is 24.87 against a tested range of 6.91 on the log
+#' scale. The prior is then all but flat over that range: the ratio of its
+#' density at one end of the series to its density at the other is 1.000588 at
+#' a spread of 24.87 and 1.000829 at 0.8425 of it, against 1.1737 under the
+#' stated rule. Measured on that series, the
+#' truncated prior CDF at the doses 0.3, 1, 3, 10 and 30 is 0.158, 0.333, 0.492,
+#' 0.667 and 0.827 under #305, which are the positions of those doses within the
+#' range and so are what a uniform prior gives, and 0.052, 0.226, 0.499, 0.793
+#' and 0.945 under the stated rule. \code{prior_type} was therefore inert for
+#' these two parameters on one of the two routes.
+#'
+#' Two consequences of stating the rule this way are worth recording. The
+#' branch is selected by \code{min(u) < 0}, not by the user having logged the
+#' predictor, so every predictor that spans negative values now receives a prior
+#' with 98\% of its mass inside the tested range where it previously received
+#' \code{10 sd(z)} narrowed by 0.8425. That is the intended change for a logged
+#' concentration series and is unaudited for any other predictor that reaches
+#' below zero. And the rule is now one statement on both branches under
+#' \code{"regularizing"} but not under \code{"uninformative"}, so how much
+#' \code{prior_type} narrows this entry still depends on the route: a factor of
+#' 0.8425 where concentrations are supplied as recorded, and about sixteenfold
+#' on the series measured above where they are supplied logged.
+#'
+#' The two routes now agree on the spread where the series has no zero control
+#' \emph{and} its lowest tested concentration is below 1. Both conditions are
+#' needed, and neither is a property of the rule: they are the conditions under
+#' which the two routes describe the same predictor at all.
+#'
+#' The zero control is the first. This branch drops non-positive values through
+#' \code{u[u > 0]}, while a user who logs the series must substitute something
+#' for the zero first and that substituted value is then read. On
+#' \code{c(0, 0.1, 0.3, 1, 3, 10, 30, 100)} with the usual half-lowest-dose
+#' substitution the entries are \code{lognormal(1.0986, 1.5073)} and
+#' \code{normal(0.5493, 1.7434)}.
+#'
+#' The lowest concentration is the second, and follows from the discriminator
+#' rather than from the data. \code{spans_negative} is \code{min(u) < 0}, so a
+#' logged series whose lowest tested concentration is at or above 1 stays
+#' non-negative, is not recognised as logged, and is logged a second time.
+#' Measured on three series none of which has a zero control, under
+#' \code{"regularizing"}: 0.1 to 100 over seven doses gives
+#' \code{lognormal(1.0986, 1.5073)} and \code{normal(1.0986, 1.5073)}, which
+#' agree; 1 to 1000 gives \code{lognormal(3.4539, 1.4847)} and
+#' \code{lognormal(1.3833, 0.5341)}; 10 to 10000 gives
+#' \code{lognormal(5.7565, 1.4847)} and \code{lognormal(1.7503, 0.3939)}. The
+#' location differs as well as the spread.
+#'
+#' The discriminator is not corrected here, for the reason the comment on
+#' \code{spans_negative} records and because correcting it would change the
+#' \code{"uninformative"} entry for those users as well, which #314 excludes.
+#' The remaining error is also second-order against what this entry fixes: on
+#' the 10 to 10000 series supplied logged the misclassified regularizing prior
+#' still has its mode inside the tested range, at 4.94 against a series median
+#' of 5.76, and \code{prior_type} still narrows it. What is removed here is an
+#' entry that was uniform across the tested range and on which \code{prior_type}
+#' did nothing at all. See #314.
 #'
 #' @param predictor A \code{\link[base]{numeric}} vector, the predictor as it
 #' was supplied.
@@ -897,18 +965,19 @@ predictor_prior <- function(predictor, prior_type = "uninformative") {
          call. = FALSE)
   }
   mu <- median(z)
+  # The larger of the two half-widths, not half the range. Setting sigma from
+  # the range alone gives the interval the right width and the wrong centre
+  # wherever the series is not symmetric about its median on the log axis, and
+  # the interval then stops short of one end: on the nassarius contaminant A
+  # series it reached 9.96 against a highest dose of 20, which is the defect
+  # #302 exists to remove.
+  half_width <- max(mu - min(z), max(z) - mu)
   if (spans_negative) {
     dist <- "normal"
     sigma <- sd(z) * 10
   } else {
     dist <- "lognormal"
-    # The larger of the two half-widths, not half the range. Setting sigma from
-    # the range alone gives the interval the right width and the wrong centre
-    # wherever the series is not symmetric about its median on the log axis, and
-    # the interval then stops short of one end: on the nassarius contaminant A
-    # series it reached 9.96 against a highest dose of 20, which is the defect
-    # #302 exists to remove.
-    sigma <- max(mu - min(z), max(z) - mu) / qnorm(0.975)
+    sigma <- half_width / qnorm(0.975)
   }
   # Both branches degenerate on a single distinct value -- a single distinct
   # positive value, on the lognormal branch. sd() is NA there and both
@@ -917,17 +986,28 @@ predictor_prior <- function(predictor, prior_type = "uninformative") {
   if (!is.finite(sigma) || sigma <= 0) {
     sigma <- 1
   } else if (prior_type == "regularizing") {
-    # A narrowing of its own, not regularizing_factor. See
-    # regularizing_predictor_factor for why this entry has so little room: its
-    # width is set by the requirement that the prior reach every concentration
-    # tested, so the only room to narrow is the confidence level at which it
-    # does so.
+    # Stated as a coverage rule rather than as a factor, so that the two prior
+    # sets differ by the confidence level at which the prior reaches the
+    # farthest concentration tested and by nothing else: the central 95%
+    # interval reaches it under "uninformative" on the lognormal branch and the
+    # central 98% does under "regularizing" on both. Expressing it as a multiple
+    # of the uninformative spread instead meant one thing on each branch, and on
+    # the branch for a predictor the user had already logged -- where the
+    # uninformative spread is the constant 10 sd(z) rather than a coverage
+    # width -- it left a prior that is uniform to three decimal places over the
+    # tested range. See #314 for the measurements.
+    #
+    # The guard above covers this branch as well as the uninformative one. Both
+    # spreads are positive and finite on exactly the same designs: sd(z) is so
+    # only where z has two or more distinct finite values, which is also when
+    # half_width is, and the lognormal spread is a positive multiple of
+    # half_width.
     #
     # Applied after the degenerate fallback and not to it. A fallback stands in
     # for a scale that could not be measured, and narrowing it would state a
     # precision that nothing in the data supports; define_group_prior() leaves
     # its own fallback unnarrowed for the same reason.
-    sigma <- sigma * regularizing_predictor_factor
+    sigma <- half_width / qnorm(0.99)
   }
   paste0(dist, "(", mu, ", ", sigma, ")")
 }

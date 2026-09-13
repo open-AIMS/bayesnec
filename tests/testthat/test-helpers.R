@@ -295,3 +295,58 @@ test_that("to_axis_scale carries the estimate's attributes through", {
   # An unidentified draw stays NA rather than being interpolated to an endpoint.
   expect_true(is.na(to_axis_scale(c(log(50), NA), b_log, f_log, raw)[2]))
 })
+
+test_that("define_loo_controls always names a weighting method", {
+  # The documented default is pseudo-BMA. Every route that assembles a model
+  # set passes through here, so a missing method at this point is what reaches
+  # loo::loo_model_weights(), which resolves it to stacking. See #320.
+  expect_equal(bayesnec:::define_loo_controls(family_str = "gaussian"),
+               list(fitting = list(), weights = list(method = "pseudobma")))
+  expect_equal(
+    bayesnec:::define_loo_controls(list(), "gaussian")$weights$method,
+    "pseudobma"
+  )
+  expect_equal(
+    bayesnec:::define_loo_controls(list(weights = list()),
+                                   "gaussian")$weights$method,
+    "pseudobma"
+  )
+  # Named but NULL, which is what a caller preserving an unknown method used to
+  # pass. match.arg() reads that as loo's own first choice, so it is treated as
+  # unspecified rather than passed on.
+  expect_equal(
+    bayesnec:::define_loo_controls(list(weights = list(method = NULL)),
+                                   "gaussian")$weights$method,
+    "pseudobma"
+  )
+  # An explicit request is never overridden.
+  expect_equal(
+    bayesnec:::define_loo_controls(list(weights = list(method = "stacking")),
+                                   "gaussian")$weights$method,
+    "stacking"
+  )
+  # Other elements of weights survive alongside the injected method.
+  ctrl <- bayesnec:::define_loo_controls(
+    list(fitting = list(pointwise = FALSE), weights = list(BB = FALSE)),
+    "gaussian"
+  )
+  expect_equal(ctrl$weights, list(BB = FALSE, method = "pseudobma"))
+  expect_equal(ctrl$fitting, list(pointwise = FALSE))
+})
+
+test_that("weights_controls distinguishes an unknown method from a named one", {
+  expect_equal(bayesnec:::weights_controls(NULL), list())
+  expect_equal(bayesnec:::weights_controls("stacking"),
+               list(method = "stacking"))
+})
+
+test_that("fit_weights_method reads only what a fit records", {
+  expect_equal(bayesnec:::fit_weights_method(manec_example), "pseudobma")
+  # A bayesnecfit has no weights, so it records no method. NULL means unknown,
+  # not pseudo-BMA, which is why the callers pass it through
+  # weights_controls().
+  expect_null(bayesnec:::fit_weights_method(nec4param))
+  stripped <- manec_example
+  attr(stripped$mod_stats$wi, "method") <- NULL
+  expect_null(bayesnec:::fit_weights_method(stripped))
+})

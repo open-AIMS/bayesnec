@@ -54,10 +54,16 @@ interpolated NOEC value from smooth ECx curves.}
 ("fitting" and/or "weights"), each being a named \code{\link[base]{list}}
 containing the desired arguments to be passed on to \code{\link[brms]{loo}}
 (via "fitting") or to \code{\link[loo]{loo_model_weights}} (via "weights").
-If "weights" is
-not provided by the user, \code{\link{bnec}} will set the default
-\code{method} argument in \code{\link[loo]{loo_model_weights}} to
-"pseudobma". See ?\code{\link[loo]{loo_model_weights}} for further info.}
+If no \code{method} is named in "weights", \pkg{bayesnec} sets the
+\code{method} argument of \code{\link[loo]{loo_model_weights}} to
+"pseudobma", whichever function assembles the model set.
+\code{\link{amend}} and \code{update} operate on an existing set and keep
+the method that set was built with, unless the caller names another.
+\code{\link{pull_out}} takes no weighting method at all: it reports and
+ignores one given in "weights" and always keeps the set's own.
+\code{\link[base]{c}} and \code{+} take no \code{loo_controls} argument;
+see \code{\link{c.bnecfit}} for how they decide the method. See
+?\code{\link[loo]{loo_model_weights}} for further info.}
 
 \item{x_var}{Removed in version 2.0. Use formula instead. Used to be a
 \code{\link[base]{character}} indicating the column heading
@@ -99,10 +105,16 @@ in Fisher et al. 2024) or \code{"regularizing"} (narrower priors, with the
 no-effect \code{top} parameter placed at the mean response over the lowest
 concentrations tested and \code{bot} at the mean over the highest). The
 regularizing set narrows the response-scaled and group-level priors to 0.4 of
-the width of the uninformative set, and the \code{nec} and \code{ec50} prior
-to 0.84 of it; see \code{vignette("example3")} for why the two factors
-differ. Ignored when priors are supplied directly via the \code{prior}
-argument.}
+the width of the uninformative set. The \code{nec} and \code{ec50} prior is
+not derived from that width at all: its spread is the one whose central 98\\%
+interval reaches the farthest concentration tested. Under
+\code{"uninformative"} that prior is the one Fisher et al. (2024) describe,
+which is a coverage width at the 95\\% level where concentrations are supplied
+as recorded and the constant \code{10 sd(x)} where the predictor is supplied
+already logged, so how much narrower the regularizing entry is depends on
+which of the two the data are on. See \code{vignette("example3")} for why the
+two rules differ. Ignored when priors are supplied directly via the
+\code{prior} argument.}
 
 \item{timeout}{A positive \code{\link[base]{numeric}} giving the maximum
 number of seconds allowed for fitting any single model, passed to
@@ -432,6 +444,143 @@ posterior predictions, with weights derived using functions
 \pkg{brms}. Argument to both these functions can be passed via the
 \code{loo_controls} argument. Individual model fits can be pulled out
 for examination using function \code{\link{pull_out}}.
+
+\bold{Fitting a model set in parallel}
+
+A model set is fitted one model at a time by default, which is what every
+earlier version did. Fitting the models at the same time is asked for by
+setting a \pkg{future} plan before the call, and \code{\link{bnec}} then
+uses it:
+
+\preformatted{
+library(future)
+plan(multisession, workers = 4)
+fit <- bnec(y ~ crf(x, model = "decline"), data = my_data, seed = 17)
+plan(sequential)
+}
+
+There is no \code{cores} or \code{parallel} argument, because the plan
+already holds that state and two ways of setting it would disagree. The
+\pkg{future} and \pkg{future.apply} packages are Suggests: with either
+absent, or with no plan set, the models are fitted in sequence exactly as
+before. \code{\link{amend}} uses the plan in the same way, over the models
+it has to fit rather than over the whole set.
+
+Each model samples its chains in sequence inside its worker.
+\code{\link[brms]{brm}} parallelises across chains on its own account, and
+models in parallel on top of that would ask for \code{workers x chains}
+processes, which on most machines is slower than fitting in sequence. Under
+a parallel plan of more than one worker \code{\link{bnec}} therefore passes
+\code{cores = 1} to \code{\link[brms]{brm}}. Nest the two levels
+deliberately by passing \code{cores} yourself, which is left alone:
+\code{bnec(..., cores = 2)} with \code{workers = 4} runs four worker
+processes sampling eight chains between them.
+
+\pkg{future} sets \code{mc.cores} to 1 inside a worker of its own accord,
+so a value set in your profile does not in fact reach \pkg{brms} there --
+measured at 1 under \code{multisession}, \code{multicore} and
+\code{cluster} with \code{options(mc.cores = 7)} in
+\code{R_PROFILE_USER}. The \code{cores = 1} above is therefore belt and
+braces rather than the only thing standing between you and sixteen
+processes. It is kept because it makes what \pkg{brms} is asked to do a
+property of this package rather than of \pkg{future}'s internals.
+
+A plan that names a parallel strategy but resolves to a single worker is
+clamped in neither respect, and \code{\link{bnec}} says which case it is
+in. \code{plan(multicore)} resolves that way wherever forking is
+unavailable, which is Windows, and \pkg{RStudio} or \pkg{Positron} on
+Linux and macOS; \code{plan(multisession)} works everywhere. A
+\code{cluster} plan naming one node also reports one worker, and there the
+fitting does happen in another process.
+
+Each fitted model reproduces exactly under a parallel plan, given the
+same \code{seed} passed on to \code{\link[brms]{brm}}, and that is tested.
+Without a \code{seed} the initial-value search reseeds from entropy and
+nothing repeats under either plan, which is what this package does today
+with or without one.
+
+The model-averaged quantities are the exception, and the reason needs
+stating because nothing announces it. Once the models are fitted,
+\code{expand_manec()} draws a seed from the session's RNG stream and uses it
+to decide which posterior draws each equation contributes to the averaged
+estimate. Fitted in sequence the loop advances that stream, because
+\code{set.seed(seed)} and the initial-value search it governs run in this
+process, and the state the draw is taken from is therefore fixed by
+\code{seed}. Under a parallel plan the loop leaves the stream alone. The
+averaged \code{nec}, its interval and the stored prediction grid therefore
+differ between the two plans -- as two valid realisations of the same
+weighting, not as one being wrong.
+
+Two consequences follow from that, and they are properties of the plan
+rather than of where the fitting happened, so they hold for a parallel plan
+that resolves to a single worker as much as for one with eight.
+\code{set.seed()} in your session before the call fixes the averaging draw,
+which is what \code{expand_manec()} intends it to answer to, so two parallel
+runs agree. And a parallel call does not move your session's RNG stream on,
+where a sequential one does; if you are drawing from that stream after the
+fit, the two plans leave you in different places.
+
+Supplying \code{init} yourself skips the search altogether. With a
+\code{seed} supplied as well, a sequential run then does not advance the
+stream either, and its averaging draw answers to your session's seed in the
+same way a parallel run's does. The \code{seed} is what makes that second
+part true: \pkg{brms} defaults it to \code{NA} and \pkg{rstan} then draws
+one itself, from your stream, once per \code{\link[brms]{brm}} call.
+
+Console output from a worker is not ordered. The per-model
+messages \code{\link{bnec}} emits come from a worker process and arrive
+out of order, or not at all, depending on the backend. A model that fails
+is still recorded as an \code{NA} entry, the remaining models still fit, and
+\code{\link{failed_models}} reports what happened, so nothing is lost
+beyond the running commentary. \code{timeout} continues to apply per model
+inside its worker.
+
+One failure is not caught that way. A worker killed from outside R, which in
+practice means the operating system reclaiming memory, cannot raise a
+condition for \code{try()} to catch, and \pkg{future} reports it in the
+parent as an error that ends the whole call rather than one model of it.
+Fewer workers is the remedy, and it is the reason to think about how many
+before setting a plan: memory, not cores, is usually what binds on a set of
+this kind.
+
+Each model is sent to a worker with the data, the formula, the priors and
+the \pkg{brms} arguments, and nothing else \code{\link{bnec}} or
+\code{\link{amend}} has built -- in particular not the fits an
+\code{\link{amend}} call already holds. \pkg{future} refuses to export
+more than 500 MiB by default and says so, naming the applied function rather
+than what is inside it; raise \code{options(future.globals.maxSize = )} if
+a large dataset reaches it.
+
+A formula is the one thing sent that brings more than itself: it keeps the
+environment it was written in. Written at the top level that is the global
+environment, which is sent by reference and adds nothing. Written inside a
+function it is that function's frame, and everything in the frame goes with
+it -- measured at 6.18 MiB for a formula built in a frame holding a 6.2 MB
+matrix. So if a limit is reached and the data are not large, look at where
+the formula was created. The same holds for any \emph{function} passed
+through \code{...} -- \code{init} most likely. Families, priors, stanvars
+and a \code{control} list do not behave this way: a family's closures bind
+to \pkg{stats} or \pkg{brms} rather than to where you wrote it, and the
+other three hold no closure at all.
+
+\code{\link{bnec_group}} fits one model set per level of the grouping
+variable, so under a parallel plan each level is parallelised in turn and
+the note above is printed once per level.
+
+Starting a worker is not free for this package. A \code{multisession} or
+\code{cluster} worker is a fresh R process that has to load \pkg{bayesnec}
+and with it \pkg{brms}, \pkg{Rcpp} and \pkg{rstan} before it can fit
+anything, which took about three seconds per worker on an idle machine and
+considerably longer on a busy one. It is paid once per worker, so it is
+negligible against a 23-model set and is not against two or three models.
+
+Two things to be aware of when developing against the package rather than
+using it. A \code{multisession} or \code{cluster} worker loads the
+\emph{installed} \pkg{bayesnec}, not one loaded with
+\code{pkgload::load_all()}; \code{multicore}, which forks, inherits the
+loaded one. And \pkg{future} sets the plan inside a worker to sequential,
+so a \code{\link{bnec}} call made from within one does not parallelise
+again.
 
 \bold{Additional technical notes}
 

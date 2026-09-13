@@ -193,3 +193,112 @@ test_that("update returns a bayesnecfit when only one model survives", {
   expect_equal(upd$model, names(manec_example$mod_fits)[1])
   expect_error(suppressWarnings(summary(upd)), NA)
 })
+
+# The weighting method a set is built with must not depend on which function
+# assembled it. None of these tests sample: the fits are the packaged ones and
+# only the weighting is recomputed. See #320.
+
+test_that("c() and + weight by the documented default", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  combined <- c(nec4param, ecx4param) |>
+    suppressMessages() |>
+    suppressWarnings()
+  # Asserted on the method rather than on the weights, which are a Bayesian
+  # bootstrap under pseudo-BMA and so differ between calls.
+  expect_equal(attr(combined$mod_stats$wi, "method"), "pseudobma")
+  expect_equal(class(combined$mod_stats$wi), "pseudobma_bb_weights")
+  # The comparison the issue is about: the same two models fitted in one bnec()
+  # call, which is what manec_example is.
+  expect_equal(attr(combined$mod_stats$wi, "method"),
+               attr(manec_example$mod_stats$wi, "method"))
+  added <- (nec4param + ecx4param) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(added$mod_stats$wi, "method"), "pseudobma")
+})
+
+test_that("c() inherits an explicit weighting method from its inputs", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  stacked <- amend(manec_example,
+                   loo_controls = list(weights = list(method = "stacking"))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(stacked$mod_stats$wi, "method"), "stacking")
+  # c() takes no loo_controls, so the objects being combined are the only place
+  # an explicit request can come from. Reverting to the default here would
+  # discard it silently.
+  inherited <- c(stacked, ecx4param) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(inherited$mod_stats$wi, "method"), "stacking")
+  pseudo <- amend(manec_example,
+                  loo_controls = list(weights = list(method = "pseudobma"))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  # Two inputs weighted differently have no answer that is right for both, so
+  # the default is used and the disagreement reported.
+  expect_message(suppressWarnings(c(stacked, pseudo)),
+                 "weighted by different methods")
+  mixed <- c(stacked, pseudo) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(mixed$mod_stats$wi, "method"), "pseudobma")
+})
+
+test_that("update() keeps the weighting method the set was built with", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The stub returns the stored fit unchanged, so update.bnecfit() runs to
+  # completion without Stan. Everything asserted here happens after the refit
+  # loop. Registered into the S3 methods table directly, and restored from it,
+  # for the reason capture_brms_update() records above.
+  tbl <- get(".__S3MethodsTable__.", envir = asNamespace("stats"))
+  orig_method <- get("update.brmsfit", envir = tbl)
+  on.exit(assign("update.brmsfit", orig_method, envir = tbl), add = TRUE)
+  assign("update.brmsfit", function(object, ...) object, envir = tbl)
+  stacked <- amend(manec_example,
+                   loo_controls = list(weights = list(method = "stacking"))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  # update() refits a set; it is not a request to reweight it.
+  kept <- update(stacked, recompile = FALSE) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(kept$mod_stats$wi, "method"), "stacking")
+  defaulted <- update(manec_example, recompile = FALSE) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(defaulted$mod_stats$wi, "method"), "pseudobma")
+  # An explicit request still wins over what the object records.
+  changed <- update(stacked, recompile = FALSE,
+                    loo_controls = list(weights =
+                                          list(method = "pseudobma"))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(changed$mod_stats$wi, "method"), "pseudobma")
+  # loo_controls names `fitting` and `weights` separately, so a call changing a
+  # LOO fitting argument names no method. Reading the argument's presence as a
+  # request to reweight replaced the recorded method with the default, so this
+  # call returned a pseudo-BMA-weighted set as a side effect of asking for
+  # something else.
+  fitting_only <- update(stacked, recompile = FALSE,
+                         loo_controls = list(fitting = list(reloo = FALSE))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(fitting_only$mod_stats$wi, "method"), "stacking")
+  # The same call on a set that records no method takes the default rather
+  # than passing method = NULL down to loo.
+  unrecorded <- manec_example
+  attr(unrecorded$mod_stats$wi, "method") <- NULL
+  defaulted_fitting <- update(unrecorded, recompile = FALSE,
+                              loo_controls =
+                                list(fitting = list(reloo = FALSE))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(defaulted_fitting$mod_stats$wi, "method"), "pseudobma")
+})

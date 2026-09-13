@@ -90,3 +90,33 @@ test_that("amend.bayesnecfit adds models and promotes to bayesmanecfit", {
   expect_identical(fixef(added$mod_fits$nec4param$fit),
                    fixef(nec4param$fit))
 })
+
+test_that("an object that records no weighting method gets the default", {
+  if (Sys.getenv("NOT_CRAN") == "") {
+    skip_on_cran()
+  }
+  # The shape of a set assembled by c() before #320, and of any set whose
+  # attribute was dropped by row-subsetting of mod_stats. amend() preserves the
+  # method the set was built with, and an unknown method used to be preserved
+  # as NULL, which loo::loo_model_weights() resolves to stacking.
+  unrecorded <- manec_example
+  attr(unrecorded$mod_stats$wi, "method") <- NULL
+  ctrl <- list(fitting = list(reloo = FALSE))
+  out <- amend(unrecorded, loo_controls = ctrl) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(out$mod_stats$wi, "method"), "pseudobma")
+  # A method named but NULL is not a request for a method. amend_model_set()
+  # read the name alone, so this reweighted the set while
+  # define_loo_controls() two calls later read the same value as unspecified.
+  stacked <- amend(manec_example,
+                   loo_controls = list(weights = list(method = "stacking"))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  kept <- amend(stacked,
+                loo_controls = list(weights = list(method = NULL),
+                                    fitting = list(reloo = FALSE))) |>
+    suppressMessages() |>
+    suppressWarnings()
+  expect_equal(attr(kept$mod_stats$wi, "method"), "stacking")
+})

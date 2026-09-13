@@ -21,6 +21,10 @@ An object of class \code{\link{bayesmanecfit}}.
 \code{\link{bayesmanecfit}} object containing Bayesian model averaging
 statistics.
 }
+\details{
+Shares the implementation of \code{\link[base]{c}}, including how
+the weighting method of the combined set is decided.
+}
 \examples{
 \dontrun{
 library(bayesnec)

@@ -84,14 +84,39 @@
   **`nec` and `ec50` are narrowed under `"regularizing"` as well**, which they
   were not: the predictor-scaled prior was identical under both sets, so
   selecting the narrower set did nothing for the two parameters a user most
-  often selects it for. It is narrowed by `qnorm(0.975) / qnorm(0.99)`, which is
-  `0.84`, and not by `0.4` like the response-scaled entries. Its width is not a
-  free choice --- it is set to the smallest width whose central 95% interval
-  still reaches the farthest concentration tested, which is what #302 exists to
-  guarantee --- so the only room to narrow it is the confidence level at which
-  it covers the series. Narrowing it by `0.4` instead puts the true threshold
-  outside the central 95% of the prior in 8 of the 30 design by transform by
-  parameter cells of the audit, against none at `0.84`.
+  often selects it for. The regularizing entry is now the width whose central
+  98% interval reaches the farthest concentration tested, with the location, the
+  distribution and the truncation the same under both sets. Where concentrations
+  are supplied as recorded the `"uninformative"` entry is the same rule at the
+  95% level, so on that route the two sets differ in the confidence level and in
+  nothing else. That width is not a free choice --- #302
+  exists because an entry that did not reach the farthest concentration tested
+  shipped --- so the confidence level is the only room there is to narrow it.
+  Narrowing it by `0.4` like the response-scaled entries instead puts the true
+  threshold outside the central 95% of the prior in 8 of the 30 design by
+  transform by parameter cells of the audit, against none at `0.84` (#305).
+
+  **That rule is stated directly rather than as a multiple of the
+  `"uninformative"` width**, so that it means the same thing whichever way the
+  predictor is supplied. As a multiple it did not. The uninformative width is a
+  coverage width where concentrations are supplied as recorded, but the constant
+  `10 sd(x)` where the user supplies `log(concentration)`, and on a 0.1 to 100
+  series over seven doses that constant is 24.87 against a tested range of 6.91
+  on the log scale. The regularizing prior was therefore uniform across the
+  tested series on that branch --- its truncated CDF at each dose was that
+  dose's position within the range to three decimal places --- so `prior_type`
+  was inert for `nec` and `ec50` for a user who had logged the predictor. The
+  two routes now agree on the spread where the series has no zero control and
+  its lowest tested concentration is below 1. Both conditions are needed,
+  because outside them the two are not the same predictor. A series with a
+  control is read differently on each route: the recorded-concentration route
+  drops the zero, while a user who logs the series must substitute a value for
+  it and that substitute is read. And the route is selected by whether the
+  predictor spans negative values, so a logged series whose lowest tested
+  concentration is at or above 1 stays non-negative, is not recognised as
+  logged, and is logged a second time.
+  Both `"uninformative"` entries are unchanged, and so is the regularizing entry
+  where concentrations are supplied as recorded (#314).
 
   **Group-level scales take the same factor**, `0.4`, rather than the one half
   they took before, and the cap on the `ogl` log-scale conversion now scales
@@ -570,6 +595,48 @@
 
 ## New
 
+- **A model set can now be fitted in parallel.** `bnec()` and `amend()` fit
+  their models under whatever `future` plan is set when they are called, so
+  `plan(multisession, workers = 4)` before the call fits four models at a time
+  and `plan(sequential)`, or no plan at all, fits them one at a time exactly as
+  every earlier version did. There is no new argument: the plan already holds
+  that state, and a `cores` argument beside it would be ambiguous the moment a
+  user set both. `future` and `future.apply` are Suggests, so a session without
+  them takes the sequential path and reports nothing (#184).
+
+  **Chains are sampled in sequence inside each worker.** `brm()` parallelises
+  across chains already, so models in parallel on top of that would request
+  `workers x chains` processes --- sixteen for four workers and the default
+  `chains = 4`. Under a parallel plan of more than one worker `bnec()` passes
+  `cores = 1` to `brm()`. Passing `cores` yourself is left alone and is how the
+  two levels are nested deliberately. A plan that names a parallel strategy but
+  resolves to a single worker --- `plan(multicore)` wherever forking is
+  unavailable, which includes Windows --- is clamped in neither respect, and
+  says so. Note that `future` already sets `mc.cores` to 1 inside a worker, so
+  a value set in a profile does not reach `brms` there in any case; `cores = 1`
+  makes that a property of this package rather than of `future`'s internals.
+
+  **Each fitted model reproduces exactly under a parallel plan, for the same
+  `seed`.** This needed making true rather than being inherited:
+  `future.seed = TRUE` installs an L'Ecuyer-CMRG generator in each worker,
+  `set.seed()` does not restore the generator kind, and the initial-value search
+  would therefore have drawn different starting values in a worker from the same
+  seed --- silently, with no error and no warning. The worker restores the
+  parent's RNG kind before fitting. Without a `seed` the search reseeds from
+  entropy and no run repeats, under a plan or otherwise, which is unchanged.
+
+  **The model-averaged quantities are the exception.** `expand_manec()` draws
+  the seed for the weighted posterior draw from the session's RNG stream after
+  the models are fitted. A sequential run advances that stream, through the
+  `set.seed(seed)` each initial-value search makes, so the draw is fixed by
+  `seed`; under a parallel plan the model loop leaves the stream alone. The
+  averaged `nec`, its interval and the stored prediction grid therefore differ
+  between the two plans, as two valid realisations of the same weighting.
+  `set.seed()` in the calling session fixes that draw under a parallel plan, so
+  two parallel runs agree --- which is what `expand_manec()` intends it to
+  answer to (#216). One further consequence: a parallel call does not advance
+  the calling session's RNG stream, where a sequential one does.
+
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
   the candidate set as requested, the set attempted, the equations excluded with
   the reason for each, and any substitution made in the response. Both were
@@ -620,6 +687,40 @@
   value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
 
 ## Bug fixes
+
+- A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
+  by pseudo-BMA, the documented default, rather than by stacking.
+  `expand_manec()` validated the `loo_controls` it was given but supplied no
+  default where the caller named no method, so `method` reached
+  `loo::loo_model_weights()` as `NULL`, `loo` applied its own default of
+  `"stacking"`, and `attr(mod_stats$wi, "method")` recorded nothing. The same
+  set fitted in a single `bnec()` call was weighted by pseudo-BMA, so the
+  weighting method --- and with it the model-averaged NEC, NSEC and ECx
+  estimates --- depended on how the set was assembled rather than on what was
+  requested. Combining single fits with `c()` is a documented workflow and is
+  how the training material introduces model averaging, so this was a common
+  path. Measured on the two packaged `manec_example` fits pulled out and
+  recombined (R 4.6.1, `loo` 2.8.0): stacking placed 0.892 of the weight on
+  `nec4param`, while pseudo-BMA placed between 0.821 and 0.862 over twenty
+  repeats --- it uses a Bayesian bootstrap and so is not deterministic ---
+  against the 0.827 recorded by the `bnec()` call that fitted them. The default
+  is supplied in `expand_manec()`, which is the one point every assembly route
+  reaches (#320).
+
+  Where the set being operated on records a method, that method is kept unless
+  the caller names another --- `pull_out()` excepted, which takes no weighting
+  method at all and reports and ignores one given to it. `amend()` and
+  `pull_out()` already preserved the recorded method, but passed an unknown one
+  on as `method = NULL`, which `loo` resolves to stacking; an unknown method is
+  now left for the default to fill. `update()` did not preserve it at all and
+  now does, since refitting a set is not a request to reweight it. Because
+  `loo_controls` names its `fitting` and `weights` arguments separately, both
+  `amend()` and `update()` read a call that names only a LOO fitting argument
+  as naming no method, so changing one does not reweight the set as a side
+  effect. `c()` and `+` take no
+  `loo_controls` argument, so they inherit the method where every object being
+  combined that records one names the same method, and report the fallback to
+  the default where two disagree.
 
 - `dispersion()` no longer discards the statistic where a single observation is
   reproduced exactly. The Pearson denominator is the fitted standard deviation,
