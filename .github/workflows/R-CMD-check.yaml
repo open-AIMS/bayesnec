@@ -111,6 +111,39 @@ jobs:
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
+      # testthat runs its files over two worker processes unless it is told
+      # otherwise: testthat:::default_num_cpus() reads getOption("Ncpus"), then
+      # TESTTHAT_CPUS, and returns 2 if neither is set. The test suite is very
+      # nearly the whole check -- dependencies are cached and install in under a
+      # minute, examples are 12 to 21 seconds plus 44 to 83 seconds with
+      # --run-donttest, and the precompiled vignettes rebuild in 8 to 20 seconds
+      # -- so the worker count sets the length of the job.
+      #
+      # On run 34696507417 the test phase reported 51, 42 and 33 minutes of CPU
+      # against 26, 24 and 21 minutes elapsed on the three jobs that report
+      # both. Those ratios, 1.96, 1.75 and 1.57, are two workers scaling close
+      # to perfectly, which means elapsed time is bound by total work divided by
+      # the worker count and not by the longest single file.
+      #
+      # The count is read from the runner rather than written here as a
+      # constant, so that a change to the hosted runner sizes is followed
+      # instead of ignored, and it is clamped at four because the memory each
+      # worker needs is not small: one Stan program compiling peaks at about
+      # 1.2 GB resident, measured on R 4.6.1 with brms 2.23.0, and the smallest
+      # runner in this matrix has 7 GB.
+      #
+      # It is set here and not in DESCRIPTION on purpose. CRAN runs its checks
+      # within two cores and testthat's default already gives that; raising the
+      # count is a property of these runners, not of the package.
+      - name: Set the testthat worker count from the runner
+        run: |
+          cores <- parallel::detectCores(logical = TRUE)
+          workers <- max(1L, min(as.integer(cores), 4L))
+          cat("detected", cores, "cores; using", workers, "testthat workers\n")
+          cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
+              file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+        shell: Rscript {0}
+
       # Vignettes ARE built and checked. They are precompiled -- precompile.R
       # renders every .Rmd.orig to a .Rmd whose chunks are display-only -- so
       # building them is markdown to HTML and costs ~16s, not a refit. Skipping
