@@ -803,12 +803,15 @@ rbind(log_scale = nec(fit_screened),
       measured  = nec(fit_screened, xform = exp))
 ```
 
-Both rows fall inside the tested range of `r min(simazine$concentration)` to
-`r max(simazine$concentration)`, so neither is obviously wrong on inspection.
-Only the second is a concentration: the first is its natural logarithm, and
-reporting it as though it were a concentration would understate the threshold by
-a factor of `r round(exp(1), 1)` for every unit on the logged scale. A reported
-value has to state the scale it is on.
+Only the second row is on the measured scale. The first is its natural logarithm,
+and the two are easy to confuse, because a logged value can land in the same
+numeric range as a concentration: the median of the first row would pass
+unremarked in a series running from `r min(simazine$concentration)` to
+`r max(simazine$concentration)`. Reporting a logged value as a concentration
+understates the threshold by a factor of `r round(exp(1), 1)` for every unit on
+the logged scale. Where the logarithm is negative the value is not a
+concentration at all, which is the one case in which the error announces itself.
+A reported value has to state the scale it is on.
 
 ECx values are the other commonly required endpoint, read from the same screened
 set:
