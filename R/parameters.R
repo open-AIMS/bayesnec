@@ -227,11 +227,20 @@ parameters.bayesnechurdlefit <- function(object, summary = TRUE,
   message(hurdle_no_combined("parameters"))
   # The two components are separate fits with separate families --- growth
   # takes the family of the non-zero response and survival is bernoulli --- so
-  # each reports its own link. They share one formula on one predictor, so the
-  # transformation is reported once for the pair.
+  # each link is reported. Reported here, named by component, rather than left
+  # to the component methods: those name the equation, and the two components
+  # often fit the same one, so two paragraphs would both open "The nec3param
+  # fit was made with" and neither would say which component it described.
+  for (cmp in c("growth", "survival")) {
+    report_link(fit_links(representative_fit(object[[cmp]])$fit),
+                paste(cmp, "component"))
+  }
+  # One formula on one predictor, so the transformation is reported once for
+  # the pair.
   report_x_transform(representative_fit(object$growth), xform,
                      "fitted hurdle pair")
-  quiet <- options(bayesnec.xform_reported = TRUE)
+  quiet <- options(bayesnec.link_reported = TRUE,
+                   bayesnec.xform_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
   hurdle_delegate(object, parameters, summary = summary, xform = xform, ...)
 }

@@ -340,6 +340,20 @@ test_that("a hurdle pair reports the transformation once, the link per fit", {
   expect_equal(sum(grepl("transformed scale", msgs)), 1L)
   # The gate is restored, so the next call reports again.
   expect_message(parameters(tf), "transformed scale")
+  # The half the split exists to protect: two components on different links
+  # both report, and each paragraph names its component. Gating the link for
+  # the pair, as the transformation is gated, would suppress one of them and
+  # the suite would not notice.
+  g <- nec4param
+  g$fit$family <- brms::brmsfamily("gaussian", link = "log")
+  s <- nec4param
+  s$fit$family <- brms::brmsfamily("bernoulli", link = "logit")
+  msgs <- capture_messages(parameters(fake_hurdle(g, s)))
+  expect_equal(sum(grepl("link scale", msgs)), 2L)
+  expect_true(any(grepl("growth component was made with mu: link = \"log\"",
+                        msgs)))
+  expect_true(any(grepl("survival component was made with mu: link = ",
+                        msgs)))
 })
 
 test_that("the wrapper methods validate before they print", {
