@@ -658,6 +658,34 @@
   `dispersion_P_over_1` column. `?dispersion` now states that `beta_binomial`
   adds variance to the binomial and so cannot address under-dispersion (#262).
 
+- New dataset `lum31`: the acute copper and zinc tests of the Lum-31
+  bioluminescent bacterial assay of Luter et al. (2025). 2904 raw luminescence
+  readings from 33 plates in five dated batches, each plate a complete series of
+  11 measured concentrations by four replicate wells, read at 15 and 30 minutes.
+  Replication at three nested scales --- the four wells at a concentration
+  (`conc_group`), the plate across the whole series (`plate`), and toxicant by
+  exposure time --- supports every group-level structure `vignette("example8")`
+  demonstrates. Readings were blank-corrected
+  against seawater blanks, so 386 of them are negatives that the source records
+  replaced with zero and one is a negative that escaped the replacement; `rlu`
+  reports each as recorded and `censoring` with `rlu_cens` give the left-censored
+  form. The censoring bound is the smallest positive reading on the plate,
+  because the plate reader applies auto-scale gain adjustment and the value at
+  which it stops resolving is therefore a plate property (#6, #33).
+
+- New datasets `coral_colour` and `coral_pam`: colour score and photosystem II
+  effective quantum yield for *Acropora millepora* exposed to the herbicide
+  diuron under three climate scenarios, from Flores et al. (2021), the study the
+  JSS article cites for `compare_posterior()`. Both are within-concentration
+  designs --- a chamber sits at one concentration and so admits only a
+  displacement --- with 45 chambers of four fragments for colour and 54 chambers
+  of five to eight readings for yield. `coral_colour` has five concentrations,
+  which is the conventional minimum, and `vignette("example8")` uses it to show
+  that equations of four curve parameters do not sample reliably against a design
+  that small while equations of three do (#301). Exactly one colour observation
+  sits on the `Beta` boundary, the signature of a score normalised to the largest
+  value in the dataset, and 63 of the 414 yield readings are exactly 0 (#6, #33).
+
 ## Bug fixes
 
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted

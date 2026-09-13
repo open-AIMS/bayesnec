@@ -3,9 +3,9 @@
 #SBATCH --partition=cpuq
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=32GB
-#SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=128GB
+#SBATCH --time=3-00:00:00
 #SBATCH --output=logs/precompile-%A_%a.log
 # No separate --error: R's message(), knitr's progress and cmdstan's output all
 # go to stderr, so splitting the streams leaves the .log nearly empty and the
@@ -14,23 +14,30 @@
 # Precompile one vignette. The vignette is this task's line of vignettes.txt,
 # which hpc/precompile-hpc.sh writes from the names given on its command line.
 #
-# --cpus-per-task=4: every fit in a vignette is independent of every other and
-# is run in sequence, so the only parallelism available is the four chains
-# within a fit, and brms fits four by default. precompile.R sets mc.cores from
-# SLURM_CPUS_PER_TASK, so this number is what decides how many chains run at
-# once; asking for more than four would leave the extra cores idle.
+# --cpus-per-task=16: since #184 a model set is fitted under a future plan, so
+# the models of one set run in parallel rather than in sequence. precompile.R
+# sets both mc.cores and, where BAYESNEC_VIGNETTE_WORKERS is set, the plan, from
+# this number. The useful width is the number of equations in one call --- the
+# parallelism is inside bnec(), and bnec_group() still fits its levels in
+# sequence --- so example8's 15 to 18 equation sets take about 16 workers and
+# gain nothing beyond that. A vignette rendered without the variable set uses
+# these cores for chains, as before.
 #
-# --mem=32GB is over-provisioning rather than a measurement. On a 490GB node
-# with four cores requested the binding constraint is cores, so raising this
-# changes nothing about throughput while removing the risk of an OOM kill
-# hours into a run. example7 holds 24 model-averaged fits over thirteen
-# equations in memory at once.
+# --mem=128GB. 32GB was ample while one model was fitted at a time --- example8
+# peaked at 10GB over 23 h on 2026-09-12 --- but under a parallel plan sixteen
+# fits are in flight at once and each holds its own working set, which earlier
+# measurement found to dominate the memory a finished fit retains. 128GB is a
+# quarter of the node and removes the risk of an OOM kill hours into a run.
 #
-# --time=24:00:00: example7 took 309 min end to end on a cold Stan cache and
+# --time=3-00:00:00: example7 took 309 min end to end on a cold Stan cache and
 # was still running at 4 h 31 m on a warm one, of which over two hours was
-# ecx() and nsec() extraction rather than sampling (#306). A day is generous
-# for the largest vignette in the repository and a task that exceeds it has
-# gone wrong rather than been slow.
+# ecx() and nsec() extraction rather than sampling (#306). A day was generous
+# for that, but example8 fits 189 models across five datasets -- two model
+# averaged sets on 748 rows with a group-level term and a dispersion sub-model,
+# and two bnec_group() calls -- and scales from the measured runs to 10 to 20
+# hours depending on how much faster cmdstanr is than rstan. Three days leaves
+# margin without approaching the 14-day partition limit. The request does not
+# reserve the time, so a shorter run is not penalised.
 
 set -euo pipefail
 
@@ -196,6 +203,7 @@ singularity exec -B "$JOB":"$JOB" -B "$CACHE":"$CACHE" --pwd "$JOB" \
   --env BAYESNEC_STAN_CACHE="$CACHE" \
   --env BAYESNEC_VIGNETTES="$VIG" \
   --env SLURM_CPUS_PER_TASK="${SLURM_CPUS_PER_TASK:-4}" \
+  --env BAYESNEC_VIGNETTE_WORKERS="${BAYESNEC_VIGNETTE_WORKERS:-}" \
   "$SIF" Rscript vignettes/precompile.R
 
 # Only reached when precompile.R exited zero, which it does not do when a chunk

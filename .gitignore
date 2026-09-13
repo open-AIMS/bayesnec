@@ -55,3 +55,6 @@ superceded/
 # Local cluster settings for hpc/: account, login node, image path.
 # Copy hpc/local.conf.example to make one.
 hpc/local.conf
+
+# Source records for the Flores et al. (2021) diuron datasets. Not redistributed.
+data-raw/coral_diuron/

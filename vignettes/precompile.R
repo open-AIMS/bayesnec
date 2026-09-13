@@ -112,6 +112,34 @@ if (is.na(.cpus) || .cpus < 1) {
 options(mc.cores = .cpus)
 message("Chains run on ", .cpus, " core(s)")
 
+# Fit the models of a set in parallel, where the job asks for it -------------
+# Since #184 `bnec()` fits its model set under whatever `future` plan is set, and
+# passes `cores = 1` to `brm()` under a plan of more than one worker. The two
+# arrangements spend the same cores: N workers with chains serial, or N/4 workers
+# each given `cores = 4`. The first needs no change to a vignette's fit calls.
+#
+# The useful width is the number of equations in one call, not the number of fits
+# in the vignette, because the parallelism is inside `bnec()` and `bnec_group()`
+# still fits its levels in sequence. example8's largest set is 18 equations and
+# most are 15, so workers beyond about 16 have nothing to take.
+#
+# Off unless BAYESNEC_VIGNETTE_WORKERS is set, so every other vignette keeps the
+# behaviour it was last rendered under and #190 is not silently a different run.
+.workers <- suppressWarnings(as.integer(Sys.getenv("BAYESNEC_VIGNETTE_WORKERS")))
+if (!is.na(.workers) && .workers > 1) {
+  if (!requireNamespace("future", quietly = TRUE)) {
+    stop("BAYESNEC_VIGNETTE_WORKERS is set but the future package is not installed",
+         call. = FALSE)
+  }
+  # Each worker holds a fitted model on return, so the default 500 MB ceiling on
+  # what may cross between processes is too low for a set on 1452 rows.
+  options(future.globals.maxSize = 4 * 1024^3)
+  # Not reset afterwards: on.exit() outside a function never fires, and the
+  # workers go with the process this script runs in.
+  future::plan(future::multisession, workers = .workers)
+  message("Model sets fitted across ", .workers, " worker(s)")
+}
+
 # Where cmdstanr writes the .stan files it names by hash, and therefore where
 # the compiled executables live. Unset, it is the session tempdir and nothing
 # survives the run. The HPC job points it at shared scratch; see hpc/README.md.
@@ -229,13 +257,41 @@ if (length(stale)) {
 # rebuild against vignettes it had not touched and was not shipping, so one
 # known-bad vignette sitting in the tree would fail every partial rebuild, at
 # the last step, after the compute had been spent. See #251.
+#
+# One `#> Error` line is not a chunk error. `bnec()` fits a set and reports any
+# equation it could not fit, then returns the fit for the rest -- that is what
+# `failed_models()` is for -- and `try()` prints that report as
+# `#> Error : Failed to fit model <name>.`. Matching on `^#> Error` alone
+# therefore refuses to ship a vignette whose chunks all succeeded, which is what
+# stopped example8 on 2026-09-12 after 23 h of fitting: `ecxhormebc5` does not
+# initialise on a Gamma identity fit with a log predictor, and the other
+# fourteen equations of the set fitted normally.
+#
+# The exemption is written to the exact text and no wider. `bnec()` stopping
+# because nothing fitted reports "None of the models fit successfully", and an
+# ordinary chunk failure is `#> Error in ...`; both still fail here. A reported
+# model failure is announced rather than passed over in silence, because a
+# vignette in which many equations fail is worth looking at even though it is
+# shippable.
+model_failure <- "^#> Error : Failed to fit model [^ ]+\\.$"
 rendered <- file_path_sans_ext(orig_files)
-errored <- Filter(function(f) any(grepl("^#> Error", readLines(f, warn = FALSE))),
-                  rendered)
+error_lines <- lapply(rendered, function(f) {
+  grep("^#> Error", readLines(f, warn = FALSE), value = TRUE)
+})
+names(error_lines) <- rendered
+reported <- lapply(error_lines, function(x) x[grepl(model_failure, x)])
+genuine <- lapply(error_lines, function(x) x[!grepl(model_failure, x)])
+
+for (f in rendered[lengths(reported) > 0]) {
+  message("Equations reported as not fitted in ", basename(f), ": ",
+          length(reported[[f]]), " (", paste(unique(reported[[f]]), collapse = "; "),
+          "). Shippable, but check they are the ones you expect.")
+}
+
+errored <- rendered[lengths(genuine) > 0]
 if (length(errored)) {
   detail <- vapply(errored, function(f) {
-    hits <- grep("^#> Error", readLines(f, warn = FALSE), value = TRUE)
-    paste0("  ", basename(f), " (", length(hits), "): ", hits[1])
+    paste0("  ", basename(f), " (", length(genuine[[f]]), "): ", genuine[[f]][1])
   }, character(1))
   stop("Chunks errored while knitting:\n", paste(detail, collapse = "\n"),
        "\nFix the vignette source and re-run; do not ship this output.",
