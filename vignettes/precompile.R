@@ -98,13 +98,17 @@ options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
 # serially on a four-core allocation. SLURM_CPUS_PER_TASK is the allocation
 # rather than the node; the fallback is used off the cluster.
 #
-# example2, example3 and example6 set mc.cores themselves, to
-# parallel::detectCores(), in a chunk, and so override this. That reports the
-# node and not the allocation, but brms runs at most `chains` in parallel and
-# every one of those vignettes takes the default of four, so it oversubscribes
-# nothing as they stand. Those chunks are echo = FALSE, so removing the lines
-# would change nothing a reader sees; they are left alone here because #190
-# re-renders the whole set and is the place to remove them.
+# example3 and example6 set mc.cores themselves, to parallel::detectCores(), in
+# a chunk, and so override this. That reports the node and not the allocation,
+# but brms runs at most `chains` in parallel and both of those vignettes take
+# the default of four, so it oversubscribes nothing as they stand. Those chunks
+# are echo = FALSE, so removing the lines would change nothing a reader sees;
+# they are left alone here because #190 re-renders the whole set and is the
+# place to remove them.
+#
+# example2 no longer has such a chunk. #322 replaced it with an explicit
+# cores = getOption("mc.cores", 1) on the call the reader sees, which reads
+# this allocation rather than overriding it.
 .cpus <- suppressWarnings(as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")))
 if (is.na(.cpus) || .cpus < 1) {
   .cpus <- max(1L, parallel::detectCores(logical = FALSE))
