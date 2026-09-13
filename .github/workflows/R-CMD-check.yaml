@@ -50,6 +50,14 @@ jobs:
           - {os: ubuntu-latest,   r: 'release'}
           # - {os: ubuntu-latest,   r: 'oldrel-1'}
 
+    # The default job timeout is six hours. Two terminations on this repository
+    # arrived as a bare exit 143 partway through the test phase with no timing
+    # line and no cause, and neither was a timeout, so neither could be told from
+    # a job that was merely slow. A bound well above the longest observed job --
+    # windows-latest at 42 minutes, against a spread of about a third -- makes a
+    # hang a deterministic event at a known boundary instead. See #328.
+    timeout-minutes: 90
+
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
@@ -121,66 +129,31 @@ jobs:
           cmdstanr::check_cmdstan_toolchain(fix = TRUE)
         shell: Rscript {0}
 
-      # testthat runs two worker processes unless told otherwise:
-      # testthat:::default_num_cpus() reads getOption("Ncpus"), then
-      # TESTTHAT_CPUS, and returns 2 if neither is set. Neither was set here, so
-      # every job ran two workers whatever the runner provided, and the test
-      # suite is very nearly the whole check. The measurements are in #328 rather
-      # than here, because a figure in a comment goes stale while an issue keeps
-      # its date and its run id. Run 34740649976 is the one that took a worker
-      # per core and motivated the backoff below; it does not measure this
-      # setting.
+      # No worker count is set on an ordinary run, so testthat uses its own
+      # default of two and this matrix is configured exactly as dev is. Raising it
+      # was tried and abandoned; #328 records the measurement and why the question
+      # is closed rather than deferred. The short version: on one paired
+      # comparison, same tree and same window, three workers cost 18 minutes more
+      # CPU on ubuntu-latest (release) and were a minute SLOWER in elapsed time,
+      # which is the only thing the change was for.
       #
-      # Four decisions, which are the durable part.
-      #
-      # Set here and not in DESCRIPTION. CRAN runs its checks within two cores
-      # and testthat's default already gives that, so raising the count is a
-      # property of these runners rather than of the package. --as-cran does not
-      # decide it either way: it sets _R_CHECK_LIMIT_CORES_, which is read by
-      # parallelly and future, not by base R or testthat.
-      #
-      # Read from the runner rather than written as a constant, so a change to
-      # the hosted runner sizes is followed instead of ignored. The step prints
-      # what it found and what it chose, so the basis is in the log.
-      #
-      # One fewer than the cores, never fewer than two and never more than four.
-      # A worker per core measured worse: on ubuntu-latest (release) the test
-      # phase went from a 41-51 minute CPU range to 62 while elapsed fell only to
-      # 19 from 22-26. No mechanism is asserted for that here, because none has
-      # been established -- a worker blocks in system() while its compiler runs,
-      # so compiling workers are not additional runnable processes. What the
-      # figure does establish is that there was no headroom at one worker per
-      # core, and one core is left free for that reason.
-      #
-      # Two is the floor because two is what testthat would have used unasked, so
-      # a one- or two-core runner reproduces the behaviour this step replaces
-      # rather than dropping below it. Four is an upper bound against a future
-      # larger runner and now needs five cores to bind, so nothing in this matrix
-      # reaches it; it is deliberately not derived from memory, which is not
-      # observable here before the fact.
-      #
-      # detectCores() returns NA where it cannot determine the count, and NA
-      # reaches testthat as the string "NA" and aborts the whole test phase with
-      # "`TESTTHAT_CPUS` must be an integer" -- naming the variable and not the
-      # step that set it. Hence the explicit branch: neither min() nor max()
-      # excludes NA.
-      - name: Set the testthat worker count from the runner
+      # The step survives for one reason: the count could not be varied for
+      # measurement while it was computed here, because varying it meant editing
+      # this file and editing it changed the tree being measured. Holding one
+      # setting through workflow_dispatch is what made the paired comparison
+      # possible, and it is the instrument to reach for if the question is ever
+      # reopened. It does nothing unless an input is supplied.
+      - name: Override the testthat worker count, if one was requested
+        if: github.event.inputs.testthat_cpus != ''
         env:
           WORKER_OVERRIDE: ${{ github.event.inputs.testthat_cpus }}
         run: |
-          cores <- parallel::detectCores(logical = TRUE)
-          workers <- if (is.na(cores)) 2L else max(2L, min(as.integer(cores) - 1L, 4L))
-          override <- Sys.getenv("WORKER_OVERRIDE", "")
-          if (nzchar(override)) {
-            workers <- as.integer(override)
-            if (is.na(workers) || workers < 1L) {
-              stop("testthat_cpus must be a positive integer, not '", override, "'")
-            }
-            cat("detected", cores, "cores; overridden to", workers,
-                "testthat workers by workflow_dispatch\n")
-          } else {
-            cat("detected", cores, "cores; using", workers, "testthat workers\n")
+          workers <- suppressWarnings(as.integer(Sys.getenv("WORKER_OVERRIDE")))
+          if (is.na(workers) || workers < 1L) {
+            stop("testthat_cpus must be a positive integer, not '",
+                 Sys.getenv("WORKER_OVERRIDE"), "'")
           }
+          cat("overriding the testthat worker count to", workers, "\n")
           cat(sprintf("TESTTHAT_CPUS=%d\n", workers),
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)
         shell: Rscript {0}
@@ -195,3 +168,23 @@ jobs:
           build_args: 'c("--no-manual")'
           args: 'c("--no-manual", "--as-cran")'
           upload-snapshots: true
+
+      # The action's own "Show testthat output" step reported outcome=skipped on
+      # both terminations, so neither left any record of which file the suite had
+      # reached. This one runs whatever happened, including on a cancellation or a
+      # timeout, which is the case that needs it.
+      - name: Show the test log, whatever happened
+        if: always()
+        shell: bash
+        run: |
+          shopt -s nullglob
+          found=0
+          for f in check/*.Rcheck/tests/testthat.Rout check/*.Rcheck/tests/testthat.Rout.fail; do
+            echo "::group::$f"
+            tail -n 200 "$f" || true
+            echo "::endgroup::"
+            found=1
+          done
+          if [ "$found" = "0" ]; then
+            echo "no testthat.Rout found under check/*.Rcheck/tests/"
+          fi
