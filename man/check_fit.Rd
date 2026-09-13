@@ -111,6 +111,7 @@ check_fit(nec4param)
 
 }
 \seealso{
-\code{\link{pp_check}}, \code{\link{dispersion}},
+\code{\link{pp_check}}, \code{\link{pull_best}},
+\code{\link{dispersion}},
 \code{\link{check_chains}}, \code{\link{check_priors}}
 }
