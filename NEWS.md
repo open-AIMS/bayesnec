@@ -695,6 +695,36 @@
   partitioned exactly by `attempted` and `excluded$model`. The record is kept
   through `update()`, and rebuilt by `amend()` for the set that call produced.
 
+- **`parameters()`** reports the parameters of the fitted curve --- `top`,
+  `bot`, `beta`, `nec`, `ec50`, `slope`, `d` and `f` --- with their credible
+  intervals, for a `bayesnecfit`, a `bayesmanecfit`, a `bayesnechurdlefit` and a
+  `bayesnecgroupfit`. `summary()` reports the model weights, the per-equation
+  dispersion, the weighted no-effect estimate and the per-equation Bayesian
+  R-squared, and no parameter estimates. For a single fit the parameters were
+  reachable through the underlying `brmsfit`; for a model average nothing
+  returned them. They are what a methods section states alongside the threshold
+  estimates: `top` is the control level the curve is referenced to, `bot` the
+  asymptote a `"relative"` ECx is measured against, and `beta` the decay rate
+  (#297).
+
+  **The estimates are per equation and are not averaged across the set.** The
+  equations of a set do not share a parameter list: `ecxexp` has no `bot`, the
+  three-parameter equations have no `d`, and only the equations of
+  `mod_groups$nec` estimate `nec`. Averaging a parameter over whichever
+  equations estimate it would average over a different subset for each
+  parameter, under weights computed for the whole set, so the rows contributing
+  to one number would hold a different share of the set from the rows
+  contributing to the next. The stacking weight is reported beside each row
+  instead, and `summary = FALSE` returns the draws the table was computed from.
+
+  **`xform` applies to `nec` and `ec50` and to no other parameter.** Those two
+  are measured on the predictor axis, so where `crf()` transforms the predictor
+  inline they are on the transformed scale, as the values `nec()` and `ecx()`
+  return are. The others are response levels or shape parameters, on which a
+  transformation of the predictor has no meaning. Where the caller named a link
+  --- `bnec()` assigns `link = "identity"` otherwise --- `top` and `bot` are on
+  the link scale, and a message says so.
+
 - `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
   over-dispersion, alongside the median and the interval. It uses the whole
   posterior rather than a point estimate or one tail quantile, and it is
