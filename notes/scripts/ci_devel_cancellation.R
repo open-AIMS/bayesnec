@@ -122,9 +122,17 @@ jobs <- utils::read.delim(
   col.names = c("run_id", "job", "status", "conclusion",
                 "created_at", "started_at", "completed_at")
 )
-if (!setequal(unique(jobs$run_id), runs$run_id)) {
-  stop("jobs were not returned for every run: ",
-       length(setdiff(runs$run_id, unique(jobs$run_id))), " missing")
+# A run whose jobs have not been created yet returns no rows, and gh exits 0. It
+# cannot be a settled run, so it is dropped rather than treated as an error. A
+# systematic fetch failure would take out many at once, so that is still fatal.
+no_jobs <- setdiff(runs$run_id, unique(jobs$run_id))
+if (length(no_jobs) > 0.05 * nrow(runs)) {
+  stop(length(no_jobs), " of ", nrow(runs), " runs returned no job rows, which ",
+       "is too many to be runs that have not started -- re-run")
+}
+if (length(no_jobs)) {
+  message(length(no_jobs), " run(s) returned no job rows and are excluded: ",
+          paste(no_jobs, collapse = ", "))
 }
 jobs$minutes <- mins_between(jobs$started_at, jobs$completed_at)
 
@@ -140,7 +148,7 @@ settled <- names(which(tapply(
   function(i) all(cells %in% jobs$job[i]) &&
     all(jobs$status[i][jobs$job[i] %in% cells] == "completed")
 )))
-unsettled <- setdiff(runs$run_id, settled)
+unsettled <- setdiff(runs$run_id, settled)  # includes the no-jobs runs above
 jobs <- jobs[jobs$run_id %in% settled & jobs$job %in% cells, ]
 window <- range(as_time(runs$created_at[runs$run_id %in% settled]), na.rm = TRUE)
 
