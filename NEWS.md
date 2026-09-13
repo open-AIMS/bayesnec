@@ -774,11 +774,21 @@
   different ones. One backend and one R version, so `seed` remains the way to
   fix a run that has to repeat regardless.
 
-  A parallel run does not give the same answer as a *sequential* run of the
-  same call unless `seed` is passed, and that is new: each model is now fitted
-  from the stream of the worker it runs in. On the same measurement sequential
-  and parallel agreed with a `seed` and disagreed without one. `?bnec` says so,
-  alongside the model-averaged quantities, which a plan does not reproduce
+  A parallel run still does not give the same answer as a *sequential* run of
+  the same call unless `seed` is passed, and that part is unchanged: each model
+  is fitted from the stream of the worker it runs in. On the same measurement,
+  against the released code and against this branch:
+
+  | | released | this branch |
+  |---|---|---|
+  | no seed, two sequential runs agree | no | yes |
+  | no seed, two parallel runs agree | no | yes |
+  | no seed, sequential agrees with parallel | no | no |
+  | `seed = 99`, sequential agrees with parallel | yes | yes |
+
+  So what changed is that each run repeats itself, where before none of them
+  repeated anything. `?bnec` states both, alongside the model-averaged
+  quantities, which are not reproduced between a sequential and a parallel run
   either way.
 
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted

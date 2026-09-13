@@ -182,15 +182,18 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' happen in a worker and nothing can replay them.
 #'
 #' Whether the \emph{fits} match a sequential run is a question of the seed,
-#' and the answer changed with #310. Where a \code{seed} is supplied they match
-#' exactly, because \code{make_good_inits()} seeds itself with it wherever it
-#' runs; \code{w_draw_seed} and \code{w_draw_index} still do not. Where none
-#' is supplied they do not match either, because the search draws from the
-#' stream it is handed and a worker's is not the parent's. Measured on R 4.6.1
-#' under \code{plan(multicore, workers = 3)}, three equations, the body being
-#' \code{add_brm_defaults()} and so the search itself, \code{set.seed(777)}
-#' before each run: sequential and parallel agreed with a seed and disagreed
-#' without one. So \code{seed} is what a user comparing the two runs needs, and
+#' and #310 did not change the answer. Where a \code{seed} is supplied they
+#' match exactly, because \code{make_good_inits()} seeds itself with it
+#' wherever it runs; \code{w_draw_seed} and \code{w_draw_index} still do not.
+#' Where none is supplied they do not match either, because the search draws
+#' from the stream it is handed and a worker's is not the parent's. What #310
+#' changed is that each of the two runs now repeats itself, where before
+#' neither did. Measured on R 4.6.1 under \code{plan(multicore, workers = 3)},
+#' three equations, the body being \code{add_brm_defaults()} and so the search
+#' itself, \code{set.seed(777)} before each run, against the released code and
+#' against this one: sequential agreed with parallel under a seed and not
+#' without one, on both, while two runs of either kind agreed only here. So
+#' \code{seed} is what a user comparing the two needs, and
 #' \code{\link{bnec}} says so.
 #'
 #' Closing the \code{w_draw_seed} gap means deriving the draw from
@@ -214,10 +217,12 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' what \code{?Random} documents and what makes \code{set.seed(NULL)} the
 #' cause of #310; where a seed is already present, which inside a
 #' \code{future.seed = TRUE} worker it always is, the new state is derived
-#' from the current one. Measured on R 4.6.1, both the same-kind call and the
-#' L'Ecuyer-CMRG to Mersenne-Twister change made inside a worker:
-#' \code{set.seed(42)} then \code{RNGkind()} gives one state and one first
-#' draw over three calls in one process and again in a second process. What makes the
+#' from the current one. Measured on R 4.6.1 over repeated calls in one process
+#' and again in a second process, on both arms: \code{set.seed(42)} then
+#' \code{RNGkind()} at the kind already in force gives a first draw of
+#' 0.8311705 every time, and \code{set.seed(42, kind = "L'Ecuyer-CMRG")} then
+#' \code{RNGkind()} back to Mersenne-Twister --- the change a worker makes ---
+#' gives 0.2046757 every time. What makes the
 #' workers differ is therefore the per-element L'Ecuyer-CMRG stream
 #' \code{future.seed = TRUE} installs, not the clock. The 2026-09-11
 #' measurement under \code{plan(multicore, workers = 3)} --- three of three

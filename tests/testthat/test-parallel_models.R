@@ -115,11 +115,17 @@ test_that("RNGkind at the same kind derives the state, it does not reseed", {
   # RNGkind() re-initialises .Random.seed from the clock. It does that only
   # where no seed exists yet. Pinned because the whole argument about what a
   # parallel run reproduces rests on which of the two it is. See #310.
+  old_kind <- RNGkind()
   old_seed <- if (exists(".Random.seed", envir = globalenv(),
                          inherits = FALSE)) {
     get(".Random.seed", envir = globalenv(), inherits = FALSE)
   }
   on.exit({
+    # The kind first, then the seed, and the kind restored even where there
+    # was no seed: removing .Random.seed does not put the kind back, and this
+    # block changes it. R/helpers.R:136 records the same order for the same
+    # reason.
+    suppressWarnings(do.call(RNGkind, as.list(old_kind)))
     if (is.null(old_seed)) {
       suppressWarnings(rm(".Random.seed", envir = globalenv()))
     } else {
@@ -134,8 +140,8 @@ test_that("RNGkind at the same kind derives the state, it does not reseed", {
   mt <- c("Mersenne-Twister", "Inversion", "Rejection")
   # The same-kind call, which is what bnec_model_lapply() makes in the parent's
   # own kind, and the L'Ecuyer-CMRG to Mersenne-Twister change, which is what
-  # it makes inside a worker. Three calls rather than two: two clock-seeded
-  # draws could in principle collide.
+  # it makes inside a worker. Two independent pairs per arm rather than one:
+  # a single pair of clock-seeded draws could in principle collide.
   expect_identical(once(mt[1], mt), once(mt[1], mt))
   expect_identical(once(mt[1], mt), once(mt[1], mt))
   expect_identical(once("L'Ecuyer-CMRG", mt), once("L'Ecuyer-CMRG", mt))
