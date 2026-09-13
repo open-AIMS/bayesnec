@@ -65,7 +65,9 @@ With \code{summary = FALSE}, a named \code{\link[base]{list}} with one
 element per equation, each a draws-by-parameter
 \code{\link[base]{matrix}}. A two-block fit names the second block's columns
 with the distributional parameter, as \code{hu_top}; a single-block fit has
-no prefixed columns. For a \code{\link{bayesmanecfit}} these are each
+no prefixed columns. The list records the links of its fit in a \code{link}
+attribute, since a matrix of draws has no column to put them in. For a
+\code{\link{bayesmanecfit}} these are each
 equation's own draws in full, not the weighted subset
 \code{\link{nec}(posterior = TRUE)} returns, so they should not be pooled. A
 \code{\link{bayesnecgroupfit}} returns a list of those lists, one per level,

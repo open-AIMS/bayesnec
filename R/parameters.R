@@ -107,7 +107,9 @@
 #' element per equation, each a draws-by-parameter
 #' \code{\link[base]{matrix}}. A two-block fit names the second block's columns
 #' with the distributional parameter, as \code{hu_top}; a single-block fit has
-#' no prefixed columns. For a \code{\link{bayesmanecfit}} these are each
+#' no prefixed columns. The list records the links of its fit in a \code{link}
+#' attribute, since a matrix of draws has no column to put them in. For a
+#' \code{\link{bayesmanecfit}} these are each
 #' equation's own draws in full, not the weighted subset
 #' \code{\link{nec}(posterior = TRUE)} returns, so they should not be pooled. A
 #' \code{\link{bayesnecgroupfit}} returns a list of those lists, one per level,
@@ -179,9 +181,11 @@ parameters.bayesmanecfit <- function(object, summary = TRUE,
   # fitted with the same family and the same formula, so the link and the
   # predictor transformation are properties of the set; reporting them per
   # equation would print the same paragraph 23 times on the default model set.
+  # No gate is needed to achieve that: the loop below calls
+  # one_fit_parameters() directly rather than parameters(), so nothing inside
+  # it reaches report_scales() a second time. The group and hurdle methods do
+  # dispatch parameters() per level and per component, and those set the gates.
   report_scales(object$mod_fits[[mods[1]]], xform, "fitted model set")
-  quiet <- local_scale_report_off()
-  on.exit(options(quiet), add = TRUE)
   # Ordered by weight, so the equation holding most of the model average is
   # read first. Which equation a reported parameter belongs to is the whole
   # content of this table, and the weight is what says how much of the model
@@ -196,7 +200,9 @@ parameters.bayesmanecfit <- function(object, summary = TRUE,
                        wi = wi[i], summary = summary, xform = xform)
   })
   if (!summary) {
-    return(setNames(unlist(out, recursive = FALSE), mods[ord]))
+    res <- setNames(unlist(out, recursive = FALSE), mods[ord])
+    attr(res, "link") <- attr(out[[1]], "link")
+    return(res)
   }
   out <- do.call(rbind, out)
   rownames(out) <- NULL
@@ -213,7 +219,20 @@ parameters.bayesmanecfit <- function(object, summary = TRUE,
 #' @export
 parameters.bayesnechurdlefit <- function(object, summary = TRUE,
                                          xform = identity, ...) {
+  # Validated here as well as in the component methods, so that a bad argument
+  # is an error before anything is printed rather than after the delegation
+  # notice.
+  chk_lgl(summary)
+  check_xform(xform)
   message(hurdle_no_combined("parameters"))
+  # The two components are separate fits with separate families --- growth
+  # takes the family of the non-zero response and survival is bernoulli --- so
+  # each reports its own link. They share one formula on one predictor, so the
+  # transformation is reported once for the pair.
+  report_x_transform(representative_fit(object$growth), xform,
+                     "fitted hurdle pair")
+  quiet <- options(bayesnec.xform_reported = TRUE)
+  on.exit(options(quiet), add = TRUE)
   hurdle_delegate(object, parameters, summary = summary, xform = xform, ...)
 }
 
@@ -225,13 +244,15 @@ parameters.bayesnechurdlefit <- function(object, summary = TRUE,
 #' @export
 parameters.bayesnecgroupfit <- function(object, summary = TRUE,
                                         xform = identity, ...) {
+  chk_lgl(summary)
   check_xform(xform)
   # Every level is fitted with the same family and the same formula --- see
   # bnec_group(), which chooses the family once and fits one formula at every
-  # level --- so the link and the predictor transformation are reported once
-  # for the group rather than once per level.
+  # level --- so both the link and the predictor transformation are reported
+  # once for the group rather than once per level.
   report_scales(representative_fit(object$fits[[1]]), xform, "fitted group")
-  quiet <- local_scale_report_off()
+  quiet <- options(bayesnec.link_reported = TRUE,
+                   bayesnec.xform_reported = TRUE)
   on.exit(options(quiet), add = TRUE)
   out <- group_lapply(object, parameters, summary = summary, xform = xform,
                       ...)
@@ -252,10 +273,12 @@ parameters.bayesnecgroupfit <- function(object, summary = TRUE,
 
 #' The parameters of the concentration-response equations, in reporting order
 #'
-#' The single definition of which parameters exist. \code{\link{expand_nec}}
-#' takes its set from here so that the two cannot drift apart, keeping its own
-#' order because the extracted elements are appended to the
-#' \code{\link{bayesnecfit}} in that order.
+#' \code{expand_nec()} holds the same eight names in another order, as
+#' \code{extract_par_order()}, because the elements it extracts are appended to
+#' the \code{\link{bayesnecfit}} in that order. The two are separate
+#' definitions and are held in step by an \code{expect_setequal()} in
+#' \code{test-parameters.R}, not by one reading the other: a parameter added
+#' for a new equation has to be added to both, and the test is what says so.
 #'
 #' Fixed rather than derived from \code{\link{show_params}} so that the row
 #' order of the table is a property of this function and not of the order in
@@ -549,7 +572,12 @@ one_fit_parameters <- function(fit, models, wi, summary, xform) {
       }
       b
     }))
-    return(setNames(list(out), models[["mu"]]))
+    out <- setNames(list(out), models[["mu"]])
+    # The summary form records the link in a column. A matrix of draws has no
+    # column to put it in, so the draws form keeps it as an attribute; without
+    # it a saved set of draws would hold no record of the scale at all.
+    attr(out, "link") <- links
+    return(out)
   }
   out <- do.call(rbind, lapply(names(blocks), function(d) {
     b <- blocks[[d]]
@@ -614,17 +642,15 @@ report_absent_params <- function(found, model, dpar) {
 
 #' Report the scales the parameters are on
 #'
-#' Two scales are easy to read a number off without noticing. The link is rare,
-#' because \code{\link{bnec}} assigns \code{link = "identity"} to every family
-#' it accepts, and it is reported in a column as well. A predictor transformed
-#' inline by \code{crf()} is common, and is reported only here, so the message
-#' is raised whenever \code{xform} was left at \code{identity} --- a caller who
-#' supplied one has already inverted the transformation and does not need
-#' telling.
-#'
-#' Gated on an option so that a set, a group or a hurdle pair reports once
-#' rather than once per fit. The same device \code{ecx.bayesmanecfit()} uses
-#' for the \code{"relative"} rename warning.
+#' Two scales are easy to read a number off without noticing, and they are
+#' gated separately because they are properties of different things. The link
+#' belongs to the family, and a model set and a group share one family while
+#' the two components of a \code{\link{bayesnechurdlefit}} do not. The inline
+#' transformation belongs to the formula, which all three share. Each gate is
+#' set by the method that dispatches \code{\link{parameters}} more than once,
+#' after it has reported for itself, so the paragraph is printed once rather
+#' than once per equation, level or component. The same device
+#' \code{ecx.bayesmanecfit()} uses for the \code{"relative"} rename warning.
 #'
 #' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
 #' @param xform The function the caller supplied.
@@ -632,14 +658,36 @@ report_absent_params <- function(found, model, dpar) {
 #' fitted, used as the subject of the message.
 #'
 #' @return \code{NULL}, invisibly. Called for the messages.
+#' @noRd
+report_scales <- function(object, xform, what) {
+  if (!isTRUE(getOption("bayesnec.link_reported", FALSE))) {
+    report_link(fit_links(object$fit), what)
+  }
+  report_x_transform(object, xform, what)
+  invisible(NULL)
+}
+
+#' Say so where the predictor is transformed inside the formula
+#'
+#' \code{\link{bnec}} assigns \code{link = "identity"}, so the link is rare
+#' and is reported in a column as well. A predictor transformed inline by
+#' \code{crf()} is common and is reported only here, so the message is raised
+#' whenever \code{xform} was left at \code{identity} --- a caller who supplied
+#' one has already inverted the transformation and does not need telling.
+#'
+#' @param object A \code{\link{bayesnecfit}} or \code{prebayesnecfit}.
+#' @param xform The function the caller supplied.
+#' @param what A \code{\link[base]{character}} noun phrase naming what was
+#' fitted, used as the subject of the message.
+#'
+#' @return \code{NULL}, invisibly. Called for the message.
 #'
 #' @importFrom stats model.frame
 #' @noRd
-report_scales <- function(object, xform, what) {
-  if (isTRUE(getOption("bayesnec.scale_reported", FALSE))) {
+report_x_transform <- function(object, xform, what) {
+  if (isTRUE(getOption("bayesnec.xform_reported", FALSE))) {
     return(invisible(NULL))
   }
-  report_link(fit_links(object$fit), what)
   if (!identical(xform, identity)) {
     return(invisible(NULL))
   }
@@ -655,11 +703,6 @@ report_scales <- function(object, xform, what) {
           "as xform to read them as concentrations. top, bot and the shape ",
           "parameters are not on the predictor axis and are unaffected.")
   invisible(NULL)
-}
-
-#' @noRd
-local_scale_report_off <- function() {
-  options(bayesnec.scale_reported = TRUE)
 }
 
 #' The fit a per-fit property should be read from

@@ -108,6 +108,10 @@ test_that("summary = FALSE returns the draws the summary was computed from", {
   expect_named(draws, c("nec4param", "ecx4param"))
   expect_equal(ncol(draws$nec4param), 4L)
   expect_equal(nrow(draws$nec4param), manec_example$sample_size)
+  # A matrix of draws has no column for the link, so the list records it.
+  expect_equal(attr(draws, "link"), c(mu = "identity"))
+  expect_equal(attr(parameters(nec4param, summary = FALSE), "link"),
+               c(mu = "identity"))
   out <- parameters(manec_example)
   for (p in colnames(draws$nec4param)) {
     row <- out[out$model == "nec4param" & out$parameter == p, ]
@@ -301,18 +305,6 @@ test_that("a predictor transformed inline is reported unless xform was given", {
   expect_silent(parameters(nec4param))
 })
 
-test_that("a hurdle fit returns one table per component", {
-  o <- structure(list(growth = nec4param, survival = nec4param,
-                      data = nec4param$fit$data,
-                      formula = nec4param$bayesnecformula,
-                      y_var = "y", n_exposed = 4L, n_dead = 2L),
-                 class = c("bayesnechurdlefit", "bnecfit"))
-  expect_message(out <- parameters(o), "one element per component")
-  expect_named(out, c("growth", "survival"))
-  expect_equal(out$growth, out$survival)
-  expect_equal(nrow(out$growth), 4L)
-})
-
 fake_group <- function(fits = list(a = manec_example, b = nec4param)) {
   structure(list(fits = fits, group_var = "site", levels = names(fits),
                  formula = nec4param$bayesnecformula,
@@ -321,6 +313,44 @@ fake_group <- function(fits = list(a = manec_example, b = nec4param)) {
                  n = rep(50L, length(fits))),
             class = c("bayesnecgroupfit", "bnecfit"))
 }
+
+fake_hurdle <- function(growth = nec4param, survival = nec4param) {
+  structure(list(growth = growth, survival = survival,
+                 data = nec4param$fit$data,
+                 formula = nec4param$bayesnecformula,
+                 y_var = "y", n_exposed = 4L, n_dead = 2L),
+            class = c("bayesnechurdlefit", "bnecfit"))
+}
+
+test_that("a hurdle fit returns one table per component", {
+  o <- fake_hurdle()
+  expect_message(out <- parameters(o), "one element per component")
+  expect_named(out, c("growth", "survival"))
+  expect_equal(out$growth, out$survival)
+  expect_equal(nrow(out$growth), 4L)
+})
+
+test_that("a hurdle pair reports the transformation once, the link per fit", {
+  # The two components are fitted from one formula on one predictor, so a
+  # second paragraph about the transformation says nothing the first did not.
+  # The link is not shared: growth takes the family of the non-zero response
+  # and survival is bernoulli, so each component reports its own.
+  tf <- transformed_x_fit(nec4param, "nec4param")
+  msgs <- capture_messages(parameters(fake_hurdle(tf, tf)))
+  expect_equal(sum(grepl("transformed scale", msgs)), 1L)
+  # The gate is restored, so the next call reports again.
+  expect_message(parameters(tf), "transformed scale")
+})
+
+test_that("the wrapper methods validate before they print", {
+  # Both delegate, so without a check of their own a bad argument surfaced
+  # after the delegation notice, or from inside a per-level call.
+  expect_error(parameters(fake_hurdle(), xform = "sqrt"),
+               "xform must be a function")
+  expect_error(parameters(fake_hurdle(), summary = "yes"), "summary")
+  expect_error(parameters(fake_group(), summary = "yes"), "summary")
+  expect_error(parameters(fake_group(), xform = 2), "xform must be a function")
+})
 
 test_that("a group fit returns one table with a level column", {
   out <- parameters(fake_group())
