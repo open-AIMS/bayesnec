@@ -3,6 +3,10 @@
 #' @inheritParams bnec
 #'
 #' @param object An object of class \code{\link{prebayesnecfit}}.
+#' @param loo_controls A named \code{\link[base]{list}} whose "fitting"
+#' element holds arguments to be passed on to \code{\link[brms]{loo}}. A
+#' single model is not weighted, so a "weights" element is accepted and not
+#' read. See \code{\link{bnec}}.
 #' @param ... Further arguments to internal function.
 #'
 #' @return A \code{\link[base]{list}} of model statistical output derived from
@@ -62,19 +66,28 @@ expand_nec <- function(object, formula, x_range = NA, resolution = 1000,
   # and for any two-block fit where at least one block is smooth.
   nsec_off_curve <- function(post) {
     reference <- quantile(post[, 1], sig_val)
-    out <- vapply(seq_len(nrow(post)), function(i) {
-      crossing_x(post[i, ], reference, pred_data$x)
-    }, numeric(1))
+    # The reference and the start of the search are the same grid point by
+    # construction, so a draw at or below the reference there takes that point
+    # as its NSEC. Unlike nsec.bayesnecfit() this is the first column of the
+    # grid rather than the lowest observed predictor value; the two differ only
+    # where bnec() was given an x_range, which this path has never honoured
+    # (D15 ruling 2). See #325.
+    out <- nsec_from_posterior(post, reference, pred_data$x, pred_data$x[1],
+                               post[, 1])
     n_missing <- sum(is.na(out))
     if (n_missing > 0) {
       # Names the equation. bnec() calls this once per model, so on the default
       # 23-model set an unnamed message says only that something somewhere is
-      # censored, which is not enough to act on.
+      # censored, which is not enough to act on. It names the bound as a value
+      # rather than as "the highest concentration tested", which is the top of
+      # the prediction grid and is a higher concentration than any tested
+      # wherever bnec() was given an x_range above the data.
       message("The fitted ", object$model, " curve does not fall to the ",
               "control's ", sig_val, " quantile within the predictor range ",
               "for ", n_missing, " of ", length(out), " draws. Those draws ",
               "are excluded from the NSEC summary, which is therefore ",
-              "censored above the highest concentration tested.")
+              "censored above ",
+              signif(sub_x_transformation(max(pred_data$x), formula), 3), ".")
     }
     sub_x_transformation(out, formula)
   }
@@ -293,11 +306,19 @@ expand_manec <- function(object, formula, x_range = NA, resolution = 1000,
   } else if (any(success_models %in% mod_groups$ecx) & any(success_models %in% mod_groups$nec)) {
     ne_lab <- "N(S)EC"
   }
-  if (missing(loo_controls)) {
-    loo_controls <- list(fitting = list(), weights = list())
+  # define_loo_controls() rather than validate_loo_controls(), and on both
+  # branches. Validation alone leaves `weights` empty, `method` is then NULL in
+  # the do.call() below, and loo::loo_model_weights() applies its own default of
+  # "stacking" -- so a set assembled by c(), `+`, amend() or update() was
+  # weighted by stacking while the same set fitted by bnec() was weighted by
+  # pseudo-BMA, and attr(wi, "method") recorded nothing. This is the single
+  # point every route reaches, so the default is supplied here rather than at
+  # each entry point. See #320.
+  fam_tag <- object[[1]]$fit$family$family
+  loo_controls <- if (missing(loo_controls)) {
+    define_loo_controls(family_str = fam_tag)
   } else {
-    fam_tag <- object[[1]]$fit$family$family
-    loo_controls <- validate_loo_controls(loo_controls, fam_tag)
+    define_loo_controls(loo_controls, fam_tag)
   }
   loo_w_controls <- loo_controls$weights
   for (i in seq_along(object)) {

@@ -58,3 +58,15 @@ test_that("Check models inappropriate for negative x are dropped", {
     expect_message("Dropping the model\\(s\\) nechorme4pwr as they are not valid for data with negative predictor \\(x\\) values\\.") |>
     expect_error("No valid models have been supplied for this data type.")
 })
+
+
+test_that("bnec refuses a resolution below 2 before fitting anything", {
+  # A property of the call, fixed before any model is fitted. Left to arrive
+  # from expand_nec(), where the no-effect estimate of a smooth equation is read
+  # off the grid, it arrives only after every model in the set has compiled and
+  # sampled. See #325.
+  expect_error(
+    bnec(y ~ crf(x, model = "nec3param"), data = nec_data, resolution = 1),
+    "must be at least 2"
+  )
+})

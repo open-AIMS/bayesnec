@@ -173,14 +173,20 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }
 
-#' The weighting method a single fit actually used
+#' The weighting method a fit was built with
 #'
 #' \code{expand_manec()} stamps it on the weight vector. The attribute does not
-#' survive row-subsetting of \code{mod_stats}, and a single-model level is a
+#' survive row-subsetting of \code{mod_stats}, and a single-model fit is a
 #' bayesnecfit with no \code{mod_stats}, so an absent attribute means "unknown"
 #' rather than "pseudo-BMA" and contributes nothing.
 #'
-#' @param x A fit for one level.
+#' Read per level by \code{crossed_group_weights()}, and on the whole object by
+#' \code{\link{amend}}, \code{\link{pull_out}}, \code{\link[base]{c}} and
+#' \code{update()}, each of which preserves the method of the set it operates
+#' on. See #320.
+#'
+#' @param x A fitted object, or one level of a
+#' \code{\link{bayesnecgroupfit}}.
 #'
 #' @return A length-1 \code{\link[base]{character}}, or \code{NULL}.
 #'

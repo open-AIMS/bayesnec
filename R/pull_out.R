@@ -44,9 +44,15 @@ pull_out <- function(manec, model, loo_controls, ...) {
   if (length(model) > 1) {
     stop("Argument model can only take one value. See ?pull_out and ?models.")
   }
-  old_method <- attributes(manec$mod_stats$wi)$method
+  old_method <- fit_weights_method(manec)
+  # weights_controls() rather than list(method = old_method): a set that
+  # recorded no method -- one assembled by c() before #320, or one whose
+  # attribute was dropped by row-subsetting -- gave method = NULL, which
+  # loo::loo_model_weights() resolves to stacking. An unknown method is left
+  # for define_loo_controls() to fill with the documented default instead.
   if (missing(loo_controls)) {
-    loo_controls <- list(fitting = list(), weights = list(method = old_method))
+    loo_controls <- list(fitting = list(),
+                         weights = weights_controls(old_method))
   } else {
     fam_tag <- pull_brmsfit(pull_out(manec, model = names(manec$mod_fits[1])))$family$family
     loo_controls <- validate_loo_controls(loo_controls, fam_tag)
@@ -55,7 +61,7 @@ pull_out <- function(manec, model, loo_controls, ...) {
               "this is ignored in pull_out. Use function ?amend first if your",
               "intention is to modify the model averaging specs.")
     }
-    loo_controls$weights <- list(method = old_method)
+    loo_controls$weights <- weights_controls(old_method)
   }
   existing <- names(manec$mod_fits)
   msets <- names(mod_groups)

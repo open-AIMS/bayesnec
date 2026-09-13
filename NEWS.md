@@ -559,14 +559,59 @@
 - **A target the curve never reaches within the predictor range returns `NA`,
   with a warning naming how many draws were affected.** Both estimators
   previously returned the grid point whose prediction was nearest the target,
-  which for a curve that never declines to the target is the *lowest*
-  concentration in the series --- the furthest possible value from the truth,
-  reported as an ECx with nothing said. The crossing is now found by
-  interpolation between the bracketing grid points rather than snapped to the
-  nearer of them (#39). Every function that summarises such a posterior reports
-  the censoring and excludes the affected draws, `nec()` and the
-  `bayesnechurdlefit` methods included; they previously stopped with "missing
-  values and NaN's not allowed" on a posterior the package had itself written.
+  which for a curve that never declines to the target is the *highest*
+  concentration in the series, reported as an estimate with nothing said. The
+  crossing is now found by interpolation between the bracketing grid points
+  rather than snapped to the nearer of them (#39). Every function that
+  summarises such a posterior reports the censoring and excludes the affected
+  draws, `nec()` and the `bayesnechurdlefit` methods included; they previously
+  stopped with "missing values and NaN's not allowed" on a posterior the package
+  had itself written.
+
+- **A draw that has already reached the reference at the control is the opposite
+  case, and returns the control concentration.** The NSEC reference is the
+  `sig_val` quantile of the control posterior, so `sig_val` of the draws have a
+  control at or below it and reach it at the control itself. The control
+  concentration is the NSEC of each of those draws, which is what Fisher and Fox
+  (2023) report: their Table 3 gives a lower credible bound of zero at every
+  significance level above the 0.025 quantile the bound is read at, and those
+  draws are what produces it. A search for a sign change cannot tell that case
+  from a curve that never reaches the reference, so which value it takes is now
+  decided by the caller rather than by the search. Two limits of the range this
+  holds over. The value is the lowest *observed* concentration, where the paper
+  reports zero concentration; the two agree where the control of the design is a
+  true zero and the predictor is untransformed, and otherwise a reader comparing
+  with Table 3 sees a small positive bound in place of its 0. And it applies only
+  where the prediction grid reaches the control. Where `x_range` begins at a
+  higher concentration, a draw that reached the reference below that range is
+  not identified within it and returns `NA`, reported by a warning of its own
+  rather than by the one about curves that never reach the reference. The
+  crossing is sought from the control upward, the control being made the first
+  point of the searched grid, so no estimate is placed below the lowest tested
+  concentration and none is lost between the control and the first grid point
+  above it (#325).
+
+- **An NSEC asked for over a grid holding no concentration above the control is
+  refused by name**, rather than returning a vector of `NA` under a warning about
+  curves that never reach the reference. An `x_range` at or below the lowest
+  observed value produces such a grid, and so does `resolution = 1`. `bnec()`,
+  `amend()` and `update()` refuse a `resolution` below 2 up front, because the
+  no-effect estimate of any smooth equation in the set is read off that grid and
+  the refusal would otherwise arrive only after every model had compiled and
+  sampled (#325).
+
+- **An ECx is unchanged except where the curve has already reached its target
+  where the grid begins**, which the default `type = "absolute"` cannot produce:
+  the target is derived from the draw's own control, so the curve begins above
+  it. Three routes reach it, all degenerate, and each now returns `NA` in place
+  of a value: `type = "direct"` with a supplied target above the curve at the
+  control; `type = "range"` where the curve's lowest predicted response is at the
+  control, which makes the target equal to it exactly; and `type = "relative"` on
+  a hormetic equation for a draw whose `bot` exceeds its control. Where the curve
+  is hormetic the value returned before was the crossing on the *rising* limb ---
+  the concentration at which the response reaches the target on the way up, which
+  estimates nothing --- and otherwise it was the lowest concentration in the
+  series (#325).
 
 - **The default `resolution` is reduced from 1000 to 200** in `ecx()`,
   `nsec()`, `ecnsec()` and `average_estimates()`. The value of 1000 was
@@ -595,6 +640,48 @@
 
 ## New
 
+- **A model set can now be fitted in parallel.** `bnec()` and `amend()` fit
+  their models under whatever `future` plan is set when they are called, so
+  `plan(multisession, workers = 4)` before the call fits four models at a time
+  and `plan(sequential)`, or no plan at all, fits them one at a time exactly as
+  every earlier version did. There is no new argument: the plan already holds
+  that state, and a `cores` argument beside it would be ambiguous the moment a
+  user set both. `future` and `future.apply` are Suggests, so a session without
+  them takes the sequential path and reports nothing (#184).
+
+  **Chains are sampled in sequence inside each worker.** `brm()` parallelises
+  across chains already, so models in parallel on top of that would request
+  `workers x chains` processes --- sixteen for four workers and the default
+  `chains = 4`. Under a parallel plan of more than one worker `bnec()` passes
+  `cores = 1` to `brm()`. Passing `cores` yourself is left alone and is how the
+  two levels are nested deliberately. A plan that names a parallel strategy but
+  resolves to a single worker --- `plan(multicore)` wherever forking is
+  unavailable, which includes Windows --- is clamped in neither respect, and
+  says so. Note that `future` already sets `mc.cores` to 1 inside a worker, so
+  a value set in a profile does not reach `brms` there in any case; `cores = 1`
+  makes that a property of this package rather than of `future`'s internals.
+
+  **Each fitted model reproduces exactly under a parallel plan, for the same
+  `seed`.** This needed making true rather than being inherited:
+  `future.seed = TRUE` installs an L'Ecuyer-CMRG generator in each worker,
+  `set.seed()` does not restore the generator kind, and the initial-value search
+  would therefore have drawn different starting values in a worker from the same
+  seed --- silently, with no error and no warning. The worker restores the
+  parent's RNG kind before fitting. Without a `seed` the search reseeds from
+  entropy and no run repeats, under a plan or otherwise, which is unchanged.
+
+  **The model-averaged quantities are the exception.** `expand_manec()` draws
+  the seed for the weighted posterior draw from the session's RNG stream after
+  the models are fitted. A sequential run advances that stream, through the
+  `set.seed(seed)` each initial-value search makes, so the draw is fixed by
+  `seed`; under a parallel plan the model loop leaves the stream alone. The
+  averaged `nec`, its interval and the stored prediction grid therefore differ
+  between the two plans, as two valid realisations of the same weighting.
+  `set.seed()` in the calling session fixes that draw under a parallel plan, so
+  two parallel runs agree --- which is what `expand_manec()` intends it to
+  answer to (#216). One further consequence: a parallel call does not advance
+  the calling session's RNG stream, where a sequential one does.
+
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
   the candidate set as requested, the set attempted, the equations excluded with
   the reason for each, and any substitution made in the response. Both were
@@ -617,6 +704,40 @@
   adds variance to the binomial and so cannot address under-dispersion (#262).
 
 ## Bug fixes
+
+- A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
+  by pseudo-BMA, the documented default, rather than by stacking.
+  `expand_manec()` validated the `loo_controls` it was given but supplied no
+  default where the caller named no method, so `method` reached
+  `loo::loo_model_weights()` as `NULL`, `loo` applied its own default of
+  `"stacking"`, and `attr(mod_stats$wi, "method")` recorded nothing. The same
+  set fitted in a single `bnec()` call was weighted by pseudo-BMA, so the
+  weighting method --- and with it the model-averaged NEC, NSEC and ECx
+  estimates --- depended on how the set was assembled rather than on what was
+  requested. Combining single fits with `c()` is a documented workflow and is
+  how the training material introduces model averaging, so this was a common
+  path. Measured on the two packaged `manec_example` fits pulled out and
+  recombined (R 4.6.1, `loo` 2.8.0): stacking placed 0.892 of the weight on
+  `nec4param`, while pseudo-BMA placed between 0.821 and 0.862 over twenty
+  repeats --- it uses a Bayesian bootstrap and so is not deterministic ---
+  against the 0.827 recorded by the `bnec()` call that fitted them. The default
+  is supplied in `expand_manec()`, which is the one point every assembly route
+  reaches (#320).
+
+  Where the set being operated on records a method, that method is kept unless
+  the caller names another --- `pull_out()` excepted, which takes no weighting
+  method at all and reports and ignores one given to it. `amend()` and
+  `pull_out()` already preserved the recorded method, but passed an unknown one
+  on as `method = NULL`, which `loo` resolves to stacking; an unknown method is
+  now left for the default to fill. `update()` did not preserve it at all and
+  now does, since refitting a set is not a request to reweight it. Because
+  `loo_controls` names its `fitting` and `weights` arguments separately, both
+  `amend()` and `update()` read a call that names only a LOO fitting argument
+  as naming no method, so changing one does not reweight the set as a side
+  effect. `c()` and `+` take no
+  `loo_controls` argument, so they inherit the method where every object being
+  combined that records one names the same method, and report the fallback to
+  the default where two disagree.
 
 - `dispersion()` no longer discards the statistic where a single observation is
   reproduced exactly. The Pearson denominator is the fitted standard deviation,

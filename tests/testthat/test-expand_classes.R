@@ -141,9 +141,23 @@ test_that("new loo_controls are incorporated", {
   if (Sys.getenv("NOT_CRAN") == "") {
     skip_on_cran()
   }
+  # The default is supplied here, not only by bnec(). Absent it, `method` went
+  # to loo::loo_model_weights() as NULL, loo applied its own default of
+  # stacking, and the attribute recorded nothing -- so the weighting method
+  # depended on which function assembled the set. See #320.
   expand_manec(tt1, formulas) |>
     get_new_method() |>
-    expect_null() |>
+    expect_equal("pseudobma") |>
+    expect_message() |>
+    suppressWarnings()
+  # Named but NULL is the shape pull_out() and update.bnecfit() pass when the
+  # object they are operating on records no method. match.arg() resolves that
+  # to stacking inside loo, so it has to be caught here rather than only in the
+  # missing-argument branch.
+  expand_manec(tt1, formulas,
+               loo_controls = list(weights = list(method = NULL))) |>
+    get_new_method() |>
+    expect_equal("pseudobma") |>
     expect_message() |>
     suppressWarnings()
   my_ctrls <- list(weights = list(method = "pseudobma"))
