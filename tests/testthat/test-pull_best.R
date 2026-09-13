@@ -95,11 +95,25 @@ test_that("a hurdle fit selects within each component", {
   # hand from the stored fits: the only elements pull_best() reads are the two
   # components, and fitting a hurdle pair would take minutes.
   flipped <- manec_example
-  flipped$mod_stats$wi <- rev(as.numeric(flipped$mod_stats$wi))
+  # `wi[]` rather than `wi`: assigning the vector whole would strip the
+  # pseudobma_bb_weights class and the `method` attribute pull_out() reads, and
+  # the fixture would then exercise its unknown-method path rather than the one
+  # a fitted object takes.
+  flipped$mod_stats$wi[] <- rev(as.numeric(flipped$mod_stats$wi))
   hurdle <- structure(list(growth = manec_example, survival = flipped,
                            y_var = "y"),
                       class = c("bayesnechurdlefit", "bnecfit"))
-  out <- suppressMessages(pull_best(hurdle))
+  # The labels are what tells the two components' reports apart, so they are
+  # asserted on the call that is made anyway rather than by calling twice. The
+  # assignment is inside the expectations because expect_message() returns the
+  # condition it matched, not the value of the expression, while the expression
+  # itself still runs to completion under its calling handler.
+  out <- NULL
+  expect_message(
+    expect_message(out <- pull_best(hurdle), "Growth component:"),
+    "Survival component:"
+  ) |>
+    suppressMessages()
   expect_s3_class(out, "bayesnechurdlefit")
   expect_s3_class(out$growth, "bayesnecfit")
   expect_s3_class(out$survival, "bayesnecfit")

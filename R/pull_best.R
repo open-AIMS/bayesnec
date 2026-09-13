@@ -51,6 +51,11 @@
 #' set had been reduced to one equation before the call. \code{suppressMessages}
 #' silences it.
 #'
+#' The refusal of \code{...} is raised in the generic, before dispatch, so a
+#' method written for another class outside this package cannot take an
+#' argument of its own either. \code{\link{screen_models}} and
+#' \code{\link{amend}} are closed to extension in the same way.
+#'
 #' A \code{\link{bayesnechurdlefit}} is handled one component at a time and
 #' rewrapped, as \code{\link{screen_models}} and \code{\link{amend}} already do
 #' for that class. The two components may select different equations: the
@@ -156,12 +161,13 @@ pull_best.bayesnechurdlefit <- function(object, ...) {
 #'
 #' @details Read from the \code{model} column rather than from
 #' \code{rownames()}. Both name the models of a set as \code{expand_manec()}
-#' returns it, but only the column is set deliberately:
-#' \code{data.frame(model = success_models)} takes automatic row names, and the
-#' model names reach the row names only because the dispersion matrix
-#' \code{cbind()} onto it has them. Row-subsetting that frame therefore
-#' leaves row names that are positions in the frame it was subset from, while
-#' the column still names the models.
+#' returns it, but only the column is set by name:
+#' \code{data.frame(model = success_models)} takes automatic row names, since
+#' \code{success_models} is unnamed, and the model names reach the row names
+#' only at \code{cbind(mod_stats, disp)}, from the row names of the dispersion
+#' matrix. A change to the shape of that matrix, or to how those columns are
+#' attached, would drop the row names without touching the column or raising
+#' anything.
 #'
 #' @return A \code{\link[base]{character}} string naming one model.
 #'

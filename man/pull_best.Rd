@@ -67,6 +67,11 @@ pass-through, so that a workflow leaves the same record whether or not the
 set had been reduced to one equation before the call. \code{suppressMessages}
 silences it.
 
+The refusal of \code{...} is raised in the generic, before dispatch, so a
+method written for another class outside this package cannot take an
+argument of its own either. \code{\link{screen_models}} and
+\code{\link{amend}} are closed to extension in the same way.
+
 A \code{\link{bayesnechurdlefit}} is handled one component at a time and
 rewrapped, as \code{\link{screen_models}} and \code{\link{amend}} already do
 for that class. The two components may select different equations: the
