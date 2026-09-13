@@ -110,20 +110,28 @@ test_that("a parallel set samples its chains in sequence unless told not to", {
   )
 })
 
-test_that("a plan with no seed says the run will not reproduce", {
-  # #310 made a sequential fit reproduce under set.seed() in the caller's
-  # session and left a run under a plan not reproducing, because a worker's
-  # stream is re-initialised from the clock. The two calls look identical, so
-  # the difference is said rather than left to be discovered.
-  skip_unless_future()
-  expect_message(with_parallel_plan(plan_model_set(list(), 5)),
-                 "does not reproduce under set.seed")
-  # Supplying a seed closes the gap, so the notice is not given.
-  msg <- capture.output(
-    invisible(with_parallel_plan(plan_model_set(list(seed = 322), 5))),
-    type = "message"
-  )
-  expect_false(any(grepl("does not reproduce", msg)))
+test_that("RNGkind at the same kind derives the state, it does not reseed", {
+  # The reason bnec_model_lapply() recorded for restoring the kind was that
+  # RNGkind() re-initialises .Random.seed from the clock. It does that only
+  # where no seed exists yet. Pinned because the whole argument about what a
+  # parallel run reproduces rests on which of the two it is. See #310.
+  old_seed <- if (exists(".Random.seed", envir = globalenv(),
+                         inherits = FALSE)) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  }
+  on.exit({
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  once <- function() {
+    set.seed(42)
+    suppressWarnings(do.call(RNGkind, as.list(RNGkind())))
+    stats::runif(1)
+  }
+  expect_identical(once(), once())
 })
 
 test_that("no plan and no future leaves brm_args untouched", {

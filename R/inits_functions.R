@@ -943,8 +943,8 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' draw. That alone accounts for both of the outputs that differed between
 #' renders: the two \code{fixef()} tables are read off two of those fits, and
 #' the three \code{check_priors()} figures are pure functions of the fits they
-#' plot, \code{brms::hypothesis()} using the stream only when given a seed of
-#' its own. The stream state is a second consequence and does not enter that
+#' plot, \code{brms::hypothesis()} touching the stream only when given a seed
+#' of its own. The stream state is a second consequence and does not enter that
 #' explanation. See #310.
 #'
 #' Restoring the stream afterwards, as \code{weighted_draw_index()} does, would
@@ -952,6 +952,8 @@ boundary_inset <- function(edge, bound, centres, spread, y, side,
 #' from a fit, and the Stan seed is drawn from the same stream immediately
 #' after it by whichever backend is in use, so a fit is meant to advance the
 #' stream. What it must not do is advance it by an amount nobody can predict.
+#' \code{check_fit()} and \code{dispersion()} are on the other side of that
+#' line and do not restore; see #337.
 #'
 #' \strong{The cap stays at 1e4.} It is now exactly \code{n_trials} rounds
 #' where the released loop allowed one more --- it drew the first set before the

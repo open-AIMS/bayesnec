@@ -754,7 +754,7 @@
   Both of the outputs that differed between renders follow from that directly.
   The two `fixef()` tables are read off two of those fits. The three
   `check_priors()` figures are pure functions of the fits they plot ---
-  `check_priors()` calls `brms::hypothesis()`, which uses the random number
+  `check_priors()` calls `brms::hypothesis()`, which touches the random number
   stream only when given a seed of its own, and then `geom_density()` --- so a
   figure differs exactly when its fit does. The issue records two
   `check_priors()` calls on one saved fit giving byte-identical files, which is
@@ -767,14 +767,20 @@
   did. In the measurement above the stream state after the fit now agrees
   between the two calls.
 
-  Under a `future` plan a `seed` is still required. `future.seed = TRUE` gives
-  each worker a stream derived from the parent's, but `bnec_model_lapply()`
-  restores the parent's generator kind inside the worker so that a supplied
-  seed means the same thing in both places, and setting the kind
-  re-initialises the worker's stream from the clock and the process id. That
-  leaves two calls that look identical, only one of which repeats, so
-  `plan_model_set()` now says so where a plan is in effect and no `seed` was
-  given. Both vignette chunks that set a plan pass one.
+  A run under a `future` plan reproduces the same way. `future.seed = TRUE`
+  gives each element an L'Ecuyer-CMRG stream derived from the parent's, and
+  `bnec_model_lapply()`'s restore of the parent's generator kind inside the
+  worker derives from that stream rather than discarding it. The reason
+  recorded in `bnec_model_lapply()` said otherwise --- that `RNGkind()`
+  re-initialises `.Random.seed` from the clock and the process id --- and that
+  is true only where no seed exists yet, which inside such a worker it never
+  does. Measured on R 4.6.1 under `plan(multicore, workers = 3)`, three
+  equations, the body being the initial-value search itself and no `seed`
+  supplied: two runs at one `set.seed()` gave identical initial values and a
+  third at another seed gave different ones. One backend and one R version, so
+  `seed` remains the way to fix a run that has to repeat regardless. What a
+  plan still does not reproduce is a *sequential* run's model-averaged
+  quantities, which is unchanged and documented at `?bnec`.
 
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.

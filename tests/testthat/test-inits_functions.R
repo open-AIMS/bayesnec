@@ -961,6 +961,30 @@ test_that("the search is deterministic given a seed", {
   expect_equal(run(), run())
 })
 
+# Save and put back the caller's random number stream. Written on exists()
+# rather than on `.Random.seed` directly: a session that has not yet used the
+# RNG has no such object and reading it errors, which a developer running one
+# of these blocks alone would hit. Removing the object is what restores such a
+# session; assigning one would leave it seeded. The same idiom is at
+# R/helpers.R:129 and R/parallel_models.R:250. Needed since #310, which made
+# the search follow the ambient stream, so a block that advances it decides
+# where the next block in the file starts. Used as
+# `old <- saved_stream(); on.exit(restore_stream(old), add = TRUE)`, in the
+# block's own frame so that on.exit() fires when the block ends.
+saved_stream <- function() {
+  if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  }
+}
+
+restore_stream <- function(old) {
+  if (is.null(old)) {
+    suppressWarnings(rm(".Random.seed", envir = globalenv()))
+  } else {
+    assign(".Random.seed", old, envir = globalenv())
+  }
+}
+
 test_that("with no seed the search follows the caller's stream", {
   # #310. The search called set.seed(seed) unconditionally, and set.seed(NULL)
   # re-initialises the stream from the clock and the process id rather than
@@ -977,8 +1001,8 @@ test_that("with no seed the search follows the caller's stream", {
   # The search now follows the ambient stream, so a test that advances it
   # leaves the next test in the file starting somewhere else. Restored here so
   # this block does not couple what follows it to its own draws.
-  old_seed <- .Random.seed
-  on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+  old_seed <- saved_stream()
+  on.exit(restore_stream(old_seed), add = TRUE)
   run <- function(ambient) {
     set.seed(ambient)
     inits <- suppressMessages(
@@ -991,7 +1015,7 @@ test_that("with no seed the search follows the caller's stream", {
   b <- run(333)
   c <- run(334)
   expect_equal(a$inits, b$inits)
-  expect_identical(a$after, b$after)
+  expect_true(identical(a$after, b$after))
   # Not a hardcoded seed standing in for the caller's: a different session seed
   # must give different initial values.
   expect_false(isTRUE(all.equal(a$inits, c$inits)))
@@ -1006,8 +1030,8 @@ test_that("seed = NA is read as no seed rather than erroring", {
   y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
   fam <- validate_family("Beta")
   pr <- suppressMessages(define_prior("nec4param", fam, x, y))
-  old_seed <- .Random.seed
-  on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+  old_seed <- saved_stream()
+  on.exit(restore_stream(old_seed), add = TRUE)
   run <- function() {
     set.seed(11)
     suppressMessages(
@@ -1038,8 +1062,8 @@ test_that("the seed reaches the search from brm_args, NA included", {
   x <- rep(c(1, 5, 20, 100), each = 5)
   y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
   fam <- validate_family("Beta")
-  old_seed <- .Random.seed
-  on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+  old_seed <- saved_stream()
+  on.exit(restore_stream(old_seed), add = TRUE)
   go <- function(args) {
     set.seed(101)
     suppressMessages(
@@ -1067,8 +1091,8 @@ test_that("both hurdle blocks follow the caller's stream", {
     brms::prior_string("normal(1, 1)", nlpar = "hutop") +
     brms::prior_string("normal(0, 2)", nlpar = "hubeta") +
     brms::prior_string("normal(20, 20)", nlpar = "hunec", lb = 0)
-  old_seed <- .Random.seed
-  on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+  old_seed <- saved_stream()
+  on.exit(restore_stream(old_seed), add = TRUE)
   run <- function(ambient) {
     set.seed(ambient)
     suppressMessages(
