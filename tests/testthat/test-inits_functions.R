@@ -961,6 +961,57 @@ test_that("the search is deterministic given a seed", {
   expect_equal(run(), run())
 })
 
+test_that("with no seed the search follows the caller's stream", {
+  # #310. The search called set.seed(seed) unconditionally, and set.seed(NULL)
+  # re-initialises the stream from the clock and the process id rather than
+  # leaving it alone. A user who ran set.seed() before bnec() therefore had it
+  # discarded, and the fit was a fresh draw every time. Three properties are
+  # asserted together because a fix that satisfies any two of them alone is
+  # wrong: the values must repeat under one seed, must differ under another,
+  # and the stream must be left where a second run would leave it.
+  skip_on_cran()
+  x <- rep(c(1, 5, 20, 100), each = 5)
+  y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
+  fam <- validate_family("Beta")
+  pr <- suppressMessages(define_prior("nec4param", fam, x, y))
+  run <- function(ambient) {
+    set.seed(ambient)
+    inits <- suppressMessages(
+      make_good_inits("nec4param", x, y, family = fam, n_trials = 200,
+                      priors = pr, chains = 2)
+    )
+    list(inits = inits, after = .Random.seed)
+  }
+  a <- run(333)
+  b <- run(333)
+  c <- run(334)
+  expect_equal(a$inits, b$inits)
+  expect_identical(a$after, b$after)
+  # Not a hardcoded seed standing in for the caller's: a different session seed
+  # must give different initial values.
+  expect_false(isTRUE(all.equal(a$inits, c$inits)))
+})
+
+test_that("seed = NA is read as no seed rather than erroring", {
+  # brms writes "no seed" as seed = NA, and that value reaches the search
+  # through brm_args$seed. set.seed(NA) is an error, so the guard tests for
+  # both forms. See #310.
+  skip_on_cran()
+  x <- rep(c(1, 5, 20, 100), each = 5)
+  y <- rep(c(0.9, 0.6, 0.3, 0.1), each = 5)
+  fam <- validate_family("Beta")
+  pr <- suppressMessages(define_prior("nec4param", fam, x, y))
+  run <- function() {
+    set.seed(11)
+    suppressMessages(
+      make_good_inits("nec4param", x, y, family = fam, n_trials = 200,
+                      priors = pr, chains = 2, seed = NA)
+    )
+  }
+  expect_error(run(), NA)
+  expect_equal(run(), run())
+})
+
 test_that("a long search says it is still running", {
   # The actual complaint in #266: 561 seconds with no output, which a user
   # cannot tell from a hang. report_after = 0 makes the notice fire on the

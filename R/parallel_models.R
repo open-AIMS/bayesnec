@@ -201,9 +201,21 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' \code{plan(multicore, workers = 3)}: three of three draws distinct with the
 #' restore in place, as without it.
 #'
-#' Where no \code{seed} is supplied the search calls \code{set.seed(NULL)},
-#' which reseeds from entropy, so the run is not reproducible under either plan
-#' -- which is what it does today, with or without a plan set.
+#' \bold{Reproducibility under a plan still needs a \code{seed}.} Since #310
+#' the search no longer reseeds from entropy: given no seed it draws from the
+#' stream it was handed, so a sequential run reproduces under a
+#' \code{\link[base]{set.seed}} in the caller's session. A worker's stream is
+#' not that stream. \code{future.seed = TRUE} gives each worker a
+#' well-defined L'Ecuyer-CMRG stream derived from the parent's, but the
+#' \code{\link[base]{RNGkind}} call above discards it -- setting the kind
+#' re-initialises \code{.Random.seed} from the clock and the process id -- and
+#' it is discarded on purpose, because a supplied seed has to mean the same
+#' thing in a worker as in the parent. So a run under a plan reproduces where a
+#' \code{seed} is passed to \code{\link{bnec}}, and does not otherwise.
+#' Closing that gap means seeding each element from a value the parent draws,
+#' which would make the dispatcher rather than the fit responsible for the
+#' stream; it has not been done and is not needed for either vignette, both of
+#' which pass a \code{seed} in every chunk that sets a plan.
 #'
 #' \bold{One model per chunk.} \code{future_lapply()} otherwise divides the set
 #' into one chunk per worker and runs each chunk in sequence, which for

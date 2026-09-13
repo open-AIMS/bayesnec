@@ -445,6 +445,21 @@ posterior predictions, with weights derived using functions
 \code{loo_controls} argument. Individual model fits can be pulled out
 for examination using function \code{\link{pull_out}}.
 
+\bold{Reproducing a fit}
+
+A fit is a random procedure twice over: initial values are drawn from the
+priors, and the sampler is seeded. Both draws come from R's random number
+stream, so \code{\link[base]{set.seed}} in your session before the call
+fixes the fit, and two calls made after the same \code{set.seed()} return
+the same estimates. Passing \code{seed} through to \code{\link[brms]{brm}}
+fixes it too, and does so independently of the session's stream.
+
+Two qualifications. The estimates are fixed only for a given version of
+\pkg{bayesnec}, \pkg{brms}, Stan and the compiler: a Stan program rebuilt
+by a different toolchain can differ in the last figures. And under a
+\pkg{future} plan a \code{seed} is required, because each model is fitted
+in a worker with a stream of its own; see below.
+
 \bold{Fitting a model set in parallel}
 
 A model set is fitted one model at a time by default. Setting a \pkg{future}
