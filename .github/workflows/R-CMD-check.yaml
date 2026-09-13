@@ -3,8 +3,11 @@
 # A push to a branch that has an open pull request fires both `push` and
 # `pull_request`, so an unfiltered trigger ran the four-job matrix twice for
 # every push. With a stacked set of pull requests that is eight runs for one
-# propagated fix, on a repository that runs one job at a time, and the queue
-# never drained. Every other workflow here already filters; this one did not.
+# propagated fix, and the queue never drained. Every other workflow here already
+# filters; this one did not. (That was written when the repository appeared to
+# run one job at a time. It does not: up to 12 R-CMD-check jobs ran at once in
+# the window measured for #333. Halving the number of runs is worth doing either
+# way -- see `notes/ci_devel_cancellation.md`.)
 #
 # `push` is now limited to the integration branches, and a branch with a pull
 # request is still checked through `pull_request`. Nothing loses coverage: a
@@ -28,48 +31,25 @@ on:
 
 # Supersede rather than queue. Pushing a correction to a branch whose check is
 # still running made both run to completion, and only the second was ever read.
+# A run stopped this way reports every unfinished job as `cancelled`.
 #
-# What that discards, and what it does not. Measured over the 200 most recent
-# `pull_request` runs, 2026-08-24 to 2026-09-13, by
-# `notes/scripts/ci_devel_cancellation.R`. 138 runs completed every job. Of the
-# 62 that did not, 44 had all four jobs cancelled a median of 11.2 minutes in,
-# before any of them had finished -- a run superseded early, which is the case
-# this block exists for. Ten lost `ubuntu-latest (devel)` alone with the other
-# three reported, four lost `windows-latest` alone, and four lost two or three.
+# Do not read a cancelled `ubuntu-latest (devel)` job as evidence about the
+# branch it ran on. It records that a newer commit exists on that pull request,
+# and the newer commit is the one checked. Measured 2026-09-13 over 196 runs, 44
+# of the 62 cancellations stopped all four jobs before any had finished, and of
+# the 30 most recently merged pull requests, 30 had a successful devel check on
+# the head commit completed before the merge. None merged without one.
 #
-# A cancelled devel job is not evidence about the branch it ran on. It records
-# that a newer commit exists on that pull request, and the newer commit is the
-# one checked. Every one of the last 30 merged pull requests had a successful
-# `ubuntu-latest (devel)` on its merged head commit, completed before the merge;
-# none merged without one. On `dev`, 35 of the last 40 pushes completed the devel
-# job and 5 were superseded by a later push to `dev`. R-devel feedback is
-# reaching review, on the commit that merges. See #333, which exists because four
-# consecutive cancelled devel jobs on #331 were investigated as a branch-specific
-# hang before the base rate was measured.
+# #333 proposed exempting devel from cancellation or shortening it. Both were
+# rejected: exemption adds nothing to that coverage, and devel is not the slowest
+# job here -- it runs 1.6 to 3.7 minutes longer than `ubuntu-latest (release)`
+# and 5.2 to 7.2 minutes shorter than `windows-latest`. Exempting devel would
+# also take more than a per-cell concurrency group, because this workflow-level
+# `cancel-in-progress` stops the run before any job-level group applies.
 #
-# Quote no single rate for this. Over the 200 runs devel was cancelled 28.5 per
-# cent of the time against 22.5 to 26.0 for the other three, but within that
-# window the 80 most recent runs give 55.0 per cent and the 120 before them 10.8.
-# Cancellation clusters where pushes are frequent, so a rate measures how the
-# branches were being worked over the days sampled, not the workflow.
-#
-# Two alternatives were considered and rejected on that measurement.
-#
-# Exempting devel from cancellation, in its own concurrency group, adds nothing
-# to the coverage recorded above, and running the window's 57 cancelled devel
-# jobs on to the 35.2-minute median adds about 1,140 runner-minutes over three
-# weeks. A per-matrix-cell group would not even prevent the cancellation: a devel
-# job is superseded by the next run's devel job, not by its own siblings
-# finishing.
-#
-# Shortening devel would leave the ranking it is meant to change. Paired against
-# `ubuntu-latest (release)` within the same run, devel's median elapsed time is
-# 2.4 minutes longer (n = 128 runs where both succeeded; longer in 89, sign test
-# p = 1e-05). The difference is real, and it is an order of magnitude below the
-# 25 minutes #333 reported. `windows-latest` is the slowest job in this matrix,
-# not devel: paired against devel it is a median 6.5 minutes longer, and longer
-# in 98 of 112 runs. Bringing devel down to the release job would leave windows
-# above it, so a supersede would still arrive with a job unfinished.
+# `notes/ci_devel_cancellation.md` holds the measurement, the day-by-day rate,
+# and what a rate quoted over a whole window does and does not describe.
+# `notes/scripts/ci_devel_cancellation.R` reproduces all of it.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -95,9 +75,15 @@ jobs:
     # The default job timeout is six hours. Two terminations on this repository
     # arrived as a bare exit 143 partway through the test phase with no timing
     # line and no cause, and neither was a timeout, so neither could be told from
-    # a job that was merely slow. A bound well above the longest observed job --
-    # windows-latest at 42 minutes, against a spread of about a third -- makes a
+    # a job that was merely slow. A bound above the longest observed job makes a
     # hang a deterministic event at a known boundary instead. See #328.
+    #
+    # This was set against a 42-minute maximum, which #333 superseded: the
+    # longest devel job to reach a conclusion took 72.7 minutes, and five ran
+    # past 70. The margin is 1.24 times, not the wide one the original figure
+    # implied. It is left at 90 because no job of any cell has reached it in 583
+    # completed observations, and because the `if: always()` log dump below makes
+    # a timeout diagnosable if it does. See `notes/ci_devel_cancellation.md`.
     timeout-minutes: 90
 
     env:
