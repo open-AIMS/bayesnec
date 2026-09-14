@@ -93,8 +93,17 @@
 #' connections}. Starting the inner cluster opens connections inside a future
 #' and leaves them open, which is what makes that cluster reusable, and
 #' \pkg{future} reports any such change. Nothing is wrong and no fit is
-#' affected. An inner \code{multicore} strategy, where forking is available,
-#' does not open connections and so does not report any.
+#' affected. It is not suppressed here, because the same check would catch a
+#' connection genuinely leaked by something a fit called;
+#' \code{options(future.connections.onMisuse = "ignore")} turns it off for your
+#' session, and an inner \code{multicore} strategy, where forking is available,
+#' opens no connections and so reports none.
+#'
+#' Where you have set \code{cmdstanr_write_stan_file_dir}, a parallel grouped
+#' call writes one \code{bayesnec-stan-<pid>} directory under it per worker
+#' process per run. A process id is not the same on the next run, so these are
+#' not read again; they are safe to delete, and worth deleting on a filesystem
+#' where compiled Stan programs accumulate.
 #'
 #' Three things to weigh before setting one. A worker fitting a level holds that
 #' level's whole model-averaged set, where a worker fitting one model holds one
@@ -271,7 +280,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # repeats without a set.seed() in the session as well. The caller's stream is
   # put back either way: bnec_group() is not entitled to move it, which is the
   # same rule bnec_parallel_lapply() follows.
-  level_seeds <- group_level_seeds(length(levs), dots$seed)
+  level_seeds <- group_level_seeds(length(levs), dots[["seed"]])
   if (level_plan$concurrent) {
     # Announced together, before the dispatch. The per-level message the
     # sequential path emits is dropped here: it would be emitted by the worker
@@ -298,8 +307,8 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   )
   # narrow_environment(), for the reason bnec() gives at its own call: future
   # exports the applied function with its enclosing environment, and that would
-  # be this frame. Only the eight names below need to reach a worker, and
-  # neither `data` nor `grp` is one of them.
+  # be this frame. Only the six names below need to reach a worker, and neither
+  # `data` nor `grp` is one of them.
   #
   # do.call() rather than forwarding `...`, because `...` cannot be put in the
   # replacement environment. Two things this changes were checked rather than
@@ -326,23 +335,67 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
           cmdstanr_write_stan_file_dir = worker_stan_cache_dir(cache_root)
         )
         on.exit(options(old), add = TRUE)
-      } else {
-        message("Fitting level \"", levs[i], "\" (", counts[[levs[i]]],
-                " observations).")
       }
       do.call("bnec", c(list(formula, data = part$data, family = family),
                         dots))
     },
-    list(formula = formula, levs = levs, counts = counts, family = family,
-         dots = dots, concurrent = level_plan$concurrent,
-         cache_root = cache_root, level_seeds = level_seeds)
+    list(formula = formula, family = family, dots = dots,
+         concurrent = level_plan$concurrent, cache_root = cache_root,
+         level_seeds = level_seeds)
   )
-  fits <- bnec_parallel_lapply(parts, fit_level,
-                               parallel = level_plan$dispatch)
+  # The caller's stream is restored around the whole loop, not only inside
+  # bnec_parallel_lapply()'s parallel path. fit_level() calls set.seed() on
+  # every path, so without this a grouped call fitted with the levels in
+  # sequence left the session at the last level's seed -- and, where `seed` was
+  # supplied, at a constant, so `set.seed(i); bnec_group(..., seed = 1);
+  # rnorm(1)` returned one number for every i. The state after the call would
+  # then depend on the arrangement, which is what level_seeds exists to stop.
+  rng_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (has_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    suppressWarnings(do.call(RNGkind, as.list(rng_kind)))
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  fits <- if (level_plan$concurrent) {
+    bnec_parallel_lapply(parts, fit_level, parallel = TRUE)
+  } else {
+    # One level per dispatch, announced before it starts. future_lapply()
+    # creates every future and then collects, and a sequential future relays
+    # its conditions at collection, so dispatching all the levels at once put
+    # every per-level message at the end of the run -- measured at 1.5 s a
+    # level, all three messages arrived at 3.0 s. On a seven-level call at
+    # eighteen minutes a fit that is the only progress signal there is.
+    # Dispatching one at a time still enters a future, which is what moves the
+    # plan on to the inner strategy, so the model loop inside each level still
+    # gets the whole of it.
+    lapply(parts, function(part) {
+      message("Fitting level \"", levs[part$i], "\" (",
+              counts[[levs[part$i]]], " observations).")
+      if (level_plan$dispatch) {
+        bnec_parallel_lapply(list(part), fit_level, parallel = TRUE)[[1]]
+      } else {
+        fit_level(part)
+      }
+    })
+  }
   names(fits) <- levs
   out <- list(fits = fits, group_var = group_var, levels = levs,
               formula = formula, data = data, family = unmark_family(family),
-              n = as.integer(counts[levs]), weights_method = wt_method)
+              n = as.integer(counts[levs]), weights_method = wt_method,
+              # Recorded rather than regenerated, for the reason
+              # expand_manec() stores w_draw_index beside w_draw_seed: these
+              # objects are archived and reopened years later, and what was
+              # realised cannot drift the way a fresh sample.int() can.
+              level_seeds = level_seeds)
   allot_class(out, c("bayesnecgroupfit", "bnecfit"))
 }
 

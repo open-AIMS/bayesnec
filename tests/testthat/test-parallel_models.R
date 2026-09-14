@@ -601,10 +601,10 @@ test_that("a grouped call fitted in parallel reproduces the sequential one", {
   skip_unless_future()
   # The end-to-end proof for the level loop, on the smallest shape that takes
   # it: two levels of one equation over two workers is 1 round against 2, so
-  # the levels are dispatched. One equation also keeps the assertion exact --
-  # a level that model-averages draws its weighted posterior index from the
-  # stream of whichever process fitted it, which is the one quantity a plan is
-  # not expected to reproduce (see expand_manec() and #216).
+  # the levels are dispatched. One equation rather than a set only to keep the
+  # fixture to two fits per plan; since every level is seeded from the caller,
+  # a model-averaged level would agree between the two arrangements as well,
+  # which the seeding test below pins without fitting anything.
   shape <- suppressMessages(
     with_parallel_plan(bayesnec:::plan_group_levels(2, 1))
   )
@@ -787,16 +787,21 @@ test_that("the nested plan the message recommends asserts its worker count", {
   skip_unless_future()
   # future sets mc.cores to 1 inside a worker, parallelly reads that as the
   # core budget, and its hard limit is 300 per cent, so a bare inner worker
-  # count is refused. Measured on R 4.6.1 with future 1.70.0 and parallelly
-  # 1.48.0, one run each: under plan(list(tweak(multisession, workers = 2),
-  # tweak(multisession, workers = 4))) an inner future returned "Attempting to
-  # set up 4 localhost parallel workers with only 1 CPU cores available ... The
-  # hard limit is set to 300%", and the same plan with workers = I(4) returned
-  # 4. The refusal depends on the outer count as well -- one outer worker
-  # accepted the bare 4 -- so what is asserted here is that the advice bayesnec
-  # prints carries the I(). Building the nested cluster is not asserted: ten
-  # processes each loading brms took longer than the rest of this file
-  # together.
+  # count is refused where I() is not. Measured on R 4.6.1 with future 1.70.0
+  # and parallelly 1.48.0, one run each: under
+  # plan(list(tweak(multisession, workers = 2), tweak(multisession,
+  # workers = 4))) an inner future returned "Attempting to set up 4 localhost
+  # parallel workers with only 1 CPU cores available ... The hard limit is set
+  # to 300%", and the same plan with workers = I(4) returned 4. The refusal
+  # depends on the outer count as well: one outer worker accepted the bare 4.
+  #
+  # Building that cluster is not asserted here. Two measurements of it
+  # disagree -- 1.7 s on one run of a bare future_lapply, and no completion in
+  # 280 s on two runs of the same plan inside this file -- and repeated
+  # multisession cluster creation in one session stalls on the development
+  # host often enough that a test which builds one is a flake rather than a
+  # check. What is asserted is that the advice bayesnec prints carries the
+  # I(), without which the call it recommends is the one refused above.
   expect_match(
     suppressMessages(
       capture_messages(with_parallel_plan(bayesnec:::plan_group_levels(3, 2)))
@@ -845,4 +850,96 @@ test_that("the levels of a grouped call are seeded from the caller", {
   expect_identical(get(".Random.seed", envir = globalenv()), before)
   invisible(seeds(5))
   expect_identical(get(".Random.seed", envir = globalenv()), before)
+  # And so is the generator kind, which the seeded path pins to "Rejection".
+  kind <- RNGkind()
+  on.exit(suppressWarnings(do.call(RNGkind, as.list(kind))), add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
+  invisible(seeds(3, 17))
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("a seeded body gives one answer on both arrangements", {
+  skip_unless_future()
+  skip_unless_worker_sees_internals()
+  # The mechanism behind the claim that the arrangement does not change a
+  # grouped call's estimates, pinned without fitting anything. The body stands
+  # in for one level: it seeds itself from the level seed the parent realised,
+  # then makes the two draws a level makes -- the initial-value search, and the
+  # single sample.int() expand_manec() uses to pick the weighted draw.
+  #
+  # It fails if the set.seed() in bnec_group()'s fit_level is removed, and it
+  # fails if bnec_parallel_lapply() stops restoring the parent's RNG kind in
+  # the worker, because the same seed then draws from L'Ecuyer-CMRG in a worker
+  # and from Mersenne-Twister in the parent.
+  set.seed(1)
+  seeds <- bayesnec:::group_level_seeds(4, 17)
+  seeded <- function(i) {
+    set.seed(seeds[i])
+    c(runif(1), sample.int(.Machine$integer.max, 1))
+  }
+  unseeded <- function(i) c(runif(1), sample.int(.Machine$integer.max, 1))
+  expect_identical(
+    bayesnec:::bnec_parallel_lapply(1:4, seeded, parallel = FALSE),
+    with_parallel_plan(
+      bayesnec:::bnec_parallel_lapply(1:4, seeded, parallel = TRUE)
+    )
+  )
+  # The same comparison without the seed, which is what earlier versions did
+  # and what made the arrangement decide the answer.
+  set.seed(2)
+  a <- bayesnec:::bnec_parallel_lapply(1:4, unseeded, parallel = FALSE)
+  set.seed(2)
+  b <- with_parallel_plan(
+    bayesnec:::bnec_parallel_lapply(1:4, unseeded, parallel = TRUE)
+  )
+  expect_false(identical(a, b))
+})
+
+test_that("a level seed means one thing whatever sampler the session is in", {
+  # sample.int()'s algorithm changed in R 3.6.0 and set.seed() with
+  # kind = NULL leaves whichever is in force, so without pinning the sampler
+  # the same `seed` realised different level seeds in a session set to the
+  # pre-3.6.0 one -- and a grouped call would not repeat across two sessions
+  # configured differently.
+  kind <- RNGkind()
+  on.exit(suppressWarnings(do.call(RNGkind, as.list(kind))), add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rejection"))
+  a <- bayesnec:::group_level_seeds(4, 17)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
+  b <- bayesnec:::group_level_seeds(4, 17)
+  expect_identical(a, b)
+  # And the session is left in the sampler it was in.
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("a grouped call leaves the caller's stream where it found it", {
+  skip_on_cran()
+  skip_if_not_installed("R.utils")
+  # fit_level() calls set.seed() on every path, so without a restore around the
+  # whole loop a grouped call fitted with the levels in sequence left the
+  # session at the last level's seed -- and, where `seed` was supplied, at a
+  # constant, so set.seed(i); bnec_group(..., seed = 1); rnorm(1) returned one
+  # number for every i. Asserted on the real call, because the restore is in
+  # bnec_group() and not in the dispatcher.
+  #
+  # timeout is how the loop is entered without fitting anything: it fires
+  # before brm() reaches the sampler, so nothing is compiled, the call ends in
+  # an error, and what is under test is the on.exit restore -- which an error
+  # exit has to honour as much as a return does.
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  after <- function(i) {
+    set.seed(i)
+    suppressMessages(suppressWarnings(try(
+      bnec_group(y ~ crf(x, model = "nec3param"), data = d,
+                 group_var = "site", seed = 1, timeout = 0.001, chains = 2,
+                 iter = 200, refresh = 0),
+      silent = TRUE
+    )))
+    runif(1)
+  }
+  expect_false(identical(after(1), after(2)))
+  # And the same session seed gives the same next draw, which is what a
+  # restored stream means.
+  expect_identical(after(3), after(3))
 })

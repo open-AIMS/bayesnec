@@ -312,10 +312,35 @@ worker_stan_cache_dir <- function(root = NULL) {
 #' supplied the seeds come from the session's stream, so
 #' \code{\link[base]{set.seed}} before the call fixes them.
 #'
-#' \bold{The caller's stream is put back.} \code{\link{bnec_group}} is not
-#' entitled to move it, which is the rule \code{bnec_parallel_lapply()} and
-#' \code{weighted_draw_index()} follow, and for the same reason: a fit must not
-#' reset a user's simulation seed.
+#' \bold{The caller's stream and generator kind are both put back.}
+#' \code{\link{bnec_group}} is not entitled to move either, which is the rule
+#' \code{bnec_parallel_lapply()} and \code{weighted_draw_index()} follow, and
+#' for the same reason: a fit must not reset a user's simulation seed. The
+#' generator as well as the stream, because the line below pins it.
+#'
+#' \bold{The sampler kind is pinned where a \code{seed} was supplied.}
+#' \code{\link[base]{sample.int}}'s algorithm changed in R 3.6.0 and
+#' \code{\link[base]{set.seed}} with \code{kind = NULL} leaves whichever is in
+#' force, so the same \code{seed} would otherwise realise different level seeds
+#' in a session set to the pre-3.6.0 sampler. \code{"Rejection"} is named so
+#' that \code{seed} means one thing. \code{\link{bnec_group}} records what was
+#' realised on the returned object as well, for the reason
+#' \code{expand_manec()} stores \code{w_draw_index} beside
+#' \code{w_draw_seed}: these objects are archived and reopened years later, and
+#' a stored realisation cannot drift the way a regenerated one can.
+#'
+#' \bold{The level seed deliberately supersedes the stream
+#' \code{future.seed = TRUE} installs.} That stream is an L'Ecuyer-CMRG
+#' substream, chosen by \code{bnec_parallel_lapply()} so that a body which uses
+#' the RNG is parallel-safe whatever it does; seeding over it replaces a
+#' guaranteed non-overlapping substream with an ordinary Mersenne-Twister one.
+#' That is safe for this body and not in general: the only draws a level makes
+#' are the initial-value search and the single \code{sample.int()} of
+#' \code{expand_manec()}, and the seeds themselves are drawn from one stream in
+#' the parent, so two levels start from two draws of \code{sample.int()} rather
+#' than from two points in one substream. Reproducibility across the two
+#' arrangements is judged worth that, and nothing else dispatched by
+#' \code{bnec_parallel_lapply()} reseeds.
 #'
 #' One consequence to state rather than hide: the realised estimates of a
 #' grouped call differ from those of earlier versions, because the levels are
@@ -331,6 +356,7 @@ worker_stan_cache_dir <- function(root = NULL) {
 #'
 #' @noRd
 group_level_seeds <- function(n_levels, seed = NULL) {
+  rng_kind <- RNGkind()
   has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
   old_seed <- if (has_seed) {
     get(".Random.seed", envir = globalenv(), inherits = FALSE)
@@ -338,6 +364,8 @@ group_level_seeds <- function(n_levels, seed = NULL) {
     NULL
   }
   on.exit({
+    # The kind first, because the generator is encoded in .Random.seed[1].
+    suppressWarnings(do.call(RNGkind, as.list(rng_kind)))
     if (is.null(old_seed)) {
       suppressWarnings(rm(".Random.seed", envir = globalenv()))
     } else {
@@ -346,7 +374,7 @@ group_level_seeds <- function(n_levels, seed = NULL) {
   }, add = TRUE)
   if (!is.null(seed) && length(seed) == 1 && is.numeric(seed) &&
         is.finite(seed)) {
-    set.seed(seed)
+    suppressWarnings(set.seed(seed, sample.kind = "Rejection"))
   }
   sample.int(.Machine$integer.max, n_levels)
 }
@@ -432,7 +460,16 @@ plan_group_levels <- function(n_levels, n_models) {
   if (!nested && !bnec_plan_is_parallel()) {
     return(none)
   }
+  # A list whose remaining strategies are all sequential promises nothing, so it
+  # is not read as a request: dispatching the levels through future would cost
+  # a round trip to reach the lapply they would have reached anyway, and the
+  # message below would name a strategy that does no more than the first.
+  nested_inner <- nested &&
+    any(!vapply(strategies[-1], inherits, logical(1), "sequential"))
   if (nested && inherits(strategies[[1]], "sequential")) {
+    if (!nested_inner) {
+      return(none)
+    }
     message(
       "The plan is a list whose first strategy is sequential, so the ",
       n_levels, " levels are fitted one at a time and each level's model set",
@@ -490,7 +527,11 @@ plan_group_levels <- function(n_levels, n_models) {
   }
   message(
     "Fitting ", n_levels, " levels in parallel over ",
-    if (is.na(workers)) "the plan's workers" else n_workers(workers),
+    if (is.na(workers) || is.infinite(workers)) {
+      "the plan's workers"
+    } else {
+      n_workers(workers)
+    },
     ", under the future plan already set.\n",
     if (nested) {
       paste0("The plan is a list, so each level fits its own model set under",

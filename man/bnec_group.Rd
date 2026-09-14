@@ -109,8 +109,17 @@ A nested plan of \code{multisession} strategies emits a warning from
 connections}. Starting the inner cluster opens connections inside a future
 and leaves them open, which is what makes that cluster reusable, and
 \pkg{future} reports any such change. Nothing is wrong and no fit is
-affected. An inner \code{multicore} strategy, where forking is available,
-does not open connections and so does not report any.
+affected. It is not suppressed here, because the same check would catch a
+connection genuinely leaked by something a fit called;
+\code{options(future.connections.onMisuse = "ignore")} turns it off for your
+session, and an inner \code{multicore} strategy, where forking is available,
+opens no connections and so reports none.
+
+Where you have set \code{cmdstanr_write_stan_file_dir}, a parallel grouped
+call writes one \code{bayesnec-stan-<pid>} directory under it per worker
+process per run. A process id is not the same on the next run, so these are
+not read again; they are safe to delete, and worth deleting on a filesystem
+where compiled Stan programs accumulate.
 
 Three things to weigh before setting one. A worker fitting a level holds that
 level's whole model-averaged set, where a worker fitting one model holds one
