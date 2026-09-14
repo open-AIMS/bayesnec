@@ -871,6 +871,44 @@
   converted inside a function is newly affected. Where that matters, convert
   the string in an environment of your own with `bnf(string, env = ...)`.
 
+- `check_fit()` and `dispersion()` now leave the caller's random number stream
+  where they found it. Both seed their posterior draw with `set.seed(seed)` and
+  neither put the stream back, so `set.seed(1); check_fit(fit); rnorm(1)` did
+  not return what `set.seed(1); rnorm(1)` returns: the stream was left wherever
+  `set.seed(10)` --- the default --- reached, and a simulation that printed a
+  diagnostic partway through silently continued from a different place. A
+  diagnostic is a summary computed from a fit and not part of fitting, which is
+  the line #310 drew when it left the initial-value search advancing the stream.
+  Both still repeat under the same `seed`; only the stream is restored (#337).
+
+  Measured on R 4.6.1, one pair of runs per function: `set.seed(1)` then three
+  `rnorm()` draws, against the same three preceded by the diagnostic.
+  `check_fit()` on the packaged `manec_example`'s `nec4param` component and
+  `dispersion()` on a `nec4param` Poisson fit of 60 simulated observations both
+  returned three different numbers on `dev` and the reference three here. Both
+  returned the same table, and the same statistic, from two calls separated by
+  an `rnorm(5)` on `dev` and here.
+
+  `check_fit()` also now refuses a `seed` that is not a single number, as
+  `dispersion()` already did. `check_fit(x, seed = NULL)` reached
+  `set.seed(NULL)`, which re-initialises the stream from the clock and the
+  process id, so the diagnostic did not repeat and the caller's seed was
+  discarded without a word --- #310's defect reached through a second door.
+
+  `check_fit()` is not only called directly. `bnec()` runs it on both return
+  paths through `message_control_fit()`, and `summary()` runs it whenever
+  `check_fit = TRUE`, so the stream after a fit and after a summary is
+  restored as well. On the released code the diagnostic's own `set.seed(10)`
+  left the stream at a fixed point after every `bnec()` call,
+  whatever the fit had done; it now reflects the fitting alone, which under no
+  supplied `seed` depends on how many proposals the initial-value search made
+  (see #310 above). Measured on the packaged `manec_example` under the same
+  protocol: `summary()` and `message_control_fit()` each returned three
+  different numbers on `dev` and return the reference three here.
+
+  The restore is a behaviour change for code that relied on a diagnostic having
+  advanced the stream. No test and no vignette does.
+
 - A model set assembled by `c()`, `+`, `amend()` or `update()` is now weighted
   by pseudo-BMA, the documented default, rather than by stacking.
   `expand_manec()` validated the `loo_controls` it was given but supplied no
@@ -1410,6 +1448,18 @@
   directly as a statement of admissibility got two equations that are not.
   `models()` given a numeric range returns the admissible set and is the route
   to use where that is what is wanted (#285).
+
+- The vignette precompilation workflow samples with `cmdstanr`, at the cmdstan
+  version `hpc/image.lock` records, rather than with `brms`'s `rstan` default.
+  The vignettes have been precompiled with `cmdstanr` on the cluster since #306,
+  while the workflow was held at `rstan` because its runner had no cmdstan
+  installation, so a vignette rebuilt in one place and a vignette rebuilt in the
+  other were produced by different samplers and a diff between two renders could
+  not be read as a change in the package. The workflow now installs `cmdstanr`
+  and cmdstan as tools of its own; neither is a dependency of `bayesnec`, and
+  `brms` continues to support either back end. Compiled Stan programs are cached
+  between runs on one branch as well, which `rstan` could not offer --- it
+  compiles in process and keeps nothing (#313).
 
 # bayesnec 2.1.4
 

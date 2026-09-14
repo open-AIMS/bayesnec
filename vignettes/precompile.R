@@ -86,10 +86,10 @@ Sys.setenv("NOT_CRAN" = "true")
 # next full precompile is expected to change numbers in every vignette. That is
 # a deliberate decision recorded on #306, not a side effect.
 #
-# BAYESNEC_BACKEND overrides it, and .github/workflows/precompile-vignettes.yaml
-# sets it to rstan: that runner has neither cmdstanr, which is not on CRAN and
-# not in DESCRIPTION, nor a cmdstan installation, so every fit would fail
-# require_backend() there.
+# BAYESNEC_BACKEND overrides it, for a machine that has rstan and not cmdstan.
+# .github/workflows/precompile-vignettes.yaml set it to rstan until #313, and
+# so sampled with a different back end from the cluster; it now installs the
+# cmdstan version hpc/image.lock records and leaves this default in place.
 options(brms.backend = Sys.getenv("BAYESNEC_BACKEND", "cmdstanr"))
 
 # Chains run in parallel across the cores this run has been given. Without

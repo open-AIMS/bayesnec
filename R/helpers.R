@@ -85,6 +85,60 @@ extract_waic_estimate <- function(x) {
   x$fit$criteria$waic$estimates["waic", "Estimate"]
 }
 
+#' Evaluate an expression with the caller's random number stream put back
+#'
+#' Seeding a computation and leaving the stream where the seed reached it makes
+#' the next random operation in the session return something different, so a
+#' simulation that runs a diagnostic partway through silently continues from a
+#' different place. Everything in \pkg{bayesnec} that calls
+#' \code{\link[base]{set.seed}} outside of fitting therefore saves the state on
+#' entry and puts it back on exit. Written once here because the block was
+#' repeated at each site and is easy to get subtly wrong; see #337.
+#'
+#' The order on exit is the generator kind first and the seed second, because
+#' the kind is encoded in \code{.Random.seed[1]} and restoring it afterwards
+#' would overwrite the seed that was just put back. Where the session had not
+#' yet used the RNG there is no seed to restore and \code{.Random.seed} is
+#' removed rather than assigned, since a session that has never drawn does not
+#' have one and leaving a value there would make the next draw depend on this
+#' call. \code{\link[base]{RNGkind}} is what puts \code{sample.kind} back in
+#' that case; removing \code{.Random.seed} on its own would not.
+#'
+#' The restoring fires whether \code{expr} returns or errors, so a diagnostic
+#' that fails partway still leaves the stream where it found it.
+#'
+#' \code{expr} is evaluated in the calling frame, so assignments inside it
+#' reach the caller's variables exactly as if the braces were written there.
+#' Two consequences of it being an argument rather than a block: a
+#' \code{return()} written inside it would return from the caller and skip
+#' everything after the call, and \code{\link[base]{sys.call}} sees one extra
+#' frame. No call site does either.
+#'
+#' @param expr An expression to evaluate.
+#'
+#' @return The value of \code{expr}.
+#' @noRd
+with_preserved_rng_state <- function(expr) {
+  old_kind <- RNGkind()
+  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (has_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    # suppressWarnings for the sample.kind = "Rounding" notice, which a session
+    # set to the pre-3.6.0 sampler would otherwise have relayed once per call.
+    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  expr
+}
+
 #' Realise the model-averaging draw once, reproducibly.
 #'
 #' Model averaging keeps \code{round(sample_size * wi)} of each component's
@@ -98,6 +152,7 @@ extract_waic_estimate <- function(x) {
 #'
 #' Restores the caller's RNG state rather than calling \code{set.seed()}
 #' outright: model averaging must not silently reset a user's simulation seed.
+#' \code{with_preserved_rng_state()} holds that restore.
 #'
 #' \code{sample.kind} is pinned rather than left at whatever the session is
 #' using. A seed alone does not fix a draw: R 3.6.0 changed the algorithm behind
@@ -125,29 +180,12 @@ weighted_draw_index <- function(model_set, sample_size, mod_stats, seed) {
     # erroring would break saved objects and re-drawing would restore the bug.
     seed <- 216
   }
-  old_kind <- RNGkind()
-  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
-  old_seed <- if (has_seed) {
-    get(".Random.seed", envir = globalenv(), inherits = FALSE)
-  } else {
-    NULL
-  }
-  on.exit({
-    # RNGkind() first, then the seed: the generator kind is encoded in
-    # .Random.seed[1], so restoring the seed last leaves both correct. Where
-    # there was no seed to restore, RNGkind() is what puts sample.kind back --
-    # removing .Random.seed on its own would not.
-    suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3]))
-    if (is.null(old_seed)) {
-      suppressWarnings(rm(".Random.seed", envir = globalenv()))
-    } else {
-      assign(".Random.seed", old_seed, envir = globalenv())
-    }
-  }, add = TRUE)
-  set.seed(seed, sample.kind = "Rejection")
-  out <- lapply(model_set, function(index) {
-    size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
-    sample(seq_len(sample_size), size)
+  with_preserved_rng_state({
+    set.seed(seed, sample.kind = "Rejection")
+    out <- lapply(model_set, function(index) {
+      size <- as.integer(round(sample_size * mod_stats[index, "wi"]))
+      sample(seq_len(sample_size), size)
+    })
   })
   names(out) <- model_set
   out

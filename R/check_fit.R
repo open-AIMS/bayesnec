@@ -22,7 +22,10 @@
 #' actually holds where that is smaller.
 #' @param seed A \code{\link[base]{numeric}} vector of length 1. Passed to
 #' \code{\link[base]{set.seed}} before simulating, so the result is
-#' reproducible.
+#' reproducible. The caller's random number stream is restored before the
+#' check returns, so running it does not change what the next random operation
+#' in the session returns. \code{NULL} is refused rather than passed on,
+#' because \code{set.seed(NULL)} re-initialises the stream from the clock.
 #' @param ... Unused.
 #'
 #' @details \bold{Why this is not \code{\link{dispersion}}}
@@ -166,12 +169,18 @@ check_fit_table <- function(fit, y, grp, ndraws, seed, is_mixture) {
   if (ndraws > available) {
     ndraws <- available
   }
-  set.seed(seed)
-  yrep <- posterior_predict(fit, ndraws = ndraws)
-  # The fitted mean is what residuals are taken against, for both the observed
-  # and the simulated response, so that the two are comparable. Using each
-  # draw's own mean instead would remove the very discrepancy being measured.
-  mu <- apply(posterior_epred(fit), 2, median)
+  # The seeding is wrapped rather than called outright so that the caller's
+  # stream is where they left it once the diagnostic returns. A summary
+  # computed from a fit is not part of fitting and must not move it. See #337.
+  with_preserved_rng_state({
+    set.seed(seed)
+    yrep <- posterior_predict(fit, ndraws = ndraws)
+    # The fitted mean is what residuals are taken against, for both the
+    # observed and the simulated response, so that the two are comparable.
+    # Using each draw's own mean instead would remove the very discrepancy
+    # being measured.
+    mu <- apply(posterior_epred(fit), 2, median)
+  })
   check_fit_stats(y, yrep, mu, grp, is_mixture)
 }
 
@@ -252,10 +261,17 @@ check_fit_stats <- function(y, yrep, mu, grp, is_mixture) {
 #' @inherit check_fit description return examples
 #'
 #' @importFrom stats model.frame
+#' @importFrom chk chk_number
 #'
 #' @export
 check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                                   ...) {
+  # chk_number rather than leaving it to set.seed(): set.seed(NULL) is not an
+  # error, it re-initialises the stream from the clock and the process id, so
+  # an unvalidated NULL gives a diagnostic that does not repeat and discards
+  # the caller's seed without saying so. This is #310's defect in a second
+  # place. dispersion() validates for the same reason. See #337.
+  chk_number(seed)
   mod_dat <- model.frame(x$bayesnecformula, data = x$fit$data)
   y_var <- attr(mod_dat, "bnec_pop")[["y_var"]]
   x_var <- attr(mod_dat, "bnec_pop")[["x_var"]]
@@ -283,6 +299,9 @@ check_fit.bayesnecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
 #' @export
 check_fit.bayesmanecfit <- function(x, group = NULL, ndraws = 1000, seed = 10,
                                     ...) {
+  # Validated here as well as in the bayesnecfit method it delegates to, so
+  # that a bad seed is refused before the first pull_out() rather than after.
+  chk_number(seed)
   out <- lapply(names(x$mod_fits), function(m) {
     fit_m <- suppressMessages(pull_out(x, model = m))
     res <- check_fit(fit_m, group = group, ndraws = ndraws, seed = seed)
@@ -351,6 +370,7 @@ print.checkfit <- function(x, ...) {
 check_fit.bayesnechurdlefit <- function(x, group = NULL, ndraws = 1000,
                                         seed = 10, combined = TRUE, ...) {
   chk_lgl(combined)
+  chk_number(seed)
   out <- list(growth = check_fit(x$growth, group = group, ndraws = ndraws,
                                  seed = seed),
               survival = check_fit(x$survival, group = group, ndraws = ndraws,
@@ -405,13 +425,15 @@ check_fit_combined <- function(x, group = NULL, ndraws = 1000, seed = 10) {
   grp <- check_fit_groups(predictor, group)
   n_av <- min(brms::ndraws(gb), brms::ndraws(sb))
   nd <- min(ndraws, n_av)
-  set.seed(seed)
-  alive <- posterior_predict(sb, ndraws = nd)
-  grow <- posterior_predict(gb, newdata = sb$data, ndraws = nd)
+  with_preserved_rng_state({
+    set.seed(seed)
+    alive <- posterior_predict(sb, ndraws = nd)
+    grow <- posterior_predict(gb, newdata = sb$data, ndraws = nd)
+    mu_alive <- apply(posterior_epred(sb), 2, median)
+    mu_grow <- apply(posterior_epred(gb, newdata = sb$data), 2, median)
+  })
   n <- min(nrow(alive), nrow(grow))
   yrep <- alive[seq_len(n), , drop = FALSE] * grow[seq_len(n), , drop = FALSE]
-  mu_alive <- apply(posterior_epred(sb), 2, median)
-  mu_grow <- apply(posterior_epred(gb, newdata = sb$data), 2, median)
   mu <- mu_alive * mu_grow
   out <- check_fit_stats(y_obs, yrep, mu, grp, is_mixture = TRUE)
   allot_class(out, c("checkfit", "data.frame"))
