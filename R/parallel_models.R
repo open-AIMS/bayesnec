@@ -171,9 +171,10 @@ plan_model_set <- function(brm_args, n_models, caller = "bnec") {
 #' estimate -- would otherwise differ between two parallel runs of the same
 #' call. Restoring makes that draw answer to a \code{set.seed()} in the
 #' caller's session, which is what \code{expand_manec()} says it is for, and
-#' stops a fit resetting a user's simulation seed. \code{weighted_draw_index()}
-#' restores for the same reason and in the same order: the kind first, because
-#' the generator is encoded in \code{.Random.seed[1]}.
+#' stops a fit resetting a user's simulation seed. The restore itself is
+#' \code{with_preserved_rng_state()}, which \code{weighted_draw_index()},
+#' \code{check_fit()} and \code{dispersion()} also use; it puts the kind back
+#' first, because the generator is encoded in \code{.Random.seed[1]}.
 #'
 #' It does not make the model-averaging draw match the sequential run's. Run in
 #' sequence the loop advances the parent's stream, because every model's
@@ -275,32 +276,18 @@ bnec_model_lapply <- function(X, FUN, parallel = FALSE) {
     return(lapply(X, FUN))
   }
   rng_kind <- RNGkind()
-  has_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
-  old_seed <- if (has_seed) {
-    get(".Random.seed", envir = globalenv(), inherits = FALSE)
-  } else {
-    NULL
-  }
-  on.exit({
-    suppressWarnings(do.call(RNGkind, as.list(rng_kind)))
-    if (is.null(old_seed)) {
-      suppressWarnings(rm(".Random.seed", envir = globalenv()))
-    } else {
-      assign(".Random.seed", old_seed, envir = globalenv())
-    }
-  }, add = TRUE)
-  future.apply::future_lapply(
+  with_preserved_rng_state(future.apply::future_lapply(
     X,
     function(x) {
       # suppressWarnings for the sample.kind = "Rounding" notice, which a
       # session set to the pre-3.6.0 sampler would otherwise have relayed once
-      # per model. weighted_draw_index() suppresses it at its own restore.
+      # per model. with_preserved_rng_state() suppresses it at its own restore.
       suppressWarnings(do.call(RNGkind, as.list(rng_kind)))
       FUN(x)
     },
     future.seed = TRUE,
     future.chunk.size = 1
-  )
+  ))
 }
 
 #' Rebuild a function so that only what it names travels to a worker

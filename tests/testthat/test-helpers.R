@@ -372,3 +372,81 @@ test_that("fit_weights_method reads only what a fit records", {
   attr(stripped$mod_stats$wi, "method") <- NULL
   expect_null(bayesnec:::fit_weights_method(stripped))
 })
+
+# #337. Everything in the package that seeds a computation outside of fitting
+# restores the caller's stream through this helper, so the helper's own
+# behaviour is asserted here rather than only through its call sites.
+
+test_that("with_preserved_rng_state puts the stream back", {
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  bayesnec:::with_preserved_rng_state({
+    set.seed(1234)
+    runif(10)
+  })
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("with_preserved_rng_state restores after an error", {
+  # A diagnostic that fails partway must still leave the stream where it was
+  # found, or an error becomes a second, silent, defect.
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  expect_error(bayesnec:::with_preserved_rng_state({
+    set.seed(1234)
+    runif(10)
+    stop("failed partway")
+  }), "failed partway")
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("with_preserved_rng_state restores the generator kind", {
+  old_kind <- RNGkind()
+  on.exit(suppressWarnings(RNGkind(old_kind[1], old_kind[2], old_kind[3])),
+          add = TRUE)
+  suppressWarnings(RNGkind(sample.kind = "Rounding"))
+  bayesnec:::with_preserved_rng_state(set.seed(11, sample.kind = "Rejection"))
+  expect_identical(RNGkind()[3], "Rounding")
+})
+
+test_that("with_preserved_rng_state leaves an unused session without a seed", {
+  # A session that has never drawn has no .Random.seed. Assigning one where
+  # there was none would make the next draw depend on this call having been
+  # made, which is the defect in a different form. Tested by removing the
+  # object rather than in a fresh session, which is what R itself does.
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  old_seed <- if (had_seed) {
+    get(".Random.seed", envir = globalenv(), inherits = FALSE)
+  } else {
+    NULL
+  }
+  on.exit({
+    if (is.null(old_seed)) {
+      suppressWarnings(rm(".Random.seed", envir = globalenv()))
+    } else {
+      assign(".Random.seed", old_seed, envir = globalenv())
+    }
+  }, add = TRUE)
+  suppressWarnings(rm(".Random.seed", envir = globalenv()))
+  bayesnec:::with_preserved_rng_state({
+    set.seed(1234)
+    runif(10)
+  })
+  expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+})
+
+test_that("with_preserved_rng_state evaluates in the calling frame", {
+  # The call sites assign inside the braces and read the result afterwards, so
+  # this is load-bearing rather than incidental.
+  f <- function() {
+    bayesnec:::with_preserved_rng_state({
+      z <- 42
+    })
+    z
+  }
+  expect_equal(f(), 42)
+})

@@ -7,7 +7,11 @@
 #' \code{\link[stats]{binomial}}.
 #' @param summary Logical. Should summary stats be returned instead of full
 #' vector? Defaults to FALSE.
-#' @param seed Change seed for reproducible purposes.
+#' @param seed A \code{\link[base]{numeric}} vector of length 1. Passed to
+#' \code{\link[base]{set.seed}} before simulating, so the result is
+#' reproducible. The caller's random number stream is restored before the
+#' statistic is returned, so running it does not change what the next random
+#' operation in the session returns.
 #'
 #' @details This function calculates a dispersion metric which takes the ratio
 #' between the observed relative to simulated Pearson residuals sums of
@@ -124,8 +128,14 @@ dispersion <- function(model, summary = FALSE, seed = 10) {
     obs_y <- standata(model)$Y
     lpd_out <- posterior_linpred(model)
     prd_out <- posterior_epred(model)
-    set.seed(seed)
-    ppd_out <- posterior_predict(model)
+    # Wrapped so the caller's stream is where they left it once the statistic
+    # returns. summary() reaches this for every equation of a model set, so a
+    # summary printed partway through a simulation would otherwise move it.
+    # See #337.
+    with_preserved_rng_state({
+      set.seed(seed)
+      ppd_out <- posterior_predict(model)
+    })
     # The per-observation fitted variance is collected first and the residual
     # arithmetic done in one place, because an observation with zero variance
     # has to be handled differently depending on whether the response agrees

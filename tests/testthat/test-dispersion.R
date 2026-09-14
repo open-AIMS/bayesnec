@@ -273,3 +273,27 @@ test_that("a fit with nothing left to compare returns an empty vector", {
   expect_length(disp, 0)
   expect_length(suppressMessages(dispersion(fit, summary = TRUE)), 0)
 })
+
+test_that("dispersion leaves the caller's RNG stream alone", {
+  # #337. dispersion() seeded its posterior_predict() draw and left the stream
+  # where that reached, so a summary() printed partway through a simulation
+  # silently moved it.
+  skip_on_cran()
+  fit <- poisson_fit()
+  set.seed(99)
+  expected <- runif(3)
+  set.seed(99)
+  first <- runif(1)
+  dispersion(fit)
+  expect_equal(c(first, runif(2)), expected)
+})
+
+test_that("dispersion still repeats itself under the same seed", {
+  skip_on_cran()
+  fit <- poisson_fit()
+  set.seed(1)
+  a <- dispersion(fit)
+  runif(5)
+  b <- dispersion(fit)
+  expect_equal(a, b)
+})

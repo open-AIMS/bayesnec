@@ -14,7 +14,11 @@ family is either \code{\link[stats]{poisson}} or
 \item{summary}{Logical. Should summary stats be returned instead of full
 vector? Defaults to FALSE.}
 
-\item{seed}{Change seed for reproducible purposes.}
+\item{seed}{A \code{\link[base]{numeric}} vector of length 1. Passed to
+\code{\link[base]{set.seed}} before simulating, so the result is
+reproducible. The caller's random number stream is restored before the
+statistic is returned, so running it does not change what the next random
+operation in the session returns.}
 }
 \value{
 A \code{\link[base]{numeric}} vector. If \code{summary} is FALSE, an
