@@ -54,9 +54,6 @@ Windows section deals with.
 macOS has not been verified for these instructions, so its section points at
 the instructions the projects themselves maintain.
 
-The Windows Subsystem for Linux is for one situation only, compilation blocked
-by security policy, and it is the last section. Do not start there.
-
 What determines whether an installation works is the check in the *Verification*
 section, not which of these routes was followed to reach it.
 
@@ -245,8 +242,7 @@ real-time scanning resolves it, where the machine's policy allows.
 
 Some managed machines prevent a newly compiled program from running at all.
 This is a policy decision rather than a configuration problem, and it cannot be
-worked around from within R. The *Windows Subsystem for Linux* section describes
-the alternative.
+worked around from within R. Resolving it needs whoever administers the machine.
 
 # macOS
 
@@ -277,17 +273,6 @@ in the Windows section, then run `cmdstanr::check_cmdstan_toolchain()` followed
 by `cmdstanr::install_cmdstan()`. The default path causes no difficulty here
 either, so no `CMDSTAN` variable is needed. `options(brms.backend = "cmdstanr")`
 belongs in `.Rprofile` as it does on Windows.
-
-# The Windows Subsystem for Linux
-
-WSL runs a Linux system inside Windows. Use it only where compilation on Windows
-is blocked by security policy on a machine you cannot change. It is not a
-simpler route and is not recommended otherwise.
-
-It requires a second installation of R inside Linux, a second package library to
-keep track of, a different way of referring to your files, and further editor
-configuration to work with the Linux session. Someone not already comfortable at
-a command line takes on a second system to learn alongside the modelling.
 
 # Verification
 
