@@ -106,3 +106,49 @@ test_that("model-averaged inputs repeat across estimate types", {
   expect_identical(compare_fitted(fits, resolution = 5, ndraws = 20), fitted)
   expect_identical(.Random.seed, before)
 })
+
+test_that("subsequent normal and uniform draws are preserved with Inversion", {
+  original_kind <- RNGkind()
+  on.exit(suppressWarnings(RNGkind(original_kind[1], original_kind[2],
+                                   original_kind[3])))
+  for (kind in c("Mersenne-Twister", "L'Ecuyer-CMRG")) {
+    RNGkind(kind, "Inversion", "Rejection")
+    for (fun in rng_calls()) {
+      set.seed(343)
+      first <- rnorm(1)
+      expected <- list(normal = rnorm(3), uniform = runif(3))
+      set.seed(343)
+      expect_identical(rnorm(1), first)
+      fun()
+      expect_identical(list(normal = rnorm(3), uniform = runif(3)), expected)
+    }
+    priors <- data.frame(prior = c("normal(1, 1)", "unsupported(1, 1)"),
+                         class = "b", nlpar = c("top", "bot"), lb = "", ub = "")
+    set.seed(343)
+    rnorm(1)
+    expected <- list(normal = rnorm(3), uniform = runif(3))
+    set.seed(343)
+    rnorm(1)
+    expect_error(sample_priors(priors, plot = NA), "unsupported")
+    expect_identical(list(normal = rnorm(3), uniform = runif(3)), expected)
+  }
+})
+
+test_that("Box-Muller cache loss is distinct from saved RNG state restoration", {
+  original_kind <- RNGkind()
+  on.exit(suppressWarnings(RNGkind(original_kind[1], original_kind[2],
+                                   original_kind[3])))
+  RNGkind("Mersenne-Twister", "Box-Muller", "Rejection")
+  for (fun in rng_calls()) {
+    set.seed(99)
+    expected <- rnorm(3)
+    set.seed(99)
+    first <- rnorm(1)
+    before <- .Random.seed
+    fun()
+    expect_identical(.Random.seed, before)
+    # R does not expose the cached second variate through .Random.seed.
+    # This characterises the documented limitation of reseeding Box-Muller.
+    expect_false(identical(c(first, rnorm(2)), expected))
+  }
+})
