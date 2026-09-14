@@ -718,6 +718,55 @@
   for. A `bayesnechurdlefit` is selected from one component at a time, so its
   two components may end on different equations (#324).
 
+- **`curve_params()`** reports the parameters of the fitted curve --- `top`,
+  `bot`, `beta`, `nec`, `ec50`, `slope`, `d` and `f` --- with their credible
+  intervals, for a `bayesnecfit`, a `bayesmanecfit`, a `bayesnechurdlefit` and a
+  `bayesnecgroupfit`. `summary()` reports the model weights, the per-equation
+  dispersion, the weighted no-effect estimate and the per-equation Bayesian
+  R-squared, and no parameter estimates. For a single fit the parameters were
+  reachable through the underlying `brmsfit`; for a model average nothing
+  returned them. They are what a methods section states alongside the threshold
+  estimates: `top` is the control level the curve is referenced to, `bot` the
+  asymptote a `"relative"` ECx is measured against, and `beta` the decay rate
+  (#297).
+
+  The name is neither of the two the issue proposed. `parameters()` is taken by
+  the `parameters` package, which reaches every install as a hard dependency of
+  `modelbased`, and `params()` by `ssdtools`, where it is a documentation stub
+  returning `NULL` --- so attaching `ssdtools` after `bayesnec` would have made
+  the call return nothing at all rather than fail. `curve_params()` is taken by
+  nothing, sits beside `show_params()`, which names the parameters of each
+  equation without fitting, and says what it returns: the parameters of the
+  equation, and not the family's dispersion parameter, a group-level term's
+  standard deviation or the `ogl` offset.
+
+  **The estimates are per equation and are not averaged across the set.** The
+  equations of a set do not share a parameter list: `ecxexp` has no `bot`, the
+  three-parameter equations have no `d`, and only the equations of
+  `mod_groups$nec` estimate `nec`. Averaging a parameter over whichever
+  equations estimate it would average over a different subset for each
+  parameter, under weights computed for the whole set, so the rows contributing
+  to one number would hold a different share of the set from the rows
+  contributing to the next. The model weight is reported beside each row
+  instead, and `summary = FALSE` returns the draws the table was computed from.
+
+  **Each block of a two-block fit is named under its own equation.** The
+  response and survival blocks of a `bnec(family = "hurdle_gamma")` fit need not
+  use the same equation --- that is what `model_survival` and `bnec_joint()`
+  select --- so the table has a `dpar` column and names each block's equation
+  separately. The survival equation is not recorded on the fitted object, so it
+  is recovered from the fitted formula, and is reported as `NA` where it cannot
+  be identified rather than being reported as the response block's.
+
+  **`xform` applies to `nec` and `ec50` and to no other parameter.** Those two
+  are measured on the predictor axis, so where `crf()` transforms the predictor
+  inline they are on the transformed scale, as the values `nec()` and `ecx()`
+  return are, and a message says so where `xform` was left at its default. The
+  others are response levels or shape parameters, on which a transformation of
+  the predictor has no meaning. The link of each block is reported in a `link`
+  column: `bnec()` assigns `link = "identity"`, and where a caller named one
+  instead, `top` and `bot` are on the link scale.
+
 - `dispersion(summary = TRUE)` now reports `P(>1)`, the posterior probability of
   over-dispersion, alongside the median and the interval. It uses the whole
   posterior rather than a point estimate or one tail quantile, and it is
