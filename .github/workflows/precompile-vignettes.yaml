@@ -205,9 +205,11 @@ jobs:
         with:
           use-public-rspm: true
 
-      # cmdstanr is not on CRAN and deliberately not in DESCRIPTION: brms
-      # supports either backend and bayesnec must not require this one. It is
-      # installed here as a tool of the workflow, the way pandoc is.
+      # From r-universe rather than by the `stan-dev/cmdstanr` spelling the
+      # fan-out uses below. r-universe builds that same source, and taking it
+      # this way needs neither pak nor a resolved DESCRIPTION, neither of which
+      # this job has any other reason to install: cmdstanr is wanted here only
+      # to run install_cmdstan().
       - name: Install cmdstan ${{ needs.plan.outputs.cmdstan }}
         if: needs.plan.outputs.dry_run != 'true' &&
             steps.cache.outputs.cache-hit != 'true'
@@ -271,9 +273,17 @@ jobs:
         with:
           use-public-rspm: true
 
+      # stan-dev/cmdstanr is spelled the way .github/workflows/R-CMD-check.yaml
+      # spells it, so the two workflows install one package from one source. It
+      # goes here rather than in an install.packages() step of its own because
+      # this action caches the library it installs into, so cmdstanr is restored
+      # with everything else rather than rebuilt on every run. It is not on CRAN
+      # and deliberately not in DESCRIPTION: brms supports either backend and
+      # bayesnec must not require this one.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::knitr, any::purrr, any::rmarkdown, local::.
+          extra-packages: >-
+            any::knitr, any::purrr, any::rmarkdown, stan-dev/cmdstanr, local::.
           needs: check
 
       # Restore only. The `cmdstan` job above is the one that installs and
@@ -297,14 +307,12 @@ jobs:
       # live. Unset it is the session tempdir, and nothing survives the job.
       # It is outside the checkout so that it cannot reach the tarball packed
       # below.
-      - name: Install cmdstanr and select the toolchain
+      - name: Select the toolchain
         if: matrix.vignette != 'dry-run'
         env:
           CMDSTAN_VERSION: ${{ needs.plan.outputs.cmdstan }}
         run: |
           set -euo pipefail
-          Rscript -e 'install.packages("cmdstanr", repos = c(
-            "https://stan-dev.r-universe.dev", getOption("repos")))'
           echo "CMDSTAN=$HOME/.cmdstan/cmdstan-$CMDSTAN_VERSION" >> "$GITHUB_ENV"
           echo "BAYESNEC_STAN_CACHE=$RUNNER_TEMP/stan-programs" >> "$GITHUB_ENV"
 
@@ -324,9 +332,15 @@ jobs:
       # leg save at all: a cache entry is immutable, so a key that matched
       # exactly would restore and then never be updated with what this run
       # compiled.
-      - name: Cache compiled Stan programs
+      #
+      # Restore and save are separate actions rather than one `actions/cache`,
+      # because that action declares `post-if: success()` and so saves nothing
+      # when the job has failed. A leg that fails part way through a vignette
+      # has usually compiled most of that vignette's programs, and throwing
+      # them away makes the rerun pay for them again.
+      - name: Restore the compiled Stan programs
         if: matrix.vignette != 'dry-run'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/stan-programs
           key: >-
@@ -395,16 +409,19 @@ jobs:
       # access times, and a program's modification time is when it was compiled
       # rather than when it was last read.
       #
-      # `always()`: the cache is saved in a post step whether the leg passed or
-      # failed, so the bound has to be applied either way.
+      # `!cancelled()` rather than the default, so that the bound is applied on
+      # the path where it matters most: a leg that failed part way through has
+      # compiled programs and is about to save them. `always()` is not used,
+      # because a cancelled run should write nothing. The directory is created
+      # if it is absent, so that the save step below has a path to read.
       - name: Bound the Stan program cache
-        if: always() && matrix.vignette != 'dry-run'
+        if: ${{ !cancelled() && matrix.vignette != 'dry-run' }}
         env:
           BUDGET_MB: "1500"
         run: |
           set -euo pipefail
           dir="$RUNNER_TEMP/stan-programs"
-          [ -d "$dir" ] || exit 0
+          mkdir -p "$dir"
           mb=$(du -sm "$dir" | cut -f1)
           echo "Stan program cache: ${mb} MB in $(ls -1 "$dir" | wc -l) files"
           if [ "$mb" -gt "$BUDGET_MB" ]; then
@@ -413,6 +430,15 @@ jobs:
             rm -rf "$dir"
             mkdir -p "$dir"
           fi
+
+      - name: Save the compiled Stan programs
+        if: ${{ !cancelled() && matrix.vignette != 'dry-run' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/stan-programs
+          key: >-
+            stan-${{ runner.os }}-${{ needs.plan.outputs.toolchain }}-${{
+            matrix.vignette }}-${{ github.run_id }}
 
       # Nothing is fitted. A real PNG under the name below gives the
       # pull-request step an actual diff to commit, and it is covered by the
