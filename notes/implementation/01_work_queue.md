@@ -7,7 +7,7 @@ Read `00_protocol.md` first, then `03_decisions.md`.
 Rebuilt 2026-09-14. The queue that stood here was written on 2026-09-06 and
 gave four stacked pull requests as the state of the work. All four have merged,
 and so has the second of the three vignettes, so every batch it describes is
-complete and none of it says so. The board has since gained eighteen open issues
+complete and none of it says so. The board has since gained a set of open issues
 that no queue covers. The file is rebuilt rather than amended, on the same
 reasoning `02_deferred.md` records: an entry describing work already done sends a
 reader to the wrong place.
@@ -38,7 +38,8 @@ anything here.
 | #238 | #219, the `example9` workflow vignette |
 | #348 | #343, estimates and prior samples reproducible |
 
-#184 and #285 are also closed. Batches 1 to 4 and batch 5b of the 2026-09-06
+#184 and #285 are also closed, and #333 was closed on 2026-09-14 with the
+measurement in `notes/ci_devel_cancellation.md` and no change to the workflow. Batches 1 to 4 and batch 5b of the 2026-09-06
 queue are therefore finished, and #228's blocker was settled by #284 as that
 queue expected.
 
@@ -51,7 +52,7 @@ queue expected.
 | #228 | #6, #33 | open, batch 5c |
 | #225 | #209 | draft, blocked on `brms` through #249 |
 
-Eighteen open issues are covered by none of them.
+The open issues below are covered by none of them.
 
 ---
 
@@ -86,11 +87,17 @@ Hours rather than days, and taken first because four pull requests are open
 against `dev` and each item after this one is read through the same check
 matrix.
 
+Both go in one pull request, #311 first and in its own commit. They edit three
+files in common — `test-check_fit.R`, `test-dispersion.R` and
+`test-failed_models.R` — so separate branches conflict, and a stack queues two
+workflow runs per branch. The body reports three `Running 'testthat.R'
+[CPU/elapsed]` figures rather than two, because #328's plan requires the
+memoisation and the worker count to be attributed separately.
+
 | # | what |
 |---|---|
 | #311 | twelve `open_progress = FALSE` calls in `tests/testthat/`. Mechanical, and it is why a `cmdstanr`-backend run of the suite fails, which is needed before any measurement of #328 |
 | #328 | memoise the repeated fixtures, then set `TESTTHAT_CPUS`. The test phase is 21 to 26 minutes of a 25 to 31 minute job, and the issue holds the measured plan and the changes not to make |
-| #333 | RF's decision, and no longer code work. The measurement has merged as `notes/ci_devel_cancellation.md` and `notes/scripts/ci_devel_cancellation.R`, and it refutes the issue's premise: over the 30 most recently merged pull requests every one had a successful devel job on its head commit before the merge. Closing it with a comment is one of the options |
 
 ## Defects that change a reported number
 
@@ -138,8 +145,8 @@ not survive.
 - **Prune the worktrees.** Twenty-one are registered and every branch among them
   has merged into `dev`: `issue-310-init-seed`, `issue-319-crf-env`,
   `issue-333-devel-cancellation` and `issue-344-ecxhormebc5-init` are all zero
-  commits ahead, so the four open issues of those names have no work in progress
-  anywhere. `00_protocol.md` names the worktrees that must not be touched.
+  commits ahead, so #310, #319 and #344 have no work in progress anywhere and
+  #333 is closed. `00_protocol.md` names the worktrees that must not be touched.
 - **Every pull request here targets `dev` rather than the default branch, so
   `Closes #n` never fires.** Close issues by hand after verifying the work is on
   `dev`. Nothing is merged-and-open today; #338 and #329 will need it when #347
