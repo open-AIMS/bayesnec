@@ -47,12 +47,13 @@ queue expected.
 
 | PR | closes | state |
 |---|---|---|
+| #349 | #311; verifies #328 | open |
 | #347 | #338, #329 | open |
 | #243 | #193, `example7` | open, batch 5a |
 | #228 | #6, #33 | open, batch 5c |
 | #225 | #209 | draft, blocked on `brms` through #249 |
 
-The open issues below are covered by none of them.
+Except for #311 and #328, the open issues below are covered by none of them.
 
 ---
 
@@ -83,7 +84,7 @@ the re-run cannot be checked. #190 now names #319, #340 and #310 in its
 
 ## Throughput
 
-Hours rather than days, and taken first because four pull requests are open
+Hours rather than days, and taken first because five pull requests are open
 against `dev` and each item after this one is read through the same check
 matrix.
 
