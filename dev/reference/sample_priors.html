@@ -81,7 +81,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">sample_priors</span><span class="op">(</span><span class="va">priors</span>, n_samples <span class="op">=</span> <span class="fl">10000</span>, plot <span class="op">=</span> <span class="st">"ggplot"</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">sample_priors</span><span class="op">(</span><span class="va">priors</span>, n_samples <span class="op">=</span> <span class="fl">10000</span>, plot <span class="op">=</span> <span class="st">"ggplot"</span>, seed <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -101,6 +101,23 @@
 <dd><p>NA returns a <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></code> of numeric vectors of
 sampled priors, "ggplot" (default) returns a <code><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></code>
 and "base" returns a histogram in base R.</p></dd>
+
+
+<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 1. Passed to
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before the priors are sampled, so that two
+calls on the same prior set return the same draws and the same figure. The
+caller's saved RNG state is restored afterwards, and a
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in the session therefore does not change the
+result. A different value gives an independent set of draws. <code>NULL</code> is
+refused, because <code>set.seed(NULL)</code> re-initialises the stream from the
+clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to <code>sample.kind = "Rejection"</code>. The saved RNG state is restored,
+but the cached normal variate used by <code>normal.kind = "Box-Muller"</code>
+is not part of that state. With Box-Muller, the next normal draw can change
+after an odd number of preceding normal draws. Use R's default
+<code>normal.kind = "Inversion"</code> to preserve subsequent normal draws.</p></dd>
 
 </dl></div>
     <div id="value">

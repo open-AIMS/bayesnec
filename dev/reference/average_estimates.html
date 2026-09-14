@@ -95,7 +95,8 @@ calculates a geometric mean.</p>
 <span>  resolution <span class="op">=</span> <span class="fl">200</span>,</span>
 <span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  xform <span class="op">=</span> <span class="va">identity</span>,</span>
-<span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span></span>
+<span>  prob_vals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">0.025</span>, <span class="fl">0.975</span><span class="op">)</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">10</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -161,6 +162,23 @@ values.</p></dd>
 return the estimated ECx value. Defaults to 0.5 (median) and 0.025 and
 0.975 (95 percent credible intervals).</p></dd>
 
+
+<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 1. Passed to
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's saved RNG state is restored afterwards, and a
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. <code>NULL</code> is refused, because
+<code>set.seed(NULL)</code> re-initialises the stream from the clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to <code>sample.kind = "Rejection"</code>. The saved RNG state is restored,
+but the cached normal variate used by <code>normal.kind = "Box-Muller"</code>
+is not part of that state. With Box-Muller, the next normal draw can change
+after an odd number of preceding normal draws. Use R's default
+<code>normal.kind = "Inversion"</code> to preserve subsequent normal draws.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -184,24 +202,24 @@ before the the geometric mean calculation is applied.</p>
     <h2>Reproducibility</h2>
 
 
-<p>The draws of each posterior are paired by an independent random permutation,
-so <code>prob_diff</code> and the difference intervals change between identical
-calls. Use <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before the call for a reproducible
-result. This is a Monte Carlo approximation to the difference of two
-<b>independent</b> posteriors, using <em>n</em> of the <em>n</em>^2 available
-pairs.</p>
+<p>The draws of each posterior are paired by a random permutation, so the mean
+is a Monte Carlo approximation using randomly paired posterior draws.
+The permutation is drawn under <code>seed</code>, so two calls on the same
+fits return the same estimate and a <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in the
+session has no effect on it. A different <code>seed</code> gives another
+realisation of the same approximation; where the approximation matters,
+compare a few and report the spread. The caller's random number state is
+restored afterwards.</p>
     </div>
     <div id="the-independence-assumption">
     <h2>The independence assumption</h2>
 
 
-<p>The pairing is valid only where the posteriors being compared come from
+<p>The pairing is valid only where the posteriors being combined come from
 <b>separate fits</b>. Two levels of one fit share draws — draw <em>i</em>
 of each comes from the same sweep of the sampler — and permuting them
-destroys that pairing, which discards the correlation between the levels and
-widens the difference posterior. <code>prob_diff</code> is then pulled toward 0.5
-and a real difference is under-detected, which is the wrong direction to err
-in. A within-fit contrast needs draw-wise differencing and must not be routed
+destroys that pairing and discards the correlation between the levels.
+A within-fit combination needs draw-wise arithmetic and must not be routed
 through this function. See #218 and #33.</p>
     </div>
     <div id="see-also">

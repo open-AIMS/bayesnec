@@ -85,7 +85,14 @@ compares these across a vector of fitted values.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">compare_fitted</span><span class="op">(</span><span class="va">x</span>, resolution <span class="op">=</span> <span class="fl">50</span>, x_range <span class="op">=</span> <span class="cn">NA</span>, make_newdata <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">compare_fitted</span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">50</span>,</span>
+<span>  x_range <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>  make_newdata <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -118,6 +125,23 @@ If so, arguments <code>resolution</code> and <code>x_range</code> will be used. 
 to TRUE. See details.</p></dd>
 
 
+<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
+<dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 1. Passed to
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before the draws of the posteriors being
+compared are paired, so that two calls on the same fits return the same
+answer. The caller's saved RNG state is restored afterwards, and a
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in the session therefore does not change the
+result. A different value gives another realisation of the same Monte
+Carlo approximation. <code>NULL</code> is refused, because
+<code>set.seed(NULL)</code> re-initialises the stream from the clock.
+Reproducibility assumes the same RNG kind; the sampling algorithm is fixed
+to <code>sample.kind = "Rejection"</code>. The saved RNG state is restored,
+but the cached normal variate used by <code>normal.kind = "Box-Muller"</code>
+is not part of that state. With Box-Muller, the next normal draw can change
+after an odd number of preceding normal draws. Use R's default
+<code>normal.kind = "Inversion"</code> to preserve subsequent normal draws.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Further arguments that control posterior predictions via
 <code><a href="https://mc-stan.org/rstantools/reference/posterior_epred.html" class="external-link">posterior_epred</a></code>.</p></dd>
@@ -146,12 +170,15 @@ on how to structure <code>newdata</code>, see for example
     <h2>Reproducibility</h2>
 
 
-<p>The draws of each posterior are paired by an independent random permutation,
-so <code>prob_diff</code> and the difference intervals change between identical
-calls. Use <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before the call for a reproducible
-result. This is a Monte Carlo approximation to the difference of two
-<b>independent</b> posteriors, using <em>n</em> of the <em>n</em>^2 available
-pairs.</p>
+<p>The draws of each posterior are paired by a random permutation, so
+<code>prob_diff</code> and the difference intervals are a Monte Carlo
+approximation to the difference of two <b>independent</b> posteriors, using
+<em>n</em> of the <em>n</em>^2 available pairs. The permutation is drawn under
+<code>seed</code>, so two calls on the same fits return the same comparison and a
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in the session has no effect on it. A different
+<code>seed</code> gives another realisation of the same approximation;
+where the approximation matters, compare a few and report the spread. The
+caller's random number state is restored afterwards.</p>
     </div>
     <div id="the-independence-assumption">
     <h2>The independence assumption</h2>
