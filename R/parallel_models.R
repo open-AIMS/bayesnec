@@ -161,7 +161,7 @@ n_workers <- function(n) {
 #' A grouped call has two loops that could use the workers: the levels, and the
 #' models within a level. One \pkg{future} plan of \emph{W} workers can drive
 #' one of them, so the choice is between two arrangements, and this counts what
-#' each costs.
+#' each takes.
 #'
 #' The unit is one fit whose chains sample one after another, and it is the same
 #' unit on both arrangements. Whichever loop is dispatched, the fitting happens
@@ -242,7 +242,7 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #' here, a deliberate persistent cache would be honoured under a forking plan,
 #' which inherits options, and silently ignored under every other one.
 #'
-#' The cost is compilation, not correctness: a first grouped run compiles each
+#' What this adds is compilation, not risk: a first grouped run compiles each
 #' equation once per level rather than once. Against a fit measured at 18
 #' minutes on the AIMS HPC this is small, and it is what \code{multisession}
 #' already does.
@@ -250,8 +250,8 @@ group_loop_rounds <- function(n_levels, n_models, workers) {
 #' This addresses \pkg{cmdstanr} only. \pkg{rstan} caches a compiled program
 #' under \code{rstan_options(auto_write = TRUE)}, in \code{\link[base]{tempdir}}
 #' and keyed by the program text, which a forked worker shares with its parent.
-#' That option is \code{FALSE} by default and there is no argument that moves
-#' the location, so it is documented in \code{?bnec_group} rather than worked
+#' That option is \code{FALSE} by default and no argument changes that
+#' location, so it is documented in \code{?bnec_group} rather than worked
 #' around here.
 #'
 #' @param level A \code{\link[base]{numeric}} vector of length 1 giving the
@@ -289,8 +289,8 @@ level_stan_cache_dir <- function(level, root = NULL) {
 #' worker as \code{sequential} and \code{nbrOfWorkers()} there as 1. Dispatching
 #' the levels therefore takes the workers away from the model loop rather than
 #' adding to it, and the two arrangements are counted against each other by
-#' \code{group_loop_rounds()}. The larger count loses; a tie leaves the levels
-#' in sequence, which is what the release does.
+#' \code{group_loop_rounds()}. The larger count is not taken; a tie leaves the
+#' levels in sequence, which is what the release does.
 #'
 #' \bold{A plan that is a list is honoured without being counted.} There the
 #' user has divided the workers between the two loops deliberately --
@@ -548,13 +548,13 @@ bnec_parallel_lapply <- function(X, FUN, parallel = FALSE) {
   ))
 }
 
-#' Is this environment carried by reference rather than by value?
+#' Is this environment serialised by reference rather than by value?
 #'
 #' \code{\link[base]{serialize}} writes the global environment, the base
 #' environment, the empty environment and any package namespace or attached
-#' package environment as a reference, so a formula holding one of those costs
-#' nothing to send. Every other environment is written out in full, together
-#' with everything bound in it.
+#' package environment as a reference, so a formula holding one of those adds
+#' nothing to the serialised size. Every other environment is written out in
+#' full, together with everything bound in it.
 #'
 #' Tested on the name rather than on identity with each of them in turn:
 #' \code{\link[base]{environmentName}} returns a non-empty string for exactly
@@ -574,7 +574,7 @@ env_by_reference <- function(env) {
 #'
 #' A formula records the environment it was created in, and
 #' \code{\link[base]{serialize}} writes that environment out in full. Created at
-#' the top level of a script it is the global environment and costs nothing;
+#' the top level of a script it is the global environment and adds nothing;
 #' created in a \pkg{knitr} chunk it is the chunk environment, which holds every
 #' object the document has built so far. \code{narrow_environment()} does not
 #' reach it: it replaces the environment of the applied \emph{function}, and the
@@ -591,18 +591,27 @@ env_by_reference <- function(env) {
 #' \code{\link[stats]{model.frame}} resolves a term against \code{data} first
 #' and the formula's environment second, so a formula naming anything outside
 #' \code{data} needs it --- a transformation the user wrote, and the model
-#' argument of \code{crf()} where that is a variable rather than a string
-#' (#319). What is built here holds exactly the names the formula mentions and
-#' \code{data} does not supply, and is parented to the package namespace, from
-#' which the search path is still reachable.
+#' argument of \code{crf()} where that is a variable rather than a string.
+#' Since #319 that resolution is deliberate rather than incidental:
+#' \code{formula_eval_env()} evaluates in a frame whose parent is
+#' \code{formula_env()}. What is built here holds exactly the names the formula
+#' mentions and \code{data} does not supply.
 #'
-#' \bold{The walk stops at the first environment R serialises by reference.} A
-#' name bound in the global environment, in an attached package or in a
-#' namespace is left where it is and resolved through the parent chain, because
-#' copying it would cost what this function exists to avoid. One consequence is
-#' unchanged rather than introduced: a worker's global environment is not the
-#' caller's, so a name that only the calling session's workspace supplies is
-#' already out of reach under a plan, with or without this.
+#' \bold{The walk stops at the first environment R serialises by reference, and
+#' the replacement is parented there.} A name bound in the global environment,
+#' in an attached package or in a namespace is left where it is and resolved
+#' through the parent chain, because copying it would reintroduce the size this
+#' function exists to remove. Parenting the replacement to the environment the walk
+#' stopped at rather than to the package namespace keeps the lookup chain the
+#' user's formula had: a formula written in a frame whose parent is
+#' \code{\link[base]{baseenv}} still resolves through \code{baseenv()} and
+#' not through the \pkg{bayesnec} namespace, which is what
+#' \code{?bayesnecformula}'s own test of \code{trials()} rests on.
+#'
+#' One consequence is unchanged rather than introduced: a worker's global
+#' environment is not the caller's, so a name that only the calling session's
+#' workspace supplies is already out of reach under a plan, with or without
+#' this.
 #'
 #' \bold{Applied on the sequential path as well}, for the reason
 #' \code{narrow_environment()} gives: a name left behind then fails on the first
@@ -614,8 +623,8 @@ env_by_reference <- function(env) {
 #' @param data A \code{\link[base]{data.frame}}, whose names are the terms the
 #' formula does not need its environment for.
 #'
-#' @return \code{formula}, with its environment replaced, or unchanged where it
-#' already carries one that costs nothing to send.
+#' @return \code{formula}, with its environment replaced, or unchanged where
+#' its environment is one R serialises by reference.
 #'
 #' @noRd
 narrow_formula_environment <- function(formula, data) {
@@ -633,7 +642,10 @@ narrow_formula_environment <- function(formula, data) {
     }
     env <- parent.env(env)
   }
-  environment(formula) <- list2env(vals, parent = asNamespace("bayesnec"))
+  # `env` is now the environment the walk stopped at, which is the first one R
+  # sends by reference, and parenting there preserves the rest of the chain
+  # exactly as the formula had it.
+  environment(formula) <- list2env(vals, parent = env)
   formula
 }
 

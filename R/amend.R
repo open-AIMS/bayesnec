@@ -237,7 +237,7 @@ amend_model_set <- function(object, mod_fits, old_method, drop = NULL,
   family <- mod_fits[[1]]$fit$family
   formula <- mod_fits[[1]]$bayesnecformula
   # Narrowed here as bnec() narrows it, and for the same reason: the model
-  # frame below carries the formula's environment through the .Environment of
+  # frame below holds the formula's environment in the .Environment of
   # its terms attribute, and amend() exports that frame to every worker. A fit
   # made by an earlier version of bayesnec still holds the session it was
   # fitted in, so this is not redundant with bnec(). See #329.

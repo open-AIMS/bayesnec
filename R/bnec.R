@@ -668,7 +668,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # and `env` is ignored for it. See #319.
   formula <- bayesnecformula(formula, env = parent.frame())
   # Before the model frame, so that the frame, the brms formula and the stored
-  # fit all carry the narrowed environment rather than the calling session. A
+  # fit all hold the narrowed environment rather than the calling session. A
   # formula records where it was created, and serialising it writes that
   # environment out in full: measured at 76 MiB for a formula written beside a
   # 76 MiB vector, which is what a parallel plan then sends to every worker and

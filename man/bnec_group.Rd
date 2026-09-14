@@ -71,8 +71,8 @@ and the models within a level. One plan drives one of them, because
 list, so \code{bnec_group()} decides which and says which.
 
 With an ordinary plan --- \code{plan(multisession, workers = 8)} --- the two
-arrangements are counted in rounds of one fit and the smaller wins, a tie
-going to the models, which is what earlier versions did. Writing \emph{L} for
+arrangements are counted in rounds of one fit and the smaller is taken, a
+tie going to the models, which is what earlier versions did. Writing \emph{L} for
 the levels, \emph{M} for the equations the formula asks for and \emph{W} for
 the workers, the levels take \code{ceiling(L / W) * M} rounds and the models
 \code{L * ceiling(M / W)}. Seven levels of eleven equations over four workers
@@ -107,9 +107,9 @@ programs at the same time; each level is given its own \pkg{cmdstanr} compile
 directory to keep them apart, which means a first grouped run compiles each
 equation once per level rather than once. And \pkg{rstan} under
 \code{rstan_options(auto_write = TRUE)} caches compiled programs in one place
-that a forked worker shares with its parent, with no argument that moves it,
-so use \code{multisession} rather than \code{multicore} for a parallel
-grouped call with that option set.
+that a forked worker shares with its parent, and no argument changes that
+location, so use \code{multisession} rather than \code{multicore} for a
+parallel grouped call with that option set.
 
 \code{\link{bnec}} describes what a plan does and does not reproduce, and
 none of it changes here: each fit repeats under its own \code{seed}, and the

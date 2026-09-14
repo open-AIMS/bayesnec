@@ -463,7 +463,7 @@ test_that("a timeout ends a parallel run exactly as it ends a sequential one", {
 test_that("the two arrangements of one plan are counted in rounds of one fit", {
   # The unit is one fit sampling its chains in sequence, which is what happens
   # inside a worker on either arrangement. ceiling() on both sides: a round is
-  # set by its slowest member, so a part-filled round still costs a whole one.
+  # set by its slowest member, so a part-filled round still takes a whole one.
   rounds <- bayesnec:::group_loop_rounds
   # The shape #338 was measured on. Four cores, eleven equations, seven levels:
   # the models are the smaller count, so the release arrangement stands.
@@ -473,8 +473,8 @@ test_that("the two arrangements of one plan are counted in rounds of one fit", {
   expect_equal(rounds(7, 11, 8)$models, 14)
   expect_equal(rounds(7, 11, 8)$levels, 11)
   # Two levels of fifteen equations, the other call in that vignette. The
-  # levels never win here, because a level arrangement cannot go below M
-  # rounds and the model arrangement reaches L.
+  # The levels are never the smaller count here, because a level arrangement
+  # cannot go below M rounds and the model arrangement reaches L.
   expect_equal(rounds(2, 15, 4)$models, 8)
   expect_equal(rounds(2, 15, 4)$levels, 15)
   # One worker is parallel in name only and gives a tie, which the caller
@@ -638,7 +638,7 @@ test_that("a grouped call fitted in parallel reproduces the sequential one", {
 
 # --- What travels with the formula (#329) -----------------------------------
 
-test_that("a formula stops carrying the environment it was written in", {
+test_that("a formula stops holding the environment it was written in", {
   # A formula records where it was created, and serialize() writes that
   # environment out in full. narrow_environment() does not reach it: it
   # replaces the environment of the applied function, and the formula inside
@@ -656,13 +656,13 @@ test_that("a formula stops carrying the environment it was written in", {
   # The class survives, and so does the formula itself.
   expect_s3_class(narrowed, "bayesnecformula")
   expect_true(identical(narrowed[[2]], f[[2]]))
-  # The model frame carries the same environment, through the .Environment of
+  # The model frame holds the same environment, through the .Environment of
   # its terms attribute, and amend() exports one to every worker.
   expect_gt(mib(model.frame(f, data = nec_data)), 7)
   expect_lt(mib(model.frame(narrowed, data = nec_data)), 0.1)
 })
 
-test_that("a name the formula uses and the data does not supply is carried", {
+test_that("a name the formula uses and the data does not supply is kept", {
   # model.frame() resolves a term against data first and the formula's
   # environment second, so blanking the environment would be wrong. The model
   # argument of crf() is the case that matters: #319 resolves it there.
@@ -675,15 +675,15 @@ test_that("a name the formula uses and the data does not supply is carried", {
   expect_identical(get("mods", envir = environment(narrowed)),
                    c("nec3param", "ecx4param"))
   expect_lt(length(serialize(narrowed, NULL)) / 1024^2, 0.1)
-  # A column of the data is not carried: the model frame resolves it from
-  # there, and carrying it would send the data twice.
+  # A column of the data is not copied: the model frame resolves it from
+  # there, and copying it would send the data twice.
   expect_false(exists("y", envir = environment(narrowed), inherits = FALSE))
 })
 
 test_that("an environment R sends by reference is left alone", {
   # The global environment, a namespace and an attached package are written as
-  # a reference, so a formula holding one costs nothing and rebuilding it would
-  # only lose names. The walk up the parent chain stops at the first of them
+  # a reference, so a formula holding one adds nothing and rebuilding it would
+  # only drop names. The walk up the parent chain stops at the first of them
   # for the same reason.
   # Set rather than inherited: a formula written inside a test_that() block
   # records the test's own frame, which is an ordinary environment.
@@ -693,12 +693,18 @@ test_that("an environment R sends by reference is left alone", {
     environment(bayesnec:::narrow_formula_environment(f, nec_data)),
     globalenv()
   )
-  # And where it is narrowed, the replacement is parented to the namespace, so
-  # package internals and the search path both still resolve.
+  # And where it is narrowed, the replacement is parented at the point the walk
+  # stopped, so the rest of the lookup chain is the one the formula had. A
+  # frame whose parent is baseenv() therefore still resolves through baseenv()
+  # and not through the bayesnec namespace, which is what the trials() test in
+  # test-bayesnecformula.R rests on.
+  outer <- new.env(parent = baseenv())
+  inner <- new.env(parent = outer)
   g <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  environment(g) <- inner
   expect_identical(
     parent.env(environment(bayesnec:::narrow_formula_environment(g, nec_data))),
-    asNamespace("bayesnec")
+    baseenv()
   )
   expect_true(bayesnec:::env_by_reference(globalenv()))
   expect_true(bayesnec:::env_by_reference(asNamespace("stats")))
@@ -706,10 +712,10 @@ test_that("an environment R sends by reference is left alone", {
   expect_false(bayesnec:::env_by_reference(new.env()))
 })
 
-test_that("a function the formula names is carried with its own environment", {
+test_that("a function the formula names comes with its own environment", {
   # The limit of what this can do, recorded rather than hidden. A user
   # transformation defined beside the formula is a closure over the same
-  # environment, so carrying the name carries everything it closed over. The
+  # environment, so the name is copied with everything it closed over. The
   # object is needed, so there is nothing to be saved there.
   make <- function() {
     big <- rnorm(1e6)

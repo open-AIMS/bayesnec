@@ -55,8 +55,8 @@
 #' list, so \code{bnec_group()} decides which and says which.
 #'
 #' With an ordinary plan --- \code{plan(multisession, workers = 8)} --- the two
-#' arrangements are counted in rounds of one fit and the smaller wins, a tie
-#' going to the models, which is what earlier versions did. Writing \emph{L} for
+#' arrangements are counted in rounds of one fit and the smaller is taken, a
+#' tie going to the models, which is what earlier versions did. Writing \emph{L} for
 #' the levels, \emph{M} for the equations the formula asks for and \emph{W} for
 #' the workers, the levels take \code{ceiling(L / W) * M} rounds and the models
 #' \code{L * ceiling(M / W)}. Seven levels of eleven equations over four workers
@@ -91,9 +91,9 @@
 #' directory to keep them apart, which means a first grouped run compiles each
 #' equation once per level rather than once. And \pkg{rstan} under
 #' \code{rstan_options(auto_write = TRUE)} caches compiled programs in one place
-#' that a forked worker shares with its parent, with no argument that moves it,
-#' so use \code{multisession} rather than \code{multicore} for a parallel
-#' grouped call with that option set.
+#' that a forked worker shares with its parent, and no argument changes that
+#' location, so use \code{multisession} rather than \code{multicore} for a
+#' parallel grouped call with that option set.
 #'
 #' \code{\link{bnec}} describes what a plan does and does not reproduce, and
 #' none of it changes here: each fit repeats under its own \code{seed}, and the
@@ -134,7 +134,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   formula <- bayesnecformula(formula, env = parent.frame())
   # Narrowed before anything is built from it, as bnec() does. A grouped call
   # exports the formula once per level as well as once per model, so the
-  # environment it would otherwise carry is sent L x M times. See #329.
+  # environment it would otherwise hold is sent L x M times. See #329.
   formula <- narrow_formula_environment(formula, data)
   grp <- data[[group_var]]
   if (is.numeric(grp)) {
@@ -225,7 +225,7 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   models <- try(get_model_from_formula(formula), silent = TRUE)
   n_models <- if (inherits(models, "try-error")) NA_integer_ else length(models)
   level_plan <- plan_group_levels(length(levs), n_models)
-  # Read in the parent and carried into the worker. future exports globals and
+  # Read in the parent and passed into the worker. future exports globals and
   # not the session's options, so a multisession worker starts with this one
   # unset; read inside the worker instead, a deliberate persistent cache would
   # be honoured under a forking plan and silently ignored under every other.

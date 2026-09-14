@@ -704,21 +704,22 @@
   at once. Each level is given a directory named by its position, under
   `cmdstanr_write_stan_file_dir` where one is set and `tempdir()` otherwise, so
   a deliberate persistent cache is still used and is still warm on the next run.
-  The cost is that a first grouped run compiles each equation once per level
-  rather than once. `rstan` under `rstan_options(auto_write = TRUE)` caches in
-  one place that a forked worker shares with its parent, and offers no argument
-  that moves it, so set `multisession` rather than `multicore` for a parallel
-  grouped call with that option in force.
+  What this adds is that a first grouped run compiles each equation once per
+  level rather than once. `rstan` under `rstan_options(auto_write = TRUE)` caches in
+  one place that a forked worker shares with its parent, and no argument
+  changes that location, so set `multisession` rather than `multicore` for a
+  parallel grouped call with that option in force.
 
-  **A fit no longer carries the session it was fitted in.** A formula records
+  **A fit no longer stores the session it was fitted in.** A formula records
   the environment it was created in, and serialising it writes that environment
   out in full. Written at the top level of a script that is the global
-  environment and costs nothing; written in a `knitr` chunk it is the chunk
+  environment and adds nothing; written in a `knitr` chunk it is the chunk
   environment, which holds every object the document has built so far. The
   formula's environment is now rebuilt to hold exactly the names the formula
-  mentions and the data does not supply, parented to the package namespace, and
-  it is rebuilt before the model frame so that the frame, the `brms` formula and
-  the stored fit are all narrowed by the one call. Measured on R 4.6.1 with a
+  mentions and the data does not supply, parented where the walk up its own
+  parent chain stopped, and it is rebuilt before the model frame so that the
+  frame, the `brms` formula and the stored fit are all narrowed by the one
+  call. Measured on R 4.6.1 with a
   76 MiB vector bound beside the formula: the formula serialised to 76.29 MiB
   and now serialises to under 0.01, and the model frame built from it --- which
   `amend()` exports to every worker, through the `.Environment` of its `terms`
@@ -730,13 +731,17 @@
   The environment is narrowed rather than removed. `model.frame()` resolves a
   term against the data first and the formula's environment second, so a formula
   naming anything the data does not supply needs it --- including the model
-  argument of `crf()` where that is a variable rather than a string. Two limits
+  argument of `crf()` where that is a variable rather than a string, which #319
+  resolves there deliberately. The replacement is parented at the first
+  environment R sends by reference, so the rest of the lookup chain is the one
+  the formula had. Two limits
   are worth stating. A name bound in the global environment, in an attached
   package or in a namespace is left where it is and resolved through the parent
-  chain, because copying it would cost what this avoids; a worker's global
+  chain, because copying it would reintroduce the size this removes; a worker's
+  global
   environment is not the caller's, so such a name was already out of reach under
   a plan and still is. And a function defined beside the formula is a closure
-  over that same environment, so carrying the name carries everything it closed
+  over that same environment, so the name is copied with everything it closed
   over: there the fit is the size it was.
 
   **A core spent on a level is the dearest of the three.** Chains are the
