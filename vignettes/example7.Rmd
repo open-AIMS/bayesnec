@@ -605,25 +605,48 @@ displaced by -8.7% at the noisiest and
 experiment improves, which is the signature of misspecification rather than of
 estimation error.
 
-The reason is in the variance rather than in the mean, and it is visible in a
-posterior predictive check. These data are generated with a residual standard
-deviation that is constant along the curve, so what each family should predict
-is known exactly. On the saved fit for the noisiest cell, the two Gaussian
-conventions do predict it: `measured` and `floored` both return a predicted
-spread of 0.86 to 0.93 times the generated 0.0114 at every concentration, and
-the ratio of their predicted spread at the top of the curve to that at the
-bottom is 1.02 and 0.98 against a true value of 1. An identity-link Gamma
-cannot, because it ties the residual standard deviation to the mean: it
-over-states the spread at the control by a factor of 3.5, understates it at the
-shoulder, and collapses it to zero at the floored values, a top-to-bottom ratio
-of five thousand. The floored block therefore carries almost all of the weight
-in the likelihood and the control scatter almost none, and the shoulder — which
-is where a 10% decline is read — is what gives way.
+The reason is in the variance rather than in the mean, and a posterior
+predictive check locates it. These data are generated with a residual standard
+deviation that is constant along the curve, so what a correctly specified family
+should predict is known exactly: the generated value at every concentration, and
+therefore a ratio of one between the predicted spread at the control and at the
+highest concentration. Each fit of the four precision cells was refitted and its
+model-averaged predicted spread compared with the generated one, 100
+realisations per cell and convention.
+
+
+
+`measured` is correctly specified by construction, so what it returns is the
+closest this statistic comes to one on these data and the reference every other
+convention is read against: a control ratio of
+1.00 to 0.98, with 95% of
+realisations between 0.81
+and 1.18, and a
+gradient of 1.03.
+
+An identity-link Gamma cannot reproduce a constant spread, because it ties the
+residual standard deviation to the mean. It over-states the spread at the
+control by a factor of 2.51 to 2.69,
+and its gradient runs from 181
+at the noisiest cell to 90
+at the most precise, against a true value of one. The floored block is therefore
+given almost all of the weight in the likelihood and the control scatter almost
+none, and the shoulder — which is where a 10% decline is read — is what gives
+way.
 
 That also locates what flooring does and does not damage. Under a Gaussian
-family the floored data are described by a correctly specified variance model;
-what the substitution changes is the mean structure, which is what Section 5.6
+family the floored data are described by a correctly specified variance model:
+`floored` returns a control ratio of 0.91 to
+1.12 and a gradient of
+1.04, both inside the reference. What
+the substitution changes is the mean structure, which is what Section 5.6
 reports. Under a Gamma the two failures compound.
+
+The Beta is a third case. Its control ratio is 1.09 to
+1.10, inside the reference, and its gradient
+1.71 to 2.66
+— a mild departure rather than the Gamma's. Whatever displaces its ErC10 is
+therefore not the variance model.
 
 The Gamma's intervals are
 2.14
@@ -1312,11 +1335,13 @@ the 2.1.3.1 release are the subject of results reported above: the `nec` and
 search accepts chains individually. An analysis run under the CRAN release will
 not reproduce these numbers exactly.
 
-The posterior predictive figures quoted in Section 5.3 come from the saved fits.
-The study keeps one fitted object per cell and convention, and all 24 case fits,
-chosen by a seed fixed on the cell and convention names before any result was
-seen. They are not in the compendium's repository — 66 model-averaged fits is
-too much to track — and are fetched from the cluster with `hpc/fetch-fits.sh`.
+The posterior predictive figures quoted in Section 5.3 are transcribed from
+`results/ppc_spread.csv`, which summarises 100 realisations of each cell and
+convention. They cover the four precision cells only. The study also keeps one
+fitted object per cell and convention, and all 24 case fits, chosen by a seed
+fixed on the cell and convention names before any result was seen; those are not
+in the compendium's repository — 66 model-averaged fits is too much to track —
+and are fetched from the cluster with `hpc/fetch-fits.sh`.
 
 The case studies were computed when this vignette was built until the
 conventions became model-averaged over the whole declining set. Four datasets by
