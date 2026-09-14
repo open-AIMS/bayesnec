@@ -1,230 +1,296 @@
 ---
-title: "Running `bayesnec`"
+title: "Installation and setup"
 output:
   rmarkdown::html_vignette:
 vignette: >
-  %\VignetteIndexEntry{Running `bayesnec`}
+  %\VignetteIndexEntry{Installation and setup}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 bibliography: bayesnec.bib
 ---
 
-
-
-[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
-[e2]: https://open-aims.github.io/bayesnec/articles/example2.html
-[e2b]: https://open-aims.github.io/bayesnec/articles/example2b.html
-[e3]: https://open-aims.github.io/bayesnec/articles/example3.html
-[e4]: https://open-aims.github.io/bayesnec/articles/example4.html
-
-The `bayesnec` package makes use of the R package `brms` [@Burkner2017; @Burkner2018]  (https://cran.r-project.org/package=brms) which relies on `stan` (https://mc-stan.org/). You will need to have either `RStan` (https://mc-stan.org/users/interfaces/rstan.html) or  `cmdstanr`(https://mc-stan.org/cmdstanr/) installed and configured on your computer to run `bayesnec`.
-
-Quick start guides can be found for both `RStan` https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started and `cmdstanr` https://mc-stan.org/cmdstanr/articles/cmdstanr.html. However, in our experience getting either package to work can be a bit fiddly, particularly on Windows machines. 
-
-We have prepared an installation workflow for `cmdstanr` specifically for Windows 10 that may resolve issues if the above Quick start links fail to result in a working version of `brms`. Note that this workflow has also been known to resolve some issues with `RStan`, although it was not developed with that intention.
-
-# `cmdstanr` installation workflow
-
-These instructions are derived from the instructions at <https://mc-stan.org/docs/2_24/cmdstan-guide/cmdstan-installation.html>
-
-The high level steps are:
-
-1.  Install `Rtools`, this is what `cmdstan` will use to make the executables
-2.  Install `git`, this is will be used to get the `cmdstan` code
-3.  Install `cmdstan`
-4.  Test `cmdstan` and run a model
-
-These instructions assume you have R and Rstudio installed already.
-
-## 1. Install `Rtools`
-
-a.  Install `Rtools` from <https://cran.r-project.org/bin/windows/Rtools/>
-
-b.  Go to the install location and check that the following usr\\bin and mingw64\\bin directories exist:
-
-    -   C:\rtools40\\usr\\bin
-    -   C:\rtools40\\mingw64\\bin
-
-Check that a **mingw32-make.exe** file is in one of those directories.
-
-`RTools` may not always install **mingw32-make.exe** but it can be installed manually if needed by the following instructions:
-
-Open `RTools Bash`, which comes with `RTools` (hit Windows Key, type rtools bash, and hit enter). In the `RTools Bash` console window, type:
-
-`pacman -Sy mingw-w64-x86_64-make`
-
-Check that the `mingw32-make.exe` file is in one of the `RTools` folders listed in 1b.
-
-c.  Add the directories to to the Windows Path using the "Edit the system environment variables" tool in Windows' Control Panel. A step by step guide on adding directories to the windows path can be found at <https://www.architectryan.com/2018/03/17/add-to-the-path-on-windows-10/>. Note that you will need administrator privileges on your computer to edit the environment variables.
-
--   Put the path in the system paths section (bottom section)
--   Note that you can also add the path `C:\cmdstan\stan\lib\stan_math\lib\tbb` to save having to do it later (in the later install `cmdstan` step below)
-
-d.  Test the paths are set correctly
-
-    -   Reboot your computer
-    -   Start up R studio
-    -   Navigate to the terminal (a tab co-located in the R console panel)
-    -   Type `echo %PATH%`
-    -   The paths you added should be in the output from that command. They should look something like:
-        -   `\c\RTools\RTools40\usr\bin`
-
-e.  Final check to see if it installed properly.
-
-In the terminal type:
-
-`g++ --version`
-
-and
-
-`mingw32-make --version`
-
-Check that it both return a version number. If they produce an error there is a problem with the installation.
-
-## 2. Install `git`
-
-a.  If git is not already on your system, install it here: <https://git-scm.com/download/win>
-
-b.  To check that git is installed. In RStudio:
-
-    -   Navigate to the terminal
-    -   type `git --version`
-    -   Check that it returns a version number. If it produces an error there is a problem with the installation
-
-## 3. Intall `cmdstan`
-
-In R studio
-
-a\. Navigate to the terminal
-
-b\. change directory to c:\\ drive using the code: `cd \c`
-
-c\. download latest version of cmdstan from githup - this may take a few minutes: `git clone https://github.com/stan-dev/cmdstan.git --recursive`
-
-d\. change directory to where `cmdstan` is downloaded: `cd cmdstan`
-
-e\. clean up the space (just to be sure): `mingw32-make clean-all`
-
-f\. compile the code: `mingw32-make build`
-
-This will take a few minutes and should end with similar phrase as """--- CmdStan v2.23.0 built ---"""
-
-g\. Add `cmdstan` library to system environment path by adding `C:\cmdstan\stan\lib\stan_math\lib\tbb` to the path (using the same instructions as 1.c.)
-
-h\. Reboot your computer
-
-i\. `cmdstan` is missing a file that must be manually added to the `C:\cmdstan\make` folder. Open notepad and copy paste the following two lines of text:
-
-`CXXFLAGS += -Wno-nonnull`
-
-`TBB_CXXFLAGS= -U__MSVCRT_VERSION__ -D__MSVCRT_VERSION__=0x0E00`
-
-k.  Save the file with the name `local` and ensure that it has no file extension. For example, if you used notepad the default file extension is .txt which can be deleted by right clicking the file and selecting rename. If you can't see the file extensions, click the view tab in your folder ribbon and make sure the `file name extension` box is checked. Instructions for how to remove a file extension can be found at: <https://www.computerhope.com/issues/ch002089.htm>
-
-## 4. Test cmdstan in R studio
-
-a.  Install the R package `cmdstanr` following the instructions at: <https://mc-stan.org/cmdstanr/articles/cmdstanr.html>
-
-```{r install_cmdstanr, eval=FALSE}
-# we recommend running this is a fresh R session or restarting your current session
-install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
-```
-
-b.  Make sure all these packages are installed and loaded.
-
-```{r load_cmdstanr}
-library(cmdstanr)
-library(posterior)
-library(bayesplot)
-color_scheme_set("brightblue")
-```
-
-c.  Manually set the following options.
-
-Make sure the path points to the `cmdstan` installation
-
-```{r check cmdstan path}
-cmdstan_path()
-```
-
-If not, manually set it
-
-```{r set cmdstan path}
-set_cmdstan_path("C:/cmdstan")
-```
-
-To use `cmdstan` as a backend for `brms` call the relevant options.
-
-```{r set backend}
-options(brms.backend = "cmdstanr")
-```
-
-Setting the path and backend may be required each time you use `cmdstan`
-
-d.  Check that your toolchain is set up properly.
-
-```{r toolchain check}
-check_cmdstan_toolchain()
-```
-
-This should return the message `The C++ toolchain required for CmdStan is setup properly!`
-
-### Compile a model
-
-If `cmdstan` is installed, the following example model should work.
-
-Set up data:
-
-```{r fit model}
-file <- file.path(cmdstan_path(), "examples", "bernoulli", "bernoulli.stan")
-mod <- cmdstan_model(file)
-mod$print()
-```
-
-Run a Monte Carlo Markov Chain:
-
-```{r mcmc}
-# names correspond to the data block in the Stan program
-data_list <- list(N = 10, y = c(0,1,0,0,0,0,0,0,0,1))
-
-
-fit <- mod$sample(
-  data = data_list,
-  seed = 123,
-  chains = 4,
-  parallel_chains = 4,
-  refresh = 500
+```{r setup, include = FALSE}
+stopifnot(require(knitr))
+# Nothing here is evaluated. Every chunk is code the reader runs on their own
+# machine, and evaluating any of it records the machine that built the vignette:
+# before #342 seven chunks were evaluated and the rendered file named one
+# contributor's home directory 21 times and carried 77 lines of compiler
+# diagnostics from it. Setting eval once for the document rather than chunk by
+# chunk means a chunk added later inherits it.
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
 )
 ```
 
-Check that the model has successfully fitted by examining the model parameters
+[e1]: https://open-aims.github.io/bayesnec/articles/example1.html
 
-```{r check model}
-fit$summary()
+`bayesnec` fits its models with `brms` [@Burkner2017; @Burkner2018], which
+passes them to Stan (<https://mc-stan.org/>). Stan does not interpret a model.
+Each model is translated into C++, compiled into a program, and that program is
+run. A C++ toolchain is therefore required to fit anything at all, and this is
+also why the first fit of a session takes longer than the ones after it.
+
+`brms` samples through either of two back ends. `rstan` [@stan2020] is installed
+as a dependency of `brms` whether or not it is used as the sampler, so it is
+present on any machine that can load `brms`. `cmdstanr` is on neither CRAN nor
+the dependency list of `bayesnec`, and is what this package's own vignettes are
+built with; `options(brms.backend = "cmdstanr")` is the line that selects it.
+The instructions below install `cmdstanr`, because it is the back end the
+package is developed and tested against. The `rstan` route is documented by the
+Stan project at <https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started>.
+
+# Software requirements
+
+| Software | Purpose |
+|---|---|
+| R | the language the rest of it runs in |
+| A C++ toolchain | compiles each model before it is fitted |
+| CmdStan | the sampler that runs the compiled model |
+
+The toolchain is the part that differs by operating system, and the part that
+fails most often. On Windows it is Rtools, on macOS the Xcode Command Line
+Tools, and on Linux the standard build tools.
+
+## Route by operating system
+
+Windows is described in full below. The difficulties Stan had on Windows
+historically came from `rstan`, which requires matched versions of several
+compiled packages; `cmdstanr` avoids most of that.
+
+Linux is described next, and was verified on 2026-09-11 under Debian with R
+4.6.1 and CmdStan 2.39.0. macOS is not covered in the same detail, because these
+steps have not been verified on it; that section points at the upstream
+instructions instead. The Windows Subsystem for Linux is a fallback for one
+situation only and is described last. Do not start there.
+
+What determines whether an installation works is the check in the *Verification*
+section, not which of these routes was followed to reach it.
+
+# Windows
+
+## R and Rtools
+
+Install R first, from <https://cran.r-project.org/bin/windows/base/>, and then
+the Rtools that matches it, from
+<https://cran.r-project.org/bin/windows/Rtools/>. Accept the default
+installation location.
+
+Rtools is versioned against the minor version of R: Rtools45 is for R 4.5.x and
+Rtools44 for R 4.4.x. CRAN's Rtools page states the current pairing. A mismatch
+is the most common single cause of a failed setup, and the error it produces
+names no version number, so install R first and read that page rather than
+reusing an Rtools already on the machine.
+
+## R packages
+
+`cmdstanr` is not on CRAN, so it comes from the Stan project's own repository:
+
+```{r install_cmdstanr}
+install.packages("cmdstanr",
+                 repos = c("https://stan-dev.r-universe.dev",
+                           getOption("repos")))
 ```
 
-### Run a model using brms
+`bayesnec` and the rest come from CRAN, and installing `bayesnec` installs
+`brms` with it:
 
-```{r check brmsmodel}
-require(cmdstanr)
-set_cmdstan_path("C:/cmdstan")
+```{r install_bayesnec}
+install.packages("bayesnec")
+```
+
+## The CmdStan installation
+
+Confirm the compiler is configured first. On a current Rtools this passes
+without doing anything; `fix = TRUE` repairs the problems it can rather than
+only reporting them.
+
+```{r toolchain_fix}
+cmdstanr::check_cmdstan_toolchain(fix = TRUE)
+```
+
+Then install CmdStan. Three things are set here, and each of them has been
+observed to stop a fresh installation on Windows.
+
+```{r install_cmdstan}
+dir.create("C:/cmdstan")           # install_cmdstan() does not create it
+options(timeout = 1800)            # R's default of 60 seconds is too short
+cmdstanr::install_cmdstan(dir = "C:/cmdstan")
+```
+
+The directory has to exist first. `install_cmdstan()` does not create it and
+stops with `Assertion on 'dir' failed: Directory 'C:/cmdstan' does not exist.`
+
+The download needs a longer timeout than R's default. The CmdStan archive is
+about 49 MB, and the `timeout` argument of `install_cmdstan()` does not govern
+the download while `options(timeout)` does. Measured on a connection delivering
+about 500 KB/s, the download failed with `Download of CmdStan failed with error`
+at the default and completed in 4.9 minutes at `timeout = 1800`, with nothing
+else changed. Set it in any case: it has no effect where the download would
+have completed anyway.
+
+The installation path has to be a plain one. The default location is inside the
+home directory, and on many Windows machines, particularly ones managed by an
+employer, that directory is synchronised by OneDrive, where the CmdStan build
+fails. The same failure occurs where the path contains a space or a character
+outside the standard English alphabet, which happens where a Windows user name
+does. `C:/cmdstan` avoids all three. Installing there rather than in the default
+location changes nothing else about how CmdStan is used, beyond the `.Rprofile`
+line below.
+
+Because `C:/cmdstan` is not the default location, R has to be told where to find
+it in every later session. Run `usethis::edit_r_profile()`, or open `.Rprofile`
+in your home directory, and add the line below with the version number that was
+installed. Without it, every new session reports CmdStan as not installed.
+
+```{r rprofile}
+options(cmdstanr_cmdstan_path = "C:/cmdstan/cmdstan-2.39.0")
+```
+
+That file is also where the back end belongs, so that it does not have to be set
+again in each session.
+
+```{r backend}
 options(brms.backend = "cmdstanr")
+```
 
-require(brms)
-fit <- brm(count ~ zAge + zBase * Trt + (1|patient),
-            data = epilepsy, family = poisson(), silent = 2, refresh = 0)
+## Recurring problems on Windows
 
+### A partly built CmdStan directory
+
+Where `install_cmdstan()` fails, run it again with these arguments.
+
+```{r reinstall}
+cmdstanr::install_cmdstan(overwrite = TRUE, quiet = FALSE, dir = "C:/cmdstan")
+```
+
+`overwrite = TRUE` is the part that matters. An attempt that fails partway
+through the build leaves a partly built directory behind, and a second attempt
+without `overwrite` declines to replace it, which produces an error resembling
+the first one. `quiet = FALSE` only prints more of the build output, which is
+worth having because the default output is truncated and does not identify the
+stage that failed.
+
+### Chains that do not start after an Rtools upgrade
+
+A model compiles and `cmdstanr` then reports `No chains finished successfully`,
+which names neither a cause nor a file. The usual reason is that Rtools changed
+after CmdStan was installed. CmdStan builds its own `tbb.dll`, linked against
+the toolchain that built it, so a CmdStan built under Rtools44 requires
+libraries that Rtools45 does not provide: the model still compiles, and every
+chain then exits immediately with `STATUS_DLL_NOT_FOUND`. Rebuilding CmdStan
+resolves it.
+
+```{r rebuild}
+cmdstanr::install_cmdstan(overwrite = TRUE, dir = "C:/cmdstan")
+```
+
+Anyone who upgrades R and Rtools after installing CmdStan will meet this.
+
+### The `cmdstanr` version and the Rtools it expects
+
+Rtools is installed and `cmdstanr` reports it as missing. `cmdstanr` chooses
+which Rtools to look for from the R version, and the mapping changed between
+releases: 0.9.0 sends R 4.5.x to Rtools45, while 0.8.0 sent every R from 4.4
+onward to Rtools44. An older `cmdstanr` alongside Rtools45 therefore searches for
+a toolchain that was never installed. Install `cmdstanr` 0.9.0 or later, which
+is what the r-universe repository above supplies.
+
+### Slow compilation
+
+Windows Defender inspects each newly compiled program, and a compile that should
+take under a minute can take several. Excluding the CmdStan directory from
+real-time scanning resolves it, where the machine's policy allows.
+
+### Compilation blocked by policy
+
+Some managed machines prevent a newly compiled program from running at all.
+This is a policy decision rather than a configuration problem, and it cannot be
+worked around from within R. The *Windows Subsystem for Linux* section describes
+the alternative.
+
+# macOS
+
+These steps have not been verified on macOS. They point at the upstream
+instructions, which the projects themselves maintain, and the check in the
+*Verification* section is what settles whether the installation works.
+
+1. Install R from <https://cran.r-project.org/bin/macosx/>, choosing the build
+   for your processor: the Apple Silicon and Intel builds differ.
+2. Install the Xcode Command Line Tools by running `xcode-select --install` in
+   Terminal. Some packages also require `gfortran`, and CRAN's macOS tools page
+   states the current requirement.
+3. Install the R packages as in the Windows section above.
+4. Follow the CmdStanR getting-started vignette
+   (<https://mc-stan.org/cmdstanr/articles/cmdstanr.html>) for
+   `check_cmdstan_toolchain()` and `install_cmdstan()`. The default installation
+   path causes no difficulty on macOS, so `dir` need not be set.
+
+# Linux
+
+Install R through the distribution's package manager or from CRAN, together with
+the standard build tools: `build-essential` on Debian and Ubuntu, or the
+equivalent development group on other distributions. Install the R packages as
+in the Windows section, then run `cmdstanr::check_cmdstan_toolchain()` followed
+by `cmdstanr::install_cmdstan()`. The default path causes no difficulty here
+either.
+
+# The Windows Subsystem for Linux
+
+WSL runs a Linux system inside Windows. Use it only where compilation on Windows
+is blocked by security policy on a machine you cannot change. It is not a
+simpler route and is not recommended otherwise.
+
+It requires a second installation of R inside Linux, a second package library to
+keep track of, a different way of referring to your files, and further editor
+configuration to work with the Linux session. Someone not already comfortable at
+a command line takes on a second system to learn alongside the modelling.
+
+# Verification
+
+Two checks. The first inspects the toolchain and the second uses it, so run
+them in that order.
+
+```{r verify_toolchain}
+cmdstanr::check_cmdstan_toolchain()
+cmdstanr::cmdstan_version()
+```
+
+A configured toolchain reports
+
+```
+The C++ toolchain required for CmdStan is setup properly!
+```
+
+and `cmdstan_version()` returns the version string of the installation R is
+using. An error from either is a toolchain or path problem, and nothing below
+will work until it is resolved.
+
+The second check fits a model, and it is the one that matters, because it
+exercises the whole path: `bnec()` calls `brms`, `brms` writes a Stan program,
+CmdStan compiles it, and the compiled program samples.
+
+```{r verify_fit}
+library(bayesnec)
+data(nec_data)
+
+options(brms.backend = "cmdstanr")
+set.seed(333)
+fit <- bnec(y ~ crf(x, model = "nec4param"), data = nec_data,
+            family = Beta(link = "identity"), chains = 2, seed = 333)
 summary(fit)
 ```
 
+A successful run compiles one Stan program, prints the sampling progress of two
+chains, and returns an object of class `bayesnecfit`. Its `summary()` reports the
+four parameters of the **nec4param** equation --- **bot**, **top**, **beta** and
+**nec** --- each with an `Rhat` near 1.00, then the *NEC* estimate with its
+credible interval, and a Bayesian R-squared. Two chains are enough to show that
+the toolchain works. The other vignettes take the `brms` default of four, which
+is what an analysis should use.
+
+With that fit returning, the modelling vignettes can be followed;
+[Single model usage][e1] is the place to start.
 
 # References
-
-
-
-
-
-
-
-
-
