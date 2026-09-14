@@ -53,8 +53,7 @@ test_that("bnec() records the request, and leaves $model a plain string", {
   d <- data.frame(x = x, y = y)
   fit <- suppressWarnings(suppressMessages(
     bnec(y ~ crf(x, model = "nec4param"), data = d, family = gaussian(),
-         chains = 2, iter = 400, warmup = 200, seed = 410,
-         open_progress = FALSE, refresh = 0)
+         chains = 2, iter = 400, warmup = 200, seed = 410, refresh = 0)
   ))
   skip_if_not(is_bayesnecfit(fit), "the single candidate had to fit")
 

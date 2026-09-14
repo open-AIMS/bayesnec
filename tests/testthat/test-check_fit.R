@@ -215,8 +215,7 @@ hurdle_fixture <- local({
       dat <- data.frame(x = x, y = ifelse(alive == 1, g, 0))
       fit <- suppressWarnings(suppressMessages(
         bnec_hurdle(y ~ crf(x, "nec3param"), data = dat, iter = 400,
-                    warmup = 200, chains = 2, seed = 17, refresh = 0,
-                    open_progress = FALSE)
+                    warmup = 200, chains = 2, seed = 17, refresh = 0)
       ))
       cached <<- list(dat = dat, fit = fit)
     }

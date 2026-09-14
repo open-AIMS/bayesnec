@@ -121,7 +121,7 @@ test_that("a zero-inflated count response fits through bnec", {
   dat <- data.frame(x = x, y = as.integer(y))
   fit <- bnec(y ~ crf(x, "nec3param"), data = dat,
               family = "zero_inflated_poisson", iter = 600, warmup = 300,
-              chains = 2, seed = 104, refresh = 0, open_progress = FALSE) |>
+              chains = 2, seed = 104, refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   expect_s3_class(fit, "bayesnecfit")

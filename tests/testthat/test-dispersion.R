@@ -22,7 +22,7 @@ poisson_fit <- local({
       d <- data.frame(x = x, y = as.integer(rpois(length(mu), mu)))
       cached <<- bnec(y ~ crf(x, model = "nec4param"), data = d,
                       family = "poisson", iter = 400, warmup = 200, chains = 2,
-                      seed = 247, refresh = 0, open_progress = FALSE) |>
+                      seed = 247, refresh = 0) |>
         suppressMessages() |>
         suppressWarnings()
     }
@@ -68,8 +68,7 @@ test_that("dispersion detects genuine overdispersion", {
   mu <- 5 + (85 - 5) * exp(-exp(0.3) * (x - 1.5) * (x > 1.5))
   d <- data.frame(x = x, y = as.integer(rnbinom(length(mu), mu = mu, size = 5)))
   fit <- bnec(y ~ crf(x, model = "nec4param"), data = d, family = "poisson",
-              iter = 400, warmup = 200, chains = 2, seed = 247, refresh = 0,
-              open_progress = FALSE) |>
+              iter = 400, warmup = 200, chains = 2, seed = 247, refresh = 0) |>
     suppressMessages() |>
     suppressWarnings()
   disp <- dispersion(fit, summary = TRUE)
@@ -235,8 +234,7 @@ degenerate_fit <- local({
                       y = c(10, 10, 10, 10, 9, 10, 9, 8, 9, 0, 0, 0, 0, 0, 0))
       cached <<- bnec(y | trials(trials) ~ crf(x, model = "nec3param"),
                       data = d, family = "binomial", iter = 400, warmup = 200,
-                      chains = 2, seed = 298, refresh = 0,
-                      open_progress = FALSE) |>
+                      chains = 2, seed = 298, refresh = 0) |>
         suppressMessages() |>
         suppressWarnings()
     }

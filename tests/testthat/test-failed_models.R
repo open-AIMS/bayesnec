@@ -160,7 +160,7 @@ test_that("a failed fit carries the priors and inits it was given", {
       formula = bnf(y ~ crf(x, "nec3param")), data = nec_data,
       model = "nec3param",
       brm_args = list(family = gaussian(), iter = 200, warmup = 100,
-                      chains = 2, refresh = 0, open_progress = FALSE,
+                      chains = 2, refresh = 0,
                       algorithm = "notanalgorithm")
     ),
     silent = TRUE
