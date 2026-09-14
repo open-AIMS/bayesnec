@@ -449,6 +449,15 @@ jobs:
       # oversized entry; saving nothing would leave it the newest match and the
       # next run would restore it and empty it again.
       #
+      # A leg whose cache was already complete still re-uploads it under the
+      # new key, having compiled nothing. That is left alone deliberately. One
+      # leg holds one vignette's programs -- example4 is 14 of them, about
+      # 14 MB compressed -- the stale copy is never restored once a newer entry
+      # exists, and it expires unread after seven days. Detecting it means
+      # recording the file count before the knit and comparing, which is worth
+      # adding if a vignette the size of example7 reaches this branch and is not
+      # worth adding for the ones that are on it.
+      #
       # `!cancelled()` rather than the default, so that the bound is applied on
       # the path where it matters most: a leg that failed part way through has
       # compiled programs and is about to save them. `always()` is not used,
