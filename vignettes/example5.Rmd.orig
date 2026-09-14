@@ -88,10 +88,16 @@ cause of a failed setup, so install R first and read that page rather than
 reusing an Rtools already on the machine.
 
 `cmdstanr::check_cmdstan_toolchain()` names the version it is looking for, and
-that is the version to install. Under `cmdstanr` 0.9.0 and R 4.6.1 the message
-reads `Rtools45 was not found but is required to run CmdStan with R version
-4.6.1.` Which version `cmdstanr` looks for is fixed in the installed `cmdstanr`
-rather than read from CRAN, so the two can disagree; the *Recurring problems on
+that is the version to install. It becomes available once the next section has
+installed `cmdstanr`. Under `cmdstanr` 0.9.0 and R 4.6.1 it reports
+
+```
+Rtools45 was not found but is required to run CmdStan with R version 4.6.1.
+Please install Rtools45 and run cmdstanr::check_cmdstan_toolchain().
+```
+
+Which version `cmdstanr` looks for is fixed in the installed `cmdstanr` rather
+than read from CRAN, so the two can disagree; the *Recurring problems on
 Windows* section covers that case.
 
 ## R packages
@@ -147,28 +153,35 @@ employer, that directory is synchronised by OneDrive, where the CmdStan build
 fails. The same failure occurs where the path contains a space or a character
 outside the standard English alphabet, which happens where a Windows user name
 does. `C:/cmdstan` avoids all three. Installing there rather than in the default
-location changes nothing else about how CmdStan is used, beyond the `.Rprofile`
-line below.
+location asks for two things in return: the `CMDSTAN` variable set out below,
+and `dir = "C:/cmdstan"` on any later `install_cmdstan()` call.
 
 Because `C:/cmdstan` is not the default location, R has to be told where to find
 it in every later session, and the setting it reads is an environment variable
 rather than an option. Run `usethis::edit_r_environ()`, or open `.Renviron` in
 your home directory, add the line below, and restart R. Without it, every new
-session reports CmdStan as not installed, and
-`cmdstanr::set_cmdstan_path("C:/cmdstan")` has to be called by hand in each one.
+session reports CmdStan as not installed and the path has to be set by hand in
+each one.
 
 ```
 CMDSTAN=C:/cmdstan
 ```
 
-The variable is read when `cmdstanr` is loaded, which is why R has to be
-restarted, and it is the only thing read: in `cmdstanr` 0.9.0
-`cmdstanr:::cmdstanr_initialize()` takes the path from `Sys.getenv("CMDSTAN")`
-where that is set and from `~/.cmdstan` otherwise, and no option sets it. The
-version number is not needed in the variable. Where `CMDSTAN` names a directory
-that is not itself an installation, `cmdstanr` takes the newest `cmdstan-*`
-installation inside it, so the line above survives the next CmdStan upgrade
-unedited.
+R reads `.Renviron` only when it starts, which is why editing it takes effect on
+the next session rather than this one. The variable is the only thing `cmdstanr`
+reads for this: in `cmdstanr` 0.9.0 `cmdstanr:::cmdstanr_initialize()` takes the
+path from `Sys.getenv("CMDSTAN")` where that is set and from `~/.cmdstan`
+otherwise, and no option sets it.
+
+The version number is not needed in the variable. Where `CMDSTAN` names a
+directory that is not itself an installation, `cmdstanr` takes the newest
+`cmdstan-*` installation inside it, so the line above survives the next CmdStan
+upgrade unedited. The by-hand alternative does need it, and this asymmetry is
+easy to trip over: `cmdstanr::set_cmdstan_path()` takes the path as given, so it
+has to be called as `set_cmdstan_path("C:/cmdstan/cmdstan-2.39.0")`. Given the
+parent directory it warns `Can't find CmdStan makefile to detect version
+number`, sets the path to that directory, and leaves `cmdstan_version()` at
+`NULL`.
 
 The back end is an option rather than a variable, so it belongs in `.Rprofile`,
 and putting it there means it does not have to be set again in each session.
@@ -337,12 +350,17 @@ setup module of the concentration-response modelling course at
 records what was seen on fresh Windows machines during 2026. They are that
 course's measurements and not this package's.
 
-The `cmdstanr` behaviour stated here was read from `cmdstanr` 0.9.0 under R
-4.6.1: the environment variable `cmdstanr:::cmdstanr_initialize()` reads, the
-Rtools version `cmdstanr:::rtools4x_version()` returns, the text of the
-toolchain error, and the fact that the `timeout` argument of `install_cmdstan()`
-reaches `build_cmdstan()` and `build_example()` while the download runs through
-`utils::download.file()` and so honours `options(timeout)`.
+Every statement about `cmdstanr` behaviour here was read from `cmdstanr` 0.9.0
+under R 4.6.1, and none of it is a course measurement: the environment variable
+`cmdstanr:::cmdstanr_initialize()` reads and the `~/.cmdstan` fallback; the
+resolution of a `CMDSTAN` directory that is not itself an installation to the
+newest `cmdstan-*` inside it, and the absence of that resolution from
+`set_cmdstan_path()`; the Rtools version `cmdstanr:::rtools4x_version()`
+returns; the text of the toolchain error and of the directory assertion,
+together with the fact that `install_cmdstan()` asserts a supplied directory
+rather than creating it; and the `timeout` argument reaching `build_cmdstan()`
+and `build_example()` while the download runs through `utils::download.file()`
+and so honours `options(timeout)`.
 
 The Linux route was checked on 2026-09-11 by running the course's verification
 script end to end, with R 4.6.1, `brms` 2.23.0, `cmdstanr` 0.9.0 and CmdStan

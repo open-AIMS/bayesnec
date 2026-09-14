@@ -1363,7 +1363,7 @@
   `check_cmdstan_toolchain()` and a two-chain `bnec()` fit on `nec_data`, and a
   provenance section attributes each measurement to the run that produced it.
 
-  One instruction in the course module is corrected rather than carried across.
+  One instruction in the course module is corrected rather than reproduced.
   A CmdStan installation outside the default location is made to persist with
   the environment variable `CMDSTAN`, set in `.Renviron`, and not with
   `options(cmdstanr_cmdstan_path = ...)`: no version of `cmdstanr` reads that
@@ -1375,7 +1375,7 @@
   resolves to the newest `cmdstan-*` inside it (#342).
 
   `vignette("example1")`, `vignette("example2")` and `README.md` now point at
-  it. Each carried its own installation text, so the package had three (#342).
+  it. Each held its own installation text, so the package had three (#342).
 
 - New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
   running a single analysis from data to reportable estimate: choosing the
