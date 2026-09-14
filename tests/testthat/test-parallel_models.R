@@ -850,7 +850,7 @@ test_that("the levels of a grouped call are seeded from the caller", {
   expect_identical(get(".Random.seed", envir = globalenv()), before)
   invisible(seeds(5))
   expect_identical(get(".Random.seed", envir = globalenv()), before)
-  # And so is the generator kind, which the seeded path pins to "Rejection".
+  # And so is the generator kind, which the seeded path pins.
   kind <- RNGkind()
   on.exit(suppressWarnings(do.call(RNGkind, as.list(kind))), add = TRUE)
   suppressWarnings(RNGkind(sample.kind = "Rounding"))
@@ -908,7 +908,16 @@ test_that("a level seed means one thing whatever sampler the session is in", {
   suppressWarnings(RNGkind(sample.kind = "Rounding"))
   b <- bayesnec:::group_level_seeds(4, 17)
   expect_identical(a, b)
-  # And the session is left in the sampler it was in.
+  # And the generator as well as the sampler: "L'Ecuyer-CMRG" is what a user
+  # doing their own parallel work sets, and it is a generator rather than a
+  # sampler, so pinning only the sampler left the same seed realising different
+  # level seeds there.
+  suppressWarnings(RNGkind(kind = "L'Ecuyer-CMRG", sample.kind = "Rejection"))
+  expect_identical(bayesnec:::group_level_seeds(4, 17), a)
+  # The session is left in whatever it was in, both times.
+  expect_identical(RNGkind()[1], "L'Ecuyer-CMRG")
+  suppressWarnings(RNGkind(kind = "Mersenne-Twister", sample.kind = "Rounding"))
+  invisible(bayesnec:::group_level_seeds(4, 17))
   expect_identical(RNGkind()[3], "Rounding")
 })
 

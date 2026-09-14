@@ -771,7 +771,12 @@
   `seed` where one was passed, so a grouped call now repeats with no
   `set.seed()` in the session, which is more than `bnec()` offers for a single
   set; where none was passed, `set.seed()` before the call fixes them. The
-  calling session's own stream is put back either way. One consequence: the
+  calling session's own stream and generator kind are put back either way, and
+  the generator and sampler are pinned while the seeds are realised so that one
+  `seed` means one thing whatever the session is set to. What was realised is
+  kept on the returned object as `level_seeds`, because a regenerated seed
+  cannot be trusted to be the same one years later and these objects are
+  archived and reopened. One consequence: the
   estimates a grouped call reports are not those earlier versions reported,
   because the levels are seeded rather than drawing from the stream as each is
   reached. They are another realisation of the same weighting, and they are now

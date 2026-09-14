@@ -313,17 +313,20 @@ worker_stan_cache_dir <- function(root = NULL) {
 #' \code{\link[base]{set.seed}} before the call fixes them.
 #'
 #' \bold{The caller's stream and generator kind are both put back.}
-#' \code{\link{bnec_group}} is not entitled to move either, which is the rule
+#' \code{\link{bnec_group}} is not entitled to advance either, which is the rule
 #' \code{bnec_parallel_lapply()} and \code{weighted_draw_index()} follow, and
 #' for the same reason: a fit must not reset a user's simulation seed. The
 #' generator as well as the stream, because the line below pins it.
 #'
-#' \bold{The sampler kind is pinned where a \code{seed} was supplied.}
-#' \code{\link[base]{sample.int}}'s algorithm changed in R 3.6.0 and
-#' \code{\link[base]{set.seed}} with \code{kind = NULL} leaves whichever is in
+#' \bold{The generator and the sampler are both pinned where a \code{seed} was
+#' supplied.} \code{\link[base]{sample.int}}'s algorithm changed in R 3.6.0,
+#' and \code{\link[base]{set.seed}} with \code{kind = NULL} and
+#' \code{sample.kind = NULL} leaves whichever generator and sampler are in
 #' force, so the same \code{seed} would otherwise realise different level seeds
-#' in a session set to the pre-3.6.0 sampler. \code{"Rejection"} is named so
-#' that \code{seed} means one thing. \code{\link{bnec_group}} records what was
+#' in a session set to the pre-3.6.0 sampler, and different ones again in a
+#' session set to \code{"L'Ecuyer-CMRG"} --- which is what a user doing their
+#' own \pkg{parallel} work sets. Both are named so that \code{seed} means one
+#' thing. \code{\link{bnec_group}} records what was
 #' realised on the returned object as well, for the reason
 #' \code{expand_manec()} stores \code{w_draw_index} beside
 #' \code{w_draw_seed}: these objects are archived and reopened years later, and
@@ -374,7 +377,8 @@ group_level_seeds <- function(n_levels, seed = NULL) {
   }, add = TRUE)
   if (!is.null(seed) && length(seed) == 1 && is.numeric(seed) &&
         is.finite(seed)) {
-    suppressWarnings(set.seed(seed, sample.kind = "Rejection"))
+    suppressWarnings(set.seed(seed, kind = "Mersenne-Twister",
+                              sample.kind = "Rejection"))
   }
   sample.int(.Machine$integer.max, n_levels)
 }
@@ -533,7 +537,7 @@ plan_group_levels <- function(n_levels, n_models) {
       n_workers(workers)
     },
     ", under the future plan already set.\n",
-    if (nested) {
+    if (nested && nested_inner) {
       paste0("The plan is a list, so each level fits its own model set under",
              " the next strategy in it.")
     } else {

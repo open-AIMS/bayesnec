@@ -144,6 +144,12 @@ worker count does not change an answer. With a \code{seed} it repeats with no
 \code{\link[base]{set.seed}} in the session; without one,
 \code{\link[base]{set.seed}} before the call fixes it.
 
+What was realised is kept: the returned object carries \code{level_seeds},
+one per level in the order of \code{levels}. A regenerated seed cannot be
+trusted to be the same one years later --- \code{sample.int()}'s algorithm
+changed once already, in R 3.6.0 --- and these objects are archived and
+reopened, so the realisation is stored rather than described.
+
 The estimates a grouped call reports are not those earlier versions reported,
 because the levels are now seeded rather than drawing from the session's
 stream as each is reached. They are another realisation of the same
