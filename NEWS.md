@@ -1378,6 +1378,43 @@
 
 ## Documentation
 
+- `vignette("example5")` is rewritten as *Installation and setup*, and no chunk
+  in it is evaluated. It previously evaluated seven chunks, so the rendered
+  vignette recorded the machine that built it: the shipped file named one
+  contributor's home directory 21 times in 520 lines and ended with 77 lines of
+  compiler diagnostics from that machine. Evaluating those chunks also published
+  the warning `Path not set. Can't find directory: C:/cmdstan` directly beneath
+  the instruction to set that path.
+
+  The instructions themselves are replaced rather than repaired. The previous
+  text directed the reader to clone CmdStan from GitHub, run `mingw32-make
+  build`, reboot, and hand-write a `make/local` file supplying two compiler
+  flags, none of which `cmdstanr::install_cmdstan()` requires, and named
+  CmdStan v2.23.0 as the version expected. The replacement covers what stops a
+  fresh installation now: the directory `install_cmdstan()` does not create, the
+  49 MB download that R's default 60-second `options(timeout)` does not cover, a
+  home directory synchronised by OneDrive or containing a space, the `tbb.dll`
+  built against a superseded Rtools, and the `cmdstanr` version-to-Rtools
+  mapping that changed at 0.9.0. Its technical content comes from the software
+  setup module of the `cr_modelling_training` course, which is the maintained
+  version of the same material. A verification section closes it with
+  `check_cmdstan_toolchain()` and a two-chain `bnec()` fit on `nec_data`, and a
+  provenance section attributes each measurement to the run that produced it.
+
+  One instruction in the course module is corrected rather than reproduced.
+  A CmdStan installation outside the default location is made to persist with
+  the environment variable `CMDSTAN`, set in `.Renviron`, and not with
+  `options(cmdstanr_cmdstan_path = ...)`: no version of `cmdstanr` reads that
+  option. In `cmdstanr` 0.9.0, `cmdstanr:::cmdstanr_initialize()` takes the path
+  from `Sys.getenv("CMDSTAN")` where it is set and from `~/.cmdstan` otherwise,
+  and the string `cmdstanr_cmdstan_path` appears nowhere in the `cmdstanr`
+  namespace. The vignette also drops the version number from the setting, since
+  `CMDSTAN` naming a directory that holds an installation rather than being one
+  resolves to the newest `cmdstan-*` inside it (#342).
+
+  `vignette("example1")`, `vignette("example2")` and `README.md` now point at
+  it. Each held its own installation text, so the package had three (#342).
+
 - New vignette, `vignette("example9")` --- *A complete analysis workflow* ---
   running a single analysis from data to reportable estimate: choosing the
   family from the support of the response, fitting the candidate set, sampler
