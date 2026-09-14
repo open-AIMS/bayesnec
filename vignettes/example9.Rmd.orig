@@ -777,7 +777,10 @@ What to state in a methods section:
   interpolated on, which defaults to 200; and any `xform` used to return an
   estimate to the measured scale;
 - **the estimates with their credible intervals**, and the weights of the
-  retained models.
+  retained models;
+- **the parameters of the fitted curve**, which is what the threshold estimates
+  are read from: `top`, the control level the curve is referenced to; `bot`, the
+  asymptote a `"relative"` ECx is measured against; and `beta`, the decay rate.
 
 `summary()` returns the retained equations with their weights and the
 model-averaged estimate. The set mixes threshold and smooth equations, so that
@@ -806,6 +809,33 @@ understates the threshold by a factor of `r round(exp(1), 1)` for every unit on
 the logged scale. Where the logarithm is negative the value is not a
 concentration at all, which is the one case in which the error announces itself.
 A reported value has to state the scale it is on.
+
+`summary()` does not report the parameters of the curve itself, and for a
+`bayesmanecfit` nothing else did until `curve_params()` was added. It returns one
+row per parameter per equation, with the model weight beside each row:
+
+```{r report-params}
+curve_params(fit_screened, xform = exp)
+```
+
+The equations of a set do not share a parameter list, which is why nothing is
+averaged across them. In the table above `ecxexp` reports only `top` and `beta`,
+the three-parameter equations report no `bot`, and `nec` appears for `nec3param`
+and `nec4param` alone, those being the equations of `mod_groups$nec` that the
+screen retained. Averaging a parameter over whichever equations estimate it would
+average over a different subset for each parameter.
+
+The weight beside each row says how much of the model-averaged prediction those
+parameters describe, and here it is what makes the two `nec` rows readable. Both
+place a threshold near 21, well above the *N(S)EC* reported above, and both hold
+less than a thousandth of the weight. Neither describes the averaged estimate,
+which is dominated by the smooth equations and is a mixture of *NEC* and *NSEC*
+draws rather than a threshold any one equation estimated.
+
+`xform` reaches `nec` and `ec50` and no other parameter, because those two are on
+the scale of the predictor while `top`, `bot` and `beta` are not. Supplying it
+here puts the two that are on the measured concentration scale, and leaves the
+rest alone.
 
 ECx values are the other commonly required endpoint, read from the same screened
 set:
