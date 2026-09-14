@@ -110,6 +110,10 @@
 <p>The pull request or the issue holds the reasoning. <code>notes/</code> keeps the measurements and the pointers, not a second copy of the argument. Planning documents follow section 13 of the global file and live in <code>notes/tasks/</code> as a <code>-human.md</code> and <code>-claude.md</code> pair.</p>
 </div>
 <div class="section level2">
+<h2 id="the-reference-library">The reference library<a class="anchor" aria-label="anchor" href="#the-reference-library"></a></h2>
+<p>The papers behind this package and the training material are in <code>C:/Rworking/references/</code>, outside every repository so that they are never committed, and reached from here through <code>ignore/references</code>. Read one by that path rather than the absolute one, so the read stays inside the working directory. <code>notes/references.md</code> lists what is there and gives the key in <code>vignettes/bayesnec.bib</code> for each paper the package cites.</p>
+</div>
+<div class="section level2">
 <h2 id="naming-the-models-in-prose">Naming the models in prose<a class="anchor" aria-label="anchor" href="#naming-the-models-in-prose"></a></h2>
 <p>Section 12 rule 6 of the global file applies with these specifics. <code>bayesnec</code> has 23 model equations and ten of them are NEC models, so “the nec model” never identifies one: name <code>nec3param</code>, <code>nec4param</code> or <code>nechorme</code>. Distinguish the equations whose names begin <code>nec</code>, the <code>nec</code> parameter they estimate, and <code>mod_groups$nec</code>, the group of equations. The same care applies to <code>ecx</code>. <code>bayesnec</code> and <code>brms</code> are packages; <code><a href="reference/bnec.html">bnec()</a></code> and <code>brm()</code> are functions.</p>
 </div>
