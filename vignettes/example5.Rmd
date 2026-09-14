@@ -170,9 +170,12 @@ directory that is not itself an installation, `cmdstanr` takes the newest
 upgrade unedited. The by-hand alternative does need it, and this asymmetry is
 easy to trip over: `cmdstanr::set_cmdstan_path()` takes the path as given, so it
 has to be called as `set_cmdstan_path("C:/cmdstan/cmdstan-2.39.0")`. Given the
-parent directory it warns `Can't find CmdStan makefile to detect version
-number`, sets the path to that directory, and leaves `cmdstan_version()` at
-`NULL`.
+parent directory it sets the path to that directory, leaves `cmdstan_version()`
+at `NULL`, and warns
+
+```
+Can't find CmdStan makefile to detect version number. Path may not point to valid installation.
+```
 
 The back end is an option rather than a variable, so it belongs in `.Rprofile`,
 and putting it there means it does not have to be set again in each session.
@@ -352,11 +355,13 @@ under R 4.6.1, and none of it is a course measurement: the environment variable
 resolution of a `CMDSTAN` directory that is not itself an installation to the
 newest `cmdstan-*` inside it, and the absence of that resolution from
 `set_cmdstan_path()`; the Rtools version `cmdstanr:::rtools4x_version()`
-returns; the text of the toolchain error and of the directory assertion,
-together with the fact that `install_cmdstan()` asserts a supplied directory
-rather than creating it; and the `timeout` argument reaching `build_cmdstan()`
-and `build_example()` while the download runs through `utils::download.file()`
-and so honours `options(timeout)`.
+returns; the text of the three messages quoted above --- the toolchain success,
+the missing Rtools, and the directory assertion --- together with the fact that
+`install_cmdstan()` asserts a supplied directory rather than creating it, and
+that `check_cmdstan_toolchain()` forwards `fix = TRUE` to the branch that
+repairs rather than only reports; and the `timeout` argument reaching
+`build_cmdstan()` and `build_example()` while the download runs through
+`utils::download.file()` and so honours `options(timeout)`.
 
 The Linux route was checked on 2026-09-11 by running the course's verification
 script end to end, with R 4.6.1, `brms` 2.23.0, `cmdstanr` 0.9.0 and CmdStan
