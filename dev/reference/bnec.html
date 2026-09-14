@@ -520,6 +520,30 @@ posterior predictions, with weights derived using functions
 <span class="pkg">brms</span>. Argument to both these functions can be passed via the
 <code>loo_controls</code> argument. Individual model fits can be pulled out
 for examination using function <code><a href="pull_out.html">pull_out</a></code>.</p>
+<p><b>Reproducing a fit</b></p>
+<p>A fit is a random procedure twice over: initial values are drawn from the
+priors, and the sampler is seeded. Both draws come from R's random number
+stream, so <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> in your session before the call
+fixes the fit, and two calls made after the same <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> return
+the same estimates. Passing <code>seed</code> through to <code><a href="https://paulbuerkner.com/brms/reference/brm.html" class="external-link">brm</a></code>
+fixes it too, and does so independently of the session's stream.</p>
+<p>Two qualifications. The estimates are fixed only for a given version of
+<span class="pkg">bayesnec</span>, <span class="pkg">brms</span>, Stan and the compiler: a Stan program rebuilt
+by a different toolchain can differ in the last figures. And within-chain
+threading is adaptive by default, which <code><a href="https://paulbuerkner.com/brms/reference/threading.html" class="external-link">threading</a></code>
+records as preventing exact reproducibility even under a fixed seed; pass
+<code>threads = threading(n, static = TRUE)</code> where a threaded run has to
+repeat.</p>
+<p>A <span class="pkg">future</span> plan raises two separate questions, and only the second
+needs anything of you. A run under a plan repeats itself under a session
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> exactly as a sequential run does, measured on
+one backend and one R version. But a parallel run does not give the same
+answer as a sequential run of the same call unless you pass <code>seed</code>:
+each model is fitted in a worker whose random number stream is its own, so
+the initial values differ. Measured under
+<code>plan(multicore, workers = 3)</code> on three equations, sequential and
+parallel agreed with a <code>seed</code> and disagreed without one. Pass one if
+you intend to compare the two.</p>
 <p><b>Fitting a model set in parallel</b></p>
 <p>A model set is fitted one model at a time by default. Setting a <span class="pkg">future</span>
 plan before the call fits them at the same time instead, and
@@ -550,13 +574,15 @@ cleanly: measured on the <code>"decline"</code> set of
 over eight workers. Run again with the programs already built, the same
 comparison is 99 s against 101 s – nothing, because what a plan was
 overlapping has already been done.</p>
-<p>Supply a <code>seed</code> if the run has to be reproducible.</p>
+<p>Supply a <code>seed</code> if the run has to match a sequential one; see
+<em>Reproducing a fit</em> above for what a plan does and does not repeat.</p>
 <p>The model-averaged quantities – the averaged
 <code>nec</code>, its interval, the stored prediction grid – are not reproduced
-between a sequential and a parallel run, because <code><a href="expand_manec.html">expand_manec()</a></code> draws
-from the session's RNG stream, which a sequential run advances and a parallel
-one leaves alone; <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> in your session fixes that draw under a
-plan.</p>
+between a sequential and a parallel run even with a <code>seed</code>, because
+<code><a href="expand_manec.html">expand_manec()</a></code> draws from the session's RNG stream, which a
+sequential run advances and a parallel one leaves alone;
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> in your session fixes that draw under a plan, so a
+parallel run repeats itself.</p>
 <p>The worked treatment – measured run times, which backend a forked plan
 needs, how to tell a plan that has stalled, and what memory does – is in
 <code><a href="../articles/example2.html">vignette("example2")</a></code>.</p>
