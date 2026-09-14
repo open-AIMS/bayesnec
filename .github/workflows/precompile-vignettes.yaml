@@ -152,18 +152,6 @@ jobs:
           fi
 
           available=$(cd vignettes && ls -1 *.Rmd.orig | sed 's/\.Rmd\.orig$//')
-
-          # Left out of a rebuild-everything selection, and still rebuilt when
-          # named. example5 is a Windows cmdstanr installation guide whose
-          # chunks are evaluated: it calls set_cmdstan_path("C:/cmdstan"), which
-          # on a runner warns and leaves the runner's own installation in place,
-          # so the render shows a Linux path and a "Can't find directory"
-          # warning at the step that tells the reader how to set theirs. Before
-          # #313 that leg failed at library(cmdstanr) and produced nothing; with
-          # cmdstanr installed it renders, and the run would open a pull request
-          # containing a render that is wrong for the readers of that vignette.
-          ci_excluded="example5"
-
           if [ -n "$sel" ]; then
             chosen=""
             for v in $(printf '%s' "$sel" | tr ',' ' '); do
@@ -176,15 +164,7 @@ jobs:
               fi
             done
           else
-            chosen=""
-            for v in $available; do
-              case " $ci_excluded " in
-                *" $v "*)
-                  echo "::notice::$v is not rebuilt by a whole-set run;" \
-                    "name it explicitly to rebuild it here" ;;
-                *) chosen="$chosen $v" ;;
-              esac
-            done
+            chosen="$available"
           fi
 
           # Built by hand rather than with jq: the names are basenames of
@@ -430,6 +410,7 @@ jobs:
           ls -1 vignettes/*.Rmd.orig
 
       - name: Precompile ${{ matrix.vignette }}
+        id: precompile
         if: matrix.vignette != 'dry-run'
         run: Rscript vignettes/precompile.R '${{ matrix.vignette }}'
 
@@ -482,11 +463,11 @@ jobs:
           dir="$RUNNER_TEMP/stan-programs"
           if [ ! -d "$dir" ] || [ -z "$(ls -A "$dir")" ]; then
             echo "save=false" >> "$GITHUB_OUTPUT"
-            echo "nothing compiled; the entry this run restored stays newest"
+            echo "no Stan programs here; nothing to save"
             exit 0
           fi
           mib=$(du -sm "$dir" | cut -f1)
-          echo "Stan program cache: ${mib} MiB in $(ls -1 "$dir" | wc -l) files"
+          echo "Stan program cache: ${mib} MiB in $(ls -A "$dir" | wc -l) file(s)"
           if [ "$mib" -gt "$BUDGET_MIB" ]; then
             echo "::warning::Stan program cache is ${mib} MiB, over the" \
               "${BUDGET_MIB} MiB budget; emptying it. The next run compiles cold."
@@ -497,8 +478,15 @@ jobs:
           fi
           echo "save=true" >> "$GITHUB_OUTPUT"
 
+      # `steps.precompile.conclusion != 'skipped'` is what keeps a leg that
+      # never reached the knit from re-uploading the set it restored under a
+      # newer key. The failure this split exists for is the other one -- a leg
+      # that compiled some of a vignette and then failed -- and there the step
+      # has run and concluded `failure`.
       - name: Save the compiled Stan programs
-        if: ${{ !cancelled() && steps.bound.outputs.save == 'true' }}
+        if: >-
+          ${{ !cancelled() && steps.bound.outputs.save == 'true'
+          && steps.precompile.conclusion != 'skipped' }}
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/stan-programs
