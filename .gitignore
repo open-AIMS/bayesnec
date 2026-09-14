@@ -55,3 +55,7 @@ superceded/
 # Local cluster settings for hpc/: account, login node, image path.
 # Copy hpc/local.conf.example to make one.
 hpc/local.conf
+
+# Source laboratory records and manuscripts kept alongside data-raw scripts.
+# Not redistributed with the package.
+data-raw/lum31/
