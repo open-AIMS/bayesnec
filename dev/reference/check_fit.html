@@ -128,7 +128,10 @@ actually holds where that is smaller.</p></dd>
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
 <dd><p>A <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></code> vector of length 1. Passed to
 <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></code> before simulating, so the result is
-reproducible.</p></dd>
+reproducible. The caller's random number stream is restored before the
+check returns, so running it does not change what the next random operation
+in the session returns. <code>NULL</code> is refused rather than passed on,
+because <code>set.seed(NULL)</code> re-initialises the stream from the clock.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
