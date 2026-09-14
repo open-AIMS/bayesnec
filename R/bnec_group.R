@@ -47,6 +47,59 @@
 #' and lands in the post-processing that the \code{toxval} migration moves, so
 #' it is deliberately out of scope here.
 #'
+#' \bold{Fitting the levels in parallel}
+#'
+#' A grouped call has two loops that could use a \pkg{future} plan: the levels,
+#' and the models within a level. One plan drives one of them, because
+#' \pkg{future} evaluates a nested future sequentially unless the plan is a
+#' list, so \code{bnec_group()} decides which and says which.
+#'
+#' With an ordinary plan --- \code{plan(multisession, workers = 8)} --- the two
+#' arrangements are counted in rounds of one fit and the smaller wins, a tie
+#' going to the models, which is what earlier versions did. Writing \emph{L} for
+#' the levels, \emph{M} for the equations the formula asks for and \emph{W} for
+#' the workers, the levels take \code{ceiling(L / W) * M} rounds and the models
+#' \code{L * ceiling(M / W)}. Seven levels of eleven equations over four workers
+#' is 22 against 21, so the levels stay in sequence; over eight workers it is 11
+#' against 14, so they do not.
+#'
+#' To use both loops at once, nest the plan, which is how \pkg{future} asks for
+#' it:
+#'
+#' \preformatted{
+#' library(future)
+#' plan(list(tweak(multisession, workers = 2),
+#'           tweak(multisession, workers = 4)))
+#' fit <- bnec_group(y ~ crf(x, model = "decline"), data = my_data,
+#'                   group_var = "site", seed = 17)
+#' plan(sequential)
+#' }
+#'
+#' The outer element is the level loop and the inner one the model loop, and a
+#' nested plan is honoured without being counted: the division is the user's.
+#' Eight workers are in use here, two levels at a time with four models inside
+#' each.
+#'
+#' Three things to weigh before setting one. A core spent on the chains of a
+#' single fit is the cheapest of the three, because \pkg{brms} runs them without
+#' exporting anything and without holding a second fit, and a core spent on a
+#' level is the dearest, because a worker fitting a level holds that level's
+#' whole model-averaged set; a plan of \emph{W} level workers holds up to
+#' \emph{W} of them at once where fitting the levels in sequence holds one.
+#' Every level fits the same equations, so parallel levels compile the same Stan
+#' programs at the same time; each level is given its own \pkg{cmdstanr} compile
+#' directory to keep them apart, which means a first grouped run compiles each
+#' equation once per level rather than once. And \pkg{rstan} under
+#' \code{rstan_options(auto_write = TRUE)} caches compiled programs in one place
+#' that a forked worker shares with its parent, with no argument that moves it,
+#' so use \code{multisession} rather than \code{multicore} for a parallel
+#' grouped call with that option set.
+#'
+#' \code{\link{bnec}} describes what a plan does and does not reproduce, and
+#' none of it changes here: each fit repeats under its own \code{seed}, and the
+#' model-averaged quantities of a level answer to \code{\link[base]{set.seed}}
+#' in the calling session.
+#'
 #' @return An object of class \code{\link{bayesnecgroupfit}}.
 #'
 #' @seealso \code{\link{bnec}}, \code{\link{crossed_group_weights}},
@@ -79,6 +132,10 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   # as an ordinary call returning a length-1 string -- and reports "variable
   # lengths differ", which points nowhere near the actual cause.
   formula <- bayesnecformula(formula, env = parent.frame())
+  # Narrowed before anything is built from it, as bnec() does. A grouped call
+  # exports the formula once per level as well as once per model, so the
+  # environment it would otherwise carry is sent L x M times. See #329.
+  formula <- narrow_formula_environment(formula, data)
   grp <- data[[group_var]]
   if (is.numeric(grp)) {
     stop("The grouping column \"", group_var, "\" is numeric. A factor",
@@ -159,14 +216,66 @@ bnec_group <- function(formula, data, group_var, family = NULL, ...) {
   } else {
     "pseudobma"
   }
-  fits <- vector(mode = "list", length = length(levs))
-  names(fits) <- levs
-  for (i in seq_along(levs)) {
-    message("Fitting level \"", levs[i], "\" (", counts[[levs[i]]],
-            " observations).")
-    fits[[i]] <- bnec(formula, data = data[grp == levs[i], , drop = FALSE],
-                      family = family, ...)
+  # The set the formula asks for, which is what plan_group_levels() counts the
+  # two arrangements over. Read here rather than taken from an argument because
+  # bnec() itself reads it from the formula; check_models() may then drop an
+  # equation per level, so this is an upper bound. A formula this cannot be read
+  # from is one bnec() is about to refuse, so the failure is left to arrive from
+  # there and the levels stay in sequence meanwhile.
+  models <- try(get_model_from_formula(formula), silent = TRUE)
+  n_models <- if (inherits(models, "try-error")) NA_integer_ else length(models)
+  level_plan <- plan_group_levels(length(levs), n_models)
+  # Read in the parent and carried into the worker. future exports globals and
+  # not the session's options, so a multisession worker starts with this one
+  # unset; read inside the worker instead, a deliberate persistent cache would
+  # be honoured under a forking plan and silently ignored under every other.
+  cache_root <- getOption("cmdstanr_write_stan_file_dir")
+  if (level_plan$parallel) {
+    # Announced together, before the dispatch. The per-level message the
+    # sequential path emits is dropped here: it would be emitted by the worker
+    # that fits the level, and from there it arrives out of order or not at
+    # all, so the sizes are reported once from the parent instead.
+    message("Levels: ",
+            paste0("\"", levs, "\" (", counts[levs], " observations)",
+                   collapse = ", "), ".")
   }
+  # narrow_environment(), for the reason bnec() gives at its own call: future
+  # exports the applied function with its enclosing environment, and that would
+  # be this frame. Only the nine names below need to reach a worker.
+  #
+  # do.call() rather than forwarding `...`, because `...` cannot be put in the
+  # replacement environment. Two things this changes were checked rather than
+  # assumed. The formula reaches bnec() with its own environment intact, which
+  # #319 needs for crf() to resolve a symbol, measured on R 4.6.1 against an
+  # environment set by hand. And the family arrives as a value rather than as
+  # the symbol it was, which family_link_source() already treats as "symbol" --
+  # R/validate_family.R names do.call() as the case -- so the link is read the
+  # same way on both paths. The family has in any event been validated and
+  # marked above, so validate_family() leaves it alone downstream.
+  fit_level <- narrow_environment(
+    function(i) {
+      if (parallel) {
+        # Set inside the worker, where it is the worker's own option, and
+        # restored so that a plan evaluating in the parent leaves nothing
+        # behind. See level_stan_cache_dir().
+        old <- options(
+          cmdstanr_write_stan_file_dir = level_stan_cache_dir(i, cache_root)
+        )
+        on.exit(options(old), add = TRUE)
+      } else {
+        message("Fitting level \"", levs[i], "\" (", counts[[levs[i]]],
+                " observations).")
+      }
+      do.call(bnec, c(list(formula, data = data[grp == levs[i], , drop = FALSE],
+                           family = family), dots))
+    },
+    list(formula = formula, data = data, grp = grp, levs = levs,
+         counts = counts, family = family, dots = dots,
+         parallel = level_plan$parallel, cache_root = cache_root)
+  )
+  fits <- bnec_parallel_lapply(seq_along(levs), fit_level,
+                               parallel = level_plan$parallel)
+  names(fits) <- levs
   out <- list(fits = fits, group_var = group_var, levels = levs,
               formula = formula, data = data, family = unmark_family(family),
               n = as.integer(counts[levs]), weights_method = wt_method)

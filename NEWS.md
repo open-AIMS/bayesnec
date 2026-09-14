@@ -682,6 +682,71 @@
   answer to (#216). One further consequence: a parallel call does not advance
   the calling session's RNG stream, where a sequential one does.
 
+  **The levels of a grouped call can now take the plan as well.**
+  `bnec_group()` has two loops that could use the workers --- the levels, and
+  the models within a level --- and one plan drives one of them, because
+  `future` evaluates a nested future sequentially unless the plan is a list. The
+  two arrangements are therefore counted in rounds of one fit and the smaller is
+  taken, a tie leaving the levels in sequence as earlier versions did: for *L*
+  levels, *M* equations and *W* workers, `ceiling(L / W) * M` against
+  `L * ceiling(M / W)`. Seven levels of eleven equations over four workers is 22
+  against 21, so that call is unchanged; over eight workers it is 11 against 14,
+  and the levels take the workers. A nested plan ---
+  `plan(list(tweak(multisession, workers = 2), tweak(multisession,
+  workers = 4)))` --- drives both loops and is honoured without being counted,
+  the outer element being the levels. `bnec_group()` reports which arrangement
+  it took and the counts behind it (#338).
+
+  **Each level compiles its Stan programs into its own directory.** Every level
+  fits the same equations, so parallel levels build the same programs at the
+  same time, and `cmdstanr` does not lock its compile cache: two levels on a
+  cold cache would write one `.stan` file and run `make` on one executable path
+  at once. Each level is given a directory named by its position, under
+  `cmdstanr_write_stan_file_dir` where one is set and `tempdir()` otherwise, so
+  a deliberate persistent cache is still used and is still warm on the next run.
+  The cost is that a first grouped run compiles each equation once per level
+  rather than once. `rstan` under `rstan_options(auto_write = TRUE)` caches in
+  one place that a forked worker shares with its parent, and offers no argument
+  that moves it, so set `multisession` rather than `multicore` for a parallel
+  grouped call with that option in force.
+
+  **A fit no longer carries the session it was fitted in.** A formula records
+  the environment it was created in, and serialising it writes that environment
+  out in full. Written at the top level of a script that is the global
+  environment and costs nothing; written in a `knitr` chunk it is the chunk
+  environment, which holds every object the document has built so far. The
+  formula's environment is now rebuilt to hold exactly the names the formula
+  mentions and the data does not supply, parented to the package namespace, and
+  it is rebuilt before the model frame so that the frame, the `brms` formula and
+  the stored fit are all narrowed by the one call. Measured on R 4.6.1 with a
+  76 MiB vector bound beside the formula: the formula serialised to 76.29 MiB
+  and now serialises to under 0.01, and the model frame built from it --- which
+  `amend()` exports to every worker, through the `.Environment` of its `terms`
+  attribute --- with it. Under a plan that environment was sent to every worker
+  once per model, and once per model per level in a grouped call, which is what
+  made a parallel run of a vignette fail at `future.globals.maxSize` rather than
+  merely slow it (#329).
+
+  The environment is narrowed rather than removed. `model.frame()` resolves a
+  term against the data first and the formula's environment second, so a formula
+  naming anything the data does not supply needs it --- including the model
+  argument of `crf()` where that is a variable rather than a string. Two limits
+  are worth stating. A name bound in the global environment, in an attached
+  package or in a namespace is left where it is and resolved through the parent
+  chain, because copying it would cost what this avoids; a worker's global
+  environment is not the caller's, so such a name was already out of reach under
+  a plan and still is. And a function defined beside the formula is a closure
+  over that same environment, so carrying the name carries everything it closed
+  over: there the fit is the size it was.
+
+  **A core spent on a level is the dearest of the three.** Chains are the
+  cheapest, because `brm()` runs them without exporting anything and without
+  holding a second fit; a worker fitting a model holds one fit; a worker fitting
+  a level holds that level's whole model-averaged set, so a plan of *W* level
+  workers holds up to *W* of them at once where fitting the levels in sequence
+  holds one. That ordering is why the two arrangements are counted against each
+  other rather than the levels simply taking the plan.
+
 - **`bnec_record()`** reports what `bnec()` did to the request before fitting:
   the candidate set as requested, the set attempted, the equations excluded with
   the reason for each, and any substitution made in the response. Both were

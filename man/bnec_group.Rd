@@ -62,6 +62,59 @@ fits.
 It does not refit the favoured combination jointly. That is stage 2 of #33
 and lands in the post-processing that the \code{toxval} migration moves, so
 it is deliberately out of scope here.
+
+\bold{Fitting the levels in parallel}
+
+A grouped call has two loops that could use a \pkg{future} plan: the levels,
+and the models within a level. One plan drives one of them, because
+\pkg{future} evaluates a nested future sequentially unless the plan is a
+list, so \code{bnec_group()} decides which and says which.
+
+With an ordinary plan --- \code{plan(multisession, workers = 8)} --- the two
+arrangements are counted in rounds of one fit and the smaller wins, a tie
+going to the models, which is what earlier versions did. Writing \emph{L} for
+the levels, \emph{M} for the equations the formula asks for and \emph{W} for
+the workers, the levels take \code{ceiling(L / W) * M} rounds and the models
+\code{L * ceiling(M / W)}. Seven levels of eleven equations over four workers
+is 22 against 21, so the levels stay in sequence; over eight workers it is 11
+against 14, so they do not.
+
+To use both loops at once, nest the plan, which is how \pkg{future} asks for
+it:
+
+\preformatted{
+library(future)
+plan(list(tweak(multisession, workers = 2),
+          tweak(multisession, workers = 4)))
+fit <- bnec_group(y ~ crf(x, model = "decline"), data = my_data,
+                  group_var = "site", seed = 17)
+plan(sequential)
+}
+
+The outer element is the level loop and the inner one the model loop, and a
+nested plan is honoured without being counted: the division is the user's.
+Eight workers are in use here, two levels at a time with four models inside
+each.
+
+Three things to weigh before setting one. A core spent on the chains of a
+single fit is the cheapest of the three, because \pkg{brms} runs them without
+exporting anything and without holding a second fit, and a core spent on a
+level is the dearest, because a worker fitting a level holds that level's
+whole model-averaged set; a plan of \emph{W} level workers holds up to
+\emph{W} of them at once where fitting the levels in sequence holds one.
+Every level fits the same equations, so parallel levels compile the same Stan
+programs at the same time; each level is given its own \pkg{cmdstanr} compile
+directory to keep them apart, which means a first grouped run compiles each
+equation once per level rather than once. And \pkg{rstan} under
+\code{rstan_options(auto_write = TRUE)} caches compiled programs in one place
+that a forked worker shares with its parent, with no argument that moves it,
+so use \code{multisession} rather than \code{multicore} for a parallel
+grouped call with that option set.
+
+\code{\link{bnec}} describes what a plan does and does not reproduce, and
+none of it changes here: each fit repeats under its own \code{seed}, and the
+model-averaged quantities of a level answer to \code{\link[base]{set.seed}}
+in the calling session.
 }
 \examples{
 \dontrun{

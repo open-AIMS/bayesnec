@@ -247,7 +247,7 @@ exp_5_par <- bnec(y ~ crf(x, model = "decline"), data = df_,
 plan(sequential)
 ```
 
-There is no argument to `bnec()` that turns this on or off: the plan already records how much of the machine you are willing to use, and a second way of saying it would only disagree with the first. A `cores` is different, and is passed through to `brm()` as any other of its arguments is; what it does under a plan is the subject of *Chains within models* below. `future` and `future.apply` are suggested rather than required packages: without them, or without a plan, the models are fitted in sequence exactly as they were before this feature existed. `amend()` uses the plan in the same way, over whichever models it has to fit, and `bnec_group()` fits each level of the grouping variable in turn with that level's model set fitted in parallel.
+There is no argument to `bnec()` that turns this on or off: the plan already records how much of the machine you are willing to use, and a second way of saying it would only disagree with the first. A `cores` is different, and is passed through to `brm()` as any other of its arguments is; what it does under a plan is the subject of *Chains within models* below. `future` and `future.apply` are suggested rather than required packages: without them, or without a plan, the models are fitted in sequence exactly as they were before this feature existed. `amend()` uses the plan in the same way, over whichever models it has to fit. `bnec_group()` has a second loop that could use the same workers, its levels, and it chooses between the two by counting the rounds each arrangement takes; a nested plan drives both. See `?bnec_group` under *Fitting the levels in parallel*.
 
 ### Choosing a plan
 

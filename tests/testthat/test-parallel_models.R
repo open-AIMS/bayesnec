@@ -52,12 +52,12 @@ skip_unless_future <- function() {
 # assertion fails for a reason that has nothing to do with the code under test.
 # R CMD check installs the package first, so this skip does not fire there.
 # Measured 2026-09-11, R 4.6.1, future 1.70.0: a load_all() session reports
-# "object 'bnec_model_lapply' not found" from a multisession worker and works
+# "object 'bnec_parallel_lapply' not found" from a multisession worker and works
 # under multicore, which forks and so inherits the loaded namespace.
 skip_unless_worker_sees_internals <- function() {
   ok <- tryCatch(
     future.apply::future_lapply(1, function(i) {
-      exists("bnec_model_lapply", envir = asNamespace("bayesnec"),
+      exists("bnec_parallel_lapply", envir = asNamespace("bayesnec"),
              inherits = FALSE)
     }, future.seed = TRUE)[[1]],
     error = function(e) FALSE
@@ -111,7 +111,7 @@ test_that("a parallel set samples its chains in sequence unless told not to", {
 })
 
 test_that("RNGkind derives the state, it does not reseed from the clock", {
-  # The reason bnec_model_lapply() recorded for restoring the kind was that
+  # The reason bnec_parallel_lapply() recorded for restoring the kind was that
   # RNGkind() re-initialises .Random.seed from the clock. It does that only
   # where no seed exists yet. Pinned because the whole argument about what a
   # parallel run reproduces rests on which of the two it is. See #310.
@@ -138,7 +138,7 @@ test_that("RNGkind derives the state, it does not reseed from the clock", {
     stats::runif(1)
   }
   mt <- c("Mersenne-Twister", "Inversion", "Rejection")
-  # The same-kind call, which is what bnec_model_lapply() makes in the parent's
+  # The same-kind call, which is what bnec_parallel_lapply() makes in the parent's
   # own kind, and the L'Ecuyer-CMRG to Mersenne-Twister change, which is what
   # it makes inside a worker. Two independent pairs per arm rather than one:
   # a single pair of clock-seeded draws could in principle collide.
@@ -169,7 +169,7 @@ test_that("the sequential path is lapply() and leaves the RNG alone", {
     set.seed(1)
     get(".Random.seed", envir = globalenv())
   }
-  out <- bnec_model_lapply(1:3, function(i) i^2, parallel = FALSE)
+  out <- bnec_parallel_lapply(1:3, function(i) i^2, parallel = FALSE)
   expect_identical(out, lapply(1:3, function(i) i^2))
   expect_identical(get(".Random.seed", envir = globalenv()), seed_before)
 })
@@ -183,10 +183,10 @@ test_that("a parallel run draws the same initial values as a sequential one", {
     set.seed(100 + i)
     stats::runif(3)
   }
-  sequential <- bnec_model_lapply(1:4, draw, parallel = FALSE)
+  sequential <- bnec_parallel_lapply(1:4, draw, parallel = FALSE)
   parallel <- with_parallel_plan({
     skip_unless_worker_sees_internals()
-    bnec_model_lapply(1:4, draw, parallel = TRUE)
+    bnec_parallel_lapply(1:4, draw, parallel = TRUE)
   })
   expect_identical(parallel, sequential)
 })
@@ -205,11 +205,11 @@ test_that("the initial-value search draws the same values in a worker", {
   }
   models <- c("nec3param", "nec4param")
   sequential <- suppressMessages(
-    bnec_model_lapply(models, draw_inits, parallel = FALSE)
+    bnec_parallel_lapply(models, draw_inits, parallel = FALSE)
   )
   parallel <- with_parallel_plan(suppressMessages({
     skip_unless_worker_sees_internals()
-    bnec_model_lapply(models, draw_inits, parallel = TRUE)
+    bnec_parallel_lapply(models, draw_inits, parallel = TRUE)
   }))
   expect_identical(parallel, sequential)
 })
@@ -226,11 +226,11 @@ test_that("a forking plan gives the same guarantees as a socket one", {
     set.seed(100 + i)
     stats::runif(3)
   }
-  sequential <- bnec_model_lapply(1:4, draw, parallel = FALSE)
+  sequential <- bnec_parallel_lapply(1:4, draw, parallel = FALSE)
   res <- with_fork_plan({
     set.seed(9)
     before <- get(".Random.seed", envir = globalenv())
-    out <- bnec_model_lapply(1:4, draw, parallel = TRUE)
+    out <- bnec_parallel_lapply(1:4, draw, parallel = TRUE)
     list(out = out, before = before,
          after = get(".Random.seed", envir = globalenv()))
   })
@@ -238,7 +238,7 @@ test_that("a forking plan gives the same guarantees as a socket one", {
   expect_identical(res$after, res$before)
   # And the failure contract, which under forking returns the try-error
   # through shared memory rather than through serialisation.
-  out <- with_fork_plan(bnec_model_lapply(1:3, function(i) {
+  out <- with_fork_plan(bnec_parallel_lapply(1:3, function(i) {
     try(
       if (i == 2) {
         stop(fit_failure_condition("nec3param", "boom", NULL, NULL))
@@ -272,7 +272,7 @@ test_that("a parallel run leaves the caller's RNG stream where it was", {
     skip_unless_worker_sees_internals()
     set.seed(9)
     before <- get(".Random.seed", envir = globalenv())
-    out <- bnec_model_lapply(1:4, function(i) i, parallel = TRUE)
+    out <- bnec_parallel_lapply(1:4, function(i) i, parallel = TRUE)
     list(out = out, before = before,
          after = get(".Random.seed", envir = globalenv()))
   })
@@ -283,7 +283,7 @@ test_that("a parallel run leaves the caller's RNG stream where it was", {
   left_behind <- with_parallel_plan({
     skip_unless_worker_sees_internals()
     suppressWarnings(rm(".Random.seed", envir = globalenv()))
-    bnec_model_lapply(1:2, function(i) i, parallel = TRUE)
+    bnec_parallel_lapply(1:2, function(i) i, parallel = TRUE)
     exists(".Random.seed", envir = globalenv(), inherits = FALSE)
   })
   expect_false(left_behind)
@@ -381,10 +381,10 @@ test_that("a failing element yields its condition and the rest still run", {
     expect_true(inherits(cnd, "bnec_fit_failure"))
     expect_match(conditionMessage(cnd), "boom")
   }
-  check(bnec_model_lapply(1:3, body, parallel = FALSE))
+  check(bnec_parallel_lapply(1:3, body, parallel = FALSE))
   check(with_parallel_plan({
     skip_unless_worker_sees_internals()
-    bnec_model_lapply(1:3, body, parallel = TRUE)
+    bnec_parallel_lapply(1:3, body, parallel = TRUE)
   }))
 })
 
@@ -456,4 +456,267 @@ test_that("a timeout ends a parallel run exactly as it ends a sequential one", {
     run()
   })
   expect_identical(parallel, sequential)
+})
+
+# --- The level loop of a grouped call (#338) -------------------------------
+
+test_that("the two arrangements of one plan are counted in rounds of one fit", {
+  # The unit is one fit sampling its chains in sequence, which is what happens
+  # inside a worker on either arrangement. ceiling() on both sides: a round is
+  # set by its slowest member, so a part-filled round still costs a whole one.
+  rounds <- bayesnec:::group_loop_rounds
+  # The shape #338 was measured on. Four cores, eleven equations, seven levels:
+  # the models are the smaller count, so the release arrangement stands.
+  expect_equal(rounds(7, 11, 4)$models, 21)
+  expect_equal(rounds(7, 11, 4)$levels, 22)
+  # The same shape at eight workers, where the levels become the smaller.
+  expect_equal(rounds(7, 11, 8)$models, 14)
+  expect_equal(rounds(7, 11, 8)$levels, 11)
+  # Two levels of fifteen equations, the other call in that vignette. The
+  # levels never win here, because a level arrangement cannot go below M
+  # rounds and the model arrangement reaches L.
+  expect_equal(rounds(2, 15, 4)$models, 8)
+  expect_equal(rounds(2, 15, 4)$levels, 15)
+  # One worker is parallel in name only and gives a tie, which the caller
+  # resolves in favour of the models.
+  expect_equal(rounds(7, 11, 1)$models, rounds(7, 11, 1)$levels)
+  # Unknown, or unbounded, is not a number to divide by. Both arms are NA and
+  # the caller leaves the levels in sequence.
+  expect_true(is.na(rounds(7, 11, NA)$levels))
+  expect_true(is.na(rounds(7, 11, Inf)$levels))
+  expect_true(is.na(rounds(7, NA_integer_, 8)$levels))
+})
+
+test_that("fewer than two levels, or no plan, is never a parallel level loop", {
+  skip_unless_future()
+  old <- future::plan(future::sequential)
+  on.exit(future::plan(old), add = TRUE)
+  expect_false(bayesnec:::plan_group_levels(5, 11)$parallel)
+  expect_false(
+    with_parallel_plan(bayesnec:::plan_group_levels(1, 11))$parallel
+  )
+})
+
+test_that("the smaller count decides which loop an ordinary plan drives", {
+  skip_unless_future()
+  # Two workers, three levels, two equations: the models take 3 rounds and the
+  # levels 4, so the levels stay in sequence and the message says so with both
+  # counts in it.
+  expect_message(
+    out <- with_parallel_plan(bayesnec:::plan_group_levels(3, 2)),
+    "3 rounds of one fit, against 4"
+  )
+  expect_false(out$parallel)
+  # Two workers, four levels, three equations: the levels take 6 rounds and
+  # the models 8, so the levels take the workers.
+  expect_message(
+    out <- with_parallel_plan(bayesnec:::plan_group_levels(4, 3)),
+    "Fitting 4 levels in parallel over 2 workers"
+  )
+  expect_true(out$parallel)
+})
+
+test_that("an unreadable model count leaves the levels in sequence", {
+  skip_unless_future()
+  expect_message(
+    out <- with_parallel_plan(bayesnec:::plan_group_levels(4, NA_integer_)),
+    "equations the formula asks for could not be read"
+  )
+  expect_false(out$parallel)
+})
+
+test_that("a nested plan is honoured without being counted", {
+  skip_unless_future()
+  old_limit <- options(parallelly.maxWorkers.localhost = Inf)
+  on.exit(options(old_limit), add = TRUE)
+  old <- future::plan(list(future::tweak(future::multisession, workers = 2),
+                           future::tweak(future::multisession, workers = 2)))
+  on.exit(future::plan(old), add = TRUE)
+  # Three levels of two equations over two outer workers is the shape the
+  # count refuses -- 4 rounds against 3 -- and the nested plan takes it
+  # anyway, because there the user has divided the workers deliberately.
+  expect_message(out <- bayesnec:::plan_group_levels(3, 2),
+                 "plan is a list")
+  expect_true(out$parallel)
+})
+
+test_that("each level compiles into its own directory, under the user's root", {
+  # Every level fits the same equations, so parallel levels compile the same
+  # Stan programs at once. cmdstanr does not lock its cache, and a forked
+  # worker shares the parent's tempdir, so the directory has to differ by
+  # level rather than by process.
+  a <- bayesnec:::level_stan_cache_dir(1)
+  b <- bayesnec:::level_stan_cache_dir(2)
+  expect_false(identical(a, b))
+  expect_true(dir.exists(a) && dir.exists(b))
+  # A deliberate persistent cache is still used, one directory down. The root
+  # is an argument rather than read from the options here, because future
+  # exports globals and not options and a multisession worker would otherwise
+  # never see it.
+  root <- file.path(tempdir(), "bayesnec-cache-root-test")
+  dir.create(root, showWarnings = FALSE)
+  expect_equal(dirname(bayesnec:::level_stan_cache_dir(3, root)), root)
+  # An option set in the calling session is not read here, and the fallback is
+  # the process's own tempdir.
+  old <- options(cmdstanr_write_stan_file_dir = root)
+  on.exit(options(old), add = TRUE)
+  expect_equal(dirname(bayesnec:::level_stan_cache_dir(3)), tempdir())
+  # Named by position, so the same level reaches the same directory on the
+  # next run and the cache it wrote is still there to be read.
+  expect_identical(bayesnec:::level_stan_cache_dir(3, root),
+                   bayesnec:::level_stan_cache_dir(3, root))
+})
+
+test_that("a value passed by do.call keeps the environment of its formula", {
+  # bnec_group() reaches bnec() through do.call() rather than by forwarding
+  # `...`, because `...` cannot be put in the environment narrow_environment()
+  # builds. A formula records the environment it was created in, and #319 needs
+  # that environment intact for crf() to resolve a symbol from it, so what is
+  # pinned here is that do.call() transports rather than rebuilds it. Measured
+  # on R 4.6.1.
+  e <- new.env()
+  f <- y ~ x
+  environment(f) <- e
+  seen <- do.call(function(z, ...) environment(z), list(f, family = "beta"))
+  expect_identical(seen, e)
+})
+
+test_that("a grouped call fitted in parallel reproduces the sequential one", {
+  skip_unless_future()
+  # The end-to-end proof for the level loop, on the smallest shape that takes
+  # it: two levels of one equation over two workers is 1 round against 2, so
+  # the levels are dispatched. One equation also keeps the assertion exact --
+  # a level that model-averages draws its weighted posterior index from the
+  # stream of whichever process fitted it, which is the one quantity a plan is
+  # not expected to reproduce (see expand_manec() and #216).
+  shape <- suppressMessages(
+    with_parallel_plan(bayesnec:::plan_group_levels(2, 1))
+  )
+  skip_if(!shape$parallel, "the level loop declined to dispatch this shape")
+  # Bound in the frame the formula below is written in, so that the fits also
+  # answer #329: without narrow_formula_environment() this reaches both
+  # workers and both stored fits.
+  big <- rnorm(1e6)
+  d <- nec_data
+  d$site <- rep(c("a", "b"), length.out = nrow(d))
+  grouped <- function() {
+    suppressMessages(suppressWarnings(
+      bnec_group(y ~ crf(x, model = "nec3param"), data = d,
+                 group_var = "site", seed = 338, chains = 2, iter = 200,
+                 refresh = 0)
+    ))
+  }
+  sequential <- grouped()
+  parallel <- with_parallel_plan({
+    skip_unless_worker_sees_internals()
+    grouped()
+  })
+  # Order and labelling come back from future_lapply() unchanged, and the
+  # levels are named after the dispatch rather than before it.
+  expect_identical(names(parallel$fits), c("a", "b"))
+  expect_identical(parallel$levels, sequential$levels)
+  expect_identical(parallel$n, sequential$n)
+  # Each level was fitted on its own rows, not on the whole data frame.
+  expect_identical(
+    vapply(parallel$fits, function(f) nrow(f$fit$data), integer(1)),
+    vapply(sequential$fits, function(f) nrow(f$fit$data), integer(1))
+  )
+  for (lev in c("a", "b")) {
+    expect_equal(
+      brms::as_draws_matrix(parallel$fits[[lev]]$fit),
+      brms::as_draws_matrix(sequential$fits[[lev]]$fit),
+      info = lev
+    )
+    # The stored formula holds the narrowed environment, not the 7.6 MiB
+    # vector bound beside it above (#329).
+    expect_lt(
+      length(serialize(parallel$fits[[lev]]$bayesnecformula, NULL)) / 1024^2,
+      0.1
+    )
+  }
+})
+
+# --- What travels with the formula (#329) -----------------------------------
+
+test_that("a formula stops carrying the environment it was written in", {
+  # A formula records where it was created, and serialize() writes that
+  # environment out in full. narrow_environment() does not reach it: it
+  # replaces the environment of the applied function, and the formula inside
+  # travels with its own. Measured rather than asserted loosely, because the
+  # size is the whole point.
+  mib <- function(x) length(serialize(x, NULL)) / 1024^2
+  make <- function() {
+    big <- rnorm(1e6)
+    bayesnecformula(y ~ crf(x, model = c("nec3param", "ecx4param")))
+  }
+  f <- make()
+  expect_gt(mib(f), 7)
+  narrowed <- bayesnec:::narrow_formula_environment(f, nec_data)
+  expect_lt(mib(narrowed), 0.1)
+  # The class survives, and so does the formula itself.
+  expect_s3_class(narrowed, "bayesnecformula")
+  expect_true(identical(narrowed[[2]], f[[2]]))
+  # The model frame carries the same environment, through the .Environment of
+  # its terms attribute, and amend() exports one to every worker.
+  expect_gt(mib(model.frame(f, data = nec_data)), 7)
+  expect_lt(mib(model.frame(narrowed, data = nec_data)), 0.1)
+})
+
+test_that("a name the formula uses and the data does not supply is carried", {
+  # model.frame() resolves a term against data first and the formula's
+  # environment second, so blanking the environment would be wrong. The model
+  # argument of crf() is the case that matters: #319 resolves it there.
+  make <- function() {
+    big <- rnorm(1e6)
+    mods <- c("nec3param", "ecx4param")
+    bayesnecformula(y ~ crf(x, model = mods))
+  }
+  narrowed <- bayesnec:::narrow_formula_environment(make(), nec_data)
+  expect_identical(get("mods", envir = environment(narrowed)),
+                   c("nec3param", "ecx4param"))
+  expect_lt(length(serialize(narrowed, NULL)) / 1024^2, 0.1)
+  # A column of the data is not carried: the model frame resolves it from
+  # there, and carrying it would send the data twice.
+  expect_false(exists("y", envir = environment(narrowed), inherits = FALSE))
+})
+
+test_that("an environment R sends by reference is left alone", {
+  # The global environment, a namespace and an attached package are written as
+  # a reference, so a formula holding one costs nothing and rebuilding it would
+  # only lose names. The walk up the parent chain stops at the first of them
+  # for the same reason.
+  # Set rather than inherited: a formula written inside a test_that() block
+  # records the test's own frame, which is an ordinary environment.
+  f <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  environment(f) <- globalenv()
+  expect_identical(
+    environment(bayesnec:::narrow_formula_environment(f, nec_data)),
+    globalenv()
+  )
+  # And where it is narrowed, the replacement is parented to the namespace, so
+  # package internals and the search path both still resolve.
+  g <- bayesnecformula(y ~ crf(x, model = "nec3param"))
+  expect_identical(
+    parent.env(environment(bayesnec:::narrow_formula_environment(g, nec_data))),
+    asNamespace("bayesnec")
+  )
+  expect_true(bayesnec:::env_by_reference(globalenv()))
+  expect_true(bayesnec:::env_by_reference(asNamespace("stats")))
+  expect_true(bayesnec:::env_by_reference(baseenv()))
+  expect_false(bayesnec:::env_by_reference(new.env()))
+})
+
+test_that("a function the formula names is carried with its own environment", {
+  # The limit of what this can do, recorded rather than hidden. A user
+  # transformation defined beside the formula is a closure over the same
+  # environment, so carrying the name carries everything it closed over. The
+  # object is needed, so there is nothing to be saved there.
+  make <- function() {
+    big <- rnorm(1e6)
+    halve <- function(z) z / 2
+    bayesnecformula(y ~ crf(halve(x), model = "nec3param"))
+  }
+  narrowed <- bayesnec:::narrow_formula_environment(make(), nec_data)
+  expect_true(exists("halve", envir = environment(narrowed), inherits = FALSE))
+  expect_gt(length(serialize(narrowed, NULL)) / 1024^2, 7)
 })

@@ -667,6 +667,15 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
   # called bnec() from. A formula object already carries its own environment
   # and `env` is ignored for it. See #319.
   formula <- bayesnecformula(formula, env = parent.frame())
+  # Before the model frame, so that the frame, the brms formula and the stored
+  # fit all carry the narrowed environment rather than the calling session. A
+  # formula records where it was created, and serialising it writes that
+  # environment out in full: measured at 76 MiB for a formula written beside a
+  # 76 MiB vector, which is what a parallel plan then sends to every worker and
+  # what every saved fit keeps. The environment #319 attaches above is kept,
+  # narrowed to the names the formula resolves there. See
+  # narrow_formula_environment() and #329.
+  formula <- narrow_formula_environment(formula, data)
   bdat <- model.frame(formula, data = data, run_par_checks = TRUE)
   # Raised here rather than left to check_data(), which runs once per model
   # inside fit_bayesnec(). bnec() wraps that call in try() for a model set, so
@@ -791,7 +800,7 @@ bnec <- function(formula, data, x_range = NA, resolution = 1000, sig_val = 0.01,
            brm_args = brm_args, prior_type = prior_type, timeout = timeout,
            model_survival = model_survival)
     )
-    attempts <- bnec_model_lapply(seq_along(model), fit_one,
+    attempts <- bnec_parallel_lapply(seq_along(model), fit_one,
                                   parallel = set_plan$parallel)
     # Assembled in the parent rather than in the worker so that what a worker
     # returns is exactly what the sequential path returns: the fit, or the
