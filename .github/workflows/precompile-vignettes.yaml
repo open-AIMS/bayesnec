@@ -453,8 +453,9 @@ jobs:
       # It is bounded because the repository shares one 10 GB cache quota across
       # every workflow, and what consumes the quota is not one entry but their
       # accumulation: the key includes the run id, so no entry is ever replaced
-      # and each leg of each run adds one. At the budget, seven legs would add
-      # about 3.5 GB compressed per run. Stale entries are never restored again,
+      # and each leg of each run adds one. A leg at the budget adds about 530 MB
+      # compressed, so a whole-set run at the budget would add several
+      # gigabytes. Stale entries are never restored again,
       # so they are the first the least-recently-used eviction takes and they
       # expire unread after seven days, but without a bound a single runaway
       # entry would displace the dependency caches R-CMD-check restores.
